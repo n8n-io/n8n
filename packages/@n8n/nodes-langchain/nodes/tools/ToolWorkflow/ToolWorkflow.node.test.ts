@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import { DynamicTool } from '@langchain/classic/tools';
 import {
 	type INode,
@@ -6,6 +5,7 @@ import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ToolWorkflow } from './ToolWorkflow.node';
 import type { ToolWorkflowV2 } from './v2/ToolWorkflowV2.node';
@@ -14,7 +14,7 @@ import { WorkflowToolService } from './v2/utils/WorkflowToolService';
 describe('ToolWorkflowV2', () => {
 	describe('supplyData', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should read name from node name on version >=2.2', async () => {
@@ -23,8 +23,8 @@ describe('ToolWorkflowV2', () => {
 
 			const supplyDataResult = await node.supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 2.2, name: 'test tool' })),
-					getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 2.2, name: 'test tool' })),
+					getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 						switch (paramName) {
 							case 'description':
 								return 'description text';
@@ -52,8 +52,8 @@ describe('ToolWorkflowV2', () => {
 
 			const supplyDataResult = await node.supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 2.1, name: 'wrong name' })),
-					getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 2.1, name: 'wrong name' })),
+					getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 						switch (paramName) {
 							case 'description':
 								return 'description text';
@@ -78,7 +78,7 @@ describe('ToolWorkflowV2', () => {
 
 	describe('execute', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should properly spread INodeExecutionData array from tool.invoke', async () => {
@@ -89,25 +89,25 @@ describe('ToolWorkflowV2', () => {
 			const mockToolResponse: INodeExecutionData[] = [{ json: { response: 'pikachu' } }];
 
 			const mockTool = {
-				invoke: jest.fn().mockResolvedValue(mockToolResponse),
+				invoke: vi.fn().mockResolvedValue(mockToolResponse),
 			} as any;
 
 			// Mock WorkflowToolService.createTool to return our mock tool
-			jest.spyOn(WorkflowToolService.prototype, 'createTool').mockResolvedValue(mockTool);
+			vi.spyOn(WorkflowToolService.prototype, 'createTool').mockResolvedValue(mockTool);
 
 			const inputData: INodeExecutionData[] = [{ json: { query: 'what is a pokemon?' } }];
 
 			const executeResult = await node.execute.call(
 				mock<IExecuteFunctions>({
-					getInputData: jest.fn(() => inputData),
-					getNode: jest.fn(() =>
+					getInputData: vi.fn(() => inputData),
+					getNode: vi.fn(() =>
 						mock<INode>({
 							typeVersion: 2.2,
 							name: 'test tool',
 							parameters: { workflowInputs: { schema: [] } },
 						}),
 					),
-					getNodeParameter: jest.fn().mockImplementation((paramName) => {
+					getNodeParameter: vi.fn().mockImplementation((paramName) => {
 						switch (paramName) {
 							case 'description':
 								return 'description text';
@@ -136,24 +136,24 @@ describe('ToolWorkflowV2', () => {
 			];
 
 			const mockTool = {
-				invoke: jest.fn().mockResolvedValue(mockToolResponse),
+				invoke: vi.fn().mockResolvedValue(mockToolResponse),
 			} as any;
 
-			jest.spyOn(WorkflowToolService.prototype, 'createTool').mockResolvedValue(mockTool);
+			vi.spyOn(WorkflowToolService.prototype, 'createTool').mockResolvedValue(mockTool);
 
 			const inputData: INodeExecutionData[] = [{ json: { query: 'list pokemon' } }];
 
 			const executeResult = await node.execute.call(
 				mock<IExecuteFunctions>({
-					getInputData: jest.fn(() => inputData),
-					getNode: jest.fn(() =>
+					getInputData: vi.fn(() => inputData),
+					getNode: vi.fn(() =>
 						mock<INode>({
 							typeVersion: 2.2,
 							name: 'test tool',
 							parameters: { workflowInputs: { schema: [] } },
 						}),
 					),
-					getNodeParameter: jest.fn().mockImplementation((paramName) => {
+					getNodeParameter: vi.fn().mockImplementation((paramName) => {
 						switch (paramName) {
 							case 'description':
 								return 'description text';
@@ -177,24 +177,24 @@ describe('ToolWorkflowV2', () => {
 
 			// Mock the tool that returns a string (edge case)
 			const mockTool = {
-				invoke: jest.fn().mockResolvedValue('plain string response'),
+				invoke: vi.fn().mockResolvedValue('plain string response'),
 			} as any;
 
-			jest.spyOn(WorkflowToolService.prototype, 'createTool').mockResolvedValue(mockTool);
+			vi.spyOn(WorkflowToolService.prototype, 'createTool').mockResolvedValue(mockTool);
 
 			const inputData: INodeExecutionData[] = [{ json: { query: 'test query' } }];
 
 			const executeResult = await node.execute.call(
 				mock<IExecuteFunctions>({
-					getInputData: jest.fn(() => inputData),
-					getNode: jest.fn(() =>
+					getInputData: vi.fn(() => inputData),
+					getNode: vi.fn(() =>
 						mock<INode>({
 							typeVersion: 2.2,
 							name: 'test tool',
 							parameters: { workflowInputs: { schema: [] } },
 						}),
 					),
-					getNodeParameter: jest.fn().mockImplementation((paramName) => {
+					getNodeParameter: vi.fn().mockImplementation((paramName) => {
 						switch (paramName) {
 							case 'description':
 								return 'description text';

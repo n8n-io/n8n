@@ -1,4 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
 import { parse as esprimaParse, Syntax } from 'esprima-next';
 import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
@@ -7,6 +6,7 @@ import merge from 'lodash/merge';
 import path from 'path';
 
 import { ALPHABET } from './constants';
+import { UserError } from './errors/base/user.error';
 import { ManualExecutionCancelledError } from './errors/execution-cancelled.error';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 import * as LoggerProxy from './logger-proxy';
@@ -49,6 +49,11 @@ export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 
+// Property keys that must never be copied onto a clone: assigning `__proto__`
+// reassigns the clone's prototype, and `constructor`/`prototype` can shadow
+// built-ins. Source data parsed from JSON can carry these as own properties.
+const reservedCopyKeys = new Set(['__proto__', 'constructor', 'prototype']);
+
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
 	source: T,
@@ -81,7 +86,7 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 	const clone = Object.create(Object.getPrototypeOf({}));
 	hash.set(source, clone);
 	for (const i in source) {
-		if (hasOwnProp(i)) {
+		if (hasOwnProp(i) && !reservedCopyKeys.has(i)) {
 			clone[i] = deepCopy((source as any)[i], hash, path + `.${i}`);
 		}
 	}
@@ -175,7 +180,7 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 			}
 			return options.fallbackValue;
 		} else if (options?.errorMessage) {
-			throw new ApplicationError(options.errorMessage);
+			throw new UserError(options.errorMessage);
 		}
 
 		throw error;
@@ -215,6 +220,7 @@ export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSe
 	knownObjects.add(value);
 	const copy = (Array.isArray(value) ? [] : {}) as T;
 	for (const key in value) {
+		if (reservedCopyKeys.has(key)) continue;
 		try {
 			copy[key] = replaceCircularReferences(value[key], knownObjects);
 		} catch (error: unknown) {
@@ -370,6 +376,11 @@ const unsafeObjectProperties = new Set([
 	'prototype',
 	'constructor',
 	'getPrototypeOf',
+	'setPrototypeOf',
+	'getOwnPropertyDescriptor',
+	'getOwnPropertyDescriptors',
+	'defineProperty',
+	'defineProperties',
 	'mainModule',
 	'binding',
 	'_linkedBinding',
@@ -380,6 +391,7 @@ const unsafeObjectProperties = new Set([
 	'__defineGetter__',
 	'__defineSetter__',
 	'caller',
+	'callee',
 	'arguments',
 	'getBuiltinModule',
 	'dlopen',
@@ -395,6 +407,16 @@ const unsafeObjectProperties = new Set([
  */
 export function isSafeObjectProperty(property: string) {
 	return !unsafeObjectProperties.has(property);
+}
+
+const unsafeObjectPropertyTokenPattern = new RegExp(
+	`\\b(?:${[...unsafeObjectProperties]
+		.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+		.join('|')})\\b`,
+);
+
+export function containsUnsafeObjectPropertyToken(input: string) {
+	return unsafeObjectPropertyTokenPattern.test(input);
 }
 
 /**
@@ -418,58 +440,6 @@ export function sanitizeXmlName(name: string) {
 	if (DANGEROUS_XML_NAMES.has(name)) return `sanitized_${name}`;
 
 	return name;
-}
-
-export function isDomainAllowed(
-	urlString: string,
-	options: {
-		allowedDomains: string;
-	},
-): boolean {
-	if (!options.allowedDomains || options.allowedDomains.trim() === '') {
-		return true; // If no restrictions are set, allow all domains
-	}
-
-	try {
-		const url = new URL(urlString);
-
-		// Normalize hostname: lowercase and remove trailing dot
-		const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
-
-		// Reject empty hostnames
-		if (!hostname) {
-			return false;
-		}
-
-		const allowedDomainsList = options.allowedDomains
-			.split(',')
-			.map((domain) => domain.trim().toLowerCase().replace(/\.$/, ''))
-			.filter(Boolean);
-
-		for (const allowedDomain of allowedDomainsList) {
-			// Handle wildcard domains (*.example.com)
-			if (allowedDomain.startsWith('*.')) {
-				const domainSuffix = allowedDomain.substring(2);
-				// Ensure the suffix itself is valid
-				if (!domainSuffix) continue;
-
-				// Wildcard matches only subdomains, not the base domain itself
-				// *.example.com matches sub.example.com but NOT example.com
-				if (hostname.endsWith('.' + domainSuffix)) {
-					return true;
-				}
-			}
-			// Exact match
-			else if (hostname === allowedDomain) {
-				return true;
-			}
-		}
-
-		return false;
-	} catch (error) {
-		// If URL parsing fails, deny access to be safe
-		return false;
-	}
 }
 
 const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;

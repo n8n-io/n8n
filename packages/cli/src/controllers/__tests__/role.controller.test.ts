@@ -1,6 +1,6 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Role } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
@@ -12,14 +12,21 @@ describe('RoleController', () => {
 	const roleService = mock<RoleService>();
 	const controller = new RoleController(roleService, eventService);
 
+	// A user whose global role grants role:manage, so the controller's
+	// authorization guard short-circuits and these tests can focus on events.
+	const managerRequest = () =>
+		mock<AuthenticatedRequest>({
+			user: { id: '123', role: { scopes: [{ slug: 'role:manage' }] } },
+		});
+
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('emits action events', () => {
 		describe('createRole', () => {
 			it('should emit custom-role-created', async () => {
-				const request = mock<AuthenticatedRequest>({ user: { id: '123' } });
+				const request = managerRequest();
 				roleService.createCustomRole.mockResolvedValue({
 					slug: 'custom-editor',
 					scopes: ['workflow:read', 'workflow:update'],
@@ -37,7 +44,8 @@ describe('RoleController', () => {
 
 		describe('updateRole', () => {
 			it('should emit custom-role-updated', async () => {
-				const request = mock<AuthenticatedRequest>({ user: { id: '123' } });
+				const request = managerRequest();
+				roleService.getRole.mockResolvedValue({ roleType: 'project' } as Role);
 				roleService.updateCustomRole.mockResolvedValue({
 					slug: 'custom-editor',
 					scopes: ['workflow:read', 'workflow:update', 'workflow:delete'],
@@ -55,7 +63,8 @@ describe('RoleController', () => {
 
 		describe('deleteRole', () => {
 			it('should emit custom-role-deleted', async () => {
-				const request = mock<AuthenticatedRequest>({ user: { id: '123' } });
+				const request = managerRequest();
+				roleService.getRole.mockResolvedValue({ roleType: 'project' } as Role);
 				roleService.removeCustomRole.mockResolvedValue({
 					slug: 'custom-editor',
 				} as Role);

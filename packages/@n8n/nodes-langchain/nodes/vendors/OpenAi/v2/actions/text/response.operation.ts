@@ -583,6 +583,15 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const messages = this.getNodeParameter('responses.values', i, []) as IDataObject[];
+	const hasTextContent = messages.some(
+		(m) =>
+			(m.type === 'text' || !m.type) && typeof m.content === 'string' && m.content.trim() !== '',
+	);
+	if (!hasTextContent) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const options = this.getNodeParameter('options', i, {});
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const builtInTools = this.getNodeParameter('builtInTools', i, {}) as IDataObject;
@@ -640,7 +649,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	// reasoning models such as gpt5 include reasoning items that must be included in the request
-	const isToolRelatedCall: (item: { type: string }) => boolean = (item) =>
+	const isToolRelatedCall = <T extends { type: string }>(
+		item: T,
+	): item is Extract<T, { type: 'function_call' | 'reasoning' }> =>
 		item.type === 'function_call' || item.type === 'reasoning';
 
 	let toolCalls = response.output.filter(isToolRelatedCall);

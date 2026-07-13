@@ -25,19 +25,14 @@ import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
@@ -49,7 +44,7 @@ const description = ref('');
 const versionName = ref('');
 
 const foundTriggers = computed(() =>
-	getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes),
+	getActivatableTriggerNodes(workflowDocumentStore.value.workflowTriggerNodes),
 );
 
 const containsTrigger = computed((): boolean => {
@@ -62,11 +57,24 @@ const wfHasAnyChanges = computed(() => {
 	);
 });
 
-const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
+const isReattempt = computed(
+	() =>
+		workflowDocumentStore.value.publicationStatus === 'partial' ||
+		workflowDocumentStore.value.publicationStatus === 'failed',
+);
+
+const nodesWithValidationIssues = computed(
+	() => workflowDocumentStore.value.nodesWithValidationIssues,
+);
+
+const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
 const inputsDisabled = computed(() => {
 	return (
-		!wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value || publishing.value
+		!(wfHasAnyChanges.value || isReattempt.value) ||
+		!containsTrigger.value ||
+		hasNodeIssues.value ||
+		publishing.value
 	);
 });
 
@@ -74,7 +82,7 @@ const isPublishDisabled = computed(() => {
 	return inputsDisabled.value || versionName.value.trim().length === 0;
 });
 
-type WorkflowPublishCalloutId = 'noTrigger' | 'nodeIssues' | 'noChanges';
+type WorkflowPublishCalloutId = 'noTrigger' | 'nodeIssues' | 'noChanges' | 'reattempt';
 
 const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 	if (!containsTrigger.value) {
@@ -83,6 +91,10 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 
 	if (hasNodeIssues.value) {
 		return 'nodeIssues';
+	}
+
+	if (isReattempt.value) {
+		return 'reattempt';
 	}
 
 	if (!wfHasAnyChanges.value) {
@@ -159,7 +171,9 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 async function displayActivationError() {
 	let errorMessage: string | VNode;
 	try {
-		const errorData = await workflowsStore.getActivationError(workflowsStore.workflowId);
+		const errorData = await workflowsStore.getActivationError(
+			workflowDocumentStore.value.workflowId,
+		);
 
 		if (errorData === undefined) {
 			errorMessage = i18n.baseText(
@@ -193,7 +207,7 @@ async function handlePublish() {
 
 	// Activate the workflow
 	const { success, errorHandled } = await workflowActivate.publishWorkflow(
-		workflowsStore.workflowId,
+		workflowDocumentStore.value.workflowId,
 		workflowDocumentStore.value?.versionId ?? '',
 		{
 			name: versionName.value,
@@ -219,7 +233,7 @@ async function handlePublish() {
 		}
 
 		telemetry.track('User published version from canvas', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 		});
 
 		// For now, just close the modal after successful activation
@@ -250,28 +264,49 @@ async function handlePublish() {
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<N8nCallout v-if="activeCalloutId === 'noTrigger'" theme="danger" icon="status-error">
+				<N8nCallout
+					v-if="activeCalloutId === 'noTrigger'"
+					theme="danger"
+					icon="status-error"
+					data-test-id="workflow-publish-callout-no-trigger"
+				>
 					{{ i18n.baseText('workflows.publishModal.noTriggerMessage') }}
 				</N8nCallout>
-				<N8nCallout v-else-if="activeCalloutId === 'nodeIssues'" theme="danger" icon="status-error">
+				<N8nCallout
+					v-else-if="activeCalloutId === 'nodeIssues'"
+					theme="danger"
+					icon="status-error"
+					data-test-id="workflow-publish-callout-node-issues"
+				>
 					{{
 						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-							interpolate: { count: workflowsStore.nodesWithIssues.length },
-							adjustToNumber: workflowsStore.nodesWithIssues.length,
+							interpolate: { count: nodesWithValidationIssues.length },
+							adjustToNumber: nodesWithValidationIssues.length,
 						})
 					}}
 					<ul :class="$style.nodeLinks">
-						<li v-for="node in workflowsStore.nodesWithIssues" :key="node.id">
+						<li v-for="node in nodesWithValidationIssues" :key="node.id">
 							<N8nLink
 								size="small"
-								:to="`/workflow/${workflowsStore.workflowId}/${node.id}`"
+								:to="`/workflow/${workflowDocumentStore.workflowId}/${node.id}`"
 								@click="modalBus.emit('close')"
 								>{{ node.name }}</N8nLink
 							>
 						</li>
 					</ul>
 				</N8nCallout>
-				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="warning">
+				<N8nCallout
+					v-else-if="activeCalloutId === 'reattempt'"
+					theme="info"
+					data-test-id="workflow-publish-callout-reattempt"
+				>
+					{{ i18n.baseText('workflows.publishModal.reattempt') }}
+				</N8nCallout>
+				<N8nCallout
+					v-else-if="activeCalloutId === 'noChanges'"
+					theme="warning"
+					data-test-id="workflow-publish-callout-no-changes"
+				>
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
 				</N8nCallout>
 				<WorkflowVersionForm

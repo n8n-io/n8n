@@ -1,14 +1,16 @@
+import type { Mocked } from 'vitest';
+
 import type { PlannedTaskStorage } from '../../storage/planned-task-storage';
 import type { PlannedTask, PlannedTaskGraph, PlannedTaskRecord } from '../../types';
 import { PlannedTaskCoordinator } from '../planned-task-service';
 
-function makeStorage(): jest.Mocked<PlannedTaskStorage> {
+function makeStorage(): Mocked<PlannedTaskStorage> {
 	return {
-		get: jest.fn(),
-		save: jest.fn(),
-		update: jest.fn(),
-		clear: jest.fn(),
-	} as unknown as jest.Mocked<PlannedTaskStorage>;
+		get: vi.fn(),
+		save: vi.fn(),
+		update: vi.fn(),
+		clear: vi.fn(),
+	} as unknown as Mocked<PlannedTaskStorage>;
 }
 
 function makeTask(overrides: Partial<PlannedTask> = {}): PlannedTask {
@@ -44,17 +46,17 @@ function makeTaskRecord(overrides: Partial<PlannedTaskRecord> = {}): PlannedTask
 }
 
 describe('PlannedTaskCoordinator', () => {
-	let storage: jest.Mocked<PlannedTaskStorage>;
+	let storage: Mocked<PlannedTaskStorage>;
 	let coordinator: PlannedTaskCoordinator;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		storage = makeStorage();
 		coordinator = new PlannedTaskCoordinator(storage);
 	});
 
 	describe('createPlan', () => {
-		it('saves a valid plan and returns graph', async () => {
+		it('saves a valid plan in awaiting_approval status and returns graph', async () => {
 			const tasks = [makeTask({ id: 'a' }), makeTask({ id: 'b', deps: ['a'] })];
 
 			const result = await coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' });
@@ -63,7 +65,7 @@ describe('PlannedTaskCoordinator', () => {
 				'thread-1',
 				expect.objectContaining({
 					planRunId: 'run-1',
-					status: 'active',
+					status: 'awaiting_approval',
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					tasks: expect.arrayContaining([
 						expect.objectContaining({ id: 'a', status: 'planned' }),
@@ -71,8 +73,17 @@ describe('PlannedTaskCoordinator', () => {
 					]),
 				}),
 			);
-			expect(result.status).toBe('active');
+			expect(result.status).toBe('awaiting_approval');
 			expect(result.tasks).toHaveLength(2);
+		});
+
+		it('persists post-build run approval metadata', async () => {
+			const result = await coordinator.createPlan('thread-1', [makeTask()], {
+				planRunId: 'run-1',
+				postBuildRunApprovalRequired: true,
+			});
+
+			expect(result.postBuildRunApprovalRequired).toBe(true);
 		});
 
 		it('throws on duplicate task IDs', async () => {
@@ -99,12 +110,35 @@ describe('PlannedTaskCoordinator', () => {
 			).rejects.toThrow('dependency cycle');
 		});
 
-		it('throws when delegate task has no tools', async () => {
-			const tasks = [makeTask({ id: 'a', kind: 'delegate', tools: [] })];
+		it('throws when a checkpoint task depends only on another checkpoint', async () => {
+			const tasks = [
+				makeTask({ id: 'wf-1' }),
+				makeTask({ id: 'cp-1', kind: 'checkpoint', deps: ['wf-1'] }),
+				makeTask({ id: 'verify-1', kind: 'checkpoint', deps: ['cp-1'] }),
+			];
 
 			await expect(
 				coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' }),
-			).rejects.toThrow('must include at least one tool');
+			).rejects.toThrow('must depend on at least one build-workflow task');
+		});
+
+		it('accepts a checkpoint task that depends on a build-workflow task', async () => {
+			const tasks = [
+				makeTask({ id: 'wf-1' }),
+				makeTask({ id: 'verify-1', kind: 'checkpoint', deps: ['wf-1'] }),
+			];
+
+			const result = await coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' });
+
+			expect(result.tasks).toHaveLength(2);
+		});
+
+		it('throws when a checkpoint task has no deps', async () => {
+			const tasks = [makeTask({ id: 'verify-1', kind: 'checkpoint', deps: [] })];
+
+			await expect(
+				coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' }),
+			).rejects.toThrow('must depend on at least one build-workflow task');
 		});
 	});
 
@@ -348,14 +382,298 @@ describe('PlannedTaskCoordinator', () => {
 		});
 	});
 
+	describe('markCheckpointSucceeded', () => {
+		it('transitions a running checkpoint to succeeded', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'verify-1', kind: 'checkpoint', status: 'running' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.markCheckpointSucceeded('thread-1', 'verify-1', {
+				result: 'Verified',
+			});
+
+			expect(res.ok).toBe(true);
+			if (res.ok) {
+				expect(res.graph.tasks[0].status).toBe('succeeded');
+				expect(res.graph.tasks[0].result).toBe('Verified');
+			}
+		});
+
+		it('rejects when the target task is not found', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({ tasks: [] });
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.markCheckpointSucceeded('thread-1', 'missing', {});
+
+			expect(res).toEqual({ ok: false, reason: 'not-found' });
+		});
+
+		it('rejects when the target task is not a checkpoint', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'task-1', kind: 'build-workflow', status: 'running' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.markCheckpointSucceeded('thread-1', 'task-1', {});
+
+			expect(res).toEqual({
+				ok: false,
+				reason: 'wrong-kind',
+				actual: { kind: 'build-workflow' },
+			});
+		});
+
+		it('rejects when the checkpoint is not in running state', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'verify-1', kind: 'checkpoint', status: 'planned' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.markCheckpointSucceeded('thread-1', 'verify-1', {});
+
+			expect(res).toEqual({
+				ok: false,
+				reason: 'wrong-status',
+				actual: { status: 'planned' },
+			});
+		});
+	});
+
+	describe('markCheckpointFailed', () => {
+		it('transitions a running checkpoint to failed with error', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'verify-1', kind: 'checkpoint', status: 'running' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.markCheckpointFailed('thread-1', 'verify-1', {
+				error: 'Workflow errored',
+			});
+
+			expect(res.ok).toBe(true);
+			if (res.ok) {
+				expect(res.graph.tasks[0].status).toBe('failed');
+				expect(res.graph.tasks[0].error).toBe('Workflow errored');
+			}
+		});
+
+		it('cancels dependent tasks on failure', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({ id: 'verify-1', kind: 'checkpoint', status: 'running' }),
+						makeTaskRecord({
+							id: 'wf-2',
+							kind: 'build-workflow',
+							status: 'planned',
+							deps: ['verify-1'],
+						}),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.markCheckpointFailed('thread-1', 'verify-1', {
+				error: 'boom',
+			});
+
+			expect(res.ok).toBe(true);
+			if (res.ok) {
+				const wf2 = res.graph.tasks.find((t) => t.id === 'wf-2');
+				expect(wf2?.status).toBe('cancelled');
+			}
+		});
+
+		it('rejects when the target task is not a checkpoint', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'task-1', kind: 'build-workflow', status: 'running' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.markCheckpointFailed('thread-1', 'task-1', {});
+
+			expect(res).toEqual({
+				ok: false,
+				reason: 'wrong-kind',
+				actual: { kind: 'build-workflow' },
+			});
+		});
+
+		it('persists the structured outcome on the failed checkpoint so replans keep execution context', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'verify-1', kind: 'checkpoint', status: 'running' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.markCheckpointFailed('thread-1', 'verify-1', {
+				error: 'Node crashed',
+				outcome: {
+					executionId: 'exec-42',
+					failureNode: 'Insert Row',
+					errorMessage: 'constraint violation',
+				},
+			});
+
+			expect(res.ok).toBe(true);
+			if (res.ok) {
+				const failed = res.graph.tasks.find((t) => t.id === 'verify-1');
+				expect(failed?.status).toBe('failed');
+				expect(failed?.outcome).toEqual({
+					executionId: 'exec-42',
+					failureNode: 'Insert Row',
+					errorMessage: 'constraint violation',
+				});
+			}
+		});
+	});
+
+	describe('revertCheckpointToPlanned', () => {
+		it('rewinds a running checkpoint to planned without touching dependents', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({
+							id: 'verify-1',
+							kind: 'checkpoint',
+							status: 'running',
+							agentId: 'agent-race',
+							startedAt: 123,
+						}),
+						makeTaskRecord({
+							id: 'wf-2',
+							kind: 'build-workflow',
+							status: 'planned',
+							deps: ['verify-1'],
+						}),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.revertCheckpointToPlanned('thread-1', 'verify-1');
+
+			expect(res.ok).toBe(true);
+			if (res.ok) {
+				const verify = res.graph.tasks.find((t) => t.id === 'verify-1');
+				expect(verify?.status).toBe('planned');
+				expect(verify?.agentId).toBeUndefined();
+				expect(verify?.startedAt).toBeUndefined();
+				// Dependents must remain untouched — scheduling race is not a failure.
+				const wf2 = res.graph.tasks.find((t) => t.id === 'wf-2');
+				expect(wf2?.status).toBe('planned');
+				expect(wf2?.error).toBeUndefined();
+			}
+		});
+
+		it('rejects when the target task is not a checkpoint', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'task-1', kind: 'build-workflow', status: 'running' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.revertCheckpointToPlanned('thread-1', 'task-1');
+
+			expect(res).toEqual({
+				ok: false,
+				reason: 'wrong-kind',
+				actual: { kind: 'build-workflow' },
+			});
+		});
+
+		it('rejects when the checkpoint is not running', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'verify-1', kind: 'checkpoint', status: 'planned' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.revertCheckpointToPlanned('thread-1', 'verify-1');
+
+			expect(res).toEqual({
+				ok: false,
+				reason: 'wrong-status',
+				actual: { status: 'planned' },
+			});
+		});
+	});
+
 	describe('tick', () => {
-		it('dispatches ready tasks with all deps satisfied', async () => {
+		it('orchestrates the first ready build-workflow task when deps are satisfied', async () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({
 					tasks: [
 						makeTaskRecord({ id: 'a', deps: [], status: 'succeeded' }),
-						makeTaskRecord({ id: 'b', deps: ['a'], status: 'planned' }),
-						makeTaskRecord({ id: 'c', deps: ['a'], status: 'planned' }),
+						makeTaskRecord({
+							id: 'b',
+							kind: 'build-workflow',
+							deps: ['a'],
+							status: 'planned',
+						}),
+						makeTaskRecord({
+							id: 'c',
+							kind: 'build-workflow',
+							deps: ['a'],
+							status: 'planned',
+						}),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('orchestrate-build-workflow');
+			if (action.type === 'orchestrate-build-workflow') {
+				expect(action.tasks).toHaveLength(1);
+				expect(['b', 'c']).toContain(action.tasks[0].id);
+			}
+		});
+
+		it('returns orchestrate-build-workflow when a workflow build is ready', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'wf-1', kind: 'build-workflow', status: 'planned' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('orchestrate-build-workflow');
+			if (action.type === 'orchestrate-build-workflow') {
+				expect(action.tasks).toHaveLength(1);
+				expect(action.tasks[0].id).toBe('wf-1');
+			}
+		});
+
+		it('returns dispatch for a ready legacy delegate task', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({
+							id: 'legacy-1',
+							kind: 'delegate',
+							spec: 'Do the research',
+							status: 'planned',
+						}),
 					],
 				});
 				return await Promise.resolve(updater(graph));
@@ -365,8 +683,8 @@ describe('PlannedTaskCoordinator', () => {
 
 			expect(action.type).toBe('dispatch');
 			if (action.type === 'dispatch') {
-				expect(action.tasks).toHaveLength(2);
-				expect(action.tasks.map((t) => t.id)).toEqual(['b', 'c']);
+				expect(action.tasks).toHaveLength(1);
+				expect(action.tasks[0]?.kind).toBe('delegate');
 			}
 		});
 
@@ -383,6 +701,92 @@ describe('PlannedTaskCoordinator', () => {
 
 			const action = await coordinator.tick('thread-1');
 			expect(action.type).toBe('none');
+		});
+
+		it('returns orchestrate-checkpoint when a checkpoint is ready', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({ id: 'wf-1', kind: 'build-workflow', status: 'succeeded' }),
+						makeTaskRecord({
+							id: 'verify-1',
+							kind: 'checkpoint',
+							deps: ['wf-1'],
+							status: 'planned',
+						}),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('orchestrate-checkpoint');
+			if (action.type === 'orchestrate-checkpoint') {
+				expect(action.tasks).toHaveLength(1);
+				expect(action.tasks[0].id).toBe('verify-1');
+			}
+		});
+
+		it('emits a single checkpoint even when multiple are ready', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({ id: 'wf-1', kind: 'build-workflow', status: 'succeeded' }),
+						makeTaskRecord({ id: 'wf-2', kind: 'build-workflow', status: 'succeeded' }),
+						makeTaskRecord({
+							id: 'verify-1',
+							kind: 'checkpoint',
+							deps: ['wf-1'],
+							status: 'planned',
+						}),
+						makeTaskRecord({
+							id: 'verify-2',
+							kind: 'checkpoint',
+							deps: ['wf-2'],
+							status: 'planned',
+						}),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('orchestrate-checkpoint');
+			if (action.type === 'orchestrate-checkpoint') {
+				expect(action.tasks).toHaveLength(1);
+			}
+		});
+
+		it('prefers an orchestrate-checkpoint over a background dispatch', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({ id: 'wf-1', kind: 'build-workflow', status: 'succeeded' }),
+						makeTaskRecord({
+							id: 'verify-1',
+							kind: 'checkpoint',
+							deps: ['wf-1'],
+							status: 'planned',
+						}),
+						makeTaskRecord({
+							id: 'wf-2',
+							kind: 'build-workflow',
+							deps: [],
+							status: 'planned',
+						}),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('orchestrate-checkpoint');
+			if (action.type === 'orchestrate-checkpoint') {
+				expect(action.tasks[0].id).toBe('verify-1');
+			}
 		});
 
 		it('triggers replan when a task has failed', async () => {
@@ -421,24 +825,60 @@ describe('PlannedTaskCoordinator', () => {
 			}
 		});
 
-		it('respects availableSlots limit', async () => {
+		it('routes pending workflow verification before synthesis without completing the graph', async () => {
+			const task = makeTaskRecord({ id: 'wf-1', kind: 'build-workflow', status: 'succeeded' });
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({ tasks: [task] });
+				return await Promise.resolve(updater(graph));
+			});
+
+			const pendingWorkflowVerification = {
+				task,
+				outcome: {
+					workItemId: 'wi-1',
+					taskId: 'wf-1',
+					workflowId: 'workflow-1',
+					submitted: true,
+					triggerType: 'manual_or_testable' as const,
+					needsUserInput: false,
+					summary: 'Submitted.',
+				},
+				obligation: {
+					workItemId: 'wi-1',
+					threadId: 'thread-1',
+					taskId: 'wf-1',
+					plannedTaskId: 'wf-1',
+					workflowId: 'workflow-1',
+					source: 'planned' as const,
+					policy: 'required' as const,
+					status: 'ready_to_verify' as const,
+					updatedAt: '2026-01-01T00:00:00.000Z',
+				},
+			};
+
+			const action = await coordinator.tick('thread-1', { pendingWorkflowVerification });
+
+			expect(action.type).toBe('orchestrate-workflow-verification');
+			if (action.type === 'orchestrate-workflow-verification') {
+				expect(action.graph.status).toBe('active');
+				expect(action.verification).toBe(pendingWorkflowVerification);
+			}
+		});
+
+		it('returns none when availableSlots is zero even with ready build tasks', async () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({
 					tasks: [
-						makeTaskRecord({ id: 'a', status: 'planned' }),
-						makeTaskRecord({ id: 'b', status: 'planned' }),
-						makeTaskRecord({ id: 'c', status: 'planned' }),
+						makeTaskRecord({ id: 'a', kind: 'build-workflow', status: 'planned' }),
+						makeTaskRecord({ id: 'b', kind: 'build-workflow', status: 'planned' }),
 					],
 				});
 				return await Promise.resolve(updater(graph));
 			});
 
-			const action = await coordinator.tick('thread-1', { availableSlots: 1 });
+			const action = await coordinator.tick('thread-1', { availableSlots: 0 });
 
-			expect(action.type).toBe('dispatch');
-			if (action.type === 'dispatch') {
-				expect(action.tasks).toHaveLength(1);
-			}
+			expect(action.type).toBe('none');
 		});
 
 		it('returns none when graph is not active', async () => {
@@ -464,6 +904,109 @@ describe('PlannedTaskCoordinator', () => {
 		it('delegates to storage.clear', async () => {
 			await coordinator.clear('thread-1');
 			expect(storage.clear).toHaveBeenCalledWith('thread-1');
+		});
+	});
+
+	describe('approvePlan', () => {
+		it('transitions awaiting_approval → active', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({ status: 'awaiting_approval' });
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.approvePlan('thread-1');
+
+			expect(result?.status).toBe('active');
+		});
+
+		it('leaves an active graph untouched', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({ status: 'active' });
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.approvePlan('thread-1');
+
+			expect(result?.status).toBe('active');
+		});
+
+		it('does not resurrect a cancelled graph', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({ status: 'cancelled' });
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.approvePlan('thread-1');
+
+			expect(result?.status).toBe('cancelled');
+		});
+	});
+
+	describe('tick on awaiting_approval graphs', () => {
+		it('returns none (never dispatches) when graph is awaiting_approval', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					status: 'awaiting_approval',
+					tasks: [makeTaskRecord({ id: 'a', status: 'planned' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('none');
+		});
+	});
+
+	describe('revertToActive', () => {
+		it('flips an awaiting_replan graph back to active', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					status: 'awaiting_replan',
+					tasks: [makeTaskRecord({ id: 'a', status: 'failed', error: 'boom' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.revertToActive('thread-1');
+
+			expect(result?.status).toBe('active');
+		});
+
+		it('flips a completed graph back to active', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					status: 'completed',
+					tasks: [makeTaskRecord({ id: 'a', status: 'succeeded' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.revertToActive('thread-1');
+
+			expect(result?.status).toBe('active');
+		});
+
+		it('leaves a cancelled graph untouched', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({ status: 'cancelled' });
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.revertToActive('thread-1');
+
+			expect(result?.status).toBe('cancelled');
+		});
+
+		it('leaves an active graph untouched', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({ status: 'active' });
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.revertToActive('thread-1');
+
+			expect(result?.status).toBe('active');
 		});
 	});
 });

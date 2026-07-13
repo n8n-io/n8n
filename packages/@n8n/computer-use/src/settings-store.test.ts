@@ -1,10 +1,11 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { Mock } from 'vitest';
 
-jest.mock('node:os', () => {
-	const actual = jest.requireActual<typeof os>('node:os');
-	return { ...actual, homedir: jest.fn(() => actual.homedir()) };
+vi.mock('node:os', async () => {
+	const actual = await vi.importActual<typeof os>('node:os');
+	return { ...actual, homedir: vi.fn(() => actual.homedir()) };
 });
 
 import type { GatewayConfig } from './config';
@@ -24,10 +25,9 @@ function parseJson<T>(raw: string): T {
 
 const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'info',
-	port: 7655,
 	allowedOrigins: [],
 	filesystem: { dir: process.cwd() },
-	computer: { shell: { timeout: 30_000 } },
+	computer: { shell: { timeout: 30_000, dangerouslyDisableSandbox: false } },
 	browser: { defaultBrowser: 'chrome' },
 	permissions: {},
 	permissionConfirmation: 'instance',
@@ -37,7 +37,7 @@ async function createStore(
 	tmpDir: string,
 	initial?: Record<string, unknown>,
 ): Promise<SettingsStore> {
-	(os.homedir as jest.Mock).mockReturnValue(tmpDir);
+	(os.homedir as Mock).mockReturnValue(tmpDir);
 	if (initial !== undefined) {
 		const dir = path.join(tmpDir, '.n8n-gateway');
 		await fs.mkdir(dir, { recursive: true });
@@ -57,7 +57,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 	await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
@@ -81,12 +81,48 @@ describe('SettingsStore.create', () => {
 	});
 
 	it('tolerates a malformed file and starts with empty state', async () => {
-		(os.homedir as jest.Mock).mockReturnValue(tmpDir);
+		(os.homedir as Mock).mockReturnValue(tmpDir);
 		const filePath = path.join(tmpDir, '.n8n-gateway', 'settings.json');
 		await fs.mkdir(path.dirname(filePath), { recursive: true });
 		await fs.writeFile(filePath, 'not-json', 'utf-8');
 		const store = await SettingsStore.create();
 		expect(store.getResourcePermissions('shell')).toEqual({ allow: [], deny: [] });
+	});
+});
+
+// ---------------------------------------------------------------------------
+// SettingsStore.ensureInitialized
+// ---------------------------------------------------------------------------
+
+describe('SettingsStore.ensureInitialized', () => {
+	it('creates the settings file when absent', async () => {
+		(os.homedir as Mock).mockReturnValue(tmpDir);
+		await SettingsStore.ensureInitialized(BASE_CONFIG);
+
+		const raw = await fs.readFile(path.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
+		const parsed = parseJson<Record<string, unknown>>(raw);
+
+		expect(parsed.permissions).toMatchObject({
+			filesystemRead: 'allow',
+			filesystemWrite: 'ask',
+			shell: 'deny',
+			computer: 'deny',
+			browser: 'ask',
+		});
+		expect(parsed.filesystemDir).toBe('');
+	});
+
+	it('does not overwrite an existing settings file', async () => {
+		(os.homedir as Mock).mockReturnValue(tmpDir);
+		const dir = path.join(tmpDir, '.n8n-gateway');
+		const file = path.join(dir, 'settings.json');
+		await fs.mkdir(dir, { recursive: true });
+		const existing = JSON.stringify({ permissions: { shell: 'allow' }, filesystemDir: '/custom' });
+		await fs.writeFile(file, existing, 'utf-8');
+
+		await SettingsStore.ensureInitialized(BASE_CONFIG);
+		const raw = await fs.readFile(file, 'utf-8');
+		expect(raw).toBe(existing);
 	});
 });
 

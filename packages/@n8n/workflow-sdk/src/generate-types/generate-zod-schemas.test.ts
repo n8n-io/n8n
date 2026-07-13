@@ -1,4 +1,8 @@
-import type { NodeProperty, NodeTypeDescription } from './generate-types';
+import {
+	narrowDisplayOptionsByDisabled,
+	type NodeProperty,
+	type NodeTypeDescription,
+} from './generate-types';
 import {
 	generateConditionalSchemaLine,
 	generateSingleVersionSchemaFile,
@@ -10,6 +14,7 @@ import {
 	mergeDisplayOptions,
 	extractDefaultsForDisplayOptions,
 } from './generate-zod-schemas';
+import * as schemaHelpers from '../validation/schema-helpers';
 
 describe('mapPropertyToZodSchema for resourceLocator', () => {
 	it('returns resourceLocatorValueSchema when no modes are specified', () => {
@@ -83,6 +88,21 @@ describe('mapPropertyToZodSchema for resourceLocator', () => {
 		const schema = mapPropertyToZodSchema(prop);
 
 		expect(schema).toContain("z.union([z.literal('list'), z.literal('id')]");
+	});
+});
+
+describe('mapPropertyToZodSchema for resourceMapper', () => {
+	it('returns resourceMapperValueSchema', () => {
+		const prop: NodeProperty = {
+			name: 'columns',
+			displayName: 'Columns',
+			type: 'resourceMapper',
+			default: { mappingMode: 'defineBelow', value: null },
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toBe('resourceMapperValueSchema');
 	});
 });
 
@@ -312,6 +332,212 @@ describe('generateConditionalSchemaLine', () => {
 	});
 });
 
+describe('duplicate property declarations with mutually-exclusive displayOptions', () => {
+	const baseNode = {
+		group: ['transform'] as string[],
+		inputs: ['main'] as string[],
+		outputs: ['main'] as string[],
+	};
+
+	it('emits resolveOneOfSchemas for same-name top-level conditional variants', () => {
+		const node: NodeTypeDescription = {
+			...baseNode,
+			name: 'n8n-nodes-base.promptFork',
+			displayName: 'Prompt Fork',
+			version: 1,
+			properties: [
+				{
+					displayName: 'Prompt Type',
+					name: 'promptType',
+					type: 'options',
+					default: 'auto',
+					options: [
+						{ name: 'Connected Chat Trigger Node', value: 'auto' },
+						{ name: 'Define below', value: 'define' },
+					],
+				},
+				{
+					displayName: 'Prompt',
+					name: 'text',
+					type: 'string',
+					required: true,
+					default: '={{ $json.chatInput }}',
+					displayOptions: { show: { promptType: ['auto'] } },
+				},
+				{
+					displayName: 'Prompt',
+					name: 'text',
+					type: 'string',
+					required: true,
+					default: '',
+					displayOptions: { show: { promptType: ['define'] } },
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('resolveOneOfSchemas({');
+		expect(code.match(/\btext:/g)).toHaveLength(1);
+		expect(code).toContain('"promptType":["auto"]');
+		expect(code).toContain('"promptType":["define"]');
+	});
+
+	// Mirrors the Summarize node: `fieldsToSplitBy` is declared twice so it can
+	// carry a different label in each output mode. The two declarations are OR
+	// alternatives — the field is visible when EITHER matches — so merging their
+	// show/hide into a single condition produces a self-contradicting predicate.
+	const dupPropNode: NodeTypeDescription = {
+		...baseNode,
+		name: 'n8n-nodes-base.dupProp',
+		displayName: 'Dup Prop',
+		version: 1,
+		properties: [
+			{
+				displayName: 'Fields to Split By',
+				name: 'fieldsToSplitBy',
+				type: 'string',
+				default: '',
+				displayOptions: { hide: { '/options.outputFormat': ['singleItem'] } },
+			},
+			{
+				displayName: 'Fields to Group By',
+				name: 'fieldsToSplitBy',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { '/options.outputFormat': ['singleItem'] } },
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Output Format',
+						name: 'outputFormat',
+						type: 'options',
+						default: 'separateItems',
+						options: [
+							{ name: 'Separate Items', value: 'separateItems' },
+							{ name: 'Single Item', value: 'singleItem' },
+						],
+					} as NodeProperty,
+				],
+			},
+		],
+	};
+
+	function loadFactory(code: string): (helpers: Record<string, unknown>) => {
+		safeParse: (val: unknown) => { success: boolean };
+	} {
+		const module = { exports: {} as unknown };
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
+		const fn = new Function('module', 'exports', code) as (m: unknown, e: unknown) => void;
+		fn(module, module.exports);
+		return module.exports as (helpers: Record<string, unknown>) => {
+			safeParse: (val: unknown) => { success: boolean };
+		};
+	}
+
+	it('emits resolveOneOfSchemas instead of a self-contradicting single resolveSchema', () => {
+		const code = generateSingleVersionSchemaFile(dupPropNode, 1);
+
+		expect(code).toContain('resolveOneOfSchemas(');
+		// The buggy merge combined both declarations into one show+hide on the same key
+		expect(code).not.toMatch(
+			/"show":\{"\/options\.outputFormat":\["singleItem"\]\},"hide":\{"\/options\.outputFormat":\["singleItem"\]\}/,
+		);
+	});
+
+	it('uses the surviving declaration displayOptions when another duplicate is fully disabled', () => {
+		const node: NodeTypeDescription = {
+			...baseNode,
+			name: 'n8n-nodes-base.singleActiveDupProp',
+			displayName: 'Single Active Dup Prop',
+			version: 1,
+			properties: [
+				{
+					displayName: 'Special Field',
+					name: 'specialField',
+					type: 'string',
+					default: '',
+					displayOptions: { show: { mode: ['legacy'] } },
+					disabledOptions: { show: { mode: ['legacy'] } },
+				},
+				{
+					displayName: 'Special Field',
+					name: 'specialField',
+					type: 'string',
+					default: '',
+					displayOptions: { show: { mode: ['modern'] } },
+				},
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					default: 'modern',
+					options: [
+						{ name: 'Legacy', value: 'legacy' },
+						{ name: 'Modern', value: 'modern' },
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).not.toContain('resolveOneOfSchemas(');
+		expect(code).toContain('displayOptions: {"show":{"mode":["modern"]}}');
+		expect(code).not.toContain('displayOptions: {"show":{"mode":["legacy","modern"]}}');
+
+		const factory = loadFactory(code);
+		const legacyParameters = { mode: 'legacy', specialField: 'value' };
+		const legacySchema = factory({
+			...schemaHelpers,
+			parameters: legacyParameters,
+			resolveSchema: (cfg: Parameters<typeof schemaHelpers.resolveSchema>[0]) =>
+				schemaHelpers.resolveSchema(cfg),
+			resolveOneOfSchemas: (cfg: Parameters<typeof schemaHelpers.resolveOneOfSchemas>[0]) =>
+				schemaHelpers.resolveOneOfSchemas(cfg),
+		});
+
+		expect(legacySchema.safeParse({ parameters: legacyParameters }).success).toBe(false);
+
+		const modernParameters = { mode: 'modern', specialField: 'value' };
+		const modernSchema = factory({
+			...schemaHelpers,
+			parameters: modernParameters,
+			resolveSchema: (cfg: Parameters<typeof schemaHelpers.resolveSchema>[0]) =>
+				schemaHelpers.resolveSchema(cfg),
+			resolveOneOfSchemas: (cfg: Parameters<typeof schemaHelpers.resolveOneOfSchemas>[0]) =>
+				schemaHelpers.resolveOneOfSchemas(cfg),
+		});
+
+		expect(modernSchema.safeParse({ parameters: modernParameters }).success).toBe(true);
+	});
+
+	it('validates a default-reliant config that relies on the default output mode', () => {
+		const code = generateSingleVersionSchemaFile(dupPropNode, 1);
+		const factory = loadFactory(code);
+
+		// `options` is empty, so outputFormat falls back to its default
+		// (separateItems) — exactly how a canvas-authored node looks.
+		const parameters = { fieldsToSplitBy: 'name', options: {} };
+		const schema = factory({
+			...schemaHelpers,
+			parameters,
+			resolveSchema: (cfg: Parameters<typeof schemaHelpers.resolveSchema>[0]) =>
+				schemaHelpers.resolveSchema(cfg),
+			resolveOneOfSchemas: (cfg: Parameters<typeof schemaHelpers.resolveOneOfSchemas>[0]) =>
+				schemaHelpers.resolveOneOfSchemas(cfg),
+		});
+
+		const result = schema.safeParse({ parameters });
+		expect(result.success).toBe(true);
+	});
+});
+
 describe('extractDefaultsForDisplayOptions', () => {
 	it('extracts defaults for properties referenced in show conditions', () => {
 		const displayOptions = { show: { multipleMethods: [false, true] } };
@@ -482,6 +708,71 @@ describe('extractDefaultsForDisplayOptions', () => {
 	it('returns empty object for empty displayOptions', () => {
 		const defaults = extractDefaultsForDisplayOptions({}, []);
 		expect(defaults).toEqual({});
+	});
+});
+
+describe('mapPropertyToZodSchema for multipleValues', () => {
+	it('wraps repeatable string fields in an array schema', () => {
+		const prop: NodeProperty = {
+			name: 'attendees',
+			displayName: 'Attendees',
+			type: 'string',
+			default: '',
+			typeOptions: {
+				multipleValues: true,
+			},
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toBe('z.array(stringOrExpression)');
+	});
+
+	it('applies noDataExpression to repeatable fields before wrapping the array schema', () => {
+		const prop: NodeProperty = {
+			name: 'resource',
+			displayName: 'Resource',
+			type: 'string',
+			default: '',
+			noDataExpression: true,
+			typeOptions: {
+				multipleValues: true,
+			},
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toBe('z.array(z.string())');
+	});
+
+	it('wraps nested repeatable string fields in an array schema', () => {
+		const prop: NodeProperty = {
+			name: 'attendeesUi',
+			displayName: 'Attendees',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'values',
+					displayName: 'Values',
+					values: [
+						{
+							name: 'attendees',
+							displayName: 'Attendees',
+							type: 'string',
+							default: '',
+							typeOptions: {
+								multipleValues: true,
+							},
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toContain('attendees: z.array(stringOrExpression).optional()');
 	});
 });
 
@@ -675,7 +966,7 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 		);
 
 		// CommonJS: resolveSchema is included in the require destructure
-		expect(code).toContain('resolveSchema }');
+		expect(code).toContain('resolveSchema, resolveOneOfSchemas }');
 	});
 
 	it('uses resolveSchema for properties with remaining displayOptions', () => {
@@ -708,6 +999,41 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 
 		expect(code).toContain('resolveSchema({');
 		expect(code).toContain('"mode"'); // Remaining condition preserved
+	});
+
+	it('uses resolveOneOfSchemas for duplicate properties with different displayOptions', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [],
+		};
+
+		const props: NodeProperty[] = [
+			{
+				name: 'body',
+				displayName: 'Body',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { sendBody: [true], specifyBody: ['string'] } },
+			},
+			{
+				name: 'body',
+				displayName: 'Body',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { sendBody: [true], contentType: ['raw'] } },
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(node, 1, {}, props, 5, []);
+
+		expect(code).toContain('resolveOneOfSchemas');
+		expect(code).toContain('body: resolveOneOfSchemas({');
+		expect(code).toContain('"specifyBody":["string"]');
+		expect(code).toContain('"contentType":["raw"]');
+		expect(code).not.toContain('"specifyBody":["string"],"contentType":["raw"]');
 	});
 
 	it('uses static property schema when displayOptions only contain discriminator keys', () => {
@@ -775,7 +1101,7 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 
 		// CommonJS module.exports for factory function with all helpers as parameters
 		expect(code).toContain('module.exports = function getSchema({ parameters, z,');
-		expect(code).toContain('resolveSchema }');
+		expect(code).toContain('resolveSchema, resolveOneOfSchemas }');
 		expect(code).toContain('return z.object({');
 	});
 
@@ -916,7 +1242,7 @@ describe('generateSingleVersionSchemaFile', () => {
 
 		// Should generate a factory function with all helpers as parameters (CommonJS)
 		expect(code).toContain('module.exports = function getSchema({ parameters, z,');
-		expect(code).toContain('resolveSchema }');
+		expect(code).toContain('resolveSchema, resolveOneOfSchemas }');
 		expect(code).toContain('return z.object({');
 	});
 
@@ -1070,6 +1396,206 @@ describe('generateSingleVersionSchemaFile', () => {
 		expect(code).not.toContain('@version');
 		// Should NOT need resolveSchema since @version displayOptions are stripped
 		expect(code).not.toContain('resolveSchema');
+	});
+});
+
+describe('collection sub-fields with typeOptions.multipleValues', () => {
+	const baseNodeProps = {
+		group: ['transform'] as string[],
+		inputs: ['main'] as string[],
+		outputs: ['main'] as string[],
+	};
+
+	it('generates z.array(stringOrExpression) for a string sub-field with multipleValues: true', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'additionalFields',
+					displayName: 'Additional Fields',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'attendees',
+							displayName: 'Attendees',
+							type: 'string',
+							default: '',
+							typeOptions: { multipleValues: true },
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('z.array(stringOrExpression)');
+		// Should NOT just be a plain stringOrExpression for attendees
+		expect(code).not.toMatch(/attendees:\s*stringOrExpression[^)]/);
+	});
+
+	it('generates stringOrExpression (no array) for a string sub-field without multipleValues', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'additionalFields',
+					displayName: 'Additional Fields',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'description',
+							displayName: 'Description',
+							type: 'string',
+							default: '',
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('description: stringOrExpression');
+		expect(code).not.toContain('z.array(stringOrExpression)');
+	});
+
+	it('generates z.array(numberOrExpression) for a number sub-field with multipleValues: true', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'config',
+					displayName: 'Config',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'ports',
+							displayName: 'Ports',
+							type: 'number',
+							default: 0,
+							typeOptions: { multipleValues: true },
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('z.array(numberOrExpression)');
+	});
+
+	it('generates z.array(...) for an options sub-field with multipleValues: true', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'additionalFields',
+					displayName: 'Additional Fields',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'labels',
+							displayName: 'Labels',
+							type: 'options',
+							default: '',
+							typeOptions: { multipleValues: true },
+							options: [
+								{ name: 'Personal', value: 'personal' },
+								{ name: 'Work', value: 'work' },
+							],
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('z.array(');
+	});
+
+	it('generates z.array(z.string()) for a string sub-field with multipleValues: true and noDataExpression: true', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'additionalFields',
+					displayName: 'Additional Fields',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'attendees',
+							displayName: 'Attendees',
+							type: 'string',
+							default: '',
+							noDataExpression: true,
+							typeOptions: { multipleValues: true },
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('z.array(z.string())');
+		// Should not use stringOrExpression inside the array (the bug)
+		expect(code).not.toContain('z.array(stringOrExpression)');
+	});
+
+	it('generates z.array(z.number()) for a number sub-field with multipleValues: true and noDataExpression: true', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'config',
+					displayName: 'Config',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'ports',
+							displayName: 'Ports',
+							type: 'number',
+							default: 0,
+							noDataExpression: true,
+							typeOptions: { multipleValues: true },
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('z.array(z.number())');
+		// Should not use numberOrExpression inside the array (the bug)
+		expect(code).not.toContain('z.array(numberOrExpression)');
 	});
 });
 
@@ -1348,6 +1874,121 @@ describe('mapPropertyToZodSchema with noDataExpression', () => {
 	});
 });
 
+describe('narrowDisplayOptionsByDisabled', () => {
+	it('returns inputs unchanged when the property has no disabledOptions', () => {
+		const prop: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { sessionIdType: ['customKey'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ show: { sessionIdType: ['customKey'] } });
+	});
+
+	it('flags the property as fully disabled when all visible states are disabled', () => {
+		const prop: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key',
+			type: 'string',
+			default: '={{ $json.sessionId }}',
+			displayOptions: { show: { sessionIdType: ['fromInput'] } },
+			disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(true);
+		expect(result.displayOptions).toBeUndefined();
+	});
+
+	it('removes only the disabled values and keeps the remaining visible states', () => {
+		const prop: NodeProperty = {
+			name: 'text',
+			displayName: 'Text',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { promptType: ['auto', 'define', 'guardrails'] } },
+			disabledOptions: { show: { promptType: ['auto', 'guardrails'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ show: { promptType: ['define'] } });
+	});
+
+	it('converts disabledOptions on keys absent from displayOptions.show into hide constraints', () => {
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { mode: ['a'] } },
+			disabledOptions: { show: { otherField: ['x'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({
+			show: { mode: ['a'] },
+			hide: { otherField: ['x'] },
+		});
+	});
+
+	it('converts disabledOptions into hide when the property has no displayOptions.show', () => {
+		const prop: NodeProperty = {
+			name: 'inputType',
+			displayName: 'Input Type',
+			type: 'options',
+			default: 'binary',
+			disabledOptions: { show: { 'options.batch': [true] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ hide: { 'options.batch': [true] } });
+	});
+
+	it('merges disabledOptions into an existing displayOptions.hide for the same key', () => {
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { hide: { mode: ['x'] } },
+			disabledOptions: { show: { mode: ['y'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ hide: { mode: ['x', 'y'] } });
+	});
+
+	it('does not mutate the original displayOptions.hide when merging', () => {
+		const originalHide = { mode: ['x'] };
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { hide: originalHide },
+			disabledOptions: { show: { mode: ['y'] } },
+		};
+
+		narrowDisplayOptionsByDisabled(prop);
+
+		expect(originalHide).toEqual({ mode: ['x'] });
+	});
+});
+
 describe('mapPropertyToZodSchema for fixedCollection with field-count constraints', () => {
 	const buildFilters = (typeOptions: NodeProperty['typeOptions']): NodeProperty => ({
 		name: 'filters',
@@ -1397,6 +2038,85 @@ describe('mapPropertyToZodSchema for fixedCollection with field-count constraint
 		const schema = mapPropertyToZodSchema(buildFilters({ minRequiredFields: 1 }));
 		expect(schema).not.toContain('z.array(');
 		expect(schema).not.toContain('.min(');
+	});
+});
+
+describe('mapPropertyToZodSchema for duplicate nested collection fields', () => {
+	it('unions same-name fixedCollection fields instead of emitting duplicate object keys', () => {
+		const prop: NodeProperty = {
+			name: 'actionsUi',
+			displayName: 'Actions',
+			type: 'fixedCollection',
+			default: {},
+			typeOptions: { multipleValues: true },
+			options: [
+				{
+					name: 'actionFields',
+					displayName: 'Action Fields',
+					values: [
+						{
+							displayName: 'Action',
+							name: 'action',
+							type: 'options',
+							default: '',
+							options: [
+								{ name: 'Find and Replace Text', value: 'replaceAll' },
+								{ name: 'Insert', value: 'insert' },
+							],
+							displayOptions: { show: { object: ['text'] } },
+						},
+						{
+							displayName: 'Action',
+							name: 'action',
+							type: 'options',
+							default: '',
+							options: [{ name: 'Delete', value: 'delete' }],
+							displayOptions: { show: { object: ['positionedObject'] } },
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema.match(/\baction:/g)).toHaveLength(1);
+		expect(schema).toContain("z.literal('replaceAll')");
+		expect(schema).toContain("z.literal('insert')");
+		expect(schema).toContain("z.literal('delete')");
+	});
+
+	it('unions same-name collection fields instead of emitting duplicate object keys', () => {
+		const prop: NodeProperty = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					default: '',
+					options: [{ name: 'List', value: 'list' }],
+					displayOptions: { show: { resource: ['file'] } },
+				},
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					default: '',
+					options: [{ name: 'Search', value: 'search' }],
+					displayOptions: { show: { resource: ['folder'] } },
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema.match(/\bmode:/g)).toHaveLength(1);
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('search')");
 	});
 });
 
@@ -1531,5 +2251,233 @@ describe('mapPropertyToZodSchema recursion for nested collection/fixedCollection
 		expect(schema).not.toContain('z.unknown()');
 		expect(schema).toContain('inner: z.object({');
 		expect(schema).toContain('leaf: stringOrExpression.optional()');
+	});
+});
+
+describe('mapPropertyToZodSchema for display-only callout property', () => {
+	it('returns empty string for top-level callout property', () => {
+		const prop = {
+			name: 'info',
+			displayName: 'Info',
+			type: 'callout',
+			default: '',
+		} as unknown as NodeProperty;
+
+		expect(mapPropertyToZodSchema(prop)).toBe('');
+	});
+
+	it('skips callout properties nested inside a fixedCollection', () => {
+		const prop = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'info',
+							displayName: 'Info',
+							type: 'callout',
+							default: '',
+						},
+						{
+							name: 'keep',
+							displayName: 'Keep',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).not.toContain('info');
+		expect(schema).toContain('keep: stringOrExpression.optional()');
+	});
+
+	it('skips callout properties nested inside a collection', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'info',
+					displayName: 'Info',
+					type: 'callout',
+					default: '',
+				},
+				{
+					name: 'keep',
+					displayName: 'Keep',
+					type: 'string',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).not.toContain('info');
+		expect(schema).toContain('keep: stringOrExpression.optional()');
+	});
+});
+
+describe('mapPropertyToZodSchema for data-carrying button and icon types', () => {
+	it('maps a top-level button property to stringOrExpression (covers AiTransform instructions)', () => {
+		const prop = {
+			name: 'instructions',
+			displayName: 'Instructions',
+			type: 'button',
+			default: '',
+			typeOptions: { buttonConfig: { hasInputField: true } },
+		} as unknown as NodeProperty;
+
+		expect(mapPropertyToZodSchema(prop)).toBe('stringOrExpression');
+	});
+
+	it('maps a button nested inside a collection to stringOrExpression', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'instructions',
+					displayName: 'Instructions',
+					type: 'button',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('instructions: stringOrExpression.optional()');
+	});
+
+	it('maps a top-level icon property to a { type, value } object schema (covers ChatTrigger)', () => {
+		const prop = {
+			name: 'agentIcon',
+			displayName: 'Agent Icon',
+			type: 'icon',
+			default: { type: 'icon', value: 'bot' },
+			noDataExpression: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain("z.literal('icon')");
+		expect(schema).toContain("z.literal('emoji')");
+		expect(schema).toContain('value: z.string()');
+	});
+
+	it('maps an icon nested inside a fixedCollection to a { type, value } object schema', () => {
+		const prop = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'icon',
+							displayName: 'Icon',
+							type: 'icon',
+							default: { type: 'icon', value: 'comment' },
+						},
+					],
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain("z.literal('icon')");
+		expect(schema).toContain("z.literal('emoji')");
+		expect(schema).toContain('value: z.string()');
+	});
+});
+
+describe('mapPropertyToZodSchema for workflowSelector', () => {
+	it('emits a resource-locator-shaped union with list/id modes for a top-level property', () => {
+		const prop = {
+			name: 'workflowId',
+			displayName: 'Workflow',
+			type: 'workflowSelector',
+			default: '',
+			required: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
+		expect(schema).toContain('value: z.union([z.string(), z.number()])');
+		expect(schema).toContain('cachedResultName: z.string().optional()');
+		expect(schema).toContain('expressionSchema');
+	});
+
+	it('emits the same schema for a workflowSelector nested inside a collection', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'workflowId',
+					displayName: 'Workflow',
+					type: 'workflowSelector',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
+	});
+});
+
+describe('mapPropertyToZodSchema for agentSelector', () => {
+	it('emits a resource-locator-shaped union (not z.unknown) like workflowSelector', () => {
+		const prop = {
+			name: 'agentId',
+			displayName: 'Agent',
+			type: 'agentSelector',
+			default: { mode: 'list', value: '' },
+			required: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
+		expect(schema).toContain('value: z.union([z.string(), z.number()])');
+		expect(schema).toContain('cachedResultName: z.string().optional()');
+		expect(schema).toContain('expressionSchema');
 	});
 });

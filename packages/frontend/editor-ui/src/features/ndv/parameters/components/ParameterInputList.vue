@@ -5,6 +5,7 @@ import type {
 	FilterValue,
 	INodeParameters,
 	INodeProperties,
+	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
@@ -20,6 +21,7 @@ import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { useMessage } from '@/app/composables/useMessage';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import {
+	AGENT_NODE_TYPE,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
@@ -28,7 +30,7 @@ import {
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useI18n } from '@n8n/i18n';
 import AssignmentCollection from './AssignmentCollection/AssignmentCollection.vue';
 import ButtonParameter from './ButtonParameter/ButtonParameter.vue';
@@ -39,6 +41,7 @@ import ParameterInputFull from './ParameterInputFull.vue';
 import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
 	getParameterTypeOption,
@@ -48,7 +51,6 @@ import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { captureException } from '@sentry/vue';
 import { throttledWatch } from '@vueuse/core';
 import get from 'lodash/get';
-import { storeToRefs } from 'pinia';
 
 import {
 	N8nCallout,
@@ -86,6 +88,7 @@ type Props = {
 	removeLastParameterMargin?: boolean;
 	newlyAddedParameters?: Set<string>;
 	optionsOverrides?: ParameterOptionsOverrides;
+	assignmentCollectionEditableValueIndices?: Record<string, number[]>;
 	layout?: 'inline';
 };
 
@@ -101,7 +104,7 @@ const emit = defineEmits<{
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const message = useMessage();
@@ -116,8 +119,11 @@ const {
 	openSampleWorkflowTemplate,
 	isRagStarterCalloutVisible,
 } = useCalloutHelpers();
+const aiGateway = useAiGateway();
 
-const { activeNode } = storeToRefs(ndvStore);
+const MODEL_PARAMETER_NAMES = new Set(['modelId', 'model', 'modelName']);
+
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 onErrorCaptured((e, component) => {
 	if (
@@ -138,7 +144,17 @@ onErrorCaptured((e, component) => {
 	return false;
 });
 
-const node = computed(() => props.node ?? ndvStore.activeNode);
+const node = computed(() => props.node ?? ndvStore.value.activeNode);
+
+// Whether the active Agent v3+ node has a Chat Trigger (or Manual Chat Trigger) in its
+// main-connection ancestry. Used as a reactive dependency of the parameter watch so the
+// prompt-source dropdown re-filters when a chat trigger is wired/removed while the NDV is open.
+const hasChatOrManualChatParent = computed(() =>
+	Boolean(
+		node.value &&
+			workflowDocumentStore?.value?.checkIfNodeHasChatOrManualChatParent(node.value.name),
+	),
+);
 
 const nodeType = computed(() => {
 	if (node.value) {
@@ -168,7 +184,7 @@ const parameterItems = ref<ParameterComputedData[]>([]);
 let previousParameterNames: string[] = [];
 
 throttledWatch(
-	[() => props.parameters, () => props.nodeValues, node],
+	[() => props.parameters, () => props.nodeValues, node, hasChatOrManualChatParent],
 	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
@@ -203,6 +219,12 @@ throttledWatch(
 			node.value.parameters.resume === 'form'
 		) {
 			filteredParameters = updateWaitParameters(parameters, node.value.name);
+		} else if (
+			node.value &&
+			node.value.type === AGENT_NODE_TYPE &&
+			(node.value.typeVersion ?? 0) >= 3.1
+		) {
+			filteredParameters = updateAgentParameters(parameters, node.value.name);
 		} else {
 			filteredParameters = parameters;
 		}
@@ -243,7 +265,7 @@ throttledWatch(
 			if (!newParameterNames.includes(parameter)) {
 				emit('valueChanged', {
 					name: `${props.path}.${parameter}`,
-					node: ndvStore.activeNode?.name || '',
+					node: ndvStore.value.activeNode?.name || '',
 					value: undefined,
 				});
 			}
@@ -385,6 +407,37 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 	return parameters;
 }
 
+// Agent v3+ 'auto' prompt source reads the message from a connected chat trigger
+// (Chat Trigger or Manual Chat Trigger). Keep it visible, but disable it when neither
+// is in the node's main-connection ancestry so users can still discover the mode.
+function updateAgentParameters(parameters: INodeProperties[], nodeName: string) {
+	const hasChatParent =
+		workflowDocumentStore?.value?.checkIfNodeHasChatOrManualChatParent(nodeName);
+	if (hasChatParent) {
+		return parameters;
+	}
+
+	return parameters.map((parameter) => {
+		if (parameter.name !== 'promptType') return parameter;
+		return {
+			...parameter,
+			options: (parameter.options as INodePropertyOptions[]).map((option) => {
+				if (option.value !== 'auto') {
+					return option;
+				}
+
+				return {
+					...option,
+					disabled: true,
+					description:
+						option.description ??
+						i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
+				};
+			}),
+		};
+	});
+}
+
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
 	const parentNodes = workflowDocumentStore?.value?.getParentNodes(nodeName) ?? [];
 
@@ -434,10 +487,42 @@ function deleteOption(optionName: string): void {
 	emit('valueChanged', parameterData);
 }
 
+function isHiddenByAiGateway(parameter: INodeProperties): boolean {
+	if (!node.value) return false;
+
+	// isNodePropertyHidden internally gates on a gateway-managed credential
+	if (aiGateway.isNodePropertyHidden(node.value, parameter.name)) {
+		return true;
+	}
+
+	if (!MODEL_PARAMETER_NAMES.has(parameter.name)) return false;
+
+	const credentials = node.value.credentials;
+	if (!credentials) return false;
+
+	const hasGatewayCredential = Object.values(credentials).some(
+		(cred) => cred.__aiGatewayManaged === true,
+	);
+	if (!hasGatewayCredential) return false;
+
+	const params = props.path
+		? (get(props.nodeValues, props.path) as INodeParameters | undefined)
+		: props.nodeValues;
+	const resource = params?.resource as string | undefined;
+	const operation = params?.operation as string | undefined;
+	if (!operation) return false;
+
+	return !aiGateway.isActionSupported(node.value.type, resource, operation);
+}
+
 async function shouldDisplayNodeParameter(
 	parameter: INodeProperties,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ): Promise<boolean> {
+	if (displayKey === 'displayOptions' && isHiddenByAiGateway(parameter)) {
+		return false;
+	}
+
 	return await nodeSettingsParameters.shouldDisplayNodeParameter(
 		props.nodeValues,
 		node.value,
@@ -484,9 +569,12 @@ async function getDependentParametersValues(parameter: INodeProperties): Promise
 	}
 
 	// Get the resolved parameter values of the current node
-	const currentNodeParameters = ndvStore.activeNode?.parameters;
+	const currentNodeParameters = ndvStore.value.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(
+			currentNodeParameters,
+			workflowDocumentStore.value.documentId,
+		);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
@@ -520,6 +608,62 @@ function isCalloutVisible(parameter: INodeProperties): boolean {
 
 	return true;
 }
+
+const isAiGatewayUnsupportedAction = computed(() => {
+	if (!node.value) return false;
+	const credentials = node.value.credentials;
+	if (!credentials) return false;
+
+	const hasGatewayCredential = Object.values(credentials).some(
+		(cred) => cred.__aiGatewayManaged === true,
+	);
+	if (!hasGatewayCredential) return false;
+
+	const params = props.path
+		? (get(props.nodeValues, props.path) as INodeParameters | undefined)
+		: props.nodeValues;
+	const resource = params?.resource as string | undefined;
+	const operation = params?.operation as string | undefined;
+	if (!operation) return false;
+
+	return !aiGateway.isActionSupported(node.value.type, resource, operation);
+});
+
+// The unsupported-action notice must render exactly once.
+const aiGatewayUnsupportedNoticeIndex = computed(() => {
+	if (!isAiGatewayUnsupportedAction.value) return -1;
+	const items = parameterItems.value;
+	const selectorIndex = items.findIndex(
+		(item) => item.parameter.name === 'operation' && item.parameter.type === 'options',
+	);
+	return selectorIndex !== -1
+		? selectorIndex
+		: items.findIndex((item) => item.parameter.name === 'operation');
+});
+
+const aiGatewayOperationDisplayName = computed(() => {
+	const params = props.path
+		? (get(props.nodeValues, props.path) as INodeParameters | undefined)
+		: props.nodeValues;
+	const operation = params?.operation as string | undefined;
+	const resource = params?.resource as string | undefined;
+	if (!operation || !resource || !nodeType.value) return operation ?? '';
+
+	const resourceParam = nodeType.value.properties?.find(
+		(p) => p.name === 'resource' && p.type === 'options',
+	);
+	const resourceLabel =
+		resourceParam?.options?.find((o) => 'value' in o && o.value === resource)?.name ?? resource;
+	const operationParam = nodeType.value.properties?.find((p) => {
+		if (p.name !== 'operation' || p.type !== 'options') return false;
+		const showResource = p.displayOptions?.show?.resource;
+		if (!showResource) return true;
+		return showResource.includes(resource);
+	});
+	const operationLabel =
+		operationParam?.options?.find((o) => 'value' in o && o.value === operation)?.name ?? operation;
+	return `${resourceLabel} - ${operationLabel}`;
+});
 
 function onCalloutAction(action: CalloutAction) {
 	switch (action.type) {
@@ -828,6 +972,8 @@ watch(
 				:is-read-only="isReadOnly"
 				:default-type="item.parameter.typeOptions?.assignment?.defaultType"
 				:disable-type="item.parameter.typeOptions?.assignment?.disableType"
+				:options-overrides="optionsOverrides"
+				:editable-value-indices="assignmentCollectionEditableValueIndices?.[item.parameter.name]"
 				@value-changed="valueChanged"
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
@@ -847,6 +993,7 @@ watch(
 				></N8nIconButton>
 
 				<ParameterInputFull
+					:key="node?.name"
 					:parameter="item.parameter"
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
 					:value="getParameterValue(item.parameter.name)"
@@ -867,6 +1014,19 @@ watch(
 					@blur="onParameterBlur(item.parameter.name)"
 				/>
 			</div>
+
+			<N8nNotice
+				v-if="index === aiGatewayUnsupportedNoticeIndex"
+				theme="warning"
+				:class="$style.unsupportedActionNotice"
+				data-test-id="ai-gateway-unsupported-action-notice"
+			>
+				{{
+					i18n.baseText('aiGateway.unsupportedAction.notice', {
+						interpolate: { actionName: aiGatewayOperationDisplayName },
+					})
+				}}
+			</N8nNotice>
 		</div>
 		<div v-if="parameterItems.length === 0" :class="{ indent }">
 			<slot />
@@ -958,6 +1118,11 @@ watch(
 	> :global(.multi-parameter) {
 		margin-bottom: 0;
 	}
+}
+
+.unsupportedActionNotice {
+	margin-top: var(--spacing--2xs);
+	margin-bottom: 0;
 }
 
 .inlineLayout {

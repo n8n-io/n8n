@@ -1,5 +1,6 @@
-import { inDevelopment, inProduction } from '@n8n/backend-common';
-import { SecurityConfig, WorkflowsConfig } from '@n8n/config';
+import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
+import { installGlobalProxyAgent } from '@n8n/backend-network';
+import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -8,7 +9,7 @@ import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
 import isEmpty from 'lodash/isEmpty';
-import { InstanceSettings, installGlobalProxyAgent } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
@@ -28,6 +29,7 @@ import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
+import { Telemetry } from '@/telemetry';
 
 import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
@@ -36,6 +38,7 @@ import '@/controllers/binary-data.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/dynamic-templates.controller';
+import '@/controllers/instance-ai-examples.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
@@ -57,16 +60,24 @@ import '@/controllers/security-settings.controller';
 import '@/credentials/credentials.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
+import '@/node-execution/ephemeral-node-executor';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
+import '@/evaluation.ee/evaluation-config.controller';
+import '@/evaluation.ee/evaluation-collections.controller.ee';
+import '@/evaluation.ee/insights/eval-insights.controller.ee';
 import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
 import '@/modules/workflow-index/workflow-dependency.controller';
+import '@/webhooks/test-webhooks.controller';
 import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
+import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
+import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
+import { AuthStrategyRegistry } from './services/auth-strategy.registry';
 
 @Service()
 export class Server extends AbstractServer {
@@ -152,18 +163,31 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (this.globalConfig.endpoints.metrics.enable) {
-			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
-			await Container.get(PrometheusMetricsService).init(this.app);
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus');
+			Container.get(PrometheusMetricsService).init(this.app);
 		}
 
 		const { frontendService } = this;
 		if (frontendService) {
-			await this.externalHooks.run('frontend.settings', [await frontendService.getSettings()]);
+			const frontendSettings = await frontendService.getSettings();
+			await this.externalHooks.run('frontend.settings', [frontendSettings]);
+
+			if (this.globalConfig.deployment.type === 'cloud') {
+				Container.get(Telemetry).setUserCloudId(frontendSettings.n8nMetadata?.userId);
+			}
 		}
 
 		await this.postHogClient.init();
 
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
+
+		// Register auth strategies in priority order. The registry evaluates them
+		// sequentially — the first strategy that returns a non-null result wins.
+		// API key auth is registered first so existing behavior is preserved.
+		// Additional strategies (e.g. scoped JWT from the token-exchange module)
+		// can be appended later during their own module initialization.
+		const registry = Container.get(AuthStrategyRegistry);
+		registry.register(Container.get(ApiKeyAuthStrategy));
 
 		// ----------------------------------------
 		// Public API
@@ -478,17 +502,18 @@ export class Server extends AbstractServer {
 	}
 
 	private async initializeWorkflowIndexing() {
-		if (Container.get(WorkflowsConfig).indexingEnabled) {
-			const { WorkflowIndexService } = await import(
-				'@/modules/workflow-index/workflow-index.service'
-			);
-			Container.get(WorkflowIndexService).init();
-		}
+		const { WorkflowIndexService } = await import(
+			'@/modules/workflow-index/workflow-index.service'
+		);
+		Container.get(WorkflowIndexService).init();
 	}
 
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
+		if (Container.get(ModuleRegistry).isActive('instance-ai')) {
+			Container.get(BrowserUseServer).setup(server, app);
+		}
 	}
 }

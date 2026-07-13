@@ -3,6 +3,7 @@ import { ModuleMetadata } from '@n8n/decorators';
 import type { EntityClass, ModuleContext, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
+import type { NodeLoader } from 'n8n-workflow';
 import path from 'path';
 
 import { MissingModuleError } from './errors/missing-module.error';
@@ -16,7 +17,7 @@ import { Logger } from '../logging/logger';
 export class ModuleRegistry {
 	readonly entities: EntityClass[] = [];
 
-	readonly loadDirs: string[] = [];
+	readonly nodeLoaders: NodeLoader[] = [];
 
 	readonly settings: Map<string, ModuleSettings> = new Map();
 
@@ -34,6 +35,9 @@ export class ModuleRegistry {
 		'external-secrets',
 		'community-packages',
 		'data-table',
+		// oauth-server precedes mcp: the mcp module registers its protected
+		// resource with the oauth-server module's registry on init.
+		'oauth-server',
 		'mcp',
 		'provisioning',
 		'breaking-changes',
@@ -53,6 +57,10 @@ export class ModuleRegistry {
 		'token-exchange',
 		'instance-version-history',
 		'encryption-key-manager',
+		'oauth-jwe',
+		'n8n-packages',
+		'runtime-credentials',
+		'mcp-registry',
 	];
 
 	private readonly activeModules: string[] = [];
@@ -119,9 +127,9 @@ export class ModuleRegistry {
 
 			if (entities?.length) this.entities.push(...entities);
 
-			const loadDir = await Container.get(ModuleClass).loadDir?.();
+			const loaders = await Container.get(ModuleClass).nodeLoaders?.();
 
-			if (loadDir) this.loadDirs.push(loadDir);
+			if (loaders?.length) this.nodeLoaders.push(...loaders);
 
 			await Container.get(ModuleClass).commands?.();
 		}

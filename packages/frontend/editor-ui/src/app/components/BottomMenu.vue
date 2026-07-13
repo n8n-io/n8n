@@ -8,7 +8,7 @@ import {
 	type IMenuItem,
 	type IMenuElement,
 } from '@n8n/design-system';
-import { RELEASE_NOTES_URL } from '@/app/constants';
+import { CHANGELOG_URL } from '@/app/constants';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import VersionUpdateCTA from '@/app/components/VersionUpdateCTA.vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -52,7 +52,7 @@ const whatsNewItems = computed<{ available: boolean; children: IMenuElement[] }>
 			icon: 'external-link',
 			label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
 			link: {
-				href: RELEASE_NOTES_URL,
+				href: CHANGELOG_URL,
 				target: '_blank',
 			},
 			size: 'small',
@@ -180,6 +180,7 @@ function onLogout() {
 					:data-test-id="`main-sidebar-${item.id}`"
 					:item="item"
 					:compact="isCollapsed"
+					:class="item.id === 'resource-center' ? $style.resourceCenterMenuItem : undefined"
 					@click="() => handleSelect(item.id)"
 				/>
 			</template>
@@ -202,11 +203,15 @@ function onLogout() {
 	padding: var(--spacing--3xs);
 }
 
+.resourceCenterMenuItem {
+	:global(.n8n-text) {
+		color: var(--color--primary);
+	}
+}
+
 .popover {
 	padding: var(--spacing--4xs);
 	min-width: 260px;
-	border-radius: var(--radius);
-	background-color: var(--menu--color--background, var(--color--background--light-2));
 }
 
 .popoverTitle {

@@ -1,5 +1,7 @@
 import { useI18n } from '@n8n/i18n';
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODALS } from '@/experiments/exposeAllWorkflowsToMcp/modals';
+import { SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS } from '@/experiments/surfaceMcpToNewCloudUsers/modals';
 import {
 	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
 	MCP_SETTINGS_VIEW,
@@ -50,5 +52,7 @@ export const MCPModule: FrontendModuleDescription = {
 			component: async () => await import('./modals/MCPConnectWorkflowsModal.vue'),
 			initialState: { open: false },
 		},
+		...SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS,
+		...EXPOSE_ALL_WORKFLOWS_TO_MCP_MODALS,
 	],
 };

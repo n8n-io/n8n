@@ -1,5 +1,5 @@
 import {
-	ApplicationError,
+	UnexpectedError,
 	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
@@ -42,7 +42,7 @@ export class TaskRunnerNodeTypes implements INodeTypes {
 
 	// This isn't used in Workflow from what I can see
 	getByName(_nodeType: string): INodeType | IVersionedNodeType {
-		throw new ApplicationError('Unimplemented `getByName`', { level: 'error' });
+		throw new UnexpectedError('Unimplemented `getByName`');
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
@@ -61,7 +61,7 @@ export class TaskRunnerNodeTypes implements INodeTypes {
 
 	// This isn't used in Workflow from what I can see
 	getKnownTypes(): IDataObject {
-		throw new ApplicationError('Unimplemented `getKnownTypes`', { level: 'error' });
+		throw new UnexpectedError('Unimplemented `getKnownTypes`');
 	}
 
 	addNodeTypeDescriptions(nodeTypeDescriptions: INodeTypeDescription[]) {

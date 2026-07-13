@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -9,19 +9,20 @@ import {
 	awsApiRequestSOAPAllItems,
 } from '../GenericFunctions';
 
-jest.mock('xml2js', () => ({
-	parseString: jest.fn(),
+vi.mock('xml2js', () => ({
+	parseString: vi.fn(),
 }));
 
 import { parseString as parseXml } from 'xml2js';
+import type { Mock, Mocked, MockedFunction } from 'vitest';
 
 describe('ELB GenericFunctions', () => {
 	describe('awsApiRequest', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			mockExecuteFunctions.getNode.mockReturnValue({
 				id: 'test-node',
@@ -35,8 +36,7 @@ describe('ELB GenericFunctions', () => {
 
 		it('should make successful API request with basic parameters', async () => {
 			const mockResponse = { success: true };
-			const mockRequestWithAuth = mockExecuteFunctions.helpers
-				.requestWithAuthentication as jest.Mock;
+			const mockRequestWithAuth = mockExecuteFunctions.helpers.requestWithAuthentication as Mock;
 			mockRequestWithAuth.mockResolvedValue(mockResponse);
 
 			const result = await awsApiRequest.call(
@@ -61,8 +61,7 @@ describe('ELB GenericFunctions', () => {
 
 		it('should handle API errors', async () => {
 			const apiError = new Error('API Error');
-			const mockRequestWithAuth = mockExecuteFunctions.helpers
-				.requestWithAuthentication as jest.Mock;
+			const mockRequestWithAuth = mockExecuteFunctions.helpers.requestWithAuthentication as Mock;
 			mockRequestWithAuth.mockRejectedValue(apiError);
 
 			await expect(
@@ -72,18 +71,17 @@ describe('ELB GenericFunctions', () => {
 	});
 
 	describe('awsApiRequestREST', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should parse valid JSON response', async () => {
 			const jsonResponse = '{"result": "success", "data": [1,2,3]}';
 			const expectedResult = { result: 'success', data: [1, 2, 3] };
-			const mockRequestWithAuth = mockExecuteFunctions.helpers
-				.requestWithAuthentication as jest.Mock;
+			const mockRequestWithAuth = mockExecuteFunctions.helpers.requestWithAuthentication as Mock;
 			mockRequestWithAuth.mockResolvedValue(jsonResponse);
 
 			const result = await awsApiRequestREST.call(
@@ -98,8 +96,7 @@ describe('ELB GenericFunctions', () => {
 
 		it('should return raw response when JSON parsing fails', async () => {
 			const rawResponse = 'not json data';
-			const mockRequestWithAuth = mockExecuteFunctions.helpers
-				.requestWithAuthentication as jest.Mock;
+			const mockRequestWithAuth = mockExecuteFunctions.helpers.requestWithAuthentication as Mock;
 			mockRequestWithAuth.mockResolvedValue(rawResponse);
 
 			const result = await awsApiRequestREST.call(
@@ -114,12 +111,12 @@ describe('ELB GenericFunctions', () => {
 	});
 
 	describe('awsApiRequestSOAP', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-		const mockParseXml = parseXml as jest.MockedFunction<typeof parseXml>;
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		const mockParseXml = parseXml as MockedFunction<typeof parseXml>;
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should parse XML response correctly', async () => {
@@ -135,7 +132,7 @@ describe('ELB GenericFunctions', () => {
 				},
 			};
 
-			(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				xmlResponse,
 			);
 			mockParseXml.mockImplementation((_xml, _options, callback) => {
@@ -156,7 +153,7 @@ describe('ELB GenericFunctions', () => {
 			const xmlResponse = 'invalid xml';
 			const xmlError = new Error('Invalid XML');
 
-			(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				xmlResponse,
 			);
 			mockParseXml.mockImplementation((_xml, _options, callback) => {
@@ -175,12 +172,12 @@ describe('ELB GenericFunctions', () => {
 	});
 
 	describe('awsApiRequestSOAPAllItems', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-		const mockParseXml = parseXml as jest.MockedFunction<typeof parseXml>;
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		const mockParseXml = parseXml as MockedFunction<typeof parseXml>;
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		describe('pagination patterns', () => {
@@ -198,7 +195,7 @@ describe('ELB GenericFunctions', () => {
 				};
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					'<xml>response</xml>',
 				);
 				mockParseXml.mockImplementation((_xml, _options, callback) => {
@@ -238,7 +235,7 @@ describe('ELB GenericFunctions', () => {
 				};
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock)
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock)
 					.mockResolvedValueOnce('<xml>first-response</xml>')
 					.mockResolvedValueOnce('<xml>second-response</xml>');
 
@@ -270,7 +267,7 @@ describe('ELB GenericFunctions', () => {
 				);
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockRejectedValue(
 					elbError,
 				);
 

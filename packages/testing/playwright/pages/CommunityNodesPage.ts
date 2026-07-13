@@ -1,8 +1,11 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ActionToggle } from './components/ActionToggle';
 
 export class CommunityNodesPage extends BasePage {
+	readonly actionToggle = new ActionToggle(this.page);
+
 	async goto(): Promise<void> {
 		await this.page.goto('/settings/community-nodes');
 	}
@@ -49,11 +52,11 @@ export class CommunityNodesPage extends BasePage {
 	}
 
 	getUninstallAction(): Locator {
-		return this.page.getByTestId('action-uninstall');
+		return this.actionToggle.getAction('uninstall');
 	}
 
 	getUpdateButton(): Locator {
-		return this.getCommunityCards().first().locator('button');
+		return this.getCommunityCards().first().getByRole('button', { name: 'Update' });
 	}
 
 	getConfirmUpdateButton(): Locator {

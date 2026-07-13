@@ -7,8 +7,9 @@ import { createWorkflow } from './mock.utils';
 import { WorkflowAccessError } from '../mcp.errors';
 import { getMcpWorkflow, getSdkReferenceHint } from '../tools/workflow-validation.utils';
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+vi.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_GET_SDK_REFERENCE_TOOL: { toolName: 'get_sdk_reference', displayTitle: 'SDK Ref' },
+	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow', displayTitle: 'Validate' },
 }));
 
 describe('getSdkReferenceHint', () => {
@@ -19,6 +20,8 @@ describe('getSdkReferenceHint', () => {
 		const hint = getSdkReferenceHint(error);
 
 		expect(hint).toContain('get_sdk_reference');
+		expect(hint).toContain('Workflow SDK reference');
+		expect(hint).toContain('validate_workflow');
 	});
 
 	test('returns hint for SyntaxError', () => {
@@ -27,6 +30,18 @@ describe('getSdkReferenceHint', () => {
 		);
 
 		expect(hint).toContain('get_sdk_reference');
+		expect(hint).toContain('required SDK patterns');
+	});
+
+	test('uses requested follow-up action', () => {
+		const error = new Error('parse failed');
+		error.name = 'WorkflowCodeParseError';
+
+		const hint = getSdkReferenceHint(error, {
+			afterReference: 'Then retry validation.',
+		});
+
+		expect(hint).toContain('Then retry validation.');
 	});
 
 	test('returns undefined for generic Error', () => {
@@ -46,7 +61,7 @@ describe('getMcpWorkflow', () => {
 	describe('permission checks', () => {
 		test('throws generic error when workflow not found (does not reveal if workflow exists)', async () => {
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(null),
+				findWorkflowForUser: vi.fn().mockResolvedValue(null),
 			});
 
 			await expect(
@@ -60,7 +75,7 @@ describe('getMcpWorkflow', () => {
 
 		test('throws generic error when user lacks permission (does not reveal workflow exists)', async () => {
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(null),
+				findWorkflowForUser: vi.fn().mockResolvedValue(null),
 			});
 
 			await expect(
@@ -70,7 +85,7 @@ describe('getMcpWorkflow', () => {
 
 		test('returns no_permission reason for both not-found and no-permission cases', async () => {
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(null),
+				findWorkflowForUser: vi.fn().mockResolvedValue(null),
 			});
 
 			await expect(
@@ -82,7 +97,7 @@ describe('getMcpWorkflow', () => {
 
 		test('passes correct scope to workflowFinderService', async () => {
 			const workflow = createWorkflow({ settings: { availableInMCP: true } });
-			const findWorkflowForUser = jest.fn().mockResolvedValue(workflow);
+			const findWorkflowForUser = vi.fn().mockResolvedValue(workflow);
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
 				findWorkflowForUser,
 			});
@@ -96,7 +111,7 @@ describe('getMcpWorkflow', () => {
 
 		test('passes includeActiveVersion option to workflowFinderService', async () => {
 			const workflow = createWorkflow({ settings: { availableInMCP: true } });
-			const findWorkflowForUser = jest.fn().mockResolvedValue(workflow);
+			const findWorkflowForUser = vi.fn().mockResolvedValue(workflow);
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
 				findWorkflowForUser,
 			});
@@ -115,7 +130,7 @@ describe('getMcpWorkflow', () => {
 		test('throws specific error for archived workflows', async () => {
 			const workflow = createWorkflow({ isArchived: true });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 			});
 
 			await expect(
@@ -130,7 +145,7 @@ describe('getMcpWorkflow', () => {
 		test('returns workflow_archived reason for archived workflows', async () => {
 			const workflow = createWorkflow({ isArchived: true });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 			});
 
 			await expect(
@@ -145,7 +160,7 @@ describe('getMcpWorkflow', () => {
 		test('throws error when workflow is not available in MCP', async () => {
 			const workflow = createWorkflow({ settings: { availableInMCP: false } });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 			});
 
 			await expect(
@@ -160,7 +175,7 @@ describe('getMcpWorkflow', () => {
 		test('throws error when workflow settings is undefined', async () => {
 			const workflow = createWorkflow({ settings: undefined });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 			});
 
 			await expect(
@@ -171,7 +186,7 @@ describe('getMcpWorkflow', () => {
 		test('throws error when availableInMCP is not set', async () => {
 			const workflow = createWorkflow({ settings: {} });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 			});
 
 			await expect(
@@ -182,7 +197,7 @@ describe('getMcpWorkflow', () => {
 		test('returns not_available_in_mcp reason', async () => {
 			const workflow = createWorkflow({ settings: { availableInMCP: false } });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 			});
 
 			await expect(
@@ -202,7 +217,7 @@ describe('getMcpWorkflow', () => {
 				isArchived: false,
 			});
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 			});
 
 			const result = await getMcpWorkflow('wf-123', user, ['workflow:read'], workflowFinderService);
@@ -214,7 +229,7 @@ describe('getMcpWorkflow', () => {
 
 		test('works with different scopes', async () => {
 			const workflow = createWorkflow({ settings: { availableInMCP: true } });
-			const findWorkflowForUser = jest.fn().mockResolvedValue(workflow);
+			const findWorkflowForUser = vi.fn().mockResolvedValue(workflow);
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
 				findWorkflowForUser,
 			});
@@ -251,7 +266,7 @@ describe('getMcpWorkflow', () => {
 	describe('validation order', () => {
 		test('checks permission before archive status', async () => {
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(null),
+				findWorkflowForUser: vi.fn().mockResolvedValue(null),
 			});
 
 			await expect(
@@ -267,7 +282,7 @@ describe('getMcpWorkflow', () => {
 				settings: { availableInMCP: false },
 			});
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 			});
 
 			await expect(

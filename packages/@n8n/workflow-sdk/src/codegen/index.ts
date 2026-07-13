@@ -56,6 +56,11 @@ export { annotateGraph } from './graph-annotator';
 export { buildCompositeTree } from './composite-builder';
 export { generateCode } from './code-generator';
 export {
+	emitInstanceAi,
+	SDK_IMPORTABLE_FUNCTIONS,
+	type EmitInstanceAiOptions,
+} from './emit-instance-ai';
+export {
 	getOutputName,
 	getInputName,
 	getCompositeType,

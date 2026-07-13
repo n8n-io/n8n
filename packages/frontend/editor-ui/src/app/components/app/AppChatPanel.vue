@@ -3,14 +3,19 @@ import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue'
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useProvideWorkflowId } from '@/app/composables/useProvideWorkflowId';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
 
 const props = defineProps<{
 	layoutRef: Element | null;
 }>();
 
-useProvideWorkflowId();
+// The assistant/builder chat is mounted globally (App.vue #aside) and renders
+// NDV-store consumers (setup cards, node issues, node execution) that may
+// outlive the workflow editor (e.g. after navigating to a settings route).
+// Re-provide the resolved workflow document store so those components resolve a
+// scoped NDV store via injectNDVStore() even when no workflow is loaded.
+provideWorkflowDocumentStore();
 
 const chatPanelStore = useChatPanelStore();
 const chatHubPanelStore = useChatHubPanelStore();

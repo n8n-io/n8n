@@ -6,32 +6,33 @@
  */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'jest-mock-extended';
 import type { Client } from 'langsmith/client';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
 // Store mocks for dependencies
-const mockParseEvaluationArgs = jest.fn();
-const mockArgsToStageModels = jest.fn();
-const mockSetupTestEnvironment = jest.fn();
-const mockCreateAgent = jest.fn();
-const mockGenerateRunId = jest.fn();
-const mockIsWorkflowStateValues = jest.fn();
-const mockLoadTestCasesFromCsv = jest.fn();
-const mockConsumeGenerator = jest.fn();
-const mockGetChatPayload = jest.fn();
-const mockRunEvaluation = jest.fn();
-const mockCreateConsoleLifecycle = jest.fn();
-const mockCreateLLMJudgeEvaluator = jest.fn();
-const mockCreateProgrammaticEvaluator = jest.fn();
-const mockCreatePairwiseEvaluator = jest.fn();
-const mockCreateExecutionEvaluator = jest.fn();
-const mockSendWebhookNotification = jest.fn();
+const mockParseEvaluationArgs = vi.fn();
+const mockArgsToStageModels = vi.fn();
+const mockSetupTestEnvironment = vi.fn();
+const mockCreateAgent = vi.fn();
+const mockGenerateRunId = vi.fn();
+const mockIsWorkflowStateValues = vi.fn();
+const mockLoadTestCasesFromCsv = vi.fn();
+const mockConsumeGenerator = vi.fn();
+const mockGetChatPayload = vi.fn();
+const mockRunEvaluation = vi.fn();
+const mockCreateConsoleLifecycle = vi.fn();
+const mockCreateLLMJudgeEvaluator = vi.fn();
+const mockCreateProgrammaticEvaluator = vi.fn();
+const mockCreatePairwiseEvaluator = vi.fn();
+const mockCreateExecutionEvaluator = vi.fn();
+const mockSendWebhookNotification = vi.fn();
 
 // Mock all external modules
-jest.mock('../cli/argument-parser', () => ({
+vi.mock('../cli/argument-parser', () => ({
 	parseEvaluationArgs: (): unknown => mockParseEvaluationArgs(),
 	argsToStageModels: (...args: unknown[]): unknown => mockArgsToStageModels(...args),
 	getDefaultDatasetName: (suite: unknown): unknown =>
@@ -40,18 +41,18 @@ jest.mock('../cli/argument-parser', () => ({
 		suite === 'pairwise' ? 'pairwise-evals' : 'workflow-builder-evaluation',
 }));
 
-jest.mock('../support/environment', () => ({
+vi.mock('../support/environment', () => ({
 	setupTestEnvironment: (): unknown => mockSetupTestEnvironment(),
 	createAgent: (...args: unknown[]): unknown => mockCreateAgent(...args),
 	resolveNodesBasePath: (): string => '/mock/nodes-base',
 }));
 
-jest.mock('../langsmith/types', () => ({
+vi.mock('../langsmith/types', () => ({
 	generateRunId: (): unknown => mockGenerateRunId(),
 	isWorkflowStateValues: (...args: unknown[]): unknown => mockIsWorkflowStateValues(...args),
 }));
 
-jest.mock('../cli/csv-prompt-loader', () => ({
+vi.mock('../cli/csv-prompt-loader', () => ({
 	loadTestCasesFromCsv: (...args: unknown[]): unknown => mockLoadTestCasesFromCsv(...args),
 	loadDefaultTestCases: () => [
 		{ id: 'test-case-1', prompt: 'Create a workflow that sends a daily email summary' },
@@ -59,24 +60,31 @@ jest.mock('../cli/csv-prompt-loader', () => ({
 	getDefaultTestCaseIds: () => ['test-case-1'],
 }));
 
-jest.mock('../cli/webhook', () => ({
+vi.mock('../cli/webhook', () => ({
 	sendWebhookNotification: (...args: unknown[]): unknown => mockSendWebhookNotification(...args),
 }));
 
-jest.mock('../harness/evaluation-helpers', () => ({
-	collectAgentTextResponse: jest.fn().mockResolvedValue(''),
+vi.mock('../harness/evaluation-helpers', () => ({
+	collectAgentTextResponse: vi.fn().mockResolvedValue(''),
 	consumeGenerator: (...args: unknown[]): unknown => mockConsumeGenerator(...args),
 	getChatPayload: (...args: unknown[]): unknown => mockGetChatPayload(...args),
-	extractSubgraphMetrics: jest.fn().mockReturnValue({}),
+	extractSubgraphMetrics: vi.fn().mockReturnValue({}),
 	createWorkflowGenerator: () =>
-		jest.fn().mockResolvedValue({ name: 'Test', nodes: [], connections: {} }),
+		vi.fn().mockResolvedValue({ name: 'Test', nodes: [], connections: {} }),
 }));
 
-jest.mock('../lifecycles/introspection-analysis', () => ({
+vi.mock('../lifecycles/introspection-analysis', () => ({
 	createIntrospectionAnalysisLifecycle: () => ({}),
 }));
 
-jest.mock('../index', () => ({
+// Stub the code-builder module so importing `../cli` doesn't drag in the heavy
+// langchain / workflow-builder graph. `runEvaluation` is mocked below, so the
+// generation path never actually invokes `CodeWorkflowBuilder`.
+vi.mock('@/code-builder', () => ({
+	CodeWorkflowBuilder: vi.fn(),
+}));
+
+vi.mock('../index', () => ({
 	runEvaluation: (...args: unknown[]): unknown => mockRunEvaluation(...args),
 	createConsoleLifecycle: (...args: unknown[]): unknown => mockCreateConsoleLifecycle(...args),
 	mergeLifecycles: (...lifecycles: unknown[]): unknown => {
@@ -92,7 +100,7 @@ jest.mock('../index', () => ({
 	createProgrammaticEvaluator: (...args: unknown[]): unknown =>
 		mockCreateProgrammaticEvaluator(...args),
 	createPairwiseEvaluator: (...args: unknown[]): unknown => mockCreatePairwiseEvaluator(...args),
-	createSimilarityEvaluator: () => ({ name: 'similarity', evaluate: jest.fn() }),
+	createSimilarityEvaluator: () => ({ name: 'similarity', evaluate: vi.fn() }),
 	createExecutionEvaluator: (...args: unknown[]): unknown => mockCreateExecutionEvaluator(...args),
 }));
 
@@ -145,8 +153,8 @@ function createMockEnvironment() {
 /** Helper to create mock agent */
 function createMockAgentInstance(workflowJSON: SimpleWorkflow = createMockWorkflow()) {
 	return {
-		chat: jest.fn().mockReturnValue((async function* () {})()),
-		getState: jest.fn().mockResolvedValue({
+		chat: vi.fn().mockReturnValue((async function* () {})()),
+		getState: vi.fn().mockResolvedValue({
 			values: {
 				workflowJSON,
 				messages: [],
@@ -170,12 +178,19 @@ function createMockSummary(overrides: Record<string, unknown> = {}) {
 
 describe('CLI', () => {
 	// Mock process.exit to prevent test termination
-	let mockExit: jest.SpyInstance;
+	let mockExit: MockInstance;
 	const originalEnv = process.env;
 
+	// Warm the module cache once so the first test's `await import('../cli')`
+	// doesn't pay cold-compile cost against the default 5s test timeout on a
+	// loaded CI runner. Later imports resolve from cache.
+	beforeAll(async () => {
+		await import('../cli/index.js');
+	}, 30_000);
+
 	beforeEach(() => {
-		jest.clearAllMocks();
-		mockExit = jest.spyOn(process, 'exit').mockImplementation((code) => {
+		vi.clearAllMocks();
+		mockExit = vi.spyOn(process, 'exit').mockImplementation((code) => {
 			throw new Error(`process.exit(${code})`);
 		});
 
@@ -193,10 +208,10 @@ describe('CLI', () => {
 		mockGetChatPayload.mockReturnValue({});
 		mockRunEvaluation.mockResolvedValue(createMockSummary());
 		mockCreateConsoleLifecycle.mockReturnValue({});
-		mockCreateLLMJudgeEvaluator.mockReturnValue({ name: 'llm-judge', evaluate: jest.fn() });
-		mockCreateProgrammaticEvaluator.mockReturnValue({ name: 'programmatic', evaluate: jest.fn() });
-		mockCreatePairwiseEvaluator.mockReturnValue({ name: 'pairwise', evaluate: jest.fn() });
-		mockCreateExecutionEvaluator.mockReturnValue({ name: 'execution', evaluate: jest.fn() });
+		mockCreateLLMJudgeEvaluator.mockReturnValue({ name: 'llm-judge', evaluate: vi.fn() });
+		mockCreateProgrammaticEvaluator.mockReturnValue({ name: 'programmatic', evaluate: vi.fn() });
+		mockCreatePairwiseEvaluator.mockReturnValue({ name: 'pairwise', evaluate: vi.fn() });
+		mockCreateExecutionEvaluator.mockReturnValue({ name: 'execution', evaluate: vi.fn() });
 	});
 
 	afterEach(() => {
@@ -215,7 +230,7 @@ describe('CLI', () => {
 					{ prompt: 'CSV prompt 2', id: '2' },
 				]);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -239,7 +254,7 @@ describe('CLI', () => {
 					}),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -258,7 +273,7 @@ describe('CLI', () => {
 			it('should use default test case when no prompt source specified', async () => {
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -278,7 +293,7 @@ describe('CLI', () => {
 					createMockArgs({ suite: 'llm-judge', backend: 'local' }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -292,7 +307,7 @@ describe('CLI', () => {
 					createMockArgs({ suite: 'llm-judge', backend: 'langsmith' }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -306,7 +321,7 @@ describe('CLI', () => {
 					createMockArgs({ suite: 'pairwise', backend: 'local', numJudges: 5 }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -326,7 +341,7 @@ describe('CLI', () => {
 					createMockArgs({ suite: 'pairwise', backend: 'langsmith' }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -340,7 +355,7 @@ describe('CLI', () => {
 			it('should use local mode for backend=local', async () => {
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ backend: 'local' }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -354,7 +369,7 @@ describe('CLI', () => {
 			it('should use langsmith mode for backend=langsmith', async () => {
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ backend: 'langsmith' }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -373,7 +388,7 @@ describe('CLI', () => {
 					createMockArgs({ backend: 'langsmith', datasetName: 'custom-dataset' }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -388,7 +403,7 @@ describe('CLI', () => {
 				delete process.env.LANGSMITH_DATASET_NAME;
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ backend: 'langsmith' }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -409,7 +424,7 @@ describe('CLI', () => {
 					}),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -429,7 +444,7 @@ describe('CLI', () => {
 			it('should always exit with 0 on successful completion (pass/fail is informational)', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 7 }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
@@ -437,7 +452,7 @@ describe('CLI', () => {
 			it('should exit with 0 even when pass rate is low', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 5 }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
@@ -445,7 +460,7 @@ describe('CLI', () => {
 			it('should exit with 0 even when no examples', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 0, passed: 0 }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
@@ -459,7 +474,7 @@ describe('CLI', () => {
 					createMockArgs({ featureFlags: { testFlag: true } }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -472,7 +487,7 @@ describe('CLI', () => {
 			});
 
 			it('should setup test environment', async () => {
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -482,7 +497,7 @@ describe('CLI', () => {
 			it('should create console lifecycle with verbose option', async () => {
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ verbose: true }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -503,7 +518,7 @@ describe('CLI', () => {
 				);
 				mockRunEvaluation.mockResolvedValue(createMockSummary());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 
@@ -521,7 +536,7 @@ describe('CLI', () => {
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ webhookUrl: undefined }));
 				mockRunEvaluation.mockResolvedValue(createMockSummary());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 
@@ -540,7 +555,7 @@ describe('CLI', () => {
 				);
 				mockRunEvaluation.mockResolvedValue(createMockSummary());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 
@@ -564,7 +579,7 @@ describe('CLI', () => {
 				);
 				mockRunEvaluation.mockResolvedValue(createMockSummary());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 
@@ -589,7 +604,7 @@ describe('CLI', () => {
 				);
 				mockRunEvaluation.mockResolvedValue(summary);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 
@@ -606,7 +621,7 @@ describe('CLI', () => {
 				);
 				mockRunEvaluation.mockResolvedValue(createMockSummary());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 

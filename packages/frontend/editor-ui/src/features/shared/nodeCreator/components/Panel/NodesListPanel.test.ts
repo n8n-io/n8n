@@ -4,11 +4,16 @@ import { createPinia } from 'pinia';
 import { screen, fireEvent } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
+import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
 import { REGULAR_NODE_CREATOR_VIEW } from '@/app/constants';
-import type { NodeFilterType } from '@/Interface';
+import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
+
+vi.mock('@/app/composables/useExternalHooks', () => ({
+	useExternalHooks: () => ({ run: vi.fn().mockResolvedValue(undefined) }),
+}));
 
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn(() => ({ query: {}, params: {} })),
@@ -338,6 +343,49 @@ describe('NodesListPanel', () => {
 			});
 
 			await nextTick();
+		});
+
+		it('should push pending initial view stack on top of default view when set', async () => {
+			const evalNodeType = 'n8n-nodes-base.evaluation';
+			const evalNodeDisplayName = 'Evaluation';
+			const mockedNodes = [
+				mockSimplifiedNodeType({
+					name: evalNodeType,
+					displayName: evalNodeDisplayName,
+					group: ['input'],
+				}) as INodeTypeDescription,
+			];
+
+			const pinia = createPinia();
+
+			const wrapperComponent = defineComponent({
+				components: { NodesListPanel },
+				setup() {
+					const nodeCreatorStore = useNodeCreatorStore();
+					nodeCreatorStore.setMergeNodes(
+						mockedNodes.map((n) => n as unknown as SimplifiedNodeType),
+					);
+					nodeCreatorStore.setActions({
+						[evalNodeType]: [
+							{ name: evalNodeType, displayName: 'Set Outputs', actionKey: 'setOutputs' },
+						] as unknown as ActionTypeDescription[],
+					});
+					nodeCreatorStore.openNodeCreatorForActions('wf-id', evalNodeType);
+				},
+				template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
+			});
+
+			createComponentRenderer(wrapperComponent, {
+				global: {
+					plugins: [pinia],
+					stubs: { ActionsRenderer: true },
+				},
+			})();
+			await nextTick();
+
+			const viewStacks = useViewStacks();
+			expect(viewStacks.activeViewStack.mode).toBe('actions');
+			expect(viewStacks.activeViewStack.title).toBe(evalNodeDisplayName);
 		});
 
 		it('should preserve openingContext during node search when in replacement mode', async () => {

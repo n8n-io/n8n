@@ -1,0 +1,38 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "33333333-3333-3333-3333-333333333333",
+			"name": "When clicking 'Test workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"mode": "manual",
+				"includeOtherFields": true,
+				"assignments": {
+					"assignments": [
+						{
+							"name": "caption",
+							"value": "={{ $json.title }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "44444444-4444-4444-4444-444444444444",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0]
+		}
+	],
+	"connections": {
+		"When clicking 'Test workflow'": {
+			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+		}
+	}
+}

@@ -15,15 +15,21 @@ import {
 	ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { Logger } from '@n8n/backend-common';
+import { streamToBuffer } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import chunk from 'lodash/chunk';
 import { UnexpectedError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-import { Readable } from 'node:stream';
+import { PassThrough, Readable, pipeline } from 'node:stream';
 
 import { ObjectStoreConfig } from './object-store.config';
 import type { MetadataResponseHeaders } from './types';
 import type { BinaryData } from '../types';
-import { streamToBuffer } from '../utils';
+import { createFixedSizeChunker } from '../utils';
+
+/** How many per-key delete failures to name in the error before truncating, to keep the message bounded. */
+const MAX_REPORTED_DELETE_ERRORS = 5;
 
 @Service()
 export class ObjectStoreService {
@@ -50,7 +56,7 @@ export class ObjectStoreService {
 
 	/** This generates the config for the S3Client to make it work in all various auth configurations */
 	getClientConfig() {
-		const { host, bucket, protocol, credentials } = this.s3Config;
+		const { host, bucket, protocol, credentials, maxAttempts } = this.s3Config;
 		const clientConfig: S3ClientConfig = {};
 		const endpoint = host ? `${protocol}://${host}` : undefined;
 		if (endpoint) {
@@ -66,6 +72,7 @@ export class ObjectStoreService {
 				secretAccessKey: credentials.accessSecret,
 			};
 		}
+		clientConfig.maxAttempts = maxAttempts;
 		return clientConfig;
 	}
 
@@ -89,7 +96,7 @@ export class ObjectStoreService {
 			const command = new HeadBucketCommand({ Bucket: this.bucket });
 			await this.s3Client.send(command);
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.handleS3Error(e);
 		}
 	}
 
@@ -119,16 +126,24 @@ export class ObjectStoreService {
 			const command = new PutObjectCommand(params);
 			return await this.s3Client.send(command);
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.handleS3Error(e);
 		}
 	}
 
 	/**
 	 * Download an object as a stream or buffer from the configured bucket.
+	 *
+	 * In `stream` mode, pass `chunkSize` to guarantee that the returned stream
+	 * emits chunks of exactly that many bytes (the final chunk may be smaller).
+	 * Without it, chunk boundaries follow whatever the underlying socket emits,
+	 * which can break consumers like S3 multipart upload that treat each emitted chunk as a fixed-size unit.
 	 */
-	async get(fileId: string, { mode }: { mode: 'buffer' }): Promise<Buffer>;
-	async get(fileId: string, { mode }: { mode: 'stream' }): Promise<Readable>;
-	async get(fileId: string, { mode }: { mode: 'stream' | 'buffer' }): Promise<Buffer | Readable> {
+	async get(fileId: string, opts: { mode: 'buffer' }): Promise<Buffer>;
+	async get(fileId: string, opts: { mode: 'stream'; chunkSize?: number }): Promise<Readable>;
+	async get(
+		fileId: string,
+		{ mode, chunkSize = 0 }: { mode: 'stream' | 'buffer'; chunkSize?: number },
+	): Promise<Buffer | Readable> {
 		this.logger.debug('Sending GET request to S3', { bucket: this.bucket, key: fileId });
 
 		const command = new GetObjectCommand({
@@ -137,17 +152,54 @@ export class ObjectStoreService {
 		});
 
 		try {
+			if (mode === 'stream') {
+				const abortController = new AbortController();
+				const { Body: body } = await this.s3Client.send(command, {
+					abortSignal: abortController.signal,
+				});
+				if (!body) throw new UnexpectedError('Received empty response body');
+
+				if (!(body instanceof Readable)) {
+					throw new UnexpectedError('Expected stream but received different type', {
+						extra: { bodyType: typeof body },
+					});
+				}
+
+				// Wrap to prevent socket pool exhaustion when callers destroy the
+				// stream early. AbortController lets the SDK free the socket slot
+				// properly. See: https://github.com/aws/aws-sdk-js-v3/issues/6691
+				const wrapper = new PassThrough();
+				let bodyFullyConsumed = false;
+
+				body.on('end', () => {
+					bodyFullyConsumed = true;
+				});
+
+				wrapper.on('close', () => {
+					if (!bodyFullyConsumed) {
+						abortController.abort();
+						body.destroy();
+					}
+				});
+
+				body.on('error', (error) => wrapper.destroy(error));
+				body.pipe(wrapper);
+
+				if (chunkSize > 0) {
+					const rechunker = createFixedSizeChunker(chunkSize);
+					pipeline(wrapper, rechunker, () => {}); // Error/destroy propagation is handled via stream events on `rechunker`
+					return rechunker;
+				}
+				return wrapper;
+			}
+
 			const { Body: body } = await this.s3Client.send(command);
 			if (!body) throw new UnexpectedError('Received empty response body');
 
-			if (mode === 'stream') {
-				if (body instanceof Readable) return body;
-				throw new UnexpectedError(`Expected stream but received ${typeof body}.`);
-			}
-
 			return await streamToBuffer(body as Readable);
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			if (e instanceof UnexpectedError) throw e;
+			this.handleS3Error(e);
 		}
 	}
 
@@ -182,7 +234,7 @@ export class ObjectStoreService {
 
 			return headers;
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.handleS3Error(e);
 		}
 	}
 
@@ -199,7 +251,7 @@ export class ObjectStoreService {
 			this.logger.debug('Sending DELETE request to S3', { bucket: this.bucket, key: fileId });
 			return await this.s3Client.send(command);
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.handleS3Error(e);
 		}
 	}
 
@@ -207,27 +259,52 @@ export class ObjectStoreService {
 	 * Delete objects with a common prefix in the configured bucket.
 	 */
 	async deleteMany(prefix: string) {
+		const objects = await this.list(prefix);
+
+		await this.deleteByKeys(objects.map(({ key }) => key));
+	}
+
+	/**
+	 * Delete objects by exact key in the configured bucket, in batches of up
+	 * to 1000 keys, the `DeleteObjects` limit.
+	 */
+	async deleteByKeys(keys: string[]) {
+		if (keys.length === 0) return;
+
 		try {
-			const objects = await this.list(prefix);
+			for (const batch of chunk(keys, 1000)) {
+				const params: DeleteObjectsCommandInput = {
+					Bucket: this.bucket,
+					Delete: {
+						Objects: batch.map((key) => ({ Key: key })),
+					},
+				};
 
-			if (objects.length === 0) return;
+				this.logger.debug('Sending DELETE MANY request to S3', {
+					bucket: this.bucket,
+					objectCount: batch.length,
+				});
 
-			const params: DeleteObjectsCommandInput = {
-				Bucket: this.bucket,
-				Delete: {
-					Objects: objects.map(({ key }) => ({ Key: key })),
-				},
-			};
+				// `DeleteObjects` reports per-key failures in the response rather than failing the request
+				const { Errors: errors } = await this.s3Client.send(new DeleteObjectsCommand(params));
 
-			this.logger.debug('Sending DELETE MANY request to S3', {
-				bucket: this.bucket,
-				objectCount: objects.length,
-			});
+				if (errors && errors.length > 0) {
+					this.logger.error('Failed to delete objects from S3', {
+						bucket: this.bucket,
+						failures: errors.map((e) => ({ key: e.Key, code: e.Code, message: e.Message })),
+					});
 
-			const command = new DeleteObjectsCommand(params);
-			return await this.s3Client.send(command);
+					const summary = errors
+						.slice(0, MAX_REPORTED_DELETE_ERRORS)
+						.map((e) => `${e.Key ?? '<unknown key>'} (${e.Code ?? '?'}: ${e.Message ?? '?'})`)
+						.join(', ');
+					throw new UnexpectedError(
+						`Failed to delete ${errors.length} of ${batch.length} objects: ${summary}`,
+					);
+				}
+			}
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.handleS3Error(e);
 		}
 	}
 
@@ -253,7 +330,7 @@ export class ObjectStoreService {
 
 			return items;
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.handleS3Error(e);
 		}
 	}
 
@@ -291,7 +368,12 @@ export class ObjectStoreService {
 				nextContinuationToken: response.NextContinuationToken,
 			};
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.handleS3Error(e);
 		}
+	}
+
+	private handleS3Error(e: unknown): never {
+		const error = ensureError(e);
+		throw new UnexpectedError(`Request to S3 failed: ${error.message}`, { cause: error });
 	}
 }

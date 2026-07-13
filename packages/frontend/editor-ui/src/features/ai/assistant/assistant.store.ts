@@ -7,17 +7,19 @@ import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
-import { computed, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { ICredentialType, NodeError, INode } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -40,12 +42,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
 	const route = useRoute();
 	const streaming = ref<boolean>();
 	const streamingAbortController = ref<AbortController | null>(null);
+	// Handle for the timer that clears `lastUnread` after streaming completes.
+	// Tracked so it can be cancelled and never fire after the store is disposed.
+	const clearLastUnreadTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const assistantHelpers = useAIAssistantHelpers();
@@ -91,7 +94,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
 
 	const hideAssistantFloatingButton = computed(
-		() => EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS) && !workflowsStore.activeNode(),
+		() => EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS) && !ndvStore.value.activeNode,
 	);
 
 	const unreadCount = computed(
@@ -198,7 +201,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		return (
 			chatSessionTask.value === 'error' &&
-			workflowsStore.activeExecutionId === currentSessionActiveExecutionId.value &&
+			useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
+				.activeExecutionId === currentSessionActiveExecutionId.value &&
 			targetNode === chatSessionError.value?.node.name
 		);
 	}
@@ -218,6 +222,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		if (streamingAbortController.value) {
 			streamingAbortController.value.abort();
 			streamingAbortController.value = null;
+		}
+		if (clearLastUnreadTimeout.value) {
+			clearTimeout(clearLastUnreadTimeout.value);
+			clearLastUnreadTimeout.value = null;
 		}
 	}
 
@@ -298,7 +306,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) =>
 				msg.id === id && !msg.read && msg.role === 'assistant' && READABLE_TYPES.includes(msg.type),
 		);
-		setTimeout(() => {
+		clearLastUnreadTimeout.value = setTimeout(() => {
+			clearLastUnreadTimeout.value = null;
 			if (lastUnread.value?.id === id) {
 				lastUnread.value = undefined;
 			}
@@ -314,6 +323,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		await initSupportChat(workflowId, question, credType);
 
 		trackUserOpenedAssistant({
+			workflowId,
 			source: 'credential',
 			task: 'credentials',
 			has_existing_session: hasExistingSession,
@@ -324,6 +334,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	 * Gets information about the current view and active node to provide context to the assistant
 	 */
 	async function getVisualContext(
+		workflowId: string,
 		nodeInfo?: ChatRequest.NodeInfo,
 	): Promise<ChatRequest.AssistantContext | undefined> {
 		if (chatSessionTask.value === 'error') {
@@ -334,7 +345,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			};
 		}
 		const currentView = route.name as VIEWS;
-		const activeNode = workflowsStore.activeNode();
+		const activeNode = ndvStore.value.activeNode;
 		const activeNodeForLLM = activeNode
 			? await assistantHelpers.processNodeForAssistant(
 					activeNode,
@@ -349,7 +360,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const activeCredential = isCredentialModalActive
 			? useCredentialsStore().getCredentialTypeByName(uiStore.activeCredentialType ?? '')
 			: undefined;
-		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const executionResult = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).activeExecution?.data?.resultData;
 		const isCurrentNodeExecuted = Boolean(
 			executionResult?.runData?.hasOwnProperty(activeNode?.name ?? ''),
 		);
@@ -388,9 +401,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					}
 				: undefined,
 			currentWorkflow: workflowDataStale.value
-				? await assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow, {
-						excludeParameterValues: !allowSendingParameterValues.value,
-					})
+				? await assistantHelpers.simplifyWorkflowForAssistant(
+						useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).getSnapshot(),
+						{
+							excludeParameterValues: !allowSendingParameterValues.value,
+						},
+					)
 				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
@@ -408,14 +424,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	) {
 		resetAssistantChat(workflowId);
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
-		const activeNode = workflowsStore.activeNode() as INode;
+		const activeNode = ndvStore.value.activeNode as INode;
 		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(workflowId, activeNode, {
 			excludeParameterValues: !allowSendingParameterValues.value,
 		});
 		// For the initial message, only provide visual context if the task is support
 		const visualContext =
 			chatSessionTask.value === 'support'
-				? await getVisualContext(nodeInfo)
+				? await getVisualContext(workflowId, nodeInfo)
 				: {
 						aiUsageSettings: {
 							allowSendingParameterValues: allowSendingParameterValues.value,
@@ -488,8 +504,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionError.value = context;
 		currentSessionWorkflowId.value = workflowId;
 
-		if (workflowsStore.activeExecutionId) {
-			currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
+		const activeExecutionId = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).activeExecutionId;
+		if (activeExecutionId) {
+			currentSessionActiveExecutionId.value = activeExecutionId;
 		}
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
@@ -634,11 +653,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			) {
 				nodeExecutionStatus.value = 'not_executed';
 			}
-			const activeNode = workflowsStore.activeNode() as INode;
+			const activeNode = ndvStore.value.activeNode as INode;
 			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(workflowId, activeNode, {
 				excludeParameterValues: !allowSendingParameterValues.value,
 			});
-			const userContext = await getVisualContext(nodeInfo);
+			const userContext = await getVisualContext(workflowId, nodeInfo);
 
 			if (streamingAbortController.value) {
 				streamingAbortController.value.abort();
@@ -685,10 +704,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function trackUserOpenedAssistant({
+		workflowId,
 		source,
 		task,
 		has_existing_session,
-	}: { has_existing_session: boolean } & (
+	}: { has_existing_session: boolean; workflowId: string } & (
 		| {
 				source: 'error';
 				task: 'error';
@@ -707,31 +727,21 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		  }
 	)) {
 		const canvasStatus =
-			workflowDocumentStore.value.allNodes.length === 0 ? 'empty' : 'existing_workflow';
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).allNodes.length === 0
+				? 'empty'
+				: 'existing_workflow';
 		telemetry.track('User opened assistant', {
 			source,
 			task,
 			has_existing_session,
 			instance_id: rootStore.instanceId,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId,
 			canvas_status: canvasStatus,
 			node_type: chatSessionError.value?.node?.type,
 			error: chatSessionError.value?.error,
 			chat_session_id: currentSessionId.value,
 		});
 	}
-
-	watch(route, () => {
-		const activeWorkflowId = workflowsStore.workflowId;
-		if (
-			!currentSessionId.value ||
-			!currentSessionWorkflowId.value ||
-			currentSessionWorkflowId.value === activeWorkflowId
-		) {
-			return;
-		}
-		resetAssistantChat(activeWorkflowId);
-	});
 
 	watch(
 		() => uiStore.stateIsDirty,
@@ -741,12 +751,22 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	);
 
 	watch(
-		() => workflowsStore.workflowExecutionResultDataLastUpdate,
+		() =>
+			useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
+				.activeExecutionResultDataLastUpdate,
 		() => {
 			workflowExecutionDataStale.value = true;
 		},
 		{ immediate: true },
 	);
+
+	// Ensure the pending timer can never fire after the store's scope is torn down.
+	onScopeDispose(() => {
+		if (clearLastUnreadTimeout.value) {
+			clearTimeout(clearLastUnreadTimeout.value);
+			clearLastUnreadTimeout.value = null;
+		}
+	});
 
 	return {
 		isAssistantEnabled,
@@ -755,6 +775,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		unreadCount,
 		streaming,
 		currentSessionId,
+		currentSessionWorkflowId,
 		lastUnread,
 		isSessionEnded,
 		isFloatingButtonShown,

@@ -2,36 +2,50 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import type { Mock, Mocked } from 'vitest';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { ProjectService } from '@/services/project.service.ee';
 import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
+import { ProjectService } from '@/services/project.service.ee';
+import { GLOBAL_MEMBER_SCOPES, type Scope } from '@n8n/permissions';
 
 // Mock middleware before requiring handler
-const mockMiddleware = jest.fn(async (_req, _res, next) => next()) as any;
-jest.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
-jest.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
-jest.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
+const mockMiddleware = vi.fn(async (_req, _res, next) => next()) as any;
+vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
+vi.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
+vi.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
 
-const mainHandler = require('../data-tables.handler');
-const handler = require('../data-tables.rows.handler');
+// Loaded after the middleware spies above are installed; typed loosely so the
+// suite can invoke individual route entries by index.
+let mainHandler: Record<string, Array<(...args: unknown[]) => unknown>>;
+let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
+
+beforeAll(async () => {
+	mainHandler = (await import('../data-tables.handler')) as unknown as typeof mainHandler;
+	handler = (await import('../data-tables.rows.handler')) as unknown as typeof handler;
+});
 
 describe('DataTable Handler', () => {
-	let mockDataTableService: jest.Mocked<DataTableService>;
-	let mockDataTableRepository: jest.Mocked<DataTableRepository>;
-	let mockProjectRepository: jest.Mocked<ProjectRepository>;
-	let mockProjectRelationRepository: jest.Mocked<ProjectRelationRepository>;
-	let mockProjectService: jest.Mocked<ProjectService>;
+	let mockDataTableService: Mocked<DataTableService>;
+	let mockDataTableRepository: Mocked<DataTableRepository>;
+	let mockProjectRepository: Mocked<ProjectRepository>;
+	let mockProjectRelationRepository: Mocked<ProjectRelationRepository>;
+	let mockProjectService: Mocked<ProjectService>;
 	let mockResponse: Partial<Response>;
 
 	const projectId = 'test-project-id';
 	const dataTableId = 'test-data-table-id';
 	const userId = 'test-user-id';
 
-	const makeUser = (role = 'global:member') => ({ id: userId, role: { slug: role } });
+	const makeUser = (scopeSlugs: Scope[] = GLOBAL_MEMBER_SCOPES) => ({
+		id: userId,
+		role: { slug: 'global:member', scopes: scopeSlugs.map((slug) => ({ slug })) },
+	});
 
 	beforeEach(() => {
 		mockDataTableService = mockInstance(DataTableService);
@@ -40,43 +54,37 @@ describe('DataTable Handler', () => {
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
 		mockProjectService = mockInstance(ProjectService);
 
-		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
+		vi.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === DataTableService) {
-				return mockDataTableService as any;
+				return mockDataTableService;
 			}
 			if (serviceClass === DataTableRepository) {
-				return mockDataTableRepository as any;
+				return mockDataTableRepository;
 			}
 			if (serviceClass === ProjectRepository) {
-				return mockProjectRepository as any;
+				return mockProjectRepository;
 			}
 			if (serviceClass === ProjectRelationRepository) {
-				return mockProjectRelationRepository as any;
+				return mockProjectRelationRepository;
 			}
 			if (serviceClass === ProjectService) {
-				return mockProjectService as any;
+				return mockProjectService;
 			}
-			return {} as any;
+			return {};
 		});
 
-		mockDataTableRepository.findOne.mockResolvedValue({
-			id: dataTableId,
-			project: { id: projectId },
-		} as any);
-
-		mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-			id: projectId,
-		} as any);
-
+		mockDataTableService.getProjectIdForDataTable.mockResolvedValue(projectId);
 		mockProjectRelationRepository.find.mockResolvedValue([]);
 
 		mockResponse = {
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
 		};
+	});
 
-		jest.clearAllMocks();
+	afterEach(() => {
+		vi.clearAllMocks();
 	});
 
 	describe('createDataTable', () => {
@@ -119,6 +127,20 @@ describe('DataTable Handler', () => {
 			const callArgs = mockDataTableService.getManyAndCount.mock.calls[0][0];
 			expect(callArgs.filter?.projectId).toContain(projectId);
 		});
+
+		it('should list across all projects for user with dataTable:listProject', async () => {
+			const req = {
+				query: {},
+				user: makeUser(['dataTable:listProject']),
+			} as unknown as DataTableRequest.List;
+			mockDataTableService.getManyAndCount.mockResolvedValue({ data: [], count: 0 } as never);
+
+			await mainHandler.listDataTables[2](req, mockResponse as Response);
+
+			const callArgs = mockDataTableService.getManyAndCount.mock.calls[0][0];
+			expect(callArgs.filter?.projectId).toBeUndefined();
+			expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getDataTableRows', () => {
@@ -144,16 +166,13 @@ describe('DataTable Handler', () => {
 			await handler.getDataTableRows[3](req, mockResponse as Response);
 
 			// Assert
-			expect(mockDataTableRepository.findOne).toHaveBeenCalledWith({
-				where: { id: dataTableId },
-				relations: ['project'],
-			});
+			expect(mockDataTableService.getProjectIdForDataTable).toHaveBeenCalledWith(dataTableId);
 			expect(mockDataTableService.getManyRowsAndCount).toHaveBeenCalledWith(
 				dataTableId,
 				projectId,
 				{ skip: 0, take: 100, filter: undefined, sortBy: undefined, search: undefined },
 			);
-			const callArg = (mockResponse.json as jest.Mock).mock.calls[0][0];
+			const callArg = (mockResponse.json as Mock).mock.calls[0][0];
 			expect(callArg).toHaveProperty('data', mockRows);
 			expect(callArg).toHaveProperty('nextCursor');
 		});
@@ -196,7 +215,7 @@ describe('DataTable Handler', () => {
 			);
 		});
 
-		it('should return 404 when data table not found', async () => {
+		it('should throw NotFoundError when data table not found', async () => {
 			// Arrange
 			const req = {
 				params: { dataTableId },
@@ -204,19 +223,28 @@ describe('DataTable Handler', () => {
 				user: { id: userId },
 			} as unknown as DataTableRequest.GetRows;
 
-			mockDataTableRepository.findOne.mockRejectedValue(new DataTableNotFoundError(dataTableId));
+			mockDataTableService.getProjectIdForDataTable.mockRejectedValue(
+				new DataTableNotFoundError(dataTableId),
+			);
 
 			// Act
-			await handler.getDataTableRows[3](req, mockResponse as Response);
+			const handlerFn = handler.getDataTableRows[3];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
 
 			// Assert
-			expect(mockResponse.status).toHaveBeenCalledWith(404);
-			expect(mockResponse.json).toHaveBeenCalledWith({
+			expect(caught).toBeInstanceOf(NotFoundError);
+			expect(caught).toMatchObject({
 				message: expect.stringContaining(dataTableId),
+				httpStatusCode: 404,
 			});
 		});
 
-		it('should return 400 for validation errors', async () => {
+		it('should throw BadRequestError for validation errors', async () => {
 			// Arrange
 			const req = {
 				params: { dataTableId },
@@ -225,12 +253,19 @@ describe('DataTable Handler', () => {
 			} as unknown as DataTableRequest.GetRows;
 
 			// Act
-			await handler.getDataTableRows[3](req, mockResponse as Response);
+			const handlerFn = handler.getDataTableRows[3];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
 
 			// Assert
-			expect(mockResponse.status).toHaveBeenCalledWith(400);
-			expect(mockResponse.json).toHaveBeenCalledWith({
+			expect(caught).toBeInstanceOf(BadRequestError);
+			expect(caught).toMatchObject({
 				message: expect.stringContaining('Invalid'),
+				httpStatusCode: 400,
 			});
 		});
 	});
@@ -309,7 +344,7 @@ describe('DataTable Handler', () => {
 			expect(mockResponse.json).toHaveBeenCalledWith([mockRow]);
 		});
 
-		it('should return 404 when data table not found', async () => {
+		it('should throw NotFoundError when data table not found', async () => {
 			// Arrange
 			const req = {
 				params: { dataTableId },
@@ -317,13 +352,22 @@ describe('DataTable Handler', () => {
 				user: { id: userId },
 			} as unknown as DataTableRequest.InsertRows;
 
-			mockDataTableRepository.findOne.mockRejectedValue(new DataTableNotFoundError(dataTableId));
+			mockDataTableService.getProjectIdForDataTable.mockRejectedValue(
+				new DataTableNotFoundError(dataTableId),
+			);
 
 			// Act
-			await handler.insertDataTableRows[2](req, mockResponse as Response);
+			const handlerFn = handler.insertDataTableRows[2];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
 
 			// Assert
-			expect(mockResponse.status).toHaveBeenCalledWith(404);
+			expect(caught).toBeInstanceOf(NotFoundError);
+			expect(caught).toMatchObject({ httpStatusCode: 404 });
 		});
 	});
 
@@ -549,7 +593,7 @@ describe('DataTable Handler', () => {
 			expect(mockResponse.json).toHaveBeenCalledWith([mockRow]);
 		});
 
-		it('should return 400 when filter is missing', async () => {
+		it('should throw BadRequestError when filter is missing', async () => {
 			// Arrange
 			const req = {
 				params: { dataTableId },
@@ -558,12 +602,19 @@ describe('DataTable Handler', () => {
 			} as unknown as DataTableRequest.DeleteRows;
 
 			// Act
-			await handler.deleteDataTableRows[2](req, mockResponse as Response);
+			const handlerFn = handler.deleteDataTableRows[2];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
 
 			// Assert
-			expect(mockResponse.status).toHaveBeenCalledWith(400);
-			expect(mockResponse.json).toHaveBeenCalledWith({
+			expect(caught).toBeInstanceOf(BadRequestError);
+			expect(caught).toMatchObject({
 				message: 'Required',
+				httpStatusCode: 400,
 			});
 		});
 
@@ -603,7 +654,7 @@ describe('DataTable Handler', () => {
 	describe('Security - Cross-Project Access', () => {
 		const otherUserDataTableId = 'other-user-data-table-id';
 
-		it('should return 404 when trying to get rows from another users data table', async () => {
+		it('should throw NotFoundError when trying to get rows from another users data table', async () => {
 			// Arrange
 			const req = {
 				params: { dataTableId: otherUserDataTableId },
@@ -616,26 +667,32 @@ describe('DataTable Handler', () => {
 				id: projectId,
 			} as any);
 
-			// But the data table belongs to another project, so getProjectIdForDataTable throws
-			mockDataTableRepository.findOne.mockRejectedValue(
+			// But the data table belongs to another project, so resolving project id throws
+			mockDataTableService.getProjectIdForDataTable.mockRejectedValue(
 				new DataTableNotFoundError(otherUserDataTableId),
 			);
 
 			// Act
-			await handler.getDataTableRows[3](req, mockResponse as Response);
+			const handlerFn = handler.getDataTableRows[3];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
 
 			// Assert
-			expect(mockDataTableRepository.findOne).toHaveBeenCalledWith({
-				where: { id: otherUserDataTableId },
-				relations: ['project'],
-			});
-			expect(mockResponse.status).toHaveBeenCalledWith(404);
-			expect(mockResponse.json).toHaveBeenCalledWith({
+			expect(mockDataTableService.getProjectIdForDataTable).toHaveBeenCalledWith(
+				otherUserDataTableId,
+			);
+			expect(caught).toBeInstanceOf(NotFoundError);
+			expect(caught).toMatchObject({
 				message: expect.stringContaining(otherUserDataTableId),
+				httpStatusCode: 404,
 			});
 		});
 
-		it('should return 404 when trying to insert rows into another users data table', async () => {
+		it('should throw NotFoundError when trying to insert rows into another users data table', async () => {
 			// Arrange
 			const req = {
 				params: { dataTableId: otherUserDataTableId },
@@ -655,16 +712,23 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.insertDataTableRows[2](req, mockResponse as Response);
+			const handlerFn = handler.insertDataTableRows[2];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
 
 			// Assert
-			expect(mockResponse.status).toHaveBeenCalledWith(404);
-			expect(mockResponse.json).toHaveBeenCalledWith({
+			expect(caught).toBeInstanceOf(NotFoundError);
+			expect(caught).toMatchObject({
 				message: expect.stringContaining(otherUserDataTableId),
+				httpStatusCode: 404,
 			});
 		});
 
-		it('should return 404 when trying to update rows in another users data table', async () => {
+		it('should throw NotFoundError when trying to update rows in another users data table', async () => {
 			// Arrange
 			const req = {
 				params: { dataTableId: otherUserDataTableId },
@@ -686,16 +750,23 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.updateDataTableRows[2](req, mockResponse as Response);
+			const handlerFn = handler.updateDataTableRows[2];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
 
 			// Assert
-			expect(mockResponse.status).toHaveBeenCalledWith(404);
-			expect(mockResponse.json).toHaveBeenCalledWith({
+			expect(caught).toBeInstanceOf(NotFoundError);
+			expect(caught).toMatchObject({
 				message: expect.stringContaining(otherUserDataTableId),
+				httpStatusCode: 404,
 			});
 		});
 
-		it('should return 404 when trying to upsert row in another users data table', async () => {
+		it('should throw NotFoundError when trying to upsert row in another users data table', async () => {
 			// Arrange
 			const req = {
 				params: { dataTableId: otherUserDataTableId },
@@ -720,16 +791,23 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.upsertDataTableRow[2](req, mockResponse as Response);
+			const handlerFn = handler.upsertDataTableRow[2];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
 
 			// Assert
-			expect(mockResponse.status).toHaveBeenCalledWith(404);
-			expect(mockResponse.json).toHaveBeenCalledWith({
+			expect(caught).toBeInstanceOf(NotFoundError);
+			expect(caught).toMatchObject({
 				message: expect.stringContaining(otherUserDataTableId),
+				httpStatusCode: 404,
 			});
 		});
 
-		it('should return 404 when trying to delete rows from another users data table', async () => {
+		it('should throw NotFoundError when trying to delete rows from another users data table', async () => {
 			// Arrange
 			const filterStr = JSON.stringify({
 				type: 'and',
@@ -754,12 +832,19 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.deleteDataTableRows[2](req, mockResponse as Response);
+			const handlerFn = handler.deleteDataTableRows[2];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
 
 			// Assert
-			expect(mockResponse.status).toHaveBeenCalledWith(404);
-			expect(mockResponse.json).toHaveBeenCalledWith({
+			expect(caught).toBeInstanceOf(NotFoundError);
+			expect(caught).toMatchObject({
 				message: expect.stringContaining(otherUserDataTableId),
+				httpStatusCode: 404,
 			});
 		});
 
@@ -776,21 +861,28 @@ describe('DataTable Handler', () => {
 				id: projectId,
 			} as any);
 
-			mockDataTableRepository.findOne.mockRejectedValue(
+			mockDataTableService.getProjectIdForDataTable.mockRejectedValue(
 				new DataTableNotFoundError(nonExistentDataTableId),
 			);
 
 			// Act
-			await handler.getDataTableRows[3](req, mockResponse as Response);
+			const handlerFn = handler.getDataTableRows[3];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
 
 			// Assert
 			// The error message should be the same whether:
 			// 1. The table doesn't exist at all
 			// 2. The table exists but belongs to another user's project
 			// This prevents information leakage
-			expect(mockResponse.status).toHaveBeenCalledWith(404);
-			expect(mockResponse.json).toHaveBeenCalledWith({
+			expect(caught).toBeInstanceOf(NotFoundError);
+			expect(caught).toMatchObject({
 				message: expect.stringContaining(nonExistentDataTableId),
+				httpStatusCode: 404,
 			});
 		});
 	});

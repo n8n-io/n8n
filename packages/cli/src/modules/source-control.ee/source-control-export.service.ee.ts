@@ -19,6 +19,9 @@ import { UnexpectedError } from 'n8n-workflow';
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { formatWorkflow } from '@/workflows/workflow.formatter';
+
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
@@ -51,9 +54,6 @@ import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
-
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 @Service()
 export class SourceControlExportService {
@@ -140,6 +140,7 @@ export class SourceControlExportService {
 						owner: owners[workflow.id],
 						parentFolderId: workflow.parentFolder?.id ?? null,
 						isArchived: workflow.isArchived,
+						nodeGroups: workflow.nodeGroups ?? [],
 					};
 					this.logger.debug(`Writing workflow ${workflow.id} to ${fileName}`);
 					return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
@@ -255,7 +256,7 @@ export class SourceControlExportService {
 
 	async exportDataTablesToWorkFolder(
 		candidates: SourceControlledFile[],
-		_context: SourceControlContext,
+		context: SourceControlContext,
 	): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder, this.dataTableExportFolder]);
@@ -275,6 +276,7 @@ export class SourceControlExportService {
 			const dataTables = await this.dataTableRepository.find({
 				where: {
 					id: In(candidateIds),
+					...this.sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter(context),
 				},
 				relations: [
 					'columns',
@@ -527,7 +529,15 @@ export class SourceControlExportService {
 			}
 			await Promise.all(
 				credentialsToBeExported.map(async (sharing) => {
-					const { name, type, data, id, isGlobal = false } = sharing.credentials;
+					const {
+						name,
+						type,
+						data,
+						id,
+						isGlobal = false,
+						isResolvable = false,
+						resolvableAllowFallback = false,
+					} = sharing.credentials;
 					const credentials = new Credentials({ id, name }, type, data);
 
 					let owner: RemoteResourceOwner | null = null;
@@ -551,7 +561,7 @@ export class SourceControlExportService {
 						};
 					}
 
-					const sanitizedData = sanitizeCredentialData(credentials.getData());
+					const sanitizedData = sanitizeCredentialData(await credentials.getData());
 
 					const stub: ExportableCredential = {
 						id,
@@ -560,6 +570,8 @@ export class SourceControlExportService {
 						data: sanitizedData,
 						ownedBy: owner,
 						isGlobal,
+						isResolvable,
+						resolvableAllowFallback,
 					};
 
 					const filePath = this.getCredentialsPath(id);

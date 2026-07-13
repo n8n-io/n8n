@@ -1,14 +1,16 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as nodePath from 'node:path';
+import type { Mock } from 'vitest';
 
-jest.mock('node:os', () => {
-	const actual = jest.requireActual<typeof os>('node:os');
-	return { ...actual, homedir: jest.fn(() => actual.homedir()) };
+vi.mock('node:os', async () => {
+	const actual = await vi.importActual<typeof os>('node:os');
+	return { ...actual, homedir: vi.fn(() => actual.homedir()) };
 });
 
 import type { GatewayConfig } from './config';
-import { ensureSettingsFile, isAllDeny } from './startup-config-cli';
+import { SettingsStore } from './settings-store';
+import { isAllDeny } from './startup-config-cli';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -24,10 +26,9 @@ function parseJson<T>(raw: string): T {
 
 const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'info',
-	port: 7655,
 	allowedOrigins: [],
 	filesystem: { dir: '/tmp' },
-	computer: { shell: { timeout: 30_000 } },
+	computer: { shell: { timeout: 30_000, dangerouslyDisableSandbox: false } },
 	browser: {
 		defaultBrowser: 'chrome',
 	},
@@ -78,25 +79,25 @@ describe('isAllDeny', () => {
 });
 
 // ---------------------------------------------------------------------------
-// ensureSettingsFile
+// SettingsStore.ensureInitialized (CLI entry path; replaces legacy ensureSettingsFile helper)
 // ---------------------------------------------------------------------------
 
-describe('ensureSettingsFile', () => {
+describe('SettingsStore.ensureInitialized', () => {
 	let tmpDir: string;
 
 	beforeEach(async () => {
 		tmpDir = await fs.mkdtemp(nodePath.join(os.tmpdir(), 'gateway-test-'));
 		// Point getSettingsFilePath() at our temp location by overriding homedir
-		(os.homedir as jest.Mock).mockReturnValue(tmpDir);
+		(os.homedir as Mock).mockReturnValue(tmpDir);
 	});
 
 	afterEach(async () => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 		await fs.rm(tmpDir, { recursive: true, force: true });
 	});
 
 	it('creates the settings file with recommended defaults when absent', async () => {
-		await ensureSettingsFile(BASE_CONFIG);
+		await SettingsStore.ensureInitialized(BASE_CONFIG);
 
 		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
 		const parsed = parseJson<Record<string, unknown>>(raw);
@@ -117,7 +118,7 @@ describe('ensureSettingsFile', () => {
 			...BASE_CONFIG,
 			permissions: { shell: 'allow' },
 		};
-		await ensureSettingsFile(config);
+		await SettingsStore.ensureInitialized(config);
 
 		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
 		const parsed = parseJson<{ permissions: Record<string, string> }>(raw);
@@ -135,15 +136,15 @@ describe('ensureSettingsFile', () => {
 		const existing = JSON.stringify({ permissions: { shell: 'allow' }, filesystemDir: '/custom' });
 		await fs.writeFile(file, existing, 'utf-8');
 
-		await ensureSettingsFile(BASE_CONFIG);
+		await SettingsStore.ensureInitialized(BASE_CONFIG);
 
 		const raw = await fs.readFile(file, 'utf-8');
 		expect(raw).toBe(existing);
 	});
 
 	it('is safe to call multiple times — only creates once', async () => {
-		await ensureSettingsFile(BASE_CONFIG);
-		await ensureSettingsFile(BASE_CONFIG);
+		await SettingsStore.ensureInitialized(BASE_CONFIG);
+		await SettingsStore.ensureInitialized(BASE_CONFIG);
 
 		// Second call must not throw and must not alter the file
 		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');

@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ExpressionEditModal from './ExpressionEditModal.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { setActivePinia, type Pinia } from 'pinia';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -177,6 +177,37 @@ describe('ExpressionEditModal', () => {
 				expect(getByTestId('radio-button-text')).toBeInTheDocument();
 				expect(getByTestId('radio-button-html')).toBeInTheDocument();
 				expect(getByTestId('radio-button-markdown')).toBeInTheDocument();
+			});
+		});
+
+		it('only applies the CodeMirror editor class in text mode', async () => {
+			const { getByTestId } = renderModal({
+				pinia,
+				props: {
+					parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
+					path: '',
+					modelValue: 'test',
+					dialogVisible: true,
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('expression-modal-output')).toHaveClass('editor');
+			});
+
+			await fireEvent.click(getByTestId('radio-button-html'));
+			await waitFor(() => {
+				expect(getByTestId('expression-modal-output')).not.toHaveClass('editor');
+			});
+
+			await fireEvent.click(getByTestId('radio-button-markdown'));
+			await waitFor(() => {
+				expect(getByTestId('expression-modal-output')).not.toHaveClass('editor');
+			});
+
+			await fireEvent.click(getByTestId('radio-button-text'));
+			await waitFor(() => {
+				expect(getByTestId('expression-modal-output')).toHaveClass('editor');
 			});
 		});
 	});

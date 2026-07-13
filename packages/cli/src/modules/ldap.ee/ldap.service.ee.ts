@@ -4,9 +4,9 @@ import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
 import { isValidEmail, SettingsRepository, User } from '@n8n/db';
 import type { RunningMode, SyncStatus } from '@n8n/db';
-import { Constructable, Container } from '@n8n/di';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
+import { Constructable, Container } from '@n8n/di';
 import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -96,7 +96,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			ldapConfig.enforceEmailUniqueness = true;
 		}
 
-		ldapConfig.bindingAdminPassword = this.cipher.decrypt(ldapConfig.bindingAdminPassword);
+		ldapConfig.bindingAdminPassword = await this.cipher.decryptV2(ldapConfig.bindingAdminPassword);
 		return ldapConfig;
 	}
 
@@ -113,7 +113,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 
 		this.setConfig({ ...ldapConfig });
 
-		ldapConfig.bindingAdminPassword = this.cipher.encrypt(ldapConfig.bindingAdminPassword);
+		ldapConfig.bindingAdminPassword = await this.cipher.encryptV2(ldapConfig.bindingAdminPassword);
 
 		if (!ldapConfig.loginEnabled) {
 			ldapConfig.synchronizationEnabled = false;

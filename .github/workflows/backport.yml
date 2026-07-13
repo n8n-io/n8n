@@ -4,7 +4,7 @@ run-name: Backport pull request ${{ github.event.pull_request.number || inputs.p
 
 on:
   pull_request:
-    types: [closed]
+    types: [closed, labeled]
   workflow_dispatch:
     inputs:
       pull-request-id:
@@ -18,10 +18,14 @@ permissions:
 
 jobs:
   backport:
+    # Runs on: PR merge, a "Backport to ..." label added to a merged PR, or manual dispatch
     if: |
-      github.event.pull_request.merged == true ||
-      github.event_name == 'workflow_dispatch'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.action == 'closed' && github.event.pull_request.merged == true) ||
+      (github.event.action == 'labeled' && github.event.pull_request.merged == true && startsWith(github.event.label.name, 'Backport to'))
     runs-on: ubuntu-slim
+    outputs:
+      created_pull_numbers: ${{ steps.backport.outputs.created_pull_numbers }}
     steps:
       - name: Generate GitHub App Token
         id: generate-token
@@ -33,13 +37,14 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           token: ${{ steps.generate-token.outputs.token }}
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Compute backport targets
         id: targets
@@ -49,6 +54,7 @@ jobs:
         run: node .github/scripts/compute-backport-targets.mjs
 
       - name: Backport
+        id: backport
         if: steps.targets.outputs.target_branches != ''
         uses: korthout/backport-action@4aaf0e03a94ff0a619c9a511b61aeb42adea5b02 # v4.2.0
         with:
@@ -81,3 +87,41 @@ jobs:
             {
               "conflict_resolution": "draft_commit_conflicts"
             }
+
+  prepare-auto-merge:
+    needs: [backport]
+    if: needs.backport.outputs.created_pull_numbers != ''
+    runs-on: ubuntu-slim
+    outputs:
+      pr_numbers_json: ${{ steps.filter.outputs.pr_numbers_json }}
+    steps:
+      - name: Filter out draft PRs
+        id: filter
+        env:
+          PR_NUMBERS: ${{ needs.backport.outputs.created_pull_numbers }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mergeable_json="[]"
+          for pr in $PR_NUMBERS; do
+            is_draft=$(gh pr view "$pr" --repo "$REPOSITORY" --json isDraft --jq '.isDraft')
+            if [ "$is_draft" = "true" ]; then
+              echo "Skipping draft PR #$pr (conflicts to resolve)"
+            else
+              mergeable_json=$(echo "$mergeable_json" | jq -c --arg pr "$pr" '. + [$pr]')
+            fi
+          done
+          echo "pr_numbers_json=$mergeable_json" >> "$GITHUB_OUTPUT"
+
+  auto-merge-successful-backports:
+    needs: [prepare-auto-merge]
+    if: needs.prepare-auto-merge.outputs.pr_numbers_json != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        pr_number: ${{ fromJSON(needs.prepare-auto-merge.outputs.pr_numbers_json) }}
+    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    with:
+      pull-request-number: ${{ matrix.pr_number }}
+    secrets: inherit

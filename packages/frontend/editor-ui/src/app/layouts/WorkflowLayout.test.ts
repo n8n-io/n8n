@@ -9,7 +9,7 @@ vi.mock('vue-router', async (importOriginal) => {
 	return {
 		...actual,
 		useRoute: () => ({
-			params: { name: 'test-workflow-id' },
+			params: { workflowId: 'test-workflow-id' },
 			query: {},
 			meta: {},
 			name: 'workflow',
@@ -32,17 +32,6 @@ vi.mock('@/features/ai/assistant/assistant.store', () => ({
 		isFloatingButtonShown: false,
 	})),
 }));
-
-vi.mock('@/app/composables/useWorkflowState', () => {
-	const mockState = () => ({
-		getNewWorkflowData: vi.fn(),
-		resetState: vi.fn(),
-	});
-	return {
-		useWorkflowState: vi.fn(mockState),
-		injectWorkflowState: vi.fn(mockState),
-	};
-});
 
 vi.mock('@/app/composables/useWorkflowInitialization', () => ({
 	useWorkflowInitialization: vi.fn(() => ({

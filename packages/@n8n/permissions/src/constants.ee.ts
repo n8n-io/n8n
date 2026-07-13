@@ -1,13 +1,21 @@
 export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list'] as const;
 
 export const RESOURCES = {
+	agent: [...DEFAULT_OPERATIONS, 'execute', 'publish', 'unpublish', 'manage'] as const,
 	aiAssistant: ['manage'] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
-	credential: ['share', 'unshare', 'shareGlobally', 'move', ...DEFAULT_OPERATIONS] as const,
+	credential: [
+		'share',
+		'unshare',
+		'shareGlobally',
+		'move',
+		'connect',
+		...DEFAULT_OPERATIONS,
+	] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
 	externalSecret: ['list'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,
@@ -15,7 +23,7 @@ export const RESOURCES = {
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,
 	orchestration: ['read', 'list'] as const,
-	project: [...DEFAULT_OPERATIONS] as const,
+	project: [...DEFAULT_OPERATIONS, 'export'] as const,
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
@@ -36,42 +44,55 @@ export const RESOURCES = {
 		'unshare',
 		'execute',
 		'execute-chat',
+		'export',
+		'import',
 		'move',
 		'activate',
 		'deactivate',
 		'publish',
 		'unpublish',
-		'updateRedactionSetting',
+		'enableRedaction',
+		'disableRedaction',
 		...DEFAULT_OPERATIONS,
 	] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list', 'read'] as const,
 	oidc: ['manage'] as const,
 	provisioning: ['manage'] as const,
-	dataTable: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
+	dataTable: [
+		...DEFAULT_OPERATIONS,
+		'readRow',
+		'writeRow',
+		'readColumn',
+		'writeColumn',
+		'listProject',
+	] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
+	testRun: ['read', 'list'] as const,
 	workflowTags: ['update', 'list'] as const,
-	role: ['manage'] as const,
+	role: ['manage', 'read', 'manageProject'] as const,
 	mcp: ['manage', 'oauth'] as const,
 	mcpApiKey: ['create', 'rotate'] as const,
 	chatHub: ['manage', 'message'] as const,
 	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
 	breakingChanges: ['list'] as const,
-	apiKey: ['manage'] as const,
+	apiKey: ['manage', 'list', 'create', 'delete', 'update'] as const,
 	encryptionKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
-	instanceAi: ['message', 'manage', 'gateway'] as const,
+	instanceAi: ['message', 'manage', 'gateway', 'eval'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
+	otel: ['manage'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
 	tag: [...DEFAULT_OPERATIONS] as const,
-	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate'] as const,
+	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
-	project: ['create', 'update', 'delete', 'list'] as const,
-	user: ['read', 'list', 'create', 'changeRole', 'delete', 'enforceMfa'] as const,
-	execution: ['delete', 'read', 'retry', 'list', 'get', 'stop'] as const,
+	project: ['create', 'update', 'delete', 'list', 'export'] as const,
+	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
+	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
+	testRun: ['read', 'list'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
@@ -79,10 +100,13 @@ export const API_KEY_RESOURCES = {
 	communityPackage: ['install', 'uninstall', 'update', 'list'] as const,
 	dataTable: ['create', 'read', 'update', 'delete', 'list'] as const,
 	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert'] as const,
-	folder: ['create', 'delete', 'list'] as const,
+	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
+	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
 } as const;
 
+export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
+export const GLOBAL_CHAT_USER_ROLE_SLUG = 'global:chatUser';
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';
@@ -90,7 +114,7 @@ export const PROJECT_VIEWER_ROLE_SLUG = 'project:viewer';
 export const PROJECT_CHAT_USER_ROLE_SLUG = 'project:chatUser';
 export const PERSONAL_SPACE_PUBLISHING_SETTING = {
 	key: 'security.personalSpacePublishing',
-	scopes: ['workflow:publish'],
+	scopes: ['workflow:publish', 'agent:publish'],
 };
 export const PERSONAL_SPACE_SHARING_SETTING = {
 	key: 'security.personalSpaceSharing',

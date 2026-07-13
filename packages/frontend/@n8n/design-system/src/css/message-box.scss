@@ -143,6 +143,10 @@
 			line-height: var(--line-height--lg);
 		}
 
+		& .el-message-box__message__structured {
+			margin-bottom: var(--spacing--xs);
+		}
+
 		& .el-message-box__message__structured p {
 			margin-bottom: var(--spacing--sm);
 		}
@@ -179,7 +183,7 @@
 
 			height: 2rem;
 			padding: 0 var(--spacing--xs);
-			border-radius: var(--radius--xs);
+			border-radius: var(--radius--3xs);
 			font-size: var(--font-size--sm);
 			font-family: var(--font-family);
 			font-weight: var(--font-weight--medium);

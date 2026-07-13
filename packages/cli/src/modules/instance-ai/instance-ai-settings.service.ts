@@ -6,12 +6,14 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiModelCredential,
 	InstanceAiPermissions,
+	InstanceAiSandboxProvider,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { SettingsRepository, UserRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
 import type { IUserSettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -19,15 +21,28 @@ import { jsonParse } from 'n8n-workflow';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
+
+import {
+	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
+	normalizeSandboxProvider,
+} from './sandbox-provider';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 
 type UserInstanceAiPreferences = NonNullable<IUserSettings['instanceAi']>;
 
-/** Credential types we support and their Mastra provider mapping. */
-const CREDENTIAL_TO_MASTRA_PROVIDER: Record<string, string> = {
+export interface InstanceAiSandboxStatus {
+	enabled: boolean;
+	provider: InstanceAiSandboxProvider;
+	workflowBuilderAvailable: boolean;
+	unavailableReason: string | null;
+}
+
+/** Credential types we support and their model provider mapping. */
+const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	openAiApi: 'openai',
 	anthropicApi: 'anthropic',
 	googlePalmApi: 'google',
@@ -40,7 +55,7 @@ const CREDENTIAL_TO_MASTRA_PROVIDER: Record<string, string> = {
 	cohereApi: 'cohere',
 };
 
-const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MASTRA_PROVIDER);
+const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MODEL_PROVIDER);
 
 /** Fields that contain the base URL per credential type. */
 const URL_FIELD_MAP: Record<string, string> = {
@@ -62,13 +77,9 @@ const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENT
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
 	enabled?: boolean;
-	lastMessages?: number;
-	embedderModel?: string;
-	semanticRecallTopK?: number;
-	subAgentMaxSteps?: number;
-	browserMcp?: boolean;
 	permissions?: Partial<InstanceAiPermissions>;
 	mcpServers?: string;
+	mcpAccessEnabled?: boolean;
 	sandboxEnabled?: boolean;
 	sandboxProvider?: string;
 	sandboxImage?: string;
@@ -77,7 +88,7 @@ interface PersistedAdminSettings {
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
-	optinModalDismissed?: boolean;
+	browserUseEnabled?: boolean;
 }
 
 @Service()
@@ -89,6 +100,9 @@ export class InstanceAiSettingsService {
 	/** Whether n8n Agent is enabled for this instance. */
 	private enabled = true;
 
+	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	private mcpAccessEnabled = true;
+
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
 
@@ -99,8 +113,6 @@ export class InstanceAiSettingsService {
 
 	private adminSearchCredentialId: string | null = null;
 
-	private optinModalDismissed: boolean = false;
-
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
@@ -109,6 +121,7 @@ export class InstanceAiSettingsService {
 		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly eventService: EventService,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
@@ -126,12 +139,36 @@ export class InstanceAiSettingsService {
 
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
 	async loadFromDb(): Promise<void> {
+		this.config.sandboxProvider = normalizeSandboxProvider(this.config.sandboxProvider);
+		const envSnapshot = {
+			sandboxEnabled: this.config.sandboxEnabled,
+			sandboxProvider: this.config.sandboxProvider,
+		};
+
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
 		if (row) {
 			const persisted = jsonParse<PersistedAdminSettings>(row.value, {
 				fallbackValue: {},
 			});
 			this.applyAdminSettings(persisted);
+		}
+
+		// Surface the effective sandbox config so operators (and CI) can tell whether env vars
+		// or a persisted DB setting are in effect — these can silently disagree.
+		const c = this.config;
+		const overridden =
+			c.sandboxEnabled !== envSnapshot.sandboxEnabled ||
+			c.sandboxProvider !== envSnapshot.sandboxProvider;
+		const logger = Container.get(Logger).scoped('instance-ai');
+		logger.info(
+			`Sandbox: enabled=${c.sandboxEnabled} provider=${c.sandboxProvider}` +
+				(overridden
+					? ` (DB override; env was enabled=${envSnapshot.sandboxEnabled} provider=${envSnapshot.sandboxProvider})`
+					: ' (from env)'),
+		);
+		const sandboxStatus = this.getSandboxStatus();
+		if (sandboxStatus.unavailableReason) {
+			logger.warn(`Sandbox unavailable: ${sandboxStatus.unavailableReason}`);
 		}
 	}
 
@@ -141,52 +178,39 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		return {
 			enabled: this.enabled,
-			lastMessages: c.lastMessages,
-			embedderModel: c.embedderModel,
-			semanticRecallTopK: c.semanticRecallTopK,
-			subAgentMaxSteps: c.subAgentMaxSteps,
-			browserMcp: c.browserMcp,
 			permissions: { ...this.permissions },
 			mcpServers: c.mcpServers,
+			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
-			sandboxProvider: c.sandboxProvider,
+			sandboxProvider: normalizeSandboxProvider(c.sandboxProvider),
 			sandboxImage: c.sandboxImage,
 			sandboxTimeout: c.sandboxTimeout,
 			daytonaCredentialId: this.adminDaytonaCredentialId,
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
-			optinModalDismissed: this.optinModalDismissed,
+			browserUseEnabled: this.isBrowserUseEnabled(),
 		};
 	}
 
 	async updateAdminSettings(
 		update: InstanceAiAdminSettingsUpdateRequest,
 	): Promise<InstanceAiAdminSettingsResponse> {
-		if (this.isCloud) {
-			this.rejectManagedFields(
-				update,
-				InstanceAiSettingsService.CLOUD_MANAGED_ADMIN_FIELDS,
-				'cloud',
-			);
-		} else if (this.aiService.isProxyEnabled()) {
-			this.rejectManagedFields(
-				update,
-				InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS,
-				'proxy',
-			);
-		}
+		this.rejectManagedFields(
+			update,
+			InstanceAiSettingsService.MANAGED_ADMIN_FIELDS,
+			this.deploymentLabel(),
+		);
+		this.validateAdminSettingsUpdate(update);
 		const c = this.config;
+		const previousMcpServers = c.mcpServers;
+		const previousMcpAccessEnabled = this.mcpAccessEnabled;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
-		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
-		if (update.embedderModel !== undefined) c.embedderModel = update.embedderModel;
-		if (update.semanticRecallTopK !== undefined) c.semanticRecallTopK = update.semanticRecallTopK;
-		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
-		if (update.browserMcp !== undefined) c.browserMcp = update.browserMcp;
 		if (update.permissions) {
 			this.permissions = { ...this.permissions, ...update.permissions };
 		}
 		if (update.mcpServers !== undefined) c.mcpServers = update.mcpServers;
+		if (update.mcpAccessEnabled !== undefined) this.mcpAccessEnabled = update.mcpAccessEnabled;
 		if (update.sandboxEnabled !== undefined) c.sandboxEnabled = update.sandboxEnabled;
 		if (update.sandboxProvider !== undefined) c.sandboxProvider = update.sandboxProvider;
 		if (update.sandboxImage !== undefined) c.sandboxImage = update.sandboxImage;
@@ -199,9 +223,14 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = update.searchCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
-		if (update.optinModalDismissed !== undefined)
-			this.optinModalDismissed = update.optinModalDismissed;
+		if (update.browserUseEnabled !== undefined) c.browserUseEnabled = update.browserUseEnabled;
 		await this.persistAdminSettings();
+
+		this.eventService.emit('instance-ai-settings-updated', {
+			mcpSettingsChanged:
+				c.mcpServers !== previousMcpServers || this.mcpAccessEnabled !== previousMcpAccessEnabled,
+		});
+
 		return this.getAdminSettings();
 	}
 
@@ -237,19 +266,11 @@ export class InstanceAiSettingsService {
 		user: User,
 		update: InstanceAiUserPreferencesUpdateRequest,
 	): Promise<InstanceAiUserPreferencesResponse> {
-		if (this.isCloud) {
-			this.rejectManagedFields(
-				update,
-				InstanceAiSettingsService.CLOUD_MANAGED_PREFERENCE_FIELDS,
-				'cloud',
-			);
-		} else if (this.aiService.isProxyEnabled()) {
-			this.rejectManagedFields(
-				update,
-				InstanceAiSettingsService.PROXY_MANAGED_PREFERENCE_FIELDS,
-				'proxy',
-			);
-		}
+		this.rejectManagedFields(
+			update,
+			InstanceAiSettingsService.MANAGED_PREFERENCE_FIELDS,
+			this.deploymentLabel(),
+		);
 		const prefs: UserInstanceAiPreferences = { ...this.readUserPreferences(user) };
 		if (update.credentialId !== undefined) prefs.credentialId = update.credentialId;
 		if (update.modelName !== undefined) prefs.modelName = update.modelName;
@@ -274,7 +295,7 @@ export class InstanceAiSettingsService {
 				id: c.id,
 				name: c.name,
 				type: c.type,
-				provider: CREDENTIAL_TO_MASTRA_PROVIDER[c.type] ?? 'custom',
+				provider: CREDENTIAL_TO_MODEL_PROVIDER[c.type] ?? 'custom',
 			}));
 	}
 
@@ -313,7 +334,7 @@ export class InstanceAiSettingsService {
 		if (!credential) {
 			return {};
 		}
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		return {
 			apiUrl: typeof data.apiUrl === 'string' ? data.apiUrl : undefined,
 			apiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined,
@@ -342,7 +363,7 @@ export class InstanceAiSettingsService {
 			};
 		}
 
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		const headerName = typeof data.name === 'string' ? data.name.trim().toLowerCase() : '';
 		const apiKey = typeof data.value === 'string' ? data.value : undefined;
 		return {
@@ -370,7 +391,7 @@ export class InstanceAiSettingsService {
 		if (!credential) {
 			return {};
 		}
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		if (credential.type === 'braveSearchApi') {
 			return { braveApiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined };
 		}
@@ -383,6 +404,11 @@ export class InstanceAiSettingsService {
 	/** Return the current HITL permission map. */
 	getPermissions(): InstanceAiPermissions {
 		return { ...this.permissions };
+	}
+
+	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	isMcpAccessEnabled(): boolean {
+		return this.mcpAccessEnabled;
 	}
 
 	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
@@ -404,15 +430,35 @@ export class InstanceAiSettingsService {
 		return this.config.localGatewayDisabled;
 	}
 
+	isBrowserUseEnabled(): boolean {
+		return this.config.browserUseEnabled;
+	}
+
+	/** Whether workflow building can use the required sandbox workspace. */
+	getSandboxStatus(): InstanceAiSandboxStatus {
+		const provider = normalizeSandboxProvider(this.config.sandboxProvider);
+		const unavailableReason = this.getSandboxUnavailableReason(
+			this.config.sandboxEnabled,
+			provider,
+		);
+
+		return {
+			enabled: this.config.sandboxEnabled,
+			provider,
+			workflowBuilderAvailable: this.config.sandboxEnabled && unavailableReason === null,
+			unavailableReason,
+		};
+	}
+
 	/** Whether Instance AI chat and main UI are enabled (settings always available when module loads). */
 	isInstanceAiEnabled(): boolean {
 		return this.enabled;
 	}
 
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
-	async resolveModelName(user: User): Promise<string> {
+	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);
-		return prefs.modelName || this.extractModelName(this.config.model);
+		return prefs.modelName ?? this.extractModelName(this.config.model);
 	}
 
 	/** Resolve the current model configuration for an agent run. */
@@ -434,17 +480,17 @@ export class InstanceAiSettingsService {
 			return this.envVarModelConfig();
 		}
 
-		const provider = CREDENTIAL_TO_MASTRA_PROVIDER[credential.type];
+		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credential.type];
 		if (!provider) {
 			return this.envVarModelConfig();
 		}
 
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : '';
 		const urlField = URL_FIELD_MAP[credential.type];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
-		const modelName = prefs.modelName || this.extractModelName(this.config.model);
+		const modelName = prefs.modelName ?? this.extractModelName(this.config.model);
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 
 		if (baseUrl) {
@@ -460,38 +506,36 @@ export class InstanceAiSettingsService {
 
 	// ── Private helpers ───────────────────────────────────────────────────
 
-	/** Admin fields managed by the AI service proxy — not user-editable when proxy is active. */
-	private static readonly PROXY_MANAGED_ADMIN_FIELDS: readonly string[] = [
+	/**
+	 * Admin fields sourced from environment variables only — never settable via
+	 * the API on any deployment. The settings UI exposes only the enable toggle
+	 * and permissions; model, search, sandbox and advanced options come from env.
+	 * Cloud and the AI service proxy already managed these externally; self-hosted
+	 * now follows suit for the initial launch.
+	 */
+	private static readonly MANAGED_ADMIN_FIELDS: readonly string[] = [
+		'mcpServers',
 		'sandboxEnabled',
 		'sandboxProvider',
 		'sandboxImage',
 		'sandboxTimeout',
 		'daytonaCredentialId',
+		'n8nSandboxCredentialId',
 		'searchCredentialId',
 	];
 
-	/** User preference fields managed by the AI service proxy. */
-	private static readonly PROXY_MANAGED_PREFERENCE_FIELDS: readonly string[] = [
+	/** User preference fields sourced from environment variables only. */
+	private static readonly MANAGED_PREFERENCE_FIELDS: readonly string[] = [
 		'credentialId',
 		'modelName',
 	];
 
-	/** Admin fields managed by the cloud platform — superset of proxy-managed fields. */
-	private static readonly CLOUD_MANAGED_ADMIN_FIELDS: readonly string[] = [
-		...InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS,
-		'n8nSandboxCredentialId',
-		'lastMessages',
-		'embedderModel',
-		'semanticRecallTopK',
-		'subAgentMaxSteps',
-		'browserMcp',
-		'mcpServers',
-	];
-
-	/** User preference fields managed by the cloud platform. */
-	private static readonly CLOUD_MANAGED_PREFERENCE_FIELDS: readonly string[] = [
-		...InstanceAiSettingsService.PROXY_MANAGED_PREFERENCE_FIELDS,
-	];
+	/** Label for the deployment surface that owns the env-managed config, used in error messages. */
+	private deploymentLabel(): string {
+		if (this.isCloud) return 'cloud';
+		if (this.aiService.isProxyEnabled()) return 'proxy';
+		return 'instance';
+	}
 
 	private rejectManagedFields(
 		update: object,
@@ -507,8 +551,51 @@ export class InstanceAiSettingsService {
 		}
 	}
 
+	private validateAdminSettingsUpdate(update: InstanceAiAdminSettingsUpdateRequest): void {
+		const c = this.config;
+		const touchesSandboxSettings =
+			update.sandboxEnabled !== undefined ||
+			update.sandboxProvider !== undefined ||
+			update.sandboxImage !== undefined ||
+			update.sandboxTimeout !== undefined ||
+			update.daytonaCredentialId !== undefined ||
+			update.n8nSandboxCredentialId !== undefined;
+		if (!touchesSandboxSettings) {
+			return;
+		}
+
+		// `update.sandboxProvider` is already enum-validated by the request DTO; we only
+		// need the resolved provider here to enforce the cross-field service-URL rule,
+		// which spans the request body and env-backed config and can't live in the schema.
+		const sandboxProvider = update.sandboxProvider ?? normalizeSandboxProvider(c.sandboxProvider);
+		const sandboxEnabled = update.sandboxEnabled ?? c.sandboxEnabled;
+		const unavailableReason = this.getSandboxUnavailableReason(sandboxEnabled, sandboxProvider);
+		if (unavailableReason) {
+			throw new UnprocessableRequestError(unavailableReason);
+		}
+	}
+
+	private getSandboxUnavailableReason(
+		sandboxEnabled: boolean,
+		sandboxProvider: InstanceAiSandboxProvider,
+	): string | null {
+		if (
+			sandboxEnabled &&
+			sandboxProvider === 'n8n-sandbox' &&
+			this.config.n8nSandboxServiceUrl.trim().length === 0
+		) {
+			return N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE;
+		}
+
+		return null;
+	}
+
 	private envVarModelConfig(): ModelConfig {
-		const { model, modelUrl, modelApiKey } = this.config;
+		return this.envVarModelConfigForModel(this.config.model);
+	}
+
+	private envVarModelConfigForModel(model: string): ModelConfig {
+		const { modelUrl, modelApiKey } = this.config;
 		const id: `${string}/${string}` = model.includes('/')
 			? (model as `${string}/${string}`)
 			: `custom/${model}`;
@@ -532,12 +619,6 @@ export class InstanceAiSettingsService {
 	private applyAdminSettings(persisted: PersistedAdminSettings): void {
 		const c = this.config;
 		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
-		if (persisted.lastMessages !== undefined) c.lastMessages = persisted.lastMessages;
-		if (persisted.embedderModel !== undefined) c.embedderModel = persisted.embedderModel;
-		if (persisted.semanticRecallTopK !== undefined)
-			c.semanticRecallTopK = persisted.semanticRecallTopK;
-		if (persisted.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = persisted.subAgentMaxSteps;
-		if (persisted.browserMcp !== undefined) c.browserMcp = persisted.browserMcp;
 		if (persisted.permissions) {
 			this.permissions = {
 				...DEFAULT_INSTANCE_AI_PERMISSIONS,
@@ -545,8 +626,11 @@ export class InstanceAiSettingsService {
 			};
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
+		if (persisted.mcpAccessEnabled !== undefined)
+			this.mcpAccessEnabled = persisted.mcpAccessEnabled;
 		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;
-		if (persisted.sandboxProvider !== undefined) c.sandboxProvider = persisted.sandboxProvider;
+		if (persisted.sandboxProvider !== undefined)
+			c.sandboxProvider = normalizeSandboxProvider(persisted.sandboxProvider);
 		if (persisted.sandboxImage !== undefined) c.sandboxImage = persisted.sandboxImage;
 		if (persisted.sandboxTimeout !== undefined) c.sandboxTimeout = persisted.sandboxTimeout;
 		if (persisted.daytonaCredentialId !== undefined)
@@ -557,8 +641,8 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = persisted.searchCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
-		if (persisted.optinModalDismissed !== undefined)
-			this.optinModalDismissed = persisted.optinModalDismissed;
+		if (persisted.browserUseEnabled !== undefined)
+			c.browserUseEnabled = persisted.browserUseEnabled;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -569,13 +653,9 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		const value: PersistedAdminSettings = {
 			enabled: this.enabled,
-			lastMessages: c.lastMessages,
-			embedderModel: c.embedderModel,
-			semanticRecallTopK: c.semanticRecallTopK,
-			subAgentMaxSteps: c.subAgentMaxSteps,
-			browserMcp: c.browserMcp,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
+			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
 			sandboxProvider: c.sandboxProvider,
 			sandboxImage: c.sandboxImage,
@@ -584,7 +664,7 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
-			optinModalDismissed: this.optinModalDismissed,
+			browserUseEnabled: c.browserUseEnabled,
 		};
 
 		await this.settingsRepository.upsert(

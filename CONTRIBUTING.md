@@ -55,7 +55,7 @@ The most important directories:
   workflows. **Contact n8n before
   starting on any changes here**
 - [/packages/frontend/@n8n/design-system](/packages/frontend/@n8n/design-system) - Vue frontend components
-- [/packages/frontend/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
+- [/packages/frontend/editor-ui](/packages/frontend/editor-ui) - Vue frontend workflow editor
 - [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
 - [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
 - [/packages/workflow](/packages/workflow) - Workflow code with interfaces which
@@ -134,6 +134,21 @@ If you plan to modify GitHub Actions workflow files (`.github/workflows/*.yml`),
 brew install actionlint
 ```
 > **Note:** actionlint is only required if you're modifying workflow files. It runs automatically via git hooks when workflow files are changed.
+
+#### tbls (for database schema docs)
+
+The database schema docs under [`docs/generated/`](docs/generated) are generated from the migrations with [tbls](https://github.com/k1LoW/tbls). If you plan to modify DB migrations, you'll need **either** tbls installed **or** Docker available.
+
+**macOS (Homebrew):**
+```bash
+brew install tbls
+```
+
+For other platforms, see the [tbls install guide](https://github.com/k1LoW/tbls#install).
+
+> **Note:** tbls is only required if you're modifying DB migrations. It runs automatically via git hooks when migration files are changed.
+
+---
 
 ### Actual n8n setup
 

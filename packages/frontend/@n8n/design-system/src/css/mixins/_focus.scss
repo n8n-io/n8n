@@ -2,9 +2,7 @@
  -------------------------- */
 
 @mixin focus-ring {
-	outline: var(--focus--border-width) solid var(--focus--border-color);
-	outline-offset: 2px;
-	transition: outline 0.15s ease-out;
+	outline: var(--focus--border-width) solid var(--focus--outline-color);
 }
 
 @mixin focus-visible-ring {
@@ -16,5 +14,16 @@
 @mixin focus-within-ring {
 	&:focus-within {
 		@include focus-ring;
+	}
+}
+
+@mixin focus-ring-offset {
+	outline: var(--focus--border-width) solid var(--focus--border-color);
+	outline-offset: var(--spacing--5xs);
+}
+
+@mixin focus-visible-ring-offset {
+	&:focus-visible {
+		@include focus-ring-offset;
 	}
 }

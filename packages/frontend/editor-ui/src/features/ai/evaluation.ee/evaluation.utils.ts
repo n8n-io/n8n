@@ -1,10 +1,341 @@
+import startCase from 'lodash/startCase';
 import type { JsonValue } from 'n8n-workflow';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
-import type { Column, Header } from './views/TestRunDetailView.vue';
+import type { TestTableColumn } from './components/shared/TestTableBase.vue';
+import type { EvalCollectionRunStatus } from './evalCollections.types';
+
+/**
+ * Extract a human-readable answer string from an end-node output value.
+ *
+ * Priority: `output` > `text` > `response` > single-key object value > JSON.stringify.
+ * Primitives pass through as String(value); null/undefined → ''.
+ *
+ * Keep in sync with the `endAnswer` n8n expression in buildEvaluationConfigDto.ts.
+ */
+export function extractAnswerText(json: unknown): string {
+	if (json === null || json === undefined) return '';
+	if (typeof json !== 'object') return String(json);
+	const preferred =
+		Reflect.get(json, 'output') ?? Reflect.get(json, 'text') ?? Reflect.get(json, 'response');
+	if (preferred !== undefined && preferred !== null) {
+		return typeof preferred === 'object' ? JSON.stringify(preferred) : String(preferred);
+	}
+	const keys = Object.keys(json);
+	if (keys.length === 1) {
+		const only = Reflect.get(json, keys[0]);
+		return typeof only === 'object' && only !== null ? JSON.stringify(only) : String(only);
+	}
+	return JSON.stringify(json);
+}
+
+export type Column =
+	| {
+			key: string;
+			label: string;
+			visible: boolean;
+			numeric?: boolean;
+			disabled: false;
+			columnType: 'inputs' | 'outputs' | 'metrics';
+	  }
+	| { key: string; disabled: true };
+
+export type Header = TestTableColumn<TestCaseExecutionRecord & { index: number }>;
+
+export type DeltaTone = 'positive' | 'negative' | 'default';
+
+// Categories — mirror the Evaluation node's `metric` parameter values.
+export type MetricCategory =
+	| 'aiBased'
+	| 'stringSimilarity'
+	| 'categorization'
+	| 'toolsUsed'
+	| 'custom';
+
+// Metadata pulled from the workflow's `setMetrics` nodes, keyed by metric name.
+export type MetricSource = {
+	category: MetricCategory;
+	nodeName: string;
+};
 
 export const SHORT_TABLE_CELL_MIN_WIDTH = 125;
 const LONG_TABLE_CELL_MIN_WIDTH = 250;
-const specialKeys = ['promptTokens', 'completionTokens', 'totalTokens', 'executionTime'];
+
+const PREDEFINED_METRIC_KEYS: ReadonlySet<string> = new Set([
+	'promptTokens',
+	'completionTokens',
+	'totalTokens',
+	'executionTime',
+]);
+
+// Excludes predefined keys (token counts, execution time) emitted by every run.
+export function getUserDefinedMetricNames(
+	metrics: Record<string, number> | null | undefined,
+): string[] {
+	if (!metrics) return [];
+	return Object.keys(metrics).filter((key) => !PREDEFINED_METRIC_KEYS.has(key));
+}
+
+export function normalizeMetricValue(value: number | undefined): number | undefined {
+	if (value === undefined || Number.isNaN(value)) return undefined;
+	return value;
+}
+
+// A metric value is "score-shaped" when it lands in [0, 1] — the range the
+// collection cards chart and average as a percentage. Absolute counts that
+// commonly share the metrics map (tokens, latency_ms) fall outside and are
+// excluded so a mini bar chart (clamped to max=1) doesn't render a bogus
+// maxed-out bar and an avg doesn't blow up.
+export function isScoreShapedMetric(value: unknown): value is number {
+	return typeof value === 'number' && value >= 0 && value <= 1;
+}
+
+// A run set is "running" while any run is still queued or executing, else
+// "done". Shared by the collection card and the compare header so the two
+// surfaces can't disagree; callers that also have a not-yet-loaded state keep
+// their own `null` guard around this.
+export function deriveRunsStatus(
+	runs: Array<{ status: EvalCollectionRunStatus }>,
+): 'running' | 'done' {
+	return runs.some((run) => run.status === 'new' || run.status === 'running') ? 'running' : 'done';
+}
+
+// Reduce per-run aggregate metrics to the score-shaped ([0, 1]) metrics that
+// both the collection-card preview and the compare hero chart render. Returns
+// one entry per metric (first-seen order) with a value per run aligned by
+// index — `null` where a run lacks the metric, so a skipped metric never
+// shifts later versions out of their color/letter slot. A metric is included
+// only if it's score-shaped across every run that reported it, since the bar
+// charts clamp to max=1 and an absolute count (tokens, latency) would render a
+// meaningless maxed-out bar.
+export function buildScoreShapedMetricGroups(
+	runs: Array<{ metrics: Record<string, number> | null }>,
+): Array<{ key: string; values: Array<number | null> }> {
+	const orderedKeys: string[] = [];
+	const seen = new Set<string>();
+	for (const run of runs) {
+		for (const key of Object.keys(run.metrics ?? {})) {
+			// Skip predefined operational metrics (token counts, execution time) —
+			// they're absolute values, not scores, and would chart as a bogus
+			// percentage on the rare run where they land in [0, 1]. Matches the
+			// exclusion in `getUserDefinedMetricNames`.
+			if (PREDEFINED_METRIC_KEYS.has(key) || seen.has(key)) continue;
+			seen.add(key);
+			orderedKeys.push(key);
+		}
+	}
+
+	const scoreShapedKeys = orderedKeys.filter((key) =>
+		runs.every((run) => {
+			const value = run.metrics?.[key];
+			return value === undefined || isScoreShapedMetric(value);
+		}),
+	);
+
+	return scoreShapedKeys.map((key) => ({
+		key,
+		values: runs.map((run) => {
+			const value = run.metrics?.[key];
+			return typeof value === 'number' ? value : null;
+		}),
+	}));
+}
+
+export function computeDelta(
+	current: number | undefined,
+	previous: number | undefined,
+): number | undefined {
+	const currentNum = normalizeMetricValue(current);
+	const previousNum = normalizeMetricValue(previous);
+	if (currentNum === undefined || previousNum === undefined) return undefined;
+	return currentNum - previousNum;
+}
+
+export function getDeltaTone(delta: number | undefined): DeltaTone {
+	if (delta === undefined) return 'default';
+	if (delta > 0) return 'positive';
+	if (delta < 0) return 'negative';
+	return 'default';
+}
+
+export function formatTokens(
+	tokens: number | undefined,
+	options: { withUnit?: boolean } = {},
+): string {
+	if (tokens === undefined || Number.isNaN(tokens)) return '–';
+	const formatted = Math.round(tokens).toLocaleString();
+	return options.withUnit === false ? formatted : `${formatted}t`;
+}
+
+// Coerce an arbitrary cell/output value to a string for display or persistence.
+export function stringifyValue(value: unknown): string {
+	if (value === null || value === undefined) return '';
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return '';
+	}
+}
+
+// AI-based handlers (correctness, helpfulness) return 1-5; others return 0-1.
+export type MetricScale = 'oneToFive' | 'normalized';
+
+export function getMetricScale(category: MetricCategory | undefined): MetricScale {
+	return category === 'aiBased' ? 'oneToFive' : 'normalized';
+}
+
+// A check as rendered on the wizard results page. `isAiJudged` checks show an
+// average score; the rest are pass/fail (a case passes only on a perfect score).
+// `icon`/`iconBg`/`iconFg` mirror the Step-2 check tile for visual consistency.
+export type ResultCheck = {
+	key: string;
+	label: string;
+	description?: string;
+	isAiJudged: boolean;
+	icon: IconName;
+	iconBg?: string;
+	iconFg?: string;
+};
+
+// A pass/fail (non-aiBased) case passes only when it scores a perfect 1.
+export function casePassed(value: number | undefined): boolean {
+	return normalizeMetricValue(value) === 1;
+}
+
+// aiBased: 1-5 → value/5*100 (so 5 → 100%). Otherwise: |v|≤1 is a 0-1 score
+// scaled to percent; out-of-range values are assumed to be percentages already.
+export function formatMetricPercent(
+	value: number | undefined,
+	options: { category?: MetricCategory } = {},
+): string {
+	const num = normalizeMetricValue(value);
+	if (num === undefined) return '–';
+	const scaled =
+		getMetricScale(options.category) === 'oneToFive'
+			? (num / 5) * 100
+			: Math.abs(num) <= 1
+				? num * 100
+				: num;
+	return `${Math.round(scaled)}%`;
+}
+
+// snake_case / camelCase → Title Case (e.g. count_accuracy → "Count Accuracy").
+export function formatMetricLabel(name: string): string {
+	return startCase(name);
+}
+
+// `correctness` + `helpfulness` collapse into 'aiBased' (both LLM-as-judge).
+export function getMetricCategory(metric: string | undefined): MetricCategory {
+	switch (metric) {
+		case 'correctness':
+		case 'helpfulness':
+			return 'aiBased';
+		case 'stringSimilarity':
+			return 'stringSimilarity';
+		case 'categorization':
+			return 'categorization';
+		case 'toolsUsed':
+			return 'toolsUsed';
+		default:
+			return 'custom';
+	}
+}
+
+function formatScoreNumerator(value: number): string {
+	const rounded = Math.round(value * 10) / 10;
+	return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
+}
+
+// `x/5` form for AI-based per-case rows (only — 0-1 metrics duplicate the %).
+export function formatMetricRawScore(
+	value: number | undefined,
+	options: { category?: MetricCategory } = {},
+): string {
+	if (getMetricScale(options.category) !== 'oneToFive') return '';
+	const num = normalizeMetricValue(value);
+	if (num === undefined) return '';
+	return `${formatScoreNumerator(num)}/5`;
+}
+
+// Average score for the wizard results card: AI-based shows "X / 5", other
+// metrics show the 0–1 average to two decimals (e.g. "0.75"). This is the mean
+// across the run's cases, not a percentage.
+export function formatMetricAverage(
+	value: number | undefined,
+	options: { category?: MetricCategory } = {},
+): string {
+	const num = normalizeMetricValue(value);
+	if (num === undefined) return '–';
+	return getMetricScale(options.category) === 'oneToFive'
+		? `${formatScoreNumerator(num)} / 5`
+		: num.toFixed(2);
+}
+
+// Run-level totals: "13/15" (AI-based: sum / 5×count) or "1.11/6" (0-1: sum / count).
+export function formatMetricRawScoreSum(
+	values: Array<number | undefined>,
+	options: { category?: MetricCategory } = {},
+): string {
+	const usable = values.map(normalizeMetricValue).filter((v): v is number => v !== undefined);
+	if (usable.length === 0) return '';
+	const isOneToFive = getMetricScale(options.category) === 'oneToFive';
+	const perCaseMax = isOneToFive ? 5 : 1;
+	const numeratorSum = usable.reduce((sum, value) => sum + value, 0);
+	const denominator = perCaseMax * usable.length;
+	const numeratorDisplay = isOneToFive
+		? formatScoreNumerator(numeratorSum)
+		: numeratorSum.toFixed(2);
+	return `${numeratorDisplay}/${denominator}`;
+}
+
+// Signed delta in percentage points (e.g. "+4%" / "-28%"). 1-5: +1 → +20%; 0-1: +0.04 → +4%.
+export function formatDeltaPercent(
+	delta: number | undefined,
+	options: { category?: MetricCategory } = {},
+): string {
+	if (delta === undefined || Number.isNaN(delta)) return '';
+	const scaled =
+		getMetricScale(options.category) === 'oneToFive'
+			? (delta / 5) * 100
+			: Math.abs(delta) <= 1
+				? delta * 100
+				: delta;
+	const rounded = Math.round(scaled);
+	const sign = rounded > 0 ? '+' : '';
+	return `${sign}${rounded}%`;
+}
+
+// Compact duration: <1s → "243ms", <60s → "8s"/"1.2s", ≥60s → "1m 30s"/"2m".
+export function formatDuration(ms: number | undefined): string {
+	if (ms === undefined || Number.isNaN(ms) || ms < 0) return '–';
+	if (ms < 1000) return `${Math.round(ms)}ms`;
+	const totalSeconds = ms / 1000;
+	if (totalSeconds < 60) {
+		const rounded = Math.round(totalSeconds * 10) / 10;
+		// Edge case: 59.95s–59.999s rounds to 60 — promote to minutes branch.
+		if (rounded < 60) {
+			return Number.isInteger(rounded) ? `${rounded}s` : `${rounded.toFixed(1)}s`;
+		}
+	}
+	const totalRoundedSeconds = Math.round(totalSeconds);
+	const minutes = Math.floor(totalRoundedSeconds / 60);
+	const seconds = totalRoundedSeconds - minutes * 60;
+	return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
+}
+
+// Duration in ms between two ISO timestamps, or undefined if either is missing.
+export function computeDurationMs(
+	startIso: string | undefined,
+	endIso: string | null | undefined,
+): number | undefined {
+	if (!startIso || !endIso) return undefined;
+	const start = new Date(startIso).getTime();
+	const end = new Date(endIso).getTime();
+	if (Number.isNaN(start) || Number.isNaN(end) || end < start) return undefined;
+	return end - start;
+}
 
 export function getDefaultOrderedColumns(
 	run?: TestRunRecord,
@@ -12,8 +343,12 @@ export function getDefaultOrderedColumns(
 ) {
 	// Default sort order
 	// -> inputs, outputs, metrics, tokens, executionTime
-	const metricColumns = Object.keys(run?.metrics ?? {}).filter((key) => !specialKeys.includes(key));
-	const specialColumns = specialKeys.filter((key) => (run?.metrics ? key in run.metrics : false));
+	const metricColumns = Object.keys(run?.metrics ?? {}).filter(
+		(key) => !PREDEFINED_METRIC_KEYS.has(key),
+	);
+	const specialColumns = Array.from(PREDEFINED_METRIC_KEYS).filter((key) =>
+		run?.metrics ? key in run.metrics : false,
+	);
 	const inputColumns = getTestCasesColumns(filteredTestCases ?? [], 'inputs');
 	const outputColumns = getTestCasesColumns(filteredTestCases ?? [], 'outputs');
 
@@ -105,7 +440,7 @@ function formatValue(
 ) {
 	let stringValue: string;
 
-	if (numeric && typeof value === 'number' && !specialKeys.includes(key)) {
+	if (numeric && typeof value === 'number' && !PREDEFINED_METRIC_KEYS.has(key)) {
 		stringValue = value.toFixed(2) ?? '-';
 	} else if (typeof value === 'object' && value !== null) {
 		stringValue = JSON.stringify(value, null, 2);

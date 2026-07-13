@@ -1,13 +1,9 @@
 <script lang="ts" setup>
 import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { useElementHover } from '@vueuse/core';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
-import { computed, toRef, useTemplateRef } from 'vue';
+import { N8nText } from '@n8n/design-system';
+import { computed, toRef } from 'vue';
 import type { ArtifactInfo } from '../agentTimeline.utils';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import { useTimelineGrouping } from '../useTimelineGrouping';
 import AgentTimeline from './AgentTimeline.vue';
 import ArtifactCard from './ArtifactCard.vue';
@@ -24,12 +20,7 @@ const props = withDefaults(
 	},
 );
 
-const i18n = useI18n();
-const store = useInstanceAiStore();
-
-const hasReasoning = computed(() => props.agentNode.reasoning.length > 0);
-const triggerRef = useTemplateRef<HTMLElement>('triggerRef');
-const isHovered = useElementHover(triggerRef);
+const thread = useThread();
 
 const segments = useTimelineGrouping(toRef(props, 'agentNode'));
 
@@ -46,31 +37,13 @@ const lastGroupIdx = computed(() => {
 });
 
 function resolveArtifactName(artifact: ArtifactInfo): string {
-	const entry = store.producedArtifacts.get(artifact.resourceId);
+	const entry = thread.producedArtifacts.get(artifact.resourceId);
 	return entry?.name ?? artifact.name;
 }
 </script>
 
 <template>
 	<!-- eslint-disable vue/no-multiple-template-root -->
-
-	<!-- Reasoning (collapsible, root agent only) -->
-	<CollapsibleRoot v-if="isRoot && hasReasoning" v-slot="{ open: isOpen }">
-		<CollapsibleTrigger as-child>
-			<N8nButton ref="triggerRef" variant="ghost" size="small" :class="$style.reasoningTrigger">
-				<template #icon>
-					<template v-if="isHovered">
-						<N8nIcon :icon="isOpen ? 'minus' : 'plus'" size="small" />
-					</template>
-					<N8nIcon v-else icon="brain" size="small" />
-				</template>
-				{{ i18n.baseText('instanceAi.message.reasoning') }}
-			</N8nButton>
-		</CollapsibleTrigger>
-		<AnimatedCollapsibleContent>
-			<N8nText tag="div" :class="$style.reasoningContent">{{ props.agentNode.reasoning }}</N8nText>
-		</AnimatedCollapsibleContent>
-	</CollapsibleRoot>
 
 	<!-- Completed with responseId grouping: collapsed response groups + artifacts + trailing text -->
 	<template v-if="showGrouped">
@@ -91,6 +64,7 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 					:name="resolveArtifactName(artifact)"
 					:resource-id="artifact.resourceId"
 					:project-id="artifact.projectId"
+					:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
 					:class="$style.artifactCard"
 				/>
 			</template>
@@ -107,19 +81,12 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 </template>
 
 <style lang="scss" module>
-.reasoningTrigger {
-	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
-	color: var(--text-color--subtler);
-}
-
 .artifactCard {
 	max-width: 90%;
-}
+	margin: var(--spacing--sm) 0;
 
-.reasoningContent {
-	padding: var(--spacing--4xs) var(--spacing--xs);
-	border-left: 2px solid var(--color--foreground);
-	margin-left: var(--spacing--4xs);
-	color: var(--color--text--tint-2);
+	+ .artifactCard {
+		margin-top: 0;
+	}
 }
 </style>

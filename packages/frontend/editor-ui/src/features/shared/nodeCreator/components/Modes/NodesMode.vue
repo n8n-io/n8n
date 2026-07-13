@@ -76,7 +76,11 @@ const moreFromCommunity = computed(() => {
 	return filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
 		activeViewStack.value.search ?? '',
-		isAiSubcategoryView(activeViewStack.value) || isHitlSubcategoryView(activeViewStack.value),
+		{
+			isAiSubcategory: isAiSubcategoryView(activeViewStack.value),
+			isHitlSubcategory: isHitlSubcategoryView(activeViewStack.value),
+			aiConnectionType: activeViewStack.value.connectionType,
+		},
 	);
 });
 
@@ -124,6 +128,7 @@ function onSelected(item: INodeCreateElement) {
 			nodeIcon,
 			...extendedInfo,
 			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
+			...(item.properties.connectionType ? { connectionType: item.properties.connectionType } : {}),
 			rootView: activeViewStack.value.rootView,
 			forceIncludeNodes: item.properties.forceIncludeNodes,
 			baseFilter: baseSubcategoriesFilter,
@@ -282,9 +287,11 @@ function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
 }
 
 const globalCallouts = computed<INodeCreateElement[]>(() => [
-	...getRootSearchCallouts(activeViewStack.value.search ?? '', {
-		isRagStarterCalloutVisible: isRagStarterCalloutVisible.value,
-	}),
+	...getRootSearchCallouts(
+		activeViewStack.value.search ?? '',
+		{ isRagStarterCalloutVisible: isRagStarterCalloutVisible.value },
+		mergedNodes,
+	),
 ]);
 
 function arrowLeft() {

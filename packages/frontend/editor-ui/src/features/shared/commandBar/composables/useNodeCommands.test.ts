@@ -14,23 +14,22 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { createTestNode } from '@/__tests__/mocks';
 
-const mockEditableWorkflow = {
-	value: {
-		nodes: [] as Array<{
-			id: string;
-			name: string;
-			type: string;
-			typeVersion: number;
-		}>,
-	},
-};
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
 		addNodes: vi.fn(),
 		setNodeActive: vi.fn(),
-		editableWorkflow: mockEditableWorkflow,
 	}),
 }));
 
@@ -38,11 +37,6 @@ vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 	canvasEventBus: {
 		emit: vi.fn(),
 	},
-}));
-
-vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
-	...(await importOriginal()),
-	injectWorkflowDocumentStore: vi.fn().mockReturnValue(null),
 }));
 
 const mockGenerateMergedNodesAndActionsFn = vi.fn().mockReturnValue({ mergedNodes: [] });
@@ -85,6 +79,8 @@ describe('useNodeCommands', () => {
 	});
 
 	beforeEach(() => {
+		vi.clearAllMocks();
+
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		mockGetResourcePermissions = vi.mocked(getResourcePermissions);
@@ -113,7 +109,7 @@ describe('useNodeCommands', () => {
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'workflow', {
-			value: { isArchived: false, scopes: [] },
+			value: { isArchived: false, scopes: [], nodes: [] },
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
@@ -131,10 +127,6 @@ describe('useNodeCommands', () => {
 		});
 
 		mockAddNodes.mockResolvedValue([{ id: 'node-1' }]);
-
-		mockEditableWorkflow.value.nodes = [];
-
-		vi.clearAllMocks();
 	});
 
 	describe('add node command', () => {
@@ -245,15 +237,21 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should populate open node children with workflow nodes', () => {
-			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
-				{
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			store.setNodes([
+				createTestNode({
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+				}),
+				createTestNode({
 					id: 'node-2',
 					name: 'HTTP Request',
 					type: 'n8n-nodes-base.httpRequest',
 					typeVersion: 1,
-				},
-			];
+				}),
+			]);
 
 			const { commands } = useNodeCommands({
 				lastQuery: ref(''),
@@ -320,9 +318,15 @@ describe('useNodeCommands', () => {
 
 	describe('root open node items', () => {
 		beforeEach(() => {
-			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
-			];
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			store.setNodes([
+				createTestNode({
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+				}),
+			]);
 		});
 
 		it('should not show root open node items when query is too short', () => {

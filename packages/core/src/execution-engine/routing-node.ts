@@ -12,6 +12,7 @@ import {
 	NodeOperationError,
 	sleep,
 	NodeConnectionTypes,
+	getCredentialAllowedDomains,
 } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -191,7 +192,7 @@ export class RoutingNode {
 						!(property in proxyParsed) ||
 						proxyParsed[property as keyof typeof proxyParsed] === null
 					) {
-						throw new NodeOperationError(node, 'The proxy is not value', {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
 							runIndex,
 							itemIndex,
 							description: `The proxy URL does not contain a valid value for "${property}"`,
@@ -224,6 +225,13 @@ export class RoutingNode {
 			} else {
 				// set default timeout to 5 minutes
 				itemContext[itemIndex].requestData.options.timeout = 300_000;
+			}
+
+			const allowedDomains = credentials
+				? getCredentialAllowedDomains({ node, credentialData: credentials })
+				: undefined;
+			if (allowedDomains) {
+				itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;
 			}
 
 			requestPromises.push(

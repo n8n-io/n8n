@@ -1,12 +1,23 @@
 export { AnnotationTagMappingRepository } from './annotation-tag-mapping.repository.ee';
 export { AnnotationTagRepository } from './annotation-tag.repository.ee';
+export { AiBuilderTemporaryWorkflowRepository } from './ai-builder-temporary-workflow.repository';
 export { ApiKeyRepository } from './api-key.repository';
 export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BinaryDataRepository } from './binary-data.repository';
 export { CredentialsRepository } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
-export { DeploymentKeyRepository } from './deployment-key.repository';
+export {
+	DeploymentKeyRepository,
+	type DeploymentKeySortField,
+	type DeploymentKeySortDirection,
+	type ListDeploymentKeysOptions,
+} from './deployment-key.repository';
+export {
+	EvaluationCollectionRepository,
+	type EvaluationCollectionListItem,
+} from './evaluation-collection.repository';
+export { EvaluationConfigRepository } from './evaluation-config.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
@@ -24,6 +35,19 @@ export { ProjectRelationRepository } from './project-relation.repository';
 export { ProjectRepository, type ProjectListOptions } from './project.repository';
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
+export { ScheduledJobRepository } from './scheduled-job.repository';
+export type {
+	NewScheduledJob,
+	ScheduledJobDefinitionUpdate,
+} from './scheduled-job.repository';
+export { ScheduledTaskRepository } from './scheduled-task.repository';
+export type {
+	ClaimDueTasksOptions,
+	ClaimedRef,
+	HostedClaimedRef,
+	DeleteFinishedTasksOptions,
+	ScheduledTaskMetricSnapshot,
+} from './scheduled-task.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
@@ -36,7 +60,15 @@ export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository'
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
-export { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
+export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
+export {
+	WorkflowPublicationTriggerStatusRepository,
+	type TriggerStatusRow,
+} from './workflow-publication-trigger-status.repository';
+export {
+	WorkflowPublishedVersionRepository,
+	type PublishedWorkflowDataForExecution,
+} from './workflow-published-version.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowDependencyRepository,

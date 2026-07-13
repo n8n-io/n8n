@@ -2,12 +2,16 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
+import type { MockInstance } from 'vitest';
 import * as init from '@/app/init';
 
 const App = {
@@ -19,7 +23,8 @@ let settingsStore: ReturnType<typeof useSettingsStore>;
 
 describe('router', () => {
 	let server: ReturnType<typeof setupServer>;
-	const initializeAuthenticatedFeaturesSpy = vi.spyOn(init, 'initializeAuthenticatedFeatures');
+	// `restoreMocks` restores this spy before each test, so it is re-created in beforeEach.
+	let initializeAuthenticatedFeaturesSpy: MockInstance;
 
 	beforeAll(async () => {
 		server = setupServer();
@@ -30,13 +35,22 @@ describe('router', () => {
 		renderComponent({ pinia });
 	});
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		settingsStore = useSettingsStore();
 		const usersStore = useUsersStore();
-		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => {
-			await usersStore.initialize();
-		});
-	});
+		initializeAuthenticatedFeaturesSpy = vi
+			.spyOn(init, 'initializeAuthenticatedFeatures')
+			.mockImplementation(async () => {
+				await usersStore.initialize();
+			});
+		// Reset to a neutral route (an id no test targets) so each test's push is a
+		// real navigation that triggers the guard. `restoreMocks` clears call history
+		// per test, so a duplicate navigation (e.g. the '/' → '/workflows' redirect
+		// leaving us at '/workflows') would otherwise record zero calls and fail the
+		// toHaveBeenCalled assertion.
+		await router.replace('/workflow/router-test-reset');
+		initializeAuthenticatedFeaturesSpy.mockClear();
+	}, 20000);
 
 	afterAll(() => {
 		server.shutdown();
@@ -62,7 +76,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each([['/workflow/R9JFXwkUCL1jZBuw/debug/29021', VIEWS.WORKFLOWS]])(
@@ -72,7 +86,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each([['/workflow/R9JFXwkUCL1jZBuw/debug/29021', VIEWS.EXECUTION_DEBUG]])(
@@ -86,7 +100,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each([
@@ -99,7 +113,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each<[string, RouteRecordName, Scope[]]>([
@@ -139,7 +153,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each<[string, RouteRecordName, Scope[]]>([
@@ -175,7 +189,7 @@ describe('router', () => {
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
-		10000,
+		20000,
 	);
 
 	test.each([
@@ -185,6 +199,159 @@ describe('router', () => {
 		settingsStore.settings.hideUsagePage = hideUsagePage;
 		await router.push('/settings');
 		expect(router.currentRoute.value.name).toBe(name);
+	});
+
+	describe('resource center route guard', () => {
+		beforeEach(async () => {
+			// Reset to a neutral route so each test's push('/resource-center')
+			// triggers the guard instead of being dropped as a duplicate navigation.
+			await router.push('/workflows');
+		});
+
+		afterEach(() => {
+			const posthog = usePostHog();
+			delete posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name];
+		});
+
+		test('allows enrolled users to reach the resource center view', async () => {
+			const posthog = usePostHog();
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+
+			await router.push('/resource-center');
+			expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
+		});
+
+		test('redirects control users away from the resource center view', async () => {
+			const posthog = usePostHog();
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.control;
+
+			await router.push('/resource-center');
+			expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+		});
+
+		test('redirects users with no flag away from the resource center view', async () => {
+			await router.push('/resource-center');
+			expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+		});
+
+		test('waits for delayed flag hydration before allowing enrolled users through', async () => {
+			const posthog = usePostHog();
+			const hasPendingFeatureFlagsSpy = vi
+				.spyOn(posthog, 'hasPendingFeatureFlags')
+				.mockReturnValue(true);
+			const waitForFeatureFlagsSpy = vi
+				.spyOn(posthog, 'waitForFeatureFlags')
+				.mockImplementation(async () => {
+					posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+					return null;
+				});
+
+			try {
+				await router.push('/resource-center');
+
+				expect(waitForFeatureFlagsSpy).toHaveBeenCalledTimes(1);
+				expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
+			} finally {
+				waitForFeatureFlagsSpy.mockRestore();
+				hasPendingFeatureFlagsSpy.mockRestore();
+			}
+		});
+	});
+
+	describe('root / redirect', () => {
+		// The instance-ai route is registered dynamically by its module, so we can't
+		// drive this through `router.push('/')` in the unit test environment.
+		// Drive the `/` route's beforeEnter directly with a captured `next` instead.
+		const instanceAiModuleSettings = {
+			enabled: true,
+			localGatewayDisabled: false,
+			browserUseEnabled: true,
+			proxyEnabled: false,
+			cloudManaged: false,
+			sandboxEnabled: true,
+			workflowBuilderAvailable: true,
+			sandboxUnavailableReason: null,
+			runDebugEnabled: false,
+		};
+
+		const runRootRedirect = () => {
+			const rootRoute = routes.find((r) => r.path === '/');
+			const beforeEnter = rootRoute?.beforeEnter;
+			if (typeof beforeEnter !== 'function') {
+				throw new Error('Expected `/` route to define a beforeEnter guard');
+			}
+			let nextArg: unknown;
+			const next = ((arg?: unknown) => {
+				nextArg = arg;
+			}) as Parameters<typeof beforeEnter>[2];
+			beforeEnter.call(
+				undefined,
+				{} as Parameters<typeof beforeEnter>[0],
+				{} as Parameters<typeof beforeEnter>[1],
+				next,
+			);
+			return nextArg;
+		};
+
+		beforeEach(() => {
+			settingsStore.settings.activeModules = [];
+			settingsStore.moduleSettings = {};
+			useRBACStore().setGlobalScopes([]);
+		});
+
+		test('redirects to /instance-ai when module is active, enabled, and user has instanceAi:message', () => {
+			settingsStore.settings.activeModules = ['instance-ai'];
+			settingsStore.moduleSettings = { 'instance-ai': { ...instanceAiModuleSettings } };
+			useRBACStore().setGlobalScopes(['instanceAi:message']);
+
+			expect(runRootRedirect()).toEqual({ name: INSTANCE_AI_VIEW });
+		});
+
+		test('falls back to /home/workflows when admin has disabled the module', () => {
+			settingsStore.settings.activeModules = ['instance-ai'];
+			settingsStore.moduleSettings = {
+				'instance-ai': { ...instanceAiModuleSettings, enabled: false },
+			};
+			useRBACStore().setGlobalScopes(['instanceAi:message']);
+
+			expect(runRootRedirect()).toBe('/home/workflows');
+		});
+
+		test('falls back to /home/workflows when user lacks instanceAi:message scope', () => {
+			settingsStore.settings.activeModules = ['instance-ai'];
+			settingsStore.moduleSettings = { 'instance-ai': { ...instanceAiModuleSettings } };
+			useRBACStore().setGlobalScopes([]);
+
+			expect(runRootRedirect()).toBe('/home/workflows');
+		});
+
+		test('falls back to /home/workflows when the module is not active', () => {
+			useRBACStore().setGlobalScopes(['instanceAi:message']);
+
+			expect(runRootRedirect()).toBe('/home/workflows');
+		});
+	});
+
+	describe('roles settings', () => {
+		beforeEach(async () => {
+			useRBACStore().setGlobalScopes(['role:manage']);
+			// Reset to a neutral route so each push re-triggers the guard.
+			await router.push('/workflows');
+		});
+
+		test('redirects /settings/project-roles to the Roles shell (project tab)', async () => {
+			await router.push('/settings/project-roles');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
+			expect(router.currentRoute.value.query.tab).toBe('project');
+		});
+
+		test('redirects /settings/instance-roles to the Roles shell (instance tab)', async () => {
+			await router.push('/settings/instance-roles');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
+			expect(router.currentRoute.value.query.tab).toBe('instance');
+		});
 	});
 
 	test('should set props: true for PROJECT_ROLE_SETTINGS route', () => {

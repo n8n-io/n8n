@@ -24,7 +24,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { IWorkflowToShare, IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
 import router from '@/app/router';
-import { sanitizeFilename } from '@n8n/utils';
+import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import saveAs from 'file-saver';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { FolderShortInfo, WorkflowListEventMap } from '@/features/core/folders/folders.types';
@@ -34,7 +34,6 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
@@ -66,16 +65,11 @@ const rootStore = useRootStore();
 const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
-const workflowHelpers = useWorkflowHelpers();
 const moveWorkflowEventBus = createEventBus<WorkflowListEventMap>();
 const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
 const favoritesStore = useFavoritesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-
-const onWorkflowPage = computed(() => {
-	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
-});
 
 const onExecutionsTab = computed(() => {
 	return [
@@ -122,7 +116,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.download'),
-			disabled: !onWorkflowPage.value,
 		},
 	];
 
@@ -130,7 +123,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.SHARE,
 			label: locale.baseText('workflowDetails.share'),
-			disabled: !onWorkflowPage.value,
 		});
 	}
 
@@ -150,7 +142,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
-			disabled: !onWorkflowPage.value || props.workflowPermissions.update !== true,
+			disabled: props.workflowPermissions.update !== true,
 		});
 	}
 
@@ -159,7 +151,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		label: favoritesStore.isFavorite(props.id, 'workflow')
 			? locale.baseText('favorites.remove')
 			: locale.baseText('favorites.add'),
-		disabled: !onWorkflowPage.value || props.isNewWorkflow,
+		disabled: props.isNewWorkflow,
 	});
 
 	if (
@@ -172,24 +164,24 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
-			disabled: !onWorkflowPage.value || !props.id,
+			disabled: !props.id,
 		});
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
 			label: locale.baseText('menuActions.editDescription'),
-			disabled: !onWorkflowPage.value || !props.id,
+			disabled: !props.id,
 		});
 
 		actions.push(
 			{
 				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
 				label: locale.baseText('menuActions.importFromUrl'),
-				disabled: !onWorkflowPage.value || onExecutionsTab.value,
+				disabled: onExecutionsTab.value,
 			},
 			{
 				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
 				label: locale.baseText('menuActions.importFromFile'),
-				disabled: !onWorkflowPage.value || onExecutionsTab.value,
+				disabled: onExecutionsTab.value,
 			},
 		);
 	}
@@ -200,7 +192,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			label: locale.baseText('menuActions.push'),
 			disabled:
 				!sourceControlStore.isEnterpriseSourceControlEnabled ||
-				!onWorkflowPage.value ||
 				onExecutionsTab.value ||
 				sourceControlStore.preferences.branchReadOnly,
 		});
@@ -209,7 +200,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	actions.push({
 		id: WORKFLOW_MENU_ACTIONS.SETTINGS,
 		label: locale.baseText('generic.settings'),
-		disabled: !onWorkflowPage.value || props.isNewWorkflow,
+		disabled: props.isNewWorkflow,
 	});
 
 	if (
@@ -222,12 +213,12 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
 				label: locale.baseText('menuActions.unarchive'),
-				disabled: !onWorkflowPage.value || props.isNewWorkflow,
+				disabled: props.isNewWorkflow,
 			});
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.DELETE,
 				label: locale.baseText('menuActions.delete'),
-				disabled: !onWorkflowPage.value || props.isNewWorkflow,
+				disabled: props.isNewWorkflow,
 				customClass: $style.deleteItem,
 				divided: true,
 			});
@@ -235,7 +226,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.ARCHIVE,
 				label: locale.baseText('menuActions.archive'),
-				disabled: !onWorkflowPage.value || props.isNewWorkflow,
+				disabled: props.isNewWorkflow,
 				customClass: $style.deleteItem,
 				divided: true,
 			});
@@ -248,7 +239,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
-			const workflowId = getWorkflowId(props.id, route.params.name);
+			const workflowId = getWorkflowId(props.id, route.params.workflowId);
 			if (!workflowId) return;
 
 			const workflowDescription =
@@ -280,7 +271,10 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
-			const workflowData = await workflowHelpers.getWorkflowDataToSave();
+			if (!workflowDocumentStore?.value) {
+				throw new Error('Cannot download workflow: workflow document store is unavailable');
+			}
+			const workflowData = workflowDocumentStore.value.serialize();
 			const { tags, ...data } = workflowData;
 			const exportData: IWorkflowToShare = {
 				...data,
@@ -374,7 +368,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {
-			const workflowId = getWorkflowId(props.id, route.params.name);
+			const workflowId = getWorkflowId(props.id, route.params.workflowId);
 			if (!workflowId) {
 				return;
 			}

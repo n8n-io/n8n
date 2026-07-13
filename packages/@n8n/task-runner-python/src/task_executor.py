@@ -1,12 +1,15 @@
-import multiprocessing
-import traceback
-import textwrap
-import types
-import json
+import ast
+import builtins
+import collections
+import importlib
 import io
+import json
+import logging
+import multiprocessing
 import os
 import sys
-import logging
+import textwrap
+import traceback
 from typing import cast
 
 from src.errors import (
@@ -19,6 +22,8 @@ from src.errors import (
     TaskSubprocessFailedError,
     SecurityViolationError,
 )
+from src._sandbox_callables import _SafePrint, _GuardedImport, _SafeFormat
+from src.format_validation import find_blocked_format_tokens
 from src.import_validation import validate_module_import
 from src.config.security_config import SecurityConfig
 
@@ -32,12 +37,15 @@ from src.message_types.pipe import (
 from src.pipe_reader import PipeReader
 from src.constants import (
     EXECUTOR_CIRCULAR_REFERENCE_KEY,
+    EXECUTOR_SAFE_FORMAT_KEY,
     EXECUTOR_USER_OUTPUT_KEY,
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
+    ERROR_DANGEROUS_STRING_PATTERN,
     SIGTERM_EXIT_CODE,
     SIGKILL_EXIT_CODE,
     PIPE_MSG_PREFIX_LENGTH,
+    FORMAT_METHOD_NAMES,
 )
 
 from multiprocessing.context import ForkServerProcess
@@ -48,7 +56,114 @@ logger = logging.getLogger(__name__)
 MULTIPROCESSING_CONTEXT = multiprocessing.get_context("forkserver")
 MAX_PRINT_ARGS_ALLOWED = 100
 
+# Captured at module load before any allowlist guards are installed, so a
+# fresh wrapper always delegates to the real implementations rather than
+# stacking on top of a previously-installed wrapper.
+_PRISTINE_IMPORT_MODULE = importlib.import_module
+_PRISTINE_DUNDER_IMPORT = importlib.__import__
+
 type PipeConnection = Connection
+
+
+class FormatGuardTransformer(ast.NodeTransformer):
+    def visit_Call(self, node: ast.Call) -> ast.AST:
+        self.generic_visit(node)
+
+        if (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr in FORMAT_METHOD_NAMES
+        ):
+            replacement = ast.Call(
+                func=ast.Name(id=EXECUTOR_SAFE_FORMAT_KEY, ctx=ast.Load()),
+                args=[
+                    ast.Constant(value=node.func.attr),
+                    node.func.value,
+                    *node.args,
+                ],
+                keywords=node.keywords,
+            )
+            return ast.copy_location(replacement, node)
+
+        return node
+
+
+def _validate_format_template(template: str) -> None:
+    token = next(find_blocked_format_tokens(template), None)
+    if token is not None:
+        raise SecurityViolationError(
+            description=ERROR_DANGEROUS_STRING_PATTERN.format(attr=token),
+        )
+
+
+def _validate_field_expression(expr: str) -> None:
+    # Wrap as a complete template so the existing parser can scan it.
+    _validate_format_template("{" + expr + "}")
+
+
+_TEMPLATE_METHODS = frozenset({"format", "format_map", "vformat"})
+_FIELD_METHODS = frozenset({"get_field"})
+
+
+def _resolve_template_arg(method_name: str, receiver, args):
+    """Return ``(template, field)`` for the call: at most one element is
+    non-``None``. Normalises bound and unbound call forms so the same
+    validation runs for both ``"tpl".format(...)``, ``str.format("tpl", ...)``,
+    ``Formatter().format("tpl", ...)``, and ``Formatter.format(f, "tpl", ...)``.
+
+    The UserString short-circuit applies only to template methods; for
+    ``get_field`` the field expression lives in ``args``, not in the
+    receiver's stored data.
+    """
+    is_template = method_name in _TEMPLATE_METHODS
+    is_field = method_name in _FIELD_METHODS
+
+    if not is_template and not is_field:
+        return (None, None)
+
+    # ``str.format``/``UserString.format``: receiver itself is the template.
+    if is_template:
+        if isinstance(receiver, str):
+            return (receiver, None)
+        if isinstance(receiver, collections.UserString):
+            return (receiver.data, None)
+
+    if isinstance(receiver, type):
+        if issubclass(receiver, str):
+            # Unbound ``str.format(template, ...)``.
+            candidate = args[0] if args else None
+        elif issubclass(receiver, collections.UserString) and is_template:
+            # Unbound ``UserString.format(self, ...)`` — args[0] is the instance.
+            inst = args[0] if args else None
+            candidate = inst.data if isinstance(inst, collections.UserString) else None
+        else:
+            # Unbound on an arbitrary class (e.g. ``Formatter``): args[0] is
+            # the instance, the template/field lives at args[1].
+            candidate = args[1] if len(args) >= 2 else None
+    else:
+        # Bound on a non-str instance: ``args[0]`` is the template/field.
+        candidate = args[0] if args else None
+
+    if not isinstance(candidate, str):
+        return (None, None)
+
+    if is_field:
+        return (None, candidate)
+    return (candidate, None)
+
+
+def _safe_format_impl(method_name: str, receiver, /, *args, **kwargs):
+    template, field = _resolve_template_arg(method_name, receiver, args)
+    if template is not None:
+        _validate_format_template(template)
+    if field is not None:
+        _validate_field_expression(field)
+    return getattr(receiver, method_name)(*args, **kwargs)
+
+
+# Injected into user globals as a hardened callable so its ``__globals__``
+# (which carries this module's sensitive namespace) is not reachable from user
+# code; the implementation is held on a denied slot.
+_safe_format = _SafeFormat(_safe_format_impl)
 
 
 class TaskExecutor:
@@ -196,19 +311,22 @@ class TaskExecutor:
             os.environ.clear()
 
         TaskExecutor._sanitize_sys_modules(security_config)
+        TaskExecutor._harden_importlib(security_config)
 
         print_args: PrintArgs = []
         sys.stderr = stderr_capture = io.StringIO()
 
         try:
-            wrapped_code = TaskExecutor._wrap_code(raw_code)
-            compiled_code = compile(wrapped_code, EXECUTOR_ALL_ITEMS_FILENAME, "exec")
+            compiled_code = TaskExecutor._compile_user_code(
+                raw_code, EXECUTOR_ALL_ITEMS_FILENAME
+            )
 
             globals = {
                 "__builtins__": TaskExecutor._filter_builtins(security_config),
                 "_items": items,
                 "_query": query,
                 "print": TaskExecutor._create_custom_print(print_args),
+                EXECUTOR_SAFE_FORMAT_KEY: _safe_format,
             }
 
             exec(compiled_code, globals)
@@ -235,13 +353,15 @@ class TaskExecutor:
             os.environ.clear()
 
         TaskExecutor._sanitize_sys_modules(security_config)
+        TaskExecutor._harden_importlib(security_config)
 
         print_args: PrintArgs = []
         sys.stderr = stderr_capture = io.StringIO()
 
         try:
-            wrapped_code = TaskExecutor._wrap_code(raw_code)
-            compiled_code = compile(wrapped_code, EXECUTOR_PER_ITEM_FILENAME, "exec")
+            compiled_code = TaskExecutor._compile_user_code(
+                raw_code, EXECUTOR_PER_ITEM_FILENAME
+            )
 
             filtered_builtins = TaskExecutor._filter_builtins(security_config)
             custom_print = TaskExecutor._create_custom_print(print_args)
@@ -252,6 +372,7 @@ class TaskExecutor:
                     "__builtins__": filtered_builtins,
                     "_item": item,
                     "print": custom_print,
+                    EXECUTOR_SAFE_FORMAT_KEY: _safe_format,
                 }
 
                 exec(compiled_code, globals)
@@ -281,6 +402,14 @@ class TaskExecutor:
     def _wrap_code(raw_code: str) -> str:
         indented_code = textwrap.indent(raw_code, "    ")
         return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
+
+    @staticmethod
+    def _compile_user_code(raw_code: str, filename: str):
+        wrapped_code = TaskExecutor._wrap_code(raw_code)
+        tree = ast.parse(wrapped_code, filename, "exec")
+        tree = FormatGuardTransformer().visit(tree)
+        ast.fix_missing_locations(tree)
+        return compile(tree, filename, "exec")
 
     @staticmethod
     def _extract_json_data_per_item(user_output):
@@ -354,28 +483,7 @@ class TaskExecutor:
 
     @staticmethod
     def _create_custom_print(print_args: PrintArgs):
-        def custom_print(*args):
-            serializable_args = []
-
-            for arg in args:
-                try:
-                    json.dumps(arg, default=str, ensure_ascii=False)
-                    serializable_args.append(arg)
-                except Exception as _:
-                    # Ensure args are serializable so they are transmissible
-                    # through the multiprocessing queue and via websockets.
-                    serializable_args.append(
-                        {
-                            EXECUTOR_CIRCULAR_REFERENCE_KEY: repr(arg),
-                            "__type__": type(arg).__name__,
-                        }
-                    )
-
-            formatted = TaskExecutor._format_print_args(*serializable_args)
-            print_args.append(formatted)
-            print("[user code]", *args)
-
-        return custom_print
+        return _SafePrint(print_args, TaskExecutor._format_print_args)
 
     @staticmethod
     def _format_print_args(*args) -> list[str]:
@@ -436,7 +544,49 @@ class TaskExecutor:
 
         filtered["__import__"] = TaskExecutor._create_safe_import(security_config)
 
-        return types.MappingProxyType(filtered)
+        class _ImmutableBuiltins:
+            __slots__ = ()
+
+            def __getitem__(self, key):
+                return filtered[key]
+
+            def __contains__(self, key):
+                return key in filtered
+
+            def __iter__(self):
+                return iter(filtered)
+
+            def __len__(self):
+                return len(filtered)
+
+            def keys(self):
+                return filtered.keys()
+
+            def values(self):
+                return filtered.values()
+
+            def items(self):
+                return filtered.items()
+
+            def get(self, key, default=None):
+                return filtered.get(key, default)
+
+            def __getattr__(self, name):
+                try:
+                    return filtered[name]
+                except KeyError:
+                    raise AttributeError(name) from None
+
+            def __setattr__(self, name, value):
+                raise AttributeError("read-only")
+
+            def __delattr__(self, name):
+                raise AttributeError("read-only")
+
+            def __repr__(self):
+                return f"ImmutableBuiltins({len(filtered)} keys)"
+
+        return _ImmutableBuiltins()
 
     @staticmethod
     def _sanitize_sys_modules(security_config: SecurityConfig):
@@ -478,21 +628,37 @@ class TaskExecutor:
 
     @staticmethod
     def _create_safe_import(security_config: SecurityConfig):
-        original_import = __builtins__["__import__"]
+        return _GuardedImport(
+            security_config, validate_module_import, builtins.__import__
+        )
 
-        def safe_import(name, *args, **kwargs):
-            is_allowed, error_msg = validate_module_import(name, security_config)
-
-            if not is_allowed:
-                assert error_msg is not None
-                raise SecurityViolationError(
-                    message="Security violation detected",
-                    description=error_msg,
-                )
-
-            return original_import(name, *args, **kwargs)
-
-        return safe_import
+    @staticmethod
+    def _harden_importlib(security_config: SecurityConfig) -> None:
+        """Route ``importlib``'s import entry points through the same
+        allowlist used for ``import`` statements in user code. The
+        replacement callables are class instances from
+        ``src._sandbox_callables`` whose introspection-deny set blocks user
+        code from reaching back through ``__globals__`` etc."""
+        setattr(
+            importlib,
+            "import_module",
+            _GuardedImport(
+                security_config,
+                validate_module_import,
+                _PRISTINE_IMPORT_MODULE,
+                trust_eligible=True,
+            ),
+        )
+        setattr(
+            importlib,
+            "__import__",
+            _GuardedImport(
+                security_config,
+                validate_module_import,
+                _PRISTINE_DUNDER_IMPORT,
+                trust_eligible=True,
+            ),
+        )
 
     # ========== pipe I/O ==========
 

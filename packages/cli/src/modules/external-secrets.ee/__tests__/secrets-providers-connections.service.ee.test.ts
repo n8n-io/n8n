@@ -6,12 +6,12 @@ import type {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { In } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_BLANKING_VALUE, type IDataObject, type INodeProperties } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
+import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
-import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
 import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import type { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
 import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
@@ -26,8 +26,10 @@ describe('SecretsProvidersConnectionsService', () => {
 	const mockProviderRegistry = mock<ExternalSecretsProviderRegistry>();
 	const mockEventService = mock<EventService>();
 	const mockCipher = {
-		encrypt: jest.fn((data: IDataObject) => JSON.stringify(data)),
-		decrypt: jest.fn((data: string) => data),
+		encrypt: vi.fn((data: IDataObject) => JSON.stringify(data)),
+		decrypt: vi.fn((data: string) => data),
+		encryptV2: vi.fn(async (data: IDataObject) => JSON.stringify(data)),
+		decryptV2: vi.fn(async (data: string) => data),
 	};
 
 	const service = new SecretsProvidersConnectionsService(
@@ -43,12 +45,12 @@ describe('SecretsProvidersConnectionsService', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		mockCipher.decrypt.mockImplementation((data: string) => data);
+		vi.clearAllMocks();
+		mockCipher.decryptV2.mockImplementation(async (data: string) => data);
 	});
 
 	describe('toPublicConnection', () => {
-		it('should map entity to DTO with projects, redacted settings, secretsCount, and secrets', () => {
+		it('should map entity to DTO with projects, redacted settings, secretsCount, and secrets', async () => {
 			const decryptedSettings = { apiKey: 'secret123', region: 'us-east-1' };
 			const redactedSettings = { apiKey: CREDENTIAL_BLANKING_VALUE, region: 'us-east-1' };
 			const mockProperties: INodeProperties[] = [
@@ -84,7 +86,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			mockExternalSecretsManager.getSecretNames.mockReturnValue(['secret-a', 'secret-b']);
 			mockRedactionService.redact.mockReturnValue(redactedSettings);
 
-			expect(service.toPublicConnection(connection)).toEqual({
+			expect(await service.toPublicConnection(connection)).toEqual({
 				id: '1',
 				name: 'my-aws',
 				type: 'awsSecretsManager',
@@ -109,7 +111,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockRedactionService.redact).toHaveBeenCalledWith(decryptedSettings, mockProperties);
 		});
 
-		it('should map entity to DTO without projects and with empty secrets', () => {
+		it('should map entity to DTO without projects and with empty secrets', async () => {
 			const decryptedSettings = { token: 'secret-token' };
 			const redactedSettings = { token: CREDENTIAL_BLANKING_VALUE };
 			const mockProperties: INodeProperties[] = [
@@ -142,7 +144,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			mockExternalSecretsManager.getSecretNames.mockReturnValue([]);
 			mockRedactionService.redact.mockReturnValue(redactedSettings);
 
-			expect(service.toPublicConnection(connection)).toEqual({
+			expect(await service.toPublicConnection(connection)).toEqual({
 				id: '2',
 				name: 'my-vault',
 				type: 'vault',
@@ -160,7 +162,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockExternalSecretsManager.getProvider).toHaveBeenCalledWith('my-vault');
 		});
 
-		it('should use state "initializing" when provider instance is not in registry', () => {
+		it('should use state "initializing" when provider instance is not in registry', async () => {
 			const mockProperties: INodeProperties[] = [
 				{ name: 'token', type: 'string', displayName: 'Token', default: '' },
 			];
@@ -182,13 +184,13 @@ describe('SecretsProvidersConnectionsService', () => {
 				updatedAt: new Date('2024-01-02'),
 			} as unknown as SecretsProviderConnection;
 
-			const result = service.toPublicConnection(connection);
+			const result = await service.toPublicConnection(connection);
 
 			expect(result.state).toBe('initializing');
 			expect(mockExternalSecretsManager.getProvider).toHaveBeenCalledWith('not-synced-yet');
 		});
 
-		it('should pass through state "error" from provider instance', () => {
+		it('should pass through state "error" from provider instance', async () => {
 			const mockProperties: INodeProperties[] = [
 				{ name: 'key', type: 'string', displayName: 'Key', default: '' },
 			];
@@ -214,7 +216,7 @@ describe('SecretsProvidersConnectionsService', () => {
 				updatedAt: new Date('2024-01-02'),
 			} as unknown as SecretsProviderConnection;
 
-			const result = service.toPublicConnection(connection);
+			const result = await service.toPublicConnection(connection);
 
 			expect(result.state).toBe('error');
 		});
@@ -392,9 +394,9 @@ describe('SecretsProvidersConnectionsService', () => {
 
 		it('should sync provider connection after deleteConnection', async () => {
 			const entityManager = {
-				delete: jest.fn().mockResolvedValue(undefined),
+				delete: vi.fn().mockResolvedValue(undefined),
 			};
-			const transaction = jest.fn(
+			const transaction = vi.fn(
 				async (fn: (em: typeof entityManager) => Promise<void>) => await fn(entityManager),
 			);
 			Object.defineProperty(mockRepository, 'manager', {
@@ -423,10 +425,10 @@ describe('SecretsProvidersConnectionsService', () => {
 	describe('cleanupConnectionsForProjectDeletion', () => {
 		it('runs owner and non-owner mutations inside a single transaction', async () => {
 			const entityManager = {
-				delete: jest.fn().mockResolvedValueOnce(undefined),
-				update: jest.fn().mockResolvedValueOnce(undefined),
+				delete: vi.fn().mockResolvedValueOnce(undefined),
+				update: vi.fn().mockResolvedValueOnce(undefined),
 			};
-			const transaction = jest.fn(
+			const transaction = vi.fn(
 				async (callback: (em: typeof entityManager) => Promise<void>) =>
 					await callback(entityManager),
 			);
@@ -481,10 +483,10 @@ describe('SecretsProvidersConnectionsService', () => {
 
 		it('deletes credential dependencies for owner connections in a single bulk call', async () => {
 			const entityManager = {
-				delete: jest.fn().mockResolvedValue(undefined),
-				update: jest.fn().mockResolvedValue(undefined),
+				delete: vi.fn().mockResolvedValue(undefined),
+				update: vi.fn().mockResolvedValue(undefined),
 			};
-			const transaction = jest.fn(
+			const transaction = vi.fn(
 				async (callback: (em: typeof entityManager) => Promise<void>) =>
 					await callback(entityManager),
 			);
@@ -519,10 +521,10 @@ describe('SecretsProvidersConnectionsService', () => {
 
 		it('does not delete credential dependencies when there are no owner connections', async () => {
 			const entityManager = {
-				delete: jest.fn().mockResolvedValue(undefined),
-				update: jest.fn().mockResolvedValue(undefined),
+				delete: vi.fn().mockResolvedValue(undefined),
+				update: vi.fn().mockResolvedValue(undefined),
 			};
-			const transaction = jest.fn(
+			const transaction = vi.fn(
 				async (callback: (em: typeof entityManager) => Promise<void>) =>
 					await callback(entityManager),
 			);

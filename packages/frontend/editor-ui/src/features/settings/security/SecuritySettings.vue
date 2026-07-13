@@ -13,6 +13,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { RedactionFloor } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { EnterpriseEditionFeature } from '@/app/constants';
@@ -20,6 +21,9 @@ import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import DataRedactionSection from './DataRedactionSection.vue';
+import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -28,6 +32,7 @@ const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
@@ -40,6 +45,12 @@ const isEnforceMFAEnabled = computed(
 
 const isPersonalSpacePolicyLicensed = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy],
+);
+
+const isWorkflowReviewsAvailable = computed(
+	() =>
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] &&
+		checkEnvFeatureFlag.value('WORKFLOW_REVIEWS'),
 );
 
 async function onUpdateMfaEnforced(value: string | number | boolean) {
@@ -64,7 +75,7 @@ function goToUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
 }
 
-const { state } = useAsyncState(async () => {
+const { state, isReady, error } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
 	return {
 		personalSpacePublishing: settings.personalSpacePublishing,
@@ -73,10 +84,19 @@ const { state } = useAsyncState(async () => {
 		sharedPersonalWorkflowsCount: settings.sharedPersonalWorkflowsCount,
 		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
 		managedByEnv: settings.managedByEnv,
+		initialRedactionFloor: (settings.redactionEnforcement?.floor ?? 'off') as RedactionFloor,
+		workflowReviewsEnabled: settings.workflowReviews?.enabled ?? false,
 	};
 }, undefined);
 
 const isManagedByEnv = computed(() => state.value?.managedByEnv ?? false);
+
+// The security settings endpoint is gated by an enterprise license and 403s on
+// unlicensed instances, leaving `state` undefined. The data redaction section
+// still needs to render so the licensed-feature upgrade prompt is reachable, so
+// we render once the request settles (resolved or failed) rather than waiting
+// for a defined `state`.
+const isSecuritySettingsSettled = computed(() => isReady.value || error.value !== undefined);
 
 async function updatePersonalSpaceSetting(
 	key: 'personalSpacePublishing' | 'personalSpaceSharing',
@@ -183,9 +203,14 @@ const sharingCountText = computed(() => {
 			data-test-id="security-managed-by-env-notice"
 		/>
 
-		<N8nHeading tag="h2" size="large" class="mb-l">
-			{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
-		</N8nHeading>
+		<div class="mb-s" :class="$style.headerTitle">
+			<N8nHeading tag="h2" size="large">
+				{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
+			</N8nHeading>
+			<N8nText size="small" color="text-base">
+				{{ i18n.baseText('settings.personal.mfa.enforce.message') }}
+			</N8nText>
+		</div>
 
 		<div :class="$style.settingsSection">
 			<div :class="$style.settingsContainer">
@@ -197,7 +222,7 @@ const sharingCountText = computed(() => {
 						}}</N8nBadge>
 					</N8nText>
 					<N8nText size="small" color="text-light">{{
-						i18n.baseText('settings.personal.mfa.enforce.message')
+						i18n.baseText('settings.personal.mfa.enforce.description')
 					}}</N8nText>
 				</div>
 				<div :class="$style.settingsContainerAction">
@@ -232,11 +257,22 @@ const sharingCountText = computed(() => {
 			</div>
 		</div>
 
-		<N8nHeading tag="h2" size="large" class="mb-l">
-			{{ i18n.baseText('settings.security.personalSpace.title') }}
-		</N8nHeading>
+		<DataRedactionSection
+			v-if="isSecuritySettingsSettled"
+			:initial-floor="state?.initialRedactionFloor ?? 'off'"
+			:managed-by-env="isManagedByEnv"
+		/>
 
-		<div :class="$style.settingsSection">
+		<div class="mb-s" :class="$style.headerTitle">
+			<N8nHeading tag="h2" size="large">
+				{{ i18n.baseText('settings.security.personalSpace.title') }}
+			</N8nHeading>
+			<N8nText color="text-base" size="small">
+				{{ i18n.baseText('settings.security.personalSpace.description') }}
+			</N8nText>
+		</div>
+
+		<div :class="$style.settingsSection" class="mb-s">
 			<div :class="$style.settingsContainer">
 				<div :class="$style.settingsContainerInfo">
 					<N8nText :bold="true"
@@ -356,6 +392,24 @@ const sharingCountText = computed(() => {
 			</div>
 		</div>
 
+		<template v-if="isSecuritySettingsSettled && isWorkflowReviewsAvailable && state !== undefined">
+			<div class="mb-s" :class="$style.headerTitle">
+				<N8nHeading tag="h2" size="large">
+					{{ i18n.baseText('settings.security.workflowReviews.title') }}
+				</N8nHeading>
+				<N8nText size="small" color="text-base">
+					{{ i18n.baseText('settings.security.workflowReviews.description') }}
+				</N8nText>
+			</div>
+
+			<div :class="$style.settingsSection">
+				<WorkflowReviewsSection
+					:initial-enabled="state.workflowReviewsEnabled"
+					:managed-by-env="isManagedByEnv"
+				/>
+			</div>
+		</template>
+
 		<N8nAlertDialog
 			:open="showPublishingDialog"
 			:title="
@@ -393,9 +447,10 @@ const sharingCountText = computed(() => {
 }
 
 .settingsSection {
-	border-radius: var(--radius);
+	border-radius: var(--radius--lg);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--xl);
+	background-color: light-dark(var(--color--neutral-white), transparent);
 }
 
 .settingsContainer {

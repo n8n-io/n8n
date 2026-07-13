@@ -18,14 +18,13 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
+import { createResultError } from '@n8n/utils/result';
 import {
 	type IRunExecutionData,
-	createResultError,
 	type NodeConnectionType,
 	NodeConnectionTypes,
 	type IConnectedNode,
@@ -46,7 +45,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { asyncComputed } from '@vueuse/core';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import { I18nT } from 'vue-i18n';
@@ -85,9 +83,8 @@ const props = withDefaults(defineProps<Props>(), {
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext();
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const environmentsStore = useEnvironmentsStore();
@@ -107,8 +104,8 @@ const emit = defineEmits<{
 const scroller = ref<RecycleScrollerInstance>();
 const closedNodesBeforeSearch = ref(new Set<string>());
 
-const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
-const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
+const canDraggableDrop = computed(() => ndvStore.value.canDraggableDrop);
+const draggableStickyPosition = computed(() => ndvStore.value.draggableStickyPos);
 
 const onCalloutDismiss = async (calloutId: string) => {
 	await dismissCallout(calloutId);
@@ -221,7 +218,11 @@ const contextSchema = computed(() => {
 			mode: 'test',
 			resumeUrl: i18n.baseText('dataMapping.schemaView.execution.resumeUrl'),
 		},
-		$workflow: pick(workflowsStore.workflow, ['id', 'name', 'active']),
+		$workflow: {
+			id: workflowDocumentStore?.value?.workflowId ?? '',
+			name: workflowDocumentStore?.value?.name ?? '',
+			active: workflowDocumentStore?.value?.active ?? false,
+		},
 	};
 
 	return filterSchema(getSchema(schemaSource), props.search);
@@ -368,7 +369,7 @@ const nodeAdditionalInfo = (node: INodeUi) => {
 		returnData.push(i18n.baseText('node.disabled'));
 	}
 
-	const connections = ndvStore.ndvNodeInputNumber[node.name];
+	const connections = ndvStore.value.ndvNodeInputNumber[node.name];
 	if (connections) {
 		if (connections.length === 1) {
 			returnData.push(`Input ${connections}`);
@@ -470,18 +471,18 @@ const unwatchItems = watch(items, (newItems) => {
 });
 
 const onDragStart = (el: HTMLElement, data?: string) => {
-	ndvStore.draggableStartDragging({
+	ndvStore.value.draggableStartDragging({
 		type: 'mapping',
 		data: data ?? '',
 		dimensions: el?.getBoundingClientRect() ?? null,
 	});
-	ndvStore.resetMappingTelemetry();
+	ndvStore.value.resetMappingTelemetry();
 };
 
 const onDragEnd = (el: HTMLElement) => {
-	ndvStore.draggableStopDragging();
+	ndvStore.value.draggableStopDragging();
 	setTimeout(() => {
-		const mappingTelemetry = ndvStore.mappingTelemetry;
+		const mappingTelemetry = ndvStore.value.mappingTelemetry;
 		const parentNode = nodesSchemas.value.find(({ node }) => node.name === el.dataset.nodeName);
 
 		const isPreview = parentNode?.preview ?? false;
@@ -631,7 +632,7 @@ const onDragEnd = (el: HTMLElement) => {
 											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											telemetry-source="inputs"
 											size="small"
-											type="secondary"
+											variant="subtle"
 											hide-icon
 											execution-mode="exclusive"
 										/>

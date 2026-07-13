@@ -1,39 +1,25 @@
 // ---------------------------------------------------------------------------
 // LangSmith dataset sync
 //
-// Syncs JSON test case files from the repo to a LangSmith dataset.
-// Uses derived IDs (fileSlug/scenarioName) so examples are stable across
-// runs, enabling experiment comparison over time.
+// Syncs JSON test case files from the repo to a LangSmith dataset. Existing
+// examples are found by inputs (testCaseFile + scenarioName) and updated in
+// place; new scenarios get a random UUID. Stale examples (scenario removed
+// from a test case present in the sync) are ARCHIVED: moved to the
+// 'archived' split, never deleted — LangSmith's soft-delete tombstones
+// UUIDs, which historically caused 409 conflicts on resurrection, and
+// deleting also strips the example from the UI. evaluate() selects examples
+// by file-slug/tier splits, so archived examples are excluded from runs; a
+// re-added scenario is found by inputs and restored to its active splits
+// through the normal update path.
 // ---------------------------------------------------------------------------
 
-import { createHash } from 'crypto';
+import { randomUUID } from 'crypto';
 import type { Client } from 'langsmith';
 import type { Example, KVMap } from 'langsmith/schemas';
 import { z } from 'zod';
 
-import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
+import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
-
-// Bump this if existing IDs get tombstoned by LangSmith soft-delete and need
-// to be regenerated fresh. UUIDs for the same derivedId stay stable within a
-// version, so experiment comparison still works.
-const UUID_VERSION = 'v2';
-
-/**
- * Generate a deterministic UUID from a string.
- * Same input always produces the same UUID, so example IDs are stable across runs.
- */
-function deterministicUuid(input: string): string {
-	const hash = createHash('sha256').update(`${UUID_VERSION}:${input}`).digest('hex');
-	// Format as UUID v4 shape (8-4-4-4-12)
-	return [
-		hash.slice(0, 8),
-		hash.slice(8, 12),
-		'4' + hash.slice(13, 16),
-		'8' + hash.slice(17, 20),
-		hash.slice(20, 32),
-	].join('-');
-}
 
 /**
  * Shape of the inputs passed to the target function for each scenario.
@@ -41,7 +27,6 @@ function deterministicUuid(input: string): string {
  * workflow a scenario belongs to (metadata is hidden by default).
  */
 export const datasetExampleInputsSchema = z.object({
-	prompt: z.string(),
 	testCaseFile: z.string(),
 	scenarioName: z.string(),
 	scenarioDescription: z.string(),
@@ -61,13 +46,31 @@ export const datasetExampleMetadataSchema = z.object({
 export type DatasetExampleMetadata = z.infer<typeof datasetExampleMetadataSchema>;
 
 /**
+ * Split assigned to examples whose scenario no longer exists in the repo.
+ * Runs select examples by file-slug/tier splits, so this split acts as an
+ * archive: excluded from every run, still inspectable in the UI. (A test
+ * case file named "archived" would collide with it — don't create one.)
+ */
+export const ARCHIVED_SPLIT = 'archived';
+
+/**
  * Sync JSON test cases to a LangSmith dataset.
  *
  * - Creates the dataset if it doesn't exist
- * - Diffs local scenarios against existing examples
- * - Creates, updates, or deletes examples to match
+ * - Finds existing examples by (testCaseFile, scenarioName) and updates in place
+ * - Creates new scenarios with a random UUID
  * - Orders examples round-robin across test cases for optimal parallelism
  * - Assigns each example to a split (test case file slug) for UI filtering
+ * - Archives stale examples (split → 'archived') so removed scenarios stop
+ *   running — a stale example otherwise fails every attempt and skews the
+ *   experiment's aggregate metrics. Scoped to test cases present in this
+ *   sync: examples of filtered-out or deleted CASES are left alone (the two
+ *   are indistinguishable here — deleted-case cleanup stays manual)
+ *
+ * Takes the already-selected test cases (the caller loads them once, from disk
+ * or lang-tracer, and threads them through), so the sync stays source-agnostic.
+ *
+ * Never deletes. Hard removal stays manual (LangSmith UI or MCP).
  *
  * Returns the dataset name for use with evaluate().
  */
@@ -75,10 +78,8 @@ export async function syncDataset(
 	lsClient: Client,
 	datasetName: string,
 	logger: EvalLogger,
-	filter?: string,
+	testCasesWithFiles: WorkflowTestCaseWithFile[],
 ): Promise<string> {
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(filter);
-
 	// Round-robin ordering ensures evaluate() triggers diverse builds early
 	// rather than burning all concurrency slots on one test case.
 	const scenarios = buildRoundRobinScenarios(testCasesWithFiles);
@@ -109,17 +110,15 @@ export async function syncDataset(
 		existingByDerivedId.set(`${inputs.data.testCaseFile}/${inputs.data.scenarioName}`, example);
 	}
 
-	// Diff and sync
-	const currentIds = new Set<string>();
-	const toCreate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
-	const toUpdate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
+	// Diff and sync. `split` is multi-valued so a case can belong to multiple
+	// logical groupings (e.g. ['pr', 'full']) in addition to its per-file slug.
+	const toCreate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string[] }> = [];
+	const toUpdate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string[] }> = [];
 
 	for (const scenario of scenarios) {
 		const derivedId = `${scenario.testCaseFile}/${scenario.scenarioName}`;
-		currentIds.add(derivedId);
 
 		const inputs: DatasetExampleInputs = {
-			prompt: scenario.prompt,
 			testCaseFile: scenario.testCaseFile,
 			scenarioName: scenario.scenarioName,
 			scenarioDescription: scenario.scenarioDescription,
@@ -134,40 +133,54 @@ export async function syncDataset(
 			triggerType: scenario.triggerType,
 		};
 
+		const split = [scenario.testCaseFile, ...scenario.datasets];
+
 		const existingExample = existingByDerivedId.get(derivedId);
 		if (existingExample) {
 			if (
 				hasInputsChanged(existingExample.inputs, inputs) ||
-				hasMetadataChanged(existingExample.metadata, metadata)
+				hasMetadataChanged(existingExample.metadata, metadata) ||
+				hasSplitChanged(existingExample.split, split)
 			) {
 				toUpdate.push({
 					id: existingExample.id,
 					inputs,
 					metadata,
-					split: scenario.testCaseFile,
+					split,
 				});
 			}
 		} else {
 			toCreate.push({
-				id: deterministicUuid(derivedId),
+				id: randomUUID(),
 				inputs,
 				metadata,
-				split: scenario.testCaseFile,
+				split,
 			});
 		}
 	}
 
-	// Only delete stale examples on a full sync (no filter). With a filter,
-	// we're only syncing a subset and mustn't delete the others.
-	// LangSmith also soft-deletes, which tombstones the UUID and prevents
-	// recreation with the same ID on a later full run.
-	const toDelete: string[] = [];
-	if (!filter) {
-		for (const [derivedId, example] of existingByDerivedId) {
-			if (!currentIds.has(derivedId)) {
-				toDelete.push(example.id);
-			}
-		}
+	// Archive stale examples: a scenario that was removed from a test case
+	// still has its example matching the case's file-slug split, so evaluate()
+	// keeps running it — failing every attempt and depressing the experiment
+	// aggregates (observed: an `empty-response` example whose scenario had
+	// been removed from the repo burned 3 runs per eval and skewed pass_at_k
+	// in every experiment). Only examples belonging to a test case IN THIS
+	// SYNC are considered: the selection reaching us is already narrowed by
+	// --filter/--exclude/--tier, and a filtered-out case is indistinguishable
+	// from a deleted one — archiving across the whole dataset would wrongly
+	// archive everything unselected. Split-only update: inputs/metadata stay
+	// untouched for forensics.
+	const syncedCaseSlugs = new Set(testCasesWithFiles.map((tc) => tc.fileSlug));
+	const currentDerivedIds = new Set(scenarios.map((s) => `${s.testCaseFile}/${s.scenarioName}`));
+	const toArchive: Array<{ id: string; derivedId: string }> = [];
+	for (const [derivedId, example] of existingByDerivedId) {
+		if (currentDerivedIds.has(derivedId)) continue;
+		// File slugs are path basenames and cannot contain '/'.
+		const exampleCaseSlug = derivedId.slice(0, derivedId.indexOf('/'));
+		if (!syncedCaseSlugs.has(exampleCaseSlug)) continue;
+		// Already archived on a previous sync — keep the operation idempotent.
+		if (!hasSplitChanged(example.split, [ARCHIVED_SPLIT])) continue;
+		toArchive.push({ id: example.id, derivedId });
 	}
 
 	if (toCreate.length > 0) {
@@ -196,12 +209,20 @@ export async function syncDataset(
 		logger.info(`  Updated ${String(toUpdate.length)} example(s)`);
 	}
 
-	if (toDelete.length > 0) {
-		await lsClient.deleteExamples(toDelete);
-		logger.info(`  Deleted ${String(toDelete.length)} stale example(s)`);
+	if (toArchive.length > 0) {
+		await lsClient.updateExamples(
+			toArchive.map((e) => ({
+				id: e.id,
+				split: [ARCHIVED_SPLIT],
+				dataset_id: datasetId,
+			})),
+		);
+		logger.info(
+			`  Archived ${String(toArchive.length)} stale example(s): ${toArchive.map((e) => e.derivedId).join(', ')}`,
+		);
 	}
 
-	if (toCreate.length === 0 && toUpdate.length === 0 && toDelete.length === 0) {
+	if (toCreate.length === 0 && toUpdate.length === 0 && toArchive.length === 0) {
 		logger.info('  Dataset up to date');
 	}
 
@@ -212,8 +233,12 @@ export async function syncDataset(
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Scenario name for the single "build-only" row a 0-scenario case emits, so the
+ *  workflow still builds and its process/outcome expectations get judged. Shared
+ *  with target() and reshape so all three agree on the sentinel. */
+export const BUILD_ONLY_SCENARIO_NAME = '__build_only__';
+
 interface FlatScenario {
-	prompt: string;
 	testCaseFile: string;
 	scenarioName: string;
 	scenarioDescription: string;
@@ -222,6 +247,8 @@ interface FlatScenario {
 	complexity?: 'simple' | 'medium' | 'complex';
 	tags?: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
+	/** Logical groupings (e.g. ['pr', 'full']) — written into the LangSmith example's splits alongside the file slug. */
+	datasets: string[];
 }
 
 /**
@@ -230,32 +257,18 @@ interface FlatScenario {
  * Input:  [tc1(s1,s2,s3), tc2(s1,s2), tc3(s1)]
  * Output: [tc1/s1, tc2/s1, tc3/s1, tc1/s2, tc2/s2, tc1/s3]
  */
-function buildRoundRobinScenarios(
-	testCasesWithFiles: Array<{
-		testCase: {
-			prompt: string;
-			complexity?: 'simple' | 'medium' | 'complex';
-			tags?: string[];
-			triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-			scenarios: Array<{
-				name: string;
-				description: string;
-				dataSetup: string;
-				successCriteria: string;
-			}>;
-		};
-		fileSlug: string;
-	}>,
-): FlatScenario[] {
+function buildRoundRobinScenarios(testCasesWithFiles: WorkflowTestCaseWithFile[]): FlatScenario[] {
 	const result: FlatScenario[] = [];
-	const maxScenarios = Math.max(...testCasesWithFiles.map((tc) => tc.testCase.scenarios.length), 0);
+	const maxScenarios = Math.max(
+		...testCasesWithFiles.map((tc) => (tc.testCase.executionScenarios ?? []).length),
+		0,
+	);
 
 	for (let i = 0; i < maxScenarios; i++) {
 		for (const { testCase, fileSlug } of testCasesWithFiles) {
-			const scenario = testCase.scenarios[i];
+			const scenario = testCase.executionScenarios?.[i];
 			if (scenario) {
 				result.push({
-					prompt: testCase.prompt,
 					testCaseFile: fileSlug,
 					scenarioName: scenario.name,
 					scenarioDescription: scenario.description,
@@ -264,8 +277,26 @@ function buildRoundRobinScenarios(
 					complexity: testCase.complexity,
 					tags: testCase.tags,
 					triggerType: testCase.triggerType,
+					datasets: testCase.datasets,
 				});
 			}
+		}
+	}
+
+	// Build-only cases (0 scenarios) emit one sentinel row so the workflow still builds and its expectations get judged.
+	for (const { testCase, fileSlug } of testCasesWithFiles) {
+		if ((testCase.executionScenarios?.length ?? 0) === 0) {
+			result.push({
+				testCaseFile: fileSlug,
+				scenarioName: BUILD_ONLY_SCENARIO_NAME,
+				scenarioDescription: '',
+				dataSetup: '',
+				successCriteria: '',
+				complexity: testCase.complexity,
+				tags: testCase.tags,
+				triggerType: testCase.triggerType,
+				datasets: testCase.datasets,
+			});
 		}
 	}
 
@@ -277,7 +308,6 @@ function buildRoundRobinScenarios(
 
 const existingInputsSchema = z
 	.object({
-		prompt: z.string().default(''),
 		testCaseFile: z.string().default(''),
 		scenarioName: z.string().default(''),
 		scenarioDescription: z.string().default(''),
@@ -302,7 +332,6 @@ function hasInputsChanged(existing: unknown, incoming: DatasetExampleInputs): bo
 	if (!parsed.success) return true;
 	const e = parsed.data;
 	return (
-		e.prompt !== incoming.prompt ||
 		e.testCaseFile !== incoming.testCaseFile ||
 		e.dataSetup !== incoming.dataSetup ||
 		e.successCriteria !== incoming.successCriteria ||
@@ -320,4 +349,13 @@ function hasMetadataChanged(existing: unknown, incoming: DatasetExampleMetadata)
 		e.triggerType !== (incoming.triggerType ?? '') ||
 		JSON.stringify(e.tags) !== JSON.stringify(incoming.tags ?? [])
 	);
+}
+
+// Split (file slug + datasets/tiers) is order-insensitive — compare as sets so a
+// reorder isn't a change, but adding/removing a tier is and triggers a re-sync.
+function hasSplitChanged(existing: string | string[] | undefined, incoming: string[]): boolean {
+	const current = existing === undefined ? [] : Array.isArray(existing) ? existing : [existing];
+	if (current.length !== incoming.length) return true;
+	const incomingSet = new Set(incoming);
+	return !current.every((s) => incomingSet.has(s));
 }

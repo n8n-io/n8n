@@ -6,7 +6,60 @@
 // for post-run verification.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiRichMessagesResponse, InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type {
+	InstanceAiConfirmRequest,
+	InstanceAiRichMessagesResponse,
+	InstanceAiEvalExecutionResult,
+	InstanceAiRunDebugResponse,
+	InstanceAiThreadDebugRunsResponse,
+	InstanceAiThreadStatusResponse,
+	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalSeedWorkflow,
+} from '@n8n/api-types';
+import { Agent, setGlobalDispatcher } from 'undici';
+import { z } from 'zod';
+
+// Disable undici's 300s timeouts — mocked eval runs take minutes; the per-request
+// AbortSignal is the real bound. This is process-global: only ever imported by the
+// eval CLI harness — never import into the n8n server or shared runtime code.
+setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
+
+// -- Conversation seeding response shapes -------------------------------------
+
+const RestoreThreadEnvelope = z.object({
+	data: z.object({
+		ok: z.literal(true),
+		threadId: z.string(),
+		restored: z.number(),
+		workflowIds: z.array(z.string()),
+		dataTableIds: z.array(z.string()).default([]),
+	}),
+});
+
+// ---------------------------------------------------------------------------
+// Computer-use gateway response shapes (Zod-validated to keep the client
+// honest about API drift instead of trusting `as` casts)
+// ---------------------------------------------------------------------------
+
+const GatewayLinkSchema = z.object({
+	token: z.string(),
+	command: z.string(),
+});
+const GatewayLinkEnvelope = z.object({ data: GatewayLinkSchema });
+export type GatewayLink = z.infer<typeof GatewayLinkSchema>;
+
+const GatewayStatusSchema = z.object({
+	connected: z.boolean(),
+	directory: z.string().nullable(),
+	toolCategories: z.array(
+		z.object({
+			name: z.string(),
+			enabled: z.boolean(),
+		}),
+	),
+});
+const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
+export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
 
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
@@ -16,7 +69,10 @@ import type { InstanceAiRichMessagesResponse, InstanceAiEvalExecutionResult } fr
 export interface WorkflowNodeResponse {
 	name: string;
 	type: string;
+	typeVersion?: number;
 	parameters?: Record<string, unknown>;
+	executeOnce?: boolean;
+	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
 }
@@ -26,6 +82,8 @@ export interface WorkflowResponse {
 	id: string;
 	name: string;
 	active: boolean;
+	versionId: string;
+	description?: string;
 	nodes: WorkflowNodeResponse[];
 	connections: Record<string, unknown>;
 	pinData?: Record<string, unknown>;
@@ -54,23 +112,19 @@ export interface ExecutionDetail {
 
 // -- Thread types ------------------------------------------------------------
 
-interface ThreadStatus {
-	hasActiveRun: boolean;
-	isSuspended: boolean;
-	backgroundTasks: Array<{
-		taskId: string;
-		role: string;
-		agentId: string;
-		status: 'running' | 'completed' | 'failed' | 'cancelled';
-		startedAt: number;
-		runId?: string;
-		messageGroupId?: string;
-	}>;
-}
-
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
+
+/** Non-2xx API response; `status` lets callers branch on e.g. 404 (missing endpoint). */
+export class N8nApiError extends Error {
+	constructor(
+		message: string,
+		readonly status: number,
+	) {
+		super(message);
+	}
+}
 
 export class N8nClient {
 	private sessionCookie?: string;
@@ -101,6 +155,18 @@ export class N8nClient {
 	// -- Instance-AI endpoints -----------------------------------------------
 
 	/**
+	 * Ensure a conversation thread exists before sending chat messages.
+	 * POST /rest/instance-ai/threads body: { threadId, projectId }
+	 */
+	async ensureThread(threadId: string, projectId?: string): Promise<void> {
+		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
+		await this.fetch('/rest/instance-ai/threads', {
+			method: 'POST',
+			body: { threadId, projectId: resolvedProjectId },
+		});
+	}
+
+	/**
 	 * Send a chat message to the instance-ai agent.
 	 * POST /rest/instance-ai/chat/:threadId  body: { message }
 	 */
@@ -115,16 +181,12 @@ export class N8nClient {
 	/**
 	 * Confirm or reject an action requested by the agent.
 	 * POST /rest/instance-ai/confirm/:requestId
-	 * body: { approved, mockCredentials?, credentialId?, ... }
+	 * body: kind-tagged `InstanceAiConfirmRequest` discriminated union.
 	 */
-	async confirmAction(
-		requestId: string,
-		approved: boolean,
-		options?: { mockCredentials?: boolean },
-	): Promise<void> {
+	async confirmAction(requestId: string, payload: InstanceAiConfirmRequest): Promise<void> {
 		await this.fetch(`/rest/instance-ai/confirm/${requestId}`, {
 			method: 'POST',
-			body: { approved, ...options },
+			body: payload,
 		});
 	}
 
@@ -142,8 +204,10 @@ export class N8nClient {
 	 * Get the current status of a thread (active run, suspended, background tasks).
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
-	async getThreadStatus(threadId: string): Promise<ThreadStatus> {
-		return (await this.fetch(`/rest/instance-ai/threads/${threadId}/status`)) as ThreadStatus;
+	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
+		return this.unwrapRestData<InstanceAiThreadStatusResponse>(
+			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`),
+		);
 	}
 
 	/**
@@ -157,6 +221,57 @@ export class N8nClient {
 		return result.data;
 	}
 
+	/**
+	 * Delete a thread (and its memory + run state).
+	 * DELETE /rest/instance-ai/threads/:threadId
+	 */
+	async deleteThread(threadId: string): Promise<void> {
+		await this.fetch(`/rest/instance-ai/threads/${threadId}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * List captured LLM debug runs for a thread.
+	 * GET /rest/instance-ai/debug/threads/:threadId/runs
+	 */
+	async listThreadDebugRuns(threadId: string): Promise<InstanceAiThreadDebugRunsResponse> {
+		return this.unwrapRestData<InstanceAiThreadDebugRunsResponse>(
+			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`),
+		);
+	}
+
+	/**
+	 * Fetch full LLM step debug for a single run.
+	 * GET /rest/instance-ai/debug/runs/:runId
+	 */
+	async getRunDebug(runId: string): Promise<InstanceAiRunDebugResponse> {
+		return this.unwrapRestData<InstanceAiRunDebugResponse>(
+			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`),
+		);
+	}
+
+	// -- Computer-use gateway (pairing + status) -----------------------------
+
+	/**
+	 * Generate a one-shot pairing token for the local computer-use daemon.
+	 * POST /rest/instance-ai/gateway/create-link
+	 */
+	async createGatewayLink(): Promise<GatewayLink> {
+		const result = await this.fetch('/rest/instance-ai/gateway/create-link', {
+			method: 'POST',
+		});
+		return GatewayLinkEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Read the local gateway status. The daemon flips this to `connected: true`
+	 * once it has registered its capabilities.
+	 * GET /rest/instance-ai/gateway/status
+	 */
+	async getGatewayStatus(): Promise<GatewayStatus> {
+		const result = await this.fetch('/rest/instance-ai/gateway/status');
+		return GatewayStatusEnvelope.parse(result).data;
+	}
+
 	// -- REST API (verification helpers) -------------------------------------
 
 	/**
@@ -166,6 +281,32 @@ export class N8nClient {
 	async listWorkflows(): Promise<WorkflowListItem[]> {
 		const result = (await this.fetch('/rest/workflows')) as { data: WorkflowListItem[] };
 		return result.data;
+	}
+
+	/** List all workflow IDs visible to the authenticated user. */
+	async listWorkflowIds(): Promise<string[]> {
+		const workflows = await this.listWorkflows();
+		return workflows.map((w) => w.id);
+	}
+
+	/**
+	 * Create a workflow from a JSON definition.
+	 * POST /rest/workflows
+	 */
+	async createWorkflow(definition: Record<string, unknown>): Promise<{ id: string }> {
+		const result = (await this.fetch('/rest/workflows', {
+			method: 'POST',
+			body: definition,
+		})) as { data: { id: string } };
+		return { id: result.data.id };
+	}
+
+	/** List all credential IDs visible to the authenticated user. */
+	async listCredentialIds(): Promise<string[]> {
+		const result = (await this.fetch('/rest/credentials')) as {
+			data: Array<{ id: string }>;
+		};
+		return Array.isArray(result.data) ? result.data.map((c) => c.id) : [];
 	}
 
 	/**
@@ -236,23 +377,37 @@ export class N8nClient {
 
 	/**
 	 * Activate a workflow.
-	 * PATCH /rest/workflows/:id  body: { active: true }
+	 * POST /rest/workflows/:id/activate  body: { versionId, name, description }
+	 *
+	 * The activate endpoint requires the current `versionId` (concurrency
+	 * guard) plus optional name/description for the version label. We fetch
+	 * the workflow first to read those — the harness creates workflows from
+	 * JSON fixtures and never knows the freshly-assigned versionId otherwise.
+	 *
+	 * Note: PATCH /rest/workflows/:id silently drops `active` from the body
+	 * (`workflows.controller.ts:318` filters it from user input), so the old
+	 * `PATCH … { active: true }` shape used to no-op rather than activate.
 	 */
 	async activateWorkflow(id: string): Promise<void> {
-		await this.fetch(`/rest/workflows/${id}`, {
-			method: 'PATCH',
-			body: { active: true },
+		const workflow = await this.getWorkflow(id);
+		await this.fetch(`/rest/workflows/${id}/activate`, {
+			method: 'POST',
+			body: {
+				versionId: workflow.versionId,
+				name: workflow.name,
+				description: workflow.description ?? '',
+			},
 		});
 	}
 
 	/**
 	 * Deactivate a workflow.
-	 * PATCH /rest/workflows/:id  body: { active: false }
+	 * POST /rest/workflows/:id/deactivate  body: {}
 	 */
 	async deactivateWorkflow(id: string): Promise<void> {
-		await this.fetch(`/rest/workflows/${id}`, {
-			method: 'PATCH',
-			body: { active: false },
+		await this.fetch(`/rest/workflows/${id}/deactivate`, {
+			method: 'POST',
+			body: {},
 		});
 	}
 
@@ -323,6 +478,69 @@ export class N8nClient {
 	}
 
 	/**
+	 * Seed the MCP registry with the test fixture (Notion + Linear mock servers)
+	 * and trigger a synthetic node-type reload. Requires the server to be running
+	 * with `E2E_TESTS=true` so the test controller is mounted.
+	 * POST /rest/mcp-registry/test/seed  body: none
+	 */
+	async seedMcpRegistry(): Promise<{ count: number }> {
+		const result = (await this.fetch('/rest/mcp-registry/test/seed', {
+			method: 'POST',
+		})) as { data: { ok: boolean; count: number } };
+		return { count: result.data.count };
+	}
+
+	/**
+	 * Enable MCP access for this instance (owner scope required).
+	 * PATCH /rest/mcp/settings  body: { mcpAccessEnabled: true }
+	 *
+	 * `/rest/e2e/reset` truncates the settings table and clears the cache, so MCP
+	 * access is off after a reset regardless of startup env — the fused
+	 * `--build-via-mcp` lane setup calls this after seeding. Throws if the server
+	 * reports MCP still disabled (e.g. N8N_MCP_MANAGED_BY_ENV refuses the PATCH).
+	 */
+	async enableMcpAccess(): Promise<void> {
+		const data = this.unwrapRestData<{ mcpAccessEnabled?: boolean }>(
+			await this.fetch('/rest/mcp/settings', {
+				method: 'PATCH',
+				body: { mcpAccessEnabled: true },
+			}),
+		);
+		if (data.mcpAccessEnabled !== true) {
+			throw new Error(
+				`Failed to enable MCP access (server reported mcpAccessEnabled=${String(data.mcpAccessEnabled)})`,
+			);
+		}
+	}
+
+	/**
+	 * Mint a fresh MCP API key for the authenticated user.
+	 * POST /rest/mcp/api-key/rotate
+	 *
+	 * Uses rotate rather than GET /rest/mcp/api-key because the GET only returns
+	 * the raw JWT when it creates the key; a pre-existing key comes back redacted
+	 * (`******abcd`), which would silently break MCP auth if staged into a
+	 * `claude` config. Rotate deletes + recreates, so the response is always
+	 * unredacted — at the cost of invalidating any prior MCP key for this user.
+	 */
+	async rotateMcpApiKey(): Promise<string> {
+		const data = this.unwrapRestData<{ apiKey?: string }>(
+			await this.fetch('/rest/mcp/api-key/rotate', { method: 'POST' }),
+		);
+		if (!data.apiKey) {
+			throw new Error('MCP api-key rotate endpoint returned no apiKey');
+		}
+		// JWTs are base64url segments and never contain "*" — its presence means
+		// the server redacted the key, which would fail MCP auth downstream.
+		if (data.apiKey.includes('*')) {
+			throw new Error(
+				'MCP api-key rotate endpoint returned a redacted key — cannot stage it for `claude` MCP auth',
+			);
+		}
+		return data.apiKey;
+	}
+
+	/**
 	 * Delete a credential by ID.
 	 * DELETE /rest/credentials/:id
 	 */
@@ -330,21 +548,52 @@ export class N8nClient {
 		await this.fetch(`/rest/credentials/${id}`, { method: 'DELETE' });
 	}
 
+	/**
+	 * Pin a build thread's credential view to exactly these IDs (empty array =
+	 * the thread sees no credentials).
+	 * POST /rest/instance-ai/eval/thread-credential-allowlist
+	 */
+	async setThreadCredentialAllowlist(threadId: string, credentialIds: string[]): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/thread-credential-allowlist', {
+			method: 'POST',
+			body: { threadId, credentialIds },
+		});
+	}
+
+	/**
+	 * Seed an existing thread with a previously exported conversation: the
+	 * referenced workflows are recreated (node credentials stripped server-side)
+	 * and the native message log is written verbatim, so the thread continues
+	 * as if the conversation really happened.
+	 * POST /rest/instance-ai/eval/restore-thread
+	 */
+	async restoreThread(
+		threadId: string,
+		messages: Array<Record<string, unknown>>,
+		workflows: InstanceAiEvalSeedWorkflow[],
+		dataTables: InstanceAiEvalSeedDataTable[] = [],
+	): Promise<{ restored: number; workflowIds: string[]; dataTableIds: string[] }> {
+		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
+			method: 'POST',
+			body: { threadId, messages, workflows, dataTables },
+		});
+		return RestoreThreadEnvelope.parse(result).data;
+	}
+
 	// -- Data tables ---------------------------------------------------------
 
 	/**
 	 * Get the personal project ID for the authenticated user.
-	 * GET /rest/me  → user.personalProjectId (or similar)
+	 * GET /rest/projects/personal
 	 */
 	async getPersonalProjectId(): Promise<string> {
-		const result = (await this.fetch('/rest/me')) as {
-			data: { personalProjectId?: string; defaultPersonalProjectId?: string };
+		const result = (await this.fetch('/rest/projects/personal')) as {
+			data: { id: string };
 		};
-		const projectId = result.data.personalProjectId ?? result.data.defaultPersonalProjectId ?? '';
-		if (!projectId) {
+		if (!result.data?.id) {
 			throw new Error('Could not determine personal project ID');
 		}
-		return projectId;
+		return result.data.id;
 	}
 
 	/**
@@ -356,6 +605,12 @@ export class N8nClient {
 			data: Array<{ id: string; name: string }>;
 		};
 		return Array.isArray(result.data) ? result.data : [];
+	}
+
+	/** List data table IDs for a project. */
+	async listDataTableIds(projectId: string): Promise<string[]> {
+		const dataTables = await this.listDataTables(projectId);
+		return dataTables.map((dt) => dt.id);
 	}
 
 	/**
@@ -373,15 +628,26 @@ export class N8nClient {
 	/**
 	 * Execute a workflow with LLM-based HTTP mocking.
 	 * The server handles hint generation and mock execution in a single synchronous call.
+	 *
+	 * AI root nodes (Agent, Chain) default to wire-server interception so their
+	 * sub-nodes actually run instead of being short-circuited by pin data;
+	 * pass `pinNodes` to keep specific roots on the pinned baseline (e.g. for
+	 * A/B comparison). Gated server-side behind the
+	 * `085_eval_vendor_sdk_interception` PostHog flag.
 	 */
 	async executeWithLlmMock(
 		workflowId: string,
 		scenarioHints?: string,
 		timeoutMs: number = 120_000,
+		pinNodes?: string[],
 	): Promise<InstanceAiEvalExecutionResult> {
+		const body: { scenarioHints?: string; pinNodes?: string[] } = {};
+		if (scenarioHints) body.scenarioHints = scenarioHints;
+		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
+
 		const result = (await this.fetch(`/rest/instance-ai/eval/execute-with-llm-mock/${workflowId}`, {
 			method: 'POST',
-			body: scenarioHints ? { scenarioHints } : {},
+			body,
 			timeoutMs,
 		})) as { data: InstanceAiEvalExecutionResult };
 		return result.data;
@@ -409,6 +675,13 @@ export class N8nClient {
 
 	// -- Internal fetch ------------------------------------------------------
 
+	private unwrapRestData<T>(result: unknown): T {
+		if (result && typeof result === 'object' && 'data' in result) {
+			return (result as { data: T }).data;
+		}
+		return result as T;
+	}
+
 	private async fetch(
 		path: string,
 		options: { method?: string; body?: unknown; timeoutMs?: number } = {},
@@ -430,7 +703,10 @@ export class N8nClient {
 
 		if (!res.ok) {
 			const text = await res.text();
-			throw new Error(`n8n API ${method} ${path} failed (${res.status}): ${text}`);
+			throw new N8nApiError(
+				`n8n API ${method} ${path} failed (${res.status}): ${text}`,
+				res.status,
+			);
 		}
 
 		// Capture auth cookie from login response

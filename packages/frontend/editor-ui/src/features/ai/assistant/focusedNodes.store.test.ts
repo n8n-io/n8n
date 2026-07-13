@@ -5,6 +5,10 @@ import { nextTick } from 'vue';
 
 import { useFocusedNodesStore } from './focusedNodes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useChatPanelStateStore } from './chatPanelState.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { mockedStore } from '@/__tests__/utils';
@@ -14,12 +18,6 @@ import type { INodeUi } from '@/Interface';
 
 // Mock telemetry
 const track = vi.fn();
-vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
-	() =>
-		({
-			track,
-		}) as unknown as Telemetry,
-);
 
 // Mock posthog
 let featureEnabled = true;
@@ -61,6 +59,10 @@ describe('useFocusedNodesStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// `restoreMocks` restores this spy before each test, so re-establish it here.
+		vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
+			() => ({ track }) as unknown as Telemetry,
+		);
 		featureEnabled = true;
 
 		setActivePinia(
@@ -71,13 +73,16 @@ describe('useFocusedNodesStore', () => {
 		);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.allNodes = [
+		workflowsStore.setWorkflowId('wf-1');
+
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.setNodes([
 			createMockNode('node-1', 'HTTP Request', 'n8n-nodes-base.httpRequest'),
 			createMockNode('node-2', 'Code', 'n8n-nodes-base.code'),
 			createMockNode('node-3', 'Set', 'n8n-nodes-base.set'),
-		];
-		workflowsStore.workflowId = 'wf-1';
-		workflowsStore.workflow.connections = {};
+		]);
 
 		focusedNodesStore = useFocusedNodesStore();
 		track.mockReset();
@@ -258,7 +263,10 @@ describe('useFocusedNodesStore', () => {
 					state: 'unconfirmed',
 				};
 			}
-			workflowsStore.allNodes = manyNodes;
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setNodes(manyNodes);
 			focusedNodesStore.focusedNodesMap = map;
 
 			expect(focusedNodesStore.tooManyUnconfirmed).toBe(true);
@@ -757,14 +765,17 @@ describe('useFocusedNodesStore', () => {
 		});
 
 		it('should include connections (deduplicated)', () => {
-			workflowsStore.workflow.connections = {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setConnections({
 				Trigger: {
 					main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
 				},
 				'HTTP Request': {
 					main: [[{ node: 'Code', type: 'main', index: 0 }]],
 				},
-			};
+			});
 
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
@@ -787,7 +798,10 @@ describe('useFocusedNodesStore', () => {
 					httpBasicAuth: ['Credentials not set'],
 				},
 			};
-			workflowsStore.allNodes = [nodeWithIssues];
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setNodes([nodeWithIssues]);
 
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
@@ -826,7 +840,7 @@ describe('useFocusedNodesStore', () => {
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
 
-			workflowsStore.workflowId = 'wf-2';
+			workflowsStore.setWorkflowId('wf-2');
 			await nextTick();
 
 			expect(focusedNodesStore.focusedNodesMap).toEqual({});
@@ -839,7 +853,7 @@ describe('useFocusedNodesStore', () => {
 
 		it('should not track telemetry on workflowId change if no confirmed and oldId undefined', async () => {
 			// The initial wf-1 is set in beforeEach but no confirmed nodes
-			workflowsStore.workflowId = 'wf-2';
+			workflowsStore.setWorkflowId('wf-2');
 			await nextTick();
 
 			expect(track).not.toHaveBeenCalled();
@@ -849,11 +863,14 @@ describe('useFocusedNodesStore', () => {
 			focusedNodesStore.confirmNodes(['node-1', 'node-2'], 'context_menu');
 			track.mockReset();
 
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
 			// Remove node-1 from workflow
-			workflowsStore.allNodes = [
+			workflowDocumentStore.setNodes([
 				createMockNode('node-2', 'Code', 'n8n-nodes-base.code'),
 				createMockNode('node-3', 'Set', 'n8n-nodes-base.set'),
-			];
+			]);
 			await nextTick();
 
 			expect(focusedNodesStore.focusedNodesMap['node-1']).toBeUndefined();
@@ -875,10 +892,13 @@ describe('useFocusedNodesStore', () => {
 				},
 			};
 
-			workflowsStore.allNodes = [
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setNodes([
 				createMockNode('node-2', 'Code', 'n8n-nodes-base.code'),
 				createMockNode('node-3', 'Set', 'n8n-nodes-base.set'),
-			];
+			]);
 			await nextTick();
 
 			expect(track).not.toHaveBeenCalled();
@@ -888,11 +908,14 @@ describe('useFocusedNodesStore', () => {
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
 
-			workflowsStore.allNodes = [
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setNodes([
 				createMockNode('node-1', 'My HTTP Request', 'n8n-nodes-base.httpRequest'),
 				createMockNode('node-2', 'Code', 'n8n-nodes-base.code'),
 				createMockNode('node-3', 'Set', 'n8n-nodes-base.set'),
-			];
+			]);
 			await nextTick();
 
 			expect(focusedNodesStore.focusedNodesMap['node-1'].nodeName).toBe('My HTTP Request');
@@ -902,7 +925,10 @@ describe('useFocusedNodesStore', () => {
 			const chatPanelStateStore = useChatPanelStateStore();
 			chatPanelStateStore.isOpen = true;
 
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(
+				useNDVStore,
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
 			ndvStore.activeNode = createMockNode(
 				'node-2',
 				'Code',

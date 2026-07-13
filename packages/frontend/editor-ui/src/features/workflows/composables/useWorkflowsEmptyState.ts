@@ -81,14 +81,9 @@ export function useWorkflowsEmptyState() {
 				});
 			}
 			return i18n.baseText('workflows.empty.heading.userNotSetup');
-		} else {
-			if (firstName) {
-				return i18n.baseText('workflows.empty.headingWithIcon', {
-					interpolate: { name: firstName },
-				});
-			}
-			return i18n.baseText('workflows.empty.headingWithIcon.userNotSetup');
 		}
+
+		return i18n.baseText('workflows.empty.onboarding.heading');
 	});
 
 	const emptyStateDescription = computed(() => {
@@ -96,9 +91,11 @@ export function useWorkflowsEmptyState() {
 			return i18n.baseText('workflows.empty.description.readOnlyEnv');
 		} else if (!projectPermissions.value.workflow.create) {
 			return i18n.baseText('workflows.empty.description.noPermission');
-		} else {
+		} else if (showRecommendedTemplatesInline.value) {
 			return i18n.baseText('workflows.empty.description');
 		}
+
+		return '';
 	});
 
 	return {

@@ -24,14 +24,16 @@ export type RootStoreState = {
 	maxExecutionTimeout: number;
 	versionCli: string;
 	oauthCallbackUrls: object;
+	jwksUri: string;
 	n8nMetadata: {
 		[key: string]: string | number | undefined;
 	};
 	pushRef: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
+	urlBaseWebhookTest: string;
 	instanceId: string;
-	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'azure' | 'database';
 };
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
@@ -52,10 +54,12 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
 		versionCli: '0.0.0',
 		oauthCallbackUrls: {},
+		jwksUri: '',
 		n8nMetadata: {},
 		pushRef: randomString(10).toLowerCase(),
 		urlBaseWebhook: 'http://localhost:5678/',
 		urlBaseEditor: 'http://localhost:5678',
+		urlBaseWebhookTest: 'http://localhost:5678/',
 		instanceId: '',
 		binaryDataMode: 'default',
 	});
@@ -68,7 +72,9 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const formUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointForm}`);
 
-	const formTestUrl = computed(() => `${state.value.urlBaseEditor}${state.value.endpointFormTest}`);
+	const formTestUrl = computed(
+		() => `${state.value.urlBaseWebhookTest}${state.value.endpointFormTest}`,
+	);
 
 	const formWaitingUrl = computed(
 		() => `${state.value.urlBaseEditor}${state.value.endpointFormWaiting}`,
@@ -77,7 +83,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	const webhookUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointWebhook}`);
 
 	const webhookTestUrl = computed(
-		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookTest}`,
+		() => `${state.value.urlBaseWebhookTest}${state.value.endpointWebhookTest}`,
 	);
 
 	const webhookWaitingUrl = computed(
@@ -86,7 +92,9 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const mcpUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointMcp}`);
 
-	const mcpTestUrl = computed(() => `${state.value.urlBaseEditor}${state.value.endpointMcpTest}`);
+	const mcpTestUrl = computed(
+		() => `${state.value.urlBaseWebhookTest}${state.value.endpointMcpTest}`,
+	);
 
 	const pushRef = computed(() => state.value.pushRef);
 
@@ -96,11 +104,15 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const urlBaseEditor = computed(() => state.value.urlBaseEditor);
 
+	const urlBaseWebhook = computed(() => state.value.urlBaseWebhook);
+
 	const instanceId = computed(() => state.value.instanceId);
 
 	const versionCli = computed(() => state.value.versionCli);
 
 	const OAuthCallbackUrls = computed(() => state.value.oauthCallbackUrls);
+
+	const jwksUri = computed(() => state.value.jwksUri);
 
 	const restUrl = computed(() => `${state.value.baseUrl}${state.value.restEndpoint}`);
 
@@ -129,6 +141,11 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	const setUrlBaseEditor = (value: string) => {
 		const url = value.endsWith('/') ? value : `${value}/`;
 		state.value.urlBaseEditor = url;
+	};
+
+	const setUrlBaseWebhookTest = (value: string) => {
+		const url = value.endsWith('/') ? value : `${value}/`;
+		state.value.urlBaseWebhookTest = url;
 	};
 
 	const setEndpointForm = (value: string) => {
@@ -188,6 +205,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.oauthCallbackUrls = value;
 	};
 
+	const setJwksUri = (value: string) => {
+		state.value.jwksUri = value;
+	};
+
 	const setN8nMetadata = (value: RootStoreState['n8nMetadata']) => {
 		state.value.n8nMetadata = value;
 	};
@@ -219,17 +240,20 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		restUrl,
 		restApiContext,
 		urlBaseEditor,
+		urlBaseWebhook,
 		versionCli,
 		instanceId,
 		pushRef,
 		defaultLocale,
 		binaryDataMode,
 		OAuthCallbackUrls,
+		jwksUri,
 		executionTimeout,
 		maxExecutionTimeout,
 		timezone,
 		setUrlBaseWebhook,
 		setUrlBaseEditor,
+		setUrlBaseWebhookTest,
 		setEndpointForm,
 		setEndpointFormTest,
 		setEndpointFormWaiting,
@@ -244,6 +268,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setVersionCli,
 		setInstanceId,
 		setOauthCallbackUrls,
+		setJwksUri,
 		setN8nMetadata,
 		setDefaultLocale,
 		setBinaryDataMode,

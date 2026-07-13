@@ -2,9 +2,13 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InstanceAiAttachment,
+	InstanceAiBrowserCreateLinkResponse,
+	InstanceAiBrowserStatusResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
+	InstanceAiConfirmRequest,
 	InstanceAiConfirmResponse,
+	InstanceAiHandoffContext,
 } from '@n8n/api-types';
 
 /**
@@ -15,8 +19,8 @@ export async function postMessage(
 	context: IRestApiContext,
 	threadId: string,
 	message: string,
-	researchMode?: boolean,
 	attachments?: InstanceAiAttachment[],
+	handoffContext?: InstanceAiHandoffContext,
 	timeZone?: string,
 	pushRef?: string,
 ): Promise<InstanceAiSendMessageResponse> {
@@ -26,8 +30,8 @@ export async function postMessage(
 		`/instance-ai/chat/${threadId}`,
 		{
 			message,
-			...(researchMode ? { researchMode } : {}),
 			...(attachments && attachments.length > 0 ? { attachments } : {}),
+			...(handoffContext ? { context: handoffContext } : {}),
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),
 		},
@@ -36,15 +40,14 @@ export async function postMessage(
 
 export async function ensureThread(
 	context: IRestApiContext,
-	threadId?: string,
+	threadId: string,
+	projectId: string,
 ): Promise<InstanceAiEnsureThreadResponse> {
 	return await makeRestApiRequest<InstanceAiEnsureThreadResponse>(
 		context,
 		'POST',
 		'/instance-ai/threads',
-		{
-			...(threadId ? { threadId } : {}),
-		},
+		{ threadId, projectId },
 	);
 }
 
@@ -89,51 +92,20 @@ export async function postCancelTask(
 
 /**
  * POST /instance-ai/confirm/:requestId -> 200 OK
- * Approve or deny a confirmation request (HITL).
+ * Resolve a confirmation request (HITL). The request body is a discriminated
+ * union on `kind`.
  */
 export async function postConfirmation(
 	context: IRestApiContext,
 	requestId: string,
-	approved: boolean,
-	credentialId?: string,
-	credentials?: Record<string, string>,
-	autoSetup?: { credentialType: string },
-	userInput?: string,
-	domainAccessAction?: string,
-	setupWorkflowData?: {
-		action?: 'apply' | 'test-trigger';
-		nodeCredentials?: Record<string, Record<string, string>>;
-		nodeParameters?: Record<string, Record<string, unknown>>;
-		testTriggerNode?: string;
-	},
-	answers?: InstanceAiConfirmResponse['answers'],
-	resourceDecision?: string,
-): Promise<void> {
-	const payload: InstanceAiConfirmResponse = {
-		approved,
-		...(credentialId ? { credentialId } : {}),
-		...(credentials ? { credentials } : {}),
-		...(autoSetup ? { autoSetup } : {}),
-		...(userInput !== undefined ? { userInput } : {}),
-		...(domainAccessAction
-			? {
-					domainAccessAction: domainAccessAction as InstanceAiConfirmResponse['domainAccessAction'],
-				}
-			: {}),
-		...(setupWorkflowData?.action ? { action: setupWorkflowData.action } : {}),
-		...(setupWorkflowData?.nodeCredentials
-			? { nodeCredentials: setupWorkflowData.nodeCredentials }
-			: {}),
-		...(setupWorkflowData?.nodeParameters
-			? { nodeParameters: setupWorkflowData.nodeParameters }
-			: {}),
-		...(setupWorkflowData?.testTriggerNode
-			? { testTriggerNode: setupWorkflowData.testTriggerNode }
-			: {}),
-		...(answers ? { answers } : {}),
-		...(resourceDecision ? { resourceDecision } : {}),
-	};
-	await makeRestApiRequest(context, 'POST', `/instance-ai/confirm/${requestId}`, payload);
+	payload: InstanceAiConfirmRequest,
+): Promise<InstanceAiConfirmResponse> {
+	return await makeRestApiRequest<InstanceAiConfirmResponse>(
+		context,
+		'POST',
+		`/instance-ai/confirm/${requestId}`,
+		payload,
+	);
 }
 
 /**
@@ -151,17 +123,68 @@ export async function getInstanceAiCredits(
 }
 
 /**
- * POST /instance-ai/gateway/create-link -> { token, command }
+ * POST /instance-ai/gateway/create-link -> { token, command, expiresAt, ttlSeconds }
  * Generate a dynamic gateway token and pre-built CLI command.
  */
-export async function createGatewayLink(
+export async function createGatewayLink(context: IRestApiContext): Promise<{
+	token: string;
+	command: string;
+	expiresAt: string | null;
+	ttlSeconds: number | null;
+}> {
+	return await makeRestApiRequest<{
+		token: string;
+		command: string;
+		expiresAt: string | null;
+		ttlSeconds: number | null;
+	}>(context, 'POST', '/instance-ai/gateway/create-link');
+}
+
+/**
+ * POST /instance-ai/gateway/disconnect-session -> { ok }
+ * Tear down the current user's gateway session so its tools are no longer
+ * exposed to the agent. Does not change the user's localGatewayDisabled
+ * preference.
+ */
+export async function disconnectGatewaySession(context: IRestApiContext): Promise<void> {
+	await makeRestApiRequest(context, 'POST', '/instance-ai/gateway/disconnect-session');
+}
+
+/**
+ * POST /instance-ai/browser/create-link -> { connectUrl, expiresAt, ttlSeconds }
+ * Create (or refresh) a direct browser session and return the opaque URL that
+ * opens the Browser Use extension connect page.
+ */
+export async function createBrowserLink(
 	context: IRestApiContext,
-): Promise<{ token: string; command: string }> {
-	return await makeRestApiRequest<{ token: string; command: string }>(
+): Promise<InstanceAiBrowserCreateLinkResponse> {
+	return await makeRestApiRequest<InstanceAiBrowserCreateLinkResponse>(
 		context,
 		'POST',
-		'/instance-ai/gateway/create-link',
+		'/instance-ai/browser/create-link',
 	);
+}
+
+/**
+ * GET /instance-ai/browser/status -> { connected, connectedAt, toolCategories }
+ * Check whether the Browser Use extension is connected directly to the server.
+ */
+export async function getBrowserStatus(
+	context: IRestApiContext,
+): Promise<InstanceAiBrowserStatusResponse> {
+	return await makeRestApiRequest<InstanceAiBrowserStatusResponse>(
+		context,
+		'GET',
+		'/instance-ai/browser/status',
+	);
+}
+
+/**
+ * POST /instance-ai/browser/disconnect-session -> { ok }
+ * Tear down the current user's direct browser session.
+ */
+export async function disconnectBrowserSession(context: IRestApiContext): Promise<void> {
+	await makeRestApiRequest(context, 'POST', '/instance-ai/browser/disconnect-session');
 }
 
 /**

@@ -33,8 +33,7 @@ import type {
 	IRunExecutionDataAll,
 } from 'n8n-workflow';
 import {
-	createEmptyRunExecutionData,
-	ManualExecutionCancelledError,
+	CRASHABLE_EXECUTION_STATUSES,
 	migrateRunExecutionData,
 	UnexpectedError,
 } from 'n8n-workflow';
@@ -57,6 +56,7 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '../entities/types-db';
+import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { separate } from '../utils/separate';
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
@@ -358,10 +358,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// NOTE: if a slice goes past the end of the array, it just returns up til the end.
 			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
 			await this.update(
-				{ id: In(batch) },
+				// Guard against overwriting executions that have since moved to a `waiting` or
+				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
+				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
+				{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
 				{
 					status: 'crashed',
 					stoppedAt: new Date(),
+					waitTill: null,
 				},
 			);
 			this.logger.info('Marked executions as `crashed`', { executionIds });
@@ -381,7 +385,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			await manager.update(
 				ExecutionEntity,
 				{ id: executionId },
-				{ status: 'running', startedAt: effectiveStartedAt },
+				{ status: 'running', startedAt: effectiveStartedAt, waitTill: null },
 			);
 
 			return effectiveStartedAt;
@@ -415,6 +419,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			createdAt, // must never change
 			startedAt, // must never change
 			customData,
+			jsonSizeBytes, // computed by ExecutionPersistence on write; never set from a caller here
+			binaryDataSizeBytes, // computed by ExecutionPersistence on write; never set from a caller here
 			...executionInformation
 		} = execution;
 
@@ -607,7 +613,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const waitTill = new Date(Date.now() + 70000);
 		const where: FindOptionsWhere<ExecutionEntity> = {
 			waitTill: LessThanOrEqual(waitTill),
-			status: Not('crashed'),
+			status: 'waiting',
 		};
 
 		const dbType = this.globalConfig.database.type;
@@ -644,16 +650,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private getStatusCondition(status?: ExecutionStatus) {
 		const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
 
-		if (status === 'success') {
-			condition.status = 'success';
-		} else if (status === 'waiting') {
-			condition.status = 'waiting';
-		} else if (status === 'error') {
-			condition.status = In(['error', 'crashed']);
-		} else if (status === 'canceled') {
-			condition.status = 'canceled';
-		} else if (status === 'running') {
-			condition.status = 'running';
+		if (status) {
+			condition.status = status;
 		}
 
 		return condition;
@@ -673,7 +671,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return condition;
 	}
 
-	private getFindExecutionsForPublicApiCondition(params: {
+	getFindExecutionsForPublicApiCondition(params: {
 		lastId?: string;
 		workflowIds?: string[];
 		status?: ExecutionStatus;
@@ -689,77 +687,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		};
 
 		return where;
-	}
-
-	async getExecutionsForPublicApi(params: {
-		limit: number;
-		includeData?: boolean;
-		lastId?: string;
-		workflowIds?: string[];
-		status?: ExecutionStatus;
-		excludedExecutionsIds?: string[];
-	}): Promise<IExecutionBase[]> {
-		const where = this.getFindExecutionsForPublicApiCondition(params);
-
-		return await this.findMultipleExecutions(
-			{
-				select: [
-					'id',
-					'mode',
-					'retryOf',
-					'retrySuccessId',
-					'startedAt',
-					'stoppedAt',
-					'workflowId',
-					'waitTill',
-					'finished',
-					'status',
-				],
-				where,
-				order: { id: 'DESC' },
-				take: params.limit,
-			},
-			{
-				includeData: params.includeData,
-				unflattenData: true,
-			},
-		);
-	}
-
-	async getExecutionInWorkflowsForPublicApi(
-		id: string,
-		workflowIds: string[],
-		includeData?: boolean,
-	): Promise<IExecutionBase | undefined> {
-		return await this.findSingleExecution(id, {
-			where: {
-				workflowId: In(workflowIds),
-			},
-			includeData,
-			unflattenData: true,
-		});
-	}
-
-	async findWithUnflattenedData(executionId: string, accessibleWorkflowIds: string[]) {
-		return await this.findSingleExecution(executionId, {
-			where: {
-				workflowId: In(accessibleWorkflowIds),
-			},
-			includeData: true,
-			unflattenData: true,
-			includeAnnotation: true,
-		});
-	}
-
-	async findIfSharedUnflatten(executionId: string, sharedWorkflowIds: string[]) {
-		return await this.findSingleExecution(executionId, {
-			where: {
-				workflowId: In(sharedWorkflowIds),
-			},
-			includeData: true,
-			unflattenData: true,
-			includeAnnotation: true,
-		});
 	}
 
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
@@ -782,37 +709,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async stopBeforeRun(execution: IExecutionResponse) {
 		execution.status = 'canceled';
 		execution.stoppedAt = new Date();
+		execution.waitTill = null;
 
 		await this.update(
 			{ id: execution.id },
-			{ status: execution.status, stoppedAt: execution.stoppedAt },
+			{ status: execution.status, stoppedAt: execution.stoppedAt, waitTill: execution.waitTill },
 		);
 
 		return execution;
 	}
 
-	async stopDuringRun(execution: IExecutionResponse) {
-		const error = new ManualExecutionCancelledError(execution.id);
-
-		execution.data = execution.data || createEmptyRunExecutionData();
-
-		execution.data.resultData.error = {
-			...error,
-			message: error.message,
-			stack: error.stack,
-		};
-
-		execution.stoppedAt = new Date();
-		execution.waitTill = null;
-		execution.status = 'canceled';
-
-		await this.updateExistingExecution(execution.id, execution);
-
-		return execution;
-	}
-
 	async cancelMany(executionIds: string[]) {
-		await this.update({ id: In(executionIds) }, { status: 'canceled', stoppedAt: new Date() });
+		await this.update(
+			{ id: In(executionIds) },
+			{ status: 'canceled', stoppedAt: new Date(), waitTill: null },
+		);
 	}
 
 	// ----------------------------------
@@ -825,12 +736,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private summaryFields = {
 		id: true,
 		workflowId: true,
+		workflowVersionId: true,
+		jsonSizeBytes: true,
+		binaryDataSizeBytes: true,
 		mode: true,
 		retryOf: true,
 		status: true,
 		createdAt: true,
 		startedAt: true,
 		stoppedAt: true,
+		usedPrivateCredentials: true,
 	};
 
 	private annotationFields = {
@@ -909,8 +824,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		startedAt: Date | string | null;
 		stoppedAt?: Date | string;
 		waitTill?: Date | string | null;
+		jsonSizeBytes?: number | string;
+		binaryDataSizeBytes?: number | string;
+		usedPrivateCredentials?: boolean | number;
 	}): ExecutionSummary {
 		execution.id = execution.id.toString();
+
+		if (execution.jsonSizeBytes !== undefined && typeof execution.jsonSizeBytes === 'string') {
+			// Raw query bypasses the entity transformer, so Postgres hands bigint back as a string.
+			execution.jsonSizeBytes = Number(execution.jsonSizeBytes);
+		}
+
+		if (typeof execution.binaryDataSizeBytes === 'string') {
+			// Raw query bypasses the entity transformer, so Postgres hands bigint back as a string.
+			execution.binaryDataSizeBytes = Number(execution.binaryDataSizeBytes);
+		}
+
+		// SQLite returns 0/1 for booleans; coerce to a proper boolean.
+		if (typeof execution.usedPrivateCredentials === 'number') {
+			execution.usedPrivateCredentials = execution.usedPrivateCredentials !== 0;
+		}
 
 		const normalizeDateString = (date: string) => {
 			if (date.includes(' ')) return date.replace(' ', 'T') + 'Z';
@@ -986,6 +919,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			vote,
 			projectId,
 			workflowVersionId,
+			isArchived,
+			workflowBooleanSettings,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -1087,6 +1022,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
 				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
 				.andWhere('sw.projectId = :projectId', { projectId });
+		}
+
+		if (isArchived !== undefined) {
+			qb.andWhere('workflow.isArchived = :isArchived', { isArchived });
+		}
+
+		if (workflowBooleanSettings?.length) {
+			for (const { key, value } of workflowBooleanSettings) {
+				applyWorkflowBooleanSettingFilter(qb, this.globalConfig, key, value);
+			}
 		}
 
 		return qb;

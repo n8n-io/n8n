@@ -43,7 +43,7 @@ const messageParts = computed(() => {
 		<ul v-if="affectedWorkflows.length > 0" :class="$style.workflowList">
 			<li v-for="workflow in displayed" :key="workflow.id" :class="$style.workflowItem">
 				<N8nLink
-					:href="router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflow.id } }).href"
+					:href="router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId: workflow.id } }).href"
 					new-window
 				>
 					{{ workflow.name }}

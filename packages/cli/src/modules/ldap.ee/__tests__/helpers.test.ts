@@ -1,13 +1,71 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { generateNanoId, AuthIdentity, User, UserRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import * as helpers from '../helpers.ee';
 
 const userRepository = mockInstance(UserRepository);
 
 describe('Ldap/helpers', () => {
+	describe('createFilter', () => {
+		test('should wrap the inner filter with the default objectClass discriminator when no userFilter is configured', () => {
+			const result = helpers.createFilter('(uid=alice)', '');
+
+			expect(result).toBe('(&(|(objectClass=person)(objectClass=user))(uid=alice))');
+		});
+
+		test('should produce a balanced filter when userFilter is configured', () => {
+			const result = helpers.createFilter('(uid=alice)', '(objectClass=inetOrgPerson)');
+
+			expect(result).toBe('(&(objectClass=inetOrgPerson)(uid=alice))');
+			// Sanity check: every opening paren has a matching closing paren.
+			const opens = (result.match(/\(/g) ?? []).length;
+			const closes = (result.match(/\)/g) ?? []).length;
+			expect(opens).toBe(closes);
+		});
+
+		test('should fall through to the default discriminator when userFilter is empty', () => {
+			const result = helpers.createFilter('(uid=alice)', '');
+
+			expect(result).toContain('(|(objectClass=person)(objectClass=user))');
+		});
+
+		test('should interpolate the inner filter verbatim (caller is responsible for escaping)', () => {
+			// The contract: the caller passes an already-escaped filter fragment.
+			// createFilter must not re-escape or mutate it.
+			const preEscaped = '(uid=alice\\2a)';
+			const result = helpers.createFilter(preEscaped, '');
+
+			expect(result).toContain(preEscaped);
+		});
+	});
+
+	describe('escapeFilter', () => {
+		test.each([
+			['*', '\\2a'],
+			['(', '\\28'],
+			[')', '\\29'],
+			['\\', '\\5c'],
+			['\0', '\\00'],
+		])('should escape %p as %p', (input, expected) => {
+			expect(helpers.escapeFilter(input)).toBe(expected);
+		});
+
+		test('should escape combined special characters in a single string', () => {
+			expect(helpers.escapeFilter('alice*')).toBe('alice\\2a');
+			expect(helpers.escapeFilter('*)(uid=*')).toBe('\\2a\\29\\28uid=\\2a');
+			expect(helpers.escapeFilter('alice\\)')).toBe('alice\\5c\\29');
+		});
+
+		test('should pass through strings without special characters unchanged', () => {
+			expect(helpers.escapeFilter('alice')).toBe('alice');
+			expect(helpers.escapeFilter('')).toBe('');
+			expect(helpers.escapeFilter('user@example.com')).toBe('user@example.com');
+		});
+	});
+
 	describe('updateLdapUserOnLocalDb', () => {
 		// We need to use `save` so that that the subscriber in
 		// packages/@n8n/db/src/entities/Project.ts receives the full user.
@@ -40,17 +98,17 @@ describe('Ldap/helpers', () => {
 
 	describe('processUsers', () => {
 		let transactionManager: EntityManager;
-		let mockManagerTransaction: jest.Mock;
+		let mockManagerTransaction: Mock;
 
 		beforeEach(() => {
 			transactionManager = mock<EntityManager>({
-				findOne: jest.fn(),
-				findOneBy: jest.fn(),
-				save: jest.fn(),
-				update: jest.fn(),
+				findOne: vi.fn(),
+				findOneBy: vi.fn(),
+				save: vi.fn(),
+				update: vi.fn(),
 			});
 
-			mockManagerTransaction = jest.fn();
+			mockManagerTransaction = vi.fn();
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(userRepository as any).manager = { transaction: mockManagerTransaction };
 
@@ -88,7 +146,7 @@ describe('Ldap/helpers', () => {
 				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
 			);
 
-			(transactionManager.findOneBy as jest.Mock)
+			(transactionManager.findOneBy as Mock)
 				.mockResolvedValueOnce(authIdentity) // First call for AuthIdentity
 				.mockResolvedValueOnce(existingUser); // Second call for User
 
@@ -135,7 +193,7 @@ describe('Ldap/helpers', () => {
 				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
 			);
 
-			(transactionManager.findOneBy as jest.Mock)
+			(transactionManager.findOneBy as Mock)
 				.mockResolvedValueOnce(authIdentity) // First call for AuthIdentity
 				.mockResolvedValueOnce(existingUser); // Second call for User
 
@@ -174,7 +232,7 @@ describe('Ldap/helpers', () => {
 				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
 			);
 
-			(transactionManager.findOne as jest.Mock).mockResolvedValueOnce(existingLocalUser);
+			(transactionManager.findOne as Mock).mockResolvedValueOnce(existingLocalUser);
 
 			//
 			// ACT
@@ -186,7 +244,7 @@ describe('Ldap/helpers', () => {
 			//
 			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
 			expect(transactionManager.save).toHaveBeenCalledTimes(1);
-			const savedAuthIdentity = (transactionManager.save as jest.Mock).mock.calls[0][0];
+			const savedAuthIdentity = (transactionManager.save as Mock).mock.calls[0][0];
 			expect(savedAuthIdentity).toBeInstanceOf(AuthIdentity);
 			expect(savedAuthIdentity.providerId).toBe(ldapId);
 			expect(savedAuthIdentity.providerType).toBe('ldap');
@@ -216,7 +274,7 @@ describe('Ldap/helpers', () => {
 				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
 			);
 
-			(transactionManager.findOne as jest.Mock).mockResolvedValueOnce(existingLocalUser);
+			(transactionManager.findOne as Mock).mockResolvedValueOnce(existingLocalUser);
 
 			//
 			// ACT
@@ -254,8 +312,8 @@ describe('Ldap/helpers', () => {
 				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
 			);
 
-			(transactionManager.findOne as jest.Mock).mockResolvedValueOnce(null);
-			(userRepository.createUserWithProject as jest.Mock).mockResolvedValueOnce({
+			(transactionManager.findOne as Mock).mockResolvedValueOnce(null);
+			(userRepository.createUserWithProject as Mock).mockResolvedValueOnce({
 				user: createdUser,
 			});
 
@@ -271,7 +329,7 @@ describe('Ldap/helpers', () => {
 				ldapUser,
 				transactionManager,
 			);
-			const savedAuthIdentity = (transactionManager.save as jest.Mock).mock.calls[0][0];
+			const savedAuthIdentity = (transactionManager.save as Mock).mock.calls[0][0];
 			expect(savedAuthIdentity).toBeInstanceOf(AuthIdentity);
 			expect(savedAuthIdentity.providerId).toBe(ldapId);
 			expect(savedAuthIdentity.userId).toBe(createdUser.id);

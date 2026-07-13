@@ -2,14 +2,13 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
-import istanbul from 'vite-plugin-istanbul';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { codecovVitePlugin } from '@codecov/vite-plugin';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
+import { lucideIconsPlugin } from '../@n8n/design-system/src/icons/lucide/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
 import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
@@ -35,6 +34,7 @@ const alias = [
 	// Ensure bare imports resolve to sources (not dist)
 	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
 	{ find: '@n8n/chat-hub', replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src') },
+	{ find: '@n8n/tournament', replacement: resolve(packagesDir, '@n8n', 'tournament', 'src') },
 	{
 		find: /^@n8n\/chat(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
@@ -54,6 +54,10 @@ const alias = [
 	{
 		find: /^@n8n\/constants(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
+	},
+	{
+		find: /^@n8n\/design-system$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src/index.ts'),
 	},
 	{
 		find: /^@n8n\/design-system(.+)$/,
@@ -90,22 +94,11 @@ const { RELEASE: release } = process.env;
 
 const plugins: UserConfig['plugins'] = [
 	nodePopularityPlugin(),
+	lucideIconsPlugin(),
 	icons({
 		compiler: 'vue3',
 		autoInstall: NODE_ENV === 'development',
 	}),
-	// Add istanbul coverage plugin for E2E tests
-	...(process.env.BUILD_WITH_COVERAGE === 'true'
-		? [
-				istanbul({
-					include: 'src/**/*',
-					exclude: ['node_modules', 'tests/', 'dist/'],
-					extension: ['.js', '.ts', '.vue'],
-					forceBuildInstrument: true,
-					requireEnv: false,
-				}),
-			]
-		: []),
 	viteStaticCopy({
 		targets: [
 			{
@@ -168,9 +161,9 @@ const plugins: UserConfig['plugins'] = [
 		},
 	},
 	// For sanitize-html
-	nodePolyfills({
-		include: ['fs', 'path', 'url', 'util', 'timers'],
-	}),
+	// nodePolyfills({
+	// 	include: ['fs', 'path', 'url', 'util', 'timers'],
+	// }),
 	{
 		name: 'i18n-locales-hmr',
 		configureServer(server) {
@@ -233,7 +226,7 @@ export default mergeConfig(
 		base: publicPath,
 		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 		css: {
-			preprocessorMaxWorkers: true,
+			preprocessorMaxWorkers: 2,
 			preprocessorOptions: {
 				scss: {
 					additionalData: [
@@ -246,7 +239,9 @@ export default mergeConfig(
 		},
 		build: {
 			minify: !!release,
-			sourcemap: !!release,
+			// Coverage builds emit INLINE maps so browser V8 coverage carries the
+			// map in the script source and monocart resolves offsets back to src.
+			sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
 			target,
 		},
 		optimizeDeps: {

@@ -1,18 +1,21 @@
 import { Logger } from '@n8n/backend-common';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
+
 import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import type { UserLike } from '@/events/maps/relay.event-map';
-import { EventService } from '@/events/event.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import type { UserLike } from '@/events/maps/relay.event-map';
 import { Push } from '@/push';
-import { InstanceSettings } from 'n8n-core';
-import { ensureError, jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
 
 import { CommunityNodeTypesService } from './community-node-types.service';
 import { CommunityPackagesConfig } from './community-packages.config';
@@ -38,6 +41,9 @@ export type CommunityPackageInstallPresentation = 'ui' | 'publicApi';
 
 export type MissingInstalledPackageBehavior = 'badRequest' | 'notFound';
 
+const MANAGED_BY_ENV_MESSAGE =
+	'Community packages are managed via environment variables on this instance and cannot be modified through the API.';
+
 @Service()
 export class CommunityPackagesLifecycleService {
 	constructor(
@@ -48,7 +54,14 @@ export class CommunityPackagesLifecycleService {
 		private readonly communityNodeTypesService: CommunityNodeTypesService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly communityPackagesConfig: CommunityPackagesConfig,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
+
+	private assertNotManagedByEnv() {
+		if (this.instanceSettingsLoaderConfig.communityPackagesManagedByEnv) {
+			throw new BadRequestError(MANAGED_BY_ENV_MESSAGE);
+		}
+	}
 
 	async listInstalledPackages(): Promise<PublicInstalledPackage[] | InstalledPackages[]> {
 		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
@@ -99,6 +112,7 @@ export class CommunityPackagesLifecycleService {
 		user: UserLike,
 		presentation: CommunityPackageInstallPresentation,
 	): Promise<InstalledPackages> {
+		this.assertNotManagedByEnv();
 		const { name, verify, version } = args;
 
 		if (!name) {
@@ -221,6 +235,7 @@ export class CommunityPackagesLifecycleService {
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
 	): Promise<InstalledPackages> {
+		this.assertNotManagedByEnv();
 		const { name, version, verify } = args;
 
 		let checksum = args.checksum;
@@ -324,6 +339,7 @@ export class CommunityPackagesLifecycleService {
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
 	): Promise<void> {
+		this.assertNotManagedByEnv();
 		if (!packageName) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}

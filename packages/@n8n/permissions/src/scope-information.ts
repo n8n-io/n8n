@@ -4,10 +4,8 @@ import type { ApiKeyScope, Scope, ScopeInformation } from './types.ee';
 function buildResourceScopes() {
 	const resourceScopes = Object.entries(RESOURCES).flatMap(([resource, operations]) => [
 		...operations.map((op) => `${resource}:${op}` as const),
-		`${resource}:*` as const,
 	]) as Scope[];
 
-	resourceScopes.push('*' as const); // Global wildcard
 	return resourceScopes;
 }
 
@@ -24,6 +22,38 @@ export const ALL_SCOPES = buildResourceScopes();
 export const ALL_API_KEY_SCOPES = buildApiKeyScopes();
 
 export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
+	'agent:create': {
+		displayName: 'Create Agent',
+		description: 'Allows creating new agents in a project.',
+	},
+	'agent:read': {
+		displayName: 'Read Agent',
+		description: 'Allows reading agent configuration and history.',
+	},
+	'agent:update': {
+		displayName: 'Update Agent',
+		description: 'Allows updating, building, publishing, and managing integrations of agents.',
+	},
+	'agent:delete': {
+		displayName: 'Delete Agent',
+		description: 'Allows deleting agents.',
+	},
+	'agent:list': {
+		displayName: 'List Agents',
+		description: 'Allows listing agents in a project.',
+	},
+	'agent:execute': {
+		displayName: 'Execute Agent',
+		description: 'Allows running agents in chat.',
+	},
+	'agent:publish': {
+		displayName: 'Publish Agent',
+		description: 'Allows publishing agents.',
+	},
+	'agent:unpublish': {
+		displayName: 'Unpublish Agent',
+		description: 'Allows unpublishing agents.',
+	},
 	'aiAssistant:manage': {
 		displayName: 'Manage AI Usage',
 		description: 'Allows managing AI Usage settings.',
@@ -48,12 +78,44 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Unshare Workflow',
 		description: 'Allows removing workflow shares.',
 	},
+	'workflow:export': {
+		displayName: 'Export Workflow',
+		description: 'Allows including workflows in a portable package export.',
+	},
+	'workflow:import': {
+		displayName: 'Import Workflow',
+		description: 'Allows importing workflows from a portable package into the project.',
+	},
+	'project:export': {
+		displayName: 'Export Project',
+		description: 'Allows including projects in a portable package export.',
+	},
 	'credential:unshare': {
 		displayName: 'Unshare Credential',
 		description: 'Allows removing credential shares.',
 	},
+	'credential:connect': {
+		displayName: 'Connect Credential',
+		description: 'Allows connecting an own account to an end-user credential.',
+	},
 	'insights:read': {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
+	},
+	'testRun:read': {
+		displayName: 'Read Test Run',
+		description: 'Allows reading evaluation test runs and their per-case results.',
+	},
+	'testRun:list': {
+		displayName: 'List Test Runs',
+		description: 'Allows listing evaluation test runs for a workflow.',
+	},
+	'workflow:execute-chat': {
+		displayName: 'Execute Workflow in Chat',
+		description: 'Allows executing workflows in chat.',
+	},
+	'role:manageProject': {
+		displayName: 'Manage project roles',
+		description: 'Allows creating, editing, and deleting project role definitions.',
 	},
 };

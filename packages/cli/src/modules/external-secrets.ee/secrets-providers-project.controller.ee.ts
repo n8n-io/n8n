@@ -75,7 +75,7 @@ export class SecretProvidersProjectController {
 			req.user.role?.slug,
 		);
 
-		const connection = this.connectionsService.toPublicConnection(savedConnection);
+		const connection = await this.connectionsService.toPublicConnection(savedConnection);
 		const scopes = await this.accessCheckService.getConnectionScopesForProject(
 			req.user,
 			body.providerKey,
@@ -110,7 +110,7 @@ export class SecretProvidersProjectController {
 			projectId,
 		);
 
-		const connection = this.connectionsService.toPublicConnection(connectionEntity);
+		const connection = await this.connectionsService.toPublicConnection(connectionEntity);
 		const scopes = await this.accessCheckService.getConnectionScopesForProject(
 			req.user,
 			providerKey,
@@ -146,7 +146,7 @@ export class SecretProvidersProjectController {
 			req.user.role?.slug,
 		);
 
-		const connection = this.connectionsService.toPublicConnection(updated);
+		const connection = await this.connectionsService.toPublicConnection(updated);
 		const scopes = await this.accessCheckService.getConnectionScopesForProject(
 			req.user,
 			providerKey,

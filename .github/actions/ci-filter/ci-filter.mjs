@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
@@ -74,7 +74,8 @@ export function parseFilters(input) {
 
 		if (currentFilter && rawLine.match(/^\s/)) {
 			const patterns = filters.get(currentFilter);
-			if (patterns) patterns.push(line);
+			const pattern = line.startsWith('- ') ? line.slice(2).trim() : line;
+			if (patterns && pattern) patterns.push(pattern);
 			continue;
 		}
 
@@ -98,12 +99,118 @@ export function getChangedFiles(baseRef) {
 	if (!SAFE_REF.test(baseRef)) {
 		throw new Error(`Unsafe base ref: "${baseRef}"`);
 	}
-	execSync(`git fetch --depth=1 origin ${baseRef}`, { stdio: 'pipe' });
-	const output = execSync('git diff --name-only FETCH_HEAD HEAD', { encoding: 'utf-8' });
+	// Deepen the fetch so the merge base is reachable from this shallow clone.
+	// A 2-dot diff (FETCH_HEAD HEAD) reports anything that differs in either
+	// direction, so files added to base-branch after the PR diverged show up as
+	// "changed" — spuriously triggering path-filtered jobs. The merge base
+	// scopes the diff to PR-only changes.
+	fetchUntilMergeBase(baseRef);
+	const output = execSync('git diff --name-only --merge-base FETCH_HEAD HEAD', {
+		encoding: 'utf-8',
+	});
 	return output
 		.split('\n')
 		.map((f) => f.trim())
 		.filter(Boolean);
+}
+
+// Files added (not merely modified) in this PR. Same merge-base scoping as
+// getChangedFiles; assumes the fetch it performs has already run.
+export function getAddedFiles(baseRef) {
+	if (!SAFE_REF.test(baseRef)) {
+		throw new Error(`Unsafe base ref: "${baseRef}"`);
+	}
+	const output = execSync('git diff --name-only --diff-filter=A --merge-base FETCH_HEAD HEAD', {
+		encoding: 'utf-8',
+	});
+	return output
+		.split('\n')
+		.map((f) => f.trim())
+		.filter(Boolean);
+}
+
+/**
+ * Deepen the shallow clone until the merge base between the fetched base ref
+ * (FETCH_HEAD) and HEAD is reliably reachable.
+ *
+ * A single fixed deepen is not enough for stale PRs whose divergence point is
+ * older than the shallow boundary. We fetch with an exponentially growing
+ * window (doubling each round) until the merge base resolves, or until the full
+ * history has been fetched — at which point no common ancestor means the
+ * histories are unrelated.
+ *
+ * Once the doubled step grows past the repo's history (capped well under
+ * git's signed int32 `--deepen` limit), switch to `--unshallow` instead of
+ * passing an ever-larger integer that git would reject.
+ */
+function fetchUntilMergeBase(baseRef) {
+	let step = Number(process.env.CI_FILTER_DEEPEN_STEP) || 200;
+	const maxDeepen = Number(process.env.CI_FILTER_MAX_DEEPEN) || 20_000;
+	deepenFetch(baseRef, step, maxDeepen);
+
+	while (!hasReliableMergeBase()) {
+		if (!isShallow()) {
+			throw new Error(
+				`No merge base between FETCH_HEAD and HEAD after fetching the full history of "${baseRef}" (unrelated histories).`,
+			);
+		}
+		step *= 2;
+		deepenFetch(baseRef, step, maxDeepen);
+	}
+}
+
+function deepenFetch(baseRef, step, maxDeepen) {
+	const flag = step > maxDeepen ? '--unshallow' : `--deepen=${step}`;
+	execSync(`git fetch --no-tags --prune ${flag} origin ${baseRef}`, { stdio: 'pipe' });
+}
+
+function isShallow() {
+	return (
+		execSync('git rev-parse --is-shallow-repository', { encoding: 'utf-8' }).trim() === 'true'
+	);
+}
+
+/**
+ * True when a merge base exists AND does not sit on the shallow boundary.
+ * In a shallow repo `git merge-base` can return a grafted boundary commit whose
+ * sub-history is truncated; that result is unreliable, so we must deepen further
+ * before trusting it.
+ */
+function hasReliableMergeBase() {
+	let base;
+	try {
+		base = execSync('git merge-base FETCH_HEAD HEAD', { encoding: 'utf-8' }).trim();
+	} catch {
+		return false; // no common ancestor reachable yet
+	}
+	if (!base) return false;
+	return !readShallowBoundaries().has(base);
+}
+
+function readShallowBoundaries() {
+	try {
+		const shallowPath = execSync('git rev-parse --git-path shallow', {
+			encoding: 'utf-8',
+		}).trim();
+		const content = readFileSync(shallowPath, 'utf-8');
+		return new Set(
+			content
+				.split('\n')
+				.map((l) => l.trim())
+				.filter(Boolean),
+		);
+	} catch {
+		return new Set(); // no shallow file => complete repo
+	}
+}
+
+/**
+ * Resolve the merge-base SHA between FETCH_HEAD and HEAD.
+ * Used to give downstream tools (e.g. janitor's AST diff) a stable, PR-only
+ * comparison point that doesn't drift when the base branch moves forward.
+ */
+export function getMergeBase() {
+	return execSync('git merge-base FETCH_HEAD HEAD', { encoding: 'utf-8' }).trim();
 }
 
 // --- Filter evaluation ---
@@ -142,6 +249,32 @@ function setOutput(name, value) {
 	}
 }
 
+/**
+ * Cap the changed-files list before it leaves the action.
+ *
+ * The list is consumed downstream as a step `env:` value and as a CLI argument
+ * (`--files=...`). On a PR that touches thousands of files the joined string
+ * blows past the kernel's argv/env size limit, so the runner can't even spawn
+ * the step's shell ("Argument list too long" on execve). A change set that
+ * large affects essentially every package anyway, so the per-file test scoping
+ * is moot: emit an empty list, which every consumer already reads as "no
+ * signal → run the full suite / all packages" — the safe, correct fallback.
+ */
+export function formatChangedFilesOutput(
+	changedFiles,
+	maxCount = Number(process.env.CI_FILTER_MAX_CHANGED_FILES) || 1000,
+) {
+	if (changedFiles.length > maxCount) {
+		console.log(
+			`Changed file count (${changedFiles.length}) exceeds CI_FILTER_MAX_CHANGED_FILES (${maxCount}); ` +
+				'emitting an empty changed-files output so downstream test scoping falls back to the full suite. ' +
+				'This keeps the value small enough to pass through the step environment and CLI args.',
+		);
+		return '';
+	}
+	return changedFiles.join('\n');
+}
+
 export function runFilter() {
 	const filtersInput = process.env.INPUT_FILTERS;
 	const baseRef = process.env.INPUT_BASE_REF;
@@ -155,7 +288,10 @@ export function runFilter() {
 
 	const filters = parseFilters(filtersInput);
 	const changedFiles = getChangedFiles(baseRef);
+	const addedFiles = getAddedFiles(baseRef);
+	const mergeBase = getMergeBase();
 
+	console.log(`Merge base: ${mergeBase}`);
 	console.log(`Changed files (${changedFiles.length}):`);
 	for (const f of changedFiles) {
 		console.log(`  ${f}`);
@@ -170,8 +306,10 @@ export function runFilter() {
 	}
 
 	setOutput('results', JSON.stringify(results));
-	setOutput('changed-files', changedFiles.join('\n'));
+	setOutput('changed-files', formatChangedFilesOutput(changedFiles));
+	setOutput('added-files', formatChangedFilesOutput(addedFiles));
 	setOutput('base-ref', baseRef);
+	setOutput('merge-base', mergeBase);
 }
 
 // --- Mode: validate ---

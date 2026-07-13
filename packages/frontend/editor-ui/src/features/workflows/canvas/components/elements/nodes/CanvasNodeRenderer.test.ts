@@ -8,6 +8,14 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({ value: actual.createEmptyCanvasRenderData() })),
+	};
+});
+
 const renderComponent = createComponentRenderer(CanvasNodeRenderer);
 
 beforeEach(() => {
@@ -67,5 +75,31 @@ describe('CanvasNodeRenderer', () => {
 		});
 
 		expect(getByTestId('canvas-configurable-node')).toBeInTheDocument();
+	});
+
+	it('should dispatch to the agent card for AI Agent nodes', async () => {
+		// Stub the card itself — this asserts the renderer dispatches to it; the
+		// card's own behaviour is covered in CanvasNodeAgent.test.ts.
+		const { getByTestId } = renderComponent({
+			global: {
+				stubs: {
+					CanvasNodeAgent: { template: '<div data-test-id="canvas-node-agent" />' },
+				},
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({
+						data: {
+							type: 'n8n-nodes-base.messageAnAgent',
+							render: {
+								type: CanvasNodeRenderType.Agent,
+								options: { agentId: { __rl: true, mode: 'list', value: '' } },
+							},
+						},
+					}),
+				},
+			},
+		});
+
+		expect(getByTestId('canvas-node-agent')).toBeInTheDocument();
 	});
 });

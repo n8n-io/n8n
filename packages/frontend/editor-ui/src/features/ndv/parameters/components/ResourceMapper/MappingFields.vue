@@ -13,7 +13,7 @@ import ParameterIssues from '../ParameterIssues.vue';
 import ParameterOptions from '../ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale, useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	fieldCannotBeDeleted,
 	isMatchingField,
@@ -69,7 +69,7 @@ const emit = defineEmits<{
 	refreshFieldList: [];
 }>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 function markAsReadOnly(field: ResourceMapperField): boolean {
 	if (
@@ -250,9 +250,9 @@ function getParameterValue(parameterName: string): string | number | boolean | n
 }
 
 function getFieldIssues(field: INodeProperties): string[] {
-	if (!ndvStore.activeNode) return [];
+	if (!ndvStore.value.activeNode) return [];
 
-	const nodeIssues = ndvStore.activeNode.issues || ({} as INodeIssues);
+	const nodeIssues = ndvStore.value.activeNode.issues || ({} as INodeIssues);
 	const fieldName = parseResourceMapperFieldName(field.name);
 	if (!fieldName) return [];
 

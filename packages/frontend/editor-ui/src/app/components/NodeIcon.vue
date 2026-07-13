@@ -40,7 +40,10 @@ const emit = defineEmits<{
 	click: [];
 }>();
 
-const iconSourceFromNodeType = useNodeIconSource(props.nodeType, props.node ?? null);
+const iconSourceFromNodeType = useNodeIconSource(
+	() => props.nodeType,
+	() => props.node ?? null,
+);
 
 const iconSource = computed(() => props.iconSource ?? iconSourceFromNodeType.value);
 
@@ -60,10 +63,7 @@ const iconColor = computed(() => {
 	return iconSource.value.color ?? props.colorDefault;
 });
 
-const badge = computed(() => {
-	if (iconSource.value?.badge?.type !== 'file') return;
-	return iconSource.value.badge;
-});
+const badge = computed(() => iconSource.value?.badge);
 
 const nodeTypeName = computed(() =>
 	props.nodeName && props.nodeName !== '' ? props.nodeName : props.nodeType?.displayName,

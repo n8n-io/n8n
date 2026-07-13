@@ -9,7 +9,6 @@ export type {
 	ContentReasoning,
 	ContentFile,
 	ContentToolCall,
-	ContentToolResult,
 	ContentInvalidToolCall,
 	ContentProvider,
 	Message,
@@ -37,22 +36,27 @@ export type {
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,
+	SmoothStreamOptions,
+	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	ResumeOptions,
 	GenerateResult,
 	StreamResult,
-	SubAgentUsage,
 	BuiltAgent,
 	AgentRunState,
 	AgentResumeData,
 	PendingToolCall,
 	SerializableAgentState,
+	AnthropicPromptCachingConfig,
+	OpenAIPromptCachingConfig,
+	PromptCachingConfig,
 } from './sdk/agent';
 
 export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
+	ToolExecutionContext,
 	InterruptibleToolContext,
 	BuiltTool,
 	BuiltProviderTool,
@@ -61,11 +65,82 @@ export type {
 export type {
 	Thread,
 	BuiltMemory,
-	SemanticRecallConfig,
+	BuiltEpisodicMemoryStore,
+	EpisodicMemoryConfig,
+	EpisodicMemoryCursor,
+	EpisodicMemoryEmbeddingProviderOptions,
+	EpisodicMemoryEntry,
+	EpisodicMemoryEntrySource,
+	EpisodicMemoryExtractFn,
+	EpisodicMemoryExtraction,
+	EpisodicMemoryExtractionCandidate,
+	EpisodicMemoryExtractorInput,
+	EpisodicMemoryMethods,
+	EpisodicMemoryPrompts,
+	EpisodicMemoryReflectFn,
+	EpisodicMemoryReflection,
+	EpisodicMemoryReflectionApply,
+	EpisodicMemoryReflectionApplyMerge,
+	EpisodicMemoryReflectionMerge,
+	EpisodicMemoryReflectionResult,
+	EpisodicMemoryReflectorInput,
+	EpisodicMemoryScope,
+	EpisodicMemorySearchOptions,
+	EpisodicMemoryStatus,
+	EpisodicMemoryTaskLockHandle,
+	EpisodicMemoryTaskLockMethods,
+	NewEpisodicMemoryCursor,
+	NewEpisodicMemoryEntry,
+	NewEpisodicMemoryEntrySource,
+	NewEpisodicMemoryEntrySourceForEntry,
+	RetrievedEpisodicMemoryEntry,
+	ObservationCapableMemory,
+	MemoryDescriptor,
 	MemoryConfig,
+	ObservationLogMemoryConfig,
+	ObservationalMemoryConfig,
 	CheckpointStore,
 	TitleGenerationConfig,
 } from './sdk/memory';
+
+export type {
+	VectorDocument,
+	VectorRecord,
+	VectorQueryResult,
+	BuiltVectorStoreBackend,
+	FilterOperator,
+	FilterValue,
+	FilterCondition,
+	VectorFilter,
+} from './sdk/vector-store';
+
+export type { ObservationCursor } from './sdk/observation';
+
+export type {
+	BuiltObservationLogStore,
+	BuiltObservationLogTaskLockStore,
+	NewObservationLogEntry,
+	ObservationLogEntry,
+	ObservationLogMarker,
+	ObservationLogMerge,
+	ObservationLogObserveFn,
+	ObservationLogObserverInput,
+	ObservationLogReadOptions,
+	ObservationLogReflectFn,
+	ObservationLogReflectorInput,
+	ObservationLogReflection,
+	ObservationLogReflectionResult,
+	ObservationLogScope,
+	ObservationLogStatus,
+	ObservationLogTaskKind,
+	ObservationLogTaskLockHandle,
+	TokenCounter,
+} from './sdk/observation-log';
+export {
+	estimateObservationTokens,
+	OBSERVATION_LOG_MARKERS,
+	OBSERVATION_LOG_STATUSES,
+} from './sdk/observation-log';
 
 export type {
 	EvalInput,
@@ -100,7 +175,7 @@ export type {
 	AgentMiddleware,
 } from './runtime/event';
 
-export type { McpServerConfig, McpVerifyResult } from './sdk/mcp';
+export type { McpServerConfig, McpToolCallSettledEvent, McpVerifyResult } from './sdk/mcp';
 
 export type { AgentBuilder } from './sdk/agent-builder';
 

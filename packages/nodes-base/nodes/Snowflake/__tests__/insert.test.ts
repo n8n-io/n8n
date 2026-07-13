@@ -1,14 +1,10 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import snowflake from 'snowflake-sdk';
 
-const mockExecute = jest.fn();
-const mockConnect = jest.fn();
-const mockDestroy = jest.fn();
+const mockExecute = vi.fn();
+const mockConnect = vi.fn();
+const mockDestroy = vi.fn();
 const mockConnection = { connect: mockConnect, execute: mockExecute, destroy: mockDestroy };
-
-jest.mock('snowflake-sdk', () => ({
-	configure: jest.fn(),
-	createConnection: jest.fn().mockReturnValue(mockConnection),
-}));
 
 const snowflakeCredentials = {
 	authentication: 'password',
@@ -22,27 +18,74 @@ const snowflakeCredentials = {
 	password: 'pass',
 };
 
-afterEach(() => jest.clearAllMocks());
-
-describe('Test Snowflake, insert - parameter binding', () => {
+// The harness loads the node from dist via require(), so vi.mock cannot intercept its
+// `snowflake-sdk` import. The module is externalized, so the test and the node share the same
+// instance — spy on it instead. Re-applied per test since restoreMocks resets spies.
+beforeEach(() => {
+	vi.spyOn(snowflake, 'configure').mockImplementation(() => ({}) as never);
+	vi.spyOn(snowflake, 'createConnection').mockReturnValue(mockConnection as never);
 	mockConnect.mockImplementation((callback: (err: null) => void) => callback(null));
 	mockDestroy.mockImplementation((callback: (err: null) => void) => callback(null));
 	mockExecute.mockImplementation(
 		({ complete }: { complete: (err: null, stmt: undefined, rows: unknown[]) => void }) =>
 			complete(null, undefined, []),
 	);
+});
 
+afterEach(() => vi.clearAllMocks());
+
+describe('Test Snowflake, insert - parameter binding without origin hostname', () => {
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['insert.workflow.json'],
 		credentials: { snowflake: snowflakeCredentials },
 		customAssertions() {
-			expect(mockExecute).toHaveBeenCalledTimes(1);
+			expect(snowflake.createConnection).toHaveBeenCalledWith({
+				account: 'test-account',
+				database: 'TEST_DB',
+				schema: 'PUBLIC',
+				warehouse: 'WH',
+				role: 'SYSADMIN',
+				clientSessionKeepAlive: false,
+				username: 'user',
+				password: 'pass',
+			});
+			// One ALTER SESSION (STRICT_JSON_OUTPUT) call plus one INSERT for the single row
+			expect(mockExecute).toHaveBeenCalledTimes(2);
+			expect(mockExecute).toHaveBeenCalledWith(
+				expect.objectContaining({ sqlText: 'ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE' }),
+			);
 			expect(mockExecute).toHaveBeenCalledWith(
 				expect.objectContaining({
-					sqlText: 'INSERT INTO IDENTIFIER(?)(IDENTIFIER(?),IDENTIFIER(?)) VALUES (?,?)',
-					binds: [['orders', 'name', 'status', 'Alice', 'active']],
+					sqlText: 'INSERT INTO "ORDERS" ("NAME","STATUS") VALUES (?,?)',
+					binds: [['Alice', 'active']],
 				}),
 			);
+		},
+	});
+});
+
+describe('Test Snowflake, insert - parameter binding with origin hostname', () => {
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['insert.workflow.json'],
+		credentials: {
+			snowflake: {
+				...snowflakeCredentials,
+				host: 'acme-org.us-east-1.snowflakecomputing.com',
+			},
+		},
+		customAssertions() {
+			expect(snowflake.createConnection).toHaveBeenCalledWith({
+				account: 'test-account',
+				database: 'TEST_DB',
+				schema: 'PUBLIC',
+				warehouse: 'WH',
+				role: 'SYSADMIN',
+				clientSessionKeepAlive: false,
+				host: 'acme-org.us-east-1.snowflakecomputing.com',
+				username: 'user',
+				password: 'pass',
+			});
+			expect(mockExecute).toHaveBeenCalledTimes(2);
 		},
 	});
 });

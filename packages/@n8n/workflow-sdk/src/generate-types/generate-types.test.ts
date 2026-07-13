@@ -18,9 +18,18 @@ import type * as GenerateTypesModule from '../generate-types/generate-types';
 // Type Definitions (Expected interfaces from the implementation)
 // =============================================================================
 
+interface BuilderHintVariation {
+	content: string;
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+}
+
 interface ParameterBuilderHint {
-	message: string;
+	propertyHint: string;
 	placeholderSupported?: boolean;
+	extraTypeDefContent?: BuilderHintVariation[];
 }
 
 interface NestedOption {
@@ -69,13 +78,14 @@ interface NodeTypeDescription {
 	defaultVersion?: number;
 	properties: NodeProperty[];
 	credentials?: Array<{ name: string; required?: boolean }>;
-	inputs: string[] | Array<{ type: string; displayName?: string; required?: boolean }>;
-	outputs: string[] | Array<{ type: string; displayName?: string }>;
+	inputs: string | string[] | Array<{ type: string; displayName?: string; required?: boolean }>;
+	outputs: string | string[] | Array<{ type: string; displayName?: string }>;
 	subtitle?: string;
 	usableAsTool?: boolean;
 	hidden?: boolean;
 	schemaPath?: string;
 	builderHint?: {
+		message?: string;
 		inputs?: Record<
 			string,
 			{
@@ -86,6 +96,7 @@ interface NodeTypeDescription {
 				};
 			}
 		>;
+		extraTypeDefContent?: BuilderHintVariation[];
 	};
 }
 
@@ -355,7 +366,9 @@ describe('generate-types', () => {
 		} catch {
 			// Module doesn't export functions yet - tests will fail as expected in TDD
 		}
-	});
+		// Cold module compilation can exceed the default 10s hook timeout on a
+		// loaded CI runner, so give the import ample headroom.
+	}, 30_000);
 
 	// =========================================================================
 	// Property Type Mapping Tests
@@ -365,7 +378,7 @@ describe('generate-types', () => {
 		it('should map string type with Expression wrapper', () => {
 			const prop: NodeProperty = { name: 'url', displayName: 'URL', type: 'string', default: '' };
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('string | Expression<string> | PlaceholderValue');
+			expect(result).toBe('string | Expression<string>');
 		});
 
 		it('should map number type with Expression wrapper', () => {
@@ -462,6 +475,21 @@ describe('generate-types', () => {
 			);
 		});
 
+		it('should map agentSelector type to the resource-locator shape (not unknown), like workflowSelector', () => {
+			const prop = {
+				name: 'agentId',
+				displayName: 'Agent',
+				type: 'agentSelector',
+				default: { mode: 'list', value: '' },
+			} as unknown as NodeProperty;
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).not.toBe('unknown');
+			expect(result).toContain('__rl: true');
+			expect(result).toContain("mode: 'list' | 'id'");
+			expect(result).toContain('cachedResultName?: string');
+			expect(result).toContain('Expression<string>');
+		});
+
 		it('should map filter type', () => {
 			const prop: NodeProperty = {
 				name: 'filters',
@@ -543,6 +571,50 @@ describe('generate-types', () => {
 			expect(result).toBe('AssignmentCollectionValue');
 		});
 
+		it('should map resourceMapper type to structured mapper value', () => {
+			const prop: NodeProperty = {
+				name: 'columns',
+				displayName: 'Columns',
+				type: 'resourceMapper',
+				default: { mappingMode: 'defineBelow', value: null },
+			};
+
+			const result = generateTypes.mapPropertyType(prop);
+
+			expect(result).toBe('ResourceMapperValue | Expression<string>');
+		});
+
+		it('should map resourceMapper with loadOptionsDependsOn and noDataExpression to structured mapper value', () => {
+			const prop: NodeProperty = {
+				name: 'columns',
+				displayName: 'Columns',
+				type: 'resourceMapper',
+				noDataExpression: true,
+				default: { mappingMode: 'defineBelow', value: null },
+				typeOptions: {
+					loadOptionsDependsOn: ['sheetName.value'],
+				},
+			};
+
+			const result = generateTypes.mapPropertyType(prop);
+
+			expect(result).toBe('ResourceMapperValue');
+		});
+
+		it('should map string type with multipleValues to an array type', () => {
+			const prop: NodeProperty = {
+				name: 'attendees',
+				displayName: 'Attendees',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toBe('Array<string | Expression<string>>');
+		});
+
 		it('should map fixedCollection type to proper nested interface', () => {
 			const prop: NodeProperty = {
 				name: 'queryParameters',
@@ -565,6 +637,34 @@ describe('generate-types', () => {
 			expect(result).toContain('parameters?:');
 			expect(result).toContain('name?:');
 			expect(result).toContain('value?:');
+		});
+
+		it('should map nested string fields with multipleValues to array types', () => {
+			const prop: NodeProperty = {
+				name: 'attendeesUi',
+				displayName: 'Attendees',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Attendees',
+								name: 'attendees',
+								type: 'string',
+								default: '',
+								typeOptions: {
+									multipleValues: true,
+								},
+							},
+						],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('attendees?: Array<string | Expression<string>>');
 		});
 
 		it('should map fixedCollection with multipleValues to array type', () => {
@@ -717,7 +817,7 @@ describe('generate-types', () => {
 			const result = generateTypes.mapPropertyType(prop);
 			// Should generate nested structure with proper types
 			expect(result).toContain('systemMessage?:');
-			expect(result).toContain('string | Expression<string> | PlaceholderValue');
+			expect(result).toContain('string | Expression<string>');
 			expect(result).toContain('maxIterations?:');
 			expect(result).toContain('number | Expression<number>');
 			expect(result).toContain('returnIntermediateSteps?:');
@@ -755,7 +855,7 @@ describe('generate-types', () => {
 								type: 'options',
 								description: 'Select the interval type',
 								builderHint: {
-									message: 'You can add multiple intervals to trigger at different times.',
+									propertyHint: 'You can add multiple intervals to trigger at different times.',
 								},
 								options: [
 									{ name: 'Seconds', value: 'seconds' },
@@ -785,7 +885,7 @@ describe('generate-types', () => {
 						name: 'interval',
 						displayName: 'Trigger Interval',
 						builderHint: {
-							message: 'You can add multiple intervals to trigger at different times.',
+							propertyHint: 'You can add multiple intervals to trigger at different times.',
 						},
 						values: [
 							{
@@ -803,7 +903,7 @@ describe('generate-types', () => {
 			expect(result).toContain('@builderHint You can add multiple intervals');
 		});
 
-		// PlaceholderValue tests - string type should include PlaceholderValue, other types should not
+		// PlaceholderValue is no longer emitted by codegen — these tests guard against regressions.
 		it('should NOT include PlaceholderValue in options type', () => {
 			const prop: NodeProperty = {
 				name: 'method',
@@ -1321,6 +1421,156 @@ describe('generate-types', () => {
 			expect(result).not.toContain('GmailV21Params');
 		});
 
+		it('should route node-level extraTypeDefContent variations into matching narrowed types only', () => {
+			const vectorStoreLikeNode: NodeTypeDescription & { builderHint?: unknown } = {
+				name: 'n8n-nodes-test.vectorStoreLike',
+				displayName: 'Vector Store Like',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				builderHint: {
+					extraTypeDefContent: [
+						{
+							displayOptions: { show: { mode: ['insert'] } },
+							content: '<patterns>\n<pattern>insert example</pattern>\n</patterns>',
+						},
+						{
+							displayOptions: { show: { mode: ['retrieve-as-tool'] } },
+							content: '<patterns>\n<pattern>RAG example</pattern>\n</patterns>',
+						},
+					],
+				},
+				properties: [
+					{
+						displayName: 'Operation Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Insert', value: 'insert' },
+							{ name: 'Retrieve as Tool', value: 'retrieve-as-tool' },
+						],
+						default: 'insert',
+					},
+					{
+						displayName: 'Insert Field',
+						name: 'insertField',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['insert'] } },
+					},
+					{
+						displayName: 'Tool Description',
+						name: 'toolDescription',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['retrieve-as-tool'] } },
+					},
+				],
+			};
+
+			const result = generateTypes.generateDiscriminatedUnion(vectorStoreLikeNode);
+
+			// Each variation must land in its own narrowed type body — no cross-bleed.
+			const sections = result.split(/export type /);
+			const insertSection = sections.find((s) => s.startsWith('VectorStoreLikeInsertParams'));
+			const retrieveSection = sections.find((s) =>
+				s.startsWith('VectorStoreLikeRetrieveAsToolParams'),
+			);
+			expect(insertSection).toBeDefined();
+			expect(retrieveSection).toBeDefined();
+
+			expect(insertSection!).toContain('<pattern>insert example</pattern>');
+			expect(insertSection!).not.toContain('RAG example');
+
+			expect(retrieveSection!).toContain('<pattern>RAG example</pattern>');
+			expect(retrieveSection!).not.toContain('insert example');
+		});
+
+		it('should not duplicate an unconditional node-level variation across narrowed types (file header only)', () => {
+			const node: NodeTypeDescription & { builderHint?: unknown } = {
+				name: 'n8n-nodes-test.unconditional',
+				displayName: 'Unconditional',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				builderHint: {
+					extraTypeDefContent: [{ content: 'unconditional only' }],
+				},
+				properties: [
+					{
+						displayName: 'Operation Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Insert', value: 'insert' },
+							{ name: 'Retrieve', value: 'retrieve' },
+						],
+						default: 'insert',
+					},
+					{
+						displayName: 'Insert Field',
+						name: 'insertField',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['insert'] } },
+					},
+				],
+			};
+
+			// Unconditional content does NOT appear inside narrowed type bodies —
+			// it's reserved for the file-level node header.
+			const result = generateTypes.generateDiscriminatedUnion(node);
+			expect(result).not.toContain('unconditional only');
+
+			// File header emits it exactly once.
+			const header = generateTypes.generateNodeJSDoc(node);
+			expect(header).toContain('unconditional only');
+			expect(header.match(/unconditional only/g)?.length).toBe(1);
+		});
+
+		it('should skip variations whose displayOptions do not match the combo', () => {
+			const node: NodeTypeDescription & { builderHint?: unknown } = {
+				name: 'n8n-nodes-test.partialMatch',
+				displayName: 'Partial Match',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				builderHint: {
+					extraTypeDefContent: [
+						{
+							displayOptions: { show: { mode: ['unknownMode'] } },
+							content: 'should NOT appear',
+						},
+					],
+				},
+				properties: [
+					{
+						displayName: 'Operation Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Insert', value: 'insert' },
+							{ name: 'Retrieve', value: 'retrieve' },
+						],
+						default: 'insert',
+					},
+					{
+						displayName: 'Insert Field',
+						name: 'insertField',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['insert'] } },
+					},
+				],
+			};
+
+			const result = generateTypes.generateDiscriminatedUnion(node);
+			expect(result).not.toContain('should NOT appear');
+		});
+
 		it('should generate simple interface for HTTP Request (no discriminators)', () => {
 			const result = generateTypes.generateDiscriminatedUnion(mockHttpRequestNode);
 
@@ -1677,7 +1927,7 @@ describe('generate-types', () => {
 				type: 'fixedCollection',
 				description: 'Configure when the workflow triggers',
 				builderHint: {
-					message:
+					propertyHint:
 						'You can add multiple intervals to trigger at different times. Use Custom (Cron) for more specific scheduling patterns.',
 				},
 				default: {},
@@ -1695,7 +1945,7 @@ describe('generate-types', () => {
 				type: 'string',
 				description: 'Custom code to execute',
 				builderHint: {
-					message: 'See <a href="https://docs.example.com">documentation</a> for examples',
+					propertyHint: 'See <a href="https://docs.example.com">documentation</a> for examples',
 				},
 				default: '',
 			};
@@ -1703,6 +1953,77 @@ describe('generate-types', () => {
 			// Should escape HTML in builderHint
 			expect(result).toContain('@builderHint');
 			expect(result).toContain('&lt;a href=');
+		});
+
+		it('should include unconditional extraTypeDefContent variation below @builderHint, preserving line breaks and tags verbatim', () => {
+			const prop: NodeProperty = {
+				name: 'columns',
+				displayName: 'Columns',
+				type: 'resourceMapper',
+				description: 'Column mapping',
+				builderHint: {
+					propertyHint: 'Pass the full resourceMapper object',
+					extraTypeDefContent: [
+						{
+							content:
+								'<patterns>\n<pattern title="autoMap">\ncolumns: { mappingMode: \'autoMapInputData\' }\n</pattern>\n</patterns>',
+						},
+					],
+				},
+				default: {},
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			expect(result).toContain('@builderHint Pass the full resourceMapper object');
+			expect(result).toContain(' * <patterns>');
+			expect(result).toContain(' * <pattern title="autoMap">');
+			expect(result).toContain(" * columns: { mappingMode: 'autoMapInputData' }");
+			expect(result).toContain(' * </pattern>');
+			expect(result).toContain(' * </patterns>');
+			// Angle brackets in variation content must NOT be HTML-escaped — the LLM
+			// must see the tags verbatim so it can use them as structural cues.
+			expect(result).not.toContain('&lt;patterns&gt;');
+			expect(result).not.toContain('&lt;pattern title=');
+		});
+
+		it('should escape closing JSDoc sequences inside variation content', () => {
+			const prop: NodeProperty = {
+				name: 'foo',
+				displayName: 'Foo',
+				type: 'string',
+				description: 'Foo',
+				builderHint: {
+					propertyHint: 'msg',
+					extraTypeDefContent: [{ content: 'block end */ inside example' }],
+				},
+				default: '',
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			// The literal "*/" would terminate the JSDoc block early; it must be escaped.
+			expect(result).not.toContain('block end */ inside');
+			expect(result).toContain('block end *\\/ inside');
+		});
+
+		it('should skip param-level variations whose displayOptions cannot be evaluated at file/property scope', () => {
+			// Param-level emission (generatePropertyJSDoc, generateNestedPropertyJSDoc) has
+			// no discriminator combo, so any gated variation is dropped — those belong on the
+			// node-level builderHint where the codegen can route them per narrowed type.
+			const prop: NodeProperty = {
+				name: 'foo',
+				displayName: 'Foo',
+				type: 'string',
+				description: 'Foo',
+				builderHint: {
+					propertyHint: 'msg',
+					extraTypeDefContent: [
+						{ displayOptions: { show: { mode: ['insert'] } }, content: 'gated content' },
+						{ content: 'always shown' },
+					],
+				},
+				default: '',
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			expect(result).toContain('always shown');
+			expect(result).not.toContain('gated content');
 		});
 	});
 
@@ -1716,6 +2037,37 @@ describe('generate-types', () => {
 		it('should include Node Types label', () => {
 			const result = generateTypes.generateNodeJSDoc(mockGmailNode);
 			expect(result).toContain('Node Types');
+		});
+
+		it('should emit node-level @builderHint searchHint at the file header', () => {
+			const node = {
+				...mockGmailNode,
+				builderHint: {
+					searchHint: 'AI Agent — wire subnodes via the config object',
+				},
+			};
+			const result = generateTypes.generateNodeJSDoc(node);
+			expect(result).toContain('@builderHint AI Agent — wire subnodes via the config object');
+		});
+
+		it('should emit unconditional extraTypeDefContent variations at the file header but skip gated ones', () => {
+			const node = {
+				...mockGmailNode,
+				builderHint: {
+					extraTypeDefContent: [
+						{ content: '<patterns>\n<pattern>always</pattern>\n</patterns>' },
+						{
+							displayOptions: { show: { mode: ['insert'] } },
+							content: '<patterns>\n<pattern>insert-only</pattern>\n</patterns>',
+						},
+					],
+				},
+			};
+			const result = generateTypes.generateNodeJSDoc(node);
+			// Unconditional variation lands at file header.
+			expect(result).toContain(' * <pattern>always</pattern>');
+			// Gated variation does NOT — it's emitted per-combo via emitNodeHintForCombo.
+			expect(result).not.toContain('insert-only');
 		});
 	});
 
@@ -1929,6 +2281,10 @@ describe('generate-types', () => {
 			// Should have credentials type
 			expect(result).toContain('GmailV21Credentials');
 			expect(result).toContain('gmailOAuth2');
+			expect(result).toContain(
+				'config: NodeConfig<GmailV21Params> & { credentials?: GmailV21Credentials }',
+			);
+			expect(result).not.toContain('credentials?: GmailV21Credentials;\n');
 
 			// Should have node type
 			expect(result).toContain('GmailNode');
@@ -1952,6 +2308,117 @@ describe('generate-types', () => {
 
 			// Should indicate it's a trigger
 			expect(result).toContain('isTrigger: true');
+		});
+
+		it('should not mark AI sub-tool nodes as triggers', () => {
+			// AI sub-tool nodes (mcpClientTool, *Tool variants, etc.) have no main
+			// input — but they emit on `ai_tool`, not `main`. Earlier the heuristic
+			// classified them as triggers because it only checked inputs.
+			const subToolNode: NodeTypeDescription = {
+				name: 'n8n-nodes-langchain.mcpClientTool',
+				displayName: 'MCP Client Tool',
+				description: 'Use MCP-server tools as agent tools',
+				group: ['output'],
+				version: 1,
+				inputs: [],
+				outputs: [{ type: 'ai_tool', displayName: 'Tools' }],
+				properties: [],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(subToolNode);
+
+			expect(result).not.toContain('isTrigger: true');
+		});
+
+		it('should generate types for constant expression connections (community node pattern)', () => {
+			// Community nodes often wrap static connections in an expression
+			// (e.g. firecrawl's `={{["main"]}}`); generation must not depend on
+			// evaluating it.
+			const dynamicNode: NodeTypeDescription = {
+				name: 'n8n-nodes-firecrawl.firecrawl',
+				displayName: 'Firecrawl',
+				description: 'Scrape and crawl websites',
+				group: ['transform'],
+				version: 1,
+				inputs: '={{["main"]}}',
+				outputs: '={{["main"]}}',
+				properties: [{ name: 'url', displayName: 'URL', type: 'string', default: '' }],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(dynamicNode);
+
+			expect(result).toContain("type: 'n8n-nodes-firecrawl.firecrawl'");
+			expect(result).toContain('url');
+			// No ai_* literals in the expression: no subnode config, not a trigger
+			expect(result).not.toContain('SubnodeConfig');
+			expect(result).not.toContain('isTrigger: true');
+		});
+
+		it('should generate types for dynamic expression inputs (agent pattern)', () => {
+			const dynamicAgentNode: NodeTypeDescription = {
+				name: 'n8n-nodes-custom.customAgent',
+				displayName: 'Custom Agent',
+				description: 'Agent with parameter-dependent inputs',
+				group: ['transform'],
+				version: 1,
+				inputs: `={{
+					((hasMemory) => {
+						const inputs = [{ type: "main" }, { type: "ai_languageModel", required: true }];
+						if (hasMemory) inputs.push({ type: "ai_memory" });
+						return inputs;
+					})($parameter.hasMemory)
+				}}`,
+				outputs: ['main'],
+				properties: [{ name: 'prompt', displayName: 'Prompt', type: 'string', default: '' }],
+			};
+
+			// Legacy single-file generator (runtime synthesis path): generates
+			// the parameter types; it emits no subnode config for any node.
+			const legacyResult = generateTypes.generateNodeTypeFile(dynamicAgentNode);
+			expect(legacyResult).toContain('CustomAgentV1Params');
+			expect(legacyResult).toContain('prompt');
+
+			// Per-version generator (build-time path): ai_* types are extracted
+			// lexically from the expression source. Required status can't be
+			// reliably determined from expressions, so all are optional unless
+			// declared via builderHint.inputs.
+			const versionResult = generateTypes.generateSingleVersionTypeFile(dynamicAgentNode, 1);
+			expect(versionResult).toContain('SubnodeConfig');
+			expect(versionResult).toContain('model?: LanguageModelInstance');
+			expect(versionResult).toContain('memory?: MemoryInstance');
+		});
+
+		it('should emit helper type for resourceMapper properties', () => {
+			const sheetsLikeNode: NodeTypeDescription = {
+				name: 'n8n-nodes-base.googleSheets',
+				displayName: 'Google Sheets',
+				description: 'Read and write rows',
+				group: ['transform'],
+				version: 4.7,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'columns',
+						displayName: 'Columns',
+						type: 'resourceMapper',
+						noDataExpression: true,
+						default: { mappingMode: 'defineBelow', value: null },
+						typeOptions: {
+							loadOptionsDependsOn: ['sheetName.value'],
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(sheetsLikeNode);
+
+			expect(result).toContain('type ResourceMapperField = {');
+			expect(result).toContain('mappingMode: string;');
+			expect(result).toContain('value?: null | Record<string, unknown>;');
+			expect(result).toContain('schema?: ResourceMapperField[]');
+			expect(result).toContain('columns?: ResourceMapperValue;');
+			expect(result).not.toContain('columns?: string;');
 		});
 
 		// Regression: required string with default: '' used to emit
@@ -2357,6 +2824,172 @@ describe('generate-types', () => {
 	});
 
 	// =========================================================================
+	// UX-fork variant collapse
+	// =========================================================================
+
+	describe('tryMergeUxForkVariants', () => {
+		it('collapses a clean partition (BigQuery sqlQuery shape) by dropping the constraint', () => {
+			// hide: useLegacySql=[true]  ⊕  show: useLegacySql=[true]  ⇒  always visible
+			const a = { hide: { useLegacySql: [true] } };
+			const b = { show: { useLegacySql: [true] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({});
+			expect(generateTypes.tryMergeUxForkVariants(b, a)).toEqual({});
+		});
+
+		it('reduces hide values to the set difference when show is a subset', () => {
+			// hide: K=[a,b,c]  ⊕  show: K=[a]  ⇒  hide: K=[b,c]
+			const a = { hide: { mode: ['a', 'b', 'c'] } };
+			const b = { show: { mode: ['a'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({
+				hide: { mode: ['b', 'c'] },
+			});
+		});
+
+		it('preserves shared show/hide entries while collapsing the fork key', () => {
+			const a = {
+				show: { resource: ['data'] },
+				hide: { useLegacySql: [true] },
+			};
+			const b = {
+				show: { resource: ['data'], useLegacySql: [true] },
+			};
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({
+				show: { resource: ['data'] },
+			});
+		});
+
+		it('returns null for a multi-key fork (Cortex-shape)', () => {
+			// Two keys differ — too complex to collapse safely.
+			const a = { show: { mode: ['a'], extra: ['x'] } };
+			const b = { show: { mode: ['b'], extra: ['y'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toBeNull();
+		});
+
+		it('returns null when one side is missing displayOptions', () => {
+			expect(generateTypes.tryMergeUxForkVariants(undefined, { show: { mode: ['a'] } })).toBeNull();
+			expect(generateTypes.tryMergeUxForkVariants({ show: { mode: ['a'] } }, undefined)).toBeNull();
+		});
+
+		it('returns null when the fork key appears in both show clauses (no clean partition)', () => {
+			const a = { show: { mode: ['a'] } };
+			const b = { show: { mode: ['b'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toBeNull();
+		});
+
+		// End-to-end: the simplifier must be wired into the JSDoc emitter.
+		// BigQuery's two `sqlQuery` declarations were the canonical bug — the
+		// agent kept reading `@displayOptions.hide { useLegacySql: [true] }`
+		// in the .d.ts and concluding the field was unsettable in legacy mode,
+		// even after the runtime validator started accepting both modes.
+		it('emits a single honest predicate for BigQuery-shape sqlQuery via generateNodeTypeFile', () => {
+			const node: NodeTypeDescription = {
+				name: 'n8n-nodes-base.googleBigQuery',
+				displayName: 'Google BigQuery',
+				description: 'Run BigQuery queries',
+				group: ['transform'],
+				version: 2.1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'sqlQuery',
+						displayName: 'SQL Query',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: { resource: ['database'], operation: ['executeQuery'] },
+							hide: { '/options.useLegacySql': [true] },
+						},
+					},
+					{
+						name: 'sqlQuery',
+						displayName: 'SQL Query',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								resource: ['database'],
+								operation: ['executeQuery'],
+								'/options.useLegacySql': [true],
+							},
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(node);
+
+			expect(result).toMatch(
+				/@displayOptions\.show \{ resource: \["database"\], operation: \["executeQuery"\] \}/,
+			);
+			expect(result).not.toMatch(/@displayOptions\.hide.*useLegacySql/);
+			expect(result).not.toMatch(/@displayOptions\.show \{[^}]*useLegacySql/);
+		});
+
+		// End-to-end via the discriminator-split codegen path. Pushbullet's `value`
+		// declares variant A `hide: target=[default, device_iden]` and variant B
+		// `show: target=[device_iden]`. OR-semantics = target ≠ default; the JSDoc
+		// must drop `device_iden` from the hide.
+		it('emits Pushbullet-shape simplified hide via the discriminator-split path', () => {
+			const node: NodeTypeDescription = {
+				name: 'n8n-nodes-base.pushbullet',
+				displayName: 'Pushbullet',
+				description: 'Send pushes',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'resource',
+						displayName: 'Resource',
+						type: 'options',
+						default: 'push',
+						options: [{ name: 'Push', value: 'push' }],
+						noDataExpression: true,
+					},
+					{
+						name: 'operation',
+						displayName: 'Operation',
+						type: 'options',
+						default: 'create',
+						displayOptions: { show: { resource: ['push'] } },
+						options: [{ name: 'Create', value: 'create' }],
+						noDataExpression: true,
+					},
+					{
+						name: 'value',
+						displayName: 'Value',
+						type: 'string',
+						required: true,
+						default: '',
+						displayOptions: {
+							show: { resource: ['push'], operation: ['create'] },
+							hide: { target: ['default', 'device_iden'] },
+						},
+					},
+					{
+						name: 'value',
+						displayName: 'Value Name or ID',
+						type: 'string',
+						required: true,
+						default: '',
+						displayOptions: {
+							show: { resource: ['push'], operation: ['create'], target: ['device_iden'] },
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(node);
+
+			expect(result).toMatch(/@displayOptions\.hide \{ target: \["default"\] \}/);
+			expect(result).not.toMatch(/@displayOptions\.hide \{[^}]*device_iden/);
+			expect(result).not.toMatch(/@displayOptions\.show \{[^}]*target.*device_iden/);
+		});
+	});
+
+	// =========================================================================
 	// Edge Case Tests
 	// =========================================================================
 
@@ -2378,7 +3011,7 @@ describe('generate-types', () => {
 				default: null,
 			};
 			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('string | Expression<string> | PlaceholderValue');
+			expect(result).toBe('string | Expression<string>');
 		});
 
 		it('should handle options with numeric values', () => {
@@ -3057,6 +3690,7 @@ describe('generate-types', () => {
 				// Should have credentials
 				expect(content).toContain('FreshserviceV1Credentials');
 				expect(content).toContain('freshserviceApi');
+				expect(content).not.toContain('credentials?: FreshserviceV1Credentials');
 
 				// Should have base type
 				expect(content).toContain('FreshserviceV1NodeBase');
@@ -3209,8 +3843,11 @@ describe('generate-types', () => {
 				// freshserviceApi is marked as required: true in the mock, so no ? mark
 				expect(content).toContain('freshserviceApi: CredentialReference');
 
-				// Node type should reference credentials (credentials field itself is always optional)
-				expect(content).toContain('credentials?: Credentials');
+				// Node type should place credentials inside config, matching the builder API.
+				expect(content).toContain(
+					'config: NodeConfig<FreshserviceV1TicketGetParams> & { credentials?: Credentials };',
+				);
+				expect(content).not.toContain('\n  credentials?: Credentials;\n');
 			});
 
 			it('should inline helper types when properties need them', () => {
@@ -4258,6 +4895,10 @@ describe('generate-types', () => {
 				);
 
 				expect(content).toContain('interface Credentials');
+				expect(content).toContain(
+					'config: NodeConfig<GmailV2MessageSendParams> & { credentials?: Credentials };',
+				);
+				expect(content).not.toContain('\n  credentials?: Credentials;\n');
 				expect(content).toContain('export type');
 			});
 		});
@@ -4531,7 +5172,9 @@ describe('orchestrateGeneration', () => {
 
 	beforeAll(async () => {
 		mod = await import('../generate-types/generate-types');
-	});
+		// Cold module compilation can exceed the default 10s hook timeout on a
+		// loaded CI runner, so give the import ample headroom.
+	}, 30_000);
 
 	afterAll(async () => {
 		await fs.promises.rm(outputDir, { recursive: true, force: true });

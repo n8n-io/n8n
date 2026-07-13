@@ -3,23 +3,23 @@
 import { select } from '@inquirer/prompts';
 import * as fs from 'node:fs/promises';
 
-import { parseConfig } from './config';
+import { isOriginAllowed, parseConfig, resolvePermissionConfirmation } from './config';
 import { cliConfirmResourceAccess, sanitizeForTerminal } from './confirm-resource-cli';
-import { isOriginAllowed, startDaemon } from './daemon';
-import { GatewayClient } from './gateway-client';
+import { GatewayAuthError, GatewayClient } from './gateway-client';
 import { GatewaySession } from './gateway-session';
 import {
 	configure,
 	logger,
 	printBanner,
 	printConnected,
+	printInvalidToken,
+	printModuleDiagnostics,
 	printModuleStatus,
 	printToolList,
 } from './logger';
 import { SettingsStore } from './settings-store';
 import {
 	editPermissions,
-	ensureSettingsFile,
 	isAllDeny,
 	printPermissionsTable,
 	promptFilesystemDir,
@@ -93,40 +93,6 @@ function makeConfirmResourceAccess(
 }
 
 // ---------------------------------------------------------------------------
-// Daemon mode — URL provided but no token
-// ---------------------------------------------------------------------------
-
-async function runDaemon(parsed: ReturnType<typeof parseConfig>, url: string): Promise<void> {
-	const { config } = parsed;
-
-	let origin: string;
-	try {
-		origin = new URL(url).origin;
-	} catch {
-		logger.error('Invalid instance URL', { url });
-		process.exit(1);
-	}
-
-	if (!isOriginAllowed(origin, config.allowedOrigins)) {
-		logger.error(
-			'The provided URL does not match any allowed origin. Use --allowed-origins to configure.',
-			{ url, allowedOrigins: config.allowedOrigins },
-		);
-		process.exit(1);
-	}
-
-	// Lock the daemon to accept connections from this specific URL only
-	config.allowedOrigins = [url];
-
-	await ensureSettingsFile(config);
-
-	startDaemon(config, {
-		confirmConnect: makeConfirmConnect(parsed.nonInteractive, parsed.autoConfirm),
-		confirmResourceAccess: makeConfirmResourceAccess(parsed.nonInteractive, parsed.autoConfirm),
-	});
-}
-
-// ---------------------------------------------------------------------------
 // Help
 // ---------------------------------------------------------------------------
 
@@ -140,20 +106,20 @@ function printUsage(): void {
 n8n-computer-use — Local AI gateway for n8n AI Assistant
 
 Usage:
-  npx @n8n/computer-use <url>                  Start daemon (n8n connects to you)
   npx @n8n/computer-use <url> <token>          Connect directly to n8n instance
   npx @n8n/computer-use <url> <token> <dir>    Connect directly to n8n instance and specify the directory
   npx @n8n/computer-use --url <url> --api-key <token>
 
 Positional arguments:
   url        n8n instance URL (e.g. https://my-instance.app.n8n.cloud)
-  token      Gateway token (from "Connect local files" UI) — triggers direct connect
+  token      Gateway token (from "Connect local files" UI)
 
 Global options:
   --log-level <level>            Log level: silent, error, warn, info, debug (default: info)
   --allowed-origins <patterns>   Comma-separated allowed origin patterns
                                  (default: https://*.app.n8n.cloud)
-  -p, --port <port>              Daemon port (default: 7655, daemon mode only)
+                                 When connecting to a non-cloud instance, resource
+                                 confirmations are always prompted in this terminal.
   --non-interactive              Skip all prompts (deny per default)
   --auto-confirm                 Auto-confirm all prompts (no readline)
   -h, --help                     Show this help message
@@ -170,6 +136,11 @@ Permissions (deny | ask | allow):
 
 Computer use:
   --computer-shell-timeout <ms>      Shell command timeout (default: 30000)
+  --dangerously-disable-shell-sandbox
+                                     Run shell commands WITHOUT the OS sandbox.
+                                     Insecure — only use in a trusted, isolated
+                                     environment. Without a sandbox the shell
+                                     tool is disabled by default.
 
 Browser:
   --no-browser                       Disable browser tools
@@ -192,7 +163,35 @@ async function main(
 	url: string,
 	apiKey: string,
 ): Promise<void> {
-	await ensureSettingsFile(parsed.config);
+	const { config } = parsed;
+
+	let origin: string;
+	try {
+		origin = new URL(url).origin;
+	} catch {
+		logger.error('Invalid instance URL', { url });
+		return process.exit(1);
+	}
+
+	if (!isOriginAllowed(origin, config.allowedOrigins)) {
+		logger.error(
+			'The provided URL does not match any allowed origin. Use --allowed-origins to configure.',
+			{ url, allowedOrigins: config.allowedOrigins },
+		);
+		process.exit(1);
+	}
+
+	config.permissionConfirmation = resolvePermissionConfirmation(
+		config.permissionConfirmation,
+		origin,
+	);
+	logger.info(
+		config.permissionConfirmation === 'client'
+			? 'Resource confirmations will be prompted in this terminal'
+			: 'Resource confirmations will be prompted in the n8n UI',
+	);
+
+	await SettingsStore.ensureInitialized(config);
 
 	const settingsStore = await SettingsStore.create();
 	const defaults = settingsStore.getDefaults(parsed.config);
@@ -219,13 +218,6 @@ async function main(
 		process.exit(1);
 	}
 
-	// printModuleStatus expects a GatewayConfig shape — derive one from the session.
-	printModuleStatus({
-		...parsed.config,
-		permissions: session.getAllPermissions(),
-		filesystem: { dir: session.dir },
-	});
-
 	const client = new GatewayClient({
 		url,
 		apiKey,
@@ -234,18 +226,38 @@ async function main(
 		confirmResourceAccess: makeConfirmResourceAccess(parsed.nonInteractive, parsed.autoConfirm),
 	});
 
+	let shutdownPromise: Promise<void> | null = null;
 	const shutdown = () => {
-		logger.info('Shutting down');
-		void Promise.all([client.disconnect(), session.flush()]).finally(() => {
-			process.exit(0);
-		});
+		shutdownPromise ??= (async () => {
+			logger.info('Shutting down');
+			await Promise.all([client.disconnect(), session.flush()]).finally(() => {
+				process.exit(0);
+			});
+		})();
 	};
 	process.on('SIGINT', shutdown);
 	process.on('SIGTERM', shutdown);
 
-	await client.start();
+	try {
+		await client.start();
+	} catch (error) {
+		if (error instanceof GatewayAuthError) {
+			printInvalidToken(origin);
+			process.exit(1);
+		}
+		throw error;
+	}
 
 	printConnected(url);
+	printModuleStatus(
+		{
+			...parsed.config,
+			permissions: session.getAllPermissions(),
+			filesystem: { dir: session.dir },
+		},
+		client.toolCategories,
+	);
+	printModuleDiagnostics(client.disabledModules);
 	printToolList(client.tools);
 }
 
@@ -270,12 +282,12 @@ void (async () => {
 	}
 
 	if (!parsed.apiKey) {
-		// Daemon mode: URL provided but no token — n8n connects to us
-		await runDaemon(parsed, parsed.url);
-	} else {
-		// Direct connect mode: URL + token provided
-		await main(parsed, parsed.url, parsed.apiKey);
+		logger.error('Missing required argument: gateway token');
+		printUsage();
+		process.exit(1);
 	}
+
+	await main(parsed, parsed.url, parsed.apiKey);
 })().catch((error: unknown) => {
 	logger.error('Fatal error', {
 		error: error instanceof Error ? error.message : String(error),

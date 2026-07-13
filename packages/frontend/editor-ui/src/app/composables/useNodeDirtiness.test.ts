@@ -18,28 +18,23 @@ import {
 } from 'n8n-workflow';
 import { defineComponent, provide, shallowRef } from 'vue';
 import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { useWorkflowState, injectWorkflowState, type WorkflowState } from './useWorkflowState';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
+const TEST_WORKFLOW_ID = 'test-workflow-id';
+const TEST_DOCUMENT_ID = createWorkflowDocumentId(TEST_WORKFLOW_ID);
 
 describe(useNodeDirtiness, () => {
 	let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let historyHelper: ReturnType<typeof useHistoryHelper>;
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 	let uiStore: ReturnType<typeof useUIStore>;
-	let workflowState: WorkflowState;
 
 	const NODE_RUN_AT = new Date('2025-01-01T00:00:01');
 	const WORKFLOW_UPDATED_AT = new Date('2025-01-01T00:00:10');
@@ -47,20 +42,17 @@ describe(useNodeDirtiness, () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 
-		const TEST_WORKFLOW_ID = 'test-workflow-id';
-
 		const TestComponent = defineComponent({
 			setup() {
 				nodeTypeStore = useNodeTypesStore();
 				workflowsStore = useWorkflowsStore();
-				workflowsStore.workflow.id = TEST_WORKFLOW_ID;
-				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
-				workflowState = useWorkflowState();
-				vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
-
-				const workflowDocumentStore = useWorkflowDocumentStore(
-					createWorkflowDocumentId(TEST_WORKFLOW_ID),
+				workflowsStore.setWorkflowId(TEST_WORKFLOW_ID);
+				historyHelper = useHistoryHelper(
+					{} as RouteLocationNormalizedLoaded,
+					shallowRef(null) as Parameters<typeof useHistoryHelper>[1],
 				);
+
+				workflowDocumentStore = useWorkflowDocumentStore(TEST_DOCUMENT_ID);
 				provide(WorkflowDocumentStoreKey, shallowRef(workflowDocumentStore));
 
 				canvasOperations = useCanvasOperations();
@@ -87,7 +79,7 @@ describe(useNodeDirtiness, () => {
 	it('should be an empty object if no change has been made to the workflow', () => {
 		setupTestWorkflow('a🚨✅, b✅, c✅');
 
-		expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
+		expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({});
 	});
 
 	describe('injecting a node', () => {
@@ -97,15 +89,15 @@ describe(useNodeDirtiness, () => {
 			setupTestWorkflow('a🚨✅ -> b✅');
 
 			uiStore.lastInteractedWithNodeConnection = {
-				source: workflowsStore.nodesByName.a.id,
-				target: workflowsStore.nodesByName.b.id,
+				source: workflowDocumentStore.nodesByName.a.id,
+				target: workflowDocumentStore.nodesByName.b.id,
 			};
-			uiStore.lastInteractedWithNodeId = workflowsStore.nodesByName.a.id;
+			uiStore.lastInteractedWithNodeId = workflowDocumentStore.nodesByName.a.id;
 			uiStore.lastInteractedWithNodeHandle = 'outputs/main/0';
 
 			await canvasOperations.addNodes([createTestNode({ name: 'c' })], { trackHistory: true });
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
@@ -117,9 +109,11 @@ describe(useNodeDirtiness, () => {
 
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
-			canvasOperations.deleteNodes([workflowsStore.nodesByName.b.id], { trackHistory: true }); // 'a' becomes new parent of 'c'
+			canvasOperations.deleteNodes([workflowDocumentStore.nodesByName.b.id], {
+				trackHistory: true,
+			}); // 'a' becomes new parent of 'c'
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
@@ -129,9 +123,11 @@ describe(useNodeDirtiness, () => {
 
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
-			canvasOperations.deleteNodes([workflowsStore.nodesByName.a.id], { trackHistory: true }); // 'b' has no parent node anymore
+			canvasOperations.deleteNodes([workflowDocumentStore.nodesByName.a.id], {
+				trackHistory: true,
+			}); // 'b' has no parent node anymore
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
@@ -141,9 +137,9 @@ describe(useNodeDirtiness, () => {
 		it('should mark a node as dirty if its parameter has changed', () => {
 			setupTestWorkflow('a🚨✅, b✅, c✅');
 
-			canvasOperations.setNodeParameters(workflowsStore.nodesByName.b.id, { foo: 1 });
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.b.id, { foo: 1 });
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				b: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
 		});
@@ -153,17 +149,18 @@ describe(useNodeDirtiness, () => {
 
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
-			canvasOperations.setNodeParameters(workflowsStore.nodesByName.b.id, { foo: 1 });
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.b.id, { foo: 1 });
 
 			const runAt = new Date(+WORKFLOW_UPDATED_AT + 1000);
 
-			const workflowState = useWorkflowState();
-			workflowState.setWorkflowExecutionData({
-				id: workflowsStore.workflow.id,
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setWorkflowExecutionData({
+				id: workflowsStore.workflowId,
 				finished: true,
 				mode: 'manual',
 				status: 'success',
-				workflowData: workflowsStore.workflow,
+				workflowData: workflowDocumentStore.getSnapshot(),
 				startedAt: runAt,
 				createdAt: runAt,
 				data: createRunExecutionData({
@@ -183,15 +180,15 @@ describe(useNodeDirtiness, () => {
 				}),
 			});
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({});
 		});
 
 		it("should not update dirtiness if the node hasn't run yet", () => {
 			setupTestWorkflow('a🚨✅, b, c✅');
 
-			canvasOperations.setNodeParameters(workflowsStore.nodesByName.b.id, { foo: 1 });
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.b.id, { foo: 1 });
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({});
 		});
 
 		it('should not update dirtiness when the notes field is updated', () => {
@@ -203,7 +200,7 @@ describe(useNodeDirtiness, () => {
 				value: 'test',
 			});
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({});
 		});
 	});
 
@@ -214,11 +211,14 @@ describe(useNodeDirtiness, () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
 			canvasOperations.createConnection(
-				{ source: workflowsStore.nodesByName.a.id, target: workflowsStore.nodesByName.c.id },
+				{
+					source: workflowDocumentStore.nodesByName.a.id,
+					target: workflowDocumentStore.nodesByName.c.id,
+				},
 				{ trackHistory: true },
 			);
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
@@ -231,11 +231,14 @@ describe(useNodeDirtiness, () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
 			canvasOperations.deleteConnection(
-				{ source: workflowsStore.nodesByName.a.id, target: workflowsStore.nodesByName.b.id },
+				{
+					source: workflowDocumentStore.nodesByName.a.id,
+					target: workflowDocumentStore.nodesByName.b.id,
+				},
 				{ trackHistory: true },
 			);
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({});
 		});
 	});
 
@@ -243,11 +246,11 @@ describe(useNodeDirtiness, () => {
 		it('should mark downstream nodes dirty if the node is set to disabled', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅');
 
-			canvasOperations.toggleNodesDisabled([workflowsStore.nodesByName.b.id], {
+			canvasOperations.toggleNodesDisabled([workflowDocumentStore.nodesByName.b.id], {
 				trackHistory: true,
 			});
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
@@ -255,27 +258,27 @@ describe(useNodeDirtiness, () => {
 		it('should not mark anything dirty if a disabled node is set to enabled', () => {
 			setupTestWorkflow('a🚨✅ -> b🚫 -> c✅ -> d✅');
 
-			canvasOperations.toggleNodesDisabled([workflowsStore.nodesByName.b.id], {
+			canvasOperations.toggleNodesDisabled([workflowDocumentStore.nodesByName.b.id], {
 				trackHistory: true,
 			});
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({});
 		});
 
 		it('should restore original dirtiness after undoing a command', async () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅');
 
-			canvasOperations.toggleNodesDisabled([workflowsStore.nodesByName.b.id], {
+			canvasOperations.toggleNodesDisabled([workflowDocumentStore.nodesByName.b.id], {
 				trackHistory: true,
 			});
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 
 			await historyHelper.undo();
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({});
 		});
 	});
 
@@ -283,21 +286,29 @@ describe(useNodeDirtiness, () => {
 		it('should not change dirtiness when data is pinned', async () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
-			canvasOperations.toggleNodesPinned([workflowsStore.nodesByName.b.id], 'pin-icon-click', {
-				trackHistory: true,
-			});
+			canvasOperations.toggleNodesPinned(
+				[workflowDocumentStore.nodesByName.b.id],
+				'pin-icon-click',
+				{
+					trackHistory: true,
+				},
+			);
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({});
 		});
 
 		it('should update dirtiness when pinned data is removed from a node with run data', async () => {
 			setupTestWorkflow('a🚨✅ -> b✅📌 -> c✅, b -> d, b -> e✅ -> f✅');
 
-			canvasOperations.toggleNodesPinned([workflowsStore.nodesByName.b.id], 'pin-icon-click', {
-				trackHistory: true,
-			});
+			canvasOperations.toggleNodesPinned(
+				[workflowDocumentStore.nodesByName.b.id],
+				'pin-icon-click',
+				{
+					trackHistory: true,
+				},
+			);
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				b: CanvasNodeDirtiness.PINNED_DATA_UPDATED,
 			});
 		});
@@ -307,11 +318,11 @@ describe(useNodeDirtiness, () => {
 
 			// Simulate updating pinned data for node 'b' (set metadata timestamp as usePinnedData.setData would)
 			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflow.id),
+				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
 			workflowDocumentStore.touchPinnedDataLastUpdatedAt('b');
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				// 'd' is not marked as pinned-data-updated because it has no run data.
 				c: CanvasNodeDirtiness.PINNED_DATA_UPDATED,
 				e: CanvasNodeDirtiness.PINNED_DATA_UPDATED,
@@ -323,9 +334,9 @@ describe(useNodeDirtiness, () => {
 		it('should mark its parent nodes with run data as dirty when parameters of a sub node has changed', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅, d🧠 -> b, e🧠 -> f✅🧠 -> b');
 
-			canvasOperations.setNodeParameters(workflowsStore.nodesByName.e.id, { foo: 1 });
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.e.id, { foo: 1 });
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				// 'e' itself is not marked as parameters-updated, because it has no run data.
 				f: CanvasNodeDirtiness.UPSTREAM_DIRTY,
 				b: CanvasNodeDirtiness.UPSTREAM_DIRTY,
@@ -335,11 +346,11 @@ describe(useNodeDirtiness, () => {
 		it('should change dirtiness if a disabled sub node is set to enabled', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅, d🧠🚫 -> b');
 
-			canvasOperations.toggleNodesDisabled([workflowsStore.nodesByName.d.id], {
+			canvasOperations.toggleNodesDisabled([workflowDocumentStore.nodesByName.d.id], {
 				trackHistory: true,
 			});
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
@@ -347,9 +358,11 @@ describe(useNodeDirtiness, () => {
 		it('should change dirtiness if a sub node is removed', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅, d🧠 -> b');
 
-			canvasOperations.deleteNodes([workflowsStore.nodesByName.d.id], { trackHistory: true });
+			canvasOperations.deleteNodes([workflowDocumentStore.nodesByName.d.id], {
+				trackHistory: true,
+			});
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
@@ -359,9 +372,9 @@ describe(useNodeDirtiness, () => {
 		it('should change the dirtiness of the first node in a loop when one of nodes in the loop becomes dirty', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅ -> e✅ -> f✅ -> c✅');
 
-			canvasOperations.setNodeParameters(workflowsStore.nodesByName.e.id, { foo: 1 });
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.e.id, { foo: 1 });
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				c: CanvasNodeDirtiness.UPSTREAM_DIRTY,
 				e: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
@@ -370,9 +383,9 @@ describe(useNodeDirtiness, () => {
 		it('should not choose a node as the first node in a loop if all nodes in the loop have incoming connections', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅, d✅ -> e✅ -> d✅, d -> b');
 
-			canvasOperations.setNodeParameters(workflowsStore.nodesByName.c.id, { foo: 1 });
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.c.id, { foo: 1 });
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				c: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
 		});
@@ -384,15 +397,17 @@ describe(useNodeDirtiness, () => {
 
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
-			canvasOperations.deleteNodes([workflowsStore.nodesByName.b.id], { trackHistory: true }); // 'a' becomes new parent of 'c'
+			canvasOperations.deleteNodes([workflowDocumentStore.nodesByName.b.id], {
+				trackHistory: true,
+			}); // 'a' becomes new parent of 'c'
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 
 			await canvasOperations.renameNode('c', 'd', { trackHistory: true });
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				d: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
@@ -465,7 +480,7 @@ describe(useNodeDirtiness, () => {
 		const workflow = createTestWorkflow({ nodes: Object.values(nodes), connections });
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflow.id),
+			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.setNodes(workflow.nodes);
 		workflowDocumentStore.setConnections(workflow.connections);
@@ -474,8 +489,9 @@ describe(useNodeDirtiness, () => {
 			workflowDocumentStore.pinNodeData(name, [{ json: {} }]);
 		}
 
-		const workflowState = useWorkflowState();
-		workflowState.setWorkflowExecutionData({
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData({
 			id: workflow.id,
 			finished: true,
 			mode: 'manual',

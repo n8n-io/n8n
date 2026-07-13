@@ -1,6 +1,7 @@
-import { mock } from 'jest-mock-extended';
 import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
+import { createPrivateKey, createSign } from 'node:crypto';
 import { Readable } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	buildEvalMockCredentials,
@@ -184,12 +185,36 @@ describe('eval-mock-helpers', () => {
 			expect(result.privateKey).toEqual(expect.stringContaining('END RSA PRIVATE KEY'));
 		});
 
+		it('should include a privateKey that parses and RS256-signs', () => {
+			// PEM markers alone are not enough: service-account nodes jwt.sign()
+			// with this key before any HTTP request, so it must be a real key.
+			const result = buildEvalMockCredentials([]);
+
+			const key = createPrivateKey(String(result.privateKey));
+			expect(key.asymmetricKeyType).toBe('rsa');
+			const signer = createSign('RSA-SHA256');
+			signer.update('eval-mock');
+			expect(signer.sign(key).length).toBeGreaterThan(0);
+		});
+
+		it('should reuse the same generated privateKey across calls', () => {
+			expect(buildEvalMockCredentials([]).privateKey).toBe(buildEvalMockCredentials([]).privateKey);
+		});
+
 		it('should return oauthTokenData and privateKey even with empty properties array', () => {
 			const result = buildEvalMockCredentials([]);
 
 			expect(Object.keys(result)).toEqual(expect.arrayContaining(['oauthTokenData', 'privateKey']));
 			expect(result.oauthTokenData).toBeDefined();
 			expect(result.privateKey).toBeDefined();
+		});
+
+		it('should produce structurally valid JSON for properties of type "json"', () => {
+			const result = buildEvalMockCredentials([
+				credProp({ name: 'json', type: 'json', default: '' }),
+			]);
+
+			expect(() => JSON.parse(result.json as string)).not.toThrow();
 		});
 	});
 
@@ -537,6 +562,43 @@ describe('eval-mock-helpers', () => {
 			expect(result.body).toEqual({ update: true });
 			expect(result.qs).toEqual({ version: '2' });
 		});
+
+		it('should fold the URL-encoded `form` slot into body (object form)', () => {
+			const requestObj: IRequestOptions = {
+				uri: 'https://api.example.com/token',
+				method: 'POST',
+				form: { grant_type: 'refresh_token', refresh_token: 'abc' },
+			};
+
+			const result = normalizeLegacyRequest(requestObj);
+
+			expect(result.body).toEqual({ grant_type: 'refresh_token', refresh_token: 'abc' });
+		});
+
+		it('should fold the multipart `formData` slot into body (string-uri form)', () => {
+			const options: IRequestOptions = {
+				method: 'POST',
+				formData: { file: 'binary-part' },
+			};
+
+			const result = normalizeLegacyRequest('https://api.example.com/upload', options);
+
+			expect(result.body).toEqual({ file: 'binary-part' });
+		});
+
+		it('should prefer body over formData and form when several slots are set', () => {
+			const requestObj: IRequestOptions = {
+				uri: 'https://api.example.com',
+				method: 'POST',
+				body: { fromBody: true },
+				formData: { fromFormData: true },
+				form: { fromForm: true },
+			};
+
+			const result = normalizeLegacyRequest(requestObj);
+
+			expect(result.body).toEqual({ fromBody: true });
+		});
 	});
 
 	// -----------------------------------------------------------------------
@@ -556,7 +618,7 @@ describe('eval-mock-helpers', () => {
 		};
 
 		it('should return body when handler responds and returnFullResponse is false', async () => {
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(successResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(successResponse);
 
 			const result = await callEvalMockHandler(handler, requestOptions, node);
 
@@ -564,7 +626,7 @@ describe('eval-mock-helpers', () => {
 		});
 
 		it('should return serialized response when returnFullResponse is true', async () => {
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(successResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(successResponse);
 
 			const result = await callEvalMockHandler(handler, requestOptions, node, true);
 
@@ -586,7 +648,7 @@ describe('eval-mock-helpers', () => {
 				headers: { 'content-type': 'application/octet-stream' },
 				statusCode: 200,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(bufferResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(bufferResponse);
 
 			const result = await callEvalMockHandler(handler, requestOptions, node, true);
 
@@ -596,7 +658,7 @@ describe('eval-mock-helpers', () => {
 		});
 
 		it('should return undefined when handler returns undefined', async () => {
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(undefined);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(undefined);
 
 			const result = await callEvalMockHandler(handler, requestOptions, node);
 
@@ -609,7 +671,7 @@ describe('eval-mock-helpers', () => {
 				headers: { 'content-type': 'application/json' },
 				statusCode: 404,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(errorResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(errorResponse);
 
 			await expect(
 				callEvalMockHandler(handler, requestOptions, node, false, 'axios'),
@@ -622,7 +684,7 @@ describe('eval-mock-helpers', () => {
 				headers: {},
 				statusCode: 500,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(errorResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(errorResponse);
 
 			await expect(
 				callEvalMockHandler(handler, requestOptions, node, false, 'legacy'),
@@ -635,11 +697,11 @@ describe('eval-mock-helpers', () => {
 				headers: { 'x-error': 'true' },
 				statusCode: 400,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(errorResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(errorResponse);
 
 			try {
 				await callEvalMockHandler(handler, requestOptions, node, false, 'axios');
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error: unknown) {
 				const err = error as Error & {
 					isAxiosError: boolean;
@@ -658,11 +720,11 @@ describe('eval-mock-helpers', () => {
 				headers: { 'x-reason': 'denied' },
 				statusCode: 403,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(errorResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(errorResponse);
 
 			try {
 				await callEvalMockHandler(handler, requestOptions, node, false, 'legacy');
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error: unknown) {
 				const err = error as Error & {
 					statusCode: number;
@@ -681,11 +743,11 @@ describe('eval-mock-helpers', () => {
 				headers: {},
 				statusCode: 401,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(errorResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(errorResponse);
 
 			try {
 				await callEvalMockHandler(handler, requestOptions, node);
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error: unknown) {
 				const err = error as Error & { isAxiosError: boolean };
 				expect(err.isAxiosError).toBe(true);

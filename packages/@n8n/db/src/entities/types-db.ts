@@ -60,6 +60,17 @@ export interface IExecutionBase {
 	status: ExecutionStatus;
 	waitTill?: Date | null;
 	storedAt: ExecutionDataStorageLocation;
+	/**
+	 * W3C trace context propagated with the execution so outbound spans can be
+	 * correlated across queue-mode boundaries.
+	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
+	 */
+	tracingContext?: { traceparent: string; tracestate?: string } | null;
+	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
+	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
+	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
+	workflowVersionId?: string | null; // see `ExecutionEntity.workflowVersionId`
+	usedPrivateCredentials?: boolean; // see `ExecutionEntity.usedPrivateCredentials`
 }
 
 // Required by PublicUser
@@ -105,6 +116,11 @@ export interface IExecutionResponse extends IExecutionBase {
 	annotation: {
 		tags: ITagBase[];
 	};
+	/**
+	 * Set when run data was skipped for exceeding `ExecutionsConfig.maxDisplaySize`. `data` is
+	 * then an empty run-data object and `jsonSizeBytes` holds the real size.
+	 */
+	dataTooLargeToDisplay?: boolean;
 }
 
 export interface PublicUser {
@@ -159,7 +175,13 @@ export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<Workflo
 /** Payload for creating an execution. */
 export type CreateExecutionPayload = Omit<
 	IExecutionDb,
-	'id' | 'createdAt' | 'startedAt' | 'storedAt'
+	| 'id'
+	| 'createdAt'
+	| 'startedAt'
+	| 'storedAt'
+	| 'jsonSizeBytes'
+	| 'binaryDataSizeBytes'
+	| 'workflowVersionId'
 >;
 
 // Data in regular format with references
@@ -201,6 +223,8 @@ export namespace ExecutionSummaries {
 		vote: AnnotationVote;
 		projectId: string;
 		workflowVersionId: string;
+		isArchived: boolean;
+		workflowBooleanSettings: Array<{ key: string; value: boolean }>;
 	}>;
 
 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
@@ -326,24 +350,33 @@ export type FolderWithWorkflowAndSubFolderCountAndPath = FolderWithWorkflowAndSu
 
 export type TestRunFinalResult = 'success' | 'error' | 'warning';
 
-export type TestRunErrorCode =
-	| 'TEST_CASES_NOT_FOUND'
-	| 'INTERRUPTED'
-	| 'UNKNOWN_ERROR'
-	| 'EVALUATION_TRIGGER_NOT_FOUND'
-	| 'EVALUATION_TRIGGER_NOT_CONFIGURED'
-	| 'EVALUATION_TRIGGER_DISABLED'
-	| 'SET_OUTPUTS_NODE_NOT_CONFIGURED'
-	| 'SET_METRICS_NODE_NOT_FOUND'
-	| 'SET_METRICS_NODE_NOT_CONFIGURED'
-	| 'CANT_FETCH_TEST_CASES';
+export const TestRunErrorCode = {
+	TEST_CASES_NOT_FOUND: 'TEST_CASES_NOT_FOUND',
+	INTERRUPTED: 'INTERRUPTED',
+	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+	EVALUATION_TRIGGER_NOT_FOUND: 'EVALUATION_TRIGGER_NOT_FOUND',
+	EVALUATION_TRIGGER_NOT_CONFIGURED: 'EVALUATION_TRIGGER_NOT_CONFIGURED',
+	EVALUATION_TRIGGER_DISABLED: 'EVALUATION_TRIGGER_DISABLED',
+	EVALUATION_CONFIG_NOT_FOUND: 'EVALUATION_CONFIG_NOT_FOUND',
+	COMPILATION_FAILED: 'COMPILATION_FAILED',
+	SET_OUTPUTS_NODE_NOT_CONFIGURED: 'SET_OUTPUTS_NODE_NOT_CONFIGURED',
+	SET_METRICS_NODE_NOT_FOUND: 'SET_METRICS_NODE_NOT_FOUND',
+	SET_METRICS_NODE_NOT_CONFIGURED: 'SET_METRICS_NODE_NOT_CONFIGURED',
+	CANT_FETCH_TEST_CASES: 'CANT_FETCH_TEST_CASES',
+} as const;
+
+export type TestRunErrorCode = (typeof TestRunErrorCode)[keyof typeof TestRunErrorCode];
+
+export const TestCaseExecutionErrorCode = {
+	NO_METRICS_COLLECTED: 'NO_METRICS_COLLECTED',
+	MOCKED_NODE_NOT_FOUND: 'MOCKED_NODE_NOT_FOUND', // This will be used when node mocking will be implemented
+	FAILED_TO_EXECUTE_WORKFLOW: 'FAILED_TO_EXECUTE_WORKFLOW',
+	INVALID_METRICS: 'INVALID_METRICS',
+	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+} as const;
 
 export type TestCaseExecutionErrorCode =
-	| 'NO_METRICS_COLLECTED'
-	| 'MOCKED_NODE_NOT_FOUND' // This will be used when node mocking will be implemented
-	| 'FAILED_TO_EXECUTE_WORKFLOW'
-	| 'INVALID_METRICS'
-	| 'UNKNOWN_ERROR';
+	(typeof TestCaseExecutionErrorCode)[keyof typeof TestCaseExecutionErrorCode];
 
 export type AggregatedTestRunMetrics = Record<string, number | boolean>;
 
@@ -439,6 +472,10 @@ export type AuthenticatedRequest<
 	};
 	tokenGrant?: TokenGrant;
 };
+
+export function isAuthenticatedRequest(req: express.Request): req is AuthenticatedRequest {
+	return 'user' in req && Object.hasOwn(req, 'user') && req.user !== null;
+}
 
 /**
  * Simplified to prevent excessively deep type instantiation error from

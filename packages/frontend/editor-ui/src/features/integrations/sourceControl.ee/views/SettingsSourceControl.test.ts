@@ -64,6 +64,34 @@ describe('SettingsSourceControl', () => {
 		expect(queryByTestId('source-control-connected-content')).not.toBeInTheDocument();
 	});
 
+	it('should disable the connection form while preferences are loading', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		await nextTick();
+
+		let resolvePreferences!: () => void;
+		const getPreferencesSpy = vi.spyOn(sourceControlStore, 'getPreferences').mockImplementation(
+			async () =>
+				await new Promise<void>((resolve) => {
+					resolvePreferences = resolve;
+				}),
+		);
+
+		try {
+			const { container } = renderComponent({ pinia });
+
+			await waitFor(() => expect(getPreferencesSpy).toHaveBeenCalled());
+
+			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+			expect(repoUrlInput).toBeDisabled();
+
+			resolvePreferences();
+
+			await waitFor(() => expect(repoUrlInput).toBeEnabled());
+		} finally {
+			getPreferencesSpy.mockRestore();
+		}
+	});
+
 	it('should render user flow happy path', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
 		await nextTick();
@@ -157,9 +185,7 @@ describe('SettingsSourceControl', () => {
 
 		it('should show SSH-specific fields when SSH protocol is selected', async () => {
 			await nextTick();
-			const { container, getByTestId } = renderComponent({
-				pinia,
-			});
+			const { container, getByTestId } = renderComponent({ pinia });
 
 			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 
@@ -179,9 +205,7 @@ describe('SettingsSourceControl', () => {
 
 		it('should show HTTPS-specific fields when HTTPS protocol is selected', async () => {
 			await nextTick();
-			const { container, queryByTestId } = renderComponent({
-				pinia,
-			});
+			const { container, queryByTestId } = renderComponent({ pinia });
 
 			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 

@@ -1,4 +1,5 @@
 ---
+name: n8n:setup-mcps
 description: >-
   Configure MCP servers for n8n development. Use when the user says /setup-mcps
   or asks to set up MCP servers for n8n.

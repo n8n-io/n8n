@@ -7,7 +7,7 @@ import type {
 import { Folder, FolderTagMappingRepository, FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { EntityManager } from '@n8n/typeorm';
+import { In, type EntityManager } from '@n8n/typeorm';
 import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
@@ -38,13 +38,14 @@ export class FolderService {
 		private readonly eventService: EventService,
 	) {}
 
-	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string) {
+	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string, id?: string) {
 		let parentFolder = null;
 		if (parentFolderId) {
 			parentFolder = await this.findFolderInProjectOrFail(parentFolderId, projectId);
 		}
 
 		const folderEntity = this.folderRepository.create({
+			...(id ? { id } : {}),
 			name,
 			homeProject: { id: projectId },
 			parentFolder,
@@ -53,6 +54,14 @@ export class FolderService {
 		const { homeProject, ...folder } = await this.folderRepository.save(folderEntity);
 
 		return folder;
+	}
+
+	async getFoldersByIds(folderIds: string[]): Promise<Folder[]> {
+		if (folderIds.length === 0) return [];
+		return await this.folderRepository.find({
+			where: { id: In(folderIds) },
+			relations: { homeProject: true },
+		});
 	}
 
 	async updateFolder(
@@ -90,6 +99,8 @@ export class FolderService {
 				{ parentFolder: parentFolderId !== PROJECT_ROOT ? { id: parentFolderId } : null },
 			);
 		}
+
+		return await this.findFolderInProjectOrFail(folderId, projectId);
 	}
 
 	async findFolderInProjectOrFail(folderId: string, projectId: string, em?: EntityManager) {
@@ -242,11 +253,11 @@ export class FolderService {
 		});
 	}
 
-	async getFolderAndWorkflowCount(
+	async findFolderWithContentCounts(
 		folderId: string,
 		projectId: string,
-	): Promise<{ totalSubFolders: number; totalWorkflows: number }> {
-		await this.findFolderInProjectOrFail(folderId, projectId);
+	): Promise<{ folder: Folder; totalSubFolders: number; totalWorkflows: number }> {
+		const folder = await this.findFolderInProjectOrFail(folderId, projectId);
 
 		const baseQuery = this.folderRepository
 			.createQueryBuilder('folder')
@@ -300,6 +311,7 @@ export class FolderService {
 		]);
 
 		return {
+			folder,
 			totalSubFolders: parseInt(subFolderResult?.count ?? '0', 10),
 			totalWorkflows: parseInt(workflowResult?.count ?? '0', 10),
 		};

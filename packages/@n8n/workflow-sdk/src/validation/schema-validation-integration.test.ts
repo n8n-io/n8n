@@ -9,9 +9,9 @@
  */
 
 import { validateNodeConfig, loadSchema } from './schema-validator';
+import { setupTestSchemas, teardownTestSchemas } from './test-schema-setup';
 import { parseWorkflowCode } from '../codegen/parse-workflow-code';
 import { validateWorkflow } from '../validation';
-import { setupTestSchemas, teardownTestSchemas } from './test-schema-setup';
 
 function requireSchema(nodeType: string, version: number): void {
 	if (!loadSchema(nodeType, version)) {
@@ -463,6 +463,45 @@ export default workflow('test-id', 'Test Workflow')
 			const result = validateWorkflow(json);
 
 			// Expressions should be accepted - no INVALID_PARAMETER warnings
+			const schemaWarnings = result.warnings.filter((w) => w.code === 'INVALID_PARAMETER');
+			expect(schemaWarnings).toEqual([]);
+		});
+
+		it('accepts HTTP Request raw SOAP bodies without specifyBody', () => {
+			const code = `
+const manual_Trigger = trigger({
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1,
+  config: { name: 'Manual Trigger' }
+});
+const ews_FindItem = node({
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.4,
+  config: {
+    name: 'EWS FindItem',
+    parameters: {
+      method: 'POST',
+      url: 'https://mail.example.com/EWS/Exchange.asmx',
+      sendBody: true,
+      contentType: 'raw',
+      rawContentType: 'text/xml',
+      body: expr(\`{{ '<?xml version="1.0"?><soap:Envelope><soap:Body><m:FindItem><t:Constant Value="' + $now.minus({ days: 1 }).toISO() + '"/></m:FindItem></soap:Body></soap:Envelope>' }}\`),
+    },
+  }
+});
+
+export default workflow('test-id', 'EWS Raw SOAP')
+  .add(manual_Trigger)
+  .to(ews_FindItem)
+`;
+			const json = parseWorkflowCode(code);
+			const httpNode = json.nodes.find((node) => node.name === 'EWS FindItem');
+
+			expect(httpNode?.parameters?.contentType).toBe('raw');
+			expect(httpNode?.parameters?.body).toEqual(expect.stringContaining('<soap:Envelope>'));
+			expect(httpNode?.parameters).not.toHaveProperty('specifyBody');
+
+			const result = validateWorkflow(json);
 			const schemaWarnings = result.warnings.filter((w) => w.code === 'INVALID_PARAMETER');
 			expect(schemaWarnings).toEqual([]);
 		});

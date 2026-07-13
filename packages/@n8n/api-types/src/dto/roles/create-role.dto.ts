@@ -6,6 +6,6 @@ import { Z } from '../../zod-class';
 export class CreateRoleDto extends Z.class({
 	displayName: z.string().min(2).max(100),
 	description: z.string().max(500).optional(),
-	roleType: z.enum(['project']),
+	roleType: z.enum(['project', 'global']),
 	scopes: z.array(scopeSchema),
 }) {}

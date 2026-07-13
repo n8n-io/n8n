@@ -44,6 +44,8 @@ export const TOOL_GROUP_DEFINITIONS = {
 
 export type ToolGroup = keyof typeof TOOL_GROUP_DEFINITIONS;
 
+export const CLOUD_ORIGIN_PATTERN = 'https://*.app.n8n.cloud';
+
 export const PERMISSION_MODES = ['deny', 'ask', 'allow'] as const;
 export const permissionModeSchema = z.enum(PERMISSION_MODES);
 export type PermissionMode = z.infer<typeof permissionModeSchema>;
@@ -54,10 +56,9 @@ export type PermissionMode = z.infer<typeof permissionModeSchema>;
 
 export interface GatewayConfig {
 	logLevel: 'silent' | 'error' | 'warn' | 'info' | 'debug';
-	port: number;
 	allowedOrigins: string[];
 	filesystem: { dir: string };
-	computer: { shell: { timeout: number } };
+	computer: { shell: { timeout: number; dangerouslyDisableSandbox: boolean } };
 	browser: {
 		defaultBrowser: string;
 	};
@@ -96,16 +97,19 @@ function envNumber(name: string): number | undefined {
 
 export const logLevelSchema = z.enum(['silent', 'error', 'warn', 'info', 'debug']).default('info');
 export type LogLevel = z.infer<typeof logLevelSchema>;
-export const portSchema = z.number().int().positive().default(7655);
 
 const structuralConfigSchema = z.object({
 	logLevel: logLevelSchema,
-	port: portSchema,
-	allowedOrigins: z.array(z.string()).default(['https://*.app.n8n.cloud']),
+	allowedOrigins: z.array(z.string()).default([CLOUD_ORIGIN_PATTERN]),
 	filesystem: z.object({ dir: z.string().default('.') }).default({}),
 	computer: z
 		.object({
-			shell: z.object({ timeout: z.number().int().positive().default(30_000) }).default({}),
+			shell: z
+				.object({
+					timeout: z.number().int().positive().default(30_000),
+					dangerouslyDisableSandbox: z.boolean().default(false),
+				})
+				.default({}),
 		})
 		.default({}),
 	browser: z
@@ -166,8 +170,12 @@ function buildEnvConfig(): PartialStructural {
 	const fsDir = envString('FILESYSTEM_DIR');
 	if (fsDir) config.filesystem = { dir: fsDir };
 
+	const shell: Record<string, unknown> = {};
 	const shellTimeout = envNumber('COMPUTER_SHELL_TIMEOUT');
-	if (shellTimeout !== undefined) config.computer = { shell: { timeout: shellTimeout } };
+	if (shellTimeout !== undefined) shell.timeout = shellTimeout;
+	const disableSandbox = envBoolean('DANGEROUSLY_DISABLE_SHELL_SANDBOX');
+	if (disableSandbox !== undefined) shell.dangerouslyDisableSandbox = disableSandbox;
+	if (Object.keys(shell).length > 0) config.computer = { shell };
 
 	const defaultBrowser = envString('BROWSER_DEFAULT');
 	if (defaultBrowser) config.browser = { defaultBrowser };
@@ -182,7 +190,6 @@ function buildCliConfig(args: yargsParser.Arguments): PartialStructural {
 	const config: Record<string, unknown> = {};
 
 	if (args['log-level']) config.logLevel = args['log-level'];
-	if (args.port !== undefined) config.port = args.port;
 	if (args['allowed-origins']) {
 		const raw = args['allowed-origins'] as string | string[];
 		const rawArr = Array.isArray(raw) ? raw.map(String) : [String(raw)];
@@ -197,8 +204,11 @@ function buildCliConfig(args: yargsParser.Arguments): PartialStructural {
 	const dir = args.dir as string;
 	if (dir) config.filesystem = { dir };
 
-	const timeout = args['computer-shell-timeout'] as number;
-	if (timeout !== undefined) config.computer = { shell: { timeout } };
+	const shell: Record<string, unknown> = {};
+	const timeout = args['computer-shell-timeout'] as number | undefined;
+	if (timeout !== undefined) shell.timeout = timeout;
+	if (args['dangerously-disable-shell-sandbox'] === true) shell.dangerouslyDisableSandbox = true;
+	if (Object.keys(shell).length > 0) config.computer = { shell };
 
 	if (args['browser-default'])
 		config.browser = { defaultBrowser: args['browser-default'] as string };
@@ -261,8 +271,12 @@ export function getSettingsDir(): string {
  * Used to prevent computer-use tools from modifying their own configuration.
  */
 export function isProtectedSettingsPath(absolutePath: string): boolean {
-	const dir = path.resolve(getSettingsDir());
-	const target = path.resolve(absolutePath);
+	let dir = path.resolve(getSettingsDir());
+	let target = path.resolve(absolutePath);
+	if (process.platform === 'darwin' || process.platform === 'win32') {
+		dir = dir.toLowerCase();
+		target = target.toLowerCase();
+	}
 	return target === dir || target.startsWith(dir + path.sep);
 }
 
@@ -301,9 +315,9 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 			'permission-confirmation',
 			...permissionFlags,
 		],
-		boolean: ['auto-confirm', 'non-interactive', 'help'],
-		number: ['port', 'computer-shell-timeout'],
-		alias: { h: 'help', p: 'port', d: 'dir' },
+		boolean: ['auto-confirm', 'non-interactive', 'help', 'dangerously-disable-shell-sandbox'],
+		number: ['computer-shell-timeout'],
+		alias: { h: 'help', d: 'dir' },
 	});
 
 	// Three-tier merge: Zod defaults ← env ← CLI
@@ -380,4 +394,60 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 		autoConfirm,
 		nonInteractive,
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Origin matching — supports wildcard patterns like https://*.app.n8n.cloud
+// ---------------------------------------------------------------------------
+
+function matchesOriginPattern(pattern: string, origin: string): boolean {
+	if (!pattern.includes('*')) {
+		try {
+			return new URL(pattern).origin === new URL(origin).origin;
+		} catch {
+			return false;
+		}
+	}
+
+	let originUrl: URL;
+	try {
+		originUrl = new URL(origin);
+	} catch {
+		return false;
+	}
+
+	// Parse pattern manually — URL constructor rejects wildcards in hostnames
+	const schemeMatch = /^([a-z][a-z0-9+\-.]*):\/\/(.+)$/.exec(pattern);
+	if (!schemeMatch) return false;
+	const [, patternScheme, patternAuthority] = schemeMatch;
+
+	if (originUrl.protocol !== `${patternScheme}:`) return false;
+
+	// Split authority into hostname and optional port
+	const colonIdx = patternAuthority.lastIndexOf(':');
+	const hasPort = colonIdx > patternAuthority.lastIndexOf('*');
+	const patternHostname = hasPort ? patternAuthority.slice(0, colonIdx) : patternAuthority;
+	const patternPort = hasPort ? patternAuthority.slice(colonIdx + 1) : '';
+
+	if (patternPort && originUrl.port !== patternPort) return false;
+	if (!patternPort && originUrl.port !== '') return false;
+
+	// Match hostname — * expands to any depth of subdomains
+	const escapedParts = patternHostname
+		.split('*')
+		.map((s) => s.replace(/[.+^${}()|[\]\\]/g, '\\$&'));
+	return new RegExp(`^${escapedParts.join('.+')}$`).test(originUrl.hostname);
+}
+
+export function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
+	return allowedOrigins.some((pattern) => matchesOriginPattern(pattern, origin));
+}
+
+/** Instance-side confirmation is only available when connecting to an n8n cloud origin. */
+export function resolvePermissionConfirmation(
+	configured: GatewayConfig['permissionConfirmation'],
+	origin: string,
+): GatewayConfig['permissionConfirmation'] {
+	if (configured === 'client') return 'client';
+	return isOriginAllowed(origin, [CLOUD_ORIGIN_PATTERN]) ? 'instance' : 'client';
 }

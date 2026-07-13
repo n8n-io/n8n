@@ -1,3 +1,4 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import jwt from 'jsonwebtoken';
 import set from 'lodash/set';
 import type {
@@ -24,7 +25,7 @@ import type { Readable } from 'stream';
 
 import { getBinaryResponse } from './utils/binary';
 import { configuredOutputs } from './utils/outputs';
-import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
+import { generatePairedItemData } from '../../utils/utilities';
 
 const respondWithProperty: INodeProperties = {
 	displayName: 'Respond With',
@@ -90,7 +91,7 @@ export class RespondToWebhook implements INodeType {
 			name: 'Respond to Webhook',
 		},
 		builderHint: {
-			message:
+			searchHint:
 				'Only works with webhook node (n8n-nodes-base.webhook) with responseMode set to "responseNode"',
 			relatedNodes: [
 				{
@@ -450,7 +451,7 @@ export class RespondToWebhook implements INodeType {
 					if (keyType === 'passphrase') {
 						secretOrPrivateKey = secret;
 					} else {
-						secretOrPrivateKey = formatPrivateKey(privateKey);
+						secretOrPrivateKey = formatPemBlock(privateKey);
 					}
 					const payload = this.getNodeParameter('payload', 0, {}) as IDataObject;
 					const token = jwt.sign(payload, secretOrPrivateKey, { algorithm });

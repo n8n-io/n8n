@@ -1,3 +1,4 @@
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
 	HumanMessage,
@@ -6,8 +7,8 @@ import {
 	ToolMessage,
 	trimMessages,
 } from '@langchain/core/messages';
-import { mock } from 'jest-mock-extended';
-import type { BaseChatMemory } from '@langchain/classic/memory';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	loadMemory,
@@ -18,17 +19,17 @@ import {
 } from '../memoryManagement';
 import type { ToolCallData } from '../types';
 
-jest.mock('@langchain/core/messages', () => ({
-	...jest.requireActual('@langchain/core/messages'),
-	trimMessages: jest.fn(),
+vi.mock('@langchain/core/messages', async () => ({
+	...(await vi.importActual('@langchain/core/messages')),
+	trimMessages: vi.fn(),
 }));
 
 describe('memoryManagement', () => {
-	let mockMemory: jest.Mocked<BaseChatMemory>;
-	let mockModel: jest.Mocked<BaseChatModel>;
+	let mockMemory: Mocked<BaseChatMemory>;
+	let mockModel: Mocked<BaseChatModel>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockMemory = mock<BaseChatMemory>();
 		mockModel = mock<BaseChatModel>();
 	});
@@ -180,7 +181,7 @@ describe('memoryManagement', () => {
 			];
 
 			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
-			(trimMessages as jest.Mock).mockResolvedValue(trimmedHistory);
+			(trimMessages as Mock).mockResolvedValue(trimmedHistory);
 
 			const result = await loadMemory(mockMemory, mockModel, 2000);
 
@@ -257,12 +258,12 @@ describe('memoryManagement', () => {
 	describe('extractToolCallId', () => {
 		beforeEach(() => {
 			// Mock Date.now() to return consistent values for synthetic IDs
-			jest.spyOn(Date, 'now').mockReturnValue(1234567890);
-			jest.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(Date, 'now').mockReturnValue(1234567890);
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should extract string ID directly', () => {
@@ -318,11 +319,11 @@ describe('memoryManagement', () => {
 
 	describe('buildMessagesFromSteps', () => {
 		beforeEach(() => {
-			jest.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should build messages with proper AIMessage from messageLog', () => {
@@ -433,6 +434,66 @@ describe('memoryManagement', () => {
 			expect(result[3]).toBeInstanceOf(ToolMessage);
 		});
 
+		it('should not fabricate an AIMessage for parallel tool calls with an empty messageLog', () => {
+			// Parallel Gemini calls: a single shared AIMessage (with all tool_calls and the
+			// thought signature) on the first step, empty messageLog on the rest.
+			const sharedAIMessage = new AIMessage({
+				content: 'Calling tools: tool_a, tool_b',
+				tool_calls: [
+					{ id: 'call-a', name: 'tool_a', args: { input: 'test' }, type: 'tool_call' },
+					{ id: 'call-b', name: 'tool_b', args: { input: 'test' }, type: 'tool_call' },
+				],
+				additional_kwargs: {
+					signatures: ['', 'sig-a', ''],
+					__gemini_function_call_thought_signatures__: { 'call-a': 'sig-a' },
+				},
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'tool_a',
+						toolInput: { input: 'test' },
+						log: 'Calling tools: tool_a, tool_b',
+						messageLog: [sharedAIMessage],
+						toolCallId: 'call-a',
+						type: 'tool_call',
+					},
+					observation: 'tool_a executed',
+				},
+				{
+					action: {
+						tool: 'tool_b',
+						toolInput: { input: 'test' },
+						log: 'Calling tool_b',
+						messageLog: [],
+						toolCallId: 'call-b',
+						type: 'tool_call',
+					},
+					observation: 'tool_b executed',
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps);
+
+			// Expected: [sharedAIMessage, ToolMessage(tool_a), ToolMessage(tool_b)]
+			// NOT a spurious second AIMessage for tool_b.
+			expect(result).toHaveLength(3);
+			expect(result[0]).toBe(sharedAIMessage);
+			expect(result[1]).toBeInstanceOf(ToolMessage);
+			expect((result[1] as ToolMessage).tool_call_id).toBe('call-a');
+			expect((result[1] as ToolMessage).name).toBe('tool_a');
+			expect(result[2]).toBeInstanceOf(ToolMessage);
+			expect((result[2] as ToolMessage).tool_call_id).toBe('call-b');
+			expect((result[2] as ToolMessage).name).toBe('tool_b');
+
+			// The shared message retains its thought signatures untouched.
+			expect((result[0] as AIMessage).additional_kwargs).toEqual({
+				signatures: ['', 'sig-a', ''],
+				__gemini_function_call_thought_signatures__: { 'call-a': 'sig-a' },
+			});
+		});
+
 		it('should return empty array for empty steps', () => {
 			const result = buildMessagesFromSteps([]);
 			expect(result).toHaveLength(0);
@@ -443,15 +504,15 @@ describe('memoryManagement', () => {
 		let mockChatHistory: any;
 
 		beforeEach(() => {
-			jest.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 			mockChatHistory = {
-				addMessages: jest.fn().mockResolvedValue(undefined),
+				addMessages: vi.fn().mockResolvedValue(undefined),
 			};
 			mockMemory.chatHistory = mockChatHistory;
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should use message-based storage when steps are provided and addMessages is available', async () => {
@@ -488,6 +549,65 @@ describe('memoryManagement', () => {
 			expect(savedMessages[2]).toBeInstanceOf(ToolMessage);
 			expect(savedMessages[3]).toBeInstanceOf(AIMessage);
 			expect(savedMessages[3].content).toBe('The answer is 4');
+		});
+
+		it('should save parallel tool calls as a single AI tool-call message (no spurious AIMessage)', async () => {
+			const sharedAIMessage = new AIMessage({
+				content: 'Calling tools: tool_a, tool_b',
+				tool_calls: [
+					{ id: 'call-a', name: 'tool_a', args: { input: 'test' }, type: 'tool_call' },
+					{ id: 'call-b', name: 'tool_b', args: { input: 'test' }, type: 'tool_call' },
+				],
+				additional_kwargs: {
+					signatures: ['', 'sig-a', ''],
+					__gemini_function_call_thought_signatures__: { 'call-a': 'sig-a' },
+				},
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'tool_a',
+						toolInput: { input: 'test' },
+						log: 'Calling tools: tool_a, tool_b',
+						messageLog: [sharedAIMessage],
+						toolCallId: 'call-a',
+						type: 'tool_call',
+					},
+					observation: 'tool_a executed',
+				},
+				{
+					action: {
+						tool: 'tool_b',
+						toolInput: { input: 'test' },
+						log: 'Calling tool_b',
+						messageLog: [],
+						toolCallId: 'call-b',
+						type: 'tool_call',
+					},
+					observation: 'tool_b executed',
+				},
+			];
+
+			await saveToMemory('Hello', 'done', mockMemory, steps);
+
+			expect(mockChatHistory.addMessages).toHaveBeenCalledTimes(1);
+			const savedMessages = mockChatHistory.addMessages.mock.calls[0][0];
+
+			// Human, sharedAIMessage, ToolMessage(tool_a), ToolMessage(tool_b), final AIMessage
+			expect(savedMessages).toHaveLength(5);
+			expect(savedMessages[0]).toBeInstanceOf(HumanMessage);
+			expect(savedMessages[1]).toBe(sharedAIMessage);
+			expect(savedMessages[2]).toBeInstanceOf(ToolMessage);
+			expect(savedMessages[3]).toBeInstanceOf(ToolMessage);
+			expect(savedMessages[4]).toBeInstanceOf(AIMessage);
+			expect(savedMessages[4].content).toBe('done');
+
+			// Exactly one AI tool-call message — no consecutive AIMessages.
+			const aiToolCallMessages = savedMessages.filter(
+				(m: AIMessage) => m instanceof AIMessage && (m.tool_calls?.length ?? 0) > 0,
+			);
+			expect(aiToolCallMessages).toHaveLength(1);
 		});
 
 		it('should fall back to string format when addMessages is not available', async () => {

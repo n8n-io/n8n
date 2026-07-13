@@ -41,7 +41,7 @@ const projectId = computed(() => {
 		: route?.params?.projectId;
 });
 
-const isTeamProject = computed(() => projectStore.currentProject?.type === ProjectTypes.Team);
+const isPublicProject = computed(() => projectStore.currentProject?.type === ProjectTypes.Public);
 
 const getRouteConfigs = () => {
 	// For project pages
@@ -110,13 +110,23 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
-	if (props.pageType === 'overview' || isTeamProject.value) {
+	// Optimistic while currentProject loads — hiding the tab until the fetch
+	// resolves would shift the tab strip on every overview → project navigation
+	if (props.pageType === 'overview' || (props.pageType === 'project' && !isPublicProject.value)) {
 		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
 	}
 
 	if (props.additionalTabs?.length) {
 		const processedAdditionalTabs = processDynamicTabs(props.additionalTabs, projectId.value);
-		tabs.push(...processedAdditionalTabs);
+		for (const processed of processedAdditionalTabs) {
+			const { insertAfter, ...tab } = processed;
+			const anchorIndex = insertAfter ? tabs.findIndex((t) => t.value === insertAfter) : -1;
+			if (anchorIndex !== -1) {
+				tabs.splice(anchorIndex + 1, 0, tab);
+			} else {
+				tabs.push(tab);
+			}
+		}
 	}
 
 	if (props.showSettings) {

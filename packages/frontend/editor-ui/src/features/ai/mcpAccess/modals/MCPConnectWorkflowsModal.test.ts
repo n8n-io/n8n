@@ -24,7 +24,7 @@ vi.mock('@/app/router', () => ({
 	default: {
 		resolve: vi.fn(({ name, params }) => {
 			if (name === 'NodeViewExisting') {
-				return { fullPath: `/workflows/${params.name}` };
+				return { fullPath: `/workflows/${params.workflowId}` };
 			}
 			if (name === 'ProjectsWorkflows') {
 				return { fullPath: `/projects/${params.projectId}` };
@@ -177,7 +177,7 @@ describe('MCPConnectWorkflowsModal', () => {
 	});
 
 	describe('Save action', () => {
-		it('should call onEnableMcpAccess with selected workflow id when save is clicked', async () => {
+		it('should call onEnableMcpAccess with selected workflow ids when save is clicked', async () => {
 			const workflows = [createWorkflow({ id: 'wf-1', name: 'Test Workflow' })];
 			mcpStore.getMcpEligibleWorkflows.mockResolvedValue({
 				count: 1,
@@ -215,7 +215,7 @@ describe('MCPConnectWorkflowsModal', () => {
 			await userEvent.click(getByTestId('mcp-connect-workflows-save-button'));
 
 			await waitFor(() => {
-				expect(mockOnEnableMcpAccess).toHaveBeenCalledWith('wf-1');
+				expect(mockOnEnableMcpAccess).toHaveBeenCalledWith(['wf-1']);
 			});
 		});
 
@@ -258,7 +258,8 @@ describe('MCPConnectWorkflowsModal', () => {
 
 			await waitFor(() => {
 				expect(telemetry.track).toHaveBeenCalledWith('User selected workflow from list', {
-					workflowId: 'wf-1',
+					workflowIds: ['wf-1'],
+					count: 1,
 				});
 			});
 		});

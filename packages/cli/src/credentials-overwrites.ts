@@ -9,6 +9,7 @@ import { deepCopy, jsonParse } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite } from '@/interfaces';
+
 import { StaticAuthService } from './services/static-auth-service';
 
 const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
@@ -61,7 +62,7 @@ export class CredentialsOverwrites {
 			const data = await this.settings.findByKey(CREDENTIALS_OVERWRITE_KEY);
 
 			if (data) {
-				const decryptedData = this.cipher.decrypt(data.value);
+				const decryptedData = await this.cipher.decryptV2(data.value);
 				const overwriteData = jsonParse<ICredentialsOverwrite>(decryptedData, {
 					errorMessage: 'The credentials-overwrite is not valid JSON.',
 				});
@@ -81,7 +82,7 @@ export class CredentialsOverwrites {
 	}
 
 	async saveOverwriteDataToDB(overwriteData: ICredentialsOverwrite, broadcast: boolean = true) {
-		const data = this.cipher.encrypt(JSON.stringify(overwriteData));
+		const data = await this.cipher.encryptV2(JSON.stringify(overwriteData));
 		const setting = this.settings.create({
 			key: CREDENTIALS_OVERWRITE_KEY,
 			value: data,
@@ -223,5 +224,19 @@ export class CredentialsOverwrites {
 
 	getAll(): ICredentialsOverwrite {
 		return this.overwriteData;
+	}
+
+	supportsManagedAuth(type: string): boolean {
+		return this.get(type) !== undefined;
+	}
+
+	usesManagedAuth(type: string, data: Record<string, unknown>): boolean {
+		const overwrites = this.get(type);
+		if (overwrites === undefined) return false;
+
+		// Managed iff applying the overwrite actually injects a value. Delegating to
+		// applyOverwrite keeps this in lockstep with the skip-list / customization rules.
+		const applied = this.applyOverwrite(type, data as ICredentialDataDecryptedObject);
+		return Object.keys(overwrites).some((key) => applied[key] !== data[key]);
 	}
 }

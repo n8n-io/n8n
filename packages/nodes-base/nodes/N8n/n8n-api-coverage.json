@@ -77,6 +77,9 @@
 		"PUT /executions/{id}/tags": {
 			"status": "gap"
 		},
+		"GET /insights/summary": {
+			"status": "gap"
+		},
 		"POST /tags": {
 			"status": "gap"
 		},
@@ -139,6 +142,15 @@
 		"PUT /workflows/{id}/tags": {
 			"status": "gap"
 		},
+		"GET /workflows/{id}/test-runs": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}/test-cases": {
+			"status": "gap"
+		},
 		"GET /users": {
 			"status": "gap"
 		},
@@ -199,6 +211,21 @@
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
 			"status": "gap"
 		},
+		"DELETE /data-tables/{dataTableId}/rows/clear": {
+			"status": "gap"
+		},
+		"GET /data-tables/{dataTableId}/columns": {
+			"status": "gap"
+		},
+		"POST /data-tables/{dataTableId}/columns": {
+			"status": "gap"
+		},
+		"PATCH /data-tables/{dataTableId}/columns/{columnId}": {
+			"status": "gap"
+		},
+		"DELETE /data-tables/{dataTableId}/columns/{columnId}": {
+			"status": "gap"
+		},
 		"POST /projects": {
 			"status": "gap"
 		},
@@ -230,6 +257,27 @@
 			"status": "gap"
 		},
 		"PATCH /projects/{projectId}/users/{userId}": {
+			"status": "gap"
+		},
+		"DELETE /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"POST /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"PATCH /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"POST /n8n-packages/export": {
+			"status": "gap"
+		},
+		"POST /n8n-packages/import": {
 			"status": "gap"
 		}
 	}

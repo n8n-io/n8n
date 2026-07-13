@@ -31,5 +31,6 @@ const patternOffset = computed(() => scaledGap.value / 2);
 <style scoped>
 path {
 	stroke: var(--canvas--read-only-line--color);
+	opacity: 0.5;
 }
 </style>

@@ -4,10 +4,9 @@ import type { RatingFeedback } from '@n8n/design-system';
 import { N8nCallout, N8nIcon, N8nIconButton, N8nMessageRating, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
-import ButtonLike from './ButtonLike.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
 const props = defineProps<{
@@ -16,6 +15,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+const thread = useThread();
 const showDebugInfo = ref(false);
 
 const isUser = computed(() => props.message.role === 'user');
@@ -35,6 +35,21 @@ const errorDetails = computed(() => {
 });
 
 const hasProviderError = computed(() => !!errorDetails.value?.provider);
+
+/** A run the user (or a timeout/shutdown) stopped before it completed. */
+const runCancelled = computed(() => props.message.agentTree?.status === 'cancelled');
+
+/** Attribute the stop to its cause; falls back to the generic label when unknown. */
+const cancelledLabel = computed(() => {
+	switch (props.message.agentTree?.cancellationReason) {
+		case 'user':
+			return i18n.baseText('instanceAi.agentTree.stoppedByUser');
+		case 'timeout':
+			return i18n.baseText('instanceAi.agentTree.timedOut');
+		default:
+			return i18n.baseText('instanceAi.agentTree.cancelled');
+	}
+});
 
 const errorTitle = computed(() => {
 	if (hasProviderError.value) {
@@ -61,31 +76,22 @@ const statusMessage = computed(() => {
 	return props.message.agentTree.statusMessage ?? '';
 });
 
-/**
- * Background task indicator: shows when the orchestrator run has finished
- * but child agents (e.g., workflow builder) are still working in the background.
- */
-const hasActiveBackgroundTasks = computed(() => {
-	if (!props.message.agentTree || props.message.isStreaming) return false;
-	return props.message.agentTree.children.some((c) => c.status === 'active');
-});
-
 // --- Feedback ---
 const responseId = computed(() => props.message.messageGroupId ?? props.message.id);
 
 const isRateable = computed(
 	() =>
 		!isUser.value &&
-		store.rateableResponseId === responseId.value &&
-		!(responseId.value in store.feedbackByResponseId),
+		thread.rateableResponseId === responseId.value &&
+		!(responseId.value in thread.feedbackByResponseId),
 );
 
 const hasSubmittedFeedback = computed(
-	() => !isUser.value && responseId.value in store.feedbackByResponseId,
+	() => !isUser.value && responseId.value in thread.feedbackByResponseId,
 );
 
 function onFeedback(payload: RatingFeedback) {
-	store.submitFeedback(responseId.value, payload);
+	thread.submitFeedback(responseId.value, payload);
 }
 
 function formatJson(value: unknown): string {
@@ -156,11 +162,15 @@ function formatJson(value: unknown): string {
 				:class="$style.blinkingCursor"
 			/>
 
-			<!-- Background task indicator (run finished but sub-agents still working) -->
-			<ButtonLike v-if="hasActiveBackgroundTasks">
-				<N8nIcon icon="spinner" color="primary" spin size="small" />
-				{{ i18n.baseText('instanceAi.backgroundTask.running') }}
-			</ButtonLike>
+			<!-- Run stopped indicator (survives reload via the persisted cancelled status) -->
+			<div
+				v-if="runCancelled"
+				:class="$style.cancelledIndicator"
+				data-test-id="instance-ai-run-cancelled"
+			>
+				<N8nIcon icon="circle-x" size="small" />
+				<span>{{ cancelledLabel }}</span>
+			</div>
 
 			<!-- Response feedback -->
 			<N8nMessageRating
@@ -191,11 +201,14 @@ function formatJson(value: unknown): string {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .userMessage {
 	align-self: flex-end;
 	display: flex;
 	justify-content: flex-end;
 	width: 100%;
+	margin-block: var(--spacing--md);
 }
 
 .userAttachments {
@@ -206,7 +219,7 @@ function formatJson(value: unknown): string {
 }
 
 .userBubble {
-	background: var(--color--background);
+	background: var(--assistant--color--background--user-bubble);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
 	white-space: pre-wrap;
@@ -247,12 +260,23 @@ function formatJson(value: unknown): string {
 	animation: status-fade-in 0.2s ease;
 }
 
+.cancelledIndicator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+
 .statusDot {
+	--animation--opacity-pulse--duration: 1.5s;
+	--animation--opacity-pulse--opacity-end: 0.3;
+
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
 	background: var(--color--primary);
-	animation: pulse 1.5s ease-in-out infinite;
+	@include motion.opacity-pulse;
 }
 
 @keyframes status-fade-in {
@@ -261,16 +285,6 @@ function formatJson(value: unknown): string {
 	}
 	to {
 		opacity: 1;
-	}
-}
-
-@keyframes pulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.3;
 	}
 }
 

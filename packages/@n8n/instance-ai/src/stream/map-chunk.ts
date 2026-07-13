@@ -1,18 +1,15 @@
+import type { StreamChunk } from '@n8n/agents';
 import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	taskListSchema,
 	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
+	webSearchMetaSchema,
+	channelConfigSchema,
 } from '@n8n/api-types';
-import type {
-	InstanceAiCredentialRequest,
-	InstanceAiEvent,
-	InstanceAiWorkflowSetupNode,
-	PlannedTaskArg,
-	TaskList,
-	GatewayConfirmationRequiredPayload,
-} from '@n8n/api-types';
+import type { InstanceAiEvent } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 const questionItemSchema = z.object({
@@ -22,8 +19,95 @@ const questionItemSchema = z.object({
 	options: z.array(z.string()).optional(),
 });
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
+function getArrayProperty(record: Record<string, unknown>, key: string): unknown[] | undefined {
+	const value = record[key];
+	return Array.isArray(value) ? value : undefined;
+}
+
+function getRecordProperty(value: unknown, key: string): Record<string, unknown> | undefined {
+	if (!isRecord(value)) return undefined;
+	const recordValue = value[key];
+	return isRecord(recordValue) ? recordValue : undefined;
+}
+
+const DEFAULT_TOOL_ERROR_MESSAGE = 'Tool execution failed';
+
+function tryParseJson(text: string): unknown {
+	try {
+		return JSON.parse(text) as unknown;
+	} catch {
+		return undefined;
+	}
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+	return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function extractTextContent(content: unknown[]): string | undefined {
+	const text = content
+		.flatMap((part) => {
+			if (!isRecord(part) || part.type !== 'text') return [];
+			const textPart = nonEmptyString(part.text);
+			return textPart ? [textPart] : [];
+		})
+		.join('\n');
+
+	return nonEmptyString(text);
+}
+
+function extractToolErrorText(error: unknown): string {
+	return extractToolErrorTextInner(error) ?? DEFAULT_TOOL_ERROR_MESSAGE;
+}
+
+function extractToolErrorTextInner(error: unknown): string | undefined {
+	if (error instanceof Error) return nonEmptyString(error.message);
+
+	if (typeof error === 'string') {
+		const parsed = tryParseJson(error);
+		if (parsed !== undefined && typeof parsed !== 'string') {
+			return extractToolErrorTextInner(parsed) ?? nonEmptyString(error);
+		}
+
+		return nonEmptyString(error);
+	}
+
+	if (!isRecord(error)) return undefined;
+
+	for (const key of ['error', 'message', 'errorMessage']) {
+		const text = nonEmptyString(error[key]);
+		if (text) return text;
+	}
+
+	const nestedError = getRecordProperty(error, 'error');
+	const nestedErrorText = extractToolErrorTextInner(nestedError);
+	if (nestedErrorText) return nestedErrorText;
+
+	const structuredContentText = extractToolErrorTextInner(error.structuredContent);
+	if (structuredContentText) return structuredContentText;
+
+	const content = getArrayProperty(error, 'content');
+	if (content) {
+		const contentText = extractTextContent(content);
+		if (contentText) return extractToolErrorTextInner(contentText) ?? contentText;
+	}
+
+	return extractToolErrorTextInner(error.output);
+}
+
+const agentStreamChunkTypes = new Set<string>([
+	'finish',
+	'text-delta',
+	'reasoning-delta',
+	'tool-call',
+	'tool-result',
+	'error',
+	'message',
+	'tool-call-suspended',
+]);
+
+function isAgentStreamChunk(value: unknown): value is StreamChunk {
+	return isRecord(value) && typeof value.type === 'string' && agentStreamChunkTypes.has(value.type);
 }
 
 interface ErrorInfo {
@@ -33,8 +117,6 @@ interface ErrorInfo {
 	technicalDetails?: string;
 }
 
-/** Extract structured error info from Mastra's error chunk payload.
- *  Mastra sets `payload.error` to the raw Error object, not a string. */
 function extractErrorInfo(error: unknown): ErrorInfo {
 	if (typeof error === 'string') return { content: error };
 
@@ -73,267 +155,267 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 	return { content: 'Unknown error' };
 }
 
-/**
- * Maps a Mastra fullStream chunk to our InstanceAiEvent schema.
- *
- * Mastra chunks have the shape: { type, runId, from, payload: { ... } }
- * The actual data (textDelta, toolCallId, etc.) lives inside chunk.payload.
- *
- * Returns null for unrecognized chunk types (step-finish, finish, etc.)
- */
-export function mapMastraChunkToEvent(
+type EventBase = { runId: string; agentId: string; responseId?: string };
+
+type ConfirmationInputType =
+	| 'approval'
+	| 'text'
+	| 'questions'
+	| 'plan-review'
+	| 'resource-decision'
+	| 'continue';
+
+/** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
+function presentString(value: unknown): string | undefined {
+	return typeof value === 'string' && value ? value : undefined;
+}
+
+function parseSchemaArray<T>(value: unknown, schema: z.ZodType<T>): T[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const parsed = value
+		.map((item) => schema.safeParse(item))
+		.filter((r) => r.success)
+		.map((r) => r.data);
+	return parsed.length > 0 ? parsed : undefined;
+}
+
+function parseSchemaRecord<T>(value: unknown, schema: z.ZodType<T>): T | undefined {
+	if (!isRecord(value)) return undefined;
+	const parsed = schema.safeParse(value);
+	return parsed.success ? parsed.data : undefined;
+}
+
+function parseSeverity(value: unknown): 'destructive' | 'warning' | 'info' {
+	const raw = typeof value === 'string' ? value : '';
+	const valid = ['destructive', 'warning', 'info'] as const;
+	return (valid as readonly string[]).includes(raw) ? (raw as (typeof valid)[number]) : 'warning';
+}
+
+function parseInputType(value: unknown): ConfirmationInputType | undefined {
+	const raw = typeof value === 'string' ? value : undefined;
+	const valid = [
+		'approval',
+		'text',
+		'questions',
+		'plan-review',
+		'resource-decision',
+		'continue',
+	] as const;
+	return (valid as readonly string[]).includes(raw ?? '')
+		? (raw as (typeof valid)[number])
+		: undefined;
+}
+
+function parseDomainAccess(value: unknown): { url: string; host: string } | undefined {
+	const raw = isRecord(value) ? value : undefined;
+	return raw && typeof raw.url === 'string' && typeof raw.host === 'string'
+		? { url: raw.url, host: raw.host }
+		: undefined;
+}
+
+function parseCredentialFlow(value: unknown): { stage: 'generic' | 'finalize' } | undefined {
+	const raw = isRecord(value) ? value : undefined;
+	const validStages = new Set<'generic' | 'finalize'>(['generic', 'finalize']);
+	const stage = raw && typeof raw.stage === 'string' ? raw.stage : undefined;
+	return stage !== undefined && validStages.has(stage as 'generic' | 'finalize')
+		? { stage: stage as 'generic' | 'finalize' }
+		: undefined;
+}
+
+function mapToolCallChunk(
+	chunk: Extract<StreamChunk, { type: 'tool-call' }>,
+	base: EventBase,
+): InstanceAiEvent {
+	return {
+		type: 'tool-call',
+		...base,
+		payload: {
+			toolCallId: chunk.toolCallId,
+			toolName: chunk.toolName,
+			args: isRecord(chunk.input) ? chunk.input : {},
+		},
+	};
+}
+
+function mapToolResultChunk(
+	chunk: Extract<StreamChunk, { type: 'tool-result' }>,
+	base: EventBase,
+): InstanceAiEvent {
+	if (chunk.isError === true) {
+		return {
+			type: 'tool-error',
+			...base,
+			payload: { toolCallId: chunk.toolCallId, error: extractToolErrorText(chunk.output) },
+		};
+	}
+
+	return {
+		type: 'tool-result',
+		...base,
+		payload: { toolCallId: chunk.toolCallId, result: chunk.output },
+	};
+}
+
+function mapSuspendedChunk(
+	chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
+	base: EventBase,
+): InstanceAiEvent | null {
+	const suspendPayload = isRecord(chunk.suspendPayload) ? chunk.suspendPayload : {};
+	const toolCallId = typeof chunk.toolCallId === 'string' ? chunk.toolCallId : '';
+	const requestId =
+		typeof suspendPayload.requestId === 'string' && suspendPayload.requestId
+			? suspendPayload.requestId
+			: toolCallId;
+
+	if (!requestId || !toolCallId) return null;
+
+	const credentialRequests = parseSchemaArray(
+		suspendPayload.credentialRequests,
+		credentialRequestSchema,
+	);
+	const projectId = presentString(suspendPayload.projectId);
+	const inputType = parseInputType(suspendPayload.inputType);
+	const questions = parseSchemaArray(suspendPayload.questions, questionItemSchema);
+	const introMessage = presentString(suspendPayload.introMessage);
+	const tasks = parseSchemaRecord(suspendPayload.tasks, taskListSchema);
+	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
+	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
+	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
+	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
+	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
+	const workflowId = presentString(suspendPayload.workflowId);
+	const resourceDecision = parseSchemaRecord(
+		suspendPayload.resourceDecision,
+		gatewayConfirmationRequiredPayloadSchema,
+	);
+	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
+
+	return {
+		type: 'confirmation-request',
+		...base,
+		payload: {
+			requestId,
+			toolCallId,
+			toolName: typeof chunk.toolName === 'string' ? chunk.toolName : '',
+			args: isRecord(chunk.input) ? chunk.input : {},
+			severity: parseSeverity(suspendPayload.severity),
+			message:
+				typeof suspendPayload.message === 'string'
+					? suspendPayload.message
+					: 'Confirmation required',
+			...(credentialRequests ? { credentialRequests } : {}),
+			...(projectId ? { projectId } : {}),
+			...(inputType ? { inputType } : {}),
+			...(domainAccess ? { domainAccess } : {}),
+			...(webSearch ? { webSearch } : {}),
+			...(credentialFlow ? { credentialFlow } : {}),
+			...(setupRequests ? { setupRequests } : {}),
+			...(workflowId ? { workflowId } : {}),
+			...(questions ? { questions } : {}),
+			...(introMessage ? { introMessage } : {}),
+			...(tasks ? { tasks } : {}),
+			...(planItems ? { planItems } : {}),
+			...(resourceDecision ? { resourceDecision } : {}),
+			...(channelConfig ? { channelConfig } : {}),
+		},
+	};
+}
+
+function toolCallFromContent(part: unknown, base: EventBase): InstanceAiEvent | null {
+	if (!isRecord(part) || part.type !== 'tool-call') return null;
+	return {
+		type: 'tool-call',
+		...base,
+		payload: {
+			toolCallId: typeof part.toolCallId === 'string' ? part.toolCallId : '',
+			toolName: typeof part.toolName === 'string' ? part.toolName : '',
+			args: isRecord(part.input) ? part.input : {},
+		},
+	};
+}
+
+function toolResultFromContent(part: unknown, base: EventBase): InstanceAiEvent | null {
+	if (!isRecord(part) || part.type !== 'tool-result') return null;
+	const toolCallId = typeof part.toolCallId === 'string' ? part.toolCallId : '';
+	if (part.isError === true) {
+		return {
+			type: 'tool-error',
+			...base,
+			payload: { toolCallId, error: extractToolErrorText(part.result) },
+		};
+	}
+	return {
+		type: 'tool-result',
+		...base,
+		payload: { toolCallId, result: part.result },
+	};
+}
+
+function mapMessageChunk(
+	chunk: Extract<StreamChunk, { type: 'message' }>,
+	base: EventBase,
+): InstanceAiEvent | null {
+	const message = getRecordProperty(chunk, 'message');
+	if (message?.role !== 'tool') return null;
+
+	const content = getArrayProperty(message, 'content');
+	if (!content) return null;
+
+	const toolCall = toolCallFromContent(
+		content.find((part) => isRecord(part) && part.type === 'tool-call'),
+		base,
+	);
+	if (toolCall) return toolCall;
+
+	return toolResultFromContent(
+		content.find((part) => isRecord(part) && part.type === 'tool-result'),
+		base,
+	);
+}
+
+function mapErrorChunk(
+	chunk: Extract<StreamChunk, { type: 'error' }>,
+	base: EventBase,
+): InstanceAiEvent {
+	const errorInfo = extractErrorInfo(chunk.error);
+	return {
+		type: 'error',
+		...base,
+		payload: {
+			content: errorInfo.content,
+			...(errorInfo.statusCode !== undefined ? { statusCode: errorInfo.statusCode } : {}),
+			...(errorInfo.provider ? { provider: errorInfo.provider } : {}),
+			...(errorInfo.technicalDetails ? { technicalDetails: errorInfo.technicalDetails } : {}),
+		},
+	};
+}
+
+export function mapAgentChunkToEvent(
 	runId: string,
 	agentId: string,
 	chunk: unknown,
 	responseId?: string,
 ): InstanceAiEvent | null {
-	if (!isRecord(chunk)) return null;
+	if (!isAgentStreamChunk(chunk)) return null;
 
-	const { type } = chunk;
-	const payload = isRecord(chunk.payload) ? chunk.payload : {};
-	const base = { runId, agentId, ...(responseId ? { responseId } : {}) };
+	const base: EventBase = { runId, agentId, ...(responseId ? { responseId } : {}) };
 
-	// Mastra payload uses `text` (not `textDelta`) for text-delta chunks
-	const textValue =
-		typeof payload.text === 'string'
-			? payload.text
-			: typeof payload.textDelta === 'string'
-				? payload.textDelta
-				: undefined;
-
-	if (type === 'text-delta' && textValue !== undefined) {
-		return {
-			type: 'text-delta',
-			...base,
-			payload: { text: textValue },
-		};
+	switch (chunk.type) {
+		case 'text-delta':
+			return { type: 'text-delta', ...base, payload: { text: chunk.delta } };
+		case 'reasoning-delta':
+			return { type: 'reasoning-delta', ...base, payload: { text: chunk.delta } };
+		case 'tool-call':
+			return mapToolCallChunk(chunk, base);
+		case 'tool-result':
+			return mapToolResultChunk(chunk, base);
+		case 'tool-call-suspended':
+			return mapSuspendedChunk(chunk, base);
+		case 'message':
+			return mapMessageChunk(chunk, base);
+		case 'error':
+			return mapErrorChunk(chunk, base);
+		default:
+			return null;
 	}
-
-	if ((type === 'reasoning-delta' || type === 'reasoning') && textValue !== undefined) {
-		return {
-			type: 'reasoning-delta',
-			...base,
-			payload: { text: textValue },
-		};
-	}
-
-	if (type === 'tool-call') {
-		return {
-			type: 'tool-call',
-			...base,
-			payload: {
-				toolCallId: typeof payload.toolCallId === 'string' ? payload.toolCallId : '',
-				toolName: typeof payload.toolName === 'string' ? payload.toolName : '',
-				args: isRecord(payload.args) ? payload.args : {},
-			},
-		};
-	}
-
-	if (type === 'tool-result' || type === 'tool-error') {
-		const toolCallId = typeof payload.toolCallId === 'string' ? payload.toolCallId : '';
-
-		// Mastra signals tool errors via `isError` on tool-result chunks,
-		// not a separate event type. Map to our `tool-error` event.
-		if (payload.isError === true) {
-			return {
-				type: 'tool-error',
-				...base,
-				payload: {
-					toolCallId,
-					error: typeof payload.result === 'string' ? payload.result : 'Tool execution failed',
-				},
-			};
-		}
-
-		return {
-			type: 'tool-result',
-			...base,
-			payload: {
-				toolCallId,
-				result: payload.result,
-			},
-		};
-	}
-
-	if (type === 'tool-call-suspended') {
-		const suspendPayload = isRecord(payload.suspendPayload) ? payload.suspendPayload : {};
-		const toolCallId = typeof payload.toolCallId === 'string' ? payload.toolCallId : '';
-
-		const requestId =
-			typeof suspendPayload.requestId === 'string' && suspendPayload.requestId
-				? suspendPayload.requestId
-				: toolCallId;
-
-		if (!requestId || !toolCallId) return null;
-
-		const rawSeverity = typeof suspendPayload.severity === 'string' ? suspendPayload.severity : '';
-		const validSeverities = ['destructive', 'warning', 'info'] as const;
-		const severity = (validSeverities as readonly string[]).includes(rawSeverity)
-			? (rawSeverity as (typeof validSeverities)[number])
-			: 'warning';
-
-		// Extract and validate optional credentialRequests for credential setup HITL
-		let credentialRequests: InstanceAiCredentialRequest[] | undefined;
-		if (Array.isArray(suspendPayload.credentialRequests)) {
-			const parsed = suspendPayload.credentialRequests
-				.map((item) => credentialRequestSchema.safeParse(item))
-				.filter((r) => r.success)
-				.map((r) => r.data);
-			if (parsed.length > 0) {
-				credentialRequests = parsed;
-			}
-		}
-
-		// Extract optional projectId for project-scoped actions
-		const projectId =
-			typeof suspendPayload.projectId === 'string' ? suspendPayload.projectId : undefined;
-
-		// Extract optional inputType (e.g., 'text' for ask-user, 'questions', 'plan-review', 'resource-decision')
-		const rawInputType =
-			typeof suspendPayload.inputType === 'string' ? suspendPayload.inputType : undefined;
-		const validInputTypes = [
-			'approval',
-			'text',
-			'questions',
-			'plan-review',
-			'resource-decision',
-		] as const;
-		const inputType = (validInputTypes as readonly string[]).includes(rawInputType ?? '')
-			? (rawInputType as (typeof validInputTypes)[number])
-			: undefined;
-
-		// Extract optional structured questions (for ask-user tool with questions)
-		let questions: Array<z.infer<typeof questionItemSchema>> | undefined;
-		if (Array.isArray(suspendPayload.questions)) {
-			const parsed = suspendPayload.questions
-				.map((item) => questionItemSchema.safeParse(item))
-				.filter((r) => r.success)
-				.map((r) => r.data);
-			if (parsed.length > 0) {
-				questions = parsed;
-			}
-		}
-
-		// Extract optional intro message
-		const introMessage =
-			typeof suspendPayload.introMessage === 'string' ? suspendPayload.introMessage : undefined;
-
-		// Extract optional task list (for plan-review)
-		let tasks: TaskList | undefined;
-		if (isRecord(suspendPayload.tasks)) {
-			const parsed = taskListSchema.safeParse(suspendPayload.tasks);
-			if (parsed.success) {
-				tasks = parsed.data;
-			}
-		}
-
-		// Extract optional full planned task items (for plan-review panel details)
-		let planItems: PlannedTaskArg[] | undefined;
-		if (Array.isArray(suspendPayload.planItems)) {
-			const parsed = suspendPayload.planItems
-				.map((item) => plannedTaskArgSchema.safeParse(item))
-				.filter((r) => r.success)
-				.map((r) => r.data);
-			if (parsed.length > 0) {
-				planItems = parsed;
-			}
-		}
-
-		// Extract optional domainAccess metadata (for domain-gated tools like fetch-url)
-		const rawDomainAccess = isRecord(suspendPayload.domainAccess)
-			? suspendPayload.domainAccess
-			: undefined;
-		const domainAccess =
-			rawDomainAccess &&
-			typeof rawDomainAccess.url === 'string' &&
-			typeof rawDomainAccess.host === 'string'
-				? { url: rawDomainAccess.url, host: rawDomainAccess.host }
-				: undefined;
-
-		// Extract optional credentialFlow for credential setup stage
-		const rawCredentialFlow = isRecord(suspendPayload.credentialFlow)
-			? suspendPayload.credentialFlow
-			: undefined;
-		const validStages = new Set<'generic' | 'finalize'>(['generic', 'finalize']);
-		const rawStage =
-			rawCredentialFlow && typeof rawCredentialFlow.stage === 'string'
-				? rawCredentialFlow.stage
-				: undefined;
-		const credentialFlow =
-			rawStage !== undefined && validStages.has(rawStage as 'generic' | 'finalize')
-				? { stage: rawStage as 'generic' | 'finalize' }
-				: undefined;
-
-		// Extract and validate optional setupRequests for workflow setup HITL
-		let setupRequests: InstanceAiWorkflowSetupNode[] | undefined;
-		if (Array.isArray(suspendPayload.setupRequests)) {
-			const parsed = suspendPayload.setupRequests
-				.map((item) => workflowSetupNodeSchema.safeParse(item))
-				.filter((r) => r.success)
-				.map((r) => r.data);
-			if (parsed.length > 0) {
-				setupRequests = parsed;
-			}
-		}
-
-		// Extract optional workflowId for workflow setup tool
-		const workflowId =
-			typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
-
-		// Extract optional resourceDecision for gateway permission gating (inputType=resource-decision)
-		let resourceDecision: GatewayConfirmationRequiredPayload | undefined;
-		if (isRecord(suspendPayload.resourceDecision)) {
-			const parsed = gatewayConfirmationRequiredPayloadSchema.safeParse(
-				suspendPayload.resourceDecision,
-			);
-			if (parsed.success) {
-				resourceDecision = parsed.data;
-			}
-		}
-
-		return {
-			type: 'confirmation-request',
-			...base,
-			payload: {
-				requestId,
-				toolCallId,
-				toolName: typeof payload.toolName === 'string' ? payload.toolName : '',
-				args: isRecord(payload.args) ? payload.args : {},
-				severity,
-				message:
-					typeof suspendPayload.message === 'string'
-						? suspendPayload.message
-						: 'Confirmation required',
-				...(credentialRequests ? { credentialRequests } : {}),
-				...(projectId ? { projectId } : {}),
-				...(inputType ? { inputType } : {}),
-				...(domainAccess ? { domainAccess } : {}),
-				...(credentialFlow ? { credentialFlow } : {}),
-				...(setupRequests ? { setupRequests } : {}),
-				...(workflowId ? { workflowId } : {}),
-				...(questions ? { questions } : {}),
-				...(introMessage ? { introMessage } : {}),
-				...(tasks ? { tasks } : {}),
-				...(planItems ? { planItems } : {}),
-				...(resourceDecision ? { resourceDecision } : {}),
-			},
-		};
-	}
-
-	if (type === 'error') {
-		const errorInfo = extractErrorInfo(payload.error);
-		return {
-			type: 'error',
-			...base,
-			payload: {
-				content: errorInfo.content,
-				...(errorInfo.statusCode !== undefined ? { statusCode: errorInfo.statusCode } : {}),
-				...(errorInfo.provider ? { provider: errorInfo.provider } : {}),
-				...(errorInfo.technicalDetails ? { technicalDetails: errorInfo.technicalDetails } : {}),
-			},
-		};
-	}
-
-	// Other Mastra chunk types (step-finish, finish, etc.) are ignored
-	return null;
 }

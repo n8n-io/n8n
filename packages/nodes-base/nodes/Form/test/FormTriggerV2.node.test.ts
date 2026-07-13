@@ -1,14 +1,75 @@
 import crypto from 'crypto';
-import { mock } from 'jest-mock-extended';
-import { NodeOperationError, type INode } from 'n8n-workflow';
+import { NodeOperationError, type INodeProperties, type INodePropertyOptions } from 'n8n-workflow';
+
+type VersionCnd = { lte?: number; gte?: number };
+type VersionedAuthParam = Omit<INodeProperties, 'options'> & {
+	displayOptions?: { show?: { '@version'?: Array<{ _cnd?: VersionCnd }> } };
+	options?: INodePropertyOptions[];
+};
 
 import { testVersionedWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { FormTrigger } from '../FormTrigger.node';
+import { FormTriggerV2 } from '../v2/FormTriggerV2.node';
+
+const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
+	"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.";
 
 describe('FormTrigger', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+	});
+
+	it('should tell builders to keep inbound authentication disabled unless requested', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.5,
+		});
+
+		const authParams = formTriggerV2.description.properties.filter(
+			(property) => property.name === FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+		);
+
+		expect(authParams.length).toBeGreaterThan(0);
+		for (const param of authParams) {
+			expect(param).toMatchObject({
+				default: 'none',
+				builderHint: {
+					propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+				},
+			});
+		}
+	});
+
+	it('should expose n8nUserAuth option only on typeVersion >= 2.6', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.6,
+		});
+
+		const authParams = formTriggerV2.description.properties.filter(
+			(property) => property.name === FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+		) as VersionedAuthParam[];
+
+		expect(authParams).toHaveLength(2);
+
+		const versionCnd = (param: VersionedAuthParam) =>
+			param.displayOptions?.show?.['@version']?.[0]?._cnd;
+		const legacyAuth = authParams.find((p) => versionCnd(p)?.lte === 2.5);
+		const v26Auth = authParams.find((p) => versionCnd(p)?.gte === 2.6);
+
+		const legacyValues = (legacyAuth?.options ?? []).map((o) => o.value).sort();
+		const v26Values = (v26Auth?.options ?? []).map((o) => o.value).sort();
+
+		expect(legacyValues).toEqual(['basicAuth', 'none']);
+		expect(v26Values).toEqual(['basicAuth', 'n8nUserAuth', 'none']);
 	});
 
 	it('should render a form template with correct fields', async () => {
@@ -181,43 +242,40 @@ describe('FormTrigger', () => {
 
 	describe('Respond to Webhook', () => {
 		it('should throw when misconfigured', async () => {
-			await expect(
-				testVersionedWebhookTriggerNode(FormTrigger, 2, {
-					node: {
-						parameters: {
-							responseMode: 'responseNode',
-						},
+			const missingRespondNode = testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				node: {
+					parameters: {
+						responseMode: 'responseNode',
 					},
-					request: { method: 'POST' },
-					childNodes: [],
-				}),
-			).rejects.toEqual(
-				new NodeOperationError(mock<INode>(), 'No Respond to Webhook node found in the workflow'),
+				},
+				request: { method: 'POST' },
+				childNodes: [],
+			});
+			await expect(missingRespondNode).rejects.toThrow(NodeOperationError);
+			await expect(missingRespondNode).rejects.toThrow(
+				'No Respond to Webhook node found in the workflow',
 			);
 
-			await expect(
-				testVersionedWebhookTriggerNode(FormTrigger, 2.1, {
-					node: {
-						typeVersion: 2.1,
-						parameters: {
-							responseMode: 'onReceived',
-						},
+			const unusedRespondNode = testVersionedWebhookTriggerNode(FormTrigger, 2.1, {
+				node: {
+					typeVersion: 2.1,
+					parameters: {
+						responseMode: 'onReceived',
 					},
-					request: { method: 'POST' },
-					childNodes: [
-						{
-							name: 'Test Respond To Webhook',
-							type: 'n8n-nodes-base.respondToWebhook',
-							typeVersion: 1,
-							disabled: false,
-						},
-					],
-				}),
-			).rejects.toEqual(
-				new NodeOperationError(
-					mock<INode>(),
-					'Unused Respond to Webhook node found in the workflow',
-				),
+				},
+				request: { method: 'POST' },
+				childNodes: [
+					{
+						name: 'Test Respond To Webhook',
+						type: 'n8n-nodes-base.respondToWebhook',
+						typeVersion: 1,
+						disabled: false,
+					},
+				],
+			});
+			await expect(unusedRespondNode).rejects.toThrow(NodeOperationError);
+			await expect(unusedRespondNode).rejects.toThrow(
+				'Unused Respond to Webhook node found in the workflow',
 			);
 		});
 	});
@@ -417,5 +475,112 @@ describe('FormTrigger', () => {
 				}),
 			],
 		]);
+	});
+
+	describe('showHeaders', () => {
+		it('should include headers in output when showHeaders is enabled', async () => {
+			const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+			const bodyData = {
+				data: {
+					'field-0': 'John Doe',
+				},
+			};
+
+			const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				mode: 'manual',
+				node: {
+					parameters: {
+						formTitle: 'Test Form',
+						formDescription: 'Test Description',
+						responseMode: 'onReceived',
+						authentication: 'none',
+						formFields: { values: formFields },
+						options: {
+							showHeaders: true,
+						},
+					},
+				},
+				request: {
+					method: 'POST',
+					headers: { 'content-type': 'multipart/form-data' },
+					contentType: 'multipart/form-data',
+				},
+				bodyData,
+				headerData: {
+					'content-type': 'multipart/form-data',
+					'user-agent': 'Mozilla/5.0',
+				},
+			});
+
+			expect(responseData?.workflowData?.[0]?.[0]?.json.headers).toEqual({
+				'content-type': 'multipart/form-data',
+				'user-agent': 'Mozilla/5.0',
+			});
+		});
+
+		it('should not include headers in output when showHeaders is disabled', async () => {
+			const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+			const bodyData = {
+				data: {
+					'field-0': 'John Doe',
+				},
+			};
+
+			const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				mode: 'manual',
+				node: {
+					parameters: {
+						formTitle: 'Test Form',
+						formDescription: 'Test Description',
+						responseMode: 'onReceived',
+						authentication: 'none',
+						formFields: { values: formFields },
+						options: {
+							showHeaders: false,
+						},
+					},
+				},
+				request: {
+					method: 'POST',
+					headers: { 'content-type': 'multipart/form-data' },
+					contentType: 'multipart/form-data',
+				},
+				bodyData,
+				headerData: {
+					'content-type': 'multipart/form-data',
+					'user-agent': 'Mozilla/5.0',
+				},
+			});
+
+			expect(responseData?.workflowData?.[0]?.[0]?.json.headers).toBeUndefined();
+		});
+	});
+
+	describe('sensitiveOutputFields', () => {
+		it('declares authorization and cookie headers as sensitive', () => {
+			const formTriggerV2 = new FormTriggerV2({
+				displayName: 'n8n Form Trigger',
+				name: 'formTrigger',
+				group: ['trigger'],
+				description: 'Generate webforms in n8n and pass their responses to the workflow',
+				defaultVersion: 2.5,
+			});
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.authorization');
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.cookie');
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.x-auth-token');
+		});
+
+		it('does not mark other headers as sensitive', () => {
+			const formTriggerV2 = new FormTriggerV2({
+				displayName: 'n8n Form Trigger',
+				name: 'formTrigger',
+				group: ['trigger'],
+				description: 'Generate webforms in n8n and pass their responses to the workflow',
+				defaultVersion: 2.5,
+			});
+			expect(formTriggerV2.description.sensitiveOutputFields).not.toContain('headers.content-type');
+		});
 	});
 });

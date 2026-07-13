@@ -1,3 +1,4 @@
+import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import * as usersApi from '@n8n/rest-api-client/api/users';
@@ -6,6 +7,7 @@ import { VIEWS } from '@/app/constants';
 import type { WorkflowListResource } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -17,7 +19,7 @@ import WorkflowsView from '@/app/views/WorkflowsView.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 
@@ -48,6 +50,11 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: mockTrack,
 	})),
+}));
+
+const mockShowError = vi.fn();
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showError: mockShowError }),
 }));
 
 const router = createRouter({
@@ -123,19 +130,35 @@ describe('WorkflowsView', () => {
 
 	describe('should show empty state', () => {
 		it('for non setup user', async () => {
-			const { getByText } = renderComponent({ pinia });
+			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
-			expect(getByText('👋 Welcome!')).toBeVisible();
+
+			const emptyState = getByTestId('empty-resources-list');
+			expect(within(emptyState).getByText('Create your first automation')).toBeVisible();
+			expect(within(emptyState).getByRole('button', { name: 'Create workflow' })).toBeVisible();
 		});
 
-		it('for currentUser user', async () => {
+		it('should render empty state card regardless of user name', async () => {
 			const userStore = mockedStore(useUsersStore);
 			userStore.currentUser = { firstName: 'John' } as IUser;
 
-			const { getByText } = renderComponent({ pinia });
+			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByText('👋 Welcome, John!')).toBeVisible();
+			const emptyState = getByTestId('empty-resources-list');
+			expect(within(emptyState).getByText('Create your first automation')).toBeVisible();
+		});
+
+		it('with the archived hint when all workflows are archived', async () => {
+			foldersStore.totalWorkflowCount = 3;
+			foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(3);
+
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByTestId('show-archived-link')).toBeVisible();
+			const emptyState = getByTestId('empty-resources-list');
+			expect(within(emptyState).getByText('Create your first automation')).toBeVisible();
 		});
 
 		describe('when onboardingExperiment -> False', () => {
@@ -143,26 +166,45 @@ describe('WorkflowsView', () => {
 				const sourceControl = mockedStore(useSourceControlStore);
 				sourceControl.preferences.branchReadOnly = true;
 
-				const { getByText } = renderComponent({ pinia });
+				const { getByTestId } = renderComponent({ pinia });
 				await waitAllPromises();
 
-				expect(getByText('No workflows here yet')).toBeInTheDocument();
+				const button = within(getByTestId('empty-resources-list')).getByRole('button', {
+					name: 'Create workflow',
+				});
+				expect(button).toBeDisabled();
 				sourceControl.preferences.branchReadOnly = false;
 			});
 
 			it('for noPermission', async () => {
-				const { getByText } = renderComponent({ pinia });
+				const { getByTestId } = renderComponent({ pinia });
 				await waitAllPromises();
-				expect(getByText('There are currently no workflows to view')).toBeInTheDocument();
+
+				const button = within(getByTestId('empty-resources-list')).getByRole('button', {
+					name: 'Create workflow',
+				});
+				expect(button).toBeDisabled();
+			});
+
+			it('does not repeat generic prompt in fallback empty state', async () => {
+				const projectsStore = mockedStore(useProjectsStore);
+				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
+
+				const { getAllByText } = renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(getAllByText('Create your first automation')).toHaveLength(1);
 			});
 
 			it('for user with create scope', async () => {
 				const projectsStore = mockedStore(useProjectsStore);
 				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
 
-				const { getByText } = renderComponent({ pinia });
+				const { getByTestId } = renderComponent({ pinia });
 				await waitAllPromises();
-				expect(getByText('Create your first workflow')).toBeInTheDocument();
+				expect(
+					within(getByTestId('empty-resources-list')).getByText('Create your first automation'),
+				).toBeInTheDocument();
 			});
 		});
 	});
@@ -497,20 +539,28 @@ describe('Folders', () => {
 		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
 	});
 
-	it('should show "Create folder" button when not in the overview or sharing pages', async () => {
+	it('should show folder actions menu when not in the overview or sharing pages', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProject = {
+			id: '1',
+			name: 'Project 1',
+			type: 'team',
+			scopes: ['folder:create'],
+		} as Project;
 
 		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
-		const { getByTestId } = renderComponent({
+		const { getByTestId, queryByTestId } = renderComponent({
 			pinia,
 		});
 		await waitAllPromises();
 
-		expect(getByTestId('add-folder-button')).toBeInTheDocument();
+		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
+		expect(getByTestId('folder-breadcrumbs-actions')).toBeInTheDocument();
 	});
 
-	it('should NOT show "Create folder" button when in overview subpage', async () => {
+	it('should NOT show standalone "Create folder" button when in overview subpage', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 
@@ -523,7 +573,7 @@ describe('Folders', () => {
 		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
 	});
 
-	it('should NOT show "Create folder" button when in shared subpage', async () => {
+	it('should NOT show standalone "Create folder" button when in shared subpage', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
 
@@ -539,6 +589,7 @@ describe('Folders', () => {
 
 describe('Simplified Layout', () => {
 	beforeEach(async () => {
+		localStorage.clear();
 		await router.push('/');
 		await router.isReady();
 		pinia = createTestingPinia({ initialState });
@@ -590,9 +641,44 @@ describe('Simplified Layout', () => {
 		const { queryByTestId } = renderComponent({ pinia });
 		await waitAllPromises();
 
-		// ResourcesListLayout should be rendered (look for list-empty-state as indicator)
-		// EmptyStateLayout cards should NOT be rendered when using regular layout
-		expect(queryByTestId('list-empty-state')).toBeInTheDocument();
+		expect(queryByTestId('empty-resources-list')).toBeInTheDocument();
+	});
+
+	it('fetches credentials for empty-state detection when there are no workflows', async () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		foldersStore.totalWorkflowCount = 0;
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
+	});
+
+	it('shows a toast when empty-state resource fetches fail', async () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		foldersStore.totalWorkflowCount = 0;
+		credentialsStore.fetchAllCredentials = vi.fn().mockRejectedValue(new Error('Network error'));
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(mockShowError).toHaveBeenCalled();
+	});
+
+	it('skips the empty-state resource fetches when stores already show workflows exist', async () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		foldersStore.totalWorkflowCount = 5;
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
 	});
 
 	it('should call getSimplifiedLayoutVisibility with route and loading state', async () => {
@@ -625,5 +711,60 @@ describe('Simplified Layout', () => {
 		// The computed should be called with the current route and loading state
 		const lastCall = getSimplifiedLayoutVisibility.mock.calls[initialCallCount - 1];
 		expect(lastCall[0]).toHaveProperty('params'); // route object
+	});
+});
+
+describe('onboarding loading state', () => {
+	beforeEach(async () => {
+		localStorage.clear();
+		await router.push('/');
+		await router.isReady();
+		pinia = createTestingPinia({ initialState });
+		foldersStore = mockedStore(useFoldersStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
+
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		foldersStore.totalWorkflowCount = 0;
+		foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
+
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(false);
+
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+	});
+
+	it('shows neutral loading instead of list chrome on overview while instance content is unknown', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+
+		expect(getByTestId('workflows-onboarding-loading')).toBeInTheDocument();
+		expect(queryByTestId('add-resource-buttons')).not.toBeInTheDocument();
+
+		await waitAllPromises();
+	});
+
+	it('keeps list chrome during load when stores already show instance content', async () => {
+		foldersStore.totalWorkflowCount = 5;
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+
+		expect(queryByTestId('workflows-onboarding-loading')).not.toBeInTheDocument();
+		expect(getByTestId('add-resource-buttons')).toBeInTheDocument();
+
+		await waitAllPromises();
+	});
+
+	it('re-arms the deferred loading state when navigating between surfaces', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+		expect(queryByTestId('workflows-onboarding-loading')).not.toBeInTheDocument();
+
+		await router.push('/some-project');
+		await nextTick();
+
+		expect(getByTestId('workflows-onboarding-loading')).toBeInTheDocument();
+
+		await waitAllPromises();
+		expect(queryByTestId('workflows-onboarding-loading')).not.toBeInTheDocument();
 	});
 });

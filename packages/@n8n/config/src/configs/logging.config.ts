@@ -22,6 +22,7 @@ export const LOG_SCOPES = [
 	'task-runner-js',
 	'task-runner-py',
 	'insights',
+	'workflow-statistics',
 	'workflow-activation',
 	'ssh-client',
 	'data-table',
@@ -37,10 +38,19 @@ export const LOG_SCOPES = [
 	'ssrf-protection',
 	'token-exchange',
 	'instance-ai',
+	'agents',
+	'sub-agent-eval',
 	'instance-version-history',
 	'instance-settings-loader',
 	'instance-registry',
+	'expression-engine',
 	'encryption-key-manager',
+	'oauth-jwe',
+	'mcp-registry',
+	'workflow-publication',
+	'poll-trigger',
+	'metrics',
+	'scheduler',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

@@ -1,26 +1,31 @@
-import type { AppliedThemeOption, INodeUi, NodeAuthenticationOption } from '@/Interface';
+import type {
+	AppliedThemeOption,
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	NodeAuthenticationOption,
+} from '@/Interface';
 import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
 	MAIN_AUTH_FIELD_NAME,
 	MAPPING_PARAMS,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	TEMPLATES_NODES_FILTER,
 } from '@/app/constants';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { i18n as locale } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
 import { isJsonKeyObject } from '@/app/utils/typesUtils';
 import {
 	isResourceLocatorValue,
 	type IDataObject,
+	type INode,
 	type INodeCredentialDescription,
 	type INodeExecutionData,
 	type INodeProperties,
+	type INodePropertyOptions,
 	type INodeTypeDescription,
 	type NodeParameterValueType,
 	type ResourceMapperField,
@@ -31,7 +36,7 @@ import {
 	or manipulate node types and nodes.
 */
 
-const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
+const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2', 'MCP'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\["(.+?)"\]/s;
 
@@ -40,6 +45,14 @@ export function getAppNameFromCredType(name: string) {
 		.split(' ')
 		.filter((word) => !CRED_KEYWORDS_TO_FILTER.includes(word))
 		.join(' ');
+}
+
+/**
+ * True when the node uses the HTTP-request proxy-auth pattern
+ * (parameter key `nodeCredentialType` is present).
+ */
+export function hasProxyAuth(node: INodeUi): boolean {
+	return Object.keys(node.parameters).includes('nodeCredentialType');
 }
 
 export function getAppNameFromNodeName(name: string) {
@@ -51,6 +64,71 @@ export function getAppNameFromNodeName(name: string) {
 
 export function getTriggerNodeServiceName(nodeType: INodeTypeDescription): string {
 	return nodeType.displayName.replace(/ trigger/i, '');
+}
+
+/**
+ * Derives the subtitle displayed under a node's name on the canvas.
+ *
+ * Pure function: reads only its parameters — it must not access stores or
+ * `inject()`, because `useWorkflowDocumentRenderData` calls it from detached
+ * effect scopes outside component setup (watch callbacks in
+ * `WorkflowCanvas.vue` / `useWorkflowDiff.ts`).
+ */
+export function getNodeSubtitle(
+	data: INode,
+	nodeType: INodeTypeDescription,
+	workflow: WorkflowObjectAccessors,
+): string | undefined {
+	if (!data) {
+		return undefined;
+	}
+
+	if (data.notesInFlow) {
+		return data.notes;
+	}
+
+	if (nodeType?.subtitle !== undefined) {
+		try {
+			return workflow.expression.getSimpleParameterValue(
+				data,
+				nodeType.subtitle,
+				'internal',
+				{},
+				undefined,
+				PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			) as string | undefined;
+		} catch (e) {
+			return undefined;
+		}
+	}
+
+	if (data.parameters.operation !== undefined) {
+		const operation = data.parameters.operation as string;
+		if (nodeType === null) {
+			return operation;
+		}
+
+		const operationData = nodeType.properties.find((property: INodeProperties) => {
+			return property.name === 'operation';
+		});
+		if (operationData === undefined) {
+			return operation;
+		}
+
+		if (operationData.options === undefined) {
+			return operation;
+		}
+
+		const optionData = operationData.options.find((option) => {
+			return (option as INodePropertyOptions).value === data.parameters.operation;
+		});
+		if (optionData === undefined) {
+			return operation;
+		}
+
+		return optionData.name;
+	}
+	return undefined;
 }
 
 export function getActivatableTriggerNodes(nodes: INodeUi[]) {
@@ -175,8 +253,16 @@ const findAlternativeAuthField = (
 		}
 	});
 	const alternativeAuthField = fields.find((field) => {
+		// A field can only act as an authentication selector if it offers a fixed
+		// set of options whose values map to credentials. Fields without options
+		// (e.g. boolean toggles) are never authentication fields — otherwise an
+		// unrelated toggle that happens to gate an optional credential would be
+		// mistaken for the node's main auth field.
+		if (!field.options?.length) {
+			return false;
+		}
 		let required = true;
-		field.options?.forEach((option) => {
+		field.options.forEach((option) => {
 			if (
 				'value' in option &&
 				typeof option.value === 'string' &&
@@ -363,18 +449,18 @@ export const getCredentialsRelatedFields = (
 };
 
 export const updateNodeAuthType = (
-	workflowId: string | undefined | null,
+	updateNodeProperties: (info: INodeUpdatePropertiesInformation) => void,
 	node: INodeUi | null,
 	type: string,
 ) => {
-	if (!node || !workflowId) {
+	if (!node) {
 		return;
 	}
 	const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
 	if (nodeType) {
 		const nodeAuthField = getMainAuthField(nodeType);
 		if (nodeAuthField) {
-			const updateInformation = {
+			const updateInformation: INodeUpdatePropertiesInformation = {
 				name: node.name,
 				properties: {
 					parameters: {
@@ -383,8 +469,7 @@ export const updateNodeAuthType = (
 					},
 				},
 			};
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			workflowDocumentStore.updateNodeProperties(updateInformation);
+			updateNodeProperties(updateInformation);
 		}
 	}
 };
@@ -465,6 +550,17 @@ export const isResourceMapperFieldListStale = (
 	}
 
 	return false;
+};
+
+/**
+ * Detects a resource mapper schema that was authored (e.g. by an AI builder, or
+ * hand-edited) rather than loaded from its source. Loaders always populate
+ * `readOnly` and `removed`; an authored schema omits them. Such schemas render
+ * with broken/outdated inputs, so callers can use this to decide whether to
+ * reconcile against the live source on open instead of just flagging it stale.
+ */
+export const isResourceMapperSchemaIncomplete = (fields: ResourceMapperField[]): boolean => {
+	return fields.some((field) => field.readOnly === undefined || field.removed === undefined);
 };
 
 export const isMatchingField = (

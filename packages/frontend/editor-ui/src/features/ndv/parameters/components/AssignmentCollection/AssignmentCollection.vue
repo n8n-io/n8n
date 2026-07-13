@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import isEqual from 'lodash/isEqual';
 import type {
 	AssignmentCollectionValue,
@@ -20,8 +20,10 @@ import Draggable from 'vuedraggable';
 import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
+import type { ParameterOptionsOverrides } from '@/features/ndv/shared/ndv.utils';
 
 import { N8nInputLabel } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 interface Props {
 	parameter: INodeProperties;
 	value: AssignmentCollectionValue;
@@ -30,6 +32,8 @@ interface Props {
 	disableType?: boolean;
 	node: INode | null;
 	isReadOnly?: boolean;
+	editableValueIndices?: number[];
+	optionsOverrides?: ParameterOptionsOverrides;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -49,10 +53,10 @@ const dropAreaContainer = useTemplateRef('dropArea');
 function createParamValue(value: AssignmentCollectionValue): AssignmentCollectionValue {
 	return {
 		assignments:
-			value.assignments?.map((assignment) => {
-				if (!assignment.id) assignment.id = crypto.randomUUID();
-				return assignment;
-			}) ?? [],
+			value.assignments?.map((assignment) => ({
+				...assignment,
+				id: assignment.id ?? crypto.randomUUID(),
+			})) ?? [],
 	};
 }
 
@@ -60,18 +64,31 @@ const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 	paramValue: createParamValue(props.value),
 });
 
-const ndvStore = useNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const { callDebounced } = useDebounce();
 
 const issues = computed(() => {
-	if (!ndvStore.activeNode) return {};
-	return ndvStore.activeNode?.issues?.parameters ?? {};
+	if (!ndvStore.value.activeNode) return {};
+	return ndvStore.value.activeNode?.issues?.parameters ?? {};
 });
 
 const empty = computed(() => state.paramValue.assignments.length === 0);
-const activeDragField = computed(() => propertyNameFromExpression(ndvStore.draggableData));
-const inputData = computed(() => ndvStore.ndvInputData?.[0]?.json);
+const hasRestrictedAssignments = computed(() => props.editableValueIndices !== undefined);
+const visibleAssignments = computed(() => {
+	const editableIndices = props.editableValueIndices;
+	if (editableIndices === undefined) {
+		return state.paramValue.assignments.map((assignment, index) => ({ assignment, index }));
+	}
+
+	return editableIndices.flatMap((index) => {
+		const assignment = state.paramValue.assignments[index];
+		return assignment ? [{ assignment, index }] : [];
+	});
+});
+const activeDragField = computed(() => propertyNameFromExpression(ndvStore.value.draggableData));
+const inputData = computed(() => ndvStore.value.ndvInputData?.[0]?.json);
 const actions = computed(() => {
 	return [
 		{
@@ -119,7 +136,9 @@ function addAssignment(): void {
 }
 
 async function dropAssignment(expression: string): Promise<void> {
-	const type = props.defaultType ?? (await typeFromExpression(expression));
+	const type =
+		props.defaultType ??
+		(await typeFromExpression(expression, workflowDocumentStore.value.documentId));
 	state.paramValue.assignments.push({
 		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),
@@ -162,7 +181,7 @@ function optionSelected(action: string) {
 			underline
 			color="text-dark"
 		>
-			<template #options>
+			<template v-if="!hasRestrictedAssignments" #options>
 				<ParameterOptions
 					:parameter="parameter"
 					:value="value"
@@ -176,12 +195,12 @@ function optionSelected(action: string) {
 
 		<ExperimentalEmbeddedNdvMapper
 			v-if="
+				!hasRestrictedAssignments &&
 				experimentalNdvStore.isNdvInFocusPanelEnabled &&
 				dropAreaContainer?.$el &&
 				node &&
 				expressionLocalResolveCtx?.inputNode
 			"
-			:workflow="expressionLocalResolveCtx.workflow"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx.inputNode.name"
 			:reference="dropAreaContainer?.$el"
@@ -191,6 +210,7 @@ function optionSelected(action: string) {
 		<div :class="$style.content">
 			<div :class="$style.assignments">
 				<Draggable
+					v-if="!hasRestrictedAssignments"
 					v-model="state.paramValue.assignments"
 					item-key="id"
 					handle=".drag-handle"
@@ -212,9 +232,23 @@ function optionSelected(action: string) {
 						</Assignment>
 					</template>
 				</Draggable>
+				<Assignment
+					v-for="{ assignment, index } in visibleAssignments"
+					v-else
+					:key="assignment.id ?? index"
+					:model-value="assignment"
+					:index="index"
+					:path="`${path}.assignments.${index}`"
+					:issues="getIssues(index)"
+					:is-read-only="isReadOnly"
+					disable-type
+					:options-overrides="optionsOverrides"
+					value-only
+					@update:model-value="(value) => onAssignmentUpdate(index, value)"
+				/>
 			</div>
 			<div
-				v-if="!isReadOnly"
+				v-if="!isReadOnly && !hasRestrictedAssignments"
 				:class="$style.dropAreaWrapper"
 				data-test-id="assignment-collection-drop-area"
 				@click="addAssignment"

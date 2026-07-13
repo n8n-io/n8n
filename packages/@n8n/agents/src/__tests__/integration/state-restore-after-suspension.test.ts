@@ -155,16 +155,8 @@ describe('state restore after suspension', () => {
 		const errorChunks = resumedChunks.filter((c) => c.type === 'error');
 		expect(errorChunks).toHaveLength(0);
 
-		// Stream must contain the tool result message
-		const toolResultChunks = resumedChunks.filter(
-			(c) =>
-				c.type === 'message' &&
-				'message' in c &&
-				'content' in (c.message as object) &&
-				(c.message as { content: Array<{ type: string }> }).content.some(
-					(part) => part.type === 'tool-result',
-				),
-		);
+		// Stream must contain a discrete tool-result chunk for the resumed call
+		const toolResultChunks = chunksOfType(resumedChunks, 'tool-result');
 		expect(toolResultChunks.length).toBeGreaterThan(0);
 
 		// Stream must end with a finish chunk (not error)

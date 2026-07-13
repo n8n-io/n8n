@@ -1,5 +1,3 @@
-import { EventEmitter } from 'node:events';
-import { nanoid } from 'nanoid';
 import type {
 	McpToolCallRequest,
 	McpToolCallResult,
@@ -7,6 +5,8 @@ import type {
 	InstanceAiGatewayCapabilities,
 	ToolCategory,
 } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
+import { EventEmitter } from 'node:events';
 
 const REQUEST_TIMEOUT_MS = 60_000; // 1 minute — tool calls like browser automation and shell execution can be long-running
 
@@ -19,13 +19,19 @@ interface PendingRequest {
 	toolCall: McpToolCallRequest;
 }
 
-export interface LocalGatewayEvent {
+export interface LocalGatewayRequestEvent {
 	type: 'filesystem-request';
 	payload: {
 		requestId: string;
 		toolCall: McpToolCallRequest;
 	};
 }
+
+export interface LocalGatewayDisconnectEvent {
+	type: 'gateway-disconnect';
+}
+
+export type LocalGatewayEvent = LocalGatewayRequestEvent | LocalGatewayDisconnectEvent;
 
 /**
  * Singleton MCP gateway for a connected local client (e.g. the computer-use daemon).
@@ -42,7 +48,7 @@ export interface LocalGatewayEvent {
  * 5. resolveRequest() resolves the pending promise → caller gets McpToolCallResult
  *
  * Resource-access confirmations (GATEWAY_CONFIRMATION_REQUIRED) are handled at the
- * tool layer via Mastra's suspend()/resumeData mechanism — not here.
+ * tool layer via native agents suspend/resume data — not here.
  */
 export class LocalGateway {
 	private readonly pendingRequests = new Map<string, PendingRequest>();
@@ -61,6 +67,8 @@ export class LocalGateway {
 
 	private _availableTools: McpTool[] = [];
 
+	private _excludedToolCategories: ReadonlySet<string> = new Set();
+
 	get isConnected(): boolean {
 		return this._connected;
 	}
@@ -73,20 +81,37 @@ export class LocalGateway {
 		return this._rootPath;
 	}
 
-	/** The MCP tools advertised by the client on connect. */
+	/** Restrict which tool categories are exposed to the agent. Pass an empty set to expose all. */
+	setExcludedToolCategories(categories: string[]): void {
+		this._excludedToolCategories = new Set(categories);
+	}
+
+	private isExcluded(tool: McpTool): boolean {
+		const category = tool.annotations?.category;
+		return category !== undefined && this._excludedToolCategories.has(category);
+	}
+
+	/** The MCP tools advertised by the client on connect, minus excluded categories. */
 	getAvailableTools(): McpTool[] {
-		return this._availableTools;
+		return this._availableTools.filter((t) => !this.isExcluded(t));
 	}
 
 	/** Return tools that belong to the given category (based on annotations.category). */
 	getToolsByCategory(category: string): McpTool[] {
+		if (this._excludedToolCategories.has(category)) return [];
 		return this._availableTools.filter((t) => t.annotations?.category === category);
 	}
 
 	/** Subscribe to outbound tool call events (consumed by the SSE endpoint). */
-	onRequest(listener: (event: LocalGatewayEvent) => void): () => void {
+	onRequest(listener: (event: LocalGatewayRequestEvent) => void): () => void {
 		this.emitter.on('filesystem-request', listener);
 		return () => this.emitter.off('filesystem-request', listener);
+	}
+
+	/** Subscribe to disconnect events so the SSE endpoint can tell the daemon to tear down. */
+	onDisconnect(listener: (event: LocalGatewayDisconnectEvent) => void): () => void {
+		this.emitter.on('gateway-disconnect', listener);
+		return () => this.emitter.off('gateway-disconnect', listener);
 	}
 
 	/** Called when the client uploads its MCP tool capabilities. */
@@ -114,13 +139,17 @@ export class LocalGateway {
 
 		// Resolve with the result as-is (including isError responses) so the tool
 		// layer (create-tools-from-mcp-server.ts) can inspect GATEWAY_CONFIRMATION_REQUIRED
-		// errors and handle them via Mastra suspend().
+		// errors and handle them via native tool suspension.
 		pending.resolve(result ?? { content: [] });
 		return true;
 	}
 
 	/** Mark the gateway as disconnected and reject all pending requests. */
 	disconnect(): void {
+		this.emitter.emit('gateway-disconnect', {
+			type: 'gateway-disconnect',
+		} satisfies LocalGatewayDisconnectEvent);
+
 		this._connected = false;
 		this._connectedAt = null;
 		this._rootPath = null;
@@ -148,7 +177,9 @@ export class LocalGateway {
 			connectedAt: this._connectedAt,
 			directory: this._rootPath,
 			hostIdentifier: this._hostIdentifier,
-			toolCategories: this._toolCategories,
+			toolCategories: this._toolCategories.filter(
+				(category) => !this._excludedToolCategories.has(category.name),
+			),
 		};
 	}
 
@@ -159,6 +190,14 @@ export class LocalGateway {
 	async callTool(toolCall: McpToolCallRequest): Promise<McpToolCallResult> {
 		if (!this._connected) {
 			throw new Error('Local gateway is not connected');
+		}
+
+		const tool = this._availableTools.find((t) => t.name === toolCall.name);
+		if (tool && this.isExcluded(tool)) {
+			return {
+				content: [{ type: 'text', text: `Unknown tool: ${toolCall.name}` }],
+				isError: true,
+			};
 		}
 
 		const requestId = `gw_${nanoid()}`;

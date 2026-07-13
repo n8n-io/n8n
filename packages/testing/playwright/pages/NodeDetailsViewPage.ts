@@ -2,11 +2,20 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
-import { RunDataPanel } from './components/RunDataPanel';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
-import { EditFieldsNode } from './nodes/EditFieldsNode';
+import { ActionToggle } from './components/ActionToggle';
+import { CodeNodeEditor } from './components/CodeNodeEditor';
+import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
+import { InlineExpressionEditor } from './components/InlineExpressionEditor';
+import { NodeCreator } from './components/NodeCreator';
+import { NodeCredentials } from './components/NodeCredentials';
+import { EditFieldsNode } from './components/nodes/EditFieldsNode';
+import { ResourceLocator } from './components/ResourceLocator';
+import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
+
+const containsValue = (value: string) => new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
@@ -14,6 +23,12 @@ export class NodeDetailsViewPage extends BasePage {
 	readonly clipboard: ClipboardHelper;
 	readonly inputPanel = new RunDataPanel(this.container.getByTestId('ndv-input-panel'));
 	readonly outputPanel = new RunDataPanel(this.container.getByTestId('output-panel'));
+	readonly credentials = new NodeCredentials(this.container);
+	readonly inlineExpressionEditor = new InlineExpressionEditor(this.container);
+	readonly resourceLocator = new ResourceLocator(this.container);
+	readonly codeNodeEditor = new CodeNodeEditor(this.container);
+	readonly nodeCreator = new NodeCreator(this.page);
+	readonly actionToggle = new ActionToggle(this.page);
 
 	constructor(page: Page) {
 		super(page);
@@ -23,27 +38,31 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getNodeCredentialsSelect() {
-		return this.container.getByTestId('node-credentials-select');
+		return this.credentials.getSelect();
 	}
 
 	getNodeCredentialsEmptyState() {
-		return this.container.getByTestId('node-credentials-empty-state');
+		return this.credentials.getEmptyState();
+	}
+
+	getNodeCredentialsQuickConnectEmptyState() {
+		return this.credentials.getQuickConnectEmptyState();
 	}
 
 	credentialDropdownCreateNewCredential() {
-		return this.page.getByText('Create new credential');
+		return this.credentials.getCreateNewOption();
 	}
 
 	getCredentialOptionByText(text: string) {
-		return this.page.getByText(text);
+		return this.credentials.getOptionByText(text);
 	}
 
 	getCredentialDropdownOptions() {
-		return this.page.getByRole('option');
+		return this.credentials.getDropdownOptions();
 	}
 
 	getCredentialSelect() {
-		return this.container.getByRole('combobox', { name: 'Select Credential' });
+		return this.credentials.getCombobox();
 	}
 
 	async clickBackToCanvasButton() {
@@ -65,13 +84,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async selectWorkflowResource(createItemText: string, searchText: string = '') {
-		await this.clickByTestId('rlc-input');
-
-		if (searchText) {
-			await this.fillByTestId('rlc-search', searchText);
-		}
-
-		await this.clickByText(createItemText);
+		await this.resourceLocator.selectResource(createItemText, searchText);
 	}
 
 	async togglePinData() {
@@ -111,16 +124,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInlineExpressionEditorPreview() {
-		return this.page.getByTestId('inline-expression-editor-output');
+		return this.inlineExpressionEditor.getPreview();
 	}
 
 	async activateParameterExpressionEditor(parameterName: string) {
-		const parameterInput = this.getParameterInput(parameterName);
-		await parameterInput.click();
-		await this.container
-			.getByTestId(`${parameterName}-parameter-input-options-container`)
-			.getByTestId('radio-button-expression')
-			.click();
+		await this.inlineExpressionEditor.activate(parameterName);
 	}
 
 	getEditPinnedDataButton() {
@@ -139,11 +147,15 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getOutputPanel().getByTestId('ndv-data-container');
 	}
 
+	getOutputDataValues() {
+		return this.getOutputDataContainer().locator('[class*=value_]');
+	}
+
 	async setPinnedData(data: object | string) {
 		const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 		await this.getEditPinnedDataButton().click();
 
-		const editor = this.outputPanel.get().locator('[contenteditable="true"]');
+		const editor = this.outputPanel.getContentEditableEditor();
 		await editor.waitFor();
 		await editor.click();
 		await editor.fill(pinnedData);
@@ -189,11 +201,7 @@ export class NodeDetailsViewPage extends BasePage {
 	 * @returns The inline expression editor input
 	 */
 	getInlineExpressionEditorInput(parameterName?: string) {
-		if (parameterName) {
-			const parameterInput = this.getParameterInput(parameterName);
-			return parameterInput.getByTestId('inline-expression-editor-input');
-		}
-		return this.container.getByTestId('inline-expression-editor-input');
+		return this.inlineExpressionEditor.getInput(parameterName);
 	}
 
 	getNodeParameters() {
@@ -202,10 +210,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterInputHint() {
 		return this.container.getByTestId('parameter-input-hint');
-	}
-
-	getParameterInputHintWithText(text: string) {
-		return this.getParameterInputHint().getByText(text);
 	}
 
 	getInputLabel() {
@@ -217,7 +221,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCredentialsLabel() {
-		return this.container.getByTestId('credentials-label');
+		return this.credentials.getLabel();
 	}
 
 	async makeWebhookRequest(path: string) {
@@ -225,16 +229,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clearExpressionEditor(parameterName?: string) {
-		const editor = this.getInlineExpressionEditorInput(parameterName);
-		await editor.click();
-		await this.page.keyboard.press('ControlOrMeta+A');
-		await this.page.keyboard.press('Delete');
+		await this.inlineExpressionEditor.clear(parameterName);
 	}
 
 	async typeInExpressionEditor(text: string, parameterName?: string) {
-		const editor = this.getInlineExpressionEditorInput(parameterName);
-		await editor.click();
-		await editor.type(text);
+		await this.inlineExpressionEditor.type(text, parameterName);
 	}
 
 	getParameterInput(parameterName: string, index?: number) {
@@ -271,7 +270,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async selectFromVisibleDropdown(optionText: string): Promise<void> {
-		await this.page.getByRole('option', { name: optionText }).click();
+		await this.getVisiblePopoverOption(optionText).click();
 	}
 
 	async fillParameterInputByName(parameterName: string, value: string, index = 0): Promise<void> {
@@ -300,55 +299,55 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickAskAiTab() {
-		await this.container.locator('#tab-ask-ai').click();
+		await this.codeNodeEditor.clickAskAiTab();
 	}
 
 	getAskAiTabPanel() {
-		return this.container.getByTestId('code-node-tab-ai');
+		return this.codeNodeEditor.getAskAiTabPanel();
 	}
 
 	getAskAiCtaButton() {
-		return this.container.getByTestId('ask-ai-cta');
+		return this.codeNodeEditor.getAskAiCtaButton();
 	}
 
 	getAskAiPromptInput() {
-		return this.container.getByTestId('ask-ai-prompt-input');
+		return this.codeNodeEditor.getAskAiPromptInput();
 	}
 
 	getAskAiPromptCounter() {
-		return this.container.getByTestId('ask-ai-prompt-counter');
+		return this.codeNodeEditor.getAskAiPromptCounter();
 	}
 
 	getAskAiCtaTooltipNoInputData() {
-		return this.page.getByTestId('ask-ai-cta-tooltip-no-input-data');
+		return this.codeNodeEditor.getAskAiCtaTooltipNoInputData();
 	}
 
 	getAskAiCtaTooltipNoPrompt() {
-		return this.page.getByTestId('ask-ai-cta-tooltip-no-prompt');
+		return this.codeNodeEditor.getAskAiCtaTooltipNoPrompt();
 	}
 
 	getAskAiCtaTooltipPromptTooShort() {
-		return this.page.getByTestId('ask-ai-cta-tooltip-prompt-too-short');
+		return this.codeNodeEditor.getAskAiCtaTooltipPromptTooShort();
 	}
 
 	getCodeTabPanel() {
-		return this.container.getByTestId('code-node-tab-code');
+		return this.codeNodeEditor.getCodeTabPanel();
 	}
 
 	getCodeTab() {
-		return this.container.locator('#tab-code');
+		return this.codeNodeEditor.getCodeTab();
 	}
 
 	getCodeEditor() {
-		return this.getParameterInput('jsCode').locator('.cm-content');
+		return this.codeNodeEditor.getCodeEditor();
 	}
 
 	getLintErrors() {
-		return this.getParameterInput('jsCode').locator('.cm-lintRange-error');
+		return this.codeNodeEditor.getLintErrors();
 	}
 
 	getLintTooltip() {
-		return this.page.locator('.cm-tooltip-lint');
+		return this.codeNodeEditor.getLintTooltip();
 	}
 
 	getPlaceholderText(text: string) {
@@ -356,21 +355,21 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getHeyAiText() {
-		return this.page.locator('text=Hey AI, generate JavaScript');
+		return this.codeNodeEditor.getHeyAiText();
 	}
 
 	getCodeGenerationCompletedText() {
-		return this.page.locator('text=Code generation completed');
+		return this.codeNodeEditor.getCodeGenerationCompletedText();
 	}
 
 	getErrorMessageText(message: string) {
-		return this.page.locator(`text=${message}`);
+		return this.codeNodeEditor.getErrorMessageText(message);
 	}
 
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
 		await this.getParameterInput(parameterName).click();
 
-		await this.page.getByRole('option', { name: optionText }).click();
+		await this.getVisiblePopoverOption(optionText).click();
 	}
 
 	async changeNodeOperation(operationName: string): Promise<void> {
@@ -396,7 +395,7 @@ export class NodeDetailsViewPage extends BasePage {
 	async selectInputNode(nodeName: string) {
 		const inputSelect = this.inputPanel.getNodeInputOptions();
 		await inputSelect.click();
-		await this.page.getByRole('option', { name: nodeName }).click();
+		await this.getVisiblePopoverOption(nodeName).click();
 	}
 
 	getAssignments(paramName: string) {
@@ -432,15 +431,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceMapperRemoveAllFieldsOption() {
-		return this.page.getByTestId('action-removeAllFields');
+		return this.actionToggle.getAction('removeAllFields');
 	}
 
 	async refreshResourceMapperColumns() {
 		const selectColumn = this.getResourceMapperSelectColumn();
 		await selectColumn.hover();
-		await selectColumn.getByTestId('action-toggle').click();
-		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
-		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
+		await this.actionToggle.open(selectColumn);
+		await expect(this.actionToggle.getAction('refreshFieldList')).toBeVisible();
+		await this.actionToggle.getAction('refreshFieldList').click();
 	}
 
 	getAddValueButton() {
@@ -456,56 +455,51 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInlineExpressionEditorContent() {
-		return this.getInlineExpressionEditorInput().locator('.cm-content');
+		return this.inlineExpressionEditor.getContent();
+	}
+
+	getInlineExpressionEditorLine(index: number) {
+		return this.inlineExpressionEditor.getLine(index);
 	}
 
 	getInlineExpressionEditorOutput() {
-		return this.page.getByTestId('inline-expression-editor-output');
+		return this.inlineExpressionEditor.getOutput();
 	}
 
 	getInlineExpressionEditorItemInput() {
-		return this.page.getByTestId('inline-expression-editor-item-input').locator('input');
+		return this.inlineExpressionEditor.getItemInput();
 	}
 
 	getInlineExpressionEditorItemPrevButton() {
-		return this.page.getByTestId('inline-expression-editor-item-prev');
+		return this.inlineExpressionEditor.getItemPrevButton();
 	}
 
 	getInlineExpressionEditorItemNextButton() {
-		return this.page.getByTestId('inline-expression-editor-item-next');
+		return this.inlineExpressionEditor.getItemNextButton();
 	}
 
 	async expressionSelectNextItem() {
-		await this.getInlineExpressionEditorItemNextButton().click();
+		await this.inlineExpressionEditor.selectNextItem();
 	}
 
 	async expressionSelectPrevItem() {
-		await this.getInlineExpressionEditorItemPrevButton().click();
+		await this.inlineExpressionEditor.selectPrevItem();
 	}
 
 	async openExpressionEditorModal(parameterName: string) {
-		await this.activateParameterExpressionEditor(parameterName);
-		const parameter = this.getParameterInput(parameterName);
-		await parameter.click();
-		const expander = parameter.getByTestId('expander');
-		await expander.click();
-
-		await this.page.getByTestId('expression-modal-input').waitFor({ state: 'visible' });
+		await this.inlineExpressionEditor.openModal(parameterName);
 	}
 
 	getExpressionEditorModalInput() {
-		return this.page.getByTestId('expression-modal-input').getByRole('textbox');
+		return this.inlineExpressionEditor.getModalInput();
 	}
 
 	async fillExpressionEditorModalInput(text: string) {
-		const input = this.getExpressionEditorModalInput();
-		await input.clear();
-		await input.click();
-		await input.fill(text);
+		await this.inlineExpressionEditor.fillModalInput(text);
 	}
 
 	getExpressionEditorModalOutput() {
-		return this.page.getByTestId('expression-modal-output');
+		return this.inlineExpressionEditor.getModalOutput();
 	}
 
 	getAddFieldToSortByButton() {
@@ -514,7 +508,7 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async toggleCodeMode(switchTo: 'Run Once for Each Item' | 'Run Once for All Items') {
 		await this.getParameterInput('mode').click();
-		await this.page.getByRole('option', { name: switchTo }).click();
+		await this.getVisiblePopoverOption(switchTo).click();
 		// eslint-disable-next-line playwright/no-wait-for-timeout
 		await this.page.waitForTimeout(2500);
 	}
@@ -524,7 +518,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPagination() {
-		return this.outputPanel.get().getByTestId('ndv-data-pagination');
+		return this.outputPanel.getPagination();
 	}
 
 	getOutputPaginationPages() {
@@ -559,25 +553,7 @@ export class NodeDetailsViewPage extends BasePage {
 
 	// Credentials modal helpers
 	async clickCreateNewCredential(eq: number = 0): Promise<void> {
-		const setupManually = this.container.getByTestId('setup-manually-link').nth(eq);
-		const setupCredential = this.container.getByTestId('setup-credential-button').nth(eq);
-		const credentialSelect = this.container.getByTestId('node-credentials-select').nth(eq);
-
-		// Wait for one of the three credential UI states to appear
-		await Promise.race([
-			setupManually.waitFor({ state: 'visible', timeout: 10_000 }),
-			setupCredential.waitFor({ state: 'visible', timeout: 10_000 }),
-			credentialSelect.waitFor({ state: 'visible', timeout: 10_000 }),
-		]);
-
-		if (await setupManually.isVisible()) {
-			await setupManually.click();
-		} else if (await setupCredential.isVisible()) {
-			await setupCredential.click();
-		} else {
-			await credentialSelect.click();
-			await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
-		}
+		await this.credentials.clickCreateNew(eq);
 	}
 
 	// Run selector and linking helpers
@@ -621,13 +597,15 @@ export class NodeDetailsViewPage extends BasePage {
 	async changeInputRunSelector(value: string) {
 		const selector = this.inputPanel.getRunSelector();
 		await selector.click();
-		await this.page.getByRole('option', { name: value }).click();
+		await this.getVisiblePopoverOption(value).click();
+		await expect(this.inputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
 	}
 
 	async changeOutputRunSelector(value: string) {
 		const selector = this.outputPanel.getRunSelector();
 		await selector.click();
-		await this.page.getByRole('option', { name: value }).click();
+		await this.getVisiblePopoverOption(value).click();
+		await expect(this.outputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
 	}
 
 	async getInputRunSelectorValue() {
@@ -647,19 +625,19 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async openCodeEditorFullscreen() {
-		await this.container.getByTestId('code-editor-fullscreen-button').click();
+		await this.codeNodeEditor.openFullscreen();
 	}
 
 	getCodeEditorFullscreen() {
-		return this.page.getByTestId('code-editor-fullscreen').locator('.cm-content');
+		return this.codeNodeEditor.getFullscreenEditor();
 	}
 
 	getCodeEditorDialog() {
-		return this.page.locator('.el-dialog');
+		return dialogRootIn(this.page);
 	}
 
 	async closeCodeEditorDialog() {
-		await this.getCodeEditorDialog().locator('.el-dialog__close').click();
+		await dialogCloseIconIn(this.getCodeEditorDialog()).click();
 	}
 
 	getNodeRunSuccessIndicator() {
@@ -762,7 +740,7 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async connectAISubNode(connectionType: string, nodeName: string, index: number = 0) {
 		await this.getAddSubNodeButton(connectionType, index).click();
-		await this.page.getByText(nodeName).click();
+		await this.nodeCreator.selectItem(nodeName);
 		await this.getFloatingNode().click();
 	}
 
@@ -799,6 +777,14 @@ export class NodeDetailsViewPage extends BasePage {
 		await collection.click();
 	}
 
+	getNodeParameterButton(buttonName: string) {
+		return this.getNodeParameters().getByRole('button', { name: buttonName });
+	}
+
+	async clickNodeParameterButton(buttonName: string) {
+		await this.getNodeParameterButton(buttonName).click();
+	}
+
 	getFixedCollectionPropertyPicker(index?: number) {
 		const pickers = this.getNodeParameters().getByTestId('fixed-collection-add-property');
 		return index !== undefined ? pickers.nth(index) : pickers.first();
@@ -807,7 +793,7 @@ export class NodeDetailsViewPage extends BasePage {
 	async addFixedCollectionProperty(propertyName: string, index?: number) {
 		const picker = this.getFixedCollectionPropertyPicker(index);
 		await picker.locator('input').click();
-		await this.page.getByRole('option', { name: propertyName, exact: true }).click();
+		await this.getVisiblePopoverOption(propertyName, { exact: true }).click();
 	}
 
 	getParameterItemWithText(text: string) {
@@ -821,39 +807,39 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceLocator(paramName: string) {
-		return this.container.getByTestId(`resource-locator-${paramName}`);
+		return this.resourceLocator.getContainer(paramName);
 	}
 
 	getResourceLocatorInput(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-input-container');
+		return this.resourceLocator.getInput(paramName);
 	}
 
 	getResourceLocatorInputField(paramName: string) {
-		return this.getResourceLocatorInput(paramName).locator('input');
+		return this.resourceLocator.getInputField(paramName);
 	}
 
 	getResourceLocatorLink(paramName: string) {
-		return this.getResourceLocatorInput(paramName).locator('a');
+		return this.resourceLocator.getLink(paramName);
 	}
 
 	getResourceLocatorModeSelector(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-mode-selector');
+		return this.resourceLocator.getModeSelector(paramName);
 	}
 
 	getResourceLocatorModeSelectorInput(paramName: string) {
-		return this.getResourceLocatorModeSelector(paramName).locator('input');
+		return this.resourceLocator.getModeSelectorInput(paramName);
 	}
 
 	getResourceLocatorErrorMessage(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-error-container');
+		return this.resourceLocator.getErrorMessage(paramName);
 	}
 
 	getResourceLocatorAddCredentials(paramName: string) {
-		return this.getResourceLocatorErrorMessage(paramName).locator('a');
+		return this.resourceLocator.getAddCredentials(paramName);
 	}
 
 	getResourceLocatorSearch(paramName: string) {
-		return this.getResourceLocator(paramName).getByTestId('rlc-search');
+		return this.resourceLocator.getSearch(paramName);
 	}
 
 	getParameterInputIssues() {
@@ -861,11 +847,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceLocatorItems() {
-		return this.page.getByTestId('rlc-item');
+		return this.resourceLocator.getItems();
 	}
 
 	getAddResourceItem() {
-		return this.page.getByTestId('rlc-item-add-resource');
+		return this.resourceLocator.getAddResourceItem();
+	}
+
+	getAddResourceCreateOption() {
+		return this.resourceLocator.getAddResourceCreateOption();
 	}
 
 	getExpressionModeToggle(index: number = 1) {
@@ -873,14 +863,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
-		await this.getResourceLocatorModeSelector(paramName).click();
-		await this.page.getByTestId('mode-id').nth(index).click();
-		const input = this.getResourceLocatorInput(paramName).locator('input');
-		await input.fill(value);
+		await this.resourceLocator.setValue(paramName, value, index);
 	}
 
 	async clickNodeCreatorInsertOneButton() {
-		await this.page.getByText('Insert one').click();
+		await this.nodeCreator.clickInsertOneLink();
 	}
 
 	getInputSelect() {
@@ -895,8 +882,16 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('ai-output-mode-select');
 	}
 
+	getAiOutputModeRadios() {
+		return this.getAiOutputModeToggle().locator('[role="radio"]');
+	}
+
+	getWebhookUrlsContainer() {
+		return this.container.getByText('Webhook URLs').locator('..');
+	}
+
 	getCredentialLabel(credentialType: string) {
-		return this.container.getByText(credentialType);
+		return this.credentials.getLabelByText(credentialType);
 	}
 
 	getFilterComponent(paramName: string) {
@@ -939,21 +934,11 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByText('Listening for test event');
 	}
 
-	getAddOptionDropdown() {
-		return this.container.getByRole('combobox', { name: 'Add option' });
-	}
-
-	async setInvalidExpression({
-		fieldName,
-		invalidExpression,
-	}: {
+	async setInvalidExpression(args: {
 		fieldName: string;
 		invalidExpression?: string;
 	}): Promise<void> {
-		await this.activateParameterExpressionEditor(fieldName);
-		const editor = this.getInlineExpressionEditorInput(fieldName);
-		await editor.click();
-		await this.page.keyboard.type(invalidExpression ?? '{{ =()');
+		await this.inlineExpressionEditor.setInvalid(args);
 	}
 
 	/**
@@ -961,7 +946,6 @@ export class NodeDetailsViewPage extends BasePage {
 	 * @param paramName - The parameter name for the resource locator
 	 */
 	async openResourceLocator(paramName: string): Promise<void> {
-		await this.getResourceLocator(paramName).waitFor({ state: 'visible' });
-		await this.getResourceLocatorInput(paramName).click();
+		await this.resourceLocator.open(paramName);
 	}
 }

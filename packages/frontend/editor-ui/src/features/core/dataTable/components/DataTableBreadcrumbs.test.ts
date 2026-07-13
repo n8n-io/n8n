@@ -61,6 +61,7 @@ const mockDataTable: DataTable = {
 		updatedAt: '2023-01-01T00:00:00.000Z',
 		relations: [],
 		scopes: [],
+		rolesManaged: false,
 	},
 };
 

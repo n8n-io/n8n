@@ -1,6 +1,11 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { ref } from 'vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -9,11 +14,25 @@ import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import * as nodeSettingsUtils from '@/features/ndv/shared/ndv.utils';
 import * as nodeTypesUtils from '@/app/utils/nodeTypesUtils';
-import type { INodeParameters, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodeTypeDescription,
+	NodeParameterValue,
+} from 'n8n-workflow';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import { CHAT_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/app/constants';
+
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
 
 describe('useNodeSettingsParameters', () => {
 	beforeEach(() => {
@@ -27,7 +46,7 @@ describe('useNodeSettingsParameters', () => {
 		beforeEach(() => {
 			setActivePinia(createTestingPinia());
 
-			ndvStore = mockedStore(useNDVStore);
+			ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 			focusPanelStore = mockedStore(useFocusPanelStore);
 
 			ndvStore.activeNode = {
@@ -93,6 +112,116 @@ describe('useNodeSettingsParameters', () => {
 			handleFocus(undefined, 'parameters.foo', parameter);
 
 			expect(focusPanelStore.openWithFocusedNodeParameter).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateNodeParameter $fromAI key reconciliation', () => {
+		const AUTO_MARKER = '/*n8n-auto-generated-fromAI-override*/';
+		const staleOverride = (desc: string) =>
+			`={{ ${AUTO_MARKER} $fromAI('Field_Value', \`${desc}\`, 'string') }}`;
+
+		const toolNodeType: INodeTypeDescription = {
+			version: 1,
+			name: 'testTool',
+			displayName: 'Test Tool',
+			description: '',
+			group: ['transform'],
+			defaults: { name: 'Test Tool' },
+			inputs: [],
+			outputs: [],
+			properties: [
+				{
+					displayName: 'Fields',
+					name: 'fieldsUi',
+					type: 'fixedCollection',
+					default: {},
+					typeOptions: { multipleValues: true },
+					options: [
+						{
+							displayName: 'Field',
+							name: 'fieldValues',
+							values: [
+								{ displayName: 'Field Value', name: 'fieldValue', type: 'string', default: '' },
+							],
+						},
+					],
+				},
+			],
+		};
+
+		const node: INodeUi = {
+			id: 'n1',
+			name: 'My Supabase Tool',
+			type: 'testTool',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const collidingCollection = () => ({
+			fieldValues: [{ fieldValue: staleOverride('A') }, { fieldValue: staleOverride('B') }],
+		});
+
+		let docStore: MockedStore<typeof useWorkflowDocumentStore>;
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia());
+
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(toolNodeType);
+
+			docStore = mockedStore(useWorkflowDocumentStore, createWorkflowDocumentId(''));
+
+			vi.spyOn(nodeSettingsUtils, 'updateDynamicConnections').mockReturnValue(null);
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockReturnValue({
+				...nodeHelpers.useNodeHelpers(),
+				updateNodeParameterIssuesByName: vi.fn(),
+				updateNodeCredentialIssuesByName: vi.fn(),
+			});
+		});
+
+		afterEach(() => {
+			vi.resetAllMocks();
+		});
+
+		const persistedFieldValues = () => {
+			const persisted = vi.mocked(docStore.setNodeParameters).mock.calls[0][0]
+				.value as INodeParameters;
+			return (persisted.fieldsUi as { fieldValues: INodeParameters[] }).fieldValues;
+		};
+
+		it('reindexes colliding auto-generated keys when the node is used as a tool', () => {
+			const { updateNodeParameter } = useNodeSettingsParameters();
+			const collection = collidingCollection();
+
+			updateNodeParameter(
+				ref<INodeParameters>({}),
+				{ name: 'parameters.fieldsUi', value: collection },
+				collection as unknown as NodeParameterValue,
+				node,
+				true,
+			);
+
+			const rows = persistedFieldValues();
+			expect(rows[0].fieldValue).toContain("$fromAI('fieldValues0_Field_Value'");
+			expect(rows[1].fieldValue).toContain("$fromAI('fieldValues1_Field_Value'");
+		});
+
+		it('leaves keys untouched when the node is not a tool', () => {
+			const { updateNodeParameter } = useNodeSettingsParameters();
+			const collection = collidingCollection();
+
+			updateNodeParameter(
+				ref<INodeParameters>({}),
+				{ name: 'parameters.fieldsUi', value: collection },
+				collection as unknown as NodeParameterValue,
+				node,
+				false,
+			);
+
+			const rows = persistedFieldValues();
+			expect(rows[0].fieldValue).toContain("$fromAI('Field_Value'");
+			expect(rows[1].fieldValue).toContain("$fromAI('Field_Value'");
 		});
 	});
 
@@ -460,6 +589,192 @@ describe('useNodeSettingsParameters', () => {
 			});
 		});
 
+		describe('chat trigger public chat policy', () => {
+			const chatTriggerNodeType: INodeTypeDescription = {
+				...mockNodeType,
+				name: CHAT_TRIGGER_NODE_TYPE,
+			};
+
+			const publicParameter: INodeProperties = {
+				name: 'public',
+				type: 'boolean',
+				displayName: 'Make Chat Publicly Available',
+				default: false,
+			};
+
+			const publicOnlyParameter: INodeProperties = {
+				name: 'mode',
+				type: 'options',
+				displayName: 'Mode',
+				default: 'hostedChat',
+				displayOptions: {
+					show: {
+						public: [true],
+					},
+				},
+				options: [],
+			};
+
+			const privateOnlyParameter: INodeProperties = {
+				name: 'options',
+				type: 'collection',
+				displayName: 'Options',
+				default: {},
+				displayOptions: {
+					show: {
+						public: [false],
+						'@version': [1, 1.1],
+					},
+				},
+				options: [],
+			};
+
+			const chatTriggerNode: INodeUi = {
+				id: '1',
+				name: 'Chat Trigger',
+				position: [0, 0],
+				typeVersion: 1,
+				type: CHAT_TRIGGER_NODE_TYPE,
+				parameters: {},
+			};
+
+			it('hides the public toggle when public chat is disabled', async () => {
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+
+				settingsStore.isPublicChatTriggerDisabled = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, chatTriggerNode, publicParameter);
+
+				expect(result).toBe(false);
+				expect(displayParameterSpy).not.toHaveBeenCalled();
+			});
+
+			it('hides public-only settings when public chat is disabled', async () => {
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+
+				settingsStore.isPublicChatTriggerDisabled = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, chatTriggerNode, publicOnlyParameter);
+
+				expect(result).toBe(false);
+				expect(displayParameterSpy).not.toHaveBeenCalled();
+			});
+
+			it('strips public=false display conditions so private settings stay visible', async () => {
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockResolvedValueOnce(true);
+
+				settingsStore.isPublicChatTriggerDisabled = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, chatTriggerNode, privateOnlyParameter);
+
+				expect(result).toBe(true);
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					{},
+					expect.objectContaining({
+						name: 'options',
+						displayOptions: {
+							show: {
+								'@version': [1, 1.1],
+							},
+						},
+					}),
+					'',
+					chatTriggerNode,
+					'displayOptions',
+				);
+			});
+
+			it('uses the stripped parameter after expression resolution', async () => {
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockResolvedValueOnce(true);
+
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: async (expr: string) =>
+						expr === '=resolved' ? 'resolved_value' : expr,
+				}));
+
+				settingsStore.isPublicChatTriggerDisabled = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const nodeParameters = {
+					foo: '=resolved',
+				};
+
+				const result = await shouldDisplayNodeParameter(
+					nodeParameters,
+					chatTriggerNode,
+					privateOnlyParameter,
+				);
+
+				expect(result).toBe(true);
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					{ foo: 'resolved_value' },
+					expect.objectContaining({
+						name: 'options',
+						displayOptions: {
+							show: {
+								'@version': [1, 1.1],
+							},
+						},
+					}),
+					'',
+					chatTriggerNode,
+					'displayOptions',
+				);
+			});
+
+			it('does not change public display conditions on non-chat nodes', async () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockResolvedValueOnce(true);
+
+				settingsStore.isPublicChatTriggerDisabled = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const node: INodeUi = {
+					id: '1',
+					name: 'Other Node',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.other',
+					parameters: {},
+				};
+
+				const result = await shouldDisplayNodeParameter({}, node, privateOnlyParameter);
+
+				expect(result).toBe(true);
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					{},
+					privateOnlyParameter,
+					'',
+					node,
+					'displayOptions',
+				);
+			});
+		});
 		describe('displayOptions handling', () => {
 			it('returns true if displayOptions is undefined', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);

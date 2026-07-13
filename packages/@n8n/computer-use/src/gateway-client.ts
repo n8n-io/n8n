@@ -14,16 +14,20 @@ import {
 	printToolCall,
 	printToolResult,
 } from './logger';
-import type { BrowserModule } from './tools/browser';
+import { BrowserModule } from './tools/browser';
 import { filesystemReadTools, filesystemWriteTools } from './tools/filesystem';
+import { MouseKeyboardModule } from './tools/mouse-keyboard';
+import { ScreenshotModule } from './tools/screenshot';
 import { ShellModule } from './tools/shell';
 import {
 	type AffectedResource,
 	type CallToolResult,
 	type ConfirmResourceAccess,
+	type CreateCredentialPayload,
 	type McpTool,
 	type ResourceDecision,
 	type ToolDefinition,
+	type ToolModule,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	INSTANCE_RESOURCE_DECISION_KEYS,
 } from './tools/types';
@@ -31,6 +35,17 @@ import { formatErrorResult } from './tools/utils';
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const MAX_AUTH_RETRIES = 5;
+
+/** Thrown when the gateway rejects our pairing token with 401/403. */
+export class GatewayAuthError extends Error {
+	constructor(
+		readonly status: number,
+		readonly body: string,
+	) {
+		super(`Gateway rejected token: ${status} ${body}`);
+		this.name = 'GatewayAuthError';
+	}
+}
 
 /** Tag tool definitions with a category annotation (mutates in place for efficiency). */
 function tagCategory(defs: ToolDefinition[], category: string): ToolDefinition[] {
@@ -50,6 +65,8 @@ export interface GatewayClientOptions {
 	confirmResourceAccess: ConfirmResourceAccess;
 	/** Called when the client gives up reconnecting after persistent auth failures. */
 	onPersistentFailure?: () => void;
+	/** Called after disconnect() has finished tearing down the client. */
+	onDisconnected?: () => void;
 }
 
 interface FilesystemRequestEvent {
@@ -58,6 +75,10 @@ interface FilesystemRequestEvent {
 		requestId: string;
 		toolCall: { name: string; arguments: Record<string, unknown> };
 	};
+}
+
+interface GatewayDisconnectEvent {
+	type: 'gateway-disconnect';
 }
 
 /**
@@ -70,6 +91,8 @@ export class GatewayClient {
 	private reconnectDelay = 1000;
 
 	private shouldReconnect = true;
+
+	private disconnected = false;
 
 	/** Consecutive auth failures during reconnection attempts. */
 	private authRetryCount = 0;
@@ -84,16 +107,37 @@ export class GatewayClient {
 
 	private definitionMap: Map<string, ToolDefinition> = new Map();
 
-	private browserModule: BrowserModule | null = null;
+	private readonly modules: ToolModule[] = [
+		ShellModule,
+		ScreenshotModule,
+		MouseKeyboardModule,
+		BrowserModule,
+	];
+
+	/** Teardowns for modules that hold resources; collected as modules activate. */
+	private teardowns: Array<() => Promise<void>> = [];
+
+	/** Diagnostics for permitted-but-unavailable modules; surfaced after connect. */
+	private disabledModuleReports: Array<{ name: string; reason: string; hint?: string }> = [];
 
 	/** Get all registered tool definitions (populated after start). */
 	get tools(): ToolDefinition[] {
 		return this.allDefinitions ?? [];
 	}
 
+	/** Resolved per-category enabled state (populated after start). */
+	get toolCategories(): Array<{ name: string; enabled: boolean; writeAccess?: boolean }> {
+		return this.activeToolCategories;
+	}
+
+	/** Permitted modules that couldn't activate, with why + how to fix (after start). */
+	get disabledModules(): Array<{ name: string; reason: string; hint?: string }> {
+		return this.disabledModuleReports;
+	}
+
 	constructor(private readonly options: GatewayClientOptions) {}
 
-	/** Return the active API key — session key if available, otherwise the original key. */
+	/** Session key when the server has upgraded the pairing token; otherwise the original token. */
 	private get apiKey(): string {
 		return this.sessionKey ?? this.options.apiKey;
 	}
@@ -115,43 +159,73 @@ export class GatewayClient {
 			this.eventSource.close();
 			this.eventSource = null;
 		}
-		if (this.browserModule) await this.browserModule.shutdown();
+		await this.runTeardowns();
 	}
 
-	/** Notify the server we're disconnecting, then close the SSE connection. */
-	async disconnect(): Promise<void> {
+	/**
+	 * Tear down the client. Idempotent: safe to call multiple times.
+	 *
+	 * @param options.notifyServer Whether to POST the disconnect notification to
+	 *   the backend. Skip when the backend initiated the disconnect (e.g. via an
+	 *   SSE `gateway-disconnect` event) — no need to tell it what it told us.
+	 */
+	async disconnect(options: { notifyServer?: boolean } = {}): Promise<void> {
+		if (this.disconnected) return;
+		this.disconnected = true;
 		this.shouldReconnect = false;
-		this.options.session.clearSessionRules();
+		this.options.session.clearSession();
 
-		// POST the disconnect notification BEFORE closing EventSource.
-		// The EventSource keeps the Node.js event loop alive — if we close it
-		// first, Node may exit before the fetch completes.
-		try {
-			const url = `${this.options.url}/rest/instance-ai/gateway/disconnect`;
-			const headers = new Headers();
-			headers.set('Content-Type', 'application/json');
-			headers.set('X-Gateway-Key', this.apiKey);
-			const response = await fetch(url, {
-				method: 'POST',
-				headers,
-				body: '{}',
-				signal: AbortSignal.timeout(3000),
-			});
-			if (response.ok) {
-				printDisconnected();
-			} else {
-				logger.error('Gateway disconnect failed', { status: response.status });
+		const notifyServer = options.notifyServer ?? true;
+		if (notifyServer) {
+			// POST the disconnect notification BEFORE closing EventSource.
+			// The EventSource keeps the Node.js event loop alive — if we close it
+			// first, Node may exit before the fetch completes.
+			try {
+				const url = `${this.options.url}/rest/instance-ai/gateway/disconnect`;
+				const headers = new Headers();
+				headers.set('Content-Type', 'application/json');
+				headers.set('X-Gateway-Key', this.apiKey);
+				const response = await fetch(url, {
+					method: 'POST',
+					headers,
+					body: '{}',
+					signal: AbortSignal.timeout(3000),
+				});
+				if (response.ok) {
+					printDisconnected();
+				} else {
+					logger.error('Gateway disconnect failed', { status: response.status });
+				}
+			} catch (error) {
+				logger.error('Gateway disconnect error', {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
-		} catch (error) {
-			logger.error('Gateway disconnect error', {
-				error: error instanceof Error ? error.message : String(error),
-			});
+		} else {
+			printDisconnected();
 		}
+
 		if (this.eventSource) {
 			this.eventSource.close();
 			this.eventSource = null;
 		}
-		if (this.browserModule) await this.browserModule.shutdown();
+		await this.runTeardowns();
+
+		this.options.onDisconnected?.();
+	}
+
+	/** Run and clear pending module teardowns. Idempotent. */
+	private async runTeardowns(): Promise<void> {
+		const teardowns = this.teardowns;
+		this.teardowns = [];
+		const results = await Promise.allSettled(teardowns.map(async (teardown) => await teardown()));
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				logger.error('Module teardown failed', {
+					error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+				});
+			}
+		}
 	}
 
 	private async getAllDefinitions(): Promise<ToolDefinition[]> {
@@ -176,71 +250,32 @@ export class GatewayClient {
 			writeAccess: fsWriteEnabled,
 		});
 
-		// Computer use modules — check permission mode and platform support
-		// Lazy-load Screenshot and MouseKeyboard to avoid eager native module imports
-		const { ScreenshotModule } = await import('./tools/screenshot');
-		const { MouseKeyboardModule } = await import('./tools/mouse-keyboard');
-
-		const computerModules: Array<{
-			name: string;
-			category: string;
-			enabled: boolean;
-			module: { isSupported(): boolean | Promise<boolean>; definitions: ToolDefinition[] };
-		}> = [
-			{
-				name: 'Shell',
-				category: 'shell',
-				enabled: session.getGroupMode('shell') !== 'deny',
-				module: ShellModule,
-			},
-			{
-				name: 'Screenshot',
-				category: 'screenshot',
-				enabled: session.getGroupMode('computer') !== 'deny',
-				module: ScreenshotModule,
-			},
-			{
-				name: 'MouseKeyboard',
-				category: 'mouse-keyboard',
-				enabled: session.getGroupMode('computer') !== 'deny',
-				module: MouseKeyboardModule,
-			},
-		];
-
-		for (const { name, category, enabled, module } of computerModules) {
-			if (!enabled) {
-				logger.debug('Module denied by permission, skipping', { module: name });
-				categories.push({ name: category, enabled: false });
+		for (const module of this.modules) {
+			if (session.getGroupMode(module.permissionGroup) === 'deny') {
+				logger.debug('Module denied by permission, skipping', { module: module.name });
+				categories.push({ name: module.category, enabled: false });
 				continue;
 			}
-			if (await module.isSupported()) {
-				defs.push(...tagCategory(module.definitions, category));
-				categories.push({ name: category, enabled: true });
-			} else {
-				logger.debug('Module not supported on this platform, skipping', { module: name });
-				categories.push({ name: category, enabled: false });
-			}
-		}
 
-		// Browser
-		if (session.getGroupMode('browser') !== 'deny') {
-			const { BrowserModule: BrowserModuleClass } = await import('./tools/browser');
-			this.browserModule = await BrowserModuleClass.create({
-				...config.browser,
-				logLevel: config.logLevel,
-			});
-			if (this.browserModule) {
-				defs.push(...tagCategory(this.browserModule.definitions, 'browser'));
-				categories.push({ name: 'browser', enabled: true });
-			} else {
-				logger.debug('Module not supported on this platform, skipping', {
-					module: 'Browser',
+			const activation = await module.activate({ config, dir: session.dir });
+			if (!activation.supported) {
+				logger.debug('Module disabled', {
+					module: module.name,
+					reason: activation.reason,
+					...(activation.hint ? { hint: activation.hint } : {}),
 				});
-				categories.push({ name: 'browser', enabled: false });
+				this.disabledModuleReports.push({
+					name: module.name,
+					reason: activation.reason,
+					...(activation.hint ? { hint: activation.hint } : {}),
+				});
+				categories.push({ name: module.category, enabled: false });
+				continue;
 			}
-		} else {
-			logger.debug('Module denied by permission, skipping', { module: 'Browser' });
-			categories.push({ name: 'browser', enabled: false });
+
+			defs.push(...tagCategory(activation.tools, module.category));
+			if (activation.shutdown) this.teardowns.push(activation.shutdown);
+			categories.push({ name: module.category, enabled: true });
 		}
 
 		for (const def of defs) {
@@ -277,6 +312,9 @@ export class GatewayClient {
 
 		if (!response.ok) {
 			const text = await response.text();
+			if (response.status === 401 || response.status === 403) {
+				throw new GatewayAuthError(response.status, text);
+			}
 			throw new Error(`Failed to upload capabilities: ${response.status} ${text}`);
 		}
 
@@ -373,6 +411,13 @@ export class GatewayClient {
 	private async handleMessage(event: MessageEvent): Promise<void> {
 		try {
 			const parsed: unknown = JSON.parse(String(event.data));
+
+			if (isGatewayDisconnectEvent(parsed)) {
+				// Server told us to disconnect — skip the POST-back, it would be circular.
+				await this.disconnect({ notifyServer: false });
+				return;
+			}
+
 			if (!isFilesystemRequestEvent(parsed)) return;
 
 			const { requestId, toolCall } = parsed.payload;
@@ -408,7 +453,34 @@ export class GatewayClient {
 			typeof _confirmation === 'string' ? (_confirmation as ResourceDecision) : undefined;
 
 		const typedArgs: unknown = def.inputSchema.parse(cleanArgs);
-		const context = { dir: this.dir };
+		const session = this.options.session;
+		const instanceUrl = this.options.url;
+		const gatewayKey = this.apiKey;
+		const context = {
+			dir: this.dir,
+			secretsBuffer: {
+				capture: (k: string, f: string, v: string) => session.captureSecret(k, f, v),
+				getFields: (k: string) => session.getSecretFields(k),
+				clear: (k: string) => session.clearSecrets(k),
+			},
+			createCredential: async (payload: CreateCredentialPayload) => {
+				const url = `${instanceUrl}/rest/instance-ai/gateway/credentials`;
+				const headers = new Headers();
+				headers.set('Content-Type', 'application/json');
+				headers.set('X-Gateway-Key', gatewayKey);
+				const res = await fetch(url, {
+					method: 'POST',
+					headers,
+					body: JSON.stringify(payload),
+				});
+				if (!res.ok) {
+					const text = await res.text();
+					throw new Error(`Credential creation failed: ${res.status} ${text}`);
+				}
+				const body = (await res.json()) as { data: { credentialId: string } };
+				return { credentialId: body.data.credentialId };
+			},
+		};
 
 		const resources = await def.getAffectedResources(typedArgs, context);
 		await this.checkPermissions(resources, decision);
@@ -435,7 +507,7 @@ export class GatewayClient {
 
 			let resolvedDecision: ResourceDecision;
 
-			if (decision) {
+			if (decision && config.permissionConfirmation === 'instance') {
 				resolvedDecision = decision;
 			} else if (config.permissionConfirmation === 'instance') {
 				throw new Error(
@@ -496,6 +568,11 @@ export class GatewayClient {
 }
 
 // ── Type guard ──────────────────────────────────────────────────────────────
+
+function isGatewayDisconnectEvent(data: unknown): data is GatewayDisconnectEvent {
+	if (typeof data !== 'object' || data === null) return false;
+	return (data as Record<string, unknown>).type === 'gateway-disconnect';
+}
 
 function isFilesystemRequestEvent(data: unknown): data is FilesystemRequestEvent {
 	if (typeof data !== 'object' || data === null) return false;

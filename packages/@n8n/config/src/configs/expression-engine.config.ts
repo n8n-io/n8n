@@ -34,6 +34,30 @@ export class ExpressionEngineConfig {
 	@Env('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT')
 	bridgeMemoryLimit: number = 128;
 
+	/**
+	 * Whether to emit observability signals (metrics, traces, logs) for the VM evaluator.
+	 * Only takes effect when `engine === 'vm'`; legacy mode never emits expression metrics
+	 * regardless of this setting.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_OBSERVABILITY_ENABLED')
+	observabilityEnabled: boolean = true;
+
+	/**
+	 * Whether to emit OpenTelemetry spans for expression evaluation.
+	 * Slow evaluations (>slowEvaluationThresholdMs) and errors always emit a span.
+	 * Healthy-path evaluations are sampled at tracesSampleRate.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_TRACES_ENABLED')
+	tracesEnabled: boolean = true;
+
+	/** Threshold in ms above which an evaluation is considered "slow" and gets a span. */
+	@Env('N8N_EXPRESSION_ENGINE_SLOW_EVAL_THRESHOLD_MS', z.number({ coerce: true }).positive())
+	slowEvaluationThresholdMs: number = 50;
+
+	/** Head-based sampling rate (0.0–1.0) for healthy-path spans. Slow and erroring expressions always emit. */
+	@Env('N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE', z.number({ coerce: true }).min(0).max(1))
+	tracesSampleRate: number = 0.0;
+
 	/** If set, scale the pool to 0 warm isolates after this many seconds with no acquire. */
 	@Env('N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT')
 	idleTimeout?: number;

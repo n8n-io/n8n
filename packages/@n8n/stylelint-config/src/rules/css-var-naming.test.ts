@@ -20,14 +20,26 @@ describe('css-var-naming rule', () => {
 	describe('namespace validation', () => {
 		it('should accept valid n8n namespace', async () => {
 			const namespacePattern = `
-				:root {
-					--n8n--color--primary: #0d6efd;
-					--n8n--button--color--background--primary: #0d6efd;
-					--n8n--button--color--background--primary--hover: #0b5ed7;
-					--n8n--color--text--muted: #888;
-				}
-			`;
+					:root {
+						--n8n--color--primary: #0d6efd;
+						--n8n--button--color--background--primary: #0d6efd;
+						--n8n--button--color--background--primary--hover: #0b5ed7;
+						--n8n--color--text--muted: #888;
+					}
+				`;
 			const result = await lintCSS(namespacePattern);
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('should bypass validation for custom n8n-prefixed variables', async () => {
+			const customN8nVars = `
+					:root {
+						--n8n--my-custom-token: #0d6efd;
+						--n8n--x: 1;
+						color: var(--n8n--my-custom-token);
+					}
+				`;
+			const result = await lintCSS(customN8nVars);
 			expect(result.warnings).toHaveLength(0);
 		});
 
@@ -145,18 +157,17 @@ describe('css-var-naming rule', () => {
 			});
 		});
 
-		it('should reject properties without values', async () => {
-			const invalidPattern = `
+		it('should accept standalone properties without values', async () => {
+			const validPattern = `
 				:root {
-					--color: #0d6efd;
-					--spacing: 4px;
+					--background: #fff;
+					--icon-color: #999;
+					--text-color: #222;
+					--border-color: #ddd;
 				}
 			`;
-			const result = await lintCSS(invalidPattern);
-			expect(result.warnings.length).toBeGreaterThan(0);
-			expect(result.warnings[0]).toMatchObject({
-				text: expect.stringContaining('Must have at least 2 groups'),
-			});
+			const result = await lintCSS(validPattern);
+			expect(result.warnings).toHaveLength(0);
 		});
 
 		it('should reject spacing property without value', async () => {
@@ -1028,13 +1039,13 @@ describe('css-var-naming rule', () => {
 		it('should reject invalid CSS variables in var() references', async () => {
 			const invalidVarReferences = `
 				.button {
-					background: var(--button-color--background);
+					background: var(--button-color);
 				}
 			`;
 			const result = await lintCSS(invalidVarReferences);
 			expect(result.warnings.length).toBeGreaterThan(0);
 			expect(result.warnings[0]).toMatchObject({
-				text: expect.stringContaining('Must include a valid property'),
+				text: expect.stringContaining('Must have at least 2 groups'),
 			});
 		});
 

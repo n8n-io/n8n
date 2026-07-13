@@ -32,6 +32,13 @@ let prompt;
 
 if (useRaw) {
 	prompt = task;
+} else if (task.startsWith('/')) {
+	// Task is a skill invocation (e.g. "/n8n:linear-issue CAT-2820").
+	// Wrap it so the model invokes the Skill tool instead of implementing code.
+	prompt = `# Skill Invocation
+Invoke the following skill using the Skill tool and follow its instructions.
+
+${task}`;
 } else {
 	// List available templates so Claude knows what exists (reads them if needed)
 	const templateDir = '.github/claude-templates';

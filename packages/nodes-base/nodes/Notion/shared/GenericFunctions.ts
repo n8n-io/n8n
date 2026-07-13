@@ -18,7 +18,7 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
 import { blockUrlExtractionRegexp, databasePageUrlValidationRegexp } from './constants';
@@ -91,6 +91,9 @@ export async function notionApiRequestAllItems(
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0);
 
+	const limit = query.limit as number | undefined;
+	delete query.limit;
+
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -104,13 +107,12 @@ export async function notionApiRequestAllItems(
 			body.start_cursor = next_cursor;
 		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		const limit = query.limit as number | undefined;
 		if (limit && limit <= returnData.length) {
-			return returnData;
+			return returnData.slice(0, limit);
 		}
 	} while (responseData.has_more !== false);
 
-	return returnData;
+	return limit ? returnData.slice(0, limit) : returnData;
 }
 
 export async function notionApiRequestGetBlockChildrens(
@@ -481,10 +483,14 @@ function getPropertyKeyValue(
 }
 
 function getNameAndType(key: string) {
-	const [name, type] = key.split('|');
+	const delimiterIndex = key.lastIndexOf('|');
+	if (delimiterIndex === -1) {
+		return { name: key, type: '' };
+	}
+
 	return {
-		name,
-		type,
+		name: key.slice(0, delimiterIndex),
+		type: key.slice(delimiterIndex + 1),
 	};
 }
 
@@ -496,37 +502,25 @@ export function mapProperties(
 ) {
 	return properties
 		.filter(
-			(property): property is Record<string, { key: string; [k: string]: any }> =>
-				typeof property.key === 'string',
+			(property): property is IDataObject & { key: string } => typeof property.key === 'string',
 		)
-		.map(
-			(property) =>
-				[
-					`${property.key.split('|')[0]}`,
-					getPropertyKeyValue.call(
-						this,
-						property,
-						property.key.split('|')[1] as string,
-						timezone,
-						version,
-					),
-				] as const,
-		)
+		.map((property) => {
+			const { name, type } = getNameAndType(property.key);
+			return [name, getPropertyKeyValue.call(this, property, type, timezone, version)] as const;
+		})
 		.filter(([, value]) => value)
-		.reduce(
-			(obj, [key, value]) =>
-				Object.assign(obj, {
-					[key]: value,
-				}),
-			{},
-		);
+		.reduce((obj, [key, value]) => {
+			setSafeObjectProperty(obj, key, value);
+			return obj;
+		}, {} as IDataObject);
 }
 
 export function mapSorting(data: SortData[]) {
 	return data.map((sort) => {
+		const { name } = getNameAndType(sort.key);
 		return {
 			direction: sort.direction,
-			[sort.timestamp ? 'timestamp' : 'property']: sort.key.split('|')[0],
+			[sort.timestamp ? 'timestamp' : 'property']: name,
 		};
 	});
 }
@@ -662,9 +656,14 @@ export function getPropertyTitle(properties: { [key: string]: any }) {
 	);
 }
 
-function prepend(stringKey: string, properties: { [key: string]: any }) {
+// Fold non-ASCII to separators so keys keep their pre-change-case-v5 shape (é → `_`).
+const foldedSnakeCase = (value: string) => snakeCase(value.replace(/[^\x20-\x7E]/g, ' '));
+
+function prepend(stringKey: string, properties: { [key: string]: any }, version: number) {
+	// Pre-v3 restores the old ASCII key shape so existing workflows keep resolving.
+	const toKey = version >= 3 ? snakeCase : foldedSnakeCase;
 	for (const key of Object.keys(properties)) {
-		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
+		properties[`${stringKey}_${toKey(key)}`] = properties[key];
 		delete properties[key];
 	}
 	return properties;
@@ -675,30 +674,33 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 		objects = [objects];
 	}
 	const results: IDataObject[] = [];
-	for (const { object, id, properties, parent, title, json, binary, url } of objects) {
-		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {
+	const notV1 = version > 1;
+	for (const { object, id, properties, parent, title, name, json, binary, url } of objects) {
+		if (object === 'page' && (parent?.type === 'page_id' || parent?.type === 'workspace')) {
 			results.push({
 				id,
 				name: properties.title.title[0].plain_text,
-				...(version === 2 ? { url } : {}),
+				...(notV1 ? { url } : {}),
 			});
-		} else if (object === 'page' && parent.type === 'database_id') {
+		} else if (object === 'page') {
 			results.push({
 				id,
-				...(version === 2 ? { name: getPropertyTitle(properties as IDataObject) } : {}),
-				...(version === 2 ? { url } : {}),
-				...(version === 2
-					? { ...prepend('property', simplifyProperties(properties) as IDataObject) }
+				...(notV1 ? { name: getPropertyTitle(properties as IDataObject) } : {}),
+				...(notV1 ? { url } : {}),
+				...(notV1
+					? { ...prepend('property', simplifyProperties(properties) as IDataObject, version) }
 					: { ...simplifyProperties(properties) }),
 			} as IDataObject);
-		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
+		} else if (download && json.object === 'page') {
 			results.push({
 				json: {
 					id: json.id,
-					...(version === 2 ? { name: getPropertyTitle(json.properties as IDataObject) } : {}),
-					...(version === 2 ? { url: json.url } : {}),
-					...(version === 2
-						? { ...prepend('property', simplifyProperties(json.properties) as IDataObject) }
+					...(notV1 ? { name: getPropertyTitle(json.properties as IDataObject) } : {}),
+					...(notV1 ? { url: json.url } : {}),
+					...(notV1
+						? {
+								...prepend('property', simplifyProperties(json.properties) as IDataObject, version),
+							}
 						: { ...simplifyProperties(json.properties) }),
 				},
 				binary,
@@ -706,10 +708,14 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 		} else if (object === 'database') {
 			results.push({
 				id,
-				...(version === 2
-					? { name: title[0]?.plain_text || '' }
-					: { title: title[0]?.plain_text || '' }),
-				...(version === 2 ? { url } : {}),
+				...(notV1 ? { name: title[0]?.plain_text || '' } : { title: title[0]?.plain_text || '' }),
+				...(notV1 ? { url } : {}),
+			});
+		} else if (object === 'data_source') {
+			results.push({
+				id,
+				name: name ?? title?.[0]?.plain_text ?? '',
+				url,
 			});
 		}
 	}
@@ -924,10 +930,10 @@ export function getPageId(this: IExecuteFunctions, i: number) {
 		if (page.mode === 'id') {
 			pageId = page.value;
 		} else if (page.value.includes('p=')) {
-			// e.g https://www.notion.so/xxxxx?v=xxxxx&p=xxxxx&pm=s
+			// e.g https://www.notion.so/xxxxx?v=xxxxx&p=xxxxx&pm=s or https://www.notion.com/xxxxx?v=xxxxx&p=xxxxx&pm=s
 			pageId = new URLSearchParams(page.value).get('p') || '';
 		} else {
-			// e.g https://www.notion.so/page_name-xxxxx
+			// e.g https://www.notion.so/page_name-xxxxx or https://www.notion.com/page_name-xxxxx
 			pageId = page.value.match(databasePageUrlValidationRegexp)?.[1] || '';
 		}
 	}
@@ -942,16 +948,16 @@ export function getPageId(this: IExecuteFunctions, i: number) {
 	return pageId;
 }
 
-export function extractDatabaseId(database: string) {
-	if (database.includes('?v=')) {
-		const data = database.split('?v=')[0].split('/');
+export function extractResourceId(resource: string): string {
+	if (resource.includes('?v=')) {
+		const data = resource.split('?v=')[0].split('/');
 		const index = data.length - 1;
 		return data[index];
-	} else if (database.includes('/')) {
-		const index = database.split('/').length - 1;
-		return database.split('/')[index];
+	} else if (resource.includes('/')) {
+		const index = resource.split('/').length - 1;
+		return resource.split('/')[index];
 	} else {
-		return database;
+		return resource;
 	}
 }
 

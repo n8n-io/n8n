@@ -3,14 +3,8 @@ import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as evaluationsApi from './evaluation.api';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
+import type { AddDatasetRowDto, EvaluationConfigDto } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
-import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 export const useEvaluationStore = defineStore(
@@ -21,14 +15,10 @@ export const useEvaluationStore = defineStore(
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
 		const testCaseExecutionsById = ref<Record<string, TestCaseExecutionRecord>>({});
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
+		const evaluationConfigsByWorkflowId = ref<Record<string, EvaluationConfigDto[]>>({});
 
 		// Store instances
 		const rootStore = useRootStore();
-		const workflowsStore = useWorkflowsStore();
-		const workflowDocumentStore = computed(() =>
-			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-		);
-		const nodeTypesStore = useNodeTypesStore();
 		const settingsStore = useSettingsStore();
 
 		// Computed
@@ -50,42 +40,6 @@ export const useEvaluationStore = defineStore(
 			);
 		});
 
-		const evaluationTriggerExists = computed(() => {
-			return workflowDocumentStore.value.allNodes.some(
-				(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
-			);
-		});
-
-		function evaluationNodeExist(operation: string) {
-			return workflowDocumentStore.value.allNodes.some((node) => {
-				if (node.type !== EVALUATION_NODE_TYPE) {
-					return false;
-				}
-
-				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-				if (!nodeType) return false;
-
-				const nodeParameters = NodeHelpers.getNodeParameters(
-					nodeType.properties,
-					node.parameters,
-					true,
-					false,
-					node,
-					nodeType,
-				);
-
-				return nodeParameters?.operation === operation;
-			});
-		}
-
-		const evaluationSetMetricsNodeExist = computed(() => {
-			return evaluationNodeExist('setMetrics');
-		});
-
-		const evaluationSetOutputsNodeExist = computed(() => {
-			return evaluationNodeExist('setOutputs');
-		});
-
 		// Methods
 
 		const fetchTestCaseExecutions = async (params: { workflowId: string; runId: string }) => {
@@ -96,7 +50,12 @@ export const useEvaluationStore = defineStore(
 			);
 
 			testCaseExecutions.forEach((testCaseExecution) => {
-				testCaseExecutionsById.value[testCaseExecution.id] = testCaseExecution;
+				// API doesn't surface the FK; stamp it so callers can filter
+				// `testCaseExecutionsById` by run.
+				testCaseExecutionsById.value[testCaseExecution.id] = {
+					...testCaseExecution,
+					testRunId: params.runId,
+				};
 			});
 
 			return testCaseExecutions;
@@ -125,8 +84,15 @@ export const useEvaluationStore = defineStore(
 			return run;
 		};
 
-		const startTestRun = async (workflowId: string) => {
-			const result = await evaluationsApi.startTestRun(rootStore.restApiContext, workflowId);
+		const startTestRun = async (
+			workflowId: string,
+			options?: evaluationsApi.StartTestRunOptions,
+		) => {
+			const result = await evaluationsApi.startTestRun(
+				rootStore.restApiContext,
+				workflowId,
+				options,
+			);
 			return result;
 		};
 
@@ -139,6 +105,25 @@ export const useEvaluationStore = defineStore(
 			return result;
 		};
 
+		const cancelTestCase = async (params: {
+			workflowId: string;
+			runId: string;
+			caseId: string;
+		}) => {
+			const result = await evaluationsApi.cancelTestCase(
+				rootStore.restApiContext,
+				params.workflowId,
+				params.runId,
+				params.caseId,
+			);
+			// Optimistically reflect the new status until the next poll arrives.
+			const cached = testCaseExecutionsById.value[params.caseId];
+			if (cached) {
+				testCaseExecutionsById.value[params.caseId] = { ...cached, status: 'cancelled' };
+			}
+			return result;
+		};
+
 		const deleteTestRun = async (params: { workflowId: string; runId: string }) => {
 			const result = await evaluationsApi.deleteTestRun(rootStore.restApiContext, params);
 			if (result.success) {
@@ -148,6 +133,43 @@ export const useEvaluationStore = defineStore(
 			return result;
 		};
 
+		// Evaluation config + dataset methods
+
+		const fetchEvaluationConfigs = async (workflowId: string) => {
+			const configs = await evaluationsApi.listEvaluationConfigs(
+				rootStore.restApiContext,
+				workflowId,
+			);
+			evaluationConfigsByWorkflowId.value[workflowId] = configs;
+			return configs;
+		};
+
+		const getDatasetCandidate = async (params: {
+			workflowId: string;
+			configId: string;
+			executionId: string;
+		}) => {
+			return await evaluationsApi.getDatasetCandidate(
+				rootStore.restApiContext,
+				params.workflowId,
+				params.configId,
+				params.executionId,
+			);
+		};
+
+		const addExecutionToDataset = async (params: {
+			workflowId: string;
+			configId: string;
+			payload: AddDatasetRowDto;
+		}) => {
+			return await evaluationsApi.addDatasetRow(
+				rootStore.restApiContext,
+				params.workflowId,
+				params.configId,
+				params.payload,
+			);
+		};
+
 		// TODO: This is a temporary solution to poll for test run status.
 		// We should use a more efficient polling mechanism in the future.
 		const startPollingTestRun = (workflowId: string, runId: string) => {
@@ -155,8 +177,14 @@ export const useEvaluationStore = defineStore(
 				try {
 					const run = await getTestRun({ workflowId, runId });
 					if (['running', 'new'].includes(run.status)) {
+						// Also refresh per-case rows so the run detail page can
+						// surface running / completed cases as they progress.
+						await fetchTestCaseExecutions({ workflowId, runId }).catch(() => {});
 						pollingTimeouts.value[runId] = setTimeout(poll, 1000);
 					} else {
+						// One last refresh so any cases that finished between
+						// polls (or just arrived as 'success'/'error') land.
+						await fetchTestCaseExecutions({ workflowId, runId }).catch(() => {});
 						delete pollingTimeouts.value[runId];
 					}
 				} catch (error) {
@@ -178,14 +206,12 @@ export const useEvaluationStore = defineStore(
 			// State
 			testRunsById,
 			testCaseExecutionsById,
+			evaluationConfigsByWorkflowId,
 
 			// Computed
 			isLoading,
 			isEvaluationEnabled,
 			testRunsByWorkflowId,
-			evaluationTriggerExists,
-			evaluationSetMetricsNodeExist,
-			evaluationSetOutputsNodeExist,
 
 			// Methods
 			fetchTestCaseExecutions,
@@ -193,8 +219,12 @@ export const useEvaluationStore = defineStore(
 			getTestRun,
 			startTestRun,
 			cancelTestRun,
+			cancelTestCase,
 			deleteTestRun,
+			fetchEvaluationConfigs,
 			cleanupPolling,
+			getDatasetCandidate,
+			addExecutionToDataset,
 		};
 	},
 	{},

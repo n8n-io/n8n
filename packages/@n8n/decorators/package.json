@@ -1,11 +1,12 @@
 {
   "name": "@n8n/decorators",
-  "version": "1.18.0",
+  "version": "1.30.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -26,6 +27,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/lodash": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:",
     "zod": "catalog:"
   },
@@ -36,5 +38,6 @@
     "@n8n/permissions": "workspace:*",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

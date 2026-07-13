@@ -1,19 +1,11 @@
 {
   "name": "@n8n/utils",
   "type": "module",
-  "version": "1.29.0",
+  "version": "1.38.0",
   "files": [
     "dist"
   ],
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    },
     "./dist/*": {
       "types": "./dist/*.d.mts",
       "import": "./dist/*.mjs",
@@ -25,9 +17,18 @@
       "require": "./dist/*.cjs"
     }
   },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*.d.cts"
+      ]
+    }
+  },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "dev": "tsdown --watch",
     "build": "tsdown",
+    "build:unchecked": "pnpm run build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -53,5 +54,5 @@
     "vite": "catalog:",
     "vitest": "catalog:"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -1,13 +1,17 @@
 <script lang="ts" setup>
 import { N8nCard, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
 
+const i18n = useI18n();
+
 const props = defineProps<{
-	type: 'workflow' | 'data-table';
+	type: 'workflow' | 'data-table' | 'agent';
 	name: string;
 	resourceId: string;
 	projectId?: string;
 	metadata?: string;
+	archived?: boolean;
 }>();
 
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
@@ -15,13 +19,26 @@ const openDataTablePreview = inject<((id: string, projectId: string) => void) | 
 	'openDataTablePreview',
 	undefined,
 );
+const openAgentPreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openAgentPreview',
+	undefined,
+);
 
 const iconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
+	agent: 'robot',
 };
 
 const icon = computed(() => iconMap[props.type] ?? 'file');
+
+function projectResourceUrl(projectId: string | undefined, resourceType: 'data-table' | 'agent') {
+	if (resourceType === 'agent') {
+		return projectId ? `/projects/${projectId}/agents/${props.resourceId}` : '/home/agents';
+	}
+
+	return projectId ? `/projects/${projectId}/datatables/${props.resourceId}` : '/data-tables';
+}
 
 function handleClick(e: MouseEvent) {
 	if (props.type === 'workflow') {
@@ -32,28 +49,42 @@ function handleClick(e: MouseEvent) {
 		openPreview?.(props.resourceId);
 	} else if (props.type === 'data-table') {
 		if (e.metaKey || e.ctrlKey) {
-			const url = props.projectId
-				? `/projects/${props.projectId}/datatables/${props.resourceId}`
-				: '/data-tables';
-			window.open(url, '_blank');
+			window.open(projectResourceUrl(props.projectId, 'data-table'), '_blank');
 			return;
 		}
 		if (props.projectId) {
 			openDataTablePreview?.(props.resourceId, props.projectId);
+		}
+	} else if (props.type === 'agent') {
+		if (e.metaKey || e.ctrlKey) {
+			window.open(projectResourceUrl(props.projectId, 'agent'), '_blank');
+			return;
+		}
+		if (props.projectId) {
+			openAgentPreview?.(props.resourceId, props.projectId);
 		}
 	}
 }
 </script>
 
 <template>
-	<N8nCard :class="$style.card" @click="handleClick">
+	<N8nCard
+		data-test-id="instance-ai-artifact-card"
+		:class="[$style.card, props.archived && $style.cardArchived]"
+		@click="handleClick"
+	>
 		<template #prepend>
 			<N8nIcon :icon="icon" size="large" :class="$style.icon" />
 		</template>
 		<template #header>
 			<N8nText>{{ props.name }}</N8nText>
+			<span v-if="props.archived" :class="$style.archivedBadge">
+				{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
+			</span>
 		</template>
-		<N8nText v-if="props.metadata" :class="$style.metadata">{{ props.metadata }}</N8nText>
+		<N8nText v-if="props.metadata" color="text-light" :class="$style.metadata">
+			{{ props.metadata }}
+		</N8nText>
 	</N8nCard>
 </template>
 
@@ -66,6 +97,19 @@ function handleClick(e: MouseEvent) {
 	&:hover {
 		box-shadow: var(--shadow--card-hover);
 	}
+}
+
+.cardArchived {
+	opacity: 0.55;
+}
+
+.archivedBadge {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	background: var(--color--foreground--tint-1);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius--sm);
+	margin-left: var(--spacing--2xs);
 }
 
 .icon {
@@ -83,8 +127,6 @@ function handleClick(e: MouseEvent) {
 }
 
 .metadata {
-	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
-	color: var(--text-color--subtler);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

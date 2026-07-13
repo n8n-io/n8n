@@ -5,16 +5,17 @@ import type {
 	AiBuilderChatRequestDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
-import { mock } from 'jest-mock-extended';
-
-import { AiController, type FlushableResponse } from '../ai.controller';
+import { APIResponseError, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import { mock } from 'vitest-mock-extended';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
+
+import { AiController, type FlushableResponse } from '../ai.controller';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();
@@ -36,7 +37,7 @@ describe('AiController', () => {
 	const response = mock<FlushableResponse>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		response.header.mockReturnThis();
 		response.status.mockReturnThis();
@@ -49,7 +50,7 @@ describe('AiController', () => {
 			aiService.chat.mockResolvedValue(
 				mock<Response>({
 					body: mock({
-						pipeTo: jest.fn().mockImplementation(async (writableStream) => {
+						pipeTo: vi.fn().mockImplementation(async (writableStream) => {
 							// Simulate stream writing
 							const writer = writableStream.getWriter();
 							await writer.write(JSON.stringify({ message: 'test response' }));
@@ -77,11 +78,17 @@ describe('AiController', () => {
 			);
 		});
 
+		it('should map missing AI assistant sessions to NotFoundError', async () => {
+			aiService.chat.mockRejectedValue(new APIResponseError('Session not found', 404));
+
+			await expect(controller.chat(request, response, payload)).rejects.toThrow(NotFoundError);
+		});
+
 		it('should register a close handler on the response for abort', async () => {
 			aiService.chat.mockResolvedValue(
 				mock<Response>({
 					body: mock({
-						pipeTo: jest.fn().mockResolvedValue(undefined),
+						pipeTo: vi.fn().mockResolvedValue(undefined),
 					}),
 				}),
 			);
@@ -95,7 +102,7 @@ describe('AiController', () => {
 			aiService.chat.mockResolvedValue(
 				mock<Response>({
 					body: mock({
-						pipeTo: jest.fn().mockResolvedValue(undefined),
+						pipeTo: vi.fn().mockResolvedValue(undefined),
 					}),
 				}),
 			);
@@ -111,7 +118,7 @@ describe('AiController', () => {
 			aiService.chat.mockResolvedValue(
 				mock<Response>({
 					body: mock({
-						pipeTo: jest.fn().mockRejectedValue(abortError),
+						pipeTo: vi.fn().mockRejectedValue(abortError),
 					}),
 				}),
 			);
@@ -123,7 +130,7 @@ describe('AiController', () => {
 		});
 
 		it('should pass abort signal to pipeTo', async () => {
-			const pipeToMock = jest.fn().mockResolvedValue(undefined);
+			const pipeToMock = vi.fn().mockResolvedValue(undefined);
 
 			aiService.chat.mockResolvedValue(
 				mock<Response>({
@@ -326,7 +333,7 @@ describe('AiController', () => {
 				let abortSignalPassed: AbortSignal | undefined;
 
 				// Mock response.on to capture the close handler
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -406,7 +413,7 @@ describe('AiController', () => {
 				let abortHandler: (() => void) | undefined;
 				let abortSignalPassed: AbortSignal | undefined;
 
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -455,8 +462,8 @@ describe('AiController', () => {
 			});
 
 			it('should cleanup abort listener on successful completion', async () => {
-				const onSpy = jest.spyOn(response, 'on');
-				const offSpy = jest.spyOn(response, 'off');
+				const onSpy = response.on;
+				const offSpy = response.off;
 
 				async function* mockGenerator() {
 					yield { messages: [{ role: 'assistant', type: 'message', text: 'Complete' } as const] };
@@ -525,6 +532,51 @@ describe('AiController', () => {
 			workflowBuilderService.clearSession.mockRejectedValue(mockError);
 
 			await expect(controller.clearSession(request, response, payload)).rejects.toThrow(
+				InternalServerError,
+			);
+		});
+	});
+
+	describe('getSessions', () => {
+		it('should call workflowBuilderService.getSessions with correct parameters', async () => {
+			const mockSessions = { sessions: [] };
+			const payload = { workflowId: 'workflow123' };
+
+			workflowBuilderService.getSessions.mockResolvedValue(mockSessions);
+
+			const result = await controller.getSessions(request, response, payload);
+
+			expect(workflowBuilderService.getSessions).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+				undefined,
+			);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should forward the codeBuilder flag to the service', async () => {
+			const mockSessions = { sessions: [] };
+			const payload = { workflowId: 'workflow123', codeBuilder: true as const };
+
+			workflowBuilderService.getSessions.mockResolvedValue(mockSessions);
+
+			const result = await controller.getSessions(request, response, payload);
+
+			expect(workflowBuilderService.getSessions).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+				true,
+			);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = { workflowId: 'workflow123' };
+			const mockError = new Error('Database error');
+
+			workflowBuilderService.getSessions.mockRejectedValue(mockError);
+
+			await expect(controller.getSessions(request, response, payload)).rejects.toThrow(
 				InternalServerError,
 			);
 		});

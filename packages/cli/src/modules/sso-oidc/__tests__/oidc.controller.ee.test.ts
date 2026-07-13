@@ -3,10 +3,11 @@ import type { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { GLOBAL_MEMBER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
 import { type Request, type Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import type { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 
@@ -14,6 +15,7 @@ import { OidcController } from '../oidc.controller.ee';
 import type { OidcService } from '../oidc.service.ee';
 
 const authService = mock<AuthService>();
+const eventService = mock<EventService>();
 const oidcService = mock<OidcService>();
 const urlService = mock<UrlService>();
 const globalConfig = mock<GlobalConfig>();
@@ -24,6 +26,7 @@ const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
 const controller = new OidcController(
 	oidcService,
 	authService,
+	eventService,
 	urlService,
 	globalConfig,
 	logger,
@@ -42,7 +45,7 @@ const user = mock<User>({
 
 describe('OidcController', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Mock URL service
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
@@ -83,6 +86,10 @@ describe('OidcController', () => {
 
 			// Verify that issueCookie was called with MFA flag set to true
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-in', {
+				user,
+				authenticationMethod: 'oidc',
+			});
 
 			// Verify redirect to home page
 			expect(res.redirect).toHaveBeenCalledWith('/');
@@ -171,7 +178,7 @@ describe('OidcController', () => {
 					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
 				},
 			});
-			const res = mock<Response>({ send: jest.fn().mockReturnThis() });
+			const res = mock<Response>({ send: vi.fn().mockReturnThis() });
 
 			oidcService.verifyState.mockReturnValueOnce({
 				state: 'n8n_state:uuid',
@@ -210,7 +217,7 @@ describe('OidcController', () => {
 					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
 				},
 			});
-			const res = mock<Response>({ send: jest.fn().mockReturnThis() });
+			const res = mock<Response>({ send: vi.fn().mockReturnThis() });
 
 			oidcService.verifyState.mockReturnValueOnce({
 				state: 'n8n_state:uuid',
@@ -264,6 +271,7 @@ describe('OidcController', () => {
 		const envManagedController = new OidcController(
 			oidcService,
 			authService,
+			eventService,
 			urlService,
 			globalConfig,
 			logger,
