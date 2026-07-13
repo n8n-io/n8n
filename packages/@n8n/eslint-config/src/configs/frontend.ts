@@ -21,6 +21,10 @@ export const frontendConfig = tseslint.config(
 			'comma-dangle': ['error', 'always-multiline'],
 			'@typescript-eslint/no-use-before-define': 'warn',
 			'@typescript-eslint/no-explicit-any': 'error',
+			// Guard against leaked debounce/throttle/timer side-effects in composables
+			// (fire after scope disposal -> memory leak + post-teardown unit-test flake).
+			// 'warn' during rollout; flip to 'error' once existing candidates are cleaned up.
+			'n8n-local-rules/no-uncleaned-composable-timers': 'warn',
 		},
 	},
 	{
