@@ -12,11 +12,12 @@ the same commands from the repo via `pnpm nathan`.
 
 ## Before you use it (check once)
 
-1. **`cloudflared` must be installed.** Nathan replies asynchronously through a
-   public tunnel; `cloudflared` holds it reliably for the 10-20 min a branch
-   build takes. The `npx localtunnel` fallback frequently drops mid-deploy and
-   loses the reply. Check with `command -v cloudflared` — **if it's missing, ask
-   the user to run `brew install cloudflared` before deploying.**
+1. **No tunnel setup needed.** Nathan replies asynchronously through a
+   short-lived public tunnel that the script opens for you via `npx localtunnel`.
+   Do **not** use cloudflared on n8n's network — its `*.trycloudflare.com`
+   hostnames don't resolve there, so Nathan's callback fails. A deploy with an
+   explicit `test-<name>` also polls the instance URL directly, so it still
+   reports success even if the tunnel drops.
 2. **A Nathan token is needed**, read from `~/.n8n/nathan-token`. If it's missing
    (check with `test -s ~/.n8n/nathan-token || echo missing`), **ask the user for
    one yourself** — point them at the form
@@ -35,8 +36,8 @@ the same commands from the repo via `pnpm nathan`.
 ## Offer a test instance after a PR
 
 After you open a PR for a branch, **ask the user if they want a live test
-instance** for it (and confirm `cloudflared` is installed — see above). If yes,
-deploy the PR's branch with an explicit `test-` instance name:
+instance** for it. If yes, deploy the PR's branch with an explicit `test-`
+instance name:
 
 ```bash
 pnpm nathan deploy <branch-name> test-<short-name>

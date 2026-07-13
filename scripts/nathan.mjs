@@ -12,8 +12,8 @@
 //   node scripts/nathan.mjs deploy master test-ai --ai
 //
 // Needs a token in ~/.n8n/nathan-token — on first run it links you to a form to
-// get one and saves it there. A public tunnel is opened via `cloudflared`
-// (preferred) or `npx localtunnel` as a fallback.
+// get one and saves it there. A public tunnel is opened via `npx localtunnel`
+// (set NATHAN_TUNNEL=cloudflared to use cloudflared, where its hosts resolve).
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -123,6 +123,9 @@ const finished = new Promise((r) => (done = r));
 const finish = (reason) => { if (settled) return; settled = true; doneReason = reason; done(); };
 let idleTimer;
 const server = http.createServer((req, res) => {
+	// Nathan always POSTs its replies; a GET is our own reachability probe (or
+	// noise) — ack it without treating it as a callback.
+	if (req.method !== 'POST') { res.writeHead(200).end('ok'); return; }
 	let raw = '';
 	req.on('data', (c) => (raw += c));
 	req.on('end', () => {
@@ -145,10 +148,11 @@ function hasBinary(bin) {
 	catch { return false; }
 }
 function startTunnel() {
-	const hasCloudflared = hasBinary('cloudflared');
-	if (!hasCloudflared)
-		console.error('⚠️  cloudflared not found — falling back to `npx localtunnel`, which often drops on\n    long deploys (you may miss the final reply). For reliable capture: brew install cloudflared\n');
-	const [cmd, args] = hasCloudflared
+	// localtunnel by default. Cloudflare quick-tunnel hostnames (*.trycloudflare.com)
+	// don't resolve on n8n's network — neither here nor on the internal instance
+	// that calls back — so cloudflared is opt-in via NATHAN_TUNNEL=cloudflared.
+	const useCloudflared = process.env.NATHAN_TUNNEL === 'cloudflared' && hasBinary('cloudflared');
+	const [cmd, args] = useCloudflared
 		? ['cloudflared', ['tunnel', '--no-autoupdate', '--url', `http://127.0.0.1:${port}`]]
 		: ['npx', ['-y', 'localtunnel', '--port', String(port)]];
 	const proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -165,12 +169,29 @@ function startTunnel() {
 	});
 }
 
+// cloudflared prints its URL a beat before Cloudflare's edge registers the DNS,
+// so firing immediately makes Nathan's callback fail with ENOTFOUND. Self-probe
+// the tunnel (GET, ignored by the server above) until it routes back to us.
+async function waitReachable(url) {
+	const deadline = Date.now() + TUNNEL_START_MS;
+	while (Date.now() < deadline) {
+		try { if ((await fetch(url, { signal: AbortSignal.timeout(5000) })).ok) return true; }
+		catch { /* DNS/edge not ready yet */ }
+		await new Promise((r) => setTimeout(r, 1500));
+	}
+	return false;
+}
+
 let tunnel;
 try {
 	console.error(`Opening tunnel + sending: /nathan ${text}`);
 	tunnel = await startTunnel();
 } catch (e) {
 	console.error('Could not open a public tunnel:', e.message);
+	await cleanup(1);
+}
+if (!(await waitReachable(tunnel.url))) {
+	console.error(`Tunnel ${tunnel.url} did not become reachable in time.`);
 	await cleanup(1);
 }
 
