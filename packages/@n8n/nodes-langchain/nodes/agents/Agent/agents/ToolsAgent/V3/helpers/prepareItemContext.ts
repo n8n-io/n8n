@@ -27,6 +27,7 @@ export type ItemContext = {
 	prompt: ChatPromptTemplate;
 	options: AgentOptions;
 	outputParser: N8nOutputParser | undefined;
+	useNativeStructuredOutput: boolean;
 };
 
 /**
@@ -36,13 +37,19 @@ export type ItemContext = {
  * @param ctx - The execution context
  * @param itemIndex - The index of the item to process
  * @param response - Optional engine response with previous tool calls
+ * @param model - Connected chat model (used by prepareMessages to pick the
+ *   right binary content format)
+ * @param useNativeStructuredOutput - Whether the parser's schema was bound
+ *   natively on the model upstream; if so, skip the synthetic format tool
+ *   and the prompt formatting instructions
  * @returns ItemContext containing all item-specific state
  */
 export async function prepareItemContext(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
-	response?: EngineResponse<RequestResponseMetadata>,
-	model?: BaseChatModel,
+	response: EngineResponse<RequestResponseMetadata> | undefined,
+	model: BaseChatModel,
+	useNativeStructuredOutput: boolean = false,
 ): Promise<ItemContext> {
 	const steps = buildSteps(response, itemIndex);
 
@@ -57,7 +64,15 @@ export async function prepareItemContext(
 	}
 
 	const outputParser = await getOptionalOutputParser(ctx, itemIndex);
-	const tools = await getTools(ctx, outputParser);
+
+	// When the connected chat model accepts the parser's schema as native
+	// constrained-decoding configuration (applied upstream in `executeBatch`),
+	// skip the legacy synthetic `format_final_json_response` tool and the
+	// prompt formatting instructions — the model emits schema-conformant JSON
+	// by construction and the parser still validates the final response.
+	const promptOutputParser = useNativeStructuredOutput ? undefined : outputParser;
+
+	const tools = await getTools(ctx, promptOutputParser);
 	const options = ctx.getNodeParameter('options', itemIndex) as AgentOptions;
 
 	if (options.enableStreaming === undefined) {
@@ -69,7 +84,7 @@ export async function prepareItemContext(
 		systemMessage: options.systemMessage,
 		passthroughBinaryImages: options.passthroughBinaryImages ?? true,
 		passthroughBinaryPdfs: options.passthroughBinaryPdfs ?? false,
-		outputParser,
+		outputParser: promptOutputParser,
 		model,
 	});
 	const prompt: ChatPromptTemplate = preparePrompt(messages);
@@ -82,5 +97,6 @@ export async function prepareItemContext(
 		prompt,
 		options,
 		outputParser,
+		useNativeStructuredOutput,
 	};
 }

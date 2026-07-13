@@ -79,6 +79,7 @@ describe('runAgent - iteration count tracking', () => {
 				returnIntermediateSteps: false,
 			},
 			outputParser: undefined,
+			useNativeStructuredOutput: false,
 		};
 
 		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
@@ -135,6 +136,7 @@ describe('runAgent - iteration count tracking', () => {
 				returnIntermediateSteps: false,
 			},
 			outputParser: undefined,
+			useNativeStructuredOutput: false,
 		};
 
 		const response: EngineResponse<RequestResponseMetadata> = {
@@ -194,6 +196,7 @@ describe('runAgent - iteration count tracking', () => {
 				enableStreaming: true,
 			},
 			outputParser: undefined,
+			useNativeStructuredOutput: false,
 		};
 
 		const mockContext = mock<IExecuteFunctions>({
@@ -257,6 +260,7 @@ describe('runAgent - iteration count tracking', () => {
 				returnIntermediateSteps: false,
 			},
 			outputParser: undefined,
+			useNativeStructuredOutput: false,
 		};
 
 		// Mock the agent to return a final result (no tool calls)
@@ -301,6 +305,7 @@ describe('runAgent - tracing configuration', () => {
 				returnIntermediateSteps: false,
 			},
 			outputParser: undefined,
+			useNativeStructuredOutput: false,
 		};
 
 		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
@@ -361,6 +366,7 @@ describe('runAgent - tracing configuration', () => {
 				},
 			},
 			outputParser: undefined,
+			useNativeStructuredOutput: false,
 		};
 
 		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
@@ -409,6 +415,7 @@ describe('runAgent - tracing configuration', () => {
 				enableStreaming: true,
 			},
 			outputParser: undefined,
+			useNativeStructuredOutput: false,
 		};
 
 		const streamingContext = mock<IExecuteFunctions>({
