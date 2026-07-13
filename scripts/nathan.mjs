@@ -112,7 +112,8 @@ if (!token) {
 if (!token) process.exit(1);
 
 const text = process.argv.slice(2).join(' ').trim() || 'help';
-if (text.startsWith('local')) {
+const isLocal = text.startsWith('local');
+if (isLocal) {
 	console.error('⚠️  `local` delivers its run-n8n.sh + .env (with the license cert) as Slack file');
 	if (process.env.NATHAN_SLACK_CHANNEL) {
 		console.error(`    attachments, not to this terminal — they post to Slack channel ${process.env.NATHAN_SLACK_CHANNEL}.\n`);
@@ -140,7 +141,12 @@ const server = http.createServer((req, res) => {
 		const body = extractText(payload);
 		console.log('\n' + '─'.repeat(60) + '\n' + body + '\n');
 		clearTimeout(idleTimer); // any new message cancels a pending exit
-		if (isAck(body)) return; // work is starting; wait (overall timeout backstops)
+		if (isAck(body)) {
+			// `local` posts its bundle to Slack, never to this callback — the ack is
+			// the last thing we'll see, so stop here instead of waiting for the timeout.
+			if (isLocal) { console.error('Bundle is being posted to Slack (see the note above).'); finish('local'); }
+			return; // otherwise work is starting; wait (overall timeout backstops)
+		}
 		idleTimer = setTimeout(() => finish('idle'), IDLE_MS);
 	});
 });
@@ -245,7 +251,7 @@ clearTimeout(overall);
 
 if (doneReason === 'timeout') console.error('\n⏱  Timed out waiting for the final reply — the deploy may still be running (check Slack / Grafana).');
 if (doneReason === 'interrupted') console.error('\nStopped. The command may still be running on Nathan.');
-await cleanup(doneReason === 'idle' || doneReason === 'up' ? 0 : 1);
+await cleanup(['idle', 'up', 'local'].includes(doneReason) ? 0 : 1);
 
 function cleanup(code) {
 	try { tunnel?.proc.kill(); } catch {}
