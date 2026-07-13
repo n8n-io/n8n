@@ -17,14 +17,21 @@ the same commands from the repo via `pnpm nathan`.
    build takes. The `npx localtunnel` fallback frequently drops mid-deploy and
    loses the reply. Check with `command -v cloudflared` — **if it's missing, ask
    the user to run `brew install cloudflared` before deploying.**
-2. **A Nathan token is needed.** On first run the script prints a form link
+2. **A Nathan token is needed**, read from (in order): `NATHAN_TOKEN` env →
+   `~/.n8n/nathan-token` → `.env.local`. If none exists (check with
+   `test -s ~/.n8n/nathan-token || echo missing`), **ask the user for one
+   yourself** — point them at the form
    (`https://internal.users.n8n.cloud/form/d6d34a2f-4899-4ee8-afc8-f8c41a8a243d`),
-   the user logs in with their n8n account, pastes the token back, and it's
-   cached to `~/.n8n/nathan-token` for future runs. **The paste prompt only works
-   in an interactive terminal** — if you're running non-interactively (agent /
-   background), ask the user to run `pnpm nathan help` once themselves to set it
-   up (or to export `NATHAN_TOKEN`). Resolution order: `NATHAN_TOKEN` env →
-   `~/.n8n/nathan-token` → `.env.local`.
+   where they log in with their n8n account and copy the token from the response
+   — then write it for them:
+
+   ```bash
+   mkdir -p ~/.n8n && printf '%s\n' '<PASTED_TOKEN>' > ~/.n8n/nathan-token && chmod 600 ~/.n8n/nathan-token
+   ```
+
+   Future runs reuse it. (Humans running the script interactively get the same
+   flow via a paste prompt; that prompt needs a real terminal, so as an agent do
+   the write yourself rather than relying on it.)
 
 ## Offer a test instance after a PR
 
