@@ -19,6 +19,7 @@ import { useEditorContext } from '@/app/composables/useEditorContext';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectContextMenuGroupView } from './contextMenuGroupView';
 
 export type ContextMenuAction =
 	| 'open'
@@ -81,6 +82,7 @@ export function useContextMenuItems(
 	const collaborationStore = useCollaborationStore();
 	const focusedNodesStore = useFocusedNodesStore();
 	const { resolveGroupableNodeIds } = useSelectionValidation();
+	const groupView = injectContextMenuGroupView();
 	const i18n = useI18n();
 
 	// Per-editor host overrides (already ANDed with the instance-wide store
@@ -282,45 +284,69 @@ export function useContextMenuItems(
 			},
 		];
 
-		// Expand/collapse the groups behind the target — a targeted title bar or
-		// the groups of targeted nodes; loose nodes are ignored. View
-		// preferences, so they stay enabled in read-only mode.
-		const targetHasGroups =
-			isGroupTarget ||
-			nodes.some((node) => workflowDocumentStore?.value?.getGroupForNode(node.id) !== undefined);
-		// Alt+G is context-aware: with a selection it targets the selection's
-		// groups, matching these items.
-		const selectedGroupViewActions: Item[] = targetHasGroups
+		// Distinct groups behind the target — a targeted title bar or the groups
+		// of the targeted nodes. Only a groups-only target qualifies: a single
+		// loose node yields undefined and hides the expand/collapse pair.
+		// Alt+G follows the same rule, so shortcut and menu can't diverge.
+		const targetGroupIds = ((): string[] | undefined => {
+			const carriedGroupId = targetGroupId?.value;
+			if (carriedGroupId !== undefined) return [carriedGroupId];
+			const groupIds = new Set<string>();
+			for (const node of nodes) {
+				const group = workflowDocumentStore?.value?.getGroupForNode(node.id);
+				if (!group) return undefined;
+				groupIds.add(group.id);
+			}
+			return groupIds.size > 0 ? [...groupIds] : undefined;
+		})();
+		// View preferences, so they stay enabled in read-only mode. An item is
+		// disabled when every target group is already in its end state; without
+		// a canvas-provided group view the state is unknown and both stay enabled.
+		const selectedGroupViewActions: Item[] = targetGroupIds
 			? [
 					{
 						id: 'expand_selected_groups',
 						divided: true,
 						label: i18n.baseText('contextMenu.expandSelectedGroups'),
 						shortcut: { altKey: true, keys: ['G'] },
+						disabled:
+							groupView !== undefined &&
+							targetGroupIds.every((groupId) => !groupView.isGroupCollapsed(groupId)),
 					},
 					{
 						id: 'collapse_selected_groups',
 						label: i18n.baseText('contextMenu.collapseSelectedGroups'),
 						shortcut: { shiftKey: true, altKey: true, keys: ['G'] },
+						disabled:
+							groupView !== undefined &&
+							targetGroupIds.every((groupId) => groupView.isGroupCollapsed(groupId)),
 					},
 				]
 			: [];
 
 		// Toggling group collapse is a view preference, not a workflow mutation,
-		// so these stay enabled in read-only mode.
+		// so these stay enabled in read-only mode. Same end-state rule as the
+		// selection-scoped items, applied to every group in the workflow.
+		const allGroups = workflowDocumentStore?.value?.allGroups ?? [];
 		const groupViewActions: Item[] = [
 			{
 				id: 'expand_all_groups',
 				divided: true,
 				label: i18n.baseText('contextMenu.expandAllGroups'),
 				shortcut: { altKey: true, keys: ['G'] },
-				disabled: (workflowDocumentStore?.value?.allGroups ?? []).length === 0,
+				disabled:
+					allGroups.length === 0 ||
+					(groupView !== undefined &&
+						allGroups.every((group) => !groupView.isGroupCollapsed(group.id))),
 			},
 			{
 				id: 'collapse_all_groups',
 				label: i18n.baseText('contextMenu.collapseAllGroups'),
 				shortcut: { shiftKey: true, altKey: true, keys: ['G'] },
-				disabled: (workflowDocumentStore?.value?.allGroups ?? []).length === 0,
+				disabled:
+					allGroups.length === 0 ||
+					(groupView !== undefined &&
+						allGroups.every((group) => groupView.isGroupCollapsed(group.id))),
 			},
 		];
 

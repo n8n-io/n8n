@@ -779,19 +779,30 @@ function resolveTargetGroupIds(nodeIds: string[], groupId?: string): string[] {
 	return [...groupIds];
 }
 
+// Strict variant for groups-only targets: a single loose node yields
+// undefined. Keeps Alt+G aligned with the menu's expand/collapse visibility.
+function resolveGroupsOnlyTargetIds(nodeIds: string[]): string[] | undefined {
+	const groupIds = new Set<string>();
+	for (const nodeId of nodeIds) {
+		const group = workflowDocumentStore.value.getGroupForNode(nodeId);
+		if (!group) return undefined;
+		groupIds.add(group.id);
+	}
+	return groupIds.size > 0 ? [...groupIds] : undefined;
+}
+
 // Context-aware Alt+G / Shift+Alt+G: an empty selection targets every group;
-// otherwise the action scopes to the selection's groups — and no-ops when the
-// selection has none.
+// a groups-only selection targets its groups. Mirrors the context menu, which
+// hides its expand/collapse items for mixed selections — so a selection
+// containing a loose node no-ops here too.
 function onKeyboardSetGroupsExpanded(expanded: boolean) {
 	if (selectedNodesAndGroups.value.length === 0) {
 		onSetAllGroupsExpanded(expanded, 'keyboard-shortcut');
 		return;
 	}
-	setGroupsExpanded(
-		resolveTargetGroupIds(selectedNodeIdsWithGroupMembers.value),
-		expanded,
-		'keyboard-shortcut',
-	);
+	const groupIds = resolveGroupsOnlyTargetIds(selectedNodeIdsWithGroupMembers.value);
+	if (groupIds === undefined) return;
+	setGroupsExpanded(groupIds, expanded, 'keyboard-shortcut');
 }
 
 /**

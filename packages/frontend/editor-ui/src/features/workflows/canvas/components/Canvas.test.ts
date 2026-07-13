@@ -825,10 +825,13 @@ describe('Canvas', () => {
 			// tests run without a router, so isReadOnlyView would resolve to true.
 			workflowDocumentStore.setScopes(['workflow:update']);
 			vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
-			// Member nodes must resolve for the group menu to show the bulk actions
+			// Member nodes must resolve for the group menu to show the bulk actions.
+			// The loose node resolves too, so it counts as an ungrouped document
+			// node for the groups-only expand/collapse rule.
 			workflowDocumentStore.setNodes([
 				createTestNode({ id: 'a', name: 'Node A' }),
 				createTestNode({ id: 'b', name: 'Node B' }),
+				createTestNode({ id: 'node-3', name: 'Node 3' }),
 			]);
 			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
 			const groupNode = createCanvasGroupElement({
@@ -1018,34 +1021,23 @@ describe('Canvas', () => {
 			);
 		});
 
-		it('collapses only the selected groups from the selection menu, ignoring loose nodes', async () => {
-			const { group, groupNode, looseNode, getByTestId } = await renderWithGroup(
+		it('omits expand/collapse from the selection menu when the selection mixes in loose nodes', async () => {
+			const { groupNode, looseNode, getByTestId, queryByTestId } = await renderWithGroup(
 				{},
 				{ initialCollapsed: false },
 			);
 
 			// Group + loose node selected → right-click on the group opens the
-			// selection menu; the action must resolve to the group alone.
+			// selection menu; the groups-only rule hides the collapse actions.
 			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
 			addSelectedNodes([findNode(groupNode.id)!, findNode(looseNode.id)!]);
 			await waitFor(() => expect(findNode(groupNode.id)?.selected).toBe(true));
 
 			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
-			await waitFor(() =>
-				expect(getByTestId('context-menu-item-collapse_selected_groups')).toBeInTheDocument(),
-			);
+			await waitFor(() => expect(getByTestId('context-menu-item-copy')).toBeInTheDocument());
 
-			await fireEvent.click(getByTestId('context-menu-item-collapse_selected_groups'));
-
-			expect(useTelemetry().track).toHaveBeenCalledWith(
-				'User collapsed group',
-				expect.objectContaining({ group_id: group.id, source: 'context-menu' }),
-			);
-			// Exactly one collapse — the loose node resolves to no group
-			const collapseCalls = vi
-				.mocked(useTelemetry().track)
-				.mock.calls.filter(([event]) => event === 'User collapsed group');
-			expect(collapseCalls).toHaveLength(1);
+			expect(queryByTestId('context-menu-item-collapse_selected_groups')).not.toBeInTheDocument();
+			expect(queryByTestId('context-menu-item-expand_selected_groups')).not.toBeInTheDocument();
 		});
 
 		it('expands all groups with the Alt+G shortcut', async () => {
@@ -1116,6 +1108,23 @@ describe('Canvas', () => {
 			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
 			addSelectedNodes([findNode(looseNode.id)!]);
 			await waitFor(() => expect(findNode(looseNode.id)?.selected).toBe(true));
+
+			await fireEvent.keyDown(document, { key: 'g', altKey: true });
+
+			expect(useTelemetry().track).not.toHaveBeenCalledWith(
+				'User expanded group',
+				expect.anything(),
+			);
+		});
+
+		it('does nothing on Alt+G when the selection mixes groups and loose nodes', async () => {
+			// Menu parity: mixed selections offer no expand/collapse, so the
+			// shortcut must not act on the selection's groups either.
+			const { groupNode, looseNode } = await renderWithGroup({}, { initialCollapsed: true });
+
+			const { addSelectedNodes, findNode } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(groupNode.id)!, findNode(looseNode.id)!]);
+			await waitFor(() => expect(findNode(groupNode.id)?.selected).toBe(true));
 
 			await fireEvent.keyDown(document, { key: 'g', altKey: true });
 
