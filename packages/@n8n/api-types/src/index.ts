@@ -350,6 +350,13 @@ export {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	applyBranchReadOnlyOverrides,
+	normalizeInstanceAiThreadSource,
+} from './schemas/instance-ai.schema';
+
+export type {
+	InstanceAiThreadSource,
+	InstanceAiThreadSourcePersisted,
+	InstanceAiThreadOrigin,
 } from './schemas/instance-ai.schema';
 
 export type {

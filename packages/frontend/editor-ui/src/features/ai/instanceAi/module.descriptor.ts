@@ -4,7 +4,18 @@ import {
 	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 } from '@/app/constants/modals';
-import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from './constants';
+import { VIEWS } from '@/app/constants';
+import {
+	INSTANCE_AI_VIEW,
+	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_SETTINGS_VIEW,
+	INSTANCE_AI_NEW_VIEW,
+} from './constants';
+import {
+	ensurePersonalProjectId,
+	provisionLaunchedThread,
+} from './composables/useInstanceAiHandoff';
+import { useInstanceAiAvailable } from './composables/useInstanceAiAvailability';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
@@ -30,6 +41,50 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'custom'],
 			},
 			children: [
+				{
+					name: INSTANCE_AI_NEW_VIEW,
+					path: 'new',
+					component: InstanceAiEmptyView,
+					beforeEnter: async (to) => {
+						// Numeric ids only, so a crafted URL can't inject prompt text.
+						const raw = to.query.templateId;
+						if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
+							return { name: INSTANCE_AI_VIEW };
+						}
+						const templateId = raw;
+
+						// Same canonical gate as the button and website beacon, so the guard
+						// never refuses an entry point they advertise. Whoever can't use
+						// the assistant still gets the template.
+						if (!useInstanceAiAvailable().value) {
+							return { name: VIEWS.TEMPLATE_SETUP, params: { id: templateId } };
+						}
+
+						// Threads are project-bound; deep links launch into the personal project.
+						const projectId = await ensurePersonalProjectId();
+						if (!projectId) {
+							return { name: INSTANCE_AI_VIEW };
+						}
+
+						// The thread view sends the stashed kickoff after it hydrates, so the
+						// guard never races the runtime.
+						const threadId = await provisionLaunchedThread(
+							projectId,
+							{
+								message: i18n.baseText('instanceAi.launch.templateById.message', {
+									interpolate: { id: templateId },
+								}),
+							},
+							{ source: 'website-template', origin: 'external', sourceContext: { templateId } },
+						);
+						if (!threadId) {
+							return { name: INSTANCE_AI_VIEW };
+						}
+
+						// Redirect with no query → URL cleared, back-button won't re-fire this.
+						return { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
+					},
+				},
 				{
 					name: INSTANCE_AI_VIEW,
 					path: '',

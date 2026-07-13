@@ -3,6 +3,7 @@ import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-type
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
+	getLatestAgentBuilderTarget,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getLatestWorkflowUpdateResult,
@@ -281,6 +282,55 @@ describe('getLatestBuilderTarget', () => {
 	});
 });
 
+describe('getLatestAgentBuilderTarget', () => {
+	test('returns undefined for node with no children', () => {
+		expect(getLatestAgentBuilderTarget(makeAgentNode())).toBeUndefined();
+	});
+
+	test('returns undefined when no agent-builder node is present', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-1',
+			role: 'workflow-builder',
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-existing' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(getLatestAgentBuilderTarget(parent)).toBeUndefined();
+	});
+
+	test('returns undefined when targetResource.type is not agent', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-1',
+			kind: 'agent-builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-1' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(getLatestAgentBuilderTarget(parent)).toBeUndefined();
+	});
+
+	test('returns agentId and targetAgentId when the most recent agent-builder child has an agent targetResource', () => {
+		const builderA = makeAgentNode({
+			agentId: 'agent-builder-a',
+			kind: 'agent-builder',
+			status: 'completed',
+			targetResource: { type: 'agent', id: 'agent-a', projectId: 'project-1' },
+		});
+		const builderB = makeAgentNode({
+			agentId: 'agent-builder-b',
+			kind: 'agent-builder',
+			status: 'active',
+			targetResource: { type: 'agent', id: 'agent-b', projectId: 'project-1' },
+		});
+		const parent = makeAgentNode({ children: [builderA, builderB] });
+		expect(getLatestAgentBuilderTarget(parent)).toEqual({
+			agentId: 'agent-builder-b',
+			targetAgentId: 'agent-b',
+		});
+	});
+});
+
 describe('getLatestAgentArtifactResult', () => {
 	test('uses parent agent target for nested agent mutations', () => {
 		const nestedAgentBuilder = makeAgentNode({
@@ -288,9 +338,9 @@ describe('getLatestAgentArtifactResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-nested-build',
-					toolName: 'agent_builder',
-					args: { action: 'build_agent' },
-					result: { ok: true, configHash: 'hash-1' },
+					toolName: 'build-agent',
+					args: { message: 'add a step' },
+					result: { ok: true, configUpdated: true },
 				}),
 			],
 		});
@@ -306,6 +356,87 @@ describe('getLatestAgentArtifactResult', () => {
 			toolCallId: 'tc-nested-build',
 			kind: 'mutated',
 		});
+	});
+
+	test('creates from a name arg, resolving identity from the spawned builder child target', () => {
+		const builderChild = makeAgentNode({
+			agentId: 'builder-child',
+			role: 'agent-builder',
+			kind: 'builder',
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'New Agent' },
+		});
+		const orchestrator = makeAgentNode({
+			children: [builderChild],
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-create',
+					toolName: 'build-agent',
+					args: { message: 'build me an agent', name: 'New Agent' },
+					result: { ok: true, builderReply: 'Created it' },
+				}),
+			],
+		});
+
+		expect(getLatestAgentArtifactResult(orchestrator)).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-create',
+			kind: 'created',
+		});
+	});
+
+	test('mutates using fallbackTarget when no targetResource exists in the tree', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-mutate',
+					toolName: 'build-agent',
+					args: { message: 'add a skill' },
+					result: { ok: true, configUpdated: true },
+				}),
+			],
+		});
+
+		expect(
+			getLatestAgentArtifactResult(orchestrator, { agentId: 'agent-1', projectId: 'project-1' }),
+		).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-mutate',
+			kind: 'mutated',
+		});
+	});
+
+	test('returns undefined for a reply-only turn (ok but no name and no configUpdated)', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-reply',
+					toolName: 'build-agent',
+					args: { message: 'what does this agent do?' },
+					result: { ok: true, builderReply: 'It triages your inbox.' },
+				}),
+			],
+		});
+
+		expect(
+			getLatestAgentArtifactResult(orchestrator, { agentId: 'agent-1', projectId: 'project-1' }),
+		).toBeUndefined();
+	});
+
+	test('returns undefined when no target is available anywhere in the tree', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-mutate',
+					toolName: 'build-agent',
+					args: { message: 'add a skill' },
+					result: { ok: true, configUpdated: true },
+				}),
+			],
+		});
+
+		expect(getLatestAgentArtifactResult(orchestrator)).toBeUndefined();
 	});
 });
 
