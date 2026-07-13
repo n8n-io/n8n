@@ -1,10 +1,10 @@
 import { test, expect, instanceAiTestConfig, SKIP_PROXY_SETUP_ANNOTATION } from './fixtures';
 
 /**
- * Quota exhaustion is surfaced when the hosted model proxy returns a 403 with
- * quota wording. We simulate that by overriding the proxy's `/v1/messages`
- * response, then assert the run renders the tailored out-of-credits state
- * instead of a raw provider error.
+ * Quota exhaustion is surfaced when the AI service returns a 403 carrying a
+ * machine-readable `code: 'quota_exhausted'`. We simulate that by overriding the
+ * proxy's `/v1/messages` response, then assert the run renders the tailored
+ * out-of-credits state instead of a raw provider error.
  */
 test.use(instanceAiTestConfig);
 test.describe(
@@ -20,7 +20,8 @@ test.describe(
 				test.skip(!n8nContainer, 'Requires the proxy service to simulate a quota 403');
 
 				// Clear any recordings left by prior tests, then make every model call
-				// fail with a quota 403 (403 + "out of credits" → quota_exhausted).
+				// fail with the quota 403 the AI service emits — a machine-readable
+				// `code: 'quota_exhausted'` alongside the message (see credit-pool service).
 				await n8nContainer.services.proxy.reset();
 				await n8nContainer.services.proxy.createExpectation({
 					httpRequest: { method: 'POST', path: '/v1/messages' },
@@ -28,8 +29,10 @@ test.describe(
 						statusCode: 403,
 						headers: { 'Content-Type': ['application/json'] },
 						body: JSON.stringify({
-							type: 'error',
-							error: { type: 'forbidden', message: 'You are out of credits' },
+							statusCode: 403,
+							error: 'Forbidden',
+							message: 'Have reached end of quota',
+							code: 'quota_exhausted',
 						}),
 					},
 					times: { unlimited: true },
