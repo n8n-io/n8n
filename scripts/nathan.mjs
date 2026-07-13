@@ -105,6 +105,7 @@ const readSavedToken = () => { try { return fs.readFileSync(tokenFile, 'utf8').t
 function saveToken(t) {
 	fs.mkdirSync(path.dirname(tokenFile), { recursive: true });
 	fs.writeFileSync(tokenFile, `${t}\n`, { mode: 0o600 });
+	fs.chmodSync(tokenFile, 0o600); // writeFileSync's mode is ignored when overwriting an existing file
 }
 
 // Non-interactive setup (agents/scripts): `nathan set-token <token>`.
