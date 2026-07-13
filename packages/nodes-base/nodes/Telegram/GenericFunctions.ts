@@ -294,9 +294,6 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 		text = `${text}\n\n_${attributionText}_[n8n](${link})`;
 	}
 
-	const executionId = context.getExecutionId();
-	const hmacSecret = Container.get(InstanceSettings).hmacSignatureSecret;
-
 	const body = {
 		chat_id,
 		text,
@@ -307,6 +304,8 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 			inline_keyboard: [
 				config.options.map((option) => {
 					if (chatApproval) {
+						const executionId = context.getExecutionId();
+						const hmacSecret = Container.get(InstanceSettings).hmacSignatureSecret;
 						return {
 							text: option.label,
 							callback_data: buildHitlCallbackReference(
