@@ -14,6 +14,13 @@ import {
 const isSelectionGroupableMock = vi.fn();
 const isSelectionExtractableMock = vi.fn();
 const expandSelectionWithSubNodesMock = vi.fn((nodeIds: string[]) => nodeIds);
+// Composes the two mocks above (like the real implementation does, minus id
+// resolution) so tests keep customizing those as knobs.
+const resolveGroupableNodeIdsMock = vi.fn((nodeIds: string[]) => {
+	if (nodeIds.length === 0) return null;
+	const expandedIds = expandSelectionWithSubNodesMock(nodeIds);
+	return isSelectionGroupableMock(expandedIds).valid ? expandedIds : null;
+});
 
 let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
@@ -30,6 +37,7 @@ vi.mock('@/app/composables/useSelectionValidation', () => ({
 		isSelectionGroupable: isSelectionGroupableMock,
 		isSelectionExtractable: isSelectionExtractableMock,
 		expandSelectionWithSubNodes: expandSelectionWithSubNodesMock,
+		resolveGroupableNodeIds: resolveGroupableNodeIdsMock,
 	}),
 }));
 

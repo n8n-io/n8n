@@ -93,6 +93,33 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
+	describe('context menu', () => {
+		it('emits open:contextmenu with the group id on right-click', async () => {
+			const wrapper = render();
+			await fireEvent.contextMenu(wrapper.getByTestId('canvas-node-group'));
+
+			const emitted = wrapper.emitted()['open:contextmenu'] as Array<[string, MouseEvent]>;
+			expect(emitted).toHaveLength(1);
+			expect(emitted[0][0]).toBe('g1');
+			expect(emitted[0][1]).toBeInstanceOf(MouseEvent);
+		});
+
+		it('emits open:contextmenu when right-clicking the title preview', async () => {
+			const wrapper = render();
+			await fireEvent.contextMenu(wrapper.getByTestId('inline-edit-preview'));
+
+			expect(wrapper.emitted()['open:contextmenu']).toHaveLength(1);
+		});
+
+		it('does not emit open:contextmenu while the title is being edited', async () => {
+			const wrapper = render();
+			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
+			await fireEvent.contextMenu(wrapper.getByTestId('inline-edit-input'));
+
+			expect(wrapper.emitted()['open:contextmenu']).toBeUndefined();
+		});
+	});
+
 	describe('double-click to toggle collapse', () => {
 		it('emits toggle when the group body is double-clicked', async () => {
 			const wrapper = render();
