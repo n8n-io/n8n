@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_6e06771097abf4::t_56342dc32419aa 1,37-90,97,103,126,128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "34c311a8f45e87b514c66020fd2e3952892f5859",
+  "prompts": {},
+  "sessions": {
+    "s_6e06771097abf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b3c7bb4-2a4f-497e-966d-6b2a50495f9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

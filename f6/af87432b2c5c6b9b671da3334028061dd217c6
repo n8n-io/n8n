@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_edec1786596258::t_b8476a57be50e3 793-801
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f6af87432b2c5c6b9b671da3334028061dd217c6",
+  "prompts": {},
+  "sessions": {
+    "s_edec1786596258": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a019cf0-00e7-4c7f-9c74-45988cd641cc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

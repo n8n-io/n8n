@@ -1,0 +1,33 @@
+packages/cli/src/commands/start.ts
+  s_2f83ef0d3e33ed::t_b374b87fc00b3b 237
+packages/cli/src/workflows/publication/__tests__/trigger-diff.test.ts
+  s_2f83ef0d3e33ed::t_19544e717026f8 3
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_2f83ef0d3e33ed::t_0404c724a8d45b 32,35,37,41,43,51,53,57,59,66
+  s_2f83ef0d3e33ed::t_10f7aa241fb1a5 1-31,33-34,36,38-40,42,44-50,52,54-56,58,60-61,67-86
+packages/cli/src/workflows/publication/publication-result.ts
+  s_2f83ef0d3e33ed::t_5e7716b73e46b5 1-32
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_2f83ef0d3e33ed::t_5e168287f2c083 20
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_2f83ef0d3e33ed::t_552fcb9769bb3d 36
+  s_2f83ef0d3e33ed::t_d9c295ccba7829 10,12-13,17-27,30,38,40-41,44,47,58,61-63,77,80,116-118
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_2f83ef0d3e33ed::t_0db4718fd3219a 3,7-10,18-19,36-37,60-62,137-140,142,144-145,148-149,153-158,162-164,166,168,170,172-180,182,184-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "471229092f30d0dfad125440253e1c1eba4f6b3c",
+  "prompts": {},
+  "sessions": {
+    "s_2f83ef0d3e33ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "173765c5-38e5-4034-a7cd-a7997e9647c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

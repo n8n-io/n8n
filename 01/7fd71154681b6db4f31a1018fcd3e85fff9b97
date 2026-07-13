@@ -1,0 +1,55 @@
+packages/@n8n/cli/src/client.ts
+  s_f066721bbfd491::t_8ce0a9648c6116 22-25,28-29,433,435
+  s_930eb30b24320a::t_25aeb7a42869ed 26
+  s_f066721bbfd491::t_36c7be78640f83 439
+  s_8afcebef7d15aa::t_f37c9cdc30bf85 27,440-442
+packages/@n8n/cli/src/commands/package/export.ts
+  s_930eb30b24320a::t_b6ea4232687b17 6,41,74-75,79
+  s_f066721bbfd491::t_36c7be78640f83 39,42-43
+  s_f066721bbfd491::t_c98103135d1081 40
+  s_f066721bbfd491::t_8ce0a9648c6116 72-73,80,83
+  s_8afcebef7d15aa::t_6774048dc17472 44,46-48,77-78
+  s_8afcebef7d15aa::t_06e83e8fa182d5 45
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_f066721bbfd491::t_36c7be78640f83 15-19,21-22,30-34,36-37,65-68,80-83,96-99,110-112,116-128
+  s_8afcebef7d15aa::t_3802077e80efa2 20,35,132-145,147
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_f066721bbfd491::t_36c7be78640f83 89-102
+  s_8afcebef7d15aa::t_1aabb2d48c49e7 103-119
+packages/@n8n/cli/docs/commands/package.md
+  s_f066721bbfd491::t_36c7be78640f83 17
+  s_f066721bbfd491::t_c98103135d1081 27
+  s_8afcebef7d15aa::t_de9f6e4ab3436c 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "017fd71154681b6db4f31a1018fcd3e85fff9b97",
+  "prompts": {},
+  "sessions": {
+    "s_8afcebef7d15aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4151-46fb-7303-9526-e7f2de8e2586",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_930eb30b24320a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "81ea6dd3-fb97-4f94-a886-3e48e0c747b1",
+        "model": "default"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_f066721bbfd491": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4161-0a6a-70a2-88e5-eed58ce13450",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

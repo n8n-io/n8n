@@ -1,0 +1,98 @@
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_29160b97c39210::t_85272b1e5a2db1 94
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_29160b97c39210::t_c535568f9dc509 208
+  s_29160b97c39210::t_a17c635805c1ab 417
+packages/@n8n/db/src/repositories/environment-credential-binding.repository.ts
+  s_29160b97c39210::t_11ede3fde3854d 1-35
+packages/frontend/editor-ui/src/features/environments/environments.store.ts
+  s_29160b97c39210::t_bb1a00b667ee47 7-10,12,25-27,61-63,87-109,114,121-122
+packages/cli/src/services/project-environment.service.ts
+  s_29160b97c39210::t_c6e5309bb996d6 1-13,15-16,18,21-25,28-33,75-81,88-96,98,100-103,110-130,132-147
+  s_29160b97c39210::t_3fe57136f69739 82-87,97,99
+  s_29160b97c39210::t_83a62ddf241b90 131
+  s_29160b97c39210::t_2cd3e2bdb985b0 104-109
+packages/@n8n/db/src/repositories/index.ts
+  s_29160b97c39210::t_322c87ffcfd37a 9
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_29160b97c39210::t_44a95456e45b16 5134-5142
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_29160b97c39210::t_b2fc43088b4d00 33
+  s_29160b97c39210::t_59dab2dac1fa57 676-685
+  s_29160b97c39210::t_dfdf6397a246c5 74-75
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowPublishModal.vue
+  s_29160b97c39210::t_848b6f450d9b83 407-411
+  s_29160b97c39210::t_ebbee2998f903f 107-134
+  s_29160b97c39210::t_021835cf192725 500-504
+packages/frontend/editor-ui/src/features/environments/components/EnvironmentBindings.vue
+  s_29160b97c39210::t_8c94d54e0542be 1-162
+single-instance-promotion-prototype/implementation-phase/TASK_3_RESULT_SUMMARY.md
+  h_c63dce324dfc7b 1-19
+packages/frontend/@n8n/rest-api-client/src/api/projectEnvironments.ts
+  s_29160b97c39210::t_1694b13007858d 1-5,18-24,81-102
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_29160b97c39210::t_810cf565331b9c 215
+  s_29160b97c39210::t_f035ecada93212 433
+packages/frontend/editor-ui/src/features/environments/components/EnvironmentList.vue
+  s_29160b97c39210::t_8022adbd3e8d04 8-9
+  s_29160b97c39210::t_313f0ca1fb8cea 55-58
+  s_29160b97c39210::t_de63710fdded37 103-108
+single-instance-promotion-prototype/implementation-phase/TASK_3_CREDENTIAL_BINDINGS.md
+  h_c63dce324dfc7b 1-3
+packages/@n8n/api-types/src/dto/environments/environment-bindings.dto.ts
+  s_29160b97c39210::t_9a59fb8447cef1 1-12
+packages/@n8n/api-types/src/dto/index.ts
+  s_29160b97c39210::t_3526336bd14691 4
+packages/cli/src/workflows/workflow.service.ts
+  s_29160b97c39210::t_a859e8c403fac5 809,812-822
+  s_29160b97c39210::t_98791be90c8303 62
+  s_29160b97c39210::t_56a75c4092b467 101
+packages/cli/src/controllers/project-environment.controller.ts
+  s_29160b97c39210::t_f9f719932c5f98 1-5,14,82-100
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_29160b97c39210::t_781ee3e8c28305 1017
+  s_29160b97c39210::t_471a5403373caf 87
+  s_29160b97c39210::t_1f3c8854c19fd1 736
+  s_29160b97c39210::t_6a3ccf736d40ba 784
+  s_29160b97c39210::t_6d20d0a8f392e1 690
+  s_29160b97c39210::t_66faefa2062264 6
+  s_29160b97c39210::t_f756381c62ea36 1278
+packages/@n8n/db/src/entities/environment-credential-binding.ts
+  s_29160b97c39210::t_36221f18bf5a66 1-39
+packages/@n8n/db/src/migrations/common/1784000000039-CreateEnvironmentCredentialBinding.ts
+  s_29160b97c39210::t_30253d52179689 1-34
+packages/@n8n/db/src/entities/index.ts
+  s_29160b97c39210::t_0584a68731f766 13
+  s_29160b97c39210::t_9e15348f002ac0 116
+  s_29160b97c39210::t_86457e314cc647 60
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_29160b97c39210::t_11f35d7fdae3f9 1044,1053
+  s_29160b97c39210::t_08f9ecf725e526 357
+  s_29160b97c39210::t_a450e47c4a3e65 1275,1282
+  s_29160b97c39210::t_56afeceacff220 95
+packages/cli/src/credentials-helper.ts
+  s_29160b97c39210::t_bc55d5efdc4762 401-413
+  s_29160b97c39210::t_f3e36f7d10c362 7-11
+  s_29160b97c39210::t_f80975a3d04d11 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "b2505d4723bd29e0d40c14cecc32420b01af198e",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_29160b97c39210": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46ac55a5-2a33-412b-b3b2-f2289a35870f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

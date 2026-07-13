@@ -1,0 +1,46 @@
+packages/cli/src/modules/agents/agents.controller.ts
+  s_73b8e4114e484f::t_bc90d6126e3bdb 201-210
+  s_73b8e4114e484f::t_81608718ef06c3 7
+packages/cli/src/modules/agents/agents.service.ts
+  s_73b8e4114e484f::t_991ac968810be7 1580-1584,1586-1591,1593-1597,1599-1600,1602,1604,1611-1641
+  s_dc006fec651c16::t_72785ee2af0603 1598
+  s_dc006fec651c16::t_ad1fd3cf7214d9 1601,1603,1605-1610
+  s_73b8e4114e484f::t_0264d2004b2449 18
+  ai_agent 1585
+  s_dc006fec651c16::t_391ed60bf4abfa 76
+  s_dc006fec651c16::t_803a97ec120780 1592
+  s_dc006fec651c16::t_6f28587a7b16b9 19
+packages/@n8n/api-types/src/agents/types.ts
+  s_73b8e4114e484f::t_55a5b9abef8ed6 133-175
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_73b8e4114e484f::t_572c006d5413dd 34
+  s_73b8e4114e484f::t_2083cadf022709 247-349
+packages/cli/src/modules/agents/json-config/model-id.ts
+  s_dc006fec651c16::t_45cfd560e69d02 5-19
+packages/cli/src/modules/agents/json-config/__tests__/model-id.test.ts
+  s_dc006fec651c16::t_c2ae910a3bd07e 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f04cbabacb3fbe718cc5933c3826fcd30f13419",
+  "prompts": {},
+  "sessions": {
+    "s_73b8e4114e484f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "621e6153-e2c5-42c6-9687-b86946fb66ec",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_dc006fec651c16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "856fe08c-6f0f-418d-9705-3be54a0ad381",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

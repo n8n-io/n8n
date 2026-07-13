@@ -1,0 +1,119 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_f03c6f51317048::t_b326d0a9ebad4f 191-193,195
+  s_f03c6f51317048::t_895f4fe9e508c2 933-1002
+  s_f03c6f51317048::t_7e8893bba5b88a 892-896,905-907
+  s_f03c6f51317048::t_9920aeece703aa 6,26,28,30
+  s_f03c6f51317048::t_2306a727757710 169-190,196-234
+  s_f03c6f51317048::t_2cc12512cdf73b 194
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_f03c6f51317048::t_c938ee9838e128 117-124,156
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/spec/instance-ai-personalized-prompt-suggestions.md
+  s_ec768981ee76d6::t_fce5f7851a92f6 1-13,15-43,46-63,65-77,79,81-92,94-113,115,130-145,147-155,158-159,168-170,172-177,179-186,188,191,194,197-207,212-231,233-239,242,245-246,249-260,262,265-268,272,282-285
+  s_f03c6f51317048::t_812e2f22f26465 14,44-45,64,78,80,93,114,116-129,146,156-157,160-167,171,178,187,189-190,192-193,195-196,208-211,232,240-241,243-244,247-248,261,263,281,286
+  s_f03c6f51317048::t_eaf583a1ec030f 264
+  s_f03c6f51317048::t_a6f5f6a2ea5c26 269-271,273-280
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_f03c6f51317048::t_edc8abc97356ec 253,257-260,264-267,270-272
+  s_f03c6f51317048::t_2afa72fba19e26 288,310,320,328,334-335,347
+  s_f03c6f51317048::t_0838b720eab834 423
+  s_f03c6f51317048::t_3a3c3d98d3d0ea 161
+  s_f03c6f51317048::t_e0ab10c66ad45a 11,52
+  s_f03c6f51317048::t_7a573586dab987 140-141,166,183,190
+  s_f03c6f51317048::t_27ceda9aa4095f 56,422
+  s_f03c6f51317048::t_26401338b37c9b 5,15-24,28,38
+  s_f03c6f51317048::t_ee1a4f4b772209 40,268-269,273-277
+  s_f03c6f51317048::t_a55217920cff73 58,85
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/components/InstanceAiPersonalizedPromptSuggestions.vue
+  s_f03c6f51317048::t_c546a5e5974a79 1-2,4,10,12-13,17-20,22-25,32-33,39-40,42-45,47-50,52-53,57-66,69-70,74-75,77-83,85-87,89-93,95-96,98-102,108-111,118-120,123-132,138-144,151,153,156-158,163-167,172-179,182-193,195-196,214-215,217-221,223-225,227-231,234,238,240,247-248,257-258,260-262,264-266,272,282,286-287,290-293
+  s_f03c6f51317048::t_7750778d3e8532 26,113-117
+  s_f03c6f51317048::t_c8ee3de2f94bb7 38,41,68
+  s_f03c6f51317048::t_2cc12512cdf73b 104-106
+  s_f03c6f51317048::t_3e780084e31b9b 34
+  s_f03c6f51317048::t_a00146dda138e4 3,5-9,11,14-16,21,27-31,35-37,46,51,54-56,67,71-73,76,84,88,94,97,103,107,112,121-122,145-150,152,154-155,159-162,168-171,180-181,194,197-201,203-204,206-211,213,216,222,226,232,239,241-242,246,249,251,253-256,259,263,267-271,274-280,284-285,288-289
+  s_f03c6f51317048::t_ee113c15da1d2d 133-137
+  s_f03c6f51317048::t_920d411fdc01dd 202,205,212,233,235-237,243-245,250,252,273,281,283
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/types.ts
+  s_f03c6f51317048::t_5141e6d68c66a1 38
+  s_f03c6f51317048::t_02d64d6fcd30ab 1-37,39-73
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_f03c6f51317048::t_6a321b67e199f3 349-430
+  s_f03c6f51317048::t_226d50215b890a 310-315
+  s_f03c6f51317048::t_5141e6d68c66a1 121-141
+  s_f03c6f51317048::t_fd5a61dd48a681 167
+  s_f03c6f51317048::t_499d76442521f7 319
+  s_f03c6f51317048::t_7321b4fff6cab0 24,63
+  s_f03c6f51317048::t_f080fa7523e5bf 189,191,217-229
+  s_f03c6f51317048::t_837f24009c13fc 87-120,142-143,163-166,168
+  s_f03c6f51317048::t_78e44766419d9a 27-28,36-45
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/fallbackSuggestions.ts
+  s_f03c6f51317048::t_b79e04f4c6dad3 1-2,4-41
+  s_f03c6f51317048::t_5fb15c7147045f 3
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_f03c6f51317048::t_65f88ac8392a5a 2,7,12-15,31-39
+  s_f03c6f51317048::t_7df4eb45769724 66,70
+  s_f03c6f51317048::t_77c6383a288216 69
+  s_f03c6f51317048::t_b1a76c373202a9 78,87-91,101-103,105-144,146-179
+  s_f03c6f51317048::t_56bc3238cf2932 104
+  s_f03c6f51317048::t_73c4659d3bfd47 187-214,238-240,262
+  s_f03c6f51317048::t_2cc12512cdf73b 98-100,145
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/metadata.test.ts
+  s_f03c6f51317048::t_5141e6d68c66a1 8
+  s_f03c6f51317048::t_ac5e6b89649250 1-7,9-129,142-210
+  s_f03c6f51317048::t_9cdc2c86a3db09 130-141
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/useInstanceAiPersonalizedPromptSuggestionsExperiment.test.ts
+  s_f03c6f51317048::t_47373727ca7b63 1-61
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/index.ts
+  s_f03c6f51317048::t_11d52d143183b5 1-17
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/metadata.ts
+  s_f03c6f51317048::t_5141e6d68c66a1 191
+  s_f03c6f51317048::t_4eb2d7c6ae882d 85-90,93-95,99-107,110-114,118-122,136-139,160-164,168,172
+  s_f03c6f51317048::t_f20785a0de9d88 4,206,212,223,242,246,252-258,263-269
+  s_f03c6f51317048::t_10a3137a143377 1-3,5-84,91-92,96-98,108-109,115-117,123-135,140-159,165-167,169-171,173-190,192-205,207-211,213-222,224-241,243-245,247-251,259-262,270-286
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiPromptSuggestions.telemetry.test.ts
+  s_f03c6f51317048::t_cacf00ecf2e322 55-80,226-247
+  s_f03c6f51317048::t_9657e84bfce2e2 6-9
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiPromptSuggestions.telemetry.ts
+  s_f03c6f51317048::t_37ec4a418b05b2 4,12,24,41,52,89
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/useInstanceAiPersonalizedPromptSuggestionsExperiment.ts
+  s_f03c6f51317048::t_5ce07ab943df88 1-15,17-21,23-36
+  s_f03c6f51317048::t_5141e6d68c66a1 16,22
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/fallbackSuggestions.test.ts
+  s_f03c6f51317048::t_9ceebc3c74ceb2 1-65
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/components/InstanceAiPersonalizedPromptSuggestions.test.ts
+  s_f03c6f51317048::t_c546a5e5974a79 2-3,7-9,14-15,20-21,26-27,32,34-36,41-42,44,47-48,50,53-54,56,59,72-79,83,86-87,91-92,97-98,100-101,103-106,109-110,112-117,121,123-126,130-131,133,135-138,146-148,150,152-155,160-162,164,166-169,171,192-196,201,203-204
+  s_f03c6f51317048::t_08a3fbe6e9cf38 71
+  s_f03c6f51317048::t_38988e0e830c6f 1,4,6,10-13,16-19,22-25,28-31,33,37-40,43,45-46,49,51-52,55,57-58,60-70,80-82,84-85,88-90,93,99,102,107-108,111,118-120,122,127-129,139-145,149,151,156-159,163,165,170,173-191,197-200,202
+  s_f03c6f51317048::t_5141e6d68c66a1 94-96
+  s_f03c6f51317048::t_ae598c4178469c 172
+  s_f03c6f51317048::t_3dbcf59706610f 132,134
+  s_f03c6f51317048::t_5f9415dc1dc85d 5
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f03c6f51317048::t_086b62ef95a699 1244
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/prompts.ts
+  s_f03c6f51317048::t_5141e6d68c66a1 4-5
+  s_f03c6f51317048::t_da57ffc007e336 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "07c6e972d95ced91caadd6f7bf8e8e7aed3ffbcf",
+  "prompts": {},
+  "sessions": {
+    "s_ec768981ee76d6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea6c2-ca5b-7d93-8e05-5aba7811daf9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    },
+    "s_f03c6f51317048": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed9e8-e9a6-7492-bc65-93a6779de578",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

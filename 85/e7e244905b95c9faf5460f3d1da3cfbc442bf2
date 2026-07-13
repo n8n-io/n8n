@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_d039c4d9371ecf::t_d928b904709e8d 17-18,20-44,47,49,52-54,58,75,84,88,93,103,109,114,120
+  s_d039c4d9371ecf::t_18ecccd847e39e 71-73
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d039c4d9371ecf::t_79a09451631a8f 2792-2793
+  s_46bc16a097d988::t_f22f3f47b5d043 2804-2805,2808
+  s_d039c4d9371ecf::t_f8e07797bea3c5 2806-2807,2809-2816
+  s_d039c4d9371ecf::t_50bd73b426421b 2794-2799,2801-2802
+  s_d039c4d9371ecf::t_a1c8c091981097 2800
+  s_d039c4d9371ecf::t_e6cd64e86ea484 2803
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_d039c4d9371ecf::t_7af41e74f045db 24-40,49
+  s_d039c4d9371ecf::t_e94807a2bbaa8a 18-19
+  s_d039c4d9371ecf::t_36c6436e87f287 1,16,108,110-123,136,142,148,150,174,191
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.vue
+  s_46bc16a097d988::t_b676cced98eb4a 41
+  s_d039c4d9371ecf::t_b89b4fe0f21888 67-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "85e7e244905b95c9faf5460f3d1da3cfbc442bf2",
+  "prompts": {},
+  "sessions": {
+    "s_46bc16a097d988": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d5defbc4-4798-4054-a3a3-2c69b8658066",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_d039c4d9371ecf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d6af74f-0c62-4f40-a23b-841141b3e9c4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
