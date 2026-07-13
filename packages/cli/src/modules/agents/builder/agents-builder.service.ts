@@ -174,6 +174,11 @@ export class AgentsBuilderService {
 		yield* this.streamFromAgent(resultStream);
 	}
 
+	/** Expire a suspended builder checkpoint (e.g. when a host cannot render its question). */
+	async cancelCheckpoint(runId: string): Promise<void> {
+		await this.n8nCheckpointStorage.delete(runId);
+	}
+
 	// ---------------------------------------------------------------------------
 	// Private — builder agent construction
 	// ---------------------------------------------------------------------------

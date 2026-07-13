@@ -194,6 +194,7 @@ function setup(
 		credentialProvider,
 		agentsBuilderToolsService,
 		builderSettings,
+		n8nCheckpointStorage,
 	};
 }
 
@@ -314,6 +315,14 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.skillsCalls).toHaveLength(1);
 		const skills = agentsSdkMocks.skillsCalls[0] as Array<{ id: string }>;
 		expect(skills.some((skill) => skill.id === 'agent-builder-integrations')).toBe(false);
+	});
+
+	it('cancelCheckpoint delegates to n8nCheckpointStorage.delete', async () => {
+		const { service, n8nCheckpointStorage } = setup();
+
+		await service.cancelCheckpoint('run-1');
+
+		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1');
 	});
 
 	it('includes the integrations skill without a session', async () => {

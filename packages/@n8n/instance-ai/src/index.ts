@@ -628,6 +628,7 @@ export type {
 	InstanceAiBuilderDelegate,
 	BuilderDelegateSession,
 	BuilderTurnStream,
+	BuilderOpenSuspension,
 	SessionWorkflowRef,
 } from './types';
 export type {

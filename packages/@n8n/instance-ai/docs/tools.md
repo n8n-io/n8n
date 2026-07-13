@@ -678,16 +678,14 @@ sandbox) to consult these before planning or building non-trivial workflows.
 ### `build-agent` *(orchestration tool — requires the `agents` backend module)*
 
 Delegates agent building to the agents-module builder chat
-(`AgentsBuilderService`) running as an embedded, **non-interactive** sub-agent:
-one conversational turn per call. Registered in `createOrchestrationTools`
-only when the host provides `builderDelegate` (agents module active). The
-builder's own prompt and tools drive the build, but its interactive tools
-(`ask_questions`, `ask_credential`, `ask_embedding_credential`,
-`configure_channel`) are excluded from this session — the builder cannot
-suspend mid-turn and must complete every call, reporting any open questions as
-plain text at the end of its reply (`builderReply`). Builder session state is
-keyed to instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and
-never appears in the agents-module builder UI.
+(`AgentsBuilderService`) running as an embedded sub-agent: one conversational
+turn per call. Registered in `createOrchestrationTools` only when the host
+provides `builderDelegate` (agents module active). The builder's own prompt
+and tools drive the build, including its interactive tools (`ask_questions`,
+`ask_credential`, `ask_embedding_credential`, `configure_channel`) — the
+sub-agent session no longer excludes them. Builder session state is keyed to
+instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and never
+appears in the agents-module builder UI.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -699,12 +697,15 @@ never appears in the agents-module builder UI.
 **Returns**: `{ ok: true, builderReply, configUpdated }` on success, or
 `{ ok: false, error }`.
 
-**Relaying open questions:** since the builder cannot ask the user directly,
-any decision it needs (missing credential, channel setup, ambiguous model
-choice) comes back as text at the end of `builderReply`. The calling assistant
-is responsible for surfacing those questions to the user (via its own
-question tool/card if available) and sending the answers back through another
-`build-agent` call.
+**Interactive questions:** when the builder suspends on one of its interactive
+tools (batched questions, a credential picker, or channel setup), this tool
+cascades the suspension through its own suspend/resume so it renders as a
+chat card directly in the assistant conversation — no manual relaying, and the
+suspension survives a process restart. On resume, the tool re-derives the
+target agent and the builder's open suspension from persistence and verifies
+they match the suspension it originally cascaded before routing the answer
+back; a stale or superseded suspension fails the call instead of silently
+resuming the wrong one.
 
 **Targeting:** the first call must pass `name` (new agent) or `agentId`
 (existing agent); the binding is then persisted to thread metadata so
