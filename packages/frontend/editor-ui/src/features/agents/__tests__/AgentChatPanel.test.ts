@@ -37,7 +37,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
 }));
 
 vi.mock('../components/AgentChatEmptyState.vue', () => ({
-	default: { template: '<div data-testid="empty-state-stub" />', props: ['endpoint'] },
+	default: { template: '<div data-testid="empty-state-stub" />' },
 }));
 
 vi.mock('../components/AgentChatMessageList.vue', () => ({
@@ -87,7 +87,6 @@ describe('AgentChatPanel', () => {
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
-				endpoint: 'build',
 				agentConfig: {
 					name: 'Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -142,7 +141,7 @@ describe('AgentChatPanel', () => {
 		};
 	}
 
-	it('awaits beforeSend before sending a build message', async () => {
+	it('awaits beforeSend before sending a chat message', async () => {
 		const events: string[] = [];
 		let resolveBeforeSend: () => void = () => {};
 		const beforeSend = vi.fn(
@@ -162,7 +161,6 @@ describe('AgentChatPanel', () => {
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
-				endpoint: 'build',
 				agentConfig: {
 					name: 'Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -189,64 +187,6 @@ describe('AgentChatPanel', () => {
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
 	});
 
-	it('does not consume an initial message when beforeSend fails', async () => {
-		const beforeSend = vi.fn().mockRejectedValue(new Error('flush failed'));
-
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				endpoint: 'build',
-				initialMessage: 'seed build prompt',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
-				agentStatus: 'draft',
-				connectedTriggers: [],
-				beforeSend,
-			},
-		});
-
-		await flushPromises();
-
-		expect(beforeSend).toHaveBeenCalledTimes(1);
-		expect(sendMessageMock).not.toHaveBeenCalled();
-		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
-	});
-
-	it('does not consume a seeded initial message in a read-only build chat', async () => {
-		const beforeSend = vi.fn();
-
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				endpoint: 'build',
-				canEditAgent: false,
-				initialMessage: 'seed build prompt',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
-				agentStatus: 'draft',
-				connectedTriggers: [],
-				beforeSend,
-			},
-		});
-
-		await flushPromises();
-
-		expect(beforeSend).not.toHaveBeenCalled();
-		expect(sendMessageMock).not.toHaveBeenCalled();
-		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
-		// History is loaded instead so any existing thread renders, rather than
-		// the misleading "describe your agent" empty state.
-		expect(loadHistoryMock).toHaveBeenCalledTimes(1);
-	});
-
 	it('enables chat input and shows answer-question placeholder while an interactive question is unresolved', () => {
 		messagesMock.value = [openInteractiveMessage()];
 
@@ -265,7 +205,6 @@ describe('AgentChatPanel', () => {
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
-				endpoint: 'build',
 				agentConfig: {
 					name: 'Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -316,7 +255,6 @@ describe('AgentChatPanel', () => {
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
-				endpoint: 'build',
 				agentConfig: {
 					name: 'Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -397,28 +335,8 @@ describe('AgentChatPanel', () => {
 		},
 	);
 
-	it('lifts the character limit for the build endpoint', () => {
+	it('does not apply a build-specific character limit', () => {
 		const wrapper = mountPanel();
-		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
-
-		expect(chatInput.props('maxLength')).toBe(25_000);
-	});
-
-	it('keeps the default character limit for the chat endpoint', () => {
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				endpoint: 'chat',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
-				agentStatus: 'draft',
-				connectedTriggers: [],
-			},
-		});
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
 		expect(chatInput.props('maxLength')).toBe(undefined);

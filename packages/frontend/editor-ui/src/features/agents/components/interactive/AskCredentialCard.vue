@@ -5,7 +5,7 @@
  * (`CredentialIcon`, `NodeCredentials`, `useWizardNavigation`) since both
  * surfaces suspend with the identical `credentialSuspendPayloadSchema`
  * shape — only the resume transport differs: this card posts to
- * `POST /build/resume` (via the `submit` emit) instead of instance AI's own
+ * `POST /chat/resume` (via the `submit` emit) instead of instance AI's own
  * confirm endpoint, and skips the browser-auto-setup extras that are
  * specific to instance AI.
  */

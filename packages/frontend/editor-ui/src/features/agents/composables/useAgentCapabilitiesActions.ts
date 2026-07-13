@@ -377,14 +377,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		});
 	}
 
-	function onQuickActionAddTool(tools: AgentJsonToolConfig[]) {
-		scheduleConfigUpdate({ tools });
-	}
-
-	function onQuickActionAddMcpServers(mcpServers: AgentJsonMcpServerConfig[]) {
-		scheduleConfigUpdate({ mcpServers });
-	}
-
 	function onConnectedTriggersUpdate(triggers: string[]) {
 		connectedTriggers.value = triggers;
 		telemetry?.trackTriggerListChanged?.(triggers);
@@ -400,8 +392,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		onOpenAddToolModal,
 		onOpenToolFromList,
 		onRemoveTool,
-		onQuickActionAddTool,
-		onQuickActionAddMcpServers,
 		onOpenAddSkillModal,
 		onOpenSkillFromList,
 		onRemoveSkill,

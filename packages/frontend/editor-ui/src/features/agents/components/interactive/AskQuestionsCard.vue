@@ -5,7 +5,7 @@
  * two surfaces share the exact same suspend payload shape
  * (`questionsSuspendPayloadSchema`), so there is no reason to re-implement
  * the wizard here. Only the submit transport differs: this card posts to
- * `POST /build/resume` (via the `submit` emit) instead of instance AI's own
+ * `POST /chat/resume` (via the `submit` emit) instead of instance AI's own
  * confirm endpoint.
  */
 import { computed } from 'vue';

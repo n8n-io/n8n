@@ -4,7 +4,7 @@
  * around the shared `ChannelSetupCard` (body + composable wiring lives
  * there, identical to `InstanceAiChannelSetup.vue`'s) — this surface only
  * translates the shared `resolve` event into the agents-chat resume
- * transport (`submit` emit → `POST /build/resume` with `{ approved }`) and
+ * transport (`submit` emit → `POST /chat/resume` with `{ approved }`) and
  * renders the collapsed resolved-state summary once disabled.
  */
 import { N8nIcon, N8nText } from '@n8n/design-system';

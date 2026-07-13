@@ -486,7 +486,7 @@ export function convertDbMessages(
 
 /**
  * Re-attach a `runId` to each interactive card whose underlying tool call is
- * still suspended on the backend. The sidecar comes from `GET /build/messages`
+ * still suspended on the backend. The sidecar comes from chat history
  * (`openSuspensions`) — `convertDbMessages` can't surface it on its own
  * because raw persisted messages don't carry runIds.
  *

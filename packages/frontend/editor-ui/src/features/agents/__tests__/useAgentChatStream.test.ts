@@ -52,11 +52,11 @@ function makeSseResponse(events: AgentSseEvent[]): Response {
 	});
 }
 
-function buildHook(endpoint: 'build' | 'chat' = 'build') {
+function buildHook(continueSessionId?: string) {
 	return useAgentChatStream({
 		projectId: ref('p1'),
 		agentId: ref('a1'),
-		endpoint: ref<'build' | 'chat'>(endpoint),
+		...(continueSessionId ? { continueSessionId: ref(continueSessionId) } : {}),
 	});
 }
 
@@ -211,7 +211,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		];
 		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
 
-		const hook = buildHook('chat');
+		const hook = buildHook();
 		await hook.sendMessage('calculate 2 + 2');
 		await nextTick();
 
@@ -267,7 +267,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-		const hook = buildHook('chat');
+		const hook = buildHook();
 		await hook.sendMessage('calculate 2 + 2');
 		await nextTick();
 
@@ -1027,12 +1027,10 @@ describe('useAgentChatStream — loadHistory', () => {
 			openSuspensions: [{ toolCallId: 'tc-1', runId: 'run-9' }],
 		});
 
-		// loadHistory is triggered on mount; we need a hook with endpoint='chat'
-		// (no continueId → getTestChatMessages path)
+		// loadHistory uses getTestChatMessages when no continue session id is set
 		const hook = useAgentChatStream({
 			projectId: ref('p1'),
 			agentId: ref('a1'),
-			endpoint: ref<'build' | 'chat'>('chat'),
 		});
 		await hook.loadHistory();
 
@@ -1069,7 +1067,6 @@ describe('useAgentChatStream — loadHistory', () => {
 		const hook = useAgentChatStream({
 			projectId: ref('p1'),
 			agentId: ref('a1'),
-			endpoint: ref<'build' | 'chat'>('chat'),
 			continueSessionId: ref('thread-1'),
 		});
 		await hook.loadHistory();

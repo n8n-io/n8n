@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment } from '@n8n/api-types';
@@ -21,7 +21,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { INSTANCE_AI_THREAD_VIEW } from './constants';
+import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_PROJECT_ID_QUERY } from './constants';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
@@ -97,11 +97,19 @@ const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
 const projectsStore = useProjectsStore();
-const selectedProject = ref(projectsStore.personalProject?.id);
+const route = useRoute();
+const router = useRouter();
+function resolveInitialProjectId(): string | undefined {
+	const queryProjectId = route.query[INSTANCE_AI_PROJECT_ID_QUERY];
+	if (typeof queryProjectId === 'string' && queryProjectId.length > 0) {
+		return queryProjectId;
+	}
+	return projectsStore.personalProject?.id;
+}
+const selectedProject = ref(resolveInitialProjectId());
 const settingsStore = useInstanceAiSettingsStore();
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
-const router = useRouter();
 const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -367,6 +375,15 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
+
+watch(
+	() => route.query[INSTANCE_AI_PROJECT_ID_QUERY],
+	(queryProjectId) => {
+		if (typeof queryProjectId === 'string' && queryProjectId.length > 0) {
+			selectedProject.value = queryProjectId;
+		}
+	},
+);
 
 // Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
 const templatePreviewPrompt = ref<string | null>(null);

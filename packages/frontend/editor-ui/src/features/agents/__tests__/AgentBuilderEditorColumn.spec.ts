@@ -153,7 +153,6 @@ async function mountColumn(
 			knowledgeBaseEnabled: overrides.knowledgeBaseEnabled ?? true,
 			appliedSkills: [],
 			connectedTriggers: [],
-			isBuildChatStreaming: false,
 			canEditAgent: true,
 			executionsDescription: '',
 		},

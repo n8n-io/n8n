@@ -16,7 +16,7 @@ import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyTo
 import EmptyStateBuilderPrompt from '@/experiments/emptyStateBuilderPrompt/components/EmptyStateBuilderPrompt.vue';
 import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { NEW_AGENT_VIEW } from '@/features/agents/constants';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import SurfaceMcpEmptyStateReminder from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateReminder.vue';
@@ -89,12 +89,7 @@ const handleReadyToRunClick = async () => {
 
 const handleBuildAgentClick = () => {
 	agentTelemetry.trackClickedNewAgent('card');
-	void router.push({
-		name: NEW_AGENT_VIEW,
-		query: {
-			projectId: builderProjectId.value,
-		},
-	});
+	void router.push(instanceAiCreateAgentRoute(builderProjectId.value));
 };
 
 const containerStyle = computed(() => ({

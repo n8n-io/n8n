@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
-import {
-	N8nButton,
-	N8nIcon,
-	N8nResizeWrapper,
-	type DropdownMenuItemProps,
-} from '@n8n/design-system';
+import { N8nIcon, type DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -27,8 +22,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
-import { useResizablePanel } from '@/app/composables/useResizablePanel';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
@@ -69,7 +63,6 @@ import {
 import { agentsEventBus } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
-import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
@@ -89,11 +82,6 @@ const props = withDefaults(
 	},
 );
 
-const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
-const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
-const AGENT_CHAT_PANEL_MAX_WIDTH = 720;
-const AGENT_EDITOR_MIN_WIDTH = 560;
-
 const route = useRoute();
 const router = useRouter();
 const locale = useI18n();
@@ -111,7 +99,7 @@ const favoritesStore = useFavoritesStore();
 const isKnowledgeBaseEnabled = computed(() => settingsStore.isAgentsKnowledgeBaseFeatureEnabled);
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
-const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
+const { fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 // Artifact mode reuses this route shell inside Instance AI. It still relies on
@@ -134,22 +122,7 @@ const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agen
 
 const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
 
-// UI state
-const isBuildChatStreaming = ref(false);
-const initialPrompt = ref<string | undefined>();
 const isVersionHistoryOpen = ref(false);
-
-function onBuildChatStreamingChange(streaming: boolean) {
-	isBuildChatStreaming.value = streaming;
-}
-
-/**
- * Gate for the main body render. Stays false while `initialize()` is running so
- * we don't:
- *   - flash the home screen for users who arrive with a `?prompt=…` query that
- *     will immediately transition them to the build chat, and
- *   - render the preview chat before the route/config/session state has settled.
- */
 const initialized = ref(false);
 const pendingArtifactRefreshKey = ref<number>();
 const agentName = ref('');
@@ -192,15 +165,6 @@ const connectedTriggers = ref<string[]>([]);
 const tasksReloadKey = ref(0);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
-function shouldAutoExpandInitialBuild(): boolean {
-	if (isArtifactMode.value) return false;
-	return Boolean(route.query.prompt) && route.query.expandBuildChat === 'true';
-}
-
-const shouldStartWithExpandedBuildChat = shouldAutoExpandInitialBuild();
-const isChatFullWidth = ref(shouldStartWithExpandedBuildChat);
-const isBuildChatHidden = ref(isArtifactMode.value || !shouldStartWithExpandedBuildChat);
-const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
@@ -224,21 +188,6 @@ const builderTelemetry = useAgentBuilderTelemetry({
  * Preview or stays in the builder.
  */
 const isBuilt = computed(() => agent.value?.isRunnable === true);
-
-function getMaxChatPanelWidth(containerWidth: number): number {
-	return Math.max(
-		AGENT_CHAT_PANEL_MIN_WIDTH,
-		Math.min(AGENT_CHAT_PANEL_MAX_WIDTH, containerWidth - AGENT_EDITOR_MIN_WIDTH),
-	);
-}
-
-const chatPanelResizer = useResizablePanel(LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, {
-	container: builderContainer,
-	defaultSize: (containerWidth) =>
-		Math.min(AGENT_CHAT_PANEL_DEFAULT_WIDTH, getMaxChatPanelWidth(containerWidth)),
-	minSize: AGENT_CHAT_PANEL_MIN_WIDTH,
-	maxSize: getMaxChatPanelWidth,
-});
 
 const showBuilderLoading = computed(() => !initialized.value);
 
@@ -459,10 +408,9 @@ function sessionIdForPreview(): string {
 	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id ?? crypto.randomUUID();
 }
 
-async function openPreview(seedMessage?: string, preferredSessionId?: string) {
+async function openPreview(preferredSessionId?: string) {
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
 	activeChatSessionId.value = sessionId;
-	if (seedMessage) initialPrompt.value = seedMessage;
 
 	await router.push({
 		name: AGENT_PREVIEW_VIEW,
@@ -473,12 +421,6 @@ async function openPreview(seedMessage?: string, preferredSessionId?: string) {
 			[CONTINUE_SESSION_ID_PARAM]: sessionId,
 		},
 	});
-
-	if (seedMessage) {
-		void nextTick(() => {
-			initialPrompt.value = undefined;
-		});
-	}
 }
 
 async function onOpenPreview() {
@@ -513,31 +455,6 @@ function closePreview() {
 	});
 }
 
-function startChat(msg: string) {
-	// Starting a fresh chat must never inherit a stale continue-session from a
-	// previous URL — otherwise the new conversation would keep appending to the
-	// old thread.
-	if (continueSessionId.value) clearContinueSessionParam();
-	if (isBuilt.value) {
-		const sessionId = crypto.randomUUID();
-		activeChatSessionId.value = sessionId;
-		void openPreview(msg, sessionId);
-		telemetry.track('User started agent chat', { agent_id: agentId.value });
-	} else {
-		// Fresh agent — route through the same build chat panel used for ongoing
-		// Build conversations.
-		isBuildChatHidden.value = false;
-		initialPrompt.value = msg;
-		telemetry.track('User started agent build', { agent_id: agentId.value });
-
-		// Drop the seed prompt after the build panel captures it during the
-		// render kicked off by the state change above.
-		void nextTick(() => {
-			initialPrompt.value = undefined;
-		});
-	}
-}
-
 function onPublished(updated: AgentResource) {
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
@@ -550,13 +467,7 @@ function onUnpublished(updated: AgentResource) {
 }
 
 function onToggleVersionHistory() {
-	const next = !isVersionHistoryOpen.value;
-	if (next && isChatFullWidth.value) {
-		// Make room for the panel — chat-full-width hides the editor column
-		// and would leave the resizer at 100%, squashing the new panel.
-		isChatFullWidth.value = false;
-	}
-	isVersionHistoryOpen.value = next;
+	isVersionHistoryOpen.value = !isVersionHistoryOpen.value;
 }
 
 function onCloseVersionHistory() {
@@ -608,11 +519,6 @@ function warmAgentKnowledgeSandboxForPage() {
 			}
 		},
 	);
-}
-
-function onOpenBuildFromChat() {
-	isBuildChatHidden.value = false;
-	closePreview();
 }
 
 interface ConfigAutosaveSnapshot {
@@ -852,13 +758,6 @@ watch(
 	},
 );
 
-function onBuildDone() {
-	isBuildChatStreaming.value = false;
-	if (!shouldCollapseChatAfterInitialBuild.value) return;
-	isChatFullWidth.value = false;
-	shouldCollapseChatAfterInitialBuild.value = false;
-}
-
 const headerActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [
 		{
@@ -1072,18 +971,10 @@ async function initialize() {
 
 		if (isPreviewMode.value) bindPreviewSession();
 
-		// If the user arrived via NewAgentView with a seed prompt, jump straight
-		// into the build chat.
-		const prompt = isArtifactMode.value ? undefined : (route.query.prompt as string | undefined);
-		if (prompt) {
-			if (shouldAutoExpandInitialBuild()) {
-				isChatFullWidth.value = true;
-				shouldCollapseChatAfterInitialBuild.value = true;
-			}
+		if (!isArtifactMode.value && (route.query.prompt || route.query.expandBuildChat)) {
 			void router.replace({
 				query: { ...route.query, prompt: undefined, expandBuildChat: undefined },
 			});
-			startChat(prompt);
 		}
 	} catch (error: unknown) {
 		showError(error, locale.baseText('agents.builder.loadError'));
@@ -1268,7 +1159,6 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			ref="builderContainer"
 			:class="{
 				[$style.builder]: true,
-				[$style.isResizingChat]: chatPanelResizer.isResizing.value,
 				[$style.previewBuilder]: isPreviewMode,
 			}"
 		>
@@ -1285,74 +1175,11 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
-					:initial-prompt="initialPrompt"
-					@config-updated="onConfigUpdated"
 					@continue-loaded="onContinueLoaded"
-					@open-build="onOpenBuildFromChat"
 				/>
-				<N8nButton
-					v-else-if="!isArtifactMode && isBuildChatHidden"
-					variant="ghost"
-					icon-only
-					size="small"
-					:class="$style.showBuildChatButton"
-					:aria-label="locale.baseText('agents.builder.chat.show.ariaLabel' as BaseTextKey)"
-					data-testid="agent-build-chat-show-button"
-					@click="isBuildChatHidden = false"
-				>
-					<N8nIcon icon="panel-left" :size="14" />
-				</N8nButton>
-				<N8nResizeWrapper
-					v-else-if="!isArtifactMode"
-					:class="{
-						[$style.chatResizer]: true,
-						[$style.chatResizerFullWidth]: isChatFullWidth,
-					}"
-					:width="isChatFullWidth ? 0 : chatPanelResizer.size.value"
-					:style="{ width: isChatFullWidth ? '100%' : `${chatPanelResizer.size.value}px` }"
-					:is-resizing-enabled="!isChatFullWidth"
-					:supported-directions="isChatFullWidth ? [] : ['right']"
-					:min-width="AGENT_CHAT_PANEL_MIN_WIDTH"
-					:max-width="AGENT_CHAT_PANEL_MAX_WIDTH"
-					:grid-size="8"
-					outset
-					data-testid="agent-builder-chat-resizer"
-					@resize="chatPanelResizer.onResize"
-					@resizeend="chatPanelResizer.onResizeEnd"
-				>
-					<AgentBuilderChatColumn
-						:initialized="initialized"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:agent-name="agentName"
-						:agent="agent"
-						:local-config="localConfig"
-						:connected-triggers="connectedTriggers"
-						:initial-prompt="initialPrompt"
-						:is-builder-configured="isBuilderConfigured"
-						:is-published="Boolean(agent?.activeVersionId)"
-						:is-full-width="isChatFullWidth"
-						:is-build-chat-streaming="isBuildChatStreaming"
-						:can-edit-agent="canEditAgent"
-						:before-build-send="flushAutosave"
-						@config-updated="onConfigUpdated"
-						@build-done="onBuildDone"
-						@update:streaming="onBuildChatStreamingChange"
-						@update:tools="caps.onQuickActionAddTool"
-						@update:mcp-servers="caps.onQuickActionAddMcpServers"
-						@update:connected-triggers="caps.onConnectedTriggersUpdate"
-						@hide="
-							isChatFullWidth = false;
-							isBuildChatHidden = true;
-						"
-						@trigger-added="caps.onTriggerAdded"
-						@agent-published="onPublished"
-						@agent-changed="refreshAgentAfterIntegrationChange"
-					/>
-				</N8nResizeWrapper>
 
 				<AgentBuilderEditorColumn
-					v-if="!isPreviewMode && (isArtifactMode || !isChatFullWidth || isBuildChatHidden)"
+					v-if="!isPreviewMode"
 					:class="$style.editorColumn"
 					v-model:active-main-tab="activeMainTab"
 					:local-config="localConfig"
@@ -1366,7 +1193,6 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:deleting-agent-file-id="deletingAgentFileId"
 					:applied-skills="appliedSkills"
 					:connected-triggers="connectedTriggers"
-					:is-build-chat-streaming="isBuildChatStreaming"
 					:can-edit-agent="canEditAgent"
 					:tasks-reload-key="tasksReloadKey"
 					:main-tab-options="mainTabOptions"
@@ -1412,9 +1238,6 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 <style lang="scss" module>
 .root {
-	--agent-builder-chat-min-width: 20rem;
-	--agent-builder-editor-min-width: 35rem;
-
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -1443,55 +1266,8 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 	background-color: var(--background--surface);
 }
 
-.chatResizer {
-	flex-shrink: 0;
-	min-width: var(--agent-builder-chat-min-width);
-
-	:global([data-test-id='resize-handle']) {
-		width: var(--spacing--xs) !important;
-		right: calc(var(--spacing--xs) / -2) !important;
-
-		&::after {
-			content: '';
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			width: var(--spacing--5xs);
-			height: var(--spacing--xl);
-			border-radius: var(--radius--4xs);
-			background: var(--color--foreground);
-			opacity: 0;
-			transform: translate(-50%, -50%);
-			transition: opacity 0.15s ease;
-		}
-
-		&:hover::after {
-			opacity: 1;
-		}
-	}
-}
-
-.chatResizerFullWidth {
-	flex: 1 1 auto;
-}
-
-.showBuildChatButton {
-	position: absolute;
-	top: var(--spacing--sm);
-	left: var(--spacing--sm);
-	z-index: 3;
-}
-
-.isResizingChat {
-	.chatResizer {
-		:global([data-test-id='resize-handle'])::after {
-			opacity: 1;
-		}
-	}
-}
-
 .editorColumn {
 	flex: 1 1 auto;
-	min-width: var(--agent-builder-editor-min-width);
+	min-width: 35rem;
 }
 </style>
