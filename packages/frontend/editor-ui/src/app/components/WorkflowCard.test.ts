@@ -1364,4 +1364,53 @@ describe('WorkflowCard', () => {
 			});
 		});
 	});
+
+	describe('Publication status indicator', () => {
+		const renderCard = (overrides: Partial<WorkflowResource> = {}) =>
+			renderComponent({ props: { data: createWorkflow(overrides) } });
+
+		// The tooltip content is teleported and only mounted on hover with a positioned popper,
+		// which the jsdom harness can't render cleanly, so this asserts the visible indicator only.
+		it('shows an amber "Partial publish" indicator when publicationStatus is partial', async () => {
+			const { getByTestId, getByText } = renderCard({
+				publicationStatus: 'partial',
+				activeVersionId: 'v1',
+			});
+			expect(getByTestId('workflow-card-publish-indicator')).toBeVisible();
+			expect(getByText('Partial publish')).toBeVisible();
+		});
+
+		it('shows a red "Failed publish" indicator when publicationStatus is failed', async () => {
+			const { getByText } = renderCard({ publicationStatus: 'failed', activeVersionId: 'v1' });
+			expect(getByText('Failed publish')).toBeVisible();
+		});
+
+		it('shows the "Failed publish" indicator for a fully-failed publish with no active version', async () => {
+			const { getByTestId, getByText } = renderCard({
+				publicationStatus: 'failed',
+				activeVersionId: null,
+			});
+			expect(getByTestId('workflow-card-publish-indicator')).toBeVisible();
+			expect(getByText('Failed publish')).toBeVisible();
+		});
+
+		it('shows the "Partial publish" indicator for a partial publish with no active version', async () => {
+			const { getByTestId, getByText } = renderCard({
+				publicationStatus: 'partial',
+				activeVersionId: null,
+			});
+			expect(getByTestId('workflow-card-publish-indicator')).toBeVisible();
+			expect(getByText('Partial publish')).toBeVisible();
+		});
+
+		it('falls back to the legacy "Published" indicator when publicationStatus is absent', async () => {
+			const { getByText } = renderCard({ activeVersionId: 'v1' });
+			expect(getByText('Published')).toBeVisible();
+		});
+
+		it('shows no indicator when not published and no publicationStatus', async () => {
+			const { queryByTestId } = renderCard({ activeVersionId: null });
+			expect(queryByTestId('workflow-card-publish-indicator')).toBeNull();
+		});
+	});
 });
