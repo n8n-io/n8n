@@ -1,5 +1,6 @@
 import get from 'lodash/get';
 import unset from 'lodash/unset';
+import set from 'lodash/set';
 import { NodeOperationError, deepCopy, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IBinaryData,
@@ -218,10 +219,18 @@ export class SplitOut implements INodeType {
 								pairedItem: { item: i },
 							};
 						} else {
-							splited[elementIndex].json[fieldName] = element;
+							if (!disableDotNotation) {
+								set(splited[elementIndex].json, fieldName, element);
+							} else {
+								splited[elementIndex].json[fieldName] = element;
+							}
 						}
 					} else {
-						splited[elementIndex].json[fieldName] = element;
+						if (!disableDotNotation) {
+							set(splited[elementIndex].json, fieldName, element);
+						} else {
+							splited[elementIndex].json[fieldName] = element;
+						}
 					}
 				}
 			}
