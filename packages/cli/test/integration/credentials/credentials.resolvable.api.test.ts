@@ -598,3 +598,51 @@ describe('POST /credentials — end-user credential creation is role-restricted'
 			.expect(200);
 	});
 });
+
+describe('PATCH /credentials/:id — switching to end-user is role-restricted', () => {
+	test('project editor cannot switch a team credential to end-user', async () => {
+		const staticCred = await saveStaticCredential();
+		await testServer
+			.authAgentFor(memberB)
+			.patch(`/credentials/${staticCred.id}`)
+			.send({ name: staticCred.name, type: staticCred.type, data: {}, isResolvable: true })
+			.expect(403);
+	});
+
+	test('project editor can switch an end-user credential back to fixed', async () => {
+		const resolvableCred = await saveResolvableCredential();
+		await testServer
+			.authAgentFor(memberB)
+			.patch(`/credentials/${resolvableCred.id}`)
+			.send({
+				name: resolvableCred.name,
+				type: resolvableCred.type,
+				data: {},
+				isResolvable: false,
+			})
+			.expect(200);
+	});
+
+	test('project admin can switch a team credential to end-user', async () => {
+		const staticCred = await saveStaticCredential();
+		await testServer
+			.authAgentFor(memberA)
+			.patch(`/credentials/${staticCred.id}`)
+			.send({ name: staticCred.name, type: staticCred.type, data: {}, isResolvable: true })
+			.expect(200);
+	});
+
+	test('editor updates that do not change isResolvable remain allowed', async () => {
+		const resolvableCred = await saveResolvableCredential();
+		await testServer
+			.authAgentFor(memberB)
+			.patch(`/credentials/${resolvableCred.id}`)
+			.send({
+				name: 'renamed by editor',
+				type: resolvableCred.type,
+				data: {},
+				isResolvable: true,
+			})
+			.expect(200);
+	});
+});
