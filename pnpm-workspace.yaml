@@ -94,7 +94,7 @@ catalog:
   '@types/lodash-es': ^4.17.12
   '@types/luxon': 3.2.0
   '@types/markdown-it': ^13.0.2
-  '@types/markdown-it-link-attributes': "^3.0.5"
+  '@types/markdown-it-link-attributes': '^3.0.5'
   '@types/mime-types': 3.0.1
   '@types/ms': 2.1.0
   '@types/node': 24.10.1
@@ -144,7 +144,7 @@ catalog:
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
-  isolated-vm: ^6.1.2
+  isolated-vm: ^7.0.0
   js-base64: 3.7.8
   js-tiktoken: 1.0.21
   json-schema: 0.4.0
@@ -271,3 +271,4 @@ minimumReleaseAgeExclude:
   - '@n8n_io/*'
   - 'typescript'
   - '@typescript/*'
+# edit to trigger unit-test path
