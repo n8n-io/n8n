@@ -1,7 +1,7 @@
 ---
 name: n8n:nathan
 description: Deploy a temporary n8n test instance (or generate a local docker run command) via the internal "Nathan" bot, from the repo instead of Slack. Use after opening a PR to offer the user a live test instance, or whenever someone asks to spin up / deploy a test instance for a branch.
-allowed-tools: Bash(pnpm nathan:*), Bash(node scripts/nathan.mjs:*), Read
+allowed-tools: Bash(pnpm nathan:*), Bash(node scripts/nathan.mjs:*), Bash(git diff:*), Read
 ---
 
 # Nathan — repo-local test instances
@@ -10,64 +10,71 @@ Nathan is n8n's internal bot that deploys throwaway test instances from a branch
 or Docker image. It's normally driven from Slack (`/nathan ...`); this skill runs
 the same commands from the repo via `pnpm nathan`.
 
-## Before you use it (check once)
+## Prerequisites
 
-1. **No tunnel setup needed.** Nathan replies asynchronously through a
-   short-lived public tunnel that the script opens for you via `npx localtunnel`.
-   Do **not** use cloudflared on n8n's network — its `*.trycloudflare.com`
-   hostnames don't resolve there, so Nathan's callback fails. A deploy with an
-   explicit `test-<name>` also polls the instance URL directly, so it still
-   reports success even if the tunnel drops.
-2. **A Nathan token is needed**, read from `~/.n8n/nathan-token`. If it's missing
-   (check with `test -s ~/.n8n/nathan-token || echo missing`), **ask the user for
-   one yourself** — point them at the form
-   (`https://internal.users.n8n.cloud/form/d6d34a2f-4899-4ee8-afc8-f8c41a8a243d`),
-   where they log in with their n8n account and copy the token from the response
-   — then write it for them:
+- **No tunnel setup needed.** Nathan replies asynchronously through a short-lived
+  public tunnel that the script opens for you (`npx localtunnel`). A `deploy` with
+  an explicit `test-<name>` also polls the instance URL directly, so it still
+  reports success even if the tunnel drops.
+- **A token in `~/.n8n/nathan-token`.** Check with `test -s ~/.n8n/nathan-token || echo missing`.
+  If missing, **ask the user for one** — point them at the form
+  (`https://internal.users.n8n.cloud/form/d6d34a2f-4899-4ee8-afc8-f8c41a8a243d`),
+  where they log in with their n8n account and copy the token from the response —
+  then write it for them (don't rely on the script's interactive paste prompt; it
+  needs a real terminal):
 
-   ```bash
-   mkdir -p ~/.n8n && printf '%s\n' '<PASTED_TOKEN>' > ~/.n8n/nathan-token && chmod 600 ~/.n8n/nathan-token
-   ```
-
-   Future runs reuse it. (Humans running the script interactively get the same
-   flow via a paste prompt; that prompt needs a real terminal, so as an agent do
-   the write yourself rather than relying on it.)
+  ```bash
+  mkdir -p ~/.n8n && printf '%s\n' '<PASTED_TOKEN>' > ~/.n8n/nathan-token && chmod 600 ~/.n8n/nathan-token
+  ```
 
 ## Offer a test instance after a PR
 
-After you open a PR for a branch, **ask the user if they want a live test
-instance** for it. If yes, deploy the PR's branch with an explicit `test-`
-instance name:
+After you open a PR, **offer the user a live test instance for the branch.** Don't
+just ask a bare yes/no — look at the diff and **propose a sensible profile**, then
+let them confirm or adjust. For example:
+
+> "Want a test instance for this? Based on the diff I'd deploy it with instance AI
+> enabled (`--ai`) since it touches the AI assistant. Sound good, or a different
+> license?"
+
+### Pick the profile from the PR contents
+
+Inspect what the PR changes (`git diff --stat origin/master...HEAD` and the file
+paths / feature area), then choose:
+
+| PR touches… | Suggest | Why |
+|---|---|---|
+| AI features — `@n8n/nodes-langchain`, `@n8n/instance-ai`, the AI assistant/builder, `N8N_AI_*`, "askAi"/agent code | `--ai` | Enables instance AI (and defaults the license to pro2) so the AI features actually run |
+| License-gated / enterprise features — `.ee.ts` files or `/ee/` dirs, license checks (`@n8n_io/license-sdk`, `hasFeature`), SSO/SAML/OIDC/LDAP, RBAC/roles/scopes, projects, variables, external secrets, source control/environments, log streaming, insights, folders | `--enterprise` | The feature is gated behind a license and won't be testable on community |
+| A specific gated feature/quota you want on/off | `--license pro2 --featureOverride <featureKey>:<value>` | Bakes the override into a generated license (community/enterprise can't be overridden) |
+| Anything else — core nodes, generic UI, non-gated bug fixes | *(nothing — community default)* | No license needed |
+
+If both AI and enterprise apply, combine them: `--ai --enterprise`. When unsure,
+state your best guess and ask. Run `pnpm nathan help` for the full flag reference.
+
+### Deploy
 
 ```bash
-pnpm nathan deploy <branch-name> test-<short-name>
+pnpm nathan deploy <branch-name> test-<short-name> [flags]
 ```
 
-Nathan builds the branch image (a few minutes) and the command prints the
-instance URL (`https://test-<short-name>.stage-app.n8n.cloud`, login
-`test@n8n.io` / `helloWorld7`). Relay that URL to the user.
-
-## How it works
-
-`pnpm nathan <args>` sends the command, opens a short-lived public tunnel so
-Nathan can call back, prints its reply, then exits. Deploys take minutes — the
-command waits (Ctrl-C to stop; the deploy keeps running). Passing an explicit
-`test-<name>` also lets it poll the instance URL directly, so it still reports
-success even if the tunnel drops.
+Nathan builds the branch image (a few minutes) and the command prints the instance
+URL (`https://test-<short-name>.stage-app.n8n.cloud`, login `test@n8n.io` /
+`helloWorld7`). Relay that URL to the user.
 
 ## Common commands
 
 ```bash
-pnpm nathan help                              # full option reference
-pnpm nathan deploy my-branch                  # deploy a branch (community license)
-pnpm nathan deploy my-branch --license pro2   # licensed instance
-pnpm nathan deploy master test-ai --ai        # enable instance AI
-pnpm nathan deploy nightly                     # deploy the n8nio/n8n:nightly image
+pnpm nathan help                                   # full option reference
+pnpm nathan deploy my-branch test-my-feature       # community license
+pnpm nathan deploy my-branch test-sso --enterprise # enterprise license
+pnpm nathan deploy my-branch test-ai --ai          # instance AI (license -> pro2)
+pnpm nathan deploy nightly test-nightly            # deploy the n8nio/n8n:nightly image
 ```
 
-Key flags (pass after the deploy args): `--license community|enterprise|starter|pro1|pro2|trial`,
+Key flags (after the deploy args): `--license community|enterprise|starter|pro1|pro2|trial`,
 `--enterprise`, `--ai`, `-e KEY=value` (repeatable), `--featureOverride key:value`
-(needs a generated license). Run `pnpm nathan help` for the complete list and rules.
+(needs a generated license).
 
 ## `local` caveat
 

@@ -12,14 +12,13 @@
 //   node scripts/nathan.mjs deploy master test-ai --ai
 //
 // Needs a token in ~/.n8n/nathan-token — on first run it links you to a form to
-// get one and saves it there. A public tunnel is opened via `npx localtunnel`
-// (set NATHAN_TUNNEL=cloudflared to use cloudflared, where its hosts resolve).
+// get one and saves it there. A public tunnel is opened via `npx localtunnel`.
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline/promises';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 
 const WEBHOOK = 'https://internal.users.n8n.cloud/webhook/85070485-140c-46e8-9b4b-d161bf7ee1ac';
 // Read a positive-number override from the env, warning and falling back to the
@@ -148,21 +147,10 @@ const server = http.createServer((req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const port = server.address().port;
 
-// --- public tunnel: cloudflared (preferred) or npx localtunnel ---------------
-function hasBinary(bin) {
-	try { return spawnSync(bin, ['--version'], { stdio: 'ignore' }).status === 0; }
-	catch { return false; }
-}
+// --- public tunnel via npx localtunnel ---------------------------------------
 function startTunnel() {
-	// localtunnel by default. Cloudflare quick-tunnel hostnames (*.trycloudflare.com)
-	// don't resolve on n8n's network — neither here nor on the internal instance
-	// that calls back — so cloudflared is opt-in via NATHAN_TUNNEL=cloudflared.
-	const useCloudflared = process.env.NATHAN_TUNNEL === 'cloudflared' && hasBinary('cloudflared');
-	const [cmd, args] = useCloudflared
-		? ['cloudflared', ['tunnel', '--no-autoupdate', '--url', `http://127.0.0.1:${port}`]]
-		: ['npx', ['-y', 'localtunnel', '--port', String(port)]];
-	const proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-	const urlRe = /https:\/\/[^\s]+\.(?:trycloudflare\.com|loca\.lt)/;
+	const proc = spawn('npx', ['-y', 'localtunnel', '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
+	const urlRe = /https:\/\/[^\s]+\.loca\.lt/;
 	return new Promise((resolve, reject) => {
 		const t = setTimeout(() => reject(new Error('tunnel did not start in time')), TUNNEL_START_MS);
 		const scan = (buf) => {
@@ -171,12 +159,12 @@ function startTunnel() {
 		};
 		proc.stdout.on('data', scan);
 		proc.stderr.on('data', scan);
-		proc.on('exit', (code) => reject(new Error(`tunnel process exited (${code}); install cloudflared (brew install cloudflared) for a reliable tunnel`)));
+		proc.on('exit', (code) => reject(new Error(`localtunnel process exited (${code})`)));
 	});
 }
 
-// cloudflared prints its URL a beat before Cloudflare's edge registers the DNS,
-// so firing immediately makes Nathan's callback fail with ENOTFOUND. Self-probe
+// The tunnel host can take a moment to resolve/route after the URL is printed,
+// so firing immediately can make Nathan's callback fail with ENOTFOUND. Self-probe
 // the tunnel (GET, ignored by the server above) until it routes back to us.
 async function waitReachable(url) {
 	const deadline = Date.now() + TUNNEL_START_MS;
