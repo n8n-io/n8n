@@ -14,6 +14,7 @@ import {
 	getBuckets,
 	getChannels,
 	getChats,
+	getGroups,
 	getMembers,
 	getPlans,
 	getTeams,
@@ -764,6 +765,46 @@ describe('Microsoft Teams Transport', () => {
 				}),
 			);
 			expect(results.map((r) => r.value)).toEqual(['t1', 't2']);
+		});
+
+		it('getGroups lists the joined teams (/v1.0/me/joinedTeams), not tenant groups (/v1.0/groups)', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue(undefined);
+			loadOptionsRequestOAuth2.mockResolvedValue({
+				value: [
+					{ id: 'g1', displayName: 'Team 1' },
+					{ id: 'g2', displayName: 'Team 2' },
+				],
+			});
+
+			const { results } = await getGroups.call(mockLoadOptions);
+
+			const calledUri = loadOptionsRequestOAuth2.mock.calls[0][1].uri as string;
+			expect(calledUri).toContain('/v1.0/me/joinedTeams');
+			expect(calledUri).not.toContain('/v1.0/groups');
+			expect(results.map((r) => r.value)).toEqual(['g1', 'g2']);
+		});
+
+		it('getGroups pages through @odata.nextLink (teams past the first page are found)', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue(undefined);
+			// page 1 carries @odata.nextLink → the paginator must follow it to page 2.
+			loadOptionsRequestOAuth2
+				.mockResolvedValueOnce({
+					value: [{ id: 'g1', displayName: 'Team 1' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/me/joinedTeams?$skiptoken=p2',
+				})
+				.mockResolvedValueOnce({ value: [{ id: 'g2', displayName: 'Team 2' }] });
+
+			const { results } = await getGroups.call(mockLoadOptions);
+
+			expect(loadOptionsRequestOAuth2).toHaveBeenCalledTimes(2);
+			expect(loadOptionsRequestOAuth2).toHaveBeenNthCalledWith(
+				2,
+				'microsoftTeamsOAuth2Api',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/me/joinedTeams?$skiptoken=p2',
+				}),
+			);
+			expect(results.map((r) => r.value)).toEqual(['g1', 'g2']);
 		});
 
 		it('getChats throws a static error under SP and never issues a request', async () => {

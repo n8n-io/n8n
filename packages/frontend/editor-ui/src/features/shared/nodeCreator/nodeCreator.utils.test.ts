@@ -787,7 +787,7 @@ describe('NodeCreator - utils', () => {
 
 		it('should show Free credits badge when latest version meets the minimum', () => {
 			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
-			expect(result.properties.tag).toEqual({ text: expect.any(String), pill: true });
+			expect(result.properties.tag).toEqual({ text: 'Free credits', pill: true });
 		});
 
 		it('should suppress Free credits badge when latest version is below the minimum', () => {
@@ -938,7 +938,7 @@ describe('NodeCreator - utils', () => {
 			} as unknown as ReturnType<typeof useNodeTypesStore>);
 		});
 
-		it('should split gateway-supported nodes into an n8n Connect section', () => {
+		it('should split gateway-supported nodes into an Included in n8n section', () => {
 			const supported = makeNode('supportedNode');
 			const other = makeNode('otherNode');
 
@@ -946,6 +946,7 @@ describe('NodeCreator - utils', () => {
 
 			expect(result).not.toBeNull();
 			expect(result?.section.key).toBe('n8nConnect');
+			expect(result?.section.title).toBe('Included in n8n');
 			expect(result?.section.trailing).toBe('creditsBalance');
 			expect(result?.section.showSeparator).toBe(true);
 			expect(result?.section.children.map((child) => child.key)).toEqual(['supportedNode']);
@@ -955,7 +956,7 @@ describe('NodeCreator - utils', () => {
 		it('should tag section children with the Free credits pill', () => {
 			const result = extractAiGatewaySection([makeNode('supportedNode')]);
 			const [child] = result?.section.children as NodeCreateElement[];
-			expect(child.properties.tag).toEqual({ text: expect.any(String), pill: true });
+			expect(child.properties.tag).toEqual({ text: 'Free credits', pill: true });
 		});
 
 		it('should return null when no node is gateway-supported', () => {
