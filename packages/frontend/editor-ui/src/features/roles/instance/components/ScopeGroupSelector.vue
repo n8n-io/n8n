@@ -9,7 +9,7 @@ import {
 	getEscalationWarningKey,
 	isOptionImplied,
 	resolveOptionState,
-	toggleOption,
+	toggleOptionInGroup,
 	type InstanceScopeOption,
 } from '../instanceRoleScopes';
 
@@ -60,7 +60,7 @@ function optionTooltip(option: InstanceScopeOption, groupOptions: InstanceScopeO
 function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption[]) {
 	if (props.readonly) return;
 	if (isOptionImplied(option, groupOptions, props.modelValue)) return;
-	emit('update:modelValue', toggleOption(props.modelValue, option.scopes));
+	emit('update:modelValue', toggleOptionInGroup(props.modelValue, option, groupOptions));
 }
 </script>
 
