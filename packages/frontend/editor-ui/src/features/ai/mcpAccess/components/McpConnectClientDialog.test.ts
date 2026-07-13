@@ -42,8 +42,8 @@ describe('McpConnectClientDialog', () => {
 		expect(body().getByTestId('mcp-connect-client-picker-trigger')).toHaveTextContent(
 			'Claude Code',
 		);
-		expect(body().getByText('Install')).toBeInTheDocument();
-		expect(body().getByText('Configure')).toBeInTheDocument();
+		expect(body().getByText('Add n8n to Claude Code')).toBeInTheDocument();
+		expect(body().getByText('Or configure manually')).toBeInTheDocument();
 		expect(body().getByText('Authenticate')).toBeInTheDocument();
 		expect(
 			body().getByDisplayValue(
@@ -68,10 +68,11 @@ describe('McpConnectClientDialog', () => {
 			expect(body().getByText('One-click setup')).toBeInTheDocument();
 		});
 		expect(body().getByText('Server URL')).toBeInTheDocument();
-		expect(body().queryByText('Install')).not.toBeInTheDocument();
+		expect(body().queryByText('Add n8n to Cursor')).not.toBeInTheDocument();
+		expect(body().queryByText('Authenticate')).not.toBeInTheDocument();
 	});
 
-	it('should show the one-click connector button for web clients', async () => {
+	it('should show the one-click connector, server URL, and no token setup for web clients', async () => {
 		renderComponent({ pinia });
 
 		await waitFor(() => {
@@ -90,19 +91,22 @@ describe('McpConnectClientDialog', () => {
 			'href',
 			'https://chatgpt.com/#settings/connectors',
 		);
+		// Server URL is mandatory for web clients.
+		expect(body().getByText('Server URL')).toBeInTheDocument();
 	});
 
-	it('should reveal the access-token setup on demand', async () => {
+	it('should show the OAuth client setup by default and switch to the API key tab', async () => {
 		renderComponent({ pinia });
 
 		await waitFor(() => {
-			expect(body().getByTestId('mcp-connect-token-toggle')).toBeInTheDocument();
+			expect(body().getByTestId('mcp-connect-client-picker-trigger')).toBeInTheDocument();
 		});
 		expect(body().queryByTestId('token-tab-stub')).not.toBeInTheDocument();
 
-		await userEvent.click(body().getByTestId('mcp-connect-token-toggle'));
+		await userEvent.click(body().getByText('API key'));
 
 		expect(body().getByTestId('token-tab-stub')).toBeInTheDocument();
+		expect(body().queryByTestId('mcp-connect-client-picker-trigger')).not.toBeInTheDocument();
 	});
 
 	it('should close through the store', async () => {

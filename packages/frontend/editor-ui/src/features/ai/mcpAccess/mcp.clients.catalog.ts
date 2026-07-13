@@ -39,9 +39,13 @@ export interface McpClientCategoryGroup {
  * (when the editor supports one) + manual config.
  */
 export function getMcpClientCatalog(serverUrl: string): McpClientCategoryGroup[] {
-	const jsonSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "url": "${serverUrl}"\n    }\n  }\n}`;
 	const claudeSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "type": "http",\n      "url": "${serverUrl}"\n    }\n  }\n}`;
-	const codexSnippet = `[mcp_servers.n8n]\nurl = "${serverUrl}"`;
+	// Cursor treats a bare `url` as SSE; n8n's endpoint is streamable HTTP, so the
+	// transport must be stated explicitly.
+	const cursorSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "type": "streamable-http",\n      "url": "${serverUrl}"\n    }\n  }\n}`;
+	// Codex routes HTTP MCP servers through its Rust client, which older builds only
+	// enable behind this feature flag (newer builds ignore it).
+	const codexSnippet = `[features]\nexperimental_use_rmcp_client = true\n\n[mcp_servers.n8n]\nurl = "${serverUrl}"`;
 	const geminiSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "httpUrl": "${serverUrl}"\n    }\n  }\n}`;
 	const vscodeSnippet = `{\n  "servers": {\n    "n8n": {\n      "type": "http",\n      "url": "${serverUrl}"\n    }\n  }\n}`;
 	const windsurfSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "serverUrl": "${serverUrl}"\n    }\n  }\n}`;
@@ -94,7 +98,7 @@ export function getMcpClientCatalog(serverUrl: string): McpClientCategoryGroup[]
 					name: 'Claude.ai',
 					category: 'web',
 					icon: ClaudeIcon,
-					addUrl: 'https://claude.ai/settings/connectors',
+					addUrl: 'https://claude.ai/directory/connectors/n8n',
 				},
 				{
 					id: 'chatgpt',
@@ -114,7 +118,7 @@ export function getMcpClientCatalog(serverUrl: string): McpClientCategoryGroup[]
 					category: 'ide',
 					icon: CursorIcon,
 					deepLink: cursorDeepLink,
-					configSnippet: jsonSnippet,
+					configSnippet: cursorSnippet,
 				},
 				{
 					id: 'vscode',

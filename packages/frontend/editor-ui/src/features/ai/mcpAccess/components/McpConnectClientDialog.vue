@@ -7,12 +7,12 @@ import {
 	N8nDialog,
 	N8nDropdownMenu,
 	N8nIcon,
-	N8nLink,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
+	N8nTabs,
 	N8nText,
 } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import type { DropdownMenuItemProps, TabOptions } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
@@ -34,9 +34,14 @@ const clientsById = new Map<string, McpClientSetup>(
 	catalog.flatMap((group) => group.clients.map((client) => [client.id, client])),
 );
 
+type ConnectMethod = 'oauth' | 'apiKey';
+const activeMethod = ref<ConnectMethod>('oauth');
+const methodTabs = computed<Array<TabOptions<ConnectMethod>>>(() => [
+	{ label: i18n.baseText('settings.mcp.connectDialog.method.oauth'), value: 'oauth' },
+	{ label: i18n.baseText('settings.mcp.connectDialog.method.apiKey'), value: 'apiKey' },
+]);
+
 const activeClientId = ref('claude-code');
-const clientSearch = ref('');
-const showTokenSetup = ref(false);
 
 const activeClient = computed(() => clientsById.get(activeClientId.value));
 
@@ -44,14 +49,9 @@ type MenuItemData = { kind: 'header' } | { kind: 'client'; client: McpClientSetu
 
 // Grouped picker items: each category is a disabled, divided header item
 // (non-selectable) followed by its clients; the active client carries `checked`.
-// The menu only emits `search`, so the term is filtered here and empty
-// categories drop out.
 const clientMenuItems = computed<Array<DropdownMenuItemProps<string, MenuItemData>>>(() => {
-	const term = clientSearch.value.trim().toLowerCase();
 	const items: Array<DropdownMenuItemProps<string, MenuItemData>> = [];
 	for (const group of catalog) {
-		const matching = group.clients.filter((client) => client.name.toLowerCase().includes(term));
-		if (matching.length === 0) continue;
 		items.push({
 			id: `header:${group.id}`,
 			label: i18n.baseText(`settings.mcp.connectDialog.category.${group.id}` as BaseTextKey),
@@ -59,7 +59,7 @@ const clientMenuItems = computed<Array<DropdownMenuItemProps<string, MenuItemDat
 			divided: items.length > 0,
 			data: { kind: 'header' },
 		});
-		for (const client of matching) {
+		for (const client of group.clients) {
 			items.push({
 				id: client.id,
 				label: client.name,
@@ -77,17 +77,13 @@ const onSelectClient = (id: string) => {
 	telemetry.track('User selected MCP client in connect dialog', { client: id });
 };
 
-const onClientSearch = (term: string) => {
-	clientSearch.value = term ?? '';
-};
-
 const onOpenChange = (open: boolean) => {
 	if (open) {
 		mcpStore.openConnectPopover();
 	} else {
 		mcpStore.closeConnectPopover();
 		mcpStore.resetCurrentUserMCPKey();
-		showTokenSetup.value = false;
+		activeMethod.value = 'oauth';
 	}
 };
 
@@ -103,6 +99,11 @@ const handleTokenTabCopy = (type: 'serverUrl' | 'accessToken' | 'mcpJson') => {
 	trackCopy(itemMap[type]);
 };
 
+const installTitle = computed(() =>
+	i18n.baseText('settings.mcp.connectDialog.install.title', {
+		interpolate: { client: activeClient.value?.name ?? '' },
+	}),
+);
 const installDescription = computed(() =>
 	i18n.baseText('settings.mcp.connectDialog.install.description', {
 		interpolate: { client: activeClient.value?.name ?? '' },
@@ -146,7 +147,15 @@ const serverUrlDescription = computed(() =>
 		@update:open="onOpenChange"
 	>
 		<div :class="$style.body">
-			<N8nSettingsRowGroup>
+			<N8nTabs
+				:model-value="activeMethod"
+				:options="methodTabs"
+				:class="$style.tabs"
+				data-test-id="mcp-connect-method-tabs"
+				@update:model-value="activeMethod = $event"
+			/>
+
+			<N8nSettingsRowGroup v-if="activeMethod === 'oauth'">
 				<N8nSettingsRow
 					:title="i18n.baseText('settings.mcp.connectDialog.yourClient.title')"
 					:description="i18n.baseText('settings.mcp.connectDialog.yourClient.description')"
@@ -154,15 +163,12 @@ const serverUrlDescription = computed(() =>
 				>
 					<template #action>
 						<N8nDropdownMenu
-							searchable
-							:search-placeholder="i18n.baseText('settings.mcp.connectDialog.search.placeholder')"
-							:empty-text="i18n.baseText('settings.mcp.connectDialog.search.empty')"
 							:items="clientMenuItems"
 							placement="bottom-end"
 							max-height="min(var(--reka-dropdown-menu-content-available-height), 30rem)"
+							:extra-popper-class="$style['picker-menu']"
 							data-test-id="mcp-connect-client-picker"
 							@select="onSelectClient"
-							@search="onClientSearch"
 						>
 							<template #trigger>
 								<N8nButton
@@ -197,18 +203,21 @@ const serverUrlDescription = computed(() =>
 								<span v-if="item.data?.kind === 'header'" :class="$style.category">
 									{{ item.label }}
 								</span>
-								<N8nText v-else size="medium" color="text-dark">{{ item.label }}</N8nText>
+								<N8nText v-else size="medium" color="text-dark" :class="$style['client-label']">
+									{{ item.label }}
+								</N8nText>
 							</template>
 						</N8nDropdownMenu>
 					</template>
 				</N8nSettingsRow>
 
-				<!-- CLI: Install → Configure → Authenticate -->
+				<!-- CLI: one command adds the server (requires the client installed and
+				     writes its config), OR edit the config file manually → Authenticate. -->
 				<template v-if="activeClient?.category === 'cli'">
 					<N8nSettingsRow
 						layout="vertical"
 						:show-divider="false"
-						:title="i18n.baseText('settings.mcp.connectDialog.install.title')"
+						:title="installTitle"
 						:description="installDescription"
 					>
 						<template #action>
@@ -224,8 +233,8 @@ const serverUrlDescription = computed(() =>
 					<N8nSettingsRow
 						layout="vertical"
 						:show-divider="false"
-						:title="i18n.baseText('settings.mcp.connectDialog.configure.title')"
-						:description="i18n.baseText('settings.mcp.connectDialog.configure.description')"
+						:title="i18n.baseText('settings.mcp.connectDialog.configure.titleAlt')"
+						:description="i18n.baseText('settings.mcp.connectDialog.configure.descriptionAlt')"
 					>
 						<template #action>
 							<McpConfigSnippet
@@ -254,30 +263,47 @@ const serverUrlDescription = computed(() =>
 					</N8nSettingsRow>
 				</template>
 
-				<!-- Web: one-click connector -->
-				<N8nSettingsRow
-					v-else-if="activeClient?.category === 'web'"
-					:show-divider="false"
-					:title="i18n.baseText('settings.mcp.connectDialog.oneClick.title')"
-					:description="oneClickDescription"
-				>
-					<template #action>
-						<N8nButton
-							variant="outline"
-							size="medium"
-							:href="activeClient.addUrl"
-							target="_blank"
-							data-test-id="mcp-connect-one-click"
-						>
-							<component
-								:is="activeClient.icon"
-								v-if="activeClient.icon"
-								:class="$style['brand-icon']"
+				<!-- Web: one-click connector + the mandatory server URL to paste in. -->
+				<template v-else-if="activeClient?.category === 'web'">
+					<N8nSettingsRow
+						:show-divider="false"
+						:title="i18n.baseText('settings.mcp.connectDialog.oneClick.title')"
+						:description="oneClickDescription"
+					>
+						<template #action>
+							<N8nButton
+								variant="outline"
+								size="medium"
+								:href="activeClient.addUrl"
+								target="_blank"
+								data-test-id="mcp-connect-one-click"
+							>
+								<component
+									:is="activeClient.icon"
+									v-if="activeClient.icon"
+									:class="$style['brand-icon']"
+								/>
+								{{ addButtonLabel }}
+							</N8nButton>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						layout="vertical"
+						:show-divider="false"
+						:title="i18n.baseText('settings.mcp.connectPopover.serverUrl')"
+						:description="serverUrlDescription"
+					>
+						<template #action>
+							<ConnectionParameter
+								:class="$style['copy-field']"
+								id="mcp-web-server-url"
+								:label="''"
+								:value="serverUrl"
+								@copy="trackCopy('server-url')"
 							/>
-							{{ addButtonLabel }}
-						</N8nButton>
-					</template>
-				</N8nSettingsRow>
+						</template>
+					</N8nSettingsRow>
+				</template>
 
 				<!-- IDE: one-click deep link (when supported) + manual config -->
 				<template v-else-if="activeClient">
@@ -336,25 +362,7 @@ const serverUrlDescription = computed(() =>
 				</template>
 			</N8nSettingsRowGroup>
 
-			<div :class="$style['token-toggle']">
-				<N8nLink
-					size="small"
-					theme="text"
-					data-test-id="mcp-connect-token-toggle"
-					@click="showTokenSetup = !showTokenSetup"
-				>
-					{{
-						showTokenSetup
-							? i18n.baseText('settings.mcp.connectDialog.tokenSetup.hide')
-							: i18n.baseText('settings.mcp.connectDialog.tokenSetup.show')
-					}}
-				</N8nLink>
-			</div>
-			<div
-				v-if="showTokenSetup"
-				:class="$style['token-setup']"
-				data-test-id="mcp-connect-token-setup"
-			>
+			<div v-else :class="$style['token-setup']" data-test-id="mcp-connect-token-setup">
 				<MCPAccessTokenPopoverTab :server-url="serverUrl" @copy="handleTokenTabCopy" />
 			</div>
 		</div>
@@ -370,10 +378,23 @@ const serverUrlDescription = computed(() =>
 	overflow-y: auto;
 }
 
+.tabs {
+	margin-bottom: var(--spacing--sm);
+}
+
 .picker-trigger {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+/* Give the menu room so client names (e.g. "Claude Code") never wrap. */
+.picker-menu {
+	min-width: 15rem;
+}
+
+.client-label {
+	white-space: nowrap;
 }
 
 .brand-icon {
@@ -397,10 +418,6 @@ const serverUrlDescription = computed(() =>
    should span the full row width. */
 .copy-field {
 	width: 100%;
-}
-
-.token-toggle {
-	margin-top: var(--spacing--sm);
 }
 
 .token-setup {

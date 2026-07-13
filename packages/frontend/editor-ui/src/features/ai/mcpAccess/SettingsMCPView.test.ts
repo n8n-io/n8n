@@ -68,11 +68,6 @@ const createComponent = createComponentRenderer(SettingsMCPView, {
 				template:
 					'<div v-if="open" data-test-id="mcp-callback-urls-dialog-stub"><button data-test-id="stub-save-urls" @click="$emit(\'save\', [\'https://client.example.com/cb\'])">Save</button></div>',
 			},
-			McpConnectedClientsPreview: {
-				props: ['clients', 'totalCount'],
-				template:
-					"<div data-test-id=\"mcp-clients-preview\"><button data-test-id=\"stub-revoke-client\" @click=\"$emit('revoke', { id: 'client-1', name: 'Claude Code', owner: { id: 'user-2', firstName: 'Jane', lastName: 'Doe', email: 'jane@n8n.io' } })\">Revoke</button><button data-test-id=\"stub-view-all\" @click=\"$emit('viewAll')\">View all</button></div>",
-			},
 		},
 	},
 });
@@ -134,24 +129,35 @@ describe('SettingsMCPView', () => {
 	describe('MCP enabled state', () => {
 		beforeEach(() => {
 			enableMcpSettings();
+			mcpStore.oauthClientTotals = { mine: 2 };
 		});
 
-		it('should render the settings sections and the clients preview', async () => {
+		it('should render the settings sections and the connected-clients row', async () => {
 			const { getByTestId, queryByTestId } = createComponent({ pinia });
 			await nextTick();
 
 			expect(getByTestId('mcp-settings-header')).toBeVisible();
 			expect(getByTestId('mcp-enabled-section')).toBeVisible();
 			expect(getByTestId('mcp-workflows-exposed-row')).toBeVisible();
-			expect(getByTestId('mcp-clients-preview')).toBeVisible();
+			expect(getByTestId('mcp-clients-view-all-row')).toBeVisible();
 			expect(queryByTestId('mcp-empty-state')).not.toBeInTheDocument();
 		});
 
-		it('should navigate to the connected clients sub-view from the preview', async () => {
+		it('should show the no-clients empty state when there are no connected clients', async () => {
+			mcpStore.oauthClientTotals = { mine: 0 };
+
+			const { getByTestId, queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('mcp-clients-empty')).toBeVisible();
+			expect(queryByTestId('mcp-clients-view-all-row')).not.toBeInTheDocument();
+		});
+
+		it('should navigate to the connected clients page from the view-all row', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 
-			await userEvent.click(getByTestId('stub-view-all'));
+			await userEvent.click(getByTestId('mcp-clients-view-all-row'));
 
 			expect(routerPush).toHaveBeenCalledWith({ name: MCP_CLIENTS_VIEW });
 		});
@@ -399,33 +405,6 @@ describe('SettingsMCPView', () => {
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 			await waitFor(() => {
 				expect(mcpStore.openConnectPopover).toHaveBeenCalled();
-			});
-		});
-	});
-
-	describe('Revoking a client', () => {
-		beforeEach(() => {
-			enableMcpSettings();
-		});
-
-		it('should confirm before revoking and pass the consent owner to the store', async () => {
-			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
-
-			await userEvent.click(getByTestId('stub-revoke-client'));
-
-			// nothing is revoked until the dialog is confirmed
-			await waitFor(() => {
-				expect(
-					within(document.body).getByText('Revoke access for "Claude Code"?'),
-				).toBeInTheDocument();
-			});
-			expect(mcpStore.removeOAuthClient).not.toHaveBeenCalled();
-
-			await userEvent.click(within(document.body).getByRole('button', { name: 'Revoke' }));
-
-			await waitFor(() => {
-				expect(mcpStore.removeOAuthClient).toHaveBeenCalledWith('client-1', 'user-2');
 			});
 		});
 	});

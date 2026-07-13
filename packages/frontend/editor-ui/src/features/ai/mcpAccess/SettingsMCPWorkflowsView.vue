@@ -185,6 +185,7 @@ onMounted(async () => {
 
 <template>
 	<N8nSettingsLayout
+		full-width
 		show-back
 		:back-label="i18n.baseText('settings.mcp.back')"
 		:class="$style.layout"
@@ -237,6 +238,8 @@ onMounted(async () => {
 /* The settings shell pads the page top (70.5px); pull the column up a step. */
 .layout {
 	margin-top: calc(-1 * var(--spacing--lg));
+	/* Fill the settings shell width so the workflows table spans the full page. */
+	--settings-content--max-width: none;
 }
 
 /* Pin the back action to the top-left of the settings area (the shell's

@@ -14,20 +14,17 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nText,
 } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from '@/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.vue';
+import McpClientLogoCards from '@/features/ai/mcpAccess/components/McpClientLogoCards.vue';
 import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnectClientDialog.vue';
-import McpConnectedClientsPreview from '@/features/ai/mcpAccess/components/McpConnectedClientsPreview.vue';
 import McpStatusControl from '@/features/ai/mcpAccess/components/McpStatusControl.vue';
-import OAuthClientDetailsModal from '@/features/ai/mcpAccess/components/OAuthClientDetailsModal.vue';
-import RevokeOAuthClientConfirmModal from '@/features/ai/mcpAccess/components/RevokeOAuthClientConfirmModal.vue';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import {
 	MCP_CLIENTS_VIEW,
@@ -41,7 +38,6 @@ const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const mcp = useMcp();
-const telemetry = useTelemetry();
 const router = useRouter();
 
 const mcpStore = useMCPStore();
@@ -57,12 +53,6 @@ const canManageMcpInstance = computed(() => isOwner.value || isAdmin.value);
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
 
 const exposedWorkflowsCount = ref(0);
-
-const revokeClient = ref<OAuthClientResponseDto | null>(null);
-const revoking = ref(false);
-// Stays set through the close animation.
-const detailsClient = ref<OAuthClientResponseDto | null>(null);
-const showDetailsModal = ref(false);
 
 const showCallbackUrlsDialog = ref(false);
 const savingCallbackUrls = ref(false);
@@ -133,6 +123,7 @@ const onConfirmDisable = async () => {
 	await onToggleMCPAccess(false);
 };
 
+/** Populates the store's client totals so the "N clients have access" count renders. */
 const fetchoAuthCLients = async () => {
 	try {
 		await mcpStore.getAllOAuthClients();
@@ -146,39 +137,8 @@ const connectedClientsTotal = computed(
 	() => mcpStore.oauthClientTotals.all ?? mcpStore.oauthClientTotals.mine,
 );
 
-const onOpenClientDetails = (client: OAuthClientResponseDto) => {
-	detailsClient.value = client;
-	showDetailsModal.value = true;
-	telemetry.track('User opened MCP client details');
-};
-
 const openClientsView = () => {
 	void router.push({ name: MCP_CLIENTS_VIEW });
-};
-
-const onRevokeRequest = (client: OAuthClientResponseDto) => {
-	revokeClient.value = client;
-};
-
-const onRevokeConfirm = async () => {
-	const client = revokeClient.value;
-	if (!client) return;
-	try {
-		revoking.value = true;
-		await mcpStore.removeOAuthClient(client.id, client.owner?.id);
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('settings.mcp.oAuthClients.revoke.success.title'),
-			message: i18n.baseText('settings.mcp.oAuthClients.revoke.success.message', {
-				interpolate: { name: client.name },
-			}),
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.oAuthClients.revoke.error'));
-	} finally {
-		revoking.value = false;
-		revokeClient.value = null;
-	}
 };
 
 const openWorkflowsView = () => {
@@ -224,7 +184,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<N8nSettingsLayout :class="$style.layout">
+	<N8nSettingsLayout full-width :class="$style.layout">
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.mcp.page.title')"
 			:description="i18n.baseText('settings.mcp.page.description')"
@@ -269,8 +229,9 @@ onMounted(async () => {
 					>
 						<template #action>
 							<N8nButton
-								variant="outline"
+								variant="solid"
 								size="medium"
+								icon="mcp"
 								:label="i18n.baseText('settings.mcp.yourClient.connect')"
 								data-test-id="mcp-connect-client-button"
 								@click="mcpStore.openConnectPopover()"
@@ -315,13 +276,39 @@ onMounted(async () => {
 				:title="i18n.baseText('settings.mcp.connectedClients.title')"
 				:description="i18n.baseText('settings.mcp.connectedClients.description')"
 			>
-				<McpConnectedClientsPreview
-					:clients="mcpStore.oauthClients"
-					:total-count="connectedClientsTotal"
-					@open-details="onOpenClientDetails"
-					@revoke="onRevokeRequest"
-					@view-all="openClientsView"
-				/>
+				<div
+					v-if="connectedClientsTotal === 0"
+					:class="$style['clients-empty']"
+					data-test-id="mcp-clients-empty"
+				>
+					<McpClientLogoCards :class="$style['clients-empty-cards']" />
+					<N8nText bold size="medium" color="text-dark">
+						{{ i18n.baseText('settings.mcp.connectedClients.empty.title') }}
+					</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.mcp.connectedClients.empty.description') }}
+					</N8nText>
+				</div>
+				<N8nSettingsRowGroup v-else>
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.mcp.connectedClients.viewAll.title')"
+						:description="
+							i18n.baseText('settings.mcp.connectedClients.viewAll.description', {
+								adjustToNumber: connectedClientsTotal,
+								interpolate: { count: String(connectedClientsTotal) },
+							})
+						"
+						clickable
+						data-test-id="mcp-clients-view-all-row"
+						@click="openClientsView"
+					>
+						<template #action>
+							<N8nSettingsRowConfigure
+								:value="i18n.baseText('settings.mcp.connectedClients.viewAll.action')"
+							/>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 		</template>
 
@@ -347,30 +334,11 @@ onMounted(async () => {
 
 		<McpConnectClientDialog />
 
-		<OAuthClientDetailsModal
-			v-model:open="showDetailsModal"
-			:client="detailsClient"
-			:scope-tools="mcpStore.oauthClientScopeTools"
-			@revoke="onRevokeRequest"
-		/>
-
 		<McpAllowedCallbackUrlsDialog
 			v-model:open="showCallbackUrlsDialog"
 			:uris="mcpStore.allowedRedirectUris"
 			:saving="savingCallbackUrls"
 			@save="onSaveCallbackUrls"
-		/>
-
-		<RevokeOAuthClientConfirmModal
-			:client="revokeClient"
-			:open="!!revokeClient"
-			:loading="revoking"
-			:revoking-for-other="
-				!!revokeClient?.owner && revokeClient.owner.id !== usersStore.currentUser?.id
-			"
-			@confirm="onRevokeConfirm"
-			@cancel="revokeClient = null"
-			@update:open="revokeClient = null"
 		/>
 	</N8nSettingsLayout>
 </template>
@@ -380,5 +348,24 @@ onMounted(async () => {
    header starts at the layout's own 24px inset, like the prototype. */
 .layout {
 	margin-top: -70.5px;
+	/* Fill the settings shell width (like the OpenTelemetry page) instead of the
+	   default 720px column; also un-caps the page header, which self-caps to this. */
+	--settings-content--max-width: none;
+}
+
+/* No-clients state: same dashed-card language as the disabled-MCP empty state. */
+.clients-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--2xl) var(--spacing--xl);
+	border: var(--border-width) dashed var(--border-color);
+	border-radius: var(--radius--lg);
+}
+
+.clients-empty-cards {
+	margin-bottom: var(--spacing--sm);
 }
 </style>
