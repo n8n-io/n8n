@@ -72,6 +72,24 @@ describe('slackSendAndWaitWebhook', () => {
 		expect(ctx.getCredentials).not.toHaveBeenCalled();
 	});
 
+	it('delegates a POST without an x-slack-signature header to the shared handler', async () => {
+		// The header-only gate: an unsigned POST is either HMAC-validated by the base route or
+		// rejected at the `-slack` CLI layer, so it must never be treated as a Slack interaction
+		// (which would force it through signature verification). A custom-form field named
+		// `payload` must not change this.
+		const { ctx } = createContext({
+			method: 'POST',
+			hasSignature: false,
+			payload: { payload: 'a user-defined form field' },
+		});
+		sendAndWaitWebhook.mockResolvedValue({ noWebhookResponse: true });
+
+		await slackSendAndWaitWebhook.call(ctx);
+
+		expect(sendAndWaitWebhook).toHaveBeenCalledTimes(1);
+		expect(ctx.getCredentials).not.toHaveBeenCalled();
+	});
+
 	it('responds 401 without resuming when no signing secret is configured', async () => {
 		const { ctx, status } = createContext({ hasSignature: true, signatureSecret: undefined });
 		verifySignature.mockResolvedValue(true);
@@ -125,6 +143,8 @@ describe('slackSendAndWaitWebhook', () => {
 			channel: 'C1',
 			messageId: '111.222',
 		});
+		// A verified interaction resumes directly and never reaches the unauthenticated handler.
+		expect(sendAndWaitWebhook).not.toHaveBeenCalled();
 		// Message locked via response_url, with the buttons removed. Body is a JSON string
 		// (Slack replies with plain "ok", so we don't parse the response as JSON).
 		expect(httpRequest).toHaveBeenCalledWith(
@@ -264,5 +284,174 @@ describe('slackSendAndWaitWebhook', () => {
 			'/chat.update',
 			expect.objectContaining({ channel: 'C1', ts: '111.222' }),
 		);
+	});
+
+	it('resolves as not approved for an unknown action_id and still resumes', async () => {
+		const { ctx, httpRequest } = createContext({
+			hasSignature: true,
+			signatureSecret: 'secret',
+			payload: {
+				user: { id: 'U1' },
+				actions: [{ action_id: 'something_else', action_ts: '1700000000.000' }],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+				response_url: 'https://hooks.slack.com/actions/xxx',
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockResolvedValue({ user: { profile: {} } });
+		httpRequest.mockResolvedValue({});
+
+		const result = (await slackSendAndWaitWebhook.call(ctx)) as {
+			workflowData: Array<Array<{ json: { data: { approved: boolean } } }>>;
+		};
+
+		expect(result.workflowData[0][0].json.data.approved).toBe(false);
+	});
+
+	it('resolves as not approved when the interaction carries no actions and still resumes', async () => {
+		const { ctx, httpRequest } = createContext({
+			hasSignature: true,
+			signatureSecret: 'secret',
+			payload: {
+				user: { id: 'U1' },
+				actions: [],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+				response_url: 'https://hooks.slack.com/actions/xxx',
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockResolvedValue({ user: { profile: {} } });
+		httpRequest.mockResolvedValue({});
+
+		const result = (await slackSendAndWaitWebhook.call(ctx)) as {
+			workflowData: Array<Array<{ json: { data: { approved: boolean } } }>>;
+		};
+
+		expect(result.workflowData[0][0].json.data.approved).toBe(false);
+	});
+
+	it('still resumes when both response_url and chat.update fail to lock the message', async () => {
+		const { ctx, httpRequest } = createContext({
+			hasSignature: true,
+			signatureSecret: 'secret',
+			payload: {
+				user: { id: 'U1' },
+				actions: [{ action_id: 'n8n_hitl_approve', action_ts: '1700000000.000' }],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+				response_url: 'https://hooks.slack.com/actions/xxx',
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		httpRequest.mockRejectedValue(new Error('response_url expired'));
+		slackApiRequest.mockImplementation(async (_method, resource) => {
+			if (resource === '/users.info') return { user: { profile: {} } };
+			throw new Error('missing chat:write scope');
+		});
+
+		const result = (await slackSendAndWaitWebhook.call(ctx)) as {
+			workflowData: Array<Array<{ json: { data: { approved: boolean } } }>>;
+		};
+
+		expect(result.workflowData[0][0].json.data.approved).toBe(true);
+	});
+
+	it('still resumes when the message cannot be locked because channel and ts are missing', async () => {
+		const { ctx } = createContext({
+			hasSignature: true,
+			signatureSecret: 'secret',
+			payload: {
+				user: { id: 'U1' },
+				actions: [{ action_id: 'n8n_hitl_approve', action_ts: '1700000000.000' }],
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockResolvedValue({ user: { profile: {} } });
+
+		const result = (await slackSendAndWaitWebhook.call(ctx)) as {
+			workflowData: Array<Array<{ json: { data: { approved: boolean } } }>>;
+		};
+
+		expect(result.workflowData[0][0].json.data.approved).toBe(true);
+	});
+
+	it('resumes with id and name but no email when users.info fails', async () => {
+		const { ctx, httpRequest } = createContext({
+			hasSignature: true,
+			signatureSecret: 'secret',
+			payload: {
+				user: { id: 'U1', name: 'alice' },
+				actions: [{ action_id: 'n8n_hitl_approve', action_ts: '1700000000.000' }],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+				response_url: 'https://hooks.slack.com/actions/xxx',
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		httpRequest.mockResolvedValue({});
+		slackApiRequest.mockRejectedValue(new Error('missing users:read.email scope'));
+
+		const result = (await slackSendAndWaitWebhook.call(ctx)) as {
+			workflowData: Array<
+				Array<{ json: { data: { responder: { id: string; name?: string; source: string } } } }>
+			>;
+		};
+
+		expect(result.workflowData[0][0].json.data.responder).toEqual({
+			id: 'U1',
+			name: 'alice',
+			source: 'slack',
+		});
+	});
+
+	it('keeps waiting when notifying an unauthorized responder fails', async () => {
+		const { ctx } = createContext({
+			hasSignature: true,
+			signatureSecret: 'secret',
+			approvers: ['U_ALLOWED'],
+			payload: {
+				user: { id: 'U_OTHER' },
+				actions: [{ action_id: 'n8n_hitl_approve', action_ts: '1700000000.000' }],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockRejectedValue(new Error('missing chat:write scope'));
+
+		const result = await slackSendAndWaitWebhook.call(ctx);
+
+		expect(result).toEqual({ noWebhookResponse: true });
+	});
+
+	it('falls back to the receive time for respondedAt when action_ts is invalid', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2024-01-02T03:04:05.000Z'));
+		try {
+			const { ctx, httpRequest } = createContext({
+				hasSignature: true,
+				signatureSecret: 'secret',
+				payload: {
+					user: { id: 'U1' },
+					actions: [{ action_id: 'n8n_hitl_approve', action_ts: 'not-a-number' }],
+					channel: { id: 'C1' },
+					message: { ts: '111.222' },
+					response_url: 'https://hooks.slack.com/actions/xxx',
+				},
+			});
+			verifySignature.mockResolvedValue(true);
+			slackApiRequest.mockResolvedValue({ user: { profile: {} } });
+			httpRequest.mockResolvedValue({});
+
+			const result = (await slackSendAndWaitWebhook.call(ctx)) as {
+				workflowData: Array<Array<{ json: { data: { respondedAt: string } } }>>;
+			};
+
+			expect(result.workflowData[0][0].json.data.respondedAt).toBe('2024-01-02T03:04:05.000Z');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

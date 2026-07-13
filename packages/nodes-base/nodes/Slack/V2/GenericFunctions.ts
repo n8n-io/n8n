@@ -10,7 +10,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, sleep } from 'n8n-workflow';
 
-import type { SendAndWaitMessageBody } from './MessageInterface';
+import {
+	HITL_APPROVE_ACTION_ID,
+	HITL_DECLINE_ACTION_ID,
+	type SendAndWaitMessageBody,
+} from './MessageInterface';
 import { getSendAndWaitConfig } from '../../../utils/sendAndWait/utils';
 import { createUtmCampaignLink } from '../../../utils/utilities';
 
@@ -477,10 +481,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 					// the url so Slack treats it as interactive and POSTs the click to us instead.
 					...(captureResponder
 						? {
-								action_id:
-									new URL(option.url).searchParams.get('approved') === 'false'
-										? 'n8n_hitl_decline'
-										: 'n8n_hitl_approve',
+								action_id: option.approved ? HITL_APPROVE_ACTION_ID : HITL_DECLINE_ACTION_ID,
 								value: interactionValue,
 							}
 						: { url: option.url }),

@@ -4,6 +4,14 @@ export interface IAttachment {
 	};
 }
 
+/**
+ * `action_id` values for the interactive HITL approve/decline buttons. Shared by the
+ * button builder and the webhook consumer so a typo can't silently desync (which would
+ * fail closed to "declined").
+ */
+export const HITL_APPROVE_ACTION_ID = 'n8n_hitl_approve';
+export const HITL_DECLINE_ACTION_ID = 'n8n_hitl_decline';
+
 // Used for SendAndWaitMessage
 export interface TextBlock {
 	type: string;

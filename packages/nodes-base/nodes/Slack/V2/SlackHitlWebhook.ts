@@ -1,7 +1,7 @@
 import { jsonParse, type IDataObject, type IWebhookFunctions } from 'n8n-workflow';
 
 import { slackApiRequest } from './GenericFunctions';
-import type { SectionBlock } from './MessageInterface';
+import { HITL_APPROVE_ACTION_ID, type SectionBlock } from './MessageInterface';
 import type { SendAndWaitResponder } from '../../../utils/sendAndWait/interfaces';
 import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 import { verifySignature } from '../SlackTriggerHelpers';
@@ -67,7 +67,7 @@ async function notifyNotAuthorized(
 			channel,
 			user,
 			text: 'You are not authorized to respond to this request.',
-		} as IDataObject);
+		});
 	} catch {
 		// Missing chat:write scope, or the user left the channel. Nothing more we can do.
 	}
@@ -105,7 +105,7 @@ async function lockSlackMessage(
 			return;
 		} catch (error) {
 			context.logger.warn(
-				`Slack HITL: response_url update failed (${(error as Error).message}); trying chat.update`,
+				`Slack HITL: response_url update failed (${error instanceof Error ? error.message : String(error)}); trying chat.update`,
 			);
 		}
 	}
@@ -119,11 +119,11 @@ async function lockSlackMessage(
 				ts,
 				text,
 				blocks,
-			} as IDataObject);
+			});
 		} catch (error) {
 			// A missing chat:write scope shouldn't fail the resume, so leave the message as-is.
 			context.logger.warn(
-				`Slack HITL: chat.update failed (${(error as Error).message}); message left as-is`,
+				`Slack HITL: chat.update failed (${error instanceof Error ? error.message : String(error)}); message left as-is`,
 			);
 		}
 	} else {
@@ -139,6 +139,12 @@ async function lockSlackMessage(
  */
 export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 	const req = this.getRequestObject();
+	// Slack signs interactive button clicks with an x-slack-signature header. Gate on the header
+	// alone: the `-slack` CLI route hard-requires it (unsigned POSTs are rejected there with 401),
+	// so any header-less POST reaching the node arrived via the base HMAC-validated route and
+	// belongs to the shared handler (plain-link approvals, custom-form responses). Sniffing the
+	// body for a `payload` field would misclassify a form response whose user field is named
+	// `payload`, forcing it through Slack signature verification and wrongly rejecting it.
 	const isInteraction = req.method === 'POST' && Boolean(req.headers['x-slack-signature']);
 
 	if (!isInteraction) {
@@ -160,7 +166,7 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 		return { noWebhookResponse: true };
 	}
 
-	// Slack sends interactions as form data, with the actual JSON inside a `payload` field.
+	// Slack sends interactions as form data with the JSON inside a `payload` field.
 	const body = this.getBodyData();
 	const payload =
 		typeof body.payload === 'string'
@@ -177,7 +183,7 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 
 	// Fail closed: treat as approved only when the click is explicitly the approve button.
 	// Anything else — the decline button, a missing or unexpected action_id — counts as declined.
-	const approved = payload.actions?.[0]?.action_id === 'n8n_hitl_approve';
+	const approved = payload.actions?.[0]?.action_id === HITL_APPROVE_ACTION_ID;
 	const responder = await extractSlackResponder(this, payload);
 
 	// Slack tells us when the button was clicked via action_ts (epoch seconds). If it's

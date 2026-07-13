@@ -2,14 +2,13 @@ import type { IDataObject } from 'n8n-workflow';
 
 /**
  * Identity of the person who responded to a Send-and-Wait request from within the
- * messaging app itself (e.g. a Slack button click). Kept app-agnostic so Telegram
- * and Gmail can reuse it as their advanced HITL support lands.
+ * messaging app itself (currently only a Slack button click).
  */
 export interface SendAndWaitResponder {
 	id: string;
 	name?: string;
 	email?: string;
-	source: 'slack' | 'telegram' | 'discord' | 'whatsapp';
+	source: 'slack';
 }
 
 export interface IEmail {

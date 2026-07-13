@@ -4,6 +4,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
 import * as GenericFunctions from '../../../../V2/GenericFunctions';
+import { HITL_APPROVE_ACTION_ID, HITL_DECLINE_ACTION_ID } from '../../../../V2/MessageInterface';
 import { SlackV2 } from '../../../../V2/SlackV2.node';
 
 describe('Test SlackV2, message => sendAndWait', () => {
@@ -127,10 +128,41 @@ describe('Test SlackV2, message => sendAndWait', () => {
 		const [approveButton] = actionsBlock.elements;
 
 		expect(approveButton.url).toBeUndefined();
-		expect(approveButton.action_id).toBe('n8n_hitl_approve');
+		expect(approveButton.action_id).toBe(HITL_APPROVE_ACTION_ID);
 		expect(approveButton.value).toBe(
 			JSON.stringify({ executionId: 'exec-1', nodeId: 'test-node-id' }),
 		);
+	});
+
+	it('assigns the decline action_id to the disapprove button when capturing the responder', async () => {
+		slackApiRequestSpy.mockResolvedValue({ ok: true });
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			if (key === 'authentication') return 'accessToken';
+			if (key === 'resource') return 'message';
+			if (key === 'operation') return SEND_AND_WAIT_OPERATION;
+			if (key === 'select') return 'channel';
+			if (key === 'channelId') return 'C123456789';
+			if (key === 'message') return 'test message';
+			if (key === 'subject') return '';
+			if (key === 'approvalOptions.values') return { approvalType: 'double' };
+			if (key === 'options') return {};
+			if (key === 'options.limitWaitTime.values') return {};
+			if (key === 'responseType') return 'approval';
+			if (key === 'captureResponder') return true;
+			return undefined;
+		});
+
+		await slack.execute.call(mockExecuteFunctions);
+
+		const body = slackApiRequestSpy.mock.calls[0][2];
+		const actionsBlock = body.blocks.find(
+			(block: { type: string }) => block.type === 'actions',
+		) as { elements: Array<{ action_id?: string }> };
+		// getSendAndWaitConfig pushes the disapprove option first, then approve.
+		const [declineButton, approveButton] = actionsBlock.elements;
+
+		expect(declineButton.action_id).toBe(HITL_DECLINE_ACTION_ID);
+		expect(approveButton.action_id).toBe(HITL_APPROVE_ACTION_ID);
 	});
 
 	it('should route API errors to error output when continueOnFail is true', async () => {
