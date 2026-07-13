@@ -165,7 +165,7 @@ async function setPaginationAndSort(payload: SortingAndPaginationUpdates) {
 
 function onCreateAgentClick() {
 	agentTelemetry.trackClickedNewAgent('button');
-	const targetProjectId = projectId.value ?? projectsStore.personalProject?.id;
+	const targetProjectId = projectId.value ?? projectsStore.personalProject?.id ?? '';
 	void router.push(instanceAiCreateAgentRoute(targetProjectId));
 }
 

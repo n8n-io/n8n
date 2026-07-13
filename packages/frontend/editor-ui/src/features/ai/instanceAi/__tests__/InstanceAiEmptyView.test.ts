@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -18,7 +18,9 @@ import type { FrontendModuleSettings } from '@n8n/api-types';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
 
-const routeQuery = vi.hoisted(() => ({}) as Record<string, string | undefined>);
+// Reactive so the component's `watch(() => route.query[...])` fires on mutation,
+// matching vue-router's real reactive `route.query` behavior.
+const routeQuery = reactive({}) as Record<string, string | undefined>;
 
 const {
 	experimentMocks,
@@ -840,6 +842,23 @@ describe('InstanceAiEmptyView', () => {
 		await flushPromises();
 
 		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', redirectedProjectId);
+	});
+
+	it('falls back to the personal project when the ?projectId= query is cleared', async () => {
+		const redirectedProjectId = 'team-project-42';
+		routeQuery.projectId = redirectedProjectId;
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+		await flushPromises();
+
+		routeQuery.projectId = undefined;
+		await flushPromises();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID);
 	});
 
 	it('shows a toast and stays on the empty view when syncThread rejects', async () => {

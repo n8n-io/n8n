@@ -378,10 +378,11 @@ const isStartingThread = ref(false);
 
 watch(
 	() => route.query[INSTANCE_AI_PROJECT_ID_QUERY],
-	(queryProjectId) => {
-		if (typeof queryProjectId === 'string' && queryProjectId.length > 0) {
-			selectedProject.value = queryProjectId;
-		}
+	() => {
+		// Re-resolve on every change, including when the query is cleared, so
+		// navigating away from a project-scoped entry falls back to the
+		// personal project instead of leaving the previous project selected.
+		selectedProject.value = resolveInitialProjectId();
 	},
 );
 
