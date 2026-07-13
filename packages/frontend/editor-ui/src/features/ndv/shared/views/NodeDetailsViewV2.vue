@@ -75,8 +75,7 @@ const pinnedData = usePinnedData(activeNode);
 
 // The AI Agent node's NDV data facade (referenced summary + inline editing).
 // Owned here (the stable container) so it survives node switches. No-ops for
-// other nodes. Nothing autosaves through it: referenced agents are read-only
-// in the NDV, and inline edits are plain node-parameter writes.
+// other nodes.
 provide(NdvAgentConfigKey, useNdvAgentConfig(activeNode));
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();

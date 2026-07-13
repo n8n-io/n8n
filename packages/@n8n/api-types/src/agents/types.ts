@@ -187,11 +187,7 @@ export interface AgentCapabilitySummary {
 	model: AgentCapabilityModel | null;
 	channels: AgentCapabilityChannel[];
 	tools: AgentCapabilityTool[];
-	/**
-	 * Optional so summaries persisted/produced before the field existed keep
-	 * deserializing; consumers treat absence as "no MCP servers".
-	 */
-	mcpServers?: AgentCapabilityMcpServer[];
+	mcpServers: AgentCapabilityMcpServer[];
 	skills: AgentCapabilitySkill[];
 	tasks: AgentCapabilityTask[];
 }
