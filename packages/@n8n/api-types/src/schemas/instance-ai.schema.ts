@@ -251,11 +251,51 @@ export const toolErrorPayloadSchema = z.object({
 	error: z.string(),
 });
 
+/** The generic credential type that agent-supplied setup recipes create. */
+export const TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE = 'httpTemplatedCustomAuth';
+
+/** One user-provided input of a Templated Custom Auth credential. */
+export const credentialPlaceholderDefSchema = z.object({
+	/** Marker name referenced by the template as `{{name}}`. */
+	name: z.string(),
+	/** Input label shown to the user (e.g. "API key"). */
+	title: z.string(),
+	/** Where/how the user obtains this value. */
+	info: z.string().optional(),
+	/** Defaults to `password` (masked input). */
+	type: z.enum(['password', 'plain']).optional(),
+});
+export type InstanceAiCredentialPlaceholderDef = z.infer<typeof credentialPlaceholderDefSchema>;
+
+/**
+ * Agent-supplied recipe for creating a Templated Custom Auth credential: the
+ * auth request parts with `{{placeholder}}` markers where user-provided values
+ * go, plus what to ask the user for each marker. Never contains real secrets.
+ */
+export const credentialSetupHintSchema = z.object({
+	template: z.object({
+		headers: z.record(z.string()).optional(),
+		qs: z.record(z.string()).optional(),
+		body: z.record(z.unknown()).optional(),
+	}),
+	placeholders: z.array(credentialPlaceholderDefSchema).min(1),
+	/** Where the user obtains the secret (e.g. the provider's API-keys page). */
+	docsUrl: z.string().optional(),
+	suggestedName: z.string().optional(),
+	/** GET endpoint the created credential is auth-probed against. */
+	testUrl: z.string().optional(),
+	/** Status codes the probe must not treat as rejection (only relaxes the
+	 *  401/403 default — codes outside that pair never fail a probe anyway). */
+	acceptedStatusCodes: z.array(z.number().int()).max(10).optional(),
+});
+export type InstanceAiCredentialSetupHint = z.infer<typeof credentialSetupHintSchema>;
+
 export const credentialRequestSchema = z.object({
 	credentialType: z.string(),
 	reason: z.string(),
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
 	suggestedName: z.string().optional(),
+	setupHint: credentialSetupHintSchema.optional(),
 });
 
 export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;
@@ -285,6 +325,7 @@ export const workflowSetupNodeSchema = z.object({
 	}),
 	credentialType: z.string().optional(),
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+	setupHint: credentialSetupHintSchema.optional(),
 	isTrigger: z.boolean(),
 	isFirstTrigger: z.boolean().optional(),
 	isTestable: z.boolean().optional(),

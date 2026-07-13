@@ -3,14 +3,17 @@ import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import type { InstanceAiContext } from '../../../types';
+import type { SetupRequest } from '../setup-workflow.schema';
 import {
 	buildSetupRequests,
 	analyzeWorkflow,
+	applyCredentialHints,
 	applyNodeChanges,
 	applyNodeCredentials,
 	buildCompletedReport,
 	createCredentialCache,
 	stripStaleCredentialsFromWorkflow,
+	type CredentialHintInput,
 } from '../setup-workflow.service';
 
 // ---------------------------------------------------------------------------
@@ -1611,5 +1614,65 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 				error: 'Node "GhostNode" was not found in the workflow',
 			},
 		]);
+	});
+});
+
+describe('applyCredentialHints', () => {
+	const request = (nodeName: string, credentialType?: string): SetupRequest => ({
+		node: {
+			name: nodeName,
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {},
+			position: [0, 0],
+			id: `${nodeName}-id`,
+		},
+		...(credentialType ? { credentialType } : {}),
+		isTrigger: false,
+	});
+
+	const hint = (overrides: Partial<CredentialHintInput> = {}): CredentialHintInput => ({
+		template: { headers: { Authorization: 'Key {{api_key}}' } },
+		placeholders: [{ name: 'api_key', title: 'API key' }],
+		...overrides,
+	});
+
+	it('attaches a type-wide hint to Templated Custom Auth requests only', () => {
+		const requests = [
+			request('Call fal.ai', 'httpTemplatedCustomAuth'),
+			request('Post to Slack', 'slackApi'),
+			request('No credential'),
+		];
+
+		applyCredentialHints(requests, [hint({ suggestedName: 'fal.ai API Key' })]);
+
+		expect(requests[0].setupHint).toMatchObject({ suggestedName: 'fal.ai API Key' });
+		expect(requests[0].setupHint).not.toHaveProperty('nodeName');
+		expect(requests[1].setupHint).toBeUndefined();
+		expect(requests[2].setupHint).toBeUndefined();
+	});
+
+	it('prefers a node-scoped hint over a type-wide one', () => {
+		const requests = [
+			request('Call fal.ai', 'httpTemplatedCustomAuth'),
+			request('Call replicate', 'httpTemplatedCustomAuth'),
+		];
+
+		applyCredentialHints(requests, [
+			hint({ suggestedName: 'Fallback' }),
+			hint({ nodeName: 'Call replicate', suggestedName: 'Replicate API Key' }),
+		]);
+
+		expect(requests[0].setupHint).toMatchObject({ suggestedName: 'Fallback' });
+		expect(requests[1].setupHint).toMatchObject({ suggestedName: 'Replicate API Key' });
+	});
+
+	it('leaves requests untouched when no hint matches', () => {
+		const requests = [request('Call fal.ai', 'httpTemplatedCustomAuth')];
+
+		applyCredentialHints(requests, [hint({ nodeName: 'Some other node' })]);
+		applyCredentialHints(requests, undefined);
+
+		expect(requests[0].setupHint).toBeUndefined();
 	});
 });

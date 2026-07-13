@@ -27,6 +27,33 @@ function isSecretKey(key: string): boolean {
 	return SECRET_KEY_PATTERNS.some((p) => p.test(key));
 }
 
+// Agent-supplied credential recipes (`credentialHints` on workflows.setup,
+// `setupHint` on credentials.setup) are secret-free by contract: the secret
+// slots are `{{placeholder}}` markers (enforced at the tool boundary) and the
+// statics are things like header names. Blanket key-redaction (`/credential/i`,
+// `/authorization/i`) would blind the eval judge to them, so traverse hints
+// with inline content masking only — defense-in-depth against a misbehaving
+// model, while markers and statics stay readable.
+const HINT_KEYS = new Set(['credentialHints', 'setupHint']);
+
+function redactHintValue(value: unknown, depth: number): unknown {
+	if (depth > 10 || value === null || value === undefined) return value;
+	if (typeof value === 'string') {
+		return redactSecretsInText(value);
+	}
+	if (Array.isArray(value)) {
+		return value.map((entry) => redactHintValue(entry, depth + 1));
+	}
+	if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+		const out: Record<string, unknown> = {};
+		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+			out[k] = redactHintValue(v, depth + 1);
+		}
+		return out;
+	}
+	return value;
+}
+
 /**
  * Recursively replaces values under secret-shaped keys with `'[REDACTED]'`.
  * Only walks plain objects and arrays — class instances (Error, Date, etc.)
@@ -41,7 +68,11 @@ export function redactSecrets(value: unknown, depth = 0): unknown {
 	if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
 		const out: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-			out[k] = isSecretKey(k) ? '[REDACTED]' : redactSecrets(v, depth + 1);
+			out[k] = HINT_KEYS.has(k)
+				? redactHintValue(v, depth + 1)
+				: isSecretKey(k)
+					? '[REDACTED]'
+					: redactSecrets(v, depth + 1);
 		}
 		return out;
 	}

@@ -173,3 +173,35 @@ describe('stringifyError', () => {
 		expect(out.length).toBe(50);
 	});
 });
+
+describe('redactSecrets — credential setup hints', () => {
+	it('traverses hints with content masking instead of key redaction', () => {
+		const input = {
+			credentialHints: [
+				{
+					template: { headers: { Authorization: 'Key {{api_key}}' } },
+					placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+					docsUrl: 'https://fal.ai/dashboard/keys',
+				},
+			],
+		};
+
+		// Key-based redaction would blank `Authorization`/`api_key`; hint
+		// traversal keeps the secret-free recipe readable for the eval judge.
+		expect(redactSecrets(input)).toEqual(input);
+	});
+
+	it('still masks inline secrets inside hint strings', () => {
+		const input = {
+			setupHint: {
+				template: { headers: { Authorization: 'Bearer sk-live-abcdef123456' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+			},
+		};
+
+		const result = redactSecrets(input) as {
+			setupHint: { template: { headers: { Authorization: string } } };
+		};
+		expect(result.setupHint.template.headers.Authorization).not.toContain('sk-live-abcdef123456');
+	});
+});

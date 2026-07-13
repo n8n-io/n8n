@@ -48,6 +48,77 @@ if the payload or prior verification evidence says mocked credentials,
 simulated node output, fixture overrides, temporary pin data, or another mocked
 input was used.
 
+### Choosing the credential type for a service
+
+Pick in this order:
+
+1. **A dedicated credential type** (`slackApi`, `notionApi`, …) whenever one
+   exists — search with `credentials(action="search-types")`.
+2. **Templated Custom Auth** (`httpTemplatedCustomAuth`) for any service
+   without a dedicated type whose auth is expressible as header/query/body
+   values — which covers API keys, bearer tokens, and basic-style headers.
+   Always provide a recipe (below) so the user only pastes their secret.
+3. **Plain generic types** (`httpDigestAuth`, `oAuth2Api`, …) only for what a
+   template cannot express: digest's challenge-response, OAuth flows.
+
+### Credential recipes for Templated Custom Auth
+
+When the workflow authenticates a service through Templated Custom Auth,
+include `credentialHints` in the same `workflows(action="setup")` call so the
+setup card pre-fills the credential and the user only pastes their secret —
+instead of facing an empty JSON template they'd have to decode from the
+provider's docs. Build each recipe from the provider documentation you read
+during the build — never guess the auth format:
+
+- `template` — the auth request parts (headers/qs/body) exactly as documented,
+  with `{{placeholder}}` markers where the user's values go.
+- `placeholders` — one entry per marker: `name`, user-facing `title`, `info`
+  on where to find it, and `type` (`password` unless clearly non-secret).
+- `docsUrl` — the provider page where the user obtains the secret.
+- `testUrl` — a cheap documented GET endpoint (e.g. `/v1/me`) used to verify
+  the credential on save and on later retests; omit if none is documented.
+- `suggestedName` — display name for the created credential.
+
+Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
+`GET /v1/models` answers authenticated requests:
+
+```json
+{
+  "action": "setup",
+  "workflowId": "...",
+  "credentialHints": [
+    {
+      "suggestedName": "fal.ai API Key",
+      "template": {
+        "headers": { "Authorization": "Key {{api_key}}" }
+      },
+      "placeholders": [
+        {
+          "name": "api_key",
+          "title": "fal.ai API key",
+          "info": "Create one under Dashboard → Keys",
+          "type": "password"
+        }
+      ],
+      "docsUrl": "https://fal.ai/dashboard/keys",
+      "testUrl": "https://fal.run/v1/models"
+    }
+  ]
+}
+```
+
+Never put a real secret in a recipe — the user pastes it in the setup card and
+it is stored redacted in the credential. Add `nodeName` when several nodes use
+Templated Custom Auth for different services. You cannot see the secret, but
+once setup reports the credential applied, treat it as fully configured — the
+`{{placeholder}}` markers live only in the template; the stored values replace
+them at request time. If a live test later fails with an auth error, that is
+the moment to have the user re-open the credential and re-paste the value.
+
+If the user defers setup instead, don't hand them manual field-by-field
+credential instructions for the n8n editor — tell them to reopen setup when
+they're ready: the card pre-fills everything except their key.
+
 ## Publishing and testing
 
 **Publishing is never required for testing.** Both `executions(action="run")` and
