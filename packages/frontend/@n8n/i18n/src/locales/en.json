@@ -3397,7 +3397,7 @@
 	"settings.users.userRoleUpdated.cancel.button": "Cancel",
 	"settings.users.table.update.error": "Failed to update table",
 	"settings.users.table.header.user": "@:_reusableBaseText.user",
-	"settings.users.table.header.accountType": "Account Type",
+	"settings.users.table.header.accountType": "Instance role",
 	"settings.users.table.header.2fa": "2FA",
 	"settings.users.table.header.lastActive": "Last Active",
 	"settings.users.table.row.allProjects": "All projects",
