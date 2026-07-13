@@ -24,15 +24,17 @@ flowchart LR
 - Prefer an **existing** domain service from the main n8n codebase (`FolderService`, `ProjectService`,
   `WorkflowService`, …). When the importer needs a capability the service lacks — reusing a source id,
   or a fetch-by-ids for matching — **extend that existing service with a general method** rather than
-  reaching for the repository or spinning up an import-only service. Canonical example:
+  reaching for the repository or spinning up an import-only service. Canonical examples:
+  `ProjectService.createTeamProject(data, overrides)` (preset id + description) and
   `FolderService.createFolder(dto, projectId, id?)` / `FolderService.getFoldersByIds(ids)`.
-- `N8nPackagesService.importPackage` is the entry: it builds the reader, reads the manifest, and
-  dispatches to a package-shape importer (today only `WorkflowPackageImporter`). That manifest read is
-  the seam where a future **project**-shaped package would route to its own importer.
+- `N8nPackagesService.importPackage` is a thin **dispatcher**: it builds the reader, reads the manifest,
+  and delegates to a per-package-shape importer. Shapes mirror export's mutual exclusivity — a **project
+  package** (projects defined by the package) → `ProjectPackageImporter`, or a **workflow package** (loose
+  workflows + their folder shells + credential deps into a target project) → `WorkflowPackageImporter`.
 - `WorkflowPackageImporter` resolves the target scope from the request, then delegates the plan/gate/apply
   work to `ImportOrchestrator` (brings folders + workflows + credential deps into one project scope).
-  A follow-up adds whole-**project** package import (its own shape + scope resolution) reusing the same
-  `ImportOrchestrator` core. Don't split folder vs workflow: they share target resolution, credential
+  `ProjectPackageImporter` creates the project shells; reusing `ImportOrchestrator` for a project's own
+  contents is a follow-up. Don't split folder vs workflow: they share target resolution, credential
   resolution, and publishing.
 
 ### Adding an IMPORT property
