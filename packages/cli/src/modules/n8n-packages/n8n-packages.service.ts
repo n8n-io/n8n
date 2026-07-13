@@ -6,8 +6,10 @@ import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 
 import { N8nPackageParser } from './engine/n8n-package-parser';
+import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
+import { DataTableExporter } from './entities/data-table/data-table.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
@@ -21,7 +23,12 @@ import type {
 	ImportResult,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
-import { type ManifestEntry, packageManifestSchema } from './spec/manifest.schema';
+import {
+	type ManifestEntry,
+	type PackageManifest,
+	packageManifestSchema,
+} from './spec/manifest.schema';
+import type { PackageRequirements } from './spec/requirements.schema';
 
 @Service()
 export class N8nPackagesService {
@@ -30,9 +37,11 @@ export class N8nPackagesService {
 		private readonly workflowExporter: WorkflowExporter,
 		private readonly folderExporter: FolderExporter,
 		private readonly credentialExporter: CredentialExporter,
+		private readonly dataTableExporter: DataTableExporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly packageParser: N8nPackageParser,
 		private readonly packageImportConfig: PackageImportConfig,
+		private readonly projectPackageImporter: ProjectPackageImporter,
 		private readonly workflowPackageImporter: WorkflowPackageImporter,
 		private readonly eventService: EventService,
 	) {}
@@ -89,6 +98,14 @@ export class N8nPackagesService {
 			projectTargetsById: projectExportResult?.projectTargetsById,
 		});
 
+		const dataTableExportResult = await this.dataTableExporter.export({
+			user: request.user,
+			requirements: requirements.dataTables,
+			writer,
+			// Routes project-owned data tables into their project namespace; others stay top-level.
+			projectTargetsById: projectExportResult?.projectTargetsById,
+		});
+
 		const allFolders = [
 			...(folderExportResult?.entries ?? []),
 			...(projectExportResult?.folderEntries ?? []),
@@ -100,6 +117,11 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
+		const manifestRequirements = this.buildManifestRequirements(
+			credentialExportResult.requirements,
+			dataTableExportResult.requirements,
+		);
+
 		const manifest = packageManifestSchema.parse({
 			packageFormatVersion: FORMAT_VERSION,
 			exportedAt: new Date().toISOString(),
@@ -108,9 +130,7 @@ export class N8nPackagesService {
 			...(credentialExportResult.entries.length > 0
 				? { credentials: credentialExportResult.entries }
 				: {}),
-			...(credentialExportResult.requirements.length > 0
-				? { requirements: { credentials: credentialExportResult.requirements } }
-				: {}),
+			...(manifestRequirements ? { requirements: manifestRequirements } : {}),
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),
 			...(projectExportResult?.entries ? { projects: projectExportResult.entries } : {}),
@@ -135,6 +155,7 @@ export class N8nPackagesService {
 				workflows: allWorkflowsInPackage.length,
 				folders: allFolders.length,
 				credentials: credentialExportResult.entries.length,
+				dataTables: dataTableExportResult.entries.length,
 			},
 		});
 
@@ -144,6 +165,9 @@ export class N8nPackagesService {
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
+		if (isProjectPackage(manifest)) {
+			return await this.projectPackageImporter.import(request, reader, manifest);
+		}
 		return await this.workflowPackageImporter.import(request, reader, manifest);
 	}
 
@@ -151,4 +175,19 @@ export class N8nPackagesService {
 		const folderWorkflowIds = new Set(workflowsInFolders.map((entry) => entry.id) ?? []);
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
 	}
+
+	private buildManifestRequirements(
+		credentials: PackageRequirements['credentials'],
+		dataTables: PackageRequirements['dataTables'],
+	): PackageRequirements | undefined {
+		const requirements: PackageRequirements = {
+			...(credentials?.length ? { credentials } : {}),
+			...(dataTables?.length ? { dataTables } : {}),
+		};
+		return Object.keys(requirements).length > 0 ? requirements : undefined;
+	}
+}
+
+function isProjectPackage(manifest: PackageManifest): boolean {
+	return (manifest.projects?.length ?? 0) > 0;
 }
