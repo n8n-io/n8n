@@ -101,7 +101,6 @@ function onInvalid() {
 	input.dispatchEvent(new InputEvent('input', { bubbles: true, data: null }));
 }
 
-/** Match regular input inset when empty; root already contributes --tags-input--padding. */
 function getInputClass(isEmpty: boolean): string {
 	return [$style.input, isEmpty && $style.inputEmpty].filter(Boolean).join(' ');
 }
@@ -262,7 +261,6 @@ function getInputClass(isEmpty: boolean): string {
 	align-content: flex-start;
 	gap: var(--tags-input--gap);
 	min-width: 0;
-	/* Allow shrinking inside a max-height root so overflow can scroll. */
 	min-height: 0;
 	width: 100%;
 	overflow: auto;
@@ -351,11 +349,6 @@ function getInputClass(isEmpty: boolean): string {
 		&::placeholder {
 			color: var(--input--placeholder--color--disabled);
 		}
-	}
-
-	/* Root already has --tags-input--padding; top up to --input--padding when empty. */
-	&.inputEmpty {
-		padding-inline: calc(var(--input--padding) - var(--tags-input--padding));
 	}
 }
 </style>
