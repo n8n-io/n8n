@@ -22,10 +22,19 @@ import readline from 'node:readline/promises';
 import { spawn, spawnSync } from 'node:child_process';
 
 const WEBHOOK = 'https://internal.users.n8n.cloud/webhook/85070485-140c-46e8-9b4b-d161bf7ee1ac';
-const IDLE_MS = Number(process.env.NATHAN_IDLE_MS ?? 8000); // grace after a result for trailing msgs
+// Read a positive-number override from the env, warning and falling back to the
+// default on anything invalid (a NaN would make setTimeout fire immediately).
+function posNum(value, fallback, name) {
+	if (value == null) return fallback;
+	const n = Number(value);
+	if (Number.isFinite(n) && n > 0) return n;
+	console.error(`⚠️  Ignoring invalid ${name}=${value}; using ${fallback}.`);
+	return fallback;
+}
+const IDLE_MS = posNum(process.env.NATHAN_IDLE_MS, 8000, 'NATHAN_IDLE_MS'); // grace after a result for trailing msgs
 // Overall backstop. A cold branch build (docker-build-push CI) + deploy can run
 // 15-20 min, so keep this generous; override via NATHAN_TIMEOUT_MS.
-const TIMEOUT_MS = Number(process.env.NATHAN_TIMEOUT_MS ?? 1_500_000); // 25 min
+const TIMEOUT_MS = posNum(process.env.NATHAN_TIMEOUT_MS, 1_500_000, 'NATHAN_TIMEOUT_MS'); // 25 min
 const TUNNEL_START_MS = 45000;
 const STAGING_DOMAIN = 'stage-app.n8n.cloud'; // instances live at https://<name>.<domain>
 
@@ -167,20 +176,26 @@ try {
 
 // --- fire the command --------------------------------------------------------
 const user = process.env.NATHAN_USER || os.userInfo().username;
-const res = await fetch(WEBHOOK, {
-	method: 'POST',
-	headers: { 'content-type': 'application/json' },
-	body: JSON.stringify({
-		token,
-		text,
-		command: '/nathan',
-		response_url: tunnel.url,
-		user_id: user,
-		user_name: user,
-		channel_id: process.env.NATHAN_SLACK_CHANNEL || 'C0BGVHZ0SCW',
-		trigger_id: String(Date.now()),
-	}),
-});
+let res;
+try {
+	res = await fetch(WEBHOOK, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({
+			token,
+			text,
+			command: '/nathan',
+			response_url: tunnel.url,
+			user_id: user,
+			user_name: user,
+			channel_id: process.env.NATHAN_SLACK_CHANNEL || 'C0BGVHZ0SCW',
+			trigger_id: String(Date.now()),
+		}),
+	});
+} catch (e) {
+	console.error(`Could not reach the Nathan webhook: ${e.message}`);
+	await cleanup(1);
+}
 if (!res.ok) {
 	console.error(`Webhook returned HTTP ${res.status}`);
 	await cleanup(1);
