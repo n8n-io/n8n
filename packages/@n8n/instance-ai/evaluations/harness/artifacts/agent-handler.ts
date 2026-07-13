@@ -10,19 +10,17 @@ import { renderAgentArtifact } from './render-agent';
 import type { AgentArtifact, ArtifactHandler } from './types';
 import { collectArtifactRefIds } from '../../outcome/collect-refs';
 
-// PROVISIONAL: the assistant does not yet emit an agent-build signal. Primary signal is
-// targetResource.type === 'agent' (enum added in Step 4); the tool-name set is a best guess.
-const AGENT_TOOLS = new Set<string>(['build-agent']);
-
 export const agentHandler: ArtifactHandler<AgentArtifact> = {
 	type: 'agent',
 	runsExecutionScenarios: false,
 	discover(ctx) {
-		return collectArtifactRefIds(ctx.messages, {
-			targetType: 'agent',
-			toolNames: AGENT_TOOLS,
-			resultKeys: ['agentId', 'id'],
-		}).map((id) => ({ type: 'agent', id }));
+		// Discovery keys off `targetResource.type === 'agent'` only. The build_agent tool
+		// result is `{ ok, config, configHash, updatedAt, versionId }` and carries no agent
+		// id, so there is no tool-result signal to read.
+		return collectArtifactRefIds(ctx.messages, { targetType: 'agent' }).map((id) => ({
+			type: 'agent',
+			id,
+		}));
 	},
 	async fetch(ref, client) {
 		// Agent routes are project-scoped; the harness builds in the user's personal project.

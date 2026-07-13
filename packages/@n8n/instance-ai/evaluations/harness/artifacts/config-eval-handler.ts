@@ -9,18 +9,18 @@ import { renderConfigEvalArtifact } from './render-config-eval';
 import type { ArtifactHandler, ConfigEvalArtifact } from './types';
 import { collectArtifactRefIds } from '../../outcome/collect-refs';
 
-// PROVISIONAL: signal carries the OWNING WORKFLOW id (config-evals are fetched per-workflow).
-const CONFIG_EVAL_TOOLS = new Set<string>(['setup-eval']);
-
 export const configEvalHandler: ArtifactHandler<ConfigEvalArtifact> = {
 	type: 'config-eval',
 	runsExecutionScenarios: false,
 	discover(ctx) {
-		return collectArtifactRefIds(ctx.messages, {
-			targetType: 'config-eval',
-			toolNames: CONFIG_EVAL_TOOLS,
-			resultKeys: ['workflowId', 'id'],
-		}).map((workflowId) => ({ type: 'config-eval', id: workflowId })); // ref.id is the owning workflow id (config-evals are fetched per-workflow)
+		// Discovery keys off `targetResource.type === 'config-eval'` only; ref.id is the owning
+		// workflow id (config-evals are fetched per-workflow). The eval-setup-with-agent tool
+		// result is `{ result, taskId }` and carries no workflow id, so there is no tool-result
+		// signal to read.
+		return collectArtifactRefIds(ctx.messages, { targetType: 'config-eval' }).map((workflowId) => ({
+			type: 'config-eval',
+			id: workflowId,
+		}));
 	},
 	async fetch(ref, client) {
 		const workflowId = ref.id;

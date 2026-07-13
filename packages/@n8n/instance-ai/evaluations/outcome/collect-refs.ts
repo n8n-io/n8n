@@ -14,16 +14,20 @@ import { isRecord } from '@n8n/utils/is-record';
 export interface ArtifactRefSpec {
 	/** targetResource.type to match on an agent-tree node. */
 	targetType: string;
-	/** Tool names whose results carry the artifact id. */
-	toolNames: Set<string>;
-	/** Keys to read the id from a tool result (in priority order). */
-	resultKeys: string[];
+	/**
+	 * Optional: tool names whose results carry the artifact id. Only workflow discovery
+	 * uses this today — the assistant does not yet emit tool results with agent/config-eval
+	 * ids, so those handlers rely on `targetResource` alone and omit it.
+	 */
+	toolNames?: Set<string>;
+	/** Keys to read the id from a tool result (in priority order). Paired with `toolNames`. */
+	resultKeys?: string[];
 }
 
 /**
  * Walk assistant agent-trees collecting artifact ids per the spec:
- * a `targetResource.type` match on the node, plus tool-call results from
- * `spec.toolNames` read via `spec.resultKeys`.
+ * a `targetResource.type` match on the node, plus (when the spec supplies them)
+ * tool-call results from `spec.toolNames` read via `spec.resultKeys`.
  */
 export function collectArtifactRefIds(
 	messages: InstanceAiMessage[],
@@ -45,10 +49,12 @@ function collectFromNode(node: InstanceAiAgentNode, spec: ArtifactRefSpec, ids: 
 		ids.add(node.targetResource.id);
 	}
 
-	for (const tc of node.toolCalls) {
-		if (spec.toolNames.has(tc.toolName)) {
-			const id = extractIdFromResult(tc.result, spec.resultKeys);
-			if (id) ids.add(id);
+	if (spec.toolNames && spec.resultKeys) {
+		for (const tc of node.toolCalls) {
+			if (spec.toolNames.has(tc.toolName)) {
+				const id = extractIdFromResult(tc.result, spec.resultKeys);
+				if (id) ids.add(id);
+			}
 		}
 	}
 

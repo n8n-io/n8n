@@ -283,7 +283,7 @@ Workflow keeps its existing grading path (mock-execution scenarios + `outcomeExp
 }
 ```
 
-**Provisional:** the assistant does not yet emit dedicated agent-build / config-eval-setup signals. Discovery currently keys off `targetResource.type` on agent-tree nodes plus a best-guess tool-name set (`build-agent`, `setup-eval`) — expect these to be revisited once the assistant emits proper signals.
+**Provisional:** the assistant does not yet emit dedicated agent-build / config-eval-setup signals in tool results. Discovery keys off `targetResource.type` on agent-tree nodes only — the `build_agent` and `eval-setup-with-agent` tool results carry no artifact id to read. Expect this to be revisited once the assistant emits proper signals.
 
 Per-artifact verdicts are attached to the test case result (`WorkflowTestCaseResult.artifactResults`) but are not yet surfaced in scoring, the CLI headline metrics, or the HTML report.
 

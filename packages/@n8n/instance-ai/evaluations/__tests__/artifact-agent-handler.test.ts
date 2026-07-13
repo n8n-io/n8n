@@ -11,17 +11,19 @@ describe('agentHandler', () => {
 		expect(agentHandler.runsExecutionScenarios).toBe(false);
 	});
 
-	it('discover() finds ids from targetResource and from build-agent tool-call results', () => {
+	it('discover() finds ids from targetResource and ignores tool-call results (no id signal there)', () => {
 		const messages: InstanceAiMessage[] = [
 			assistantMessage(
 				agentNode({
 					targetResource: { type: 'agent', id: 'agent-from-target-resource' },
+					// The real build_agent result carries no agent id, so a tool call must not
+					// contribute an id — only targetResource does.
 					toolCalls: [
 						{
 							toolCallId: 'tc-1',
-							toolName: 'build-agent',
+							toolName: 'build_agent',
 							args: {},
-							result: { agentId: 'agent-from-tool-call' },
+							result: { ok: true, config: {}, configHash: 'h', versionId: 'v1' },
 							isLoading: false,
 						},
 					],
@@ -31,12 +33,7 @@ describe('agentHandler', () => {
 
 		const refs = agentHandler.discover({ messages });
 
-		expect(refs.map((r) => r.id).sort()).toEqual(
-			['agent-from-target-resource', 'agent-from-tool-call'].sort(),
-		);
-		for (const ref of refs) {
-			expect(ref.type).toBe('agent');
-		}
+		expect(refs).toEqual([{ type: 'agent', id: 'agent-from-target-resource' }]);
 	});
 
 	it('fetch() resolves the personal project, fetches config + skills, and sanitizes the config', async () => {

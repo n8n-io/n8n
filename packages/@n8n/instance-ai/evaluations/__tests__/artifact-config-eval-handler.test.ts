@@ -41,17 +41,19 @@ describe('configEvalHandler', () => {
 		expect(configEvalHandler.runsExecutionScenarios).toBe(false);
 	});
 
-	it('discover() carries the owning workflow id from targetResource and setup-eval tool results', () => {
+	it('discover() carries the owning workflow id from targetResource and ignores tool-call results', () => {
 		const messages: InstanceAiMessage[] = [
 			assistantMessage(
 				agentNode({
 					targetResource: { type: 'config-eval', id: 'wf-from-target-resource' },
+					// The real eval-setup-with-agent result carries no workflow id, so a tool call
+					// must not contribute an id — only targetResource does.
 					toolCalls: [
 						{
 							toolCallId: 'tc-1',
-							toolName: 'setup-eval',
+							toolName: 'eval-setup-with-agent',
 							args: {},
-							result: { workflowId: 'wf-from-tool-call' },
+							result: { result: 'done', taskId: 'task-1' },
 							isLoading: false,
 						},
 					],
@@ -61,12 +63,7 @@ describe('configEvalHandler', () => {
 
 		const refs = configEvalHandler.discover({ messages });
 
-		expect(refs.map((r) => r.id).sort()).toEqual(
-			['wf-from-target-resource', 'wf-from-tool-call'].sort(),
-		);
-		for (const ref of refs) {
-			expect(ref.type).toBe('config-eval');
-		}
+		expect(refs).toEqual([{ type: 'config-eval', id: 'wf-from-target-resource' }]);
 	});
 
 	it('fetch() follows the data_table dataset ref to columns + rows', async () => {
