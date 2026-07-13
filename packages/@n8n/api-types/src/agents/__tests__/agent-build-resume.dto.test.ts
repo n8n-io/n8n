@@ -25,8 +25,8 @@ describe('AgentBuildResumeDto', () => {
 		expect(parsedByTool.answers).toEqual(resumeData.answers);
 	});
 
-	it('still allows a plain credential-card approval to resolve as approved', () => {
-		const resumeData = { approved: true };
+	it('still allows a plain credential-card denial to resolve as skipped', () => {
+		const resumeData = { approved: false };
 
 		const result = AgentBuildResumeDto.safeParse({ ...base, resumeData });
 
@@ -35,5 +35,11 @@ describe('AgentBuildResumeDto', () => {
 
 		const parsedByTool = credentialResumeSchema.parse(result.data.resumeData);
 		expect(parsedByTool).toEqual(resumeData);
+	});
+
+	it('rejects a credential-card resume claiming approval with no selection', () => {
+		// `{ approved: true }` has no `credentials` to resolve, so it would
+		// otherwise silently resolve as skipped despite claiming success.
+		expect(() => credentialResumeSchema.parse({ approved: true })).toThrow();
 	});
 });

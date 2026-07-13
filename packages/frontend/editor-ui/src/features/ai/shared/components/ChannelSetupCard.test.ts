@@ -217,6 +217,15 @@ describe('ChannelSetupCard', () => {
 		expect(wrapper.emitted('resolve')).toBeUndefined();
 	});
 
+	it('renders the unsupported-channel placeholder instead of a blank body when the catalog descriptor is missing', async () => {
+		// Catalog loaded successfully but has no entry for this (known) type —
+		// e.g. a fetch failure that fell back to an empty/partial list.
+		const wrapper = mountCard({ integrationType: 'linear' });
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('agents.channels.modal.setupPlaceholder');
+	});
+
 	it('does not call connect or emit resolve when the disabled prop is already true', async () => {
 		const wrapper = mountCard({ disabled: true });
 		await flushPromises();

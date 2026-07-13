@@ -875,9 +875,42 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
 }) {}
 
+export const INSTANCE_AI_THREAD_SOURCES = ['website-template', 'template-view'] as const;
+export type InstanceAiThreadSource = (typeof INSTANCE_AI_THREAD_SOURCES)[number];
+
+export const INSTANCE_AI_THREAD_SOURCE_FALLBACK = 'unknown';
+export type InstanceAiThreadSourcePersisted =
+	| InstanceAiThreadSource
+	| typeof INSTANCE_AI_THREAD_SOURCE_FALLBACK;
+
+export const INSTANCE_AI_THREAD_ORIGINS = ['internal', 'external'] as const;
+export type InstanceAiThreadOrigin = (typeof INSTANCE_AI_THREAD_ORIGINS)[number];
+
+function isInstanceAiThreadSource(value: string): value is InstanceAiThreadSource {
+	return (INSTANCE_AI_THREAD_SOURCES as readonly string[]).includes(value);
+}
+
+/** Normalize an untrusted source string to a known value, falling back otherwise. */
+export function normalizeInstanceAiThreadSource(
+	value: string | undefined,
+): InstanceAiThreadSourcePersisted {
+	return value !== undefined && isInstanceAiThreadSource(value)
+		? value
+		: INSTANCE_AI_THREAD_SOURCE_FALLBACK;
+}
+
+const instanceAiSourceContextSchema = z
+	.record(z.string(), z.unknown())
+	.refine((value) => JSON.stringify(value).length <= 2048, {
+		message: 'sourceContext exceeds the maximum allowed size',
+	});
+
 export class InstanceAiEnsureThreadRequest extends Z.class({
 	threadId: z.string().uuid().optional(),
 	projectId: z.string().min(1),
+	source: z.string().max(64).optional(),
+	origin: z.enum(INSTANCE_AI_THREAD_ORIGINS).optional(),
+	sourceContext: instanceAiSourceContextSchema.optional(),
 }) {}
 
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);

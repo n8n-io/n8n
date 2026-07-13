@@ -106,9 +106,14 @@ const isConnected = computed(() => isIntegrationConnected(props.integrationType)
 const isLoading = computed(() => loadingMap.value[props.integrationType] ?? false);
 const errorMessage = computed(() => errorMessages.value[props.integrationType] ?? '');
 
-const hasUnsupportedIntegration = computed(
-	() => !['slack', 'telegram', 'linear'].includes(props.integrationType),
-);
+const hasUnsupportedIntegration = computed(() => {
+	if (props.integrationType === 'slack') return false;
+	if (!['telegram', 'linear'].includes(props.integrationType)) return true;
+	// Known type, but its catalog descriptor didn't load (e.g. catalog fetch
+	// failed) — the Linear/Telegram branches below need `currentIntegration`,
+	// so fall back here instead of rendering a blank body.
+	return !currentIntegration.value;
+});
 
 const cardTitle = computed(() =>
 	i18n.baseText('agents.channels.modal.connectTitle', {
