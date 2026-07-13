@@ -37,6 +37,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_credentials_entity_is_global | CREATE INDEX "IDX_credentials_entity_is_global" ON public.credentials_entity USING btree (id) WHERE ("isGlobal" = true) |
 | credentials_entity_pkey | CREATE UNIQUE INDEX credentials_entity_pkey ON public.credentials_entity USING btree (id) |
 | idx_07fde106c0b471d8cc80a64fc8 | CREATE INDEX idx_07fde106c0b471d8cc80a64fc8 ON public.credentials_entity USING btree (type) |
 | pk_credentials_entity_id | CREATE UNIQUE INDEX pk_credentials_entity_id ON public.credentials_entity USING btree (id) |

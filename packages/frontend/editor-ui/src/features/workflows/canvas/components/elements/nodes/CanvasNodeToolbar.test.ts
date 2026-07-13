@@ -106,6 +106,27 @@ describe('CanvasNodeToolbar', () => {
 		expect(queryByTestId('execute-node-button')).not.toBeInTheDocument();
 	});
 
+	it('should render execute and disable node buttons for the agent render type', () => {
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						data: {
+							render: {
+								type: CanvasNodeRenderType.Agent,
+								options: { agentId: { __rl: true, mode: 'list', value: 'agent-1' } },
+							},
+						},
+					}),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(getByTestId('execute-node-button')).toBeInTheDocument();
+		expect(getByTestId('disable-node-button')).toBeInTheDocument();
+	});
+
 	it('should emit "run" when execute node button is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			global: {

@@ -71,6 +71,8 @@ export interface WorkflowDetail extends WorkflowSummary {
 	nodes: WorkflowNode[];
 	connections: Record<string, unknown>;
 	settings?: Record<string, unknown>;
+	/** SHA-256 checksum of workflow content fields — used for optimistic-concurrency saves. */
+	checksum?: string;
 }
 
 export interface WorkflowNode {
@@ -223,6 +225,25 @@ export interface NodeSummary {
 	description: string;
 	group: string[];
 	version: number;
+	/** Present when the node is reachable via n8n Connect on this instance. */
+	aiGateway?: AiGatewayNodeMeta;
+}
+
+/**
+ * Metadata about how a node is reachable via the AI Gateway (n8n Connect).
+ * Attached to node results only when the instance is licensed for the
+ * gateway AND the node is listed in the gateway config. Absence means either
+ * "not licensed" or "not supported" — consumers treat both the same.
+ *
+ * `operations` mirrors the gateway config's `supportedActions[nodeName]`:
+ * a map from resource name to allowed operations. Nodes without a resource
+ * dimension use the marker key `'__operation_only__'`.
+ */
+export interface AiGatewayNodeMeta {
+	supported: true;
+	operations?: Record<string, string[]>;
+	minVersion?: number;
+	hiddenProperties?: string[];
 }
 
 export interface NodeDescription extends NodeSummary {
@@ -245,6 +266,7 @@ export interface NodeDescription extends NodeSummary {
 	webhooks?: unknown[];
 	polling?: boolean;
 	triggerPanel?: unknown;
+	aiGateway?: AiGatewayNodeMeta;
 }
 
 // ── Service interfaces ───────────────────────────────────────────────────────
@@ -297,7 +319,7 @@ export interface InstanceAiWorkflowService {
 	updateFromWorkflowJSON(
 		workflowId: string,
 		json: WorkflowJSON,
-		options?: { projectId?: string },
+		options?: { projectId?: string; expectedChecksum?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	unarchive(workflowId: string): Promise<void>;
@@ -437,6 +459,8 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** List all credential types supported by n8n Connect on this instance. */
+	listAiGatewayCredentialTypes?(): Promise<string[]>;
 }
 
 export interface CredentialFieldInfo {
@@ -474,7 +498,7 @@ export interface ExploreResourcesResult {
 }
 
 export interface InstanceAiNodeService {
-	listAvailable(options?: { query?: string }): Promise<NodeSummary[]>;
+	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
@@ -533,6 +557,7 @@ export interface SearchableNodeDescription {
 		inputs?: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }>;
 		outputs?: Record<string, { required?: boolean; displayOptions?: Record<string, unknown> }>;
 	};
+	aiGateway?: AiGatewayNodeMeta;
 }
 
 // ── Data table shapes ────────────────────────────────────────────────────────
@@ -634,6 +659,65 @@ export interface InstanceAiDataTableService {
 		filter: DataTableFilterInput,
 		options?: DataTableIdOptions,
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
+}
+
+// ── Evaluation configs (config-based evals) ──────────────────────────────────
+
+/** Preset LLM-judge metrics supported by config-based evals — mirrors
+ *  `llmJudgeMetricPresetSchema` in `@n8n/api-types`. */
+export type EvaluationConfigMetricPreset = 'correctness' | 'helpfulness';
+
+/** A single LLM-judge metric on a config-based eval. `actualAnswer`/`userQuery`/
+ *  `expectedAnswer` are n8n expressions resolved against the eval run. */
+export interface EvaluationConfigMetricInput {
+	name: string;
+	preset: EvaluationConfigMetricPreset;
+	provider: string;
+	credentialId: string;
+	model: string;
+	outputType: 'numeric' | 'boolean';
+	actualAnswer: string;
+	userQuery?: string;
+	expectedAnswer?: string;
+	prompt?: string;
+}
+
+/** Payload for creating/updating a config-based eval. The dataset is a Data
+ *  Table the caller already created (via the data-tables tool). */
+export interface UpsertEvaluationConfigInput {
+	name: string;
+	startNodeName: string;
+	endNodeName: string;
+	dataTableId: string;
+	metrics: EvaluationConfigMetricInput[];
+}
+
+/** A config-based eval as surfaced to the agent. */
+export interface EvaluationConfigSummary {
+	id: string;
+	workflowId: string;
+	name: string;
+	status: 'valid' | 'invalid';
+	invalidReason: string | null;
+	startNodeName: string;
+	endNodeName: string;
+	metrics: Array<{ id: string; name: string; type: string }>;
+	datasetSource: string;
+	dataTableId?: string;
+}
+
+/** Create/read/update config-based evaluations attached to a workflow via the
+ *  evaluation-config API (distinct from on-canvas eval nodes). */
+export interface InstanceAiEvaluationConfigService {
+	list(workflowId: string): Promise<EvaluationConfigSummary[]>;
+	get(workflowId: string, configId: string): Promise<EvaluationConfigSummary | null>;
+	create(workflowId: string, input: UpsertEvaluationConfigInput): Promise<EvaluationConfigSummary>;
+	update(
+		workflowId: string,
+		configId: string,
+		input: UpsertEvaluationConfigInput,
+	): Promise<EvaluationConfigSummary>;
+	delete(workflowId: string, configId: string): Promise<void>;
 }
 
 // ── Web Research ────────────────────────────────────────────────────────────
@@ -956,6 +1040,8 @@ export interface InstanceAiContext {
 	credentialService: InstanceAiCredentialService;
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
+	/** Optional — present when the host wires config-based eval support. */
+	evaluationConfigService?: InstanceAiEvaluationConfigService;
 	/**
 	 * Host-backed agent-building operations. Present only when the instance
 	 * exposes agent-building (the agent-builder skill loads the deferred tools

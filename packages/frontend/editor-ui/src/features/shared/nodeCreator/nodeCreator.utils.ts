@@ -28,6 +28,7 @@ import {
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
+	REGULAR_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -38,14 +39,14 @@ import * as changeCase from 'change-case';
 import sortBy from 'lodash/sortBy';
 import type { NodeViewItemSection } from './views/viewsData';
 
-import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
-import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
@@ -161,7 +162,9 @@ function isAiGatewayEligibleNode(nodeName: string): boolean {
 	if (!useSettingsStore().isAiGatewayEnabled) return false;
 
 	const aiGatewayStore = useAiGatewayStore();
-	const baseName = nodeName.replace(/Tool$/, '');
+	// Tool-variant node types carry a "Tool"/"HitlTool" suffix,
+	// but the gateway config lists the base name.
+	const baseName = stripToolSuffix(nodeName);
 	const candidates = [
 		nodeName,
 		baseName,
@@ -382,6 +385,51 @@ export const removePreviewToken = (key: string) =>
 	key.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
 
 export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
+
+/**
+ * Whether the given view stack should render the "n8n Connect" section at the
+ * top. Never shown while searching — search results stay a flat ranked list.
+ */
+export function showsAiGatewaySection(stack: ViewStack | undefined): boolean {
+	if (!stack || stack.search) return false;
+	return (
+		// Language Models list
+		stack.connectionType === NodeConnectionTypes.AiLanguageModel ||
+		// Nodes panel > "Action in an app"
+		(stack.rootView === REGULAR_NODE_CREATOR_VIEW && stack.subcategory === DEFAULT_SUBCATEGORY) ||
+		// Tools panel > "Action in an app"
+		stack.subcategory === AI_CATEGORY_OTHER_TOOLS
+	);
+}
+
+/**
+ * Splits AI gateway-supported nodes out of `items` into a dedicated "n8n Connect"
+ * section (rendered at the top with the wallet balance in its header).
+ * Returns null when there is nothing to extract.
+ */
+export function extractAiGatewaySection(
+	items: INodeCreateElement[],
+): { section: SectionCreateElement; rest: INodeCreateElement[] } | null {
+	const supported: INodeCreateElement[] = [];
+	const rest: INodeCreateElement[] = [];
+	for (const item of items) {
+		const isSupported = item.type === 'node' && isAiGatewayEligibleNode(item.properties.name);
+		(isSupported ? supported : rest).push(item);
+	}
+	if (supported.length === 0) return null;
+
+	return {
+		section: {
+			type: 'section',
+			key: 'n8nConnect',
+			title: i18n.baseText('nodeCreator.sectionNames.includedInN8n'),
+			children: finalizeItems(sortNodeCreateElements(supported)),
+			showSeparator: true,
+			trailing: 'creditsBalance',
+		},
+		rest,
+	};
+}
 
 function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 	if (element.type !== 'node') return element;

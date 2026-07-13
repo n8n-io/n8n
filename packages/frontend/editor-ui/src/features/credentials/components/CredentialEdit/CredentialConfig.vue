@@ -509,7 +509,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				<Banner
 					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
 					theme="warning"
-					:message="i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')"
+					:message="
+						isResolvable
+							? i18n.baseText('credentialEdit.credentialConfig.accountNotConnected.endUser')
+							: i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')
+					"
 					:button-label="i18n.baseText('credentialEdit.credentialConfig.connect')"
 					:button-title="i18n.baseText('credentialEdit.credentialConfig.connectOAuth2Credential')"
 					data-test-id="oauth-not-connected-banner"

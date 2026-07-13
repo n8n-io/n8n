@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { N8nBadge, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
+import { VIEWS } from '@/app/constants';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { useEvalCollectionsStore } from '../../evalCollections.store';
 import type {
 	EvaluationCollectionDetail,
 	EvaluationCollectionRecord,
 } from '../../evalCollections.types';
-import { isScoreShapedMetric } from '../../evaluation.utils';
+import { buildScoreShapedMetricGroups, deriveRunsStatus } from '../../evaluation.utils';
 import GroupedMetricChart from '../shared/GroupedMetricChart.vue';
 import VersionAvatar from '../shared/VersionAvatar.vue';
 
@@ -21,21 +23,26 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 const store = useEvalCollectionsStore();
+
+const openCompare = () => {
+	void router.push({
+		name: VIEWS.EVALUATION_COLLECTION_COMPARE,
+		params: { workflowId: props.workflowId, collectionId: props.collection.id },
+	});
+};
 
 // `null` until the detail (with run statuses) has loaded — the list view only
 // pre-fetches detail for the first few cards and lazy-loads the rest on hover,
 // so we must not assert "Done" for a card whose runs might still be in flight.
-const status = computed<'done' | 'running' | null>(() => {
-	if (!props.detail) return null;
-	const inFlight = props.detail.runs.some((r) => r.status === 'new' || r.status === 'running');
-	return inFlight ? 'running' : 'done';
-});
+const status = computed<'done' | 'running' | null>(() =>
+	props.detail ? deriveRunsStatus(props.detail.runs) : null,
+);
 
 // Append a right arrow so the CTA reads "Open compare →" the way the
 // Figma mock does. N8nButton doesn't accept a trailing icon prop today,
-// so the arrow lives in the label string. The button stays disabled until
-// the compare view lands in a follow-up.
+// so the arrow lives in the label string.
 const ctaLabel = computed(() => {
 	const key =
 		status.value === 'running'
@@ -95,43 +102,17 @@ const versionChips = computed(() =>
 	})),
 );
 
-// Union of metric keys across runs, in first-seen order. A run that
-// skipped (no metrics) leaves a hole — `null` value — rather than
-// shifting later versions forward, matching the avatar/index identity.
-//
-// Only score-shaped metrics (values in [0, 1]) are charted: the mini bar
-// chart clamps to max=1, so an absolute-count metric (tokens, latency_ms)
-// would render a meaningless maxed-out bar. Mirrors the same filter in
-// `UngroupedRunRow`'s avg-score calc.
-const groups = computed(() => {
-	if (!props.detail) return [];
-	const runs = props.detail.runs;
-	const seen = new Set<string>();
-	const order: string[] = [];
-	for (const run of runs) {
-		if (!run.metrics) continue;
-		for (const k of Object.keys(run.metrics)) {
-			if (!seen.has(k)) {
-				seen.add(k);
-				order.push(k);
-			}
-		}
-	}
-
-	const isScoreShapedKey = (key: string) =>
-		runs.every((run) => {
-			const v = run.metrics?.[key];
-			return v === undefined || isScoreShapedMetric(v);
-		});
-
-	return order.filter(isScoreShapedKey).map((key) => ({
-		label: key,
-		values: runs.map((run) => {
-			const v = run.metrics?.[key];
-			return typeof v === 'number' ? v : null;
-		}),
-	}));
-});
+// Score-shaped metrics per version for the mini bar chart. Shares its shaping
+// rule with the compare hero via `buildScoreShapedMetricGroups` so the two
+// surfaces can't drift; the raw metric key doubles as the compact label here.
+const groups = computed(() =>
+	props.detail
+		? buildScoreShapedMetricGroups(props.detail.runs).map(({ key, values }) => ({
+				label: key,
+				values,
+			}))
+		: [],
+);
 
 // Lazy-load detail when the card scrolls into view, so cards past the first
 // few (which the list pre-fetches) populate their status/chips/chart without
@@ -185,15 +166,13 @@ onMounted(() => observe(cardRef.value));
 				</N8nText>
 			</div>
 			<div :class="$style.cardCta">
-				<N8nTooltip placement="top" :content="i18n.baseText('evaluation.compare.comingSoon')">
-					<N8nButton
-						variant="outline"
-						size="medium"
-						disabled
-						:label="ctaLabel"
-						data-test-id="eval-collections-card-cta"
-					/>
-				</N8nTooltip>
+				<N8nButton
+					variant="outline"
+					size="medium"
+					:label="ctaLabel"
+					data-test-id="eval-collections-card-cta"
+					@click="openCompare"
+				/>
 			</div>
 		</div>
 		<div :class="$style.versionsRow">
@@ -220,9 +199,8 @@ onMounted(() => observe(cardRef.value));
 	padding: var(--spacing--md) var(--spacing--lg);
 	transition: border-color var(--animation--duration--snappy) var(--animation--easing);
 
-	// Hover preview for the click target the compare view will wire up. The
-	// CTA inside is currently disabled, but the whole card lifts so users
-	// can see it's interactive once the compare route lands.
+	// Lift on hover so the card reads as an interactive gateway to the
+	// compare view, even though the CTA button is the explicit trigger.
 	&:hover {
 		border-color: var(--border-color--strong);
 	}

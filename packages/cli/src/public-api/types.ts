@@ -7,6 +7,7 @@ import type {
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
+	UpdateSecurityPolicyDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -377,4 +378,13 @@ export declare namespace AuditRequest {
 		{},
 		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
 	>;
+}
+
+// ----------------------------------
+//        /settings/security-policy
+// ----------------------------------
+
+export declare namespace SecurityPolicyRequest {
+	type Get = AuthenticatedRequest;
+	type Update = AuthenticatedRequest<{}, {}, UpdateSecurityPolicyDto>;
 }

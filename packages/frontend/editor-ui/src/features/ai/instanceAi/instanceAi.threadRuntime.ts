@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
 	buildRunWorkflowSessionGrantKey,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
@@ -93,6 +94,18 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
+	/** Thread-list metadata, used to enrich historical artifacts. */
+	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
+}
+
+const AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
+
+function getAgentBuilderTargetFromThreadMetadata(metadata: Record<string, unknown> | undefined) {
+	const raw = metadata?.[AGENT_BUILDER_TARGET_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
+	return { agentId: target.agentId, projectId: target.projectId };
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
@@ -367,6 +380,7 @@ export function createThreadRuntime(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
+		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -612,37 +626,49 @@ export function createThreadRuntime(
 	// --- SSE lifecycle ---
 
 	function onSSEMessage(sseEvent: MessageEvent): void {
-		// Event ids come from a shared per-thread sequence, so they are valid
-		// across mains — but concurrent producers on different mains can arrive
-		// interleaved out of order, so the reconnect cursor keeps the max seen
-		// rather than the latest, and duplicates are dropped by id.
-		const eventId = sseEvent.lastEventId ? Number(sseEvent.lastEventId) : undefined;
-		if (eventId !== undefined && Number.isFinite(eventId)) {
-			// A backend sequence reset (single-main restart, or seq-key TTL expiry)
-			// re-issues ids from 1. Seeing id 1 again while it's still in the dedup
-			// set means the sequence restarted, so drop the stale cursor + dedup
-			// state and render the fresh sequence instead of dropping it as
-			// duplicates. Precise, not a heuristic: id 1 is issued once per sequence
-			// lifetime, and a legit replay from cursor 0 can't reach here because
-			// the cursor and seenEventIds only ever reset together (in resetState).
-			if (eventId === 1 && seenEventIds.has(1)) {
-				seenEventIds.clear();
-				lastEventId.value = undefined;
-			}
-			if (seenEventIds.has(eventId)) return;
-			seenEventIds.add(eventId);
-			if (seenEventIds.size > MAX_SEEN_EVENT_IDS) {
-				// Sets iterate in insertion order — evict the oldest (≈ lowest) id.
-				const oldest: number | undefined = seenEventIds.values().next().value;
-				if (oldest !== undefined) seenEventIds.delete(oldest);
-			}
-			lastEventId.value = Math.max(lastEventId.value ?? 0, eventId);
-		}
 		try {
 			const parsed = instanceAiEventSchema.safeParse(JSON.parse(String(sseEvent.data)));
 			if (!parsed.success) {
 				console.warn('[InstanceAI] Invalid SSE event, skipping:', parsed.error.message);
 				return;
+			}
+			// Event ids come from a shared per-thread sequence, so they are valid
+			// across mains — but concurrent producers on different mains can arrive
+			// interleaved out of order, so the reconnect cursor keeps the max seen
+			// rather than the latest, and duplicates are dropped by id.
+			//
+			// The dedup is gated on durable event types: under the durable log,
+			// ephemeral frames (deltas/status) ship without an `id:` line, so
+			// `sseEvent.lastEventId` on them ECHOES the previous id-bearing value
+			// and the duplicate-drop would swallow every delta after a durable
+			// fact. Ephemeral frames still advance the max-cursor, a no-op for an
+			// echo (always ≤ the cursor), while with the flag off deltas carry real
+			// ids, keeping today's reconnect replay granularity.
+			const eventId = sseEvent.lastEventId ? Number(sseEvent.lastEventId) : undefined;
+			if (eventId !== undefined && Number.isFinite(eventId)) {
+				if (INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has(parsed.data.type)) {
+					lastEventId.value = Math.max(lastEventId.value ?? 0, eventId);
+				} else {
+					// A backend sequence reset (single-main restart, or seq-key TTL expiry)
+					// re-issues ids from 1. Seeing id 1 again while it's still in the dedup
+					// set means the sequence restarted, so drop the stale cursor + dedup
+					// state and render the fresh sequence instead of dropping it as
+					// duplicates. Precise, not a heuristic: id 1 is issued once per sequence
+					// lifetime, and a legit replay from cursor 0 can't reach here because
+					// the cursor and seenEventIds only ever reset together (in resetState).
+					if (eventId === 1 && seenEventIds.has(1)) {
+						seenEventIds.clear();
+						lastEventId.value = undefined;
+					}
+					if (seenEventIds.has(eventId)) return;
+					seenEventIds.add(eventId);
+					if (seenEventIds.size > MAX_SEEN_EVENT_IDS) {
+						// Sets iterate in insertion order — evict the oldest (≈ lowest) id.
+						const oldest: number | undefined = seenEventIds.values().next().value;
+						if (oldest !== undefined) seenEventIds.delete(oldest);
+					}
+					lastEventId.value = Math.max(lastEventId.value ?? 0, eventId);
+				}
 			}
 			// Push to debug event buffer (capped)
 			debugEvents.value.push({
