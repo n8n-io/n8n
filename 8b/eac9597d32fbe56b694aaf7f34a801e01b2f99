@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/experiments/enhancedHitlTelegram/telegramHitlParameters.test.ts
+  s_60ce6e746ce9d3::t_a89be13a364936 1-43
+packages/frontend/editor-ui/src/experiments/enhancedHitlTelegram/telegramHitlParameters.ts
+  s_60ce6e746ce9d3::t_5afdf45d767389 1-9
+packages/frontend/editor-ui/src/experiments/enhancedHitlTelegram/index.ts
+  s_60ce6e746ce9d3::t_2e4679d11632d0 2-5
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_60ce6e746ce9d3::t_7f1fb1248230b8 121
+  s_60ce6e746ce9d3::t_f3f5ef9ac455c7 234-239
+  s_60ce6e746ce9d3::t_b1206f5c07e37d 29
+  s_60ce6e746ce9d3::t_715d6e2ae24d78 48-50
+  s_60ce6e746ce9d3::t_6bf1d25001a9ed 47
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.test.ts
+  s_60ce6e746ce9d3::t_1135cf59acf6ff 15
+  s_60ce6e746ce9d3::t_8d63aa6786a772 68
+  s_60ce6e746ce9d3::t_c8ec0c35bf0083 2323-2329,2333,2336-2338,2341-2345,2347-2351,2353,2357-2361,2363-2367,2369,2373-2376,2378-2382,2384,2387-2388
+  s_60ce6e746ce9d3::t_fac463c84645fe 2330-2332,2334-2335,2339-2340,2354-2356,2370-2372,2385-2386
+  s_60ce6e746ce9d3::t_04369e82d78dad 2346,2352,2362,2368,2377,2383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "8beac9597d32fbe56b694aaf7f34a801e01b2f99",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
