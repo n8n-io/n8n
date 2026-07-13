@@ -1,14 +1,11 @@
-import type { ManualRunDto } from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
 import type {
-	INode,
-	IConnections,
-	IWorkflowSettings,
-	IRunData,
-	ITaskData,
-	AiAgentRequest,
-	IDestinationNode,
-} from 'n8n-workflow';
+	ManualRunDto,
+	FullManualExecutionFromKnownTriggerPayload as FullManualExecutionFromKnownTriggerDto,
+	FullManualExecutionFromUnknownTriggerPayload as FullManualExecutionFromUnknownTriggerDto,
+	PartialManualExecutionToDestinationPayload as PartialManualExecutionToDestinationDto,
+} from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
+import type { INode, IConnections, IWorkflowSettings } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 
@@ -32,30 +29,13 @@ export declare namespace WorkflowRequest {
 		autosaved?: boolean;
 	}>;
 
+	// The three cases the manual-run endpoint serves. The shapes are defined
+	// and validated by ManualRunDto in @n8n/api-types; the type guards in
+	// workflow-execution.service.ts re-narrow to them at runtime.
 	// TODO: Use a discriminator when CAT-1809 lands
-	//
-	// 1. Full Manual Execution from Known Trigger
-	type FullManualExecutionFromKnownTriggerPayload = {
-		agentRequest?: AiAgentRequest;
-		chatSessionId?: string;
-		destinationNode?: IDestinationNode;
-		triggerToStartFrom: { name: string; data?: ITaskData };
-	};
-	// 2. Full Manual Execution from Unknown Trigger
-	type FullManualExecutionFromUnknownTriggerPayload = {
-		agentRequest?: AiAgentRequest;
-
-		destinationNode: IDestinationNode;
-	};
-
-	// 3. Partial Manual Execution to Destination
-	type PartialManualExecutionToDestinationPayload = {
-		agentRequest?: AiAgentRequest;
-
-		runData: IRunData;
-		destinationNode: IDestinationNode;
-		dirtyNodeNames: string[];
-	};
+	type FullManualExecutionFromKnownTriggerPayload = FullManualExecutionFromKnownTriggerDto;
+	type FullManualExecutionFromUnknownTriggerPayload = FullManualExecutionFromUnknownTriggerDto;
+	type PartialManualExecutionToDestinationPayload = PartialManualExecutionToDestinationDto;
 
 	type ManualRunPayload = ManualRunDto;
 
@@ -86,7 +66,7 @@ export declare namespace WorkflowRequest {
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string; projectId: string }>;
 
-	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload, {}>;
+	type ManualRun = AuthenticatedRequest<{ workflowId: string }>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 

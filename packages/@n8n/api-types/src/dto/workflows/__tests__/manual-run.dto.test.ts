@@ -20,6 +20,13 @@ describe('ManualRunDto', () => {
 				},
 			},
 			{
+				name: 'partial run without dirty node names',
+				request: {
+					destinationNode: { nodeName: 'Set', mode: 'exclusive' },
+					runData: {},
+				},
+			},
+			{
 				name: 'known trigger with agent request and chat session',
 				request: {
 					triggerToStartFrom: { name: 'Chat Trigger' },
@@ -30,6 +37,19 @@ describe('ManualRunDto', () => {
 		])('should validate $name', ({ request }) => {
 			const result = ManualRunDto.safeParse(request);
 			expect(result.success).toBe(true);
+		});
+
+		test('should strip keys from other cases when a trigger is specified', () => {
+			const result = ManualRunDto.safeParse({
+				triggerToStartFrom: { name: 'Trigger' },
+				runData: { Trigger: [] },
+				dirtyNodeNames: ['Set'],
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data).not.toHaveProperty('runData');
+				expect(result.data).not.toHaveProperty('dirtyNodeNames');
+			}
 		});
 	});
 
@@ -49,6 +69,21 @@ describe('ManualRunDto', () => {
 					'To run the workflow manually, specify either a trigger to start from or a destination node.',
 				);
 			}
+		});
+
+		test.each([
+			{ name: 'a non-object body', request: null },
+			{
+				name: 'a malformed destination node',
+				request: { destinationNode: { nodeName: 'Set' } },
+			},
+			{
+				name: 'a malformed trigger',
+				request: { triggerToStartFrom: { data: {} } },
+			},
+		])('should reject $name with a case-specific error', ({ request }) => {
+			const result = ManualRunDto.safeParse(request);
+			expect(result.success).toBe(false);
 		});
 	});
 });
