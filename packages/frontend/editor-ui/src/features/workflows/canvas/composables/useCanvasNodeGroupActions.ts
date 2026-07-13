@@ -28,21 +28,19 @@ export function useCanvasNodeGroupActions(
 	const i18n = useI18n();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const historyStore = useHistoryStore();
-	const { isSelectionGroupable, expandSelectionWithSubNodes } = useSelectionValidation();
+	const { resolveGroupableNodeIds } = useSelectionValidation();
 
 	const isReadOnly = computed(() => toValue(options?.readOnly) ?? false);
 
-	const expandedSelectionIds = computed(() => {
-		return expandSelectionWithSubNodes(
-			toValue(selectedNodes)
-				.filter((n) => !isCanvasGroupNode(n))
-				.map((n) => n.id),
-		);
-	});
+	const selectedNodeIdsWithoutGroups = computed(() =>
+		toValue(selectedNodes)
+			.filter((n) => !isCanvasGroupNode(n))
+			.map((n) => n.id),
+	);
 
 	const canGroup = computed(() => {
 		if (isReadOnly.value) return false;
-		return isSelectionGroupable(expandedSelectionIds.value).valid;
+		return resolveGroupableNodeIds(selectedNodeIdsWithoutGroups.value) !== null;
 	});
 
 	const selectedGroupIds = computed(() => {
@@ -66,17 +64,31 @@ export function useCanvasNodeGroupActions(
 
 	const canUngroup = computed(() => selectedGroupIds.value.length > 0);
 
-	function groupSelection(): IWorkflowGroup | null {
-		if (!canGroup.value) return null;
+	/**
+	 * Groups the given nodes (plus their attached AI sub-nodes) if they form a
+	 * valid groupable subgraph. Unlike `groupSelection`, this works on explicit
+	 * ids, so callers like the context menu can group nodes that aren't part of
+	 * the current canvas selection. The group is created from exactly the ids
+	 * that passed validation.
+	 */
+	function groupNodes(nodeIds: string[]): IWorkflowGroup | null {
+		if (isReadOnly.value) return null;
+		const memberIds = resolveGroupableNodeIds(nodeIds);
+		if (!memberIds) return null;
 		const name = workflowDocumentStore.value.getNextDefaultName(
 			i18n.baseText('canvas.nodeGroup.defaultTitle'),
 		);
-		const group = workflowDocumentStore.value.createGroup(expandedSelectionIds.value, name);
+		const group = workflowDocumentStore.value.createGroup(memberIds, name);
 		historyStore.pushCommandToUndo(new AddNodeGroupCommand(group, Date.now()));
 		return group;
 	}
 
+	function groupSelection(): IWorkflowGroup | null {
+		return groupNodes(selectedNodeIdsWithoutGroups.value);
+	}
+
 	function renameGroup(id: string, name: string) {
+		if (isReadOnly.value) return;
 		const before = workflowDocumentStore.value.getGroupById(id);
 		if (!before) return;
 		const beforeSnapshot = snapshotGroup(before);
@@ -89,6 +101,7 @@ export function useCanvasNodeGroupActions(
 	}
 
 	function ungroup(id: string) {
+		if (isReadOnly.value) return;
 		const group = workflowDocumentStore.value.getGroupById(id);
 		if (!group) return;
 		const snapshot = snapshotGroup(group);
@@ -99,8 +112,8 @@ export function useCanvasNodeGroupActions(
 	return {
 		canGroup,
 		canUngroup,
-		expandedSelectionIds,
 		selectedGroupIds,
+		groupNodes,
 		groupSelection,
 		renameGroup,
 		ungroup,
