@@ -11,8 +11,9 @@
 //   node scripts/nathan.mjs deploy my-branch --license pro2
 //   node scripts/nathan.mjs deploy master test-ai --ai
 //
-// Requires NATHAN_TOKEN (put it in .env.local — gitignored). A public tunnel is
-// opened via `cloudflared` (preferred) or `npx localtunnel` as a fallback.
+// Needs a token in ~/.n8n/nathan-token — on first run it links you to a form to
+// get one and saves it there. A public tunnel is opened via `cloudflared`
+// (preferred) or `npx localtunnel` as a fallback.
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -77,7 +78,7 @@ if (process.argv.includes('--selftest')) {
 	process.exit(0);
 }
 
-// --- token: NATHAN_TOKEN env → ~/.n8n/nathan-token → .env files → prompt ------
+// --- token: read from ~/.n8n/nathan-token; prompt + save it on first run -----
 const TOKEN_FORM_URL = 'https://internal.users.n8n.cloud/form/d6d34a2f-4899-4ee8-afc8-f8c41a8a243d';
 const tokenFile = path.join(os.homedir(), '.n8n', 'nathan-token');
 const readSavedToken = () => { try { return fs.readFileSync(tokenFile, 'utf8').trim() || null; } catch { return null; } };
@@ -86,15 +87,7 @@ function saveToken(t) {
 	fs.writeFileSync(tokenFile, `${t}\n`, { mode: 0o600 });
 }
 
-let token = process.env.NATHAN_TOKEN || readSavedToken();
-if (!token) {
-	const root = path.resolve(import.meta.dirname, '..');
-	for (const dir of [process.cwd(), root])
-		for (const f of ['.env.local', '.env']) {
-			try { process.loadEnvFile(path.join(dir, f)); } catch { /* missing file is fine */ }
-		}
-	token = process.env.NATHAN_TOKEN;
-}
+let token = readSavedToken();
 if (!token) {
 	console.error(`\nNo Nathan token found. Get one here:\n  ${TOKEN_FORM_URL}\n  → log in with your n8n account and copy the token from the response.\n`);
 	if (process.stdin.isTTY) {
@@ -103,7 +96,7 @@ if (!token) {
 		rl.close();
 		if (token) { saveToken(token); console.error(`\nSaved to ${tokenFile} — future runs will reuse it.\n`); }
 	} else {
-		console.error(`Then save it to ${tokenFile} (or set NATHAN_TOKEN) and re-run.`);
+		console.error(`Then save it to ${tokenFile} and re-run.`);
 	}
 }
 if (!token) process.exit(1);
