@@ -4,6 +4,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nTag } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
@@ -439,6 +440,7 @@ const resizable = computed(() => {
 			:autosize="resizable"
 			:button-label="props.submitLabel"
 			:active-requires-focus="props.submitActiveRequiresFocus"
+			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="!props.isPlanEditMode"
 			@submit="handleSubmit"

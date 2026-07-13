@@ -10,7 +10,7 @@
 		},
 		{
 			"role": "user",
-			"text": "Pull OHLCV candles from the Binance klines REST API (GET https://api.binance.com/api/v3/klines) via an HTTP Request node, normalize them, compute indicators, and send the final signal to Telegram. Binance returns a JSON array of candle rows, so the normalize step has to handle every candle, not just the first one."
+			"text": "Pull OHLCV candles from the Binance klines REST API (GET https://api.binance.com/api/v3/klines) via an HTTP Request node, normalize them, compute indicators, and send the final signal to Telegram. Binance returns a JSON array of candle rows, so the normalize step has to handle every candle, not just the first one. One symbol is plenty — no need to track several — and a couple of momentum indicators are enough for the signal."
 		}
 	],
 	"complexity": "complex",

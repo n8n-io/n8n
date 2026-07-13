@@ -27,7 +27,13 @@ export abstract class ExecutionBaseError extends BaseError {
 	constructor(message: string, options: ExecutionBaseErrorOptions = {}) {
 		super(message, options);
 
-		this.name = this.constructor.name;
+		// Defined, not assigned: assignment throws when `Error.prototype` is frozen (task runner secure mode)
+		Object.defineProperty(this, 'name', {
+			value: this.constructor.name,
+			writable: true,
+			enumerable: true,
+			configurable: true,
+		});
 		this.timestamp = Date.now();
 
 		const { cause, errorResponse } = options;

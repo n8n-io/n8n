@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: agent, embedsOther: true} — long-running multi-session coordination with tracked open threads and daily check-ins; the concrete actions (Slack, Notion, calendar) are natural workflow tools.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Assign an agent to plan and execute our Q3 product launch — coordinate with design, engineering, marketing; keep track of open threads across teams; check in daily; escalate blockers as they arise. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "complex",
+	"tags": ["intent-resolution", "long-running", "stateful", "coordination"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes creating an n8n Agent to own the launch coordination — long-running, tracking open threads across sessions — and does not propose a fixed workflow (or a bundle of scheduled workflows) as the top-level design.",
+		"The proposal grounds the agent choice in the long-running, multi-session coordination shape (tracked threads, daily check-ins, judgment about when to escalate), not in the surface vocabulary of the request."
+	]
+}
