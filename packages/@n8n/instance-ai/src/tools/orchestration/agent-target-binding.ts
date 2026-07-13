@@ -31,15 +31,12 @@ async function readThreadTarget(
 ): Promise<AgentBuilderTarget | undefined> {
 	if (!context.threadMemory || !context.threadId) return undefined;
 
-	try {
-		const thread = await getThread(context.threadMemory, context.threadId);
-		return parseTarget(thread?.metadata?.[METADATA_KEY]);
-	} catch (error) {
-		context.logger?.debug('Failed to read agent-builder target from thread metadata', {
-			error: error instanceof Error ? error.message : String(error),
-		});
-		return undefined;
-	}
+	// Let storage failures propagate (AGENT-353): a follow-up turn must edit
+	// the thread-persisted target rather than silently falling back to "no
+	// target", which would let the caller create a second agent instead of
+	// continuing the existing one.
+	const thread = await getThread(context.threadMemory, context.threadId);
+	return parseTarget(thread?.metadata?.[METADATA_KEY]);
 }
 
 /**
@@ -73,17 +70,13 @@ export async function saveAgentBuilderTarget(
 		return;
 	}
 
-	try {
-		await patchThread(context.threadMemory, {
-			threadId: context.threadId,
-			update: ({ metadata = {} }) => ({
-				metadata: { ...metadata, [METADATA_KEY]: target },
-			}),
-		});
-	} catch (error) {
-		context.logger?.warn('Failed to persist agent-builder target to thread metadata', {
-			agentId: target.agentId,
-			error: error instanceof Error ? error.message : String(error),
-		});
-	}
+	// Let write failures propagate (AGENT-353): swallowing them here would let
+	// the build flow report success while the next turn has no binding and
+	// creates a new agent instead of editing the one just built.
+	await patchThread(context.threadMemory, {
+		threadId: context.threadId,
+		update: ({ metadata = {} }) => ({
+			metadata: { ...metadata, [METADATA_KEY]: target },
+		}),
+	});
 }

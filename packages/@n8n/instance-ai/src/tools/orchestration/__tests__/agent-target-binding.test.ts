@@ -73,4 +73,21 @@ describe('agent-builder target binding', () => {
 			expect.objectContaining({ agentId: TARGET.agentId }),
 		);
 	});
+
+	it('propagates a metadata read failure instead of falling back to undefined', async () => {
+		const threadMemory = createThreadMemory();
+		threadMemory.getThread.mockRejectedValue(new Error('storage unavailable'));
+		const context = createContext({ threadMemory });
+
+		await expect(resolveAgentBuilderTarget(context)).rejects.toThrow('storage unavailable');
+		expect(context.agentBuilderTarget).toBeUndefined();
+	});
+
+	it('propagates a metadata write failure instead of claiming success', async () => {
+		const threadMemory = createThreadMemory();
+		threadMemory.patchThread.mockRejectedValue(new Error('storage unavailable'));
+		const context = createContext({ threadMemory });
+
+		await expect(saveAgentBuilderTarget(context, TARGET)).rejects.toThrow('storage unavailable');
+	});
 });
