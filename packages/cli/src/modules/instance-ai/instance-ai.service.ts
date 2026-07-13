@@ -304,6 +304,14 @@ function getAbortReason(signal: AbortSignal): string {
 	return typeof reason === 'string' ? reason : 'user_cancelled';
 }
 
+/** Error details for the 'Builder generation errored' telemetry event. */
+type RunFinishErrorInfo = {
+	/** Raw error message — the SSE run-finish payload carries the user-facing reason instead. */
+	errorMessage?: string;
+	/** 'stream' = the run reported an error but terminated cleanly; 'exception' = the run loop threw. */
+	errorSource?: 'stream' | 'exception';
+};
+
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
 const TITLE_REFINE_HISTORY_LIMIT = 50;
@@ -3466,6 +3474,16 @@ export class InstanceAiService {
 				workSummary: result.workSummary,
 				usage: result.usage,
 				errorReason: userFacingErrorMessage,
+				...(result.status === 'errored'
+					? {
+							errorInfo: {
+								errorMessage: result.error
+									? getErrorMessage(result.error)
+									: 'Instance AI stream errored',
+								errorSource: 'stream' as const,
+							},
+						}
+					: {}),
 			});
 
 			// Bill token usage for every terminal outcome (completed / cancelled / errored),
@@ -3583,16 +3601,15 @@ export class InstanceAiService {
 				aiCreatedWorkflowIds,
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
-			this.eventBus.publish(threadId, {
-				type: 'run-finish',
+			this.publishRunFinish(
+				threadId,
 				runId,
-				agentId: orchestratorAgentId(runId),
-				payload: {
-					status: 'error',
-					reason: userFacingErrorMessage,
-					...(archivedWorkflowIds.length > 0 ? { archivedWorkflowIds } : {}),
-				},
-			});
+				'errored',
+				userFacingErrorMessage,
+				archivedWorkflowIds,
+				user.id,
+				{ errorMessage, errorSource: 'exception' },
+			);
 			if (activeSnapshotStorage) {
 				await this.saveAgentTreeSnapshot(threadId, runId, activeSnapshotStorage);
 			}
@@ -4587,6 +4604,16 @@ export class InstanceAiService {
 				workSummary: result.workSummary,
 				usage: result.usage,
 				errorReason: userFacingErrorMessage,
+				...(result.status === 'errored'
+					? {
+							errorInfo: {
+								errorMessage: result.error
+									? getErrorMessage(result.error)
+									: 'Instance AI resumed stream errored',
+								errorSource: 'stream' as const,
+							},
+						}
+					: {}),
 			});
 
 			// Bill token usage for every terminal outcome, deduped per run segment.
@@ -4697,16 +4724,15 @@ export class InstanceAiService {
 				undefined,
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
-			this.eventBus.publish(opts.threadId, {
-				type: 'run-finish',
-				runId: opts.runId,
-				agentId: orchestratorAgentId(opts.runId),
-				payload: {
-					status: 'error',
-					reason: userFacingErrorMessage,
-					...(archivedWorkflowIds.length > 0 ? { archivedWorkflowIds } : {}),
-				},
-			});
+			this.publishRunFinish(
+				opts.threadId,
+				opts.runId,
+				'errored',
+				userFacingErrorMessage,
+				archivedWorkflowIds,
+				opts.user.id,
+				{ errorMessage, errorSource: 'exception' },
+			);
 			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 		} finally {
 			this.runState.clearActiveRun(opts.threadId);
@@ -5109,6 +5135,7 @@ export class InstanceAiService {
 		reason?: string,
 		archivedWorkflowIds?: string[],
 		userId?: string,
+		errorInfo?: RunFinishErrorInfo,
 	): void {
 		const effectiveStatus = status === 'errored' ? 'error' : status;
 		const hasArchived = archivedWorkflowIds && archivedWorkflowIds.length > 0;
@@ -5133,6 +5160,15 @@ export class InstanceAiService {
 			status: effectiveStatus,
 			...(userId ? { user_id: userId } : {}),
 		});
+		if (status === 'errored') {
+			this.telemetry.track('Builder generation errored', {
+				thread_id: threadId,
+				run_id: runId,
+				error_message: errorInfo?.errorMessage ?? reason ?? 'unknown',
+				...(errorInfo?.errorSource ? { error_source: errorInfo.errorSource } : {}),
+				...(userId ? { user_id: userId } : {}),
+			});
+		}
 	}
 
 	private async finalizeRun(
@@ -5147,6 +5183,7 @@ export class InstanceAiService {
 			workSummary?: WorkSummary;
 			usage?: RunTokenUsage;
 			errorReason?: string;
+			errorInfo?: RunFinishErrorInfo;
 		},
 	): Promise<void> {
 		this.publishRunFinish(
@@ -5156,6 +5193,7 @@ export class InstanceAiService {
 			options?.errorReason,
 			options?.archivedWorkflowIds,
 			options?.userId,
+			options?.errorInfo,
 		);
 		this.emitRunMetrics(threadId, status, options);
 		await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);

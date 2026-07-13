@@ -32,7 +32,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
 		name: 'ChatInputBase',
 		template:
 			'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="footer-start" /></form>',
-		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled'],
+		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
 		emits: ['submit', 'stop', 'update:modelValue'],
 	},
 }));
@@ -380,4 +380,31 @@ describe('AgentChatPanel', () => {
 			expect(chatInput.props('disabled')).toBe(false);
 		},
 	);
+
+	it('lifts the character limit for the build endpoint', () => {
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('maxLength')).toBe(25_000);
+	});
+
+	it('keeps the default character limit for the chat endpoint', () => {
+		const wrapper = mount(AgentChatPanel, {
+			props: {
+				projectId: 'p1',
+				agentId: 'a1',
+				endpoint: 'chat',
+				agentConfig: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help.',
+				},
+				agentStatus: 'draft',
+				connectedTriggers: [],
+			},
+		});
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('maxLength')).toBe(undefined);
+	});
 });
