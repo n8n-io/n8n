@@ -1,68 +1,33 @@
-import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import { VersionedNodeType } from 'n8n-workflow';
 
-import { file, item, list } from './descriptions';
-import { listSearch, resourceMapping } from './methods';
+import { MicrosoftSharePointV1 } from './v1/MicrosoftSharePointV1.node';
+// Uncomment along with the v2 registration below to test v2 locally.
+// import { MicrosoftSharePointV2 } from './v2/MicrosoftSharePointV2.node';
 
-export class MicrosoftSharePoint implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'Microsoft SharePoint',
-		name: 'microsoftSharePoint',
-		icon: {
-			light: 'file:microsoftSharePoint.svg',
-			dark: 'file:microsoftSharePoint.svg',
-		},
-		group: ['transform'],
-		version: 1,
-		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-		description: 'Interact with Microsoft SharePoint API',
-		schemaPath: 'Microsoft/SharePoint',
-		defaults: {
-			name: 'Microsoft SharePoint',
-		},
-		usableAsTool: true,
-		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'microsoftSharePointOAuth2Api',
-				required: true,
+export class MicrosoftSharePoint extends VersionedNodeType {
+	constructor() {
+		const baseDescription: INodeTypeBaseDescription = {
+			displayName: 'Microsoft SharePoint',
+			name: 'microsoftSharePoint',
+			icon: {
+				light: 'file:microsoftSharePoint.svg',
+				dark: 'file:microsoftSharePoint.svg',
 			},
-		],
-		requestDefaults: {
-			baseURL: '=https://{{ $credentials.subdomain }}.sharepoint.com/_api/v2.0/',
-		},
-		properties: [
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'File',
-						value: 'file',
-					},
-					{
-						name: 'Item',
-						value: 'item',
-					},
-					{
-						name: 'List',
-						value: 'list',
-					},
-				],
-				default: 'file',
-			},
+			group: ['transform'],
+			description: 'Interact with Microsoft SharePoint API',
+			defaultVersion: 1,
+		};
 
-			...file.description,
-			...item.description,
-			...list.description,
-		],
-	};
+		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
+			1: new MicrosoftSharePointV1(baseDescription),
+			// v2 is under construction. The editor and AI builder surface the
+			// highest registered version regardless of defaultVersion, so v2 must
+			// stay unregistered until the launch ticket flips the default.
+			// Uncomment locally to test v2 work.
+			// 2: new MicrosoftSharePointV2(baseDescription),
+		};
 
-	methods = {
-		listSearch,
-		resourceMapping,
-	};
+		super(nodeVersions, baseDescription);
+	}
 }

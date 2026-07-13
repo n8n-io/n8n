@@ -21,6 +21,7 @@ import type {
 	RelatedExecution,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -604,13 +605,10 @@ function hookFunctionsSave(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
-			fullExecutionData.usedPrivateCredentials = Object.values(
-				fullRunData.data?.resultData?.runData ?? {},
-			).some((taskDataList) =>
-				taskDataList.some(
-					(t) => t.usedDynamicCredentials === true || t.attemptedDynamicCredentials === true,
-				),
-			);
+			const resultRunData = fullRunData.data?.resultData?.runData;
+			fullExecutionData.usedPrivateCredentials =
+				runDataUsedDynamicCredentials(resultRunData) ||
+				runDataAttemptedDynamicCredentials(resultRunData);
 
 			await updateExistingExecution({
 				executionId: this.executionId,
@@ -640,6 +638,8 @@ function hookFunctionsSave(
 	});
 }
 
+const DISCARDABLE_DATA_MODES: WorkflowExecuteMode[] = ['trigger', 'cli', 'error', 'internal'];
+
 /**
  * Returns hook functions to save workflow execution and call error workflow
  * for running with queues. Manual executions should never run on queues as
@@ -647,7 +647,7 @@ function hookFunctionsSave(
  */
 function hookFunctionsSaveWorker(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf }: HooksSetupParameters,
+	{ pushRef, retryOf, saveSettings }: HooksSetupParameters,
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
@@ -694,20 +694,29 @@ function hookFunctionsSaveWorker(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
-			fullExecutionData.usedPrivateCredentials = Object.values(
-				fullRunData.data?.resultData?.runData ?? {},
-			).some((taskDataList) =>
-				taskDataList.some(
-					(t) => t.usedDynamicCredentials === true || t.attemptedDynamicCredentials === true,
-				),
-			);
+			const resultRunData = fullRunData.data?.resultData?.runData;
+			fullExecutionData.usedPrivateCredentials =
+				runDataUsedDynamicCredentials(resultRunData) ||
+				runDataAttemptedDynamicCredentials(resultRunData);
+
+			const mainWillDiscardData =
+				process.env.N8N_SKIP_UNSAVED_EXECUTION_DATA_WRITES === 'true' &&
+				fullRunData.status === 'success' &&
+				!saveSettings.success &&
+				!fullRunData.waitTill &&
+				DISCARDABLE_DATA_MODES.includes(this.mode) &&
+				!Container.get(ExternalHooks).hasHook('workflow.postExecute');
+
+			const executionData = mainWillDiscardData
+				? { ...fullExecutionData, data: undefined, workflowData: undefined }
+				: fullExecutionData;
 
 			// In scaling mode, worker saves execution without metadata
 			// Main process will save metadata after deletion decisions to avoid FK violations
 			await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
-				executionData: fullExecutionData,
+				executionData,
 			});
 		} finally {
 			workflowStatisticsService.emit('workflowExecutionCompleted', {

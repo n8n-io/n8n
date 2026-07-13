@@ -1,0 +1,26 @@
+{
+	"description": "Gold, per part: weather {anchor: wf, embedsOther: false}; assistant {anchor: agent, embedsOther: false or true}. Multi-artifact probe: the agent must treat the request as two independent automations and route each correctly — one workflow build, one agent-builder creation.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "1) Every weekday at 9am, Slack me the Berlin weather. 2) Create a support assistant that chats with customers and decides when to escalate. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[If the assistant asks whether to handle both or which first, say: both, in whatever order.",
+				"Do not approve any plan, setup card, or build confirmation.",
+				"Once it has laid out its approach for both automations, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "simple",
+	"tags": ["intent-resolution", "compound", "independent-lifecycles"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent treats the request as two independent automations with separate lifecycles rather than merging them into a single design.",
+		"The weather notification is proposed as a scheduled workflow.",
+		"The support assistant is proposed as an n8n Agent (conversational, decides when to escalate), not as a second workflow."
+	]
+}

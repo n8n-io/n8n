@@ -591,6 +591,8 @@ describe('WorkflowService', () => {
 				'workflow-1',
 				false,
 				'ui',
+				undefined,
+				undefined,
 			);
 		});
 

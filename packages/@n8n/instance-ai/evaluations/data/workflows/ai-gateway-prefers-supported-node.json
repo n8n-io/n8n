@@ -1,0 +1,23 @@
+{
+	"description": "The user asks for an LLM task but names no provider, and has no stored LLM credential while n8n Connect is licensed on the instance. The build should land on a gateway-supported chat model (OpenAI-family) using the managed n8n Connect credential — zero-config coverage is the tie-breaker when the user expressed no provider preference. Distinct from ai-gateway-default-when-clean-slate: a form trigger + a classification task, and it asserts the agent discovered the coverage rather than prompting.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want a form where someone pastes a product review. When it's submitted, use AI to decide whether the review is positive, neutral, or negative, and show that result on the completion screen."
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "simple",
+	"tags": ["build", "form", "llm", "ai-gateway", "n8n-connect", "node-preference"],
+	"triggerType": "form",
+	"datasets": ["ai-gateway"],
+	"processExpectations": [
+		"The agent did not ask the user which AI provider or model to use, and did not ask for an API key or a credential — it treated n8n Connect's coverage of the OpenAI-family chat model as the zero-config default because the user named no provider."
+	],
+	"outcomeExpectations": [
+		"A Form Trigger accepts a submission whose field carries the review text to classify.",
+		"An OpenAI-family chat model (an OpenAI node or a LangChain lmChatOpenAi) classifies the review — the workflow does not use a different LLM provider, since the user named none and n8n Connect covers the OpenAI-family node.",
+		"The chat-model node's OpenAI credential entry has `id: null` and `__aiGatewayManaged: true` — the managed n8n Connect option, not a stored credential reference.",
+		"The classification result (positive, neutral, or negative) is shown on the form completion screen returned to the submitter."
+	]
+}

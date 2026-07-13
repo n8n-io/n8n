@@ -715,6 +715,25 @@ describe('ExecutionRedactionService', () => {
 			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
 		});
 
+		it('detects dynamic credentials when a runData node array holds a null slot', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+			// runData arrays can contain null placeholder slots at runtime.
+			execution.data.resultData.runData = {
+				SomeNode: [
+					null,
+					{ startTime: 0, executionTime: 0, usedDynamicCredentials: true } as ITaskData,
+				] as unknown as ITaskData[],
+			};
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
 		it('scrubs runtimeData.credentials from the execution data', async () => {
 			const execution = makeExecution({
 				policy: 'none',

@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	AINodeConnectionType,
 	CallbackManager,
@@ -19,12 +20,7 @@ import type {
 	WorkflowExecuteMode,
 	EngineResponse,
 } from 'n8n-workflow';
-import {
-	UnexpectedError,
-	createDeferredPromise,
-	jsonParse,
-	NodeConnectionTypes,
-} from 'n8n-workflow';
+import { UnexpectedError, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {

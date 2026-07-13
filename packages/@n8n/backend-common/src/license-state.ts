@@ -66,6 +66,10 @@ export class LicenseState {
 		return this.isLicensed(LICENSE_FEATURES.PERSONAL_SPACE_POLICY);
 	}
 
+	isWorkflowReviewsLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.WORKFLOW_REVIEWS);
+	}
+
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');
 	}

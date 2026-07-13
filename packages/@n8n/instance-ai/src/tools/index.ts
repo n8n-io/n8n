@@ -23,6 +23,9 @@ const loadDataTablesTool = lazyMod(
 const loadEvalsTool = lazyMod(
 	() => require('./evals/evals.tool') as typeof import('./evals/evals.tool'),
 );
+const loadEvalConfigTool = lazyMod(
+	() => require('./evals/eval-config.tool') as typeof import('./evals/eval-config.tool'),
+);
 const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
@@ -33,9 +36,6 @@ const loadN8nDocsTool = lazyMod(
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
 		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
-);
-const loadDelegateTool = lazyMod(
-	() => require('./orchestration/delegate.tool') as typeof import('./orchestration/delegate.tool'),
 );
 const loadEvalDataAgentTool = lazyMod(
 	() =>
@@ -82,7 +82,7 @@ const loadWorkspaceTool = lazyMod(
 
 /**
  * Creates all native n8n domain tools with the full action surface.
- * Used for delegate/builder tool resolution — sub-agents get unrestricted access.
+ * Used for sub-agent tool resolution — sub-agents get unrestricted access.
  */
 export function createAllTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
@@ -91,6 +91,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.EXECUTIONS, loadExecutionsTool().createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, loadCredentialsTool().createCredentialsTool(context)],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, loadDataTablesTool().createDataTablesTool(context)],
+		[DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)],
 		[DOMAIN_TOOL_IDS.WORKSPACE, loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, loadN8nDocsTool().createN8nDocsTool(context)],
@@ -118,6 +119,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.EXECUTIONS, loadExecutionsTool().createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, loadCredentialsTool().createCredentialsTool(context)],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, loadDataTablesTool().createDataTablesTool(context)],
+		[DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)],
 		[DOMAIN_TOOL_IDS.WORKSPACE, loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, loadN8nDocsTool().createN8nDocsTool(context)],
@@ -134,14 +136,13 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 }
 
 /**
- * Creates orchestration-only tools (task planning, delegation, task control).
+ * Creates orchestration-only tools (task planning, task control).
  * These tools are given to the orchestrator agent but never to sub-agents.
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
 		[ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)],
 		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
-		[ORCHESTRATION_TOOL_IDS.DELEGATE, loadDelegateTool().createDelegateTool(context)],
 		[
 			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
 			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),

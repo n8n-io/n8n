@@ -12,6 +12,7 @@ export * from './agents/index';
 export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
+export * from './workflow-reviews-policy';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -200,6 +201,7 @@ export {
 	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
+	dataTableColumnTypeSchema,
 	dataTableIdSchema,
 } from './schemas/data-table.schema';
 
@@ -283,6 +285,7 @@ export {
 	WEB_SEARCH_GRANT_KEY,
 	parseDomainAccessGrants,
 	instanceAiEventTypeSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	instanceAiRunStatusSchema,
 	instanceAiConfirmationSeveritySchema,
 	instanceAiAgentStatusSchema,
@@ -302,6 +305,7 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	confirmationInputTypeSchema,
+	channelConfigSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
@@ -359,6 +363,7 @@ export type {
 	InstanceAiRunStatus,
 	InstanceAiConfirmation,
 	InstanceAiConfirmationInputType,
+	InstanceAiChannelConfig,
 	InstanceAiConfirmationRequestPayload,
 	InstanceAiConfirmationSeverity,
 	InstanceAiCredentialRequest,
@@ -414,6 +419,8 @@ export type {
 	InstanceAiModelCredential,
 	InstanceAiSandboxProvider,
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolFilterResponse,
+	InstanceAiMcpConnectionToolResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
@@ -458,6 +465,8 @@ export {
 	findAgent,
 	toAgentTree,
 	stateFromAgentTree,
+	normalizeLegacyReasoningTimeline,
+	normalizeAgentTree,
 } from './schemas/agent-run-reducer';
 
 export type { AgentRunState } from './schemas/agent-run-reducer';

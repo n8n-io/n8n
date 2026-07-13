@@ -1,0 +1,40 @@
+{
+	"description": "Default per-item iteration: fetch a list and post one Slack message per item. The agent should wire source straight through (Split Out if needed) without Loop Over Items / Split In Batches.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every hour, fetch open tasks from GET https://api.example.com/tasks and post each task's title and assignee to Slack channel #ops-tasks — one message per task. The API returns a JSON envelope {tasks: [...]}, so split that into individual items before posting."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": [
+		"build",
+		"loops",
+		"implicit-iteration",
+		"schedule",
+		"http-request",
+		"slack",
+		"split-out"
+	],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"The workflow fetches tasks and posts to Slack once per task (per-item downstream processing), not a single combined message for all tasks.",
+		"The agent did NOT add a Loop Over Items / Split In Batches node — default item iteration is sufficient for one Slack post per task."
+	],
+	"executionScenarios": [
+		{
+			"name": "three-tasks-three-messages",
+			"description": "API returns three tasks in envelope; Slack runs three times",
+			"dataSetup": "GET https://api.example.com/tasks returns a single JSON object { \"tasks\": [{ \"title\": \"Fix login\", \"assignee\": \"Alex\" }, { \"title\": \"Update docs\", \"assignee\": \"Sam\" }, { \"title\": \"Ship release\", \"assignee\": \"Jordan\" }] } — NOT a bare array at the top level. Each Slack postMessage call must return a distinct success response with a different ts value: first { \"ok\": true, \"ts\": \"1700000000.0001\" }, second { \"ok\": true, \"ts\": \"1700000000.0002\" }, third { \"ok\": true, \"ts\": \"1700000000.0003\" }.",
+			"successCriteria": "The workflow executes without errors. Judge from intercepted outbound requests in the execution trace: Slack postMessage (or equivalent HTTP post to a Slack API) is called three times — once per task — and each message includes that task's title and assignee (e.g. 'Fix login' and 'Alex'). A workflow that posts one combined message for all tasks FAILS. A workflow that never splits the tasks envelope and posts zero or one time FAILS."
+		},
+		{
+			"name": "empty-task-list",
+			"description": "API returns no tasks",
+			"dataSetup": "GET https://api.example.com/tasks returns { \"tasks\": [] }.",
+			"successCriteria": "The workflow completes without errors. Slack postMessage is not invoked (or invoked zero times)."
+		}
+	]
+}

@@ -293,6 +293,78 @@ describe('parseStoredMessages', () => {
 
 			expect(result[1].reasoning).toBe('Reasoning part');
 			expect(result[1].content).toBe('Answer');
+			// Reasoning keeps its chronological slot in the timeline
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'reasoning', content: 'Reasoning part' },
+				{ type: 'text', content: 'Answer' },
+			]);
+		});
+
+		it('should build agentTree for reasoning-only assistant messages', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Think only',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'reasoning', text: 'Just reasoning' }],
+					createdAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			expect(result[1].reasoning).toBe('Just reasoning');
+			expect(result[1].content).toBe('');
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'reasoning', content: 'Just reasoning' },
+			]);
+		});
+
+		it('should normalize legacy aggregate reasoning into the timeline on reload', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Think',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Answer' }],
+					createdAt: makeDate(1),
+				},
+			];
+			const snapshotTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: 'Answer',
+				reasoning: 'Legacy aggregate reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [{ type: 'text', content: 'Answer' }],
+			};
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: snapshotTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+			]);
+
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'reasoning', content: 'Legacy aggregate reasoning' },
+				{ type: 'text', content: 'Answer' },
+			]);
 		});
 
 		it('should use agentTree snapshot when available', () => {
@@ -1075,7 +1147,7 @@ describe('parseStoredMessages', () => {
 			const result = parseStoredMessages(messages);
 
 			const toolCalls = result[1].agentTree?.toolCalls ?? [];
-			expect(toolCalls[0].renderHint).toBe('delegate');
+			expect(toolCalls[0].renderHint).toBe('default');
 			expect(toolCalls[1].renderHint).toBe('builder');
 			expect(toolCalls[2].renderHint).toBe('planner');
 		});

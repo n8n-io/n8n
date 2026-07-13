@@ -1,0 +1,102 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*\"role\"\\s*:\\s*\"user\"[\\s\\S]{0,15000}\"type\"\\s*:\\s*\"tool_result\"[\\s\\S]{0,100000}\\\\\"success\\\\\"\\s*:\\s*true[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-a6bf722a2818c7538673c9e1fa0df0f2-a9f6a6efb6aeb043-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "request-id": [
+        "req_011CcfQFtv5uyC6MypPC4GQh"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-07-03T15:59:36Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "17989000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-07-03T15:59:36Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-07-03T15:59:36Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-07-03T15:59:36Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "14989000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Fri, 03 Jul 2026 15:59:38 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a1571929da2b3b91-HEL"
+      ]
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_018UZac1pHT6eGDs68q2f6oU\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":478,\"cache_read_input_tokens\":41501,\"cache_creation\":{\"ephemeral_5m_input_tokens\":478,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":43,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}     }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01TTvoYhLq6YYTAhaxyN2hW5\",\"name\":\"build-workflow\",\"input\":{},\"caller\":{\"type\":\"direct\"}}  }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"filePath\\\": \\\"src/workflows/ins-164-mocked-credential\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"-guard.workflow.ts\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\", \\\"name\\\": \\\"INS-164 mocked credential guard\"}   }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"}\"}     }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0              }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":478,\"cache_read_input_tokens\":41501,\"output_tokens\":96,\"output_tokens_details\":{\"thinking_tokens\":0}}         }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"           }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxOFVaYWMxcEhUNmVHRHM2OHEyZjZvVSIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6NDc4LCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6NDE1MDEsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjQ3OCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjQzLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0gICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MCwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxVFR2b1loTHE2WVlUQWhheHlOMmhXNSIsIm5hbWUiOiJidWlsZC13b3JrZmxvdyIsImlucHV0Ijp7fSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX0gIH0KCmV2ZW50OiBwaW5nCmRhdGE6IHsidHlwZSI6ICJwaW5nIn0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiIifSAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJ7XCJmaWxlUGF0aFwiOiBcInNyYy93b3JrZmxvd3MvaW5zLTE2NC1tb2NrZWQtY3JlZGVudGlhbCJ9ICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiLWd1YXJkLndvcmtmbG93LnRzIn0gICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IlwiLCBcIm5hbWVcIjogXCJJTlMtMTY0IG1vY2tlZCBjcmVkZW50aWFsIGd1YXJkIn0gICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiXCJ9In0gICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0b3AKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19zdG9wIiwiaW5kZXgiOjAgICAgICAgICAgICAgIH0KCmV2ZW50OiBtZXNzYWdlX2RlbHRhCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2VfZGVsdGEiLCJkZWx0YSI6eyJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsfSwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjQ3OCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjQxNTAxLCJvdXRwdXRfdG9rZW5zIjo5Niwib3V0cHV0X3Rva2Vuc19kZXRhaWxzIjp7InRoaW5raW5nX3Rva2VucyI6MH19ICAgICAgICAgfQoKZXZlbnQ6IG1lc3NhZ2Vfc3RvcApkYXRhOiB7InR5cGUiOiJtZXNzYWdlX3N0b3AiICAgICAgICAgICB9Cgo=",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0004-1783094387259-unknown-host-POST-_v1_messages-f808330f.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

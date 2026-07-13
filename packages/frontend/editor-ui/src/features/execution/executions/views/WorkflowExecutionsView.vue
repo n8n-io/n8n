@@ -113,6 +113,7 @@ async function fetchExecution() {
 		executionsStore.activeExecution = currentExecution.value;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
+		return;
 	}
 
 	if (!currentExecution.value) {
@@ -306,7 +307,7 @@ async function onLoadMore(): Promise<void> {
 const hasMore = computed(
 	() =>
 		!executionsStore.executionsFilters.status?.includes('running') &&
-		executions.value.length < executionsStore.executionsCount,
+		executionsStore.hasMoreExecutions,
 );
 
 async function loadMore(): Promise<void> {

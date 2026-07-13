@@ -20,13 +20,17 @@ export const MAX_SEARCH_CONTEXT_LINES = 10;
 export const MAX_READ_RANGES = 10;
 
 const filePathSchema = z.string().trim().min(1).max(MAX_FILE_PATH_LENGTH);
-const searchPathValueSchema = filePathSchema.refine((path) => path !== '*', {
-	message: 'Use exact knowledge file paths returned by find_file',
-});
-const searchPathSchema = z.preprocess(
-	(value) => (typeof value === 'string' ? [value] : value),
-	z.array(searchPathValueSchema).min(1).max(MAX_SEARCH_PATHS),
-);
+// Models often pass a catch-all instead of omitting the optional path —
+// treat such values as "search all files" rather than failing the call.
+const ALL_FILES_PATH_PLACEHOLDERS = new Set(['', '.', '/', '*']);
+const searchPathSchema = z.preprocess((value) => {
+	const values = typeof value === 'string' ? [value] : value;
+	if (!Array.isArray(values)) return values;
+	const scoped = values.filter(
+		(entry) => !(typeof entry === 'string' && ALL_FILES_PATH_PLACEHOLDERS.has(entry.trim())),
+	);
+	return scoped.length === 0 ? undefined : scoped;
+}, z.array(filePathSchema).min(1).max(MAX_SEARCH_PATHS).optional());
 const fileIdSchema = z.string().trim().min(1).max(MAX_FILE_ID_LENGTH);
 const searchPatternSchema = z.string().trim().min(1).max(MAX_SEARCH_PATTERN_LENGTH);
 const globPatternSchema = z.string().trim().min(1).max(MAX_GLOB_PATTERN_LENGTH);
@@ -39,7 +43,7 @@ export const searchKnowledgeInputSchema = z
 			'Ripgrep regex pattern to search for in uploaded knowledge file contents. This is line-based regex search, not semantic search. Simple words and phrases usually work as-is; escape punctuation-heavy literals when needed.',
 		),
 		path: searchPathSchema.describe(
-			'Required uploaded knowledge file path or paths to search within. Pass one exact file value or an array of exact file values copied from previous knowledge tool results. Global search is not supported.',
+			'Optional uploaded knowledge file path or paths to search within. Pass one exact file value or an array of exact file values copied from previous knowledge tool results to scope the search. Omit to search across every uploaded knowledge file.',
 		),
 		output_mode: searchOutputModeSchema
 			.optional()
@@ -182,6 +186,7 @@ export type ReadKnowledgeRequest = z.infer<typeof readKnowledgeInputSchema>;
 export interface AgentKnowledgeFileReference {
 	file: string;
 	fileId: string;
+	binaryDataId: string;
 	displayName: string;
 	mimeType: string;
 	fileSizeBytes: number;

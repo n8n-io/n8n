@@ -18,7 +18,8 @@
 			"**/cl100k_base.json",
 			"**/o200k_base.json",
 			"**/*.generated.ts",
-			"**/expectations/**"
+			"**/expectations/**",
+			"**/instance-ai-examples.data.json"
 		]
 	},
 	"formatter": {

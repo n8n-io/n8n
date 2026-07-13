@@ -4,10 +4,8 @@ import type { ApiKeyScope, Scope, ScopeInformation } from './types.ee';
 function buildResourceScopes() {
 	const resourceScopes = Object.entries(RESOURCES).flatMap(([resource, operations]) => [
 		...operations.map((op) => `${resource}:${op}` as const),
-		`${resource}:*` as const,
 	]) as Scope[];
 
-	resourceScopes.push('*' as const); // Global wildcard
 	return resourceScopes;
 }
 
@@ -98,7 +96,7 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	},
 	'credential:connect': {
 		displayName: 'Connect Credential',
-		description: 'Allows connecting an own account to a private credential.',
+		description: 'Allows connecting an own account to an end-user credential.',
 	},
 	'insights:read': {
 		displayName: 'Read Insights',
@@ -111,5 +109,13 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'testRun:list': {
 		displayName: 'List Test Runs',
 		description: 'Allows listing evaluation test runs for a workflow.',
+	},
+	'workflow:execute-chat': {
+		displayName: 'Execute Workflow in Chat',
+		description: 'Allows executing workflows in chat.',
+	},
+	'role:manageProject': {
+		displayName: 'Manage project roles',
+		description: 'Allows creating, editing, and deleting project role definitions.',
 	},
 };

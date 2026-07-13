@@ -1,15 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb, WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import { mock, type MockProxy } from 'vitest-mock-extended';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import {
-	createDeferredPromise,
-	WebhookPathTakenError,
-	WorkflowActivationError,
-	WorkflowExpression,
-} from 'n8n-workflow';
+import { WebhookPathTakenError, WorkflowActivationError, WorkflowExpression } from 'n8n-workflow';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
@@ -171,54 +167,6 @@ describe('WorkflowTriggerActivator', () => {
 			);
 		});
 
-		test('brackets the registrar call with an acquired isolate so path expressions resolve', async () => {
-			const callOrder: string[] = [];
-			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
-				callOrder.push('acquire');
-			});
-			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
-				callOrder.push('release');
-			});
-			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-				mock<IWorkflowExecuteAdditionalData>(),
-			);
-			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks.mockImplementation(async () => {
-				callOrder.push('resolve');
-				return new Set(['w']);
-			});
-			const activator = buildActivator({ webhookTriggerRegistrar });
-
-			await activator.getNodesWithUnregisteredWebhooks(
-				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
-				{ nodes: [node('w', 'webhook')], connections: {} },
-			);
-
-			expect(callOrder).toEqual(['acquire', 'resolve', 'release']);
-		});
-
-		test('releases the isolate when the registrar throws', async () => {
-			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-				mock<IWorkflowExecuteAdditionalData>(),
-			);
-			const releaseIsolate = vi
-				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
-				.mockResolvedValue(undefined);
-			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
-			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks.mockRejectedValue(new Error('boom'));
-			const activator = buildActivator({ webhookTriggerRegistrar });
-
-			await expect(
-				activator.getNodesWithUnregisteredWebhooks(
-					mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
-					{ nodes: [node('w', 'webhook')], connections: {} },
-				),
-			).rejects.toThrow('boom');
-
-			expect(releaseIsolate).toHaveBeenCalledTimes(1);
-		});
-
 		test('returns empty without calling the registrar when there are no trigger nodes', async () => {
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 			const activator = buildActivator({ webhookTriggerRegistrar });
@@ -237,6 +185,7 @@ describe('WorkflowTriggerActivator', () => {
 		const callOrder: string[] = [];
 		vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
 			callOrder.push('acquire');
+			return true;
 		});
 		vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
 			callOrder.push('release');
@@ -317,6 +266,7 @@ describe('WorkflowTriggerActivator', () => {
 		const callOrder: string[] = [];
 		vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
 			callOrder.push('acquire');
+			return true;
 		});
 		vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
 			callOrder.push('release');
@@ -775,7 +725,7 @@ describe('WorkflowTriggerActivator', () => {
 			errorReporter?: ErrorReporter;
 			workflowStaticDataService?: WorkflowStaticDataService;
 		}) {
-			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(true);
 			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 				mock<IWorkflowExecuteAdditionalData>(),

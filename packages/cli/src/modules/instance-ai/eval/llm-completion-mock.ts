@@ -218,7 +218,10 @@ export function createLlmCompletionMockHandler(
 				.build(),
 		);
 
-		const result = await agent.generate(userPrompt);
+		// Hang guard: one stalled model turn must not eat the scenario budget.
+		const result = await agent.generate(userPrompt, {
+			abortSignal: AbortSignal.timeout(120_000),
+		});
 
 		let responseBody: Record<string, unknown>;
 		if (capture.toolName) {
