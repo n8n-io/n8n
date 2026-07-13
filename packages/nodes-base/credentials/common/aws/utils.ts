@@ -84,6 +84,9 @@ function getAwsSigningService(service: string): string {
 		case 'bedrock-data-automation':
 		case 'bedrock-data-automation-runtime':
 			return 'bedrock';
+		// Legacy region-first SQS endpoints (`<region>.queue.amazonaws.com`).
+		case 'queue':
+			return 'sqs';
 		default:
 			return baseService;
 	}
@@ -278,6 +281,10 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
 		let serviceIdx = regionIdx - 1;
 		if (labels[serviceIdx] === 'dualstack') serviceIdx--;
 		service = labels[serviceIdx];
+	} else if (regionIdx === 0 && labels.length > 1) {
+		// Legacy region-first shape (`<region>.queue.amazonaws.com`): the only
+		// service candidate is the label right of the region.
+		service = labels[1];
 	}
 	return { service, region };
 }

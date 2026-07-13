@@ -690,9 +690,9 @@ describe('parseAwsUrl', () => {
 		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
 	});
 
-	it('parses a legacy SQS hostname (the service slot yields the region label, a known limitation)', () => {
+	it('parses a legacy region-first SQS hostname', () => {
 		const url = new URL('https://us-east-2.queue.amazonaws.com/123456789012/my-queue');
-		expect(parseAwsUrl(url)).toEqual({ service: 'us-east-2', region: 'us-east-2' });
+		expect(parseAwsUrl(url)).toEqual({ service: 'queue', region: 'us-east-2' });
 	});
 
 	it('parses an S3 access-point hostname', () => {
@@ -1134,6 +1134,23 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 			);
 
 			expect(signOpts.service).toBe('s3');
+		});
+
+		it('signs a legacy region-first SQS host with the sqs service and its own region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://us-east-2.queue.amazonaws.com/123456789012/my-queue',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('sqs');
+			expect(signOpts.region).toBe('us-east-2');
 		});
 
 		it('signs a caller-supplied qualified S3 access-point service under the s3 service name', () => {
