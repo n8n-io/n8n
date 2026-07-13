@@ -1,5 +1,5 @@
 {
-	"description": "Vague monitoring request with an unspecified data source. The agent should ask where to get the flight status from before building; the user answers 'scrape FlightAware'. Outcome/scenario assertions are grounded in a real build run (schedule → scrape FlightAware → compare against stored last-seen status → alert only on change).",
+	"description": "Vague monitoring request with an unspecified data source. The agent should ask where to get the flight status from before building; the user answers 'scrape FlightAware' and pins storage to a Data Table (builds that keep last-seen state in $getWorkflowStaticData are unverifiable — eval executions start with empty static data, so the stateful scenarios can only be graded against a seedable store). Outcome/scenario assertions are grounded in a real build run (schedule → scrape FlightAware → compare against stored last-seen status → alert only on change).",
 	"conversation": [
 		{
 			"role": "user",
@@ -11,7 +11,7 @@
 		},
 		{
 			"role": "user",
-			"text": "[Don't mention the data source unless the agent asks where to get the flight status from; then say 'Scrape it from FlightAware.']"
+			"text": "[Don't mention the data source unless the agent asks where to get the flight status from; then say 'Scrape it from FlightAware, and keep the last seen status in an n8n Data Table so each run can compare against it.']"
 		}
 	],
 	"messageBudget": 4,
