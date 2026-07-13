@@ -117,6 +117,9 @@ export function useInlineAgentConfig(
 		// Skills are out of inline scope (the capabilities section is rendered
 		// without its skills section), so the skill-save seam never fires.
 		scheduleSkillSave: () => {},
+		// Approval suspends the run for a human; workflow executions don't
+		// support suspend/resume, so the config modals hide the toggle.
+		supportsToolApproval: false,
 		telemetry: options.telemetry,
 	});
 

@@ -802,6 +802,27 @@ describe('AgentExecutionOrchestratorService', () => {
 			['skills', { skills: [{ type: 'skill', id: 'triage' }] }],
 			// Memory is injected server-side; the node cannot configure it.
 			['memory', { memory: { enabled: true, storage: 'n8n' } }],
+			// Approval suspends the run, which workflow executions can't resume.
+			[
+				'tool approval',
+				{
+					tools: [{ type: 'workflow', workflow: 'Lookup Orders', requireApproval: true }],
+				},
+			],
+			[
+				'MCP approval',
+				{
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://mcp.example.com',
+							transport: 'streamableHttp',
+							authentication: 'none',
+							approval: { mode: 'global' },
+						},
+					],
+				},
+			],
 		])('rejects configs with saved-agent-only capabilities (%s)', async (_key, extra) => {
 			const { service, reconstructionService } = makeService();
 

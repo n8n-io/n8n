@@ -28,10 +28,16 @@ export const InlineAgentJsonConfigSchema = AgentJsonConfigSchema.pick({
 	model: true,
 	credential: true,
 	instructions: true,
-	mcpServers: true,
 })
 	.extend({
 		tools: z.array(InlineAgentToolConfigSchema).optional(),
+		// Approval suspends the run for a human, which workflow executions
+		// don't support — same reason the tool variants above omit
+		// `requireApproval`.
+		mcpServers: AgentJsonConfigSchema.shape.mcpServers.refine(
+			(servers) => (servers ?? []).every((server) => server.approval === undefined),
+			{ message: 'MCP tool approval is not available for inline agents' },
+		),
 	})
 	.strict();
 

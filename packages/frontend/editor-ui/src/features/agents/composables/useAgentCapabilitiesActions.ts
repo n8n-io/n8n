@@ -59,6 +59,12 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * `onOpenAddSkillModal` via the shared `createAgentSkill` API call.
 	 */
 	scheduleSkillSave: (payload: { skillId: string; skill: AgentSkill }) => void;
+	/**
+	 * Whether the host's agent can honor tool approvals. Inline agents pass
+	 * false: approval suspends the run for a human, and workflow executions
+	 * don't support suspend/resume — the config modals hide the toggle.
+	 */
+	supportsToolApproval?: boolean;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
 
@@ -77,6 +83,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		connectedTriggers,
 		scheduleConfigUpdate,
 		scheduleSkillSave,
+		supportsToolApproval,
 		telemetry,
 	} = deps;
 
@@ -98,6 +105,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				mcpServers: localConfig.value?.mcpServers ?? [],
 				projectId: projectId.value,
 				agentId: targetAgentId,
+				supportsToolApproval,
 				onConfirm: (payload: {
 					tools?: AgentJsonToolConfig[];
 					mcpServers?: AgentJsonMcpServerConfig[];
@@ -143,6 +151,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					customTool,
 					projectId: projectId.value,
 					agentId: agentId.value,
+					supportsToolApproval,
 					existingToolNames: tools
 						.map((toolRef, i) =>
 							i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name,
@@ -185,6 +194,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				initialNode: mcpServerToNode(mcpServer, nodeType),
 				projectId: projectId.value,
 				agentId: agentId.value,
+				supportsToolApproval,
 				existingToolNames: mcpServers
 					.filter((_, i) => i !== mcpServerIndex)
 					.map((server) => server.name),

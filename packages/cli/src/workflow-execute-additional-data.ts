@@ -384,8 +384,6 @@ export async function executeAgent(
 	const scopedThreadId = `workflow:project-${projectId}:${threadId}`;
 
 	if (source.inlineAgent) {
-		// Inline agents have no entity, so published/draft version gating does
-		// not apply — the embedded config is always what runs.
 		return await agentExecutionOrchestratorService.executeInlineForWorkflow(
 			source.inlineAgent,
 			message,

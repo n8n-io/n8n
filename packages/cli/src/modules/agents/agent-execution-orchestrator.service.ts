@@ -913,8 +913,7 @@ export class AgentExecutionOrchestratorService {
 
 		// Session memory: when the caller supplied a session id, inline agents run
 		// with plain conversation-thread memory so that id continues the same
-		// conversation across executions (threads are keyed by threadId alone — no
-		// agent entity involved). Injected server-side, never part of the node's
+		// conversation across executions. Injected server-side, never part of the node's
 		// config: long-term memory (observational/episodic) stays off because it
 		// accumulates under the agent id, and inline agents only have a synthetic,
 		// node-rename-sensitive one. Without a session id the thread is per-call

@@ -8,7 +8,7 @@ type NodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
 
 /**
  * Throws when a node tool's parameters contain a malformed `$fromAI`
- * expression. Shared by the config save path and inline-agent execution.
+ * expression.
  */
 export function validateNodeToolExpressions(tools: AgentJsonToolConfig[] | undefined): void {
 	for (const tool of tools ?? []) {

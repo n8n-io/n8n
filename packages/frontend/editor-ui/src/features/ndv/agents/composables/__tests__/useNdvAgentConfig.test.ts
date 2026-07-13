@@ -328,6 +328,33 @@ describe('useNdvAgentConfig', () => {
 			emitSpy.mockRestore();
 		});
 
+		it('persists MCP servers from the tools modal payload', async () => {
+			const node = ref<INodeUi | null>(
+				makeInlineAgentNode({
+					config: { name: 'Embedded', model: 'openai/gpt-5', instructions: '' },
+				}),
+			);
+			const emitSpy = vi.spyOn(ndvEventBus, 'emit');
+			const { api } = mountComposable(node);
+
+			const mcpServer = {
+				name: 'github',
+				url: 'https://mcp.example.com',
+				transport: 'streamableHttp' as const,
+				authentication: 'none' as const,
+			};
+			api.inline.scheduleConfigUpdate({ tools: [], mcpServers: [mcpServer] });
+
+			expect(emitSpy).toHaveBeenCalledWith('updateParameterValue', {
+				name: 'parameters.inlineAgent',
+				value: {
+					config: expect.objectContaining({ mcpServers: [mcpServer] }),
+				},
+				node: 'Message an Agent',
+			});
+			emitSpy.mockRestore();
+		});
+
 		it('strips config keys outside the inline scope before writing', async () => {
 			const node = ref<INodeUi | null>(
 				makeInlineAgentNode({
