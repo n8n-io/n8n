@@ -646,3 +646,44 @@ describe('PATCH /credentials/:id — switching to end-user is role-restricted', 
 			.expect(200);
 	});
 });
+
+describe('PUT /credentials/:id/transfer — end-user credentials are role-restricted', () => {
+	test('editor cannot transfer their personal end-user credential into a team project', async () => {
+		const resolvable = await saveCredential(randomCredentialPayload({ isResolvable: true }), {
+			user: memberB,
+			role: 'credential:owner',
+		});
+
+		await testServer
+			.authAgentFor(memberB)
+			.put(`/credentials/${resolvable.id}/transfer`)
+			.send({ destinationProjectId: teamProject.id })
+			.expect(403);
+	});
+
+	test('project admin can transfer an end-user credential into their team project', async () => {
+		const resolvable = await saveCredential(randomCredentialPayload({ isResolvable: true }), {
+			user: memberA,
+			role: 'credential:owner',
+		});
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${resolvable.id}/transfer`)
+			.send({ destinationProjectId: teamProject.id })
+			.expect(200);
+	});
+
+	test('editor can still transfer a fixed credential into the team project', async () => {
+		const staticCred = await saveCredential(randomCredentialPayload(), {
+			user: memberB,
+			role: 'credential:owner',
+		});
+
+		await testServer
+			.authAgentFor(memberB)
+			.put(`/credentials/${staticCred.id}/transfer`)
+			.send({ destinationProjectId: teamProject.id })
+			.expect(200);
+	});
+});
