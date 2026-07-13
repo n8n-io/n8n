@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import { N8nButton, N8nPopover, N8nRadioButtons } from '@n8n/design-system';
 import MCPOAuthPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPOAuthPopoverTab.vue';
 import MCPAccessTokenPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPAccessTokenPopoverTab.vue';
@@ -14,7 +14,7 @@ const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const mcpStore = useMCPStore();
 
-const props = defineProps<{
+defineProps<{
 	disabled?: boolean;
 }>();
 
@@ -63,16 +63,6 @@ const trackCopyEvent = (payload: {
 		source: payload.source,
 	});
 };
-
-// Automatically open the popover when mcp access is turned on
-watch(
-	() => props.disabled,
-	(newValue) => {
-		if (!newValue) {
-			mcpStore.openConnectPopover();
-		}
-	},
-);
 </script>
 
 <template>
