@@ -262,6 +262,10 @@ describe('Aws Credential', () => {
 					host: 's3.dualstack.us-east-1.amazonaws.com',
 					path: '/bucket/key',
 				},
+				{
+					host: 's3-fips.us-east-1.amazonaws.com',
+					path: '/bucket/key',
+				},
 			])(
 				'should sign $host requests with the s3 service and the host-derived region',
 				async ({ host, path }) => {

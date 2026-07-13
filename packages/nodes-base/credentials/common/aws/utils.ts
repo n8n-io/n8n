@@ -56,19 +56,23 @@ function shouldStringifyBody<T>(value: T, headers: IDataObject): boolean {
  * reject the request with `SignatureDoesNotMatch`.
  *
  * Endpoints that already match their signing name fall through unchanged.
+ * FIPS endpoint subdomains (`<service>-fips`) sign with the base service name.
  *
  * @param service - Service name as extracted from the endpoint hostname
  * @returns The SigV4 signing service name
  */
 function getAwsSigningService(service: string): string {
+	// FIPS endpoints (`<service>-fips.<region>.amazonaws.com`) sign with the base
+	// service name; e.g. `s3-fips` signed as-is fails with SignatureDoesNotMatch.
+	const baseService = service.replace(/-fips$/, '');
 	// Virtual-hosted-style S3 requests arrive as `<bucket>.s3` (the node builds the
 	// endpoint `<bucket>.s3.<region>.amazonaws.com`). They all sign under the `s3`
 	// signing name. aws4 derived this by inspecting the host; smithy does not, so we
 	// normalize it here.
-	if (service === 's3' || service.endsWith('.s3')) {
+	if (baseService === 's3' || baseService.endsWith('.s3')) {
 		return 's3';
 	}
-	switch (service) {
+	switch (baseService) {
 		// Mirror AWS SDK Bedrock signing for HTTP Request node AWS credentials:
 		// these endpoint families are signed with the `bedrock` service namespace.
 		// https://docs.aws.amazon.com/bedrock/latest/APIReference/welcome.html#API_Reference_Endpoints
@@ -80,7 +84,7 @@ function getAwsSigningService(service: string): string {
 		case 'bedrock-data-automation-runtime':
 			return 'bedrock';
 		default:
-			return service;
+			return baseService;
 	}
 }
 

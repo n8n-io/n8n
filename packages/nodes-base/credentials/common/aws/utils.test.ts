@@ -1000,6 +1000,41 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 			expect(signOpts.region).toBe('us-west-2');
 			expect(signOpts.service).toBe('s3');
 		});
+
+		it('signs a FIPS S3 host under the base s3 service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://s3-fips.us-east-1.amazonaws.com/bucket/key',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'eu-central-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('strips the -fips suffix before the Bedrock signing-name mapping', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://bedrock-runtime-fips.us-east-1.amazonaws.com/model/x/invoke',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			// bedrock-runtime-fips → bedrock-runtime → bedrock; stripping after the
+			// mapping instead would sign with the unknown name bedrock-runtime-fips.
+			expect(signOpts.service).toBe('bedrock');
+		});
 	});
 
 	describe('unsupported region labels on AWS endpoint hosts', () => {
