@@ -137,7 +137,6 @@ function findDuplicateTagIndex(value: TagsInputValue): number {
 	return -1;
 }
 
-/** Draw attention to the existing tag when a duplicate add is rejected. */
 function pulseDuplicateTag(value: TagsInputValue) {
 	const index = findDuplicateTagIndex(value);
 	if (index === -1) {
