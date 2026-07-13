@@ -3,6 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import type {
+	DynamicCredentialsUsage,
 	ExecutionError,
 	IRun,
 	ITaskData,
@@ -802,18 +803,24 @@ describe('updateParentExecutionWithChildResults', () => {
 		lastNode: string,
 		nodeRun: Partial<ITaskData>,
 		error?: ExecutionError,
+		executedByUserId?: string,
 	): IRun =>
 		({
 			mode: 'integrated',
 			status,
 			data: {
 				resultData: { lastNodeExecuted: lastNode, error, runData: { [lastNode]: [nodeRun] } },
+				...(executedByUserId ? { executionData: { runtimeData: { executedByUserId } } } : {}),
 			},
 		}) as unknown as IRun;
 
 	type StackEntry = {
 		data?: unknown;
-		metadata?: { resumeError?: ExecutionError; subExecution?: RelatedExecution };
+		metadata?: {
+			resumeError?: ExecutionError;
+			subExecution?: RelatedExecution;
+			dynamicCredentialsUsage?: DynamicCredentialsUsage;
+		};
 	};
 
 	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
@@ -850,6 +857,133 @@ describe('updateParentExecutionWithChildResults', () => {
 
 		expect(entry.data).toEqual({ main: [[{ json: { out: 2 } }]] });
 		expect(entry.metadata?.resumeError).toBeUndefined();
+		expect(entry.metadata?.dynamicCredentialsUsage).toBeUndefined();
+	});
+
+	// The parent's waiting task is popped and its node re-runs disabled on resume, so the
+	// child's private-credential usage must ride on the stack entry to reach the new task.
+	it('stashes the child dynamic-credential usage on the resumed stack entry', async () => {
+		const entry = await resumeWith(
+			childRun(
+				'success',
+				'Done',
+				{
+					data: { main: [[{ json: { out: 2 } }]] },
+					usedDynamicCredentials: true,
+					attemptedDynamicCredentials: true,
+				},
+				undefined,
+				'resolved-user',
+			),
+		);
+
+		expect(entry.metadata?.dynamicCredentialsUsage).toEqual({
+			usedDynamicCredentials: true,
+			attemptedDynamicCredentials: true,
+			dynamicCredentialsResolvedUserId: 'resolved-user',
+		});
+	});
+
+	it('stashes the attempted flag even when the child failed', async () => {
+		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+		const entry = await resumeWith(
+			childRun('error', 'Stop and Error', { error, attemptedDynamicCredentials: true }, error),
+		);
+
+		expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+		expect(entry.metadata?.dynamicCredentialsUsage).toEqual({ attemptedDynamicCredentials: true });
+	});
+
+	// "Run once for each item" spawns several children per wait; a weaker later report
+	// (attempted-only) must not clobber a sibling's used flag or resolved user.
+	it('unions the stash across sibling children instead of replacing it', async () => {
+		let stored = waitingParent();
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		executionPersistence.findSingleExecution.mockImplementation(async () =>
+			structuredClone(stored),
+		);
+		executionPersistence.updateExistingExecution.mockImplementation(async (_id, patch) => {
+			stored = { ...stored, ...patch } as IExecutionResponse;
+			return true;
+		});
+
+		const usedChild = childRun(
+			'success',
+			'Done',
+			{
+				data: { main: [[{ json: { out: 1 } }]] },
+				usedDynamicCredentials: true,
+				attemptedDynamicCredentials: true,
+			},
+			undefined,
+			'resolved-user',
+		);
+		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+		const attemptedChild = childRun(
+			'error',
+			'Stop and Error',
+			{ error, attemptedDynamicCredentials: true },
+			error,
+		);
+
+		await updateParentExecutionWithChildResults(PARENT_ID, usedChild);
+		await updateParentExecutionWithChildResults(PARENT_ID, attemptedChild);
+
+		const entry = stored.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
+		expect(entry.metadata?.dynamicCredentialsUsage).toEqual({
+			usedDynamicCredentials: true,
+			attemptedDynamicCredentials: true,
+			dynamicCredentialsResolvedUserId: 'resolved-user',
+		});
+	});
+
+	// The parent can sit in 'waiting' for a long time with the child's output already
+	// embedded, so the waiting task must be flagged immediately, not only after resume.
+	it('stamps the parent waiting task and runtime data at stash time', async () => {
+		const parent = waitingParent();
+		parent.data.resultData = {
+			runData: {
+				'Execute Sub-workflow': [
+					{
+						startTime: 0,
+						executionTime: 0,
+						executionIndex: 0,
+						executionStatus: 'waiting',
+						source: [],
+					} as ITaskData,
+				],
+			},
+		} as unknown as IExecutionResponse['data']['resultData'];
+		parent.data.executionData!.runtimeData = {
+			version: 1,
+			establishedAt: 0,
+			source: 'trigger',
+		};
+
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		executionPersistence.findSingleExecution.mockResolvedValue(parent);
+
+		await updateParentExecutionWithChildResults(
+			PARENT_ID,
+			childRun(
+				'success',
+				'Done',
+				{
+					data: { main: [[{ json: { out: 2 } }]] },
+					usedDynamicCredentials: true,
+					attemptedDynamicCredentials: true,
+				},
+				undefined,
+				'resolved-user',
+			),
+		);
+
+		const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
+		const persisted = payload as IExecutionResponse;
+		const waitingTask = persisted.data.resultData.runData['Execute Sub-workflow'][0];
+		expect(waitingTask.usedDynamicCredentials).toBe(true);
+		expect(waitingTask.attemptedDynamicCredentials).toBe(true);
+		expect(persisted.data.executionData?.runtimeData?.executedByUserId).toBe('resolved-user');
 	});
 
 	// In "run once for each item" mode multiple children update the same waiting

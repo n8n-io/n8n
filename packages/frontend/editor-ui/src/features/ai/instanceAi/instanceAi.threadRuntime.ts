@@ -93,6 +93,18 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
+	/** Thread-list metadata, used to enrich historical artifacts. */
+	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
+}
+
+const AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
+
+function getAgentBuilderTargetFromThreadMetadata(metadata: Record<string, unknown> | undefined) {
+	const raw = metadata?.[AGENT_BUILDER_TARGET_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
+	return { agentId: target.agentId, projectId: target.projectId };
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
@@ -367,6 +379,7 @@ export function createThreadRuntime(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
+		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -616,6 +629,12 @@ export function createThreadRuntime(
 		// across mains — but concurrent producers on different mains can arrive
 		// interleaved out of order, so the reconnect cursor keeps the max seen
 		// rather than the latest, and duplicates are dropped by id.
+		//
+		// Durable-log follow-up (id-less ephemeral frames): once deltas/status
+		// frames ship without an `id:` line, `sseEvent.lastEventId` on those
+		// frames ECHOES the previous id-bearing value, so the duplicate-drop
+		// below would swallow them. The foundation PR must gate the dedup return
+		// on durable event types (parse first, dedup only non-ephemeral frames).
 		const eventId = sseEvent.lastEventId ? Number(sseEvent.lastEventId) : undefined;
 		if (eventId !== undefined && Number.isFinite(eventId)) {
 			// A backend sequence reset (single-main restart, or seq-key TTL expiry)

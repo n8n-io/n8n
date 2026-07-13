@@ -83,6 +83,30 @@ need + constraint ("I need field X and the built-in node doesn't expose it, so
 pull it straight from the API") — not as an implementation spec ("use an HTTP
 Request node").
 
+**Trim to the smallest multi-turn conversation that reproduces the issue.**
+Real sourced threads are long (dozens of turns of setup, debugging, and
+tangents) — do **not** transcribe them. Distill to the fewest turns that still
+drive the build or behaviour under test. Every retained turn must earn its place:
+a turn stays only if it is *load-bearing* — a value the agent must ask for
+(withheld until asked, via a director note), a correction/push-back the case
+exists to test, or a plan approval that gates the build. If removing a turn
+doesn't change what's tested, remove it. **Collapse to a single turn** whenever
+the whole request can be stated at once without a load-bearing exchange; keep it
+multi-turn *only* for those exchanges, and keep each director script in one turn
+(don't fabricate assistant "done" turns to sequence steps — see
+[`case-shapes.md`](case-shapes.md)). A minimal conversation isolates the
+capability; a transcribed one buries it in noise and tests instruction-following.
+
+**Size the build, not just the assertions.** Real sourced prompts are often
+kitchen-sink ("production-ready, runs forever, 3 feed posts *and* 8 stories a
+day", "generate 50 articles daily") and reliably blow the ~900s build budget (see
+"Known harness limitations"). A **faithful trim is a legitimate authoring move**:
+reduce batch sizes, drop one of several parallel pipelines, or merge adjacent AI
+steps so the case builds within budget — then note the reduction in the case
+`description` ("the original request also asked for an 8-stories/day pipeline;
+scoped to feed posts so it builds in budget"). Keep the capability under test; cut
+the combinatorial bulk. A case that never builds tests nothing.
+
 ## Workflow
 
 1. **State the must-haves first.** From the conversation alone, list what every
@@ -92,13 +116,20 @@ Request node").
    one** of `executionScenarios` / `processExpectations` / `outcomeExpectations`.
 2. **Draft the case** from the template below; validate it loads (see
    "Validate").
-3. **Build it once** against a running instance (see
+3. **Smoke-test the *environment* with one case before any batch.** Run a single
+   case end-to-end first. This validates auth / model / `--base-url` / the built
+   dist for ~1/Nth the cost — distinct from validating a *case*. If that one case
+   crashes at execution (especially with an identical error you'd expect to hit
+   every case), fix the environment before running the batch (see "A red is
+   signal" → environment check). Running 15 cases only to discover a stale-dist
+   crash on all of them wastes a full run.
+4. **Build it once** against a running instance (see
    [`running-evals.md`](running-evals.md)) with `--keep-workflows` so the built
    workflow stays for inspection.
-4. **Inspect** — read the built workflow (the run prints `BUILT (<id>)`; fetch
+5. **Inspect** — read the built workflow (the run prints `BUILT (<id>)`; fetch
    via `GET /rest/workflows/<id>`) and the HTML report's transcript to see what
    the agent actually did.
-5. **Calibrate — sharpen assertions; never dull them to force a green.** Fix
+6. **Calibrate — sharpen assertions; never dull them to force a green.** Fix
    assertions that are genuinely mis-sized: relax one that pins a choice the
    conversation left open (so a valid *alternative* build wrongly fails), tighten
    one a wrong build would slip past, and phrase `executionScenarios` to match how
@@ -107,7 +138,7 @@ Request node").
    the result — keep it and surface why** (see "A red is signal", below). Never
    delete a scenario, weaken an assertion, or drop to build-only just to make the
    run green.
-6. **Push to the suite — do NOT commit the JSON.** Once calibrated, push the case
+7. **Push to the suite — do NOT commit the JSON.** Once calibrated, push the case
    into its curated lang-tracer suite with `eval:langtracer-push` (see
    [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)); the suite is the
    case's home, not the repo. Leave the `data/workflows/*.json` file uncommitted
@@ -147,7 +178,22 @@ non-vacuous check above proves it *would* turn red on the bad behaviour, else th
 ## A red is signal — surface it, don't work around it
 
 Calibration exists to right-size assertions, **not** to make a case pass. When a
-run turns a scenario or expectation red, classify the red first — then keep it:
+run turns a scenario or expectation red, classify the red first — then keep it.
+
+**First rule out the environment.** Before reading any red as a signal about a
+case, check the shape of the failures across the run. If **every scenario fails
+with the *same* execution error** while the builds succeed and `outcomeExpectations`
+pass, that is almost never the cases — it's a broken environment, most often a
+**stale `packages/core` / `packages/cli` dist** after a branch or worktree switch
+(a refactor moved a runtime export and the built dist still calls the old one;
+e.g. `(0 , n8n_workflow_1.createDeferredPromise) is not a function` after
+`createDeferredPromise` moved to `@n8n/utils`). Fix it, don't calibrate around it:
+run a full ordered `pnpm build` (a targeted `--filter` build can fail on unrelated
+stale-dep type errors), then **restart the instance** — the running node process
+holds the old dist in memory, so rebuilding on disk changes nothing until restart
+(and `kill` by env-var pattern misses it — kill the actual `lsof -t -iTCP:<port>`
+PID). Re-probe one case, confirm executions run, then re-run the batch. Only once
+uniform environment failures are excluded do the three categories below apply:
 
 - **Real build / capability gap** — the agent's workflow is wrong or missing
   something the user asked for (a miswired branch, a missing retry, wrong field
@@ -291,9 +337,27 @@ red is harness-caused (per "A red is signal", above):
   off them is flaky. Assert shape/branch/relative facts, not exact figures. (The
   residual hard red here: polling / form triggers still occasionally fail to load
   entirely — "workflow not found".)
-- **Mock response shape** — for a less-common API the LLM-generated response can
-  omit the real envelope (e.g. Gemini's top-level `candidates`), crashing a
-  downstream parse/format node.
+- **Mock response shape** — the LLM-generated mock response can omit the real
+  envelope, crashing a downstream parse/format node. Recurring, reproducible
+  shapes to expect (all produce a red on a *correct* build):
+  - **OpenAI** mock returns a plain `{content: "..."}` instead of the Responses
+    API envelope (`output[0].content[0].text`), so a LangChain chain / **Structured
+    Output Parser** receives an empty response and crashes. Any build with an
+    OpenAI chat model feeding a structured-output/parser node can red on this.
+  - **Gmail** mock returns headers as top-level capitalized fields (`From`,
+    `Subject`) instead of under `payload.headers`, so a Code/Filter node reading
+    the sender/subject gets empty strings (e.g. a "drop no-reply senders" safety
+    gate lets everything through). Assert the *wiring/ordering* of such a gate in
+    `outcomeExpectations`, not its runtime effect in a scenario.
+  - A less-common API (e.g. Gemini's top-level `candidates`) can omit its envelope
+    the same way.
+- **Agent-tool nodes can't be executed standalone.** An AI-Agent *tool* node
+  (`toolHttpRequest` and other `supplyData`-only LangChain nodes with no `execute`
+  method) only runs when the agent invokes it; the harness executing it directly
+  fails with `has a "supplyData" method but no "execute" method`. A near-universal
+  red for chat-trigger / AI-agent build cases whose tool is an HTTP-request tool —
+  the build is correct, so carry correctness in `outcomeExpectations` (agent wired
+  to trigger + model + tool) and note the execution red as harness-caused.
 - **A build can time out and produce no scored result at all** — the run reports
   `BUILD FAILED: Run timed out` and zero graded expectations. Don't assume "spec
   too big": the more common cause is a **single-prompt case where the agent asks
@@ -352,6 +416,7 @@ case, where the source and channel were **left unspecified**):
 | Verdict | Assertion | Why |
 |---|---|---|
 | ❌ too tight | "Has an HTTP Request node calling `flightaware.com`" | Vendor was unspecified; a valid AeroDataBox build fails. (If the user *had* said "scrape FlightAware", this would be correct.) |
+| ❌ too tight | "Publishes via HTTP Request nodes" | Pins the *transport* when a first-party node is the idiomatic path — e.g. the Facebook Graph API node is the correct way to reach the Instagram Graph API, so a valid build using it fails. Assert the capability ("publishes to Instagram via the Graph API, through the Facebook Graph API node or HTTP Request"), not the mechanism. |
 | ❌ too loose | "Fetches flight data from somewhere" | A workflow that fetches but never compares passes — doesn't prove change-detection. |
 | ✅ right | "Persists the previously-seen status and compares it to the freshly-fetched one" | The defining behaviour; substitution-proof across vendors and storage choices. |
 | ✅ right | "Alert is sent only on the change-detected branch, gated by a conditional" | Proves the gate without pinning node or channel. |
@@ -416,7 +481,12 @@ concluding whether the failure is your case, the build, or the harness.
   debugging.
 - **`eval-results.json`** — structured results (the machine-readable artifact;
   the direct loop produces this even with no LangSmith). Good for an LLM or
-  script to parse.
+  script to parse. **For per-case attribution under concurrency, parse this, not
+  the streamed verbose log** — with more than one lane the log lines interleave
+  across cases, so a `[scenario] FAIL` line in the stream can't be reliably tied to
+  its case. Authoritative fields: `testCases[].buildSuccessCount`,
+  `buildExpectationResultsPerRun[][].{pass,reason}`, and
+  `scenarios[].runs[].{passed,failureCategory,rootCause,execErrors}`.
 - **`eval-pr-comment.md`** — the rendered PR comment (aggregate + regression
   comparison), always written.
 
@@ -451,9 +521,11 @@ dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building 
   for MCP + REST) — put them in `.env.eval` and run under `dotenvx`.
 - **Options:** `--set-kind regression|capability_gap` (default `regression`, must
   match the suite's kind), `--contains-user-data` (default is `synthetic`).
-- **Limitation:** `executionScenarios` are written on **create** only — the update
-  path patches case-level fields but not scenario rows (so scenario-only edits to
-  an existing case aren't re-synced; remove+re-push or edit in the lang-tracer UI).
+- **Scenarios sync on update too:** `PATCH /cases/:id` reconciles
+  `executionScenarios` by name (update in place, insert new, delete missing —
+  lang-tracer #48), so scenario edits re-push like any other field. A lang-tracer
+  deployment predating that change silently ignores the key; if a pushed scenario
+  edit doesn't land, update the scenario in the lang-tracer UI.
 - **Seeded cases can't be pushed:** the case-write API rejects every seeding mode
   (`seedThread` / `seedFile` / `priorConversation`), so the push lists them under
   `skipped:` and they never reach the suite. A `seedThread` case shouldn't be

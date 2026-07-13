@@ -15,6 +15,7 @@ export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
 export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';
 export const AGENT_TASK_MODAL_KEY = 'agentTaskModal';
 export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
+export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY = 'agentEpisodicMemoryCredentialModal';
 export const AGENT_MODEL_CREDENTIAL_MODAL_KEY = 'agentModelCredentialModal';
@@ -38,3 +39,5 @@ export {
 
 /** Query-string key the builder uses to deep-link into a chat session. */
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
+
+export { EXTENDED_PROMPT_MAX_LENGTH as AGENT_BUILDER_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';

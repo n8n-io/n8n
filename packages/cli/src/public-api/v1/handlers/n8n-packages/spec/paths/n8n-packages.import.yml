@@ -11,7 +11,7 @@ post:
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
     `projectId` and `folderId` (omit or send empty for defaults). The optional
-    `credentialMatchingMode`, `credentialMissingMode`, `credentialBindings`,
+    `credentialMatchingMode`, `credentialMissingMode`, `bindings`,
     `workflowIdPolicy`, and `workflowPublishingPolicy` fields take their defaults when omitted. The required
     `workflowConflictPolicy` field controls what happens when a package workflow
     matches an existing workflow by source id in the target project. Maximum upload
@@ -76,14 +76,16 @@ post:
                 `create-stub` (default) creates empty credential placeholders in
                 the target project for missing references. `must-preexist`
                 requires every referenced credential to already exist.
-            credentialBindings:
+            bindings:
               type: string
               default: '{}'
               description: >
-                Optional JSON object mapping credential ids from the package
-                manifest to credential ids on the target instance. These explicit
-                bindings are validated and applied before `credentialMatchingMode`
-                resolution runs.
+                Optional JSON object of explicit source→target id bindings, keyed
+                by entity type. Only `credentials` is supported today: send
+                `{"credentials":{"<packageCredentialId>":"<targetCredentialId>"}}`
+                to map credential ids from the package to credential ids
+                on the target instance. These explicit bindings are validated on type and
+                applied before `credentialMatchingMode` resolution runs.
             workflowConflictPolicy:
               type: string
               enum:
@@ -126,6 +128,20 @@ post:
                 `publish-all` publishes every imported workflow.
                 `unpublish-all` leaves new workflows inactive and unpublishes
                 updated workflows that were published.
+            folderConflictPolicy:
+              type: string
+              enum:
+                - merge
+                - fail
+              default: merge
+              description: >
+                Controls what happens when a package folder (matched by id in the
+                target project) already exists at the same position. `merge`
+                (default) reuses the existing folder as-is and merges the package's
+                children into it; `fail` rejects the import. A folder whose id exists
+                under a different parent, or belongs to another project, always blocks
+                the import. Requires the `folder:create` scope and a license that
+                supports folders when the package contains folders.
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -136,6 +152,7 @@ post:
             required:
               - package
               - workflows
+              - folders
               - bindings
               - credentials
             properties:
@@ -240,6 +257,36 @@ post:
                         - updated
                         - skipped
                       description: Import outcome for this package workflow.
+              folders:
+                type: array
+                description: Folder shells created or skipped in the target project.
+                items:
+                  type: object
+                  required:
+                    - sourceFolderId
+                    - localId
+                    - name
+                    - parentFolderId
+                    - status
+                  properties:
+                    sourceFolderId:
+                      type: string
+                      description: Folder id as it appeared in the package.
+                    localId:
+                      type: string
+                      description: Folder id on the target instance (equal to `sourceFolderId`; folder ids are reused).
+                    name:
+                      type: string
+                    parentFolderId:
+                      type: string
+                      nullable: true
+                      description: Resolved parent folder on the target, or `null` at the project root.
+                    status:
+                      type: string
+                      enum:
+                        - created
+                        - skipped
+                      description: Import outcome for this package folder.
               credentials:
                 type: object
                 description: >
@@ -287,8 +334,9 @@ post:
                       type: string
     '409':
       description: >
-        Import blocked, with at least one workflow source-id conflict among the
-        issues.
+        Import blocked by at least one conflict among the issues — a workflow
+        source-id conflict or a folder conflict (id under a different parent, id
+        owned by another project, or a `fail`-policy match).
       content:
         application/json:
           schema:

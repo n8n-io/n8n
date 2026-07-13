@@ -715,6 +715,15 @@ export class ProjectService {
 		return projects.map((p) => p.id);
 	}
 
+	async findExistingProjectIds(projectIds: string[]): Promise<Set<string>> {
+		if (projectIds.length === 0) return new Set();
+		const projects = await this.projectRepository.find({
+			select: ['id'],
+			where: { id: In(projectIds) },
+		});
+		return new Set(projects.map(({ id }) => id));
+	}
+
 	async findProjectsByIdsForUser(
 		user: User,
 		projectIds: string[],
@@ -767,6 +776,11 @@ export class ProjectService {
 				id: projectId,
 			},
 		});
+	}
+
+	/** Finds a project by id, or `null` when it does not exist. */
+	async findProject(projectId: string): Promise<Project | null> {
+		return await this.projectRepository.findOne({ where: { id: projectId } });
 	}
 
 	async getProjectRelations(projectId: string): Promise<ProjectRelation[]> {
