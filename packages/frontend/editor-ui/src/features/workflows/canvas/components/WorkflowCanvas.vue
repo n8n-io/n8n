@@ -26,6 +26,10 @@ import {
 	mapGroupsToVueFlowNodes,
 } from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
+import {
+	NodeGroupDescriptionVisibilityKey,
+	useCanvasNodeGroupDescriptionVisibility,
+} from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -110,6 +114,19 @@ const nodeGroupView = useCanvasNodeGroupView({
 	isGroupingEnabled: () => isCanvasNodeGroupingEnabled.value,
 	getGroupExpansionMode: () => props.groupExpansionMode,
 });
+
+const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility(
+	() => workflowDocumentStore.value.documentId.split('@')[0],
+);
+
+// Keep description visibility in sync when the document changes
+watch(
+	() => workflowDocumentStore.value.documentId,
+	() => {
+		const presentIds = new Set(workflowDocumentStore.value.allGroups.map((group) => group.id));
+		nodeGroupDescriptionVisibility.restore(presentIds);
+	},
+);
 
 // Keep the group view in sync with the currently displayed document
 watch(
@@ -200,6 +217,7 @@ const mappedNodes = computed(() => [
 ]);
 
 provide(NodeGroupViewKey, nodeGroupView);
+provide(NodeGroupDescriptionVisibilityKey, nodeGroupDescriptionVisibility);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {

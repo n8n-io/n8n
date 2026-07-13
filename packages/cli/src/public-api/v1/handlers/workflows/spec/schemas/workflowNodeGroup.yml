@@ -18,3 +18,7 @@ properties:
     description: IDs of the nodes that belong to this group
     items:
       type: string
+  description:
+    type: string
+    description: Optional description of the node group
+    example: Processes data from the webhook trigger

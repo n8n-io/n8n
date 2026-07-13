@@ -82,7 +82,7 @@
 		z-index: 1 !important;
 	}
 
-	// Collapsed groups render a description panel that must overlay other nodes
+	// Collapsed groups render a description panel that overflows below the header
 	&:has(.group--collapsed) {
 		z-index: 10 !important;
 	}

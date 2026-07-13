@@ -38,6 +38,8 @@ export type ContextMenuAction =
 	| 'change_color'
 	| 'open_sub_workflow'
 	| 'tidy_up'
+	| 'show_all_descriptions'
+	| 'hide_all_descriptions'
 	| 'extract_sub_workflow'
 	| 'focus_ai_on_selected';
 
@@ -209,6 +211,16 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					nodes.length < 2 ? 'contextMenu.tidyUpWorkflow' : 'contextMenu.tidyUpSelection',
 				),
 				shortcut: { shiftKey: true, altKey: true, keys: ['T'] },
+				disabled: isReadOnly.value,
+			},
+			{
+				id: 'show_all_descriptions',
+				label: i18n.baseText('contextMenu.showAllDescriptions'),
+				disabled: isReadOnly.value,
+			},
+			{
+				id: 'hide_all_descriptions',
+				label: i18n.baseText('contextMenu.hideAllDescriptions'),
 				disabled: isReadOnly.value,
 			},
 		];

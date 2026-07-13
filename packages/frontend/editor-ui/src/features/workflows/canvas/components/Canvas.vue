@@ -86,6 +86,7 @@ import {
 	type CanvasNodeGroupEventSource,
 } from '../composables/useCanvasNodeGroupTelemetry';
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
+import { NodeGroupDescriptionVisibilityKey } from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -271,6 +272,7 @@ const selectableNodesAndGroups = computed(() =>
 const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
 const injectedNodeGroupView = inject(NodeGroupViewKey, null);
+const injectedDescriptionVisibility = inject(NodeGroupDescriptionVisibilityKey, null);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -713,10 +715,6 @@ async function onOpenRenameGroupModal(groupId: string) {
 
 function onCanvasGroupDescriptionUpdate(groupId: string, description: string) {
 	workflowDocumentStore.value.updateDescription(groupId, description);
-}
-
-function onCanvasGroupDescriptionVisibleUpdate(groupId: string, visible: boolean) {
-	workflowDocumentStore.value.updateDescriptionVisible(groupId, visible);
 }
 
 function onCanvasGroupUngroup(
@@ -1167,6 +1165,22 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
 			return await onTidyUp({ source: 'context-menu' });
+		case 'show_all_descriptions': {
+			const groups = workflowDocumentStore.value.allGroups;
+			for (const group of groups) {
+				if (group.description?.trim()) {
+					injectedDescriptionVisibility?.setVisible(group.id, true);
+				}
+			}
+			return;
+		}
+		case 'hide_all_descriptions': {
+			const groups = workflowDocumentStore.value.allGroups;
+			for (const group of groups) {
+				injectedDescriptionVisibility?.setVisible(group.id, false);
+			}
+			return;
+		}
 		case 'extract_sub_workflow':
 			return emit('extract-workflow', nodeIds);
 		case 'open_sub_workflow': {
@@ -1461,7 +1475,6 @@ defineExpose({
 				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
 				@update:description="onCanvasGroupDescriptionUpdate"
-				@update:descriptionVisible="onCanvasGroupDescriptionVisibleUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
 			/>
