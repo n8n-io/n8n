@@ -37,6 +37,8 @@ const IDLE_MS = posNum(process.env.NATHAN_IDLE_MS, 8000, 'NATHAN_IDLE_MS'); // g
 const TIMEOUT_MS = posNum(process.env.NATHAN_TIMEOUT_MS, 1_500_000, 'NATHAN_TIMEOUT_MS'); // 25 min
 const TUNNEL_START_MS = 45000;
 const STAGING_DOMAIN = 'stage-app.n8n.cloud'; // instances live at https://<name>.<domain>
+const DEFAULT_SLACK_CHANNEL = 'C0BGVHZ0SCW'; // #updates-pnpm-nathan
+const DEFAULT_SLACK_CHANNEL_URL = 'https://n8nio.slack.com/archives/C0BGVHZ0SCW';
 
 // Nathan sends these as an immediate ack before the async work; seeing one means
 // "keep waiting", not "done". Everything else is a terminal reply.
@@ -113,8 +115,12 @@ if (!token) process.exit(1);
 const text = process.argv.slice(2).join(' ').trim() || 'help';
 if (text.startsWith('local')) {
 	console.error('⚠️  `local` delivers its run-n8n.sh + .env (with the license cert) as Slack file');
-	console.error('    attachments, not to this callback — they post to the default Slack channel');
-	console.error('    (override with NATHAN_SLACK_CHANNEL=<slack channel id>), or run it in Slack.\n');
+	if (process.env.NATHAN_SLACK_CHANNEL) {
+		console.error(`    attachments, not to this terminal — they post to Slack channel ${process.env.NATHAN_SLACK_CHANNEL}.\n`);
+	} else {
+		console.error('    attachments, not to this terminal — they post to #updates-pnpm-nathan:');
+		console.error(`    ${DEFAULT_SLACK_CHANNEL_URL}\n`);
+	}
 }
 
 // --- local sink for Nathan's callbacks ---------------------------------------
@@ -209,7 +215,7 @@ try {
 			response_url: tunnel.url,
 			user_id: user,
 			user_name: user,
-			channel_id: process.env.NATHAN_SLACK_CHANNEL || 'C0BGVHZ0SCW',
+			channel_id: process.env.NATHAN_SLACK_CHANNEL || DEFAULT_SLACK_CHANNEL,
 			trigger_id: String(Date.now()),
 		}),
 	});
