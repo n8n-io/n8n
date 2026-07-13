@@ -239,13 +239,18 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 			agentId,
 			// No stored agentSource resolves to referenced (pre-switch nodes).
 			agentSource: 'referenced',
-			inlineAgent: undefined,
+			inlineSummary: undefined,
 		});
 	});
 
-	it('threads the inline agent definition for inline-mode v2 AI Agent nodes', () => {
+	it('projects the inline definition into a capability summary for inline-mode v2 AI Agent nodes', () => {
 		const inlineAgent = {
-			config: { name: 'Embedded', model: 'openai/gpt-5', instructions: 'Do things.' },
+			config: {
+				name: 'Embedded',
+				model: 'openai/gpt-5',
+				instructions: 'Do things.',
+				tools: [{ type: 'workflow' as const, workflow: 'Lookup Orders' }],
+			},
 		};
 		const { docId } = setupWorkflow('wf-fusion-agent-inline', [
 			{
@@ -262,7 +267,18 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 		expect(render && 'options' in render ? render.options : undefined).toEqual({
 			agentId: undefined,
 			agentSource: 'inline',
-			inlineAgent,
+			// The card renders only name/model/tools — the full config
+			// (instructions, tool parameters) stays out of the render options.
+			inlineSummary: {
+				id: 'inline:ag',
+				name: 'Embedded',
+				model: { provider: 'openai', model: 'gpt-5' },
+				channels: [],
+				tools: [{ type: 'workflow', name: 'Lookup Orders' }],
+				mcpServers: [],
+				skills: [],
+				tasks: [],
+			},
 		});
 	});
 

@@ -6,6 +6,7 @@ import type { AgentCapabilitySummary, InlineAgentConfig } from '@n8n/api-types';
 import CanvasNodeAgent from './CanvasNodeAgent.vue';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import { inlineAgentToCapabilitySummary } from '@/features/agents/utils/inlineAgent';
 
 const {
 	summaryHolder,
@@ -114,7 +115,9 @@ function renderWithInlineAgent(inlineAgent: InlineAgentConfig, agentIdValue = ''
 						options: {
 							agentSource: 'inline',
 							agentId: { __rl: true, mode: 'list', value: agentIdValue },
-							inlineAgent,
+							// The projection layer converts the stored config; mirror it
+							// here (its output shape is pinned by the render-data tests).
+							inlineSummary: inlineAgentToCapabilitySummary('test-node-id', inlineAgent),
 						},
 					},
 				},

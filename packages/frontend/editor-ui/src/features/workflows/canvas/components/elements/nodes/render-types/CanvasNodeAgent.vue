@@ -18,7 +18,6 @@ import AgentSelectorParameterInput from '@/features/ndv/parameters/components/Ag
 import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
-import { inlineAgentToCapabilitySummary } from '@/features/agents/utils/inlineAgent';
 import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
 
 const emit = defineEmits<{
@@ -48,14 +47,6 @@ const {
 const renderOptions = computed(() => render.value.options as CanvasNodeAgentRender['options']);
 
 const isInline = computed(() => renderOptions.value.agentSource === 'inline');
-
-// Inline cards render entirely from the node's own parameters — no fetch, no
-// event-bus refresh; reactivity comes from the render options.
-const inlineSummary = computed(() =>
-	isInline.value && renderOptions.value.inlineAgent
-		? inlineAgentToCapabilitySummary(id.value, renderOptions.value.inlineAgent)
-		: null,
-);
 
 // Mirror CanvasNodeDefault's state classes so the card shows the same run
 // feedback as every other node (green border + check on success, animated
@@ -91,7 +82,11 @@ const projectId = useAgentScopeProjectId();
 
 const { summary: fetchedSummary, error } = useAgentCapabilitySummary(projectId, agentId);
 
-const summary = computed(() => (isInline.value ? inlineSummary.value : fetchedSummary.value));
+// Inline cards render from the pre-projected summary in the render options —
+// no fetch, no event-bus refresh; reactivity comes from the render options.
+const summary = computed(() =>
+	isInline.value ? (renderOptions.value.inlineSummary ?? null) : fetchedSummary.value,
+);
 
 const hasError = computed(() => !isInline.value && Boolean(error.value));
 
