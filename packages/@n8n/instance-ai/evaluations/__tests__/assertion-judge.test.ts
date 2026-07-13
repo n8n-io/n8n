@@ -1,3 +1,4 @@
+import type { Message } from '@n8n/agents';
 import type { Mock, MockedFunction } from 'vitest';
 import { vi } from 'vitest';
 
@@ -8,7 +9,7 @@ vi.mock('../../src/utils/eval-agents', () => ({
 }));
 
 import { createEvalAgent } from '../../src/utils/eval-agents';
-import { runAssertionJudge } from '../build-expectations/assertion-judge';
+import { judgeExpectations } from '../build-expectations/assertion-judge';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
 
@@ -26,14 +27,17 @@ function mockJudge(generate: GenerateMock): void {
 	>);
 }
 
-describe('runAssertionJudge', () => {
+/** A minimal message array — its content is irrelevant here since `generate` is mocked. */
+const MESSAGES: Message[] = [{ role: 'user', content: [{ type: 'text', text: 'ctx' }] }];
+
+describe('judgeExpectations', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 	});
 
 	it('returns empty and never calls the agent when there are no assertions', async () => {
-		const results = await runAssertionJudge('## Artifact\n\nsome rendered artifact', []);
+		const results = await judgeExpectations(MESSAGES, []);
 		expect(results).toEqual([]);
 		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
 	});
@@ -49,7 +53,7 @@ describe('runAssertionJudge', () => {
 		});
 		mockJudge(generate);
 
-		const results = await runAssertionJudge('## Agent config\n\n{...}', [
+		const results = await judgeExpectations(MESSAGES, [
 			'agent has a system prompt',
 			'agent has a search skill',
 		]);
@@ -66,7 +70,7 @@ describe('runAssertionJudge', () => {
 		});
 		mockJudge(generate);
 
-		const results = await runAssertionJudge('## Artifact', ['first', 'second']);
+		const results = await judgeExpectations(MESSAGES, ['first', 'second']);
 
 		expect(results).toEqual([
 			{ expectation: 'first', pass: true, reason: 'ok' },
@@ -89,7 +93,7 @@ describe('runAssertionJudge', () => {
 			});
 		mockJudge(generate);
 
-		const results = await runAssertionJudge('## Artifact', ['only assertion']);
+		const results = await judgeExpectations(MESSAGES, ['only assertion']);
 
 		expect(generate).toHaveBeenCalledTimes(2); // attempt 1 rejected → retried
 		expect(results).toEqual([{ expectation: 'only assertion', pass: true, reason: 'ok' }]);
@@ -99,7 +103,7 @@ describe('runAssertionJudge', () => {
 		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({});
 		mockJudge(generate);
 
-		const results = await runAssertionJudge('## Artifact', ['a', 'b']);
+		const results = await judgeExpectations(MESSAGES, ['a', 'b']);
 
 		expect(generate).toHaveBeenCalledTimes(2);
 		expect(results).toEqual([
@@ -112,40 +116,22 @@ describe('runAssertionJudge', () => {
 		const generate: GenerateMock = vi.fn<GenerateFn>().mockRejectedValue(new Error('API down'));
 		mockJudge(generate);
 
-		const results = await runAssertionJudge('## Artifact', ['a']);
+		const results = await judgeExpectations(MESSAGES, ['a']);
 
 		expect(results).toEqual([
 			{ expectation: 'a', pass: false, reason: 'judge produced no result', incomplete: true },
 		]);
 	});
 
-	it('sends a 2-block message with the cached artifact block first, then numbered assertions', async () => {
+	it('forwards the caller-built messages verbatim to the agent', async () => {
 		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
 			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
 		});
 		mockJudge(generate);
 
-		await runAssertionJudge('## Agent config\n\nrendered artifact content', ['assertion zero']);
+		await judgeExpectations(MESSAGES, ['assertion zero']);
 
-		const [messages] = generate.mock.calls[0] as [
-			Array<{
-				role: string;
-				content: Array<{ type: string; text: string; providerOptions?: unknown }>;
-			}>,
-			unknown,
-		];
-		const [message] = messages;
-		expect(message.role).toBe('user');
-		expect(message.content).toHaveLength(2);
-
-		const [artifactBlock, assertionsBlock] = message.content;
-		expect(artifactBlock.text).toBe('## Agent config\n\nrendered artifact content');
-		expect(artifactBlock.providerOptions).toEqual({});
-
-		expect(assertionsBlock.text).toContain('0. assertion zero');
-		expect(assertionsBlock.text).toContain(
-			'Return a verdict for every numbered expectation, using its 0-based index.',
-		);
-		expect(assertionsBlock.providerOptions).toBeUndefined();
+		const [messages] = generate.mock.calls[0] as [Message[], unknown];
+		expect(messages).toBe(MESSAGES);
 	});
 });

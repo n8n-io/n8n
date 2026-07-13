@@ -206,15 +206,12 @@ export interface WorkflowTestCase {
 	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
 	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */
 	processExpectations?: string[];
-	/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
-	 *  so they also run in prebuilt/MCP runs. Counted toward the pass rate alongside scenarios. */
+	/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow —
+	 *  and, when the build produced a non-workflow artifact (agent, config-eval), from the rendered
+	 *  agent/config-eval context injected into the judge. So they also cover artifact existence,
+	 *  absence and content ("an agent was created and no workflow", "the agent instructions mention
+	 *  escalating refunds"). Also run in prebuilt/MCP runs. Counted toward the pass rate. */
 	outcomeExpectations?: string[];
-	/** Artifact types this case expects the build to produce; defaults to `['workflow']`.
-	 *  A discovered artifact whose type is not listed here fails the case. */
-	expectedArtifacts?: ArtifactType[];
-	/** Free-text NL assertions per non-workflow artifact type, LLM-judged against the
-	 *  captured artifact (workflow keeps using processExpectations/outcomeExpectations). */
-	artifactExpectations?: Partial<Record<Exclude<ArtifactType, 'workflow'>, string[]>>;
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this
@@ -269,28 +266,6 @@ export interface BuildExpectationResult {
 	incomplete?: boolean;
 }
 
-/**
- * Verdict for one captured artifact (workflow excluded — it's graded via the
- * existing scenario/expectation path). Lives here rather than
- * `harness/artifacts/types.ts` to avoid a cycle: that file already imports
- * `ArtifactType`/`BuildExpectationResult` from here.
- */
-export interface ArtifactVerdict {
-	type: ArtifactType;
-	/** Artifact id (workflow/agent id, or owning-workflow id for config-eval). '(none)' when expected-but-missing. */
-	id: string;
-	pass: boolean;
-	/** Per-assertion judge verdicts, when the artifact was fetched + judged. */
-	expectationResults?: BuildExpectationResult[];
-	/** True when the artifact type was produced but not declared in the case's expectedArtifacts. */
-	unexpected?: boolean;
-	/** Human-readable explanation for enforcement fails (unexpected / not-produced / fetch error). */
-	reason?: string;
-	/** the judge returned no measured verdict (e.g. exhausted retries); excluded from the
-	 *  pass-rate denominator, like an incomplete build-expectation. */
-	incomplete?: boolean;
-}
-
 export interface WorkflowTestCaseResult {
 	testCase: WorkflowTestCase;
 	/** Source-file slug (matches the PR-comment / comparison label, for consistency). */
@@ -315,9 +290,6 @@ export interface WorkflowTestCaseResult {
 	n8nBaseUrl?: string;
 	/** Per-run LLM step debug captured from the instance-ai debug API after build. */
 	runDebug?: InstanceAiRunDebugResponse[];
-	/** Per-artifact verdicts for non-workflow artifacts (agent, config-eval) captured
-	 *  after the build. Undefined for workflow-only cases (the common case). */
-	artifactResults?: ArtifactVerdict[];
 }
 
 // ---------------------------------------------------------------------------
@@ -443,19 +415,6 @@ export interface BuildExpectationAggregation {
 	passHatK: number[];
 }
 
-/** A non-workflow artifact type aggregated across runs as a measured unit (granular, alongside
- *  scenarios and build expectations). One unit per artifact TYPE, not per artifact instance. */
-export interface ArtifactUnitAggregation {
-	type: ArtifactType;
-	runs: ArtifactVerdict[];
-	/** Runs where the judge/enforcement returned a verdict (excludes `incomplete`). */
-	evaluatedCount: number;
-	passCount: number;
-	passRate: number;
-	passAtK: number[];
-	passHatK: number[];
-}
-
 export interface TestCaseAggregation {
 	testCase: WorkflowTestCase;
 	runs: WorkflowTestCaseResult[];
@@ -463,8 +422,6 @@ export interface TestCaseAggregation {
 	executionScenarios: ExecutionScenarioAggregation[];
 	/** Build expectations aggregated as measured units (counted in the pass rate). */
 	buildExpectations: BuildExpectationAggregation[];
-	/** Non-workflow artifact types aggregated as measured units (counted in the pass rate). */
-	artifacts: ArtifactUnitAggregation[];
 }
 
 export interface MultiRunEvaluation {

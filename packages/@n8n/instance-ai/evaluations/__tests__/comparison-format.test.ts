@@ -12,8 +12,6 @@ import type {
 	WorkflowTestCase,
 	ExecutionScenarioResult,
 	BuildExpectationResult,
-	ArtifactType,
-	ArtifactVerdict,
 } from '../types';
 
 function ok(result: ComparisonResult): ComparisonOutcome {
@@ -57,13 +55,6 @@ function evaluation(
 			expectations?: Array<{
 				text: string;
 				passes: Array<boolean | 'incomplete'>;
-			}>;
-			artifacts?: Array<{
-				type: ArtifactType;
-				passes: Array<boolean | 'incomplete'>;
-				/** When set, failing runs render as judged failures: per-assertion
-				 *  `expectationResults` and no top-level `reason` (as resolveArtifactResults emits). */
-				failedAssertions?: Array<{ expectation: string; reason: string }>;
 			}>;
 		}>;
 	} = {},
@@ -124,39 +115,6 @@ function evaluation(
 					) as number[],
 				};
 			});
-			const artifacts = (tc.artifacts ?? []).map((a) => {
-				const runs: ArtifactVerdict[] = a.passes.map((pass): ArtifactVerdict => {
-					if (pass === 'incomplete')
-						return { type: a.type, id: 'art-1', pass: false, incomplete: true };
-					if (pass) return { type: a.type, id: 'art-1', pass: true };
-					if (a.failedAssertions) {
-						return {
-							type: a.type,
-							id: 'art-1',
-							pass: false,
-							expectationResults: a.failedAssertions.map((fa) => ({
-								expectation: fa.expectation,
-								pass: false,
-								reason: fa.reason,
-							})),
-						};
-					}
-					return { type: a.type, id: 'art-1', pass: false, reason: 'reason' };
-				});
-				const evaluated = runs.filter((run) => !run.incomplete);
-				const passCount = evaluated.filter((run) => run.pass).length;
-				return {
-					type: a.type,
-					runs,
-					evaluatedCount: evaluated.length,
-					passCount,
-					passRate: evaluated.length > 0 ? passCount / evaluated.length : 0,
-					passAtK: new Array(evaluated.length).fill(passCount > 0 ? 1 : 0) as number[],
-					passHatK: new Array(evaluated.length).fill(
-						passCount === evaluated.length ? 1 : 0,
-					) as number[],
-				};
-			});
 			return {
 				testCase,
 				workflowBuildSuccess: buildSuccessCount > 0,
@@ -174,7 +132,6 @@ function evaluation(
 				})),
 				buildSuccessCount,
 				buildExpectations,
-				artifacts,
 			};
 		}),
 	};
@@ -299,14 +256,16 @@ describe('formatComparisonMarkdown', () => {
 		);
 	});
 
-	it('counts artifacts alongside build expectations in no-baseline build-only summaries', () => {
+	it('counts outcome expectations in no-baseline build-only summaries', () => {
 		const buildOnly = evaluation({
 			totalRuns: 1,
 			testCases: [
 				{
 					userText: 'Build an agent',
-					expectations: [{ text: 'The workflow was built', passes: [true] }],
-					artifacts: [{ type: 'agent', passes: [true] }],
+					expectations: [
+						{ text: 'An agent was created', passes: [true] },
+						{ text: 'No workflow was built', passes: [true] },
+					],
 				},
 			],
 		});
@@ -318,7 +277,7 @@ describe('formatComparisonMarkdown', () => {
 			{ slugByTestCase: slugs },
 		);
 		expect(md).toContain(
-			'**Aggregate**: 100.0% pass (2/2 trials, 0 scenarios + 1 expectation + 1 artifact, N=1)',
+			'**Aggregate**: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
 		);
 		expect(md).toMatch(/\| `build-only` \| CHECKED \| 2\/2 \|/);
 
@@ -330,7 +289,7 @@ describe('formatComparisonMarkdown', () => {
 			},
 		);
 		expect(terminal).toContain(
-			'Aggregate: 100.0% pass (2/2 trials, 0 scenarios + 1 expectation + 1 artifact, N=1)',
+			'Aggregate: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
 		);
 	});
 
@@ -820,34 +779,6 @@ describe('formatComparisonTerminal', () => {
 		const out = formatComparisonTerminal(evalFixture);
 		expect(out).toMatch(/LangSmith disabled/);
 		expect(out).not.toMatch(/REGRESSIONS/);
-	});
-
-	it('renders the per-assertion reason for a judged artifact failure (single run)', () => {
-		// A normal judged failure carries no top-level `reason`, only failed
-		// `expectationResults` — the terminal detail must still surface them.
-		const evalFixture1 = evaluation({
-			totalRuns: 1,
-			testCases: [
-				{
-					userText: 'agent-only',
-					buildSuccessCount: 0,
-					artifacts: [
-						{
-							type: 'agent',
-							passes: [false],
-							failedAssertions: [
-								{ expectation: 'has a Slack tool', reason: 'UNIQUE_ASSERTION_REASON' },
-							],
-						},
-					],
-				},
-			],
-		});
-
-		const out = formatComparisonTerminal(evalFixture1);
-
-		expect(out).toMatch(/FAIL {2}artifact: agent/);
-		expect(out).toContain('UNIQUE_ASSERTION_REASON');
 	});
 
 	it('shows partial banner when scenarios differ on each side', () => {

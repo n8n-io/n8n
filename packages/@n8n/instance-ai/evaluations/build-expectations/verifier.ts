@@ -19,6 +19,9 @@ export interface BuildExpectationsInput {
 	transcript: TranscriptTurn[];
 	workflowJson?: WorkflowResponse;
 	metrics?: ConversationMetrics;
+	/** Rendered agent/config-eval sections (each with a "(no … produced)" fallback), appended
+	 *  to the cached build context so outcome expectations can be judged against them. */
+	artifactContext?: string;
 }
 
 /**
@@ -35,14 +38,17 @@ export async function verifyBuildExpectations(
 ): Promise<BuildExpectationResult[]> {
 	if (expectations.length === 0) return [];
 
-	// Workflow block is stable per build — mark it as an Anthropic cache breakpoint.
+	// Workflow + artifact blocks are stable per build — mark them as one Anthropic cache breakpoint.
+	const buildContext = [buildWorkflowContextBlock(build.workflowJson), build.artifactContext]
+		.filter((block): block is string => block !== undefined)
+		.join('\n\n');
 	const messages: Message[] = [
 		{
 			role: 'user',
 			content: [
 				{
 					type: 'text',
-					text: buildWorkflowContextBlock(build.workflowJson),
+					text: buildContext,
 					providerOptions: EPHEMERAL_CACHE,
 				},
 				{

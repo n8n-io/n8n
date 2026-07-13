@@ -15,7 +15,6 @@ import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
 import { getCaseRunStatus, getCaseRunStatusLabel, getRunScoredCounts } from '../summary';
 import type {
-	ArtifactVerdict,
 	BuildExpectationResult,
 	ConversationMetrics,
 	ExecutionScenarioResult,
@@ -1067,11 +1066,10 @@ function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 }
 
 // ---------------------------------------------------------------------------
-// Build expectations / artifact results
+// Build expectations
 //
-// Both sections aggregate a list of pass/fail/incomplete verdicts into the
-// same `<details>` checklist shell; they differ only in title and per-item
-// markup, which `renderItem` supplies.
+// Aggregates a list of pass/fail/incomplete verdicts into a `<details>`
+// checklist shell; per-item markup comes from `renderItem`.
 // ---------------------------------------------------------------------------
 
 function renderChecklistSection<T extends { pass: boolean; incomplete?: boolean }>(
@@ -1100,35 +1098,6 @@ function renderBuildExpectations(results: BuildExpectationResult[] | undefined):
 			? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
 			: '';
 		return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
-	});
-}
-
-function renderArtifactResults(results: ArtifactVerdict[] | undefined): string {
-	return renderChecklistSection('Artifacts', results, (v) => {
-		const cls = v.incomplete ? 'n_a' : v.pass ? 'pass' : 'fail';
-		const icon = v.incomplete ? '⌀' : v.pass ? '&#10003;' : '&#10007;';
-		const label =
-			v.id === '(none)'
-				? `${v.type} (not produced)`
-				: v.unexpected
-					? `${v.type}: ${v.id} (unexpected)`
-					: `${v.type}: ${v.id}`;
-		const assertionsHtml = (v.expectationResults ?? [])
-			.map((r) => {
-				const rCls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
-				const rIcon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
-				const judgment = r.reason
-					? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
-					: '';
-				return `<li class="expectation ${rCls}"><span class="check-icon ${rCls}">${rIcon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
-			})
-			.join('');
-		const body = assertionsHtml
-			? `<ul class="check-list">${assertionsHtml}</ul>`
-			: v.reason
-				? `<div class="expectation-judgment">${escapeHtml(v.reason)}</div>`
-				: '';
-		return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(label)}</div>${body}</div></li>`;
 	});
 }
 
@@ -1236,7 +1205,7 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 // ---------------------------------------------------------------------------
 
 function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string {
-	// Pass rate counts scenarios, build expectations, AND artifacts as units (incomplete units excluded).
+	// Pass rate counts scenarios and build expectations as units (incomplete units excluded).
 	const { passCount, totalCount } = getRunScoredCounts(result);
 	const allPass = passCount === totalCount && totalCount > 0;
 	const caseStatus = getCaseRunStatus(result);
@@ -1274,13 +1243,6 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			const cls = e.incomplete ? 'na' : e.pass ? 'pass' : 'fail';
 			const icon = e.incomplete ? '⌀' : e.pass ? '✓' : '✗';
 			return `<span class="scenario-indicator ${cls}" title="${escapeHtml(e.expectation)}">${icon} expectation: ${escapeHtml(e.expectation)}</span>`;
-		}),
-		...(result.artifactResults ?? []).map((v) => {
-			const cls = v.incomplete ? 'na' : v.pass ? 'pass' : 'fail';
-			const icon = v.incomplete ? '⌀' : v.pass ? '✓' : '✗';
-			const suffix = v.unexpected ? ' (unexpected)' : v.id === '(none)' ? ' (not produced)' : '';
-			const label = `artifact: ${v.type}${suffix}`;
-			return `<span class="scenario-indicator ${cls}" title="${escapeHtml(label)}">${icon} ${escapeHtml(label)}</span>`;
 		}),
 	].join(' ');
 
@@ -1326,7 +1288,6 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			${renderConversationMetrics(result.conversationMetrics)}
 			${renderConversationTranscript(result.transcript)}
 			${renderBuildExpectations(result.buildExpectationResults)}
-			${renderArtifactResults(result.artifactResults)}
 			${renderWorkflowChecks(result.workflowChecks)}
 			${renderWorkflowSummary(result)}
 			${scenariosHtml}

@@ -275,92 +275,44 @@ describe('loadWorkflowTestCasesWithFiles · file-aware errors', () => {
 	});
 });
 
-describe('EvalTestCaseSchema · expectedArtifacts / artifactExpectations', () => {
-	it('defaults expectedArtifacts to ["workflow"] when omitted', () => {
-		const parsed = EvalTestCaseSchema.parse(validFixture());
-		expect(parsed.expectedArtifacts).toEqual(['workflow']);
-	});
-
-	it('still accepts a workflow case graded only by outcomeExpectations (regression)', () => {
+describe('EvalTestCaseSchema · artifact grading via outcome expectations', () => {
+	it('accepts a workflow case graded only by outcomeExpectations (no scenarios)', () => {
 		const { executionScenarios: _omit, ...rest } = validFixture();
 		const parsed = EvalTestCaseSchema.parse({
 			...rest,
 			outcomeExpectations: ['the final workflow posts to Slack'],
 		});
-		expect(parsed.expectedArtifacts).toEqual(['workflow']);
 		expect(parsed.outcomeExpectations).toEqual(['the final workflow posts to Slack']);
 	});
 
-	it('accepts expectedArtifacts: ["agent"] with a matching artifactExpectations.agent', () => {
+	it('accepts an agent-style case graded only by outcomeExpectations (no scenarios)', () => {
+		const { executionScenarios: _omit, ...rest } = validFixture();
 		const parsed = EvalTestCaseSchema.parse({
-			...validFixture(),
-			expectedArtifacts: ['agent'],
-			artifactExpectations: { agent: ['the agent has a Slack tool'] },
+			...rest,
+			outcomeExpectations: ['an agent was created and no workflow was built'],
 		});
-		expect(parsed.expectedArtifacts).toEqual(['agent']);
-		expect(parsed.artifactExpectations).toEqual({ agent: ['the agent has a Slack tool'] });
+		expect(parsed.outcomeExpectations).toEqual(['an agent was created and no workflow was built']);
 	});
 
-	it('rejects expectedArtifacts: ["agent"] with no artifactExpectations.agent', () => {
+	it('rejects a case with no scenario and no process/outcome expectation', () => {
+		const { executionScenarios: _omit, ...rest } = validFixture();
+		expect(() => EvalTestCaseSchema.parse(rest)).toThrow(
+			/needs at least one executionScenario, or a process\/outcome expectation/,
+		);
+	});
+
+	it('rejects the removed expectedArtifacts / artifactExpectations fields (strict schema)', () => {
+		// Artifact grading moved onto outcomeExpectations — these case fields no longer exist,
+		// and the strict schema rejects them so a stale case fails loudly rather than silently.
 		expect(() =>
-			EvalTestCaseSchema.parse({
-				...validFixture(),
-				expectedArtifacts: ['agent'],
-			}),
-		).toThrow(/includes agent.*artifactExpectations\.agent/);
-	});
-
-	it('rejects expectedArtifacts: ["config-eval"] with no artifactExpectations["config-eval"]', () => {
-		expect(() =>
-			EvalTestCaseSchema.parse({
-				...validFixture(),
-				expectedArtifacts: ['config-eval'],
-			}),
-		).toThrow(/includes config-eval/);
-	});
-
-	it('accepts expectedArtifacts: ["config-eval"] with a matching artifactExpectations entry', () => {
-		const parsed = EvalTestCaseSchema.parse({
-			...validFixture(),
-			expectedArtifacts: ['config-eval'],
-			artifactExpectations: { 'config-eval': ['the eval config scores against exact match'] },
-		});
-		expect(parsed.artifactExpectations).toEqual({
-			'config-eval': ['the eval config scores against exact match'],
-		});
-	});
-
-	it('rejects an unknown artifact type in expectedArtifacts', () => {
-		expect(() =>
-			EvalTestCaseSchema.parse({
-				...validFixture(),
-				expectedArtifacts: ['not-a-real-type'],
-			}),
+			EvalTestCaseSchema.parse({ ...validFixture(), expectedArtifacts: ['agent'] }),
 		).toThrow();
-	});
-
-	it('rejects artifactExpectations.agent when expectedArtifacts does not include agent', () => {
-		// Reverse relationship: assertions authored without declaring the type would be
-		// silently skipped at run time, so they must fail at case-load instead.
 		expect(() =>
 			EvalTestCaseSchema.parse({
 				...validFixture(),
 				artifactExpectations: { agent: ['the agent has a Slack tool'] },
 			}),
-		).toThrow(/artifactExpectations\.agent is set but expectedArtifacts does not include agent/);
-	});
-
-	it('rejects artifactExpectations["config-eval"] when expectedArtifacts omits config-eval', () => {
-		expect(() =>
-			EvalTestCaseSchema.parse({
-				...validFixture(),
-				expectedArtifacts: ['agent'],
-				artifactExpectations: {
-					agent: ['has a Slack tool'],
-					'config-eval': ['scores against exact match'],
-				},
-			}),
-		).toThrow(/config-eval.* is set but expectedArtifacts does not include config-eval/);
+		).toThrow();
 	});
 });
 

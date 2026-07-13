@@ -6,8 +6,6 @@ import type {
 	WorkflowTestCase,
 	ExecutionScenarioResult,
 	BuildExpectationResult,
-	ArtifactType,
-	ArtifactVerdict,
 } from '../types';
 
 interface CaseSpec {
@@ -20,11 +18,6 @@ interface CaseSpec {
 		reasoning?: string;
 	}>;
 	expectations?: Array<{ text: string; verdicts: Array<boolean | 'incomplete'>; reason?: string }>;
-	artifacts?: Array<{
-		type: ArtifactType;
-		verdicts: Array<boolean | 'incomplete'>;
-		reason?: string;
-	}>;
 }
 
 /** Build a MultiRunEvaluation + slug map matching the shape gate.ts/format.ts read. */
@@ -94,30 +87,6 @@ function makeEval(totalRuns: number, cases: CaseSpec[]) {
 			};
 		});
 
-		const artifacts = (c.artifacts ?? []).map((a) => {
-			const runs: ArtifactVerdict[] = a.verdicts.map((v) =>
-				v === 'incomplete'
-					? { type: a.type, id: 'art-1', pass: false, incomplete: true }
-					: {
-							type: a.type,
-							id: 'art-1',
-							pass: v,
-							...(v ? {} : { reason: a.reason ?? 'judge: artifact failed' }),
-						},
-			);
-			const evaluated = runs.filter((r) => !r.incomplete);
-			const passCount = evaluated.filter((r) => r.pass).length;
-			return {
-				type: a.type,
-				runs,
-				evaluatedCount: evaluated.length,
-				passCount,
-				passRate: evaluated.length > 0 ? passCount / evaluated.length : 0,
-				passAtK: [] as number[],
-				passHatK: [] as number[],
-			};
-		});
-
 		return {
 			testCase,
 			runs: new Array(totalRuns).fill(null).map(() => ({
@@ -128,7 +97,6 @@ function makeEval(totalRuns: number, cases: CaseSpec[]) {
 			buildSuccessCount: totalRuns,
 			executionScenarios: scenarioAggs,
 			buildExpectations,
-			artifacts,
 		};
 	});
 	const evaluation: MultiRunEvaluation = { totalRuns, testCases };
@@ -291,24 +259,23 @@ describe('evaluateGate', () => {
 		expect(gate.excluded[0].slug).toBe('a/edge');
 	});
 
-	it('grades a build-only case by its artifact alone, and fails it when the artifact never passes', () => {
+	it('grades a scenario-less case by its outcome expectation alone, and fails it when the expectation never passes', () => {
 		const { evaluation, slugByTestCase } = makeEval(3, [
 			{
 				slug: 'agent-only',
-				artifacts: [{ type: 'agent', verdicts: [true, true, true] }],
+				expectations: [{ text: 'an agent was created', verdicts: [true, true, true] }],
 			},
 		]);
 		const gate = evaluateGate(evaluation, { slugByTestCase });
 
 		expect(gate.units).toHaveLength(1);
-		expect(gate.units[0].kind).toBe('artifact');
-		expect(gate.units[0].slug).toBe('agent-only :: artifact:agent');
+		expect(gate.units[0].kind).toBe('buildExpectation');
 		expect(gate.green).toBe(true);
 
 		const { evaluation: failingEval, slugByTestCase: failingSlugs } = makeEval(3, [
 			{
 				slug: 'agent-only',
-				artifacts: [{ type: 'agent', verdicts: [false, false, false] }],
+				expectations: [{ text: 'an agent was created', verdicts: [false, false, false] }],
 			},
 		]);
 		const failingGate = evaluateGate(failingEval, { slugByTestCase: failingSlugs });
@@ -316,12 +283,14 @@ describe('evaluateGate', () => {
 		expect(failingGate.failing).toHaveLength(1);
 	});
 
-	it('excludes artifacts with no judge verdict instead of failing on them', () => {
+	it('excludes expectations with no judge verdict instead of failing on them', () => {
 		const { evaluation, slugByTestCase } = makeEval(3, [
 			{
 				slug: 'a',
 				scenarios: [{ name: 'happy', passes: [true, true, true] }],
-				artifacts: [{ type: 'agent', verdicts: ['incomplete', 'incomplete', 'incomplete'] }],
+				expectations: [
+					{ text: 'an agent was created', verdicts: ['incomplete', 'incomplete', 'incomplete'] },
+				],
 			},
 		]);
 		const gate = evaluateGate(evaluation, { slugByTestCase });
@@ -329,7 +298,7 @@ describe('evaluateGate', () => {
 		expect(gate.green).toBe(true);
 		expect(gate.units).toHaveLength(1); // only the scenario
 		expect(gate.excluded).toHaveLength(1);
-		expect(gate.excluded[0].kind).toBe('artifact');
+		expect(gate.excluded[0].kind).toBe('buildExpectation');
 	});
 
 	it('minAggregatePassRate verdict tracks the pooled rate, not per-unit greenness', () => {

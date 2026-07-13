@@ -1,7 +1,7 @@
 import type { Message } from '@n8n/agents';
 import { z } from 'zod';
 
-import { EPHEMERAL_CACHE, SONNET_MODEL, createEvalAgent } from '../../src/utils/eval-agents';
+import { SONNET_MODEL, createEvalAgent } from '../../src/utils/eval-agents';
 import { BUILD_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/build-expectations-verify';
 import type { BuildExpectationResult } from '../types';
 
@@ -120,33 +120,4 @@ export function allFailVerdicts(assertions: string[], reason: string): BuildExpe
 		reason,
 		incomplete: true,
 	}));
-}
-
-/**
- * Judge a static artifact (agent config, config-eval composite, ...) against free-text
- * assertions. Mirrors the workflow judge's message shape (cached artifact block + numbered
- * assertions block) so the shared prompt/schema apply unchanged to any artifact type.
- */
-export async function runAssertionJudge(
-	renderedArtifactBlock: string,
-	assertions: string[],
-): Promise<BuildExpectationResult[]> {
-	const messages: Message[] = [
-		{
-			role: 'user',
-			content: [
-				{
-					type: 'text',
-					text: renderedArtifactBlock,
-					providerOptions: EPHEMERAL_CACHE,
-				},
-				{
-					type: 'text',
-					text: buildAssertionsBlock(assertions),
-				},
-			],
-		},
-	];
-
-	return await judgeExpectations(messages, assertions);
 }

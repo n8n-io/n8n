@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
 import { SUPPORTED_CREDENTIAL_TYPES } from '../credentials/seeder';
-import { ARTIFACT_TYPES } from '../types';
-import type { ArtifactType } from '../types';
 
 /** Default `datasets` grouping for a case that omits the field — the single
  *  source of truth shared by the loader schema and the mcp-manifest tier reader. */
@@ -45,22 +43,10 @@ const evalTestCaseObjectSchema = z
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
 		processExpectations: z.array(z.string().min(1)).optional(),
-		/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
-		 *  so they also run in prebuilt/MCP runs. Counted as units in the pass rate. */
+		/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow
+		 *  and from the rendered agent/config-eval context when the build produced one, so they also
+		 *  cover artifact existence/absence/content. Also run in prebuilt/MCP runs. Counted as units. */
 		outcomeExpectations: z.array(z.string().min(1)).optional(),
-		/** Artifact types this case expects the build to produce. A discovered artifact whose
-		 *  type isn't in this set fails the case. Defaults to `['workflow']` so every existing
-		 *  case file keeps validating unedited. */
-		expectedArtifacts: z.array(z.enum(ARTIFACT_TYPES)).min(1).default(['workflow']),
-		/** Free-text NL assertions per non-workflow artifact type, LLM-judged against the
-		 *  captured artifact. Workflow keeps using processExpectations/outcomeExpectations. */
-		artifactExpectations: z
-			.object({
-				agent: z.array(z.string().min(1)).min(1).optional(),
-				'config-eval': z.array(z.string().min(1)).min(1).optional(),
-			})
-			.strict()
-			.optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
 		 * than dropped from the shape) so a legacy fixture fails loudly with a migration hint,
@@ -146,13 +132,14 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',
 	})
 	.superRefine((c, ctx) => {
-		const expectedArtifacts = c.expectedArtifacts;
-
-		// Note: these messages avoid double quotes — ZodError.message is a JSON.stringify of
+		// Note: this message avoids double quotes — ZodError.message is a JSON.stringify of
 		// the issue list, which would otherwise backslash-escape them and break substring/regex
 		// matching against the raw error message in callers and tests.
+		//
+		// A case needs at least one gradable unit. Execution scenarios grade the built workflow;
+		// process/outcome expectations grade the conversation, the workflow, and any non-workflow
+		// artifact (agent, config-eval) rendered into the judge context.
 		if (
-			expectedArtifacts.includes('workflow') &&
 			(c.executionScenarios?.length ?? 0) === 0 &&
 			(c.processExpectations?.length ?? 0) === 0 &&
 			(c.outcomeExpectations?.length ?? 0) === 0
@@ -160,35 +147,8 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message:
-					'expectedArtifacts includes workflow — a case needs at least one executionScenario, or a process/outcome expectation to grade it',
+					'a case needs at least one executionScenario, or a process/outcome expectation to grade it',
 			});
-		}
-
-		// Each non-workflow artifact type needs its own artifactExpectations entry to be
-		// gradable. The accessor form matches how it'd be written in real code — dot notation
-		// for `agent` (a valid identifier), bracket notation for `config-eval` (a hyphen isn't).
-		const artifactAccessor: Record<Exclude<ArtifactType, 'workflow'>, string> = {
-			agent: 'artifactExpectations.agent',
-			'config-eval': "artifactExpectations['config-eval']",
-		};
-		for (const type of ['agent', 'config-eval'] as const) {
-			const hasExpectations = (c.artifactExpectations?.[type]?.length ?? 0) > 0;
-			const isExpected = expectedArtifacts.includes(type);
-			if (isExpected && !hasExpectations) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: `expectedArtifacts includes ${type} — a case needs ${artifactAccessor[type]} to grade it`,
-				});
-			}
-			// Reverse relationship: assertions without the matching expectedArtifacts entry are
-			// silently skipped at run time (the type is never discovered/judged), so reject them
-			// at case-load instead of letting the author think they are graded.
-			if (hasExpectations && !isExpected) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: `${artifactAccessor[type]} is set but expectedArtifacts does not include ${type} — add ${type} to expectedArtifacts or remove the expectation`,
-				});
-			}
 		}
 	});
 

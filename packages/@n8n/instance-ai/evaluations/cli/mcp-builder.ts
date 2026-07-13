@@ -162,10 +162,6 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// transcript-less MCP builds there); declaring them needs no build-side setup.
 	processExpectations: 'supported',
 	outcomeExpectations: 'supported',
-	// Post-build grading concerns (which artifact types to expect + their NL
-	// assertions), judged by the harness after the build — no build-side setup.
-	expectedArtifacts: 'supported',
-	artifactExpectations: 'supported',
 	// Forbidden legacy key — the schema rejects it at load, so it can never
 	// reach this check; classified only to keep the map schema-complete.
 	buildExpectations: 'supported',

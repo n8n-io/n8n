@@ -67,7 +67,7 @@ interface FormatOptions {
 	 *  the gate verdict in place of the baseline comparison. */
 	gate?: GateResult;
 	/** Run-level pass@k / pass^k (terminal k = totalRuns) averaged over measured
-	 *  units (scenarios + build expectations + artifacts) — same numbers as
+	 *  units (scenarios + build expectations) — same numbers as
 	 *  `summary.passAtK`/`summary.passHatK` in eval-results.json. */
 	passMetrics?: { passAtK: number; passHatK: number };
 	/** LangSmith experiment URL, when the run recorded one. */
@@ -93,16 +93,11 @@ function evaluatedBuildExpectations(tc: TestCaseAggregation) {
 	return tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0);
 }
 
-function evaluatedArtifacts(tc: TestCaseAggregation) {
-	return tc.artifacts.filter((a) => a.evaluatedCount > 0);
-}
-
 function aggregateMeasuredUnits(testCases: TestCaseAggregation[]) {
 	let passed = 0;
 	let total = 0;
 	let scenarios = 0;
 	let expectations = 0;
-	let artifacts = 0;
 
 	for (const tc of testCases) {
 		// Only evaluated runs count — verifier-incomplete runs carry no verdict.
@@ -119,32 +114,18 @@ function aggregateMeasuredUnits(testCases: TestCaseAggregation[]) {
 			passed += ea.passCount;
 			total += ea.evaluatedCount;
 		}
-
-		const tcArtifacts = evaluatedArtifacts(tc);
-		artifacts += tcArtifacts.length;
-		for (const a of tcArtifacts) {
-			passed += a.passCount;
-			total += a.evaluatedCount;
-		}
 	}
 
-	return { passed, total, scenarios, expectations, artifacts };
+	return { passed, total, scenarios, expectations };
 }
 
-function unitCountLabel(
-	summary: { scenarios: number; expectations: number; artifacts: number },
-	totalRuns: number,
-) {
+function unitCountLabel(summary: { scenarios: number; expectations: number }, totalRuns: number) {
 	const scenarioLabel = `${summary.scenarios} scenario${summary.scenarios === 1 ? '' : 's'}`;
 	const expectationLabel =
 		summary.expectations > 0
 			? ` + ${summary.expectations} expectation${summary.expectations === 1 ? '' : 's'}`
 			: '';
-	const artifactLabel =
-		summary.artifacts > 0
-			? ` + ${summary.artifacts} artifact${summary.artifacts === 1 ? '' : 's'}`
-			: '';
-	return `${scenarioLabel}${expectationLabel}${artifactLabel}, N=${totalRuns}`;
+	return `${scenarioLabel}${expectationLabel}, N=${totalRuns}`;
 }
 
 /** Display label for a comparison unit — `file/scenario`, or the
@@ -743,7 +724,6 @@ function renderPerTestCaseDetails(
 			const units = [
 				...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
 				...evaluatedBuildExpectations(tc),
-				...evaluatedArtifacts(tc),
 			];
 			const meanPassAtK = units.length
 				? Math.round(
@@ -874,31 +854,10 @@ function renderFailureDetails(
 				});
 			}
 		}
-		for (const a of tc.artifacts) {
-			// Only evaluated verdicts count; `incomplete` runs have no judge text to show.
-			const failedRuns = a.runs.filter((r) => !r.incomplete && !r.pass);
-			if (failedRuns.length > 0) {
-				units.push({
-					slug: `${prefix} :: artifact:${a.type}`,
-					passCount: a.passCount,
-					total: a.evaluatedCount,
-					// Enforcement failures (unexpected / not-produced / fetch error) carry a
-					// top-level reason; judged failures carry per-assertion reasons instead.
-					runs: failedRuns.map((r) => ({
-						text:
-							r.reason ??
-							(r.expectationResults ?? [])
-								.filter((er) => !er.incomplete && !er.pass)
-								.map((er) => `${er.expectation}: ${er.reason}`)
-								.join('\n'),
-					})),
-				});
-			}
-		}
 	}
 	if (units.length === 0) return [];
 
-	// Full judge text for every failed run — scenarios, build expectations, and artifacts alike —
+	// Full judge text for every failed run — scenarios and build expectations alike —
 	// so it's easy to see exactly what failed. Open by default but collapsible.
 	const lines: string[] = [`<details open><summary>Failures (${units.length})</summary>`, ''];
 	for (const u of units) {
@@ -1326,23 +1285,6 @@ function formatTerminalPerTestCase(
 				lines.push(TERMINAL_INDENT + `  ${status}  expectation: ${ea.expectation.slice(0, 80)}`);
 				if (status === 'FAIL') {
 					lines.push(TERMINAL_INDENT + `        ${er.reason.slice(0, 200)}`);
-				}
-			}
-			for (const a of tc.artifacts) {
-				const ar = a.runs[0];
-				if (!ar) continue;
-				const status = ar.incomplete ? 'SKIP' : ar.pass ? 'PASS' : 'FAIL';
-				lines.push(TERMINAL_INDENT + `  ${status}  artifact: ${a.type}`);
-				if (status === 'FAIL') {
-					// Enforcement failures (unexpected / not-produced / fetch error) carry a
-					// top-level reason; judged failures carry per-assertion reasons instead.
-					const detail =
-						ar.reason ??
-						(ar.expectationResults ?? [])
-							.filter((er) => !er.incomplete && !er.pass)
-							.map((er) => `${er.expectation}: ${er.reason}`)
-							.join('; ');
-					if (detail) lines.push(TERMINAL_INDENT + `        ${detail.slice(0, 200)}`);
 				}
 			}
 		}
