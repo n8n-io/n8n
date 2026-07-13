@@ -64,6 +64,11 @@ class ProjectNotFoundError extends NotFoundError {
 	}
 }
 
+export interface ProjectCreateOverrides {
+	id?: string;
+	description?: string | null;
+}
+
 @Service()
 export class ProjectService {
 	constructor(
@@ -353,6 +358,7 @@ export class ProjectService {
 		adminUser: User,
 		data: CreateProjectDto,
 		trx: EntityManager,
+		overrides: ProjectCreateOverrides = {},
 	) {
 		const limit = this.licenseState.getMaxTeamProjects();
 		if (limit !== UNLIMITED_LICENSE_QUOTA) {
@@ -364,7 +370,12 @@ export class ProjectService {
 
 		const project = await trx.save(
 			Project,
-			this.projectRepository.create({ ...data, type: 'team', creatorId: adminUser.id }),
+			this.projectRepository.create({
+				...data,
+				...overrides,
+				type: 'team',
+				creatorId: adminUser.id,
+			}),
 		);
 
 		// Link admin
@@ -373,11 +384,15 @@ export class ProjectService {
 		return project;
 	}
 
-	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
+	async createTeamProject(
+		adminUser: User,
+		data: CreateProjectDto,
+		overrides: ProjectCreateOverrides = {},
+	): Promise<Project> {
 		// This needs to be SERIALIZABLE otherwise the count would not block a
 		// concurrent transaction and we could insert multiple projects.
 		return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
-			return await this.createTeamProjectWithEntityManager(adminUser, data, trx);
+			return await this.createTeamProjectWithEntityManager(adminUser, data, trx, overrides);
 		});
 	}
 

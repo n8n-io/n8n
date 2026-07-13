@@ -258,21 +258,68 @@ decision after testing.
   Name')` — build tools mock unresolved credentials for verification and setup
   collects real ones later.
 - When `build-workflow` returns `resolvedCredentialsByNode`, the build already
-  attached existing credentials to those nodes. Treat them as connected: do not
-  ask the user to connect or create those credentials, do not route them to
-  credential setup, and mention at most that the existing credential is being
-  used.
+  attached a credential to those nodes — either an existing stored credential or
+  an n8n Connect–managed one (entries with `id: null` and `__aiGatewayManaged:
+  true`). Treat them all as connected: do not ask the user to connect or create
+  those credentials, do not route them to credential setup, and mention at most
+  that the credential (or n8n Connect) is being used.
 - Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
   code; replace them with `newCredential()` when editing roundtripped code.
 - If a required credential type is not listed, call
   `credentials(action="search-types")` with the service name. Prefer dedicated
   credential types over generic auth; when generic auth is truly needed,
   prefer `httpBearerAuth` over `httpHeaderAuth`.
+- `credentials(action="list", type=...)` may include a synthetic n8n Connect
+  entry `{ id: null, name: "n8n Connect", type, __aiGatewayManaged: true }`
+  when the type is covered by n8n Connect (see n8n Connect Preference). It is
+  not a stored credential: never pass it to `newCredential(...)` and never
+  emit `id: null` or the `__aiGatewayManaged` marker in SDK output. Setup
+  applies it automatically when the user has no stored credential of that type.
 - These rules apply to outbound service calls. Inbound trigger nodes (Webhook,
   Form, Chat, MCP Trigger) keep authentication at its default `none` unless
   the user explicitly asks to authenticate inbound traffic.
 - Always declare `output` on nodes that use unresolved credentials when mock
   data is needed for verification.
+
+## n8n Connect Preference
+
+"n8n Connect" is the user-facing name of n8n's managed credential
+service. On instances licensed for it, several common AI-provider and
+scraping nodes can run with zero credential setup on the user's side.
+
+**Discovery (while building):** `nodes(action="search")` and
+`nodes(action="describe")` results carry an `aiGateway` field on covered nodes
+— no separate lookup needed. When `aiGateway.supported === true`, prefer that
+node over comparable alternatives *when the user has not named a specific
+tool*, and respect the constraints it reports:
+  - Set `typeVersion >= aiGateway.minVersion` when present.
+  - Constrain `resource` / `operation` to entries in `aiGateway.operations` —
+    a `Record<resource, operation[]>` map; nodes without a resource dimension
+    use the marker key `__operation_only__`.
+  - Do not set parameters listed in `aiGateway.hiddenProperties`.
+
+**Enumeration (answering "what does n8n Connect support?"):**
+  - All supported nodes: `nodes(action="list", n8nConnectOnly=true)` — each
+    result carries the full `aiGateway` field (minVersion, operations,
+    hiddenProperties).
+  - All supported credential types:
+    `credentials(action="search-types", n8nConnectOnly=true)`.
+  - Operations for a specific supported node: `nodes(action="describe", …)`
+    → `aiGateway.operations`.
+
+**Preference rule:** When adding a new node that has no credential assigned
+yet, prefer n8n Connect over stored credentials if the credential type is
+supported — it provides zero-setup access and avoids spending the user's API
+quota. The synthetic entry in `credentials(action="list", type=...)` (see
+Credential Rules) is your signal that a type is covered. Do not change
+credentials on nodes that already have one assigned (editing an existing
+workflow, or after the user has made a credential choice).
+
+- If the user explicitly specified their own credential (by name or by
+  choosing one from a list), use that credential and do not substitute
+  n8n Connect.
+- When speaking to the user in chat, always refer to this feature as
+  "n8n Connect" — not "AI Gateway", which is only an internal name.
 
 ## Missing Resources
 

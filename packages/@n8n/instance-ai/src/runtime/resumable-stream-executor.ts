@@ -1,6 +1,7 @@
 import type { RedactionOptions, StreamResult } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { randomUUID } from 'node:crypto';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
@@ -333,6 +334,15 @@ async function consumeStreamPass(args: {
 	} = args;
 	let currentResponseId = args.currentResponseId;
 	let nativeStepIndex = args.nativeStepIndex;
+	/**
+	 * Segment id minted for deltas that arrive before any `start-step` supplied
+	 * a provider response id (some providers never emit one). Every delta/block
+	 * must carry a responseId: the shared run reducer keys block replace
+	 * semantics on segment identity, and id-less adjacent segments would merge
+	 * into one timeline entry. Sticky for the contiguous delta run, cleared at
+	 * the next structural fact so blocks stay exactly 1:1 with segments.
+	 */
+	let syntheticSegmentId: string | undefined;
 	let suspension: SuspensionInfo | undefined;
 	let hasError = false;
 	let error: unknown;
@@ -375,6 +385,7 @@ async function consumeStreamPass(args: {
 			nativeStepIndex += 1;
 			const responseRunId = activeAgentRunId || options.context.runId;
 			currentResponseId = `${responseRunId}:step:${nativeStepIndex}`;
+			syntheticSegmentId = undefined;
 		}
 
 		const parsedSuspension = parseSuspension(chunk);
@@ -394,12 +405,26 @@ async function consumeStreamPass(args: {
 			error = chunk.error;
 		}
 
+		const isDeltaChunk =
+			isRecord(chunk) && (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta');
+		if (isDeltaChunk && !currentResponseId && !syntheticSegmentId) {
+			syntheticSegmentId = `${activeAgentRunId || options.context.runId}:seg:${randomUUID()}`;
+		}
+
 		const mappedEvent = mapAgentChunkToEvent(
 			options.context.runId,
 			options.context.agentId,
 			chunk,
-			currentResponseId,
+			currentResponseId ?? syntheticSegmentId,
 		);
+
+		// A segment boundary ends the synthetic segment; the next delta mints a
+		// fresh id so two different segments can never share one. finish-step
+		// maps to no event but is still a boundary — left sticky, a provider
+		// that never emits start-step would leak one id across steps, and the
+		// reducer's id-keyed replace could then drop an earlier block on replay.
+		const isFinishStep = isRecord(chunk) && chunk.type === 'finish-step';
+		if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
 
 		// Scan/redact secrets & PII before events reach the user. Buffered
 		// delta text is released here at structural boundaries, so this may
@@ -571,6 +596,10 @@ function publishCorrections(context: ResumableStreamContext, corrections: string
 			type: 'text-delta',
 			runId: context.runId,
 			agentId: context.agentId,
+			// Each correction line is its own segment: a unique responseId keeps
+			// the run reducer's block replace semantics exact (two publishes
+			// sharing an id with different texts would read as one segment).
+			responseId: `${context.runId}:correction:${randomUUID()}`,
 			payload: { text: `\n[USER CORRECTION]: ${correction}\n` },
 		});
 	}

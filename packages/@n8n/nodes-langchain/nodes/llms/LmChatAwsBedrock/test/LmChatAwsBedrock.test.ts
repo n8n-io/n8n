@@ -1,11 +1,10 @@
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
 import { makeN8nLlmFailedAttemptHandler, getNodeProxyAgent } from '@n8n/ai-utilities';
+import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { UserError, type INode, type ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
-
-import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
 import { LmChatAwsBedrock } from '../LmChatAwsBedrock.node';
 
@@ -423,6 +422,56 @@ describe('LmChatAwsBedrock', () => {
 				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
 					'https://bedrock-runtime.eu-central-1.amazonaws.com',
 				);
+			});
+		});
+
+		describe('runtime endpoint override', () => {
+			const useModel = (ctx: Mocked<ISupplyDataFunctions>) => {
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+			};
+
+			it('routes inference and the proxy agent to the override endpoint when set', async () => {
+				const ctx = setupMockContext();
+				useModel(ctx);
+				mockedResolveAwsCredentials.mockResolvedValue({
+					region: 'us-east-1',
+					credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+					bedrockRuntimeEndpoint: 'https://vpce-abc.bedrock-runtime.us-east-1.vpce.amazonaws.com',
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				const expected = 'https://vpce-abc.bedrock-runtime.us-east-1.vpce.amazonaws.com';
+				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(expected);
+				expect(MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0]?.endpoint).toBe(expected);
+			});
+
+			it('leaves the SDK endpoint unset when no override is present', async () => {
+				const ctx = setupMockContext();
+				useModel(ctx);
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0]?.endpoint).toBeUndefined();
+				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
+					'https://bedrock-runtime.us-east-1.amazonaws.com',
+				);
+			});
+
+			it('throws a UserError for an invalid override', async () => {
+				const ctx = setupMockContext();
+				useModel(ctx);
+				mockedResolveAwsCredentials.mockResolvedValue({
+					region: 'us-east-1',
+					credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+					bedrockRuntimeEndpoint: 'ftp://bedrock-runtime.us-east-1.amazonaws.com',
+				});
+
+				await expect(node.supplyData.call(ctx, 0)).rejects.toThrow(UserError);
 			});
 		});
 	});
