@@ -1,6 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialPayload } from '@n8n/backend-test-utils';
-import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -257,6 +257,21 @@ describe('POST /credentials', () => {
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 		expect(credential.isResolvable).toBe(false);
+	});
+
+	test('should not allow a project editor to create an end-user credential via the public API', async () => {
+		const project = await createTeamProject();
+		await linkUserToProject(member, project, 'project:editor');
+
+		const response = await authMemberAgent.post('/credentials').send({
+			name: 'test end-user credential',
+			type: 'githubApi',
+			data: { accessToken: 'abcdefghijklmnopqrstuvwxyz', user: 'test', server: 'testServer' },
+			isResolvable: true,
+			projectId: project.id,
+		});
+
+		expect(response.statusCode).toBe(403);
 	});
 
 	test('should return 400 for external secret reference without projectId when permissions are missing', async () => {

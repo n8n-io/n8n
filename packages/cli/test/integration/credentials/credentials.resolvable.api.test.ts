@@ -26,6 +26,7 @@ import {
 	shareCredentialWithProjects,
 } from '../shared/db/credentials';
 import { createAdmin, createMember } from '../shared/db/users';
+import * as utils from '../shared/utils';
 import { setupTestServer } from '../shared/utils';
 
 mockInstance(Telemetry);
@@ -48,6 +49,11 @@ let memberA: User;
 let memberB: User;
 let teamProject: Project;
 let storage: DynamicCredentialUserEntryStorage;
+
+beforeAll(async () => {
+	// Needed for the POST /credentials tests below, which exercise real credential-type validation.
+	await utils.initCredentialsTypes();
+});
 
 beforeEach(async () => {
 	await testDb.truncate([
@@ -547,5 +553,48 @@ describe('Sharing dynamic credentials', () => {
 
 		const sharings = await getCredentialSharings(resolvable);
 		expect(sharings.some((s) => s.role === 'credential:user')).toBe(false);
+	});
+});
+
+describe('POST /credentials — end-user credential creation is role-restricted', () => {
+	test('project editor cannot create an end-user credential in a team project', async () => {
+		await testServer
+			.authAgentFor(memberB)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: true, projectId: teamProject.id })
+			.expect(403);
+	});
+
+	test('project editor can still create a fixed credential in a team project', async () => {
+		await testServer
+			.authAgentFor(memberB)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: false, projectId: teamProject.id })
+			.expect(200);
+	});
+
+	test('project admin can create an end-user credential in a team project', async () => {
+		await testServer
+			.authAgentFor(memberA)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: true, projectId: teamProject.id })
+			.expect(200);
+	});
+
+	test('instance admin can create an end-user credential in a team project without membership', async () => {
+		const admin = await createAdmin();
+		await testServer
+			.authAgentFor(admin)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: true, projectId: teamProject.id })
+			.expect(200);
+	});
+
+	test('member can create an end-user credential in their personal project', async () => {
+		await testServer
+			.authAgentFor(memberB)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: true })
+			.expect(200);
 	});
 });

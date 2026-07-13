@@ -1444,8 +1444,28 @@ export class CredentialsService {
 		return await this.createCredential({ ...dto, isManaged: true }, user);
 	}
 
+	/**
+	 * End-user (resolvable) credential creation is limited to roles holding
+	 * `credential:createEndUser` on the target project (instance owners/admins,
+	 * project admins, and personal project owners by default).
+	 */
+	async ensureCanCreateEndUserCredential(user: User, projectId?: string) {
+		const allowed =
+			projectId !== undefined &&
+			(await userHasScopes(user, ['credential:createEndUser'], false, { projectId }));
+		if (!allowed) {
+			throw new ForbiddenError(
+				'You do not have permission to create end-user credentials in this project',
+			);
+		}
+	}
+
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
 		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
+
+		if (opts.isResolvable === true) {
+			await this.ensureCanCreateEndUserCredential(user, targetProjectId);
+		}
 
 		await this.checkCredentialData(
 			opts.type,
