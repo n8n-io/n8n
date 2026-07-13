@@ -61,6 +61,14 @@ import {
 } from './workflow-publication-trigger-status';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
+import { WorkflowReviewRequestAuthor } from './workflow-review-request-author.ee';
+import { WorkflowReviewRequestReviewer } from './workflow-review-request-reviewer.ee';
+import { WorkflowReviewRequestWorkflow } from './workflow-review-request-workflow.ee';
+import {
+	WorkflowReviewRequest,
+	WorkflowReviewRequestStatus,
+	WorkflowReviewRequestStatusList,
+} from './workflow-review-request.ee';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
@@ -115,6 +123,12 @@ export {
 	type WorkflowPublicationTriggerKind,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
+	WorkflowReviewRequest,
+	WorkflowReviewRequestStatus,
+	WorkflowReviewRequestStatusList,
+	WorkflowReviewRequestWorkflow,
+	WorkflowReviewRequestReviewer,
+	WorkflowReviewRequestAuthor,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,
@@ -163,6 +177,10 @@ export const entities = {
 	WorkflowPublicationTriggerStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
+	WorkflowReviewRequest,
+	WorkflowReviewRequestWorkflow,
+	WorkflowReviewRequestReviewer,
+	WorkflowReviewRequestAuthor,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,
