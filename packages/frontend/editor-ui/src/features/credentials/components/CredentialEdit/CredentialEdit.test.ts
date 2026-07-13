@@ -1496,6 +1496,7 @@ describe('CredentialEdit', () => {
 					isResolvable: false,
 					connectedByMe: true,
 					oauthTokenData: false,
+					scopes: ['credential:update', 'credential:createEndUser'],
 				});
 
 				const { queryByTestId, getByTestId } = renderComponent({
