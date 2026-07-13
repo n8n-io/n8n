@@ -2843,7 +2843,7 @@
 	"roles.tab.project": "Project roles",
 	"instanceRoles.table.membersAssigned": "Members assigned",
 	"instanceRoles.resource.settings": "Instance settings",
-	"instanceRoles.resource.user": "Members",
+	"instanceRoles.resource.user": "Users",
 	"instanceRoles.resource.role": "Roles",
 	"instanceRoles.resource.apiKey": "API keys",
 	"instanceRoles.resource.tag": "Tags",
