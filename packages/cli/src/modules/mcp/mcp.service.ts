@@ -208,13 +208,16 @@ export class McpService {
 	async getServer(user: User, mcpAppsEnabled: boolean, clientInfo?: McpClientInfo) {
 		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
+		const n8nConnectAvailable = builderEnabled
+			? (await this.aiGatewayService.isAvailable()).available
+			: false;
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
 				version: builderEnabled ? '1.1.0' : '1.0.0',
 			},
 			{
-				instructions: getMcpInstructions(builderEnabled),
+				instructions: getMcpInstructions(builderEnabled, n8nConnectAvailable),
 			},
 		);
 
