@@ -1,4 +1,8 @@
-import { DATE_FILTER_OPERATORS } from './GenericFunctions';
+import {
+	DEPRECATED_TIMEZONE_NUMBER_OPERATORS,
+	DEPRECATED_TIMEZONE_ONLY_OPERATORS,
+	MULTI_STEP_DATE_OPERATORS,
+} from './GenericFunctions';
 import type { INodeProperties } from 'n8n-workflow';
 
 export const operationFields: INodeProperties[] = [
@@ -711,7 +715,11 @@ export const operationFields: INodeProperties[] = [
 								default: 'UTC',
 								displayOptions: {
 									show: {
-										'../operator': [...DATE_FILTER_OPERATORS],
+										'../operator': [
+											...MULTI_STEP_DATE_OPERATORS,
+											...DEPRECATED_TIMEZONE_NUMBER_OPERATORS,
+											...DEPRECATED_TIMEZONE_ONLY_OPERATORS,
+										],
 									},
 								},
 								description: 'Timezone used for date filter evaluation, e.g. UTC or Europe/Berlin',

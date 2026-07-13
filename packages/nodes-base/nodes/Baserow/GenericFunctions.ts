@@ -106,13 +106,13 @@ export function formatBaserowFilterValue(
 	}
 
 	if (MULTI_STEP_DATE_OPERATORS.has(operator)) {
-		if (isFullyFormattedMultiStepValue(trimmed)) {
-			return trimmed;
-		}
-
 		const malformedMatch = /^([^?]+)\?\?(\d{4}-\d{2}-\d{2})$/.exec(trimmed);
 		if (malformedMatch) {
 			return `${malformedMatch[1]}?${malformedMatch[2]}?exact_date`;
+		}
+
+		if (isFullyFormattedMultiStepValue(trimmed)) {
+			return trimmed;
 		}
 
 		if (ISO_DATE_REGEX.test(trimmed)) {
@@ -127,22 +127,6 @@ export function formatBaserowFilterValue(
 			return `${timezone}?${trimmed}?nr_days_from_now`;
 		}
 
-		if (/^[^?]+\?\?[^?]+$/.test(trimmed)) {
-			return trimmed;
-		}
-
-		return trimmed;
-	}
-
-	if (operator === 'date_equals_day_of_month') {
-		return trimmed;
-	}
-
-	if (LEGACY_PLAIN_ISO_DATE_OPERATORS.has(operator)) {
-		return trimmed;
-	}
-
-	if (DEPRECATED_NUMBER_ONLY_OPERATORS.has(operator)) {
 		return trimmed;
 	}
 
@@ -151,10 +135,6 @@ export function formatBaserowFilterValue(
 			return trimmed;
 		}
 		return `${timezone}?${trimmed}`;
-	}
-
-	if (DEPRECATED_TIMEZONE_ONLY_OPERATORS.has(operator)) {
-		return trimmed;
 	}
 
 	return trimmed;
