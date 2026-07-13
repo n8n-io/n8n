@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -99,7 +99,9 @@ describe('ToolCredentialPicker', () => {
 
 		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
 
-		expect(emitted()['credential-dropdown-open']?.[0]).toEqual([baseNodeItem]);
+		await waitFor(() => {
+			expect(emitted()['credential-dropdown-open']?.[0]).toEqual([baseNodeItem]);
+		});
 	});
 
 	it('emits new-credential-connect when creating from the dropdown', async () => {
