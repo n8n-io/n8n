@@ -56,6 +56,7 @@ import InstanceAiWorkflowPreview, {
 } from './components/InstanceAiWorkflowPreview.vue';
 import { buildFixWithAiPrompt } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import { TabsRoot } from 'reka-ui';
 
 const props = defineProps<{
@@ -152,6 +153,7 @@ const preview = useCanvasPreview({
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+provide('openAgentPreview', preview.openAgentPreview);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -205,9 +207,12 @@ function toggleArtifactsPreview() {
 		return;
 	}
 
-	const firstTab = preview.allArtifactTabs.value[0];
-	if (firstTab) {
-		preview.selectTab(firstTab.id);
+	const selectedTab = preview.allArtifactTabs.value.find(
+		(tab) => tab.id === preview.activeTabId.value,
+	);
+	const tabToOpen = selectedTab ?? preview.allArtifactTabs.value[0];
+	if (tabToOpen) {
+		preview.selectTab(tabToOpen.id);
 	}
 }
 
@@ -527,10 +532,15 @@ onMounted(() => {
 
 onUnmounted(() => {
 	// This view owns its thread's runtime, so it disposes it here (closes the
-	// SSE, clears state, drops it from the store). Per-thread ownership means a
-	// late-firing unmount only ever tears down its own thread — never a sibling
-	// or a freshly handed-off thread, which a bulk dispose-all would nuke.
-	store.disposeRuntime(props.threadId);
+	// SSE, clears state, drops it from the store) — but only once the app has
+	// left this thread's route. Suspense can create a duplicate instance of
+	// this view for the same thread during layout transitions (e.g. an editor
+	// hand-off that loads the AIA chunks) and discard one; that discarded
+	// instance's unmount fires while the route still points at the thread, and
+	// must not tear down the runtime the live instance is rendering.
+	if (router.currentRoute.value.params.threadId !== props.threadId) {
+		store.disposeRuntime(props.threadId);
+	}
 	contentResizeObserver?.disconnect();
 });
 
@@ -891,7 +901,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
-								v-if="preview.activeWorkflowId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowId.value"
 								:key="preview.activeWorkflowId.value"
 								ref="workflowPreview"
 								:class="[
@@ -904,11 +914,22 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
-								v-if="preview.activeDataTableId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
 								:class="$style.previewSlot"
 								:data-table-id="preview.activeDataTableId.value"
 								:project-id="preview.activeDataTableProjectId.value"
 								:refresh-key="preview.dataTableRefreshKey.value"
+							/>
+							<InstanceAiAgentPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.activeAgentId.value &&
+									preview.activeAgentProjectId.value
+								"
+								:class="$style.previewSlot"
+								:agent-id="preview.activeAgentId.value"
+								:project-id="preview.activeAgentProjectId.value"
+								:refresh-key="preview.agentRefreshKey.value"
 							/>
 						</div>
 					</TabsRoot>
@@ -1175,7 +1196,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	margin: 0;
 	text-align: center;
 	color: var(--color--text--tint-1);
-	font-size: var(--font-size--3xs);
+	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--md);
 }
 

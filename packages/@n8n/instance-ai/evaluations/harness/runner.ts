@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiConfirmRequest, InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import crypto from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -34,8 +35,8 @@ import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import {
 	extractErrorMessage,
 	isTransientExecutionAbort,
-	isTransientNetworkError,
 	MAX_EXEC_ATTEMPTS,
+	shouldRetryScenarioExecution,
 } from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
 import { isMockableTriggerNodeType } from '../../src/tools/workflows/workflow-json-utils';
@@ -70,6 +71,7 @@ import type {
 	WorkflowTestCaseResult,
 } from '../types';
 import {
+	agentTurnsAsText,
 	conversationUserTurnsAsText,
 	failedBuildsPerTurn,
 	lastAgentText,
@@ -81,8 +83,33 @@ import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 // Constants
 // ---------------------------------------------------------------------------
 
+// 15 min. Lanes with heavy multi-agent scenarios (large mocked payloads)
+// legitimately need more — the MCP CI workflow passes --timeout-ms 1500000
+// explicitly (observed: trading-bot at 863s with a 15-row dataset, hard
+// timeouts at 32 rows). Do NOT raise this default: a timed-out attempt is
+// retried once, so under high-concurrency contention (the Instance AI
+// experiments suite runs ~4x the MCP lane's concurrency) a generous default
+// lets starved scenarios hold lane slots for 2x the budget and amplify the
+// very contention that starved them (observed: run 28779266673).
 const DEFAULT_TIMEOUT_MS = 900_000;
 const EVAL_DATA_DIR = path.join(__dirname, '..', '..', '.data');
+
+/**
+ * Per-case budget: `complex` cases get 1.5× the base timeout. The heaviest
+ * builds (multi-agent fan-outs, 5-integration pipelines) legitimately run at
+ * the shared default's cap — observed 777–900s with 4/10 builds timing out on
+ * weekly-social-content-scheduler in run 29012884140 — while the default must
+ * NOT rise globally (see the comment above: a generous default lets starved
+ * scenarios amplify the contention that starved them). Keyed off the authored
+ * `complexity` field so the budget travels with the case (incl. through the
+ * lang-tracer mirror) instead of a bespoke per-case knob.
+ */
+export function effectiveTimeoutMs(
+	complexity: WorkflowTestCase['complexity'] | undefined,
+	baseMs: number,
+): number {
+	return complexity === 'complex' ? Math.round(baseMs * 1.5) : baseMs;
+}
 
 function getMaxConcurrentScenarios(): number {
 	const raw = process.env.N8N_EVAL_MAX_CONCURRENT_SCENARIOS;
@@ -115,6 +142,51 @@ function slugifyArtifactSegment(value: string, fallback: string): string {
 
 function deriveTestCaseArtifactName(testCase: WorkflowTestCase): string {
 	return slugifyArtifactSegment(testCase.conversation?.[0]?.text ?? '', 'workflow');
+}
+
+function eventPayload(event: CapturedEvent): Record<string, unknown> {
+	return typeof event.data.payload === 'object' && event.data.payload !== null
+		? (event.data.payload as Record<string, unknown>)
+		: event.data;
+}
+
+/**
+ * Best-effort explanation for a run that produced no workflow, drawn from the
+ * captured event stream. Tool errors are most specific; run-level `error`
+ * events (e.g. the terminal-fallback emitted when the run throws before doing
+ * any work — a crashed sandbox, a failed model call) carry the actual failure
+ * reason and must be surfaced, otherwise a crashed run reports nothing at all.
+ */
+export function summarizeMissingWorkflowError(events: CapturedEvent[]): string {
+	const toolErrors = events
+		.filter((e) => e.type === 'tool-error')
+		.map((e) => {
+			const payload = eventPayload(e);
+			const toolError = payload.error ?? payload.message;
+			return typeof toolError === 'string' ? toolError : 'unknown tool error';
+		});
+	if (toolErrors.length > 0) return `Tool errors: ${toolErrors.join('; ')}`;
+
+	const runErrors = events
+		.filter((e) => e.type === 'error')
+		.map((e) => {
+			const payload = eventPayload(e);
+			const runError = payload.content ?? payload.error ?? payload.message;
+			return typeof runError === 'string' ? runError : 'unknown agent error';
+		});
+	if (runErrors.length > 0) return `Agent error: ${runErrors.join('; ')}`;
+
+	const agentText = events
+		.filter((e) => e.type === 'text-delta')
+		.map((e) => {
+			const payload = eventPayload(e);
+			if (typeof e.data.text === 'string') return e.data.text;
+			return typeof payload.text === 'string' ? payload.text : '';
+		})
+		.join('');
+	if (agentText.length > 0) return `Agent response: ${agentText.slice(0, 500)}`;
+
+	return 'No workflow produced — no error details captured';
 }
 
 async function writeScenarioVerificationSnapshot(input: {
@@ -198,7 +270,11 @@ export async function runWorkflowTestCase(
 	config: WorkflowTestCaseConfig,
 ): Promise<WorkflowTestCaseResult> {
 	const { client, testCase, logger } = config;
-	const timeoutMs = config.timeoutMs > 0 ? config.timeoutMs : DEFAULT_TIMEOUT_MS;
+	const baseTimeoutMs = config.timeoutMs > 0 ? config.timeoutMs : DEFAULT_TIMEOUT_MS;
+	const timeoutMs = effectiveTimeoutMs(testCase.complexity, baseTimeoutMs);
+	if (timeoutMs !== baseTimeoutMs) {
+		logger.info(`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s`);
+	}
 
 	const result: WorkflowTestCaseResult = {
 		testCase,
@@ -224,6 +300,7 @@ export async function runWorkflowTestCase(
 				claimedWorkflowIds: config.claimedWorkflowIds,
 				logger,
 				laneTag: config.laneTag,
+				workflowExpected: workflowExpectedForCase(testCase),
 			});
 
 	if (isPrebuilt && build.success && !build.workflowChecks) {
@@ -277,10 +354,24 @@ export async function runWorkflowTestCase(
 				})
 			: Promise.resolve<BuildExpectationResult[]>([]);
 
+	// Answer-only cases (workflowExpectedForCase === false) legitimately end
+	// without a saved workflow — buildWorkflow reports them as a successful
+	// no-workflow build. Grade them on the conversation via the author
+	// expectations below; there are no scenarios to execute.
+	if (build.success && !build.workflowId) {
+		result.workflowBuildSuccess = true;
+		result.buildTrace = build.buildTrace;
+		const expectationResults = await expectationsPromise;
+		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+		return result;
+	}
+
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
 		const expectationResults = await expectationsPromise;
-		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+		const buildExpectationResults = expectationResults;
+		if (buildExpectationResults.length > 0)
+			result.buildExpectationResults = buildExpectationResults;
 		return result;
 	}
 
@@ -309,7 +400,7 @@ export async function runWorkflowTestCase(
 					);
 				} catch (error: unknown) {
 					const errorMessage = extractErrorMessage(error);
-					if (isTransientNetworkError(errorMessage) && attempt < MAX_EXEC_ATTEMPTS) {
+					if (shouldRetryScenarioExecution(errorMessage, attempt)) {
 						logger.warn(
 							`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
 						);
@@ -339,7 +430,8 @@ export async function runWorkflowTestCase(
 		expectationsPromise,
 	]);
 	result.executionScenarioResults = scenarioResults;
-	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+	const buildExpectationResults = expectationResults;
+	if (buildExpectationResults.length > 0) result.buildExpectationResults = buildExpectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
@@ -466,7 +558,7 @@ export interface BuildWorkflowConfig {
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
-	/** Optional " [lane N/M]" suffix appended to the build log line. */
+	/** Optional " [lane N/M]" suffix appended to the scenario log line. */
 	laneTag?: string;
 	/**
 	 * Last-resort workflow discovery by list-diffing visible workflows. Keep this
@@ -476,6 +568,20 @@ export interface BuildWorkflowConfig {
 	allowWorkflowListDiffFallback?: boolean;
 	/** Let callers that own their own scoring avoid duplicate binary checks. */
 	skipWorkflowChecks?: boolean;
+	/** False for answer-only cases: ending the conversation without a saved
+	 *  workflow is then a valid outcome, not a failed build. Defaults to true. */
+	workflowExpected?: boolean;
+}
+
+/** A case needs a workflow iff something judges one: execution scenarios or
+ *  outcome expectations. Cases with neither are graded on the conversation. */
+export function workflowExpectedForCase(
+	testCase: Pick<WorkflowTestCase, 'executionScenarios' | 'outcomeExpectations'>,
+): boolean {
+	return (
+		(testCase.executionScenarios?.length ?? 0) > 0 ||
+		(testCase.outcomeExpectations?.length ?? 0) > 0
+	);
 }
 
 /** A conversation is multi-turn if it has more than one turn, or if the only
@@ -549,7 +655,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const openingMessage = conversation[0]?.text ?? '';
 		const isMultiTurn = isMultiTurnConversation(conversation);
 		logger.info(
-			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
+			`  Running case${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
 
 		const projectId = await client.getPersonalProjectId();
@@ -688,46 +794,35 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			{ ...eventOutcome, workflowIds: threadWorkflowIds },
 			config.preRunWorkflowIds,
 			config.claimedWorkflowIds,
-			{ allowListDiffFallback: config.allowWorkflowListDiffFallback === true },
+			{ allowListDiffFallback: config.allowWorkflowListDiffFallback === true, logger },
 		);
 
 		if (outcome.workflowsCreated.length === 0) {
-			const toolErrors = events
-				.filter((e) => e.type === 'tool-error')
-				.map((e) => {
-					const payload =
-						typeof e.data.payload === 'object' && e.data.payload !== null
-							? (e.data.payload as Record<string, unknown>)
-							: e.data;
-					const toolError = payload.error ?? payload.message;
-					return typeof toolError === 'string' ? toolError : 'unknown tool error';
-				});
-
-			const agentText = events
-				.filter((e) => e.type === 'text-delta')
-				.map((e) => {
-					const text =
-						typeof e.data.text === 'string'
-							? e.data.text
-							: typeof e.data.payload === 'object' &&
-									e.data.payload !== null &&
-									'text' in (e.data.payload as Record<string, unknown>)
-								? String((e.data.payload as Record<string, unknown>).text)
-								: '';
-					return text;
-				})
-				.join('');
-
-			const buildError =
-				toolErrors.length > 0
-					? `Tool errors: ${toolErrors.join('; ')}`
-					: agentText.length > 0
-						? `Agent response: ${agentText.slice(0, 500)}`
-						: 'No workflow produced — no error details captured';
-
+			// Answer-only cases (no execution scenarios, no outcome expectations)
+			// are graded on the conversation — ending without a workflow is a
+			// valid outcome for them, not a failed build.
+			if (config.workflowExpected === false) {
+				logger.info(
+					`  Conversation completed without a workflow (none expected) [${String(Math.round((Date.now() - buildStart) / 1000))}s] [thread ${threadId}]`,
+				);
+				return {
+					success: true,
+					workflowJsons: [],
+					buildTrace,
+					createdWorkflowIds: restoredWorkflowIds,
+					createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+					conversationMetrics,
+					events,
+					threadId,
+					proxyDecisionStats,
+					transcript,
+					credentialViewPinned,
+					seedingFailed,
+				};
+			}
 			return {
 				success: false,
-				error: buildError,
+				error: summarizeMissingWorkflowError(events),
 				workflowJsons: [],
 				buildTrace,
 				createdWorkflowIds: restoredWorkflowIds,
@@ -753,7 +848,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			: await runWorkflowChecks({
 					workflow: outcome.workflowJsons[0],
 					prompt: userTurnsAsText(transcript),
-					agentText: outcome.finalText,
+					agentText: agentTurnsAsText(transcript),
 					failedBuildsPerTurn: failedBuildsPerTurn(transcript),
 					logger,
 				});
@@ -891,6 +986,21 @@ function scenarioMatchTokens(text: string): Set<string> {
 	);
 }
 
+/** Workflow ids referenced by enabled Execute Workflow nodes (database source,
+ *  plain string or resource-locator value) — those targets are dependencies of
+ *  this workflow, not entry points. */
+function executeWorkflowReferences(wf: WorkflowResponse): string[] {
+	const ids: string[] = [];
+	for (const node of wf.nodes) {
+		if (node.disabled || node.type !== 'n8n-nodes-base.executeWorkflow') continue;
+		const params = node.parameters ?? {};
+		if (typeof params.source === 'string' && params.source !== 'database') continue;
+		const raw = isRecord(params.workflowId) ? params.workflowId.value : params.workflowId;
+		if (typeof raw === 'string' && raw.trim() !== '' && !raw.startsWith('=')) ids.push(raw.trim());
+	}
+	return ids;
+}
+
 /**
  * Compositional builds split the system across multiple workflows (SKILL.md
  * endorses this), but execution historically always ran `build.workflowId` —
@@ -898,7 +1008,11 @@ function scenarioMatchTokens(text: string): Set<string> {
  * while the expectations judge (which sees every workflowJson) passed the
  * same build. Mirror reality instead: a caller hits the specific endpoint, so
  * route the scenario to the workflow whose trigger-bearing content best
- * matches it. Single-workflow builds and ties keep the original id.
+ * matches it. Sub-workflows referenced by another candidate's Execute Workflow
+ * node are dependencies, not entry points — executing one directly starts it
+ * once with an empty payload, so they're demoted whenever an entry point
+ * remains. A single-candidate pool routes to that candidate: `workflowId`
+ * itself may be a sub-workflow (whichever the agent happened to save first).
  */
 export function selectScenarioWorkflowId(
 	scenario: ExecutionScenario,
@@ -910,15 +1024,26 @@ export function selectScenarioWorkflowId(
 		(wf) =>
 			wf?.id && Array.isArray(wf.nodes) && wf.nodes.some((n) => isMockableTriggerNodeType(n.type)),
 	);
-	if (candidates.length <= 1) return workflowId;
+	if (candidates.length === 0) return workflowId;
 
+	const referencedIds = new Set(candidates.flatMap(executeWorkflowReferences));
+	const entryPoints = candidates.filter((wf) => !referencedIds.has(wf.id));
+	const pool = entryPoints.length > 0 ? entryPoints : candidates;
+	const fallbackId = pool.some((wf) => wf.id === workflowId) ? workflowId : pool[0].id;
 	const scenarioTokens = scenarioMatchTokens(`${scenario.name} ${scenario.dataSetup}`);
-	if (scenarioTokens.size === 0) return workflowId;
+	if (pool.length === 1 || scenarioTokens.size === 0) {
+		if (fallbackId !== workflowId) {
+			logger.info(
+				`    [${scenario.name}] multi-workflow build: routing to entry point ${fallbackId}`,
+			);
+		}
+		return fallbackId;
+	}
 
-	let bestId = workflowId;
+	let bestId = fallbackId;
 	let bestScore = -1;
 	let tied = false;
-	for (const wf of candidates) {
+	for (const wf of pool) {
 		const haystackParts: string[] = [wf.name ?? ''];
 		for (const node of wf.nodes) {
 			haystackParts.push(String(node.name ?? ''));
@@ -940,7 +1065,7 @@ export function selectScenarioWorkflowId(
 		}
 	}
 
-	if (tied || bestScore <= 0) return workflowId;
+	if (tied || bestScore <= 0) bestId = fallbackId;
 	if (bestId !== workflowId) {
 		logger.info(
 			`    [${scenario.name}] multi-workflow build: routing to workflow ${bestId} (score ${String(bestScore)})`,
@@ -1000,6 +1125,12 @@ async function runScenario(
 
 	const verifyStart = Date.now();
 	const artifact = buildVerificationArtifact(scenario, evalResult, workflowJsons, targetWorkflowId);
+	const savedChars = artifact.truncationSavedChars ?? 0;
+	if (savedChars > 0) {
+		logger.info(
+			`    [${scenario.name}] scenario context capped: saved ${String(savedChars)} chars (~${String(Math.round(savedChars / 4))} tokens)`,
+		);
+	}
 
 	const scenarioChecklist: ChecklistItem[] = [
 		{
@@ -1027,13 +1158,23 @@ async function runScenario(
 		buildTrace,
 		logger,
 	});
-	const reasoning = result?.reasoning ?? 'No verification result — LLM verifier returned empty';
+	// Empty verification = the verifier itself failed after all attempts. The run
+	// is excluded from scoring (mirrors incomplete build expectations) but stays
+	// visible in console/report/artifact under `verification_failure`.
+	const incomplete = verificationResults.length === 0;
+	const attemptErrors = verification.attempts
+		.map((a) => a.error)
+		.filter((e): e is string => e !== null);
+	const reasoning =
+		result?.reasoning ??
+		`No verification result — verifier exhausted all attempts${attemptErrors.length > 0 ? ` (${attemptErrors.join('; ')})` : ''}`;
 	const failureCategory = result?.failureCategory ?? (result ? undefined : 'verification_failure');
 	const rootCause = result?.rootCause;
 
 	const categoryLabel = failureCategory ? ` [${failureCategory}]` : '';
+	const statusLabel = incomplete ? 'INCOMPLETE (excluded from scoring)' : passed ? 'PASS' : 'FAIL';
 	logger.info(
-		`    [${scenario.name}] ${passed ? 'PASS' : 'FAIL'}${categoryLabel} verify=${String(Math.round(verifyMs / 1000))}s`,
+		`    [${scenario.name}] ${statusLabel}${categoryLabel} verify=${String(Math.round(verifyMs / 1000))}s`,
 	);
 	if (!passed) {
 		logger.info(`    [${scenario.name}] ${reasoning}`);
@@ -1048,6 +1189,7 @@ async function runScenario(
 		reasoning,
 		failureCategory,
 		rootCause,
+		...(incomplete ? { incomplete: true } : {}),
 	};
 }
 
@@ -1060,6 +1202,33 @@ export interface VerificationArtifact {
 	workflowContext: string;
 	/** Scenario + execution trace + errors. Fresh per scenario. */
 	scenarioContext: string;
+	/** Chars dropped from oversized JSON blocks / request lists (head/tail truncation). */
+	truncationSavedChars?: number;
+}
+
+/** Per-JSON-block char cap in the scenario context (~1.5k tokens). */
+const SCENARIO_JSON_BLOCK_CAP = 6_000;
+/** Max intercepted requests rendered per node — first/last half beyond this. */
+const MAX_RENDERED_REQUESTS_PER_NODE = 12;
+
+/** Head/tail-truncate an oversized JSON block, keeping shape + boundaries. */
+function capJsonBlock(json: string, saved: { chars: number }): string {
+	if (json.length <= SCENARIO_JSON_BLOCK_CAP) return json;
+	const half = Math.floor(SCENARIO_JSON_BLOCK_CAP / 2);
+	const omitted = json.length - 2 * half;
+	saved.chars += omitted;
+	return `${json.slice(0, half)}\n… [${String(omitted)} chars truncated] …\n${json.slice(json.length - half)}`;
+}
+
+/** Keep the first/last half of an oversized list, dropping the middle. */
+function elideMiddle<T>(items: T[], max: number): { head: T[]; tail: T[]; omitted: T[] } {
+	if (items.length <= max) return { head: items, tail: [], omitted: [] };
+	const half = Math.floor(max / 2);
+	return {
+		head: items.slice(0, half),
+		tail: items.slice(items.length - half),
+		omitted: items.slice(half, items.length - half),
+	};
 }
 
 function isObjectRecord(v: unknown): v is Record<string, unknown> {
@@ -1113,6 +1282,7 @@ function renderNodeOutputs(
 	outputCount: number,
 	truncated: boolean | undefined,
 	connections: Record<string, unknown> | undefined,
+	saved: { chars: number },
 ): string[] {
 	const lines: string[] = [];
 	const connTypes = Object.keys(outputs);
@@ -1129,7 +1299,7 @@ function renderNodeOutputs(
 		const isMultiBranch = branches.length > 1 || connType !== 'main';
 		if (!isMultiBranch) {
 			lines.push(`**Output [${connType}]:** ${String(branches[0].length)} items`);
-			lines.push('```json', JSON.stringify(branches[0], null, 2), '```');
+			lines.push('```json', capJsonBlock(JSON.stringify(branches[0], null, 2), saved), '```');
 			continue;
 		}
 		for (let i = 0; i < branches.length; i++) {
@@ -1141,7 +1311,7 @@ function renderNodeOutputs(
 				`**Output [${connType} branch ${String(i)}] ${targetLabel}:** ${String(branch.length)} items`,
 			);
 			if (branch.length > 0) {
-				lines.push('```json', JSON.stringify(branch, null, 2), '```');
+				lines.push('```json', capJsonBlock(JSON.stringify(branch, null, 2), saved), '```');
 			}
 		}
 	}
@@ -1158,6 +1328,7 @@ function buildScenarioContextBlock(
 	scenario: ExecutionScenario,
 	evalResult: InstanceAiEvalExecutionResult,
 	wf: WorkflowResponse | undefined,
+	saved: { chars: number },
 ): string {
 	const sections: string[] = [];
 
@@ -1254,22 +1425,37 @@ function buildScenarioContextBlock(
 			sections.push(`**Config issues:** ${Object.values(nr.configIssues).flat().join('; ')}`);
 		}
 
-		for (const req of nr.interceptedRequests) {
+		const renderRequest = (req: (typeof nr.interceptedRequests)[number]): void => {
 			sections.push(`**Request:** ${req.method} ${req.url}`);
 			if (req.requestBody) {
-				sections.push('```json', JSON.stringify(req.requestBody, null, 2), '```');
+				sections.push(
+					'```json',
+					capJsonBlock(JSON.stringify(req.requestBody, null, 2), saved),
+					'```',
+				);
 			}
 			if (req.mockResponse !== undefined) {
 				sections.push('**Mock response:**');
-				sections.push('```json', JSON.stringify(req.mockResponse, null, 2), '```');
+				sections.push(
+					'```json',
+					capJsonBlock(JSON.stringify(req.mockResponse, null, 2), saved),
+					'```',
+				);
 			}
+		};
+		const reqs = elideMiddle(nr.interceptedRequests, MAX_RENDERED_REQUESTS_PER_NODE);
+		for (const req of reqs.head) renderRequest(req);
+		if (reqs.omitted.length > 0) {
+			saved.chars += reqs.omitted.reduce((n, r) => n + JSON.stringify(r).length, 0);
+			sections.push(`_… ${String(reqs.omitted.length)} further requests omitted for size …_`);
 		}
+		for (const req of reqs.tail) renderRequest(req);
 
 		const nodeOutputs = getNodeOutputs(nr.outputs);
 		const outputCount = getNumber(nr.outputCount);
 		const truncated = getOptionalBoolean(nr.truncated);
 		sections.push(
-			...renderNodeOutputs(nodeName, nodeOutputs, outputCount, truncated, wf?.connections),
+			...renderNodeOutputs(nodeName, nodeOutputs, outputCount, truncated, wf?.connections, saved),
 		);
 
 		sections.push('');
@@ -1286,9 +1472,11 @@ export function buildVerificationArtifact(
 	workflowId?: string,
 ): VerificationArtifact {
 	const wf = workflowJsons.find((w) => w.id === workflowId) ?? workflowJsons[0];
+	const saved = { chars: 0 };
 	return {
 		workflowContext: buildWorkflowContextBlock(wf),
-		scenarioContext: buildScenarioContextBlock(scenario, evalResult, wf),
+		scenarioContext: buildScenarioContextBlock(scenario, evalResult, wf, saved),
+		truncationSavedChars: saved.chars,
 	};
 }
 

@@ -3,13 +3,12 @@ name: planned-task-runtime
 description: >-
   Handles system follow-up turns: planned-task-follow-up (synthesize, replan,
   build-workflow, checkpoint), background-task-completed, running-tasks context,
-  create-tasks silence rules, and detached delegate completion. Load whenever
-  any of these tags appear or after spawning   create-tasks or delegate.
+  and create-tasks silence rules. Load whenever any of these tags appear or
+  after calling create-tasks.
 recommended_tools:
   - create-tasks
   - complete-checkpoint
   - build-workflow
-  - delegate
   - task-control
   - workflows
   - verify-built-workflow
@@ -20,12 +19,12 @@ recommended_tools:
 
 Load this skill when the current message contains `<planned-task-follow-up>`,
 `<background-task-completed>`, `<running-tasks>`, or immediately after calling
-`create-tasks` or `delegate`.
+`create-tasks`. Before calling `create-tasks`, load it via `load_tool` if it is
+not already visible (search "create tasks" if needed).
 
 ## Silence after spawning tasks
 
-**After calling detached or scheduled task tools** (`delegate` or
-`create-tasks`): do not write any text. The task card or approval card shows the
+**After calling `create-tasks`**: do not write any text. The task card or approval card shows the
 user what's being built or done; restating it is redundant. Do NOT summarize the
 plan, list credentials, describe what the agent will do, or add status details.
 Progress is already visible to the user in real time.
@@ -37,7 +36,7 @@ invent synthetic follow-up turns.
 
 ## Never poll
 
-**Never poll and never sleep.** Background tasks (`delegate`) settle via
+**Never poll and never sleep.** Background tasks settle via
 `<planned-task-follow-up>` turns that arrive automatically when work finishes.
 After you spawn or acknowledge one, end your turn. Do not call
 `workflows(action="list")`, `executions(action="list")`, or any shell command
@@ -48,9 +47,6 @@ yourself. Do not re-dispatch a build whose task ID is already visible in
 
 When `<running-tasks>` context is present, use it only to reference active task
 IDs for cancellation or corrections.
-
-Always pass `conversationContext` when spawning background agents (`delegate`) —
-summarize what was discussed, decisions made, and information gathered.
 
 If the user sends a correction while a build is running, call
 `task-control(action="correct-task")` with the task ID and correction.
@@ -81,7 +77,8 @@ create another plan.
 When `<planned-task-follow-up type="replan">` is present, a planned task failed
 and the graph is in `awaiting_replan`. You MUST take action in this same turn —
 handle a single simple task directly (matching tool: `build-workflow`,
-`data-tables`, `delegate`, etc.), call `create-tasks` with
+`data-tables`, etc.), load `create-tasks` via `load_tool` if needed and call
+`create-tasks` with
 `planningContext.source: "replan"` for multiple dependent tasks, or explain the
 blocker to the user if nothing sensible remains. Do NOT reply with an
 acknowledgement or status update alone — the scheduler will not fire another
@@ -91,7 +88,8 @@ Replan routing (do not re-plan from scratch):
 
 - One simple task remains (single data-table op, credential setup, single-workflow
   patch) → handle directly with the matching tool.
-- Multiple dependent tasks still need scheduling → `create-tasks` with
+- Multiple dependent tasks still need scheduling → load `create-tasks` via
+  `load_tool` if needed, then call `create-tasks` with
   `planningContext.source: "replan"`.
 - Nothing sensible remains → explain the blocker to the user.
 
@@ -157,8 +155,8 @@ and let replan take over.
 ## Background task completed
 
 When `<background-task-completed>` is present, a detached background task
-finished. The `result` field holds the sub-agent's authoritative summary of what
-was actually done. **When you write the user-facing recap, take factual details —
+finished (for example eval setup). The `result` field holds the task's
+authoritative summary of what was actually done. **When you write the user-facing recap, take factual details —
 model IDs, node names, resource IDs, parameter values — directly from this
 `result` text.** Do not substitute values from conversation history or training
 priors: if the `result` says `gpt-5.4-mini`, write `gpt-5.4-mini`, not "GPT-4o

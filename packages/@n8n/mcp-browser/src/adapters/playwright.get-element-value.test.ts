@@ -55,9 +55,10 @@ describe('PlaywrightAdapter.getElementValue', () => {
 		const value = await adapter.getElementValue('p1', { ref: 'e5' });
 
 		expect(value).toBe('secret-in-code-block');
+		expect(locator.innerText).toHaveBeenCalled();
 	});
 
-	it('falls back to inner text when the input value is empty', async () => {
+	it('returns an empty form value without falling back to text', async () => {
 		const locator: FakeLocator = {
 			count: vi.fn().mockResolvedValue(1),
 			inputValue: vi.fn().mockResolvedValue(''),
@@ -67,7 +68,8 @@ describe('PlaywrightAdapter.getElementValue', () => {
 
 		const value = await adapter.getElementValue('p1', { ref: 'e5' });
 
-		expect(value).toBe('text-content');
+		expect(value).toBe('');
+		expect(locator.innerText).not.toHaveBeenCalled();
 	});
 
 	it('reads the value for a selector target', async () => {

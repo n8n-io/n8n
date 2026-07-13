@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
@@ -724,18 +725,20 @@ describe('AgentTaskService', () => {
 	});
 
 	describe('runNow', () => {
+		const requestingUser = mock<User>({ id: 'user-9' });
+
 		it('runs the task immediately as the requesting user even when unpublished', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(makeTask());
 			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null }));
 			(agentExecutionOrchestratorService.executeForTaskNow as Mock).mockReturnValue(emptyStream());
 
-			await service.runNow(AGENT_ID, 'task-1', 'user-9');
+			await service.runNow(AGENT_ID, 'task-1', requestingUser);
 
 			expect(agentExecutionOrchestratorService.executeForTaskNow).toHaveBeenCalledWith(
 				expect.objectContaining({
 					agentId: AGENT_ID,
 					projectId: 'project-1',
-					userId: 'user-9',
+					user: requestingUser,
 					taskId: 'task-1',
 					message: expect.stringContaining('Summarize messages'),
 					memory: expect.objectContaining({ resourceId: 'task:task-1' }),
@@ -746,7 +749,9 @@ describe('AgentTaskService', () => {
 		it('throws NotFoundError when the task does not exist', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(null);
 
-			await expect(service.runNow(AGENT_ID, 'missing', 'user-9')).rejects.toThrow(NotFoundError);
+			await expect(service.runNow(AGENT_ID, 'missing', requestingUser)).rejects.toThrow(
+				NotFoundError,
+			);
 			expect(agentExecutionOrchestratorService.executeForTaskNow).not.toHaveBeenCalled();
 		});
 
@@ -755,7 +760,7 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent());
 			(agentExecutionOrchestratorService.executeForTaskNow as Mock).mockReturnValue(emptyStream());
 
-			await service.runNow(AGENT_ID, 'task-1', 'user-9');
+			await service.runNow(AGENT_ID, 'task-1', requestingUser);
 			await new Promise((resolve) => setImmediate(resolve));
 
 			expect(taskRepository.update).not.toHaveBeenCalled();

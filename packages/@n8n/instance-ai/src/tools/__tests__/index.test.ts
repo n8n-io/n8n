@@ -40,10 +40,6 @@ vi.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
 }));
 
-vi.mock('../orchestration/delegate.tool', () => ({
-	createDelegateTool: vi.fn(() => ({ id: 'delegate' })),
-}));
-
 vi.mock('../evals/evals.tool', () => ({
 	createEvalsTool: vi.fn(() => ({ id: 'evals' })),
 }));
@@ -159,9 +155,9 @@ describe('domain tool construction', () => {
 			'build-workflow': { id: 'build-workflow' },
 		});
 
-		const { createWorkflowsTool } = await import('../workflows.tool');
-		const { createNodesTool } = await import('../nodes.tool');
-		const { createDataTablesTool } = await import('../data-tables.tool');
+		const { createWorkflowsTool } = await import('../workflows.tool.js');
+		const { createNodesTool } = await import('../nodes.tool.js');
+		const { createDataTablesTool } = await import('../data-tables.tool.js');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
 		expect(createNodesTool).toHaveBeenCalledWith(context);
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
@@ -202,5 +198,6 @@ describe('domain tool construction', () => {
 
 		expect(orchestrationTools.has('create-tasks')).toBe(true);
 		expect(orchestrationTools.has('plan')).toBe(false);
+		expect(orchestrationTools.has('delegate')).toBe(false);
 	});
 });

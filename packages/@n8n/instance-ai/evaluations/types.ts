@@ -243,9 +243,14 @@ export interface ExecutionScenarioResult {
 	failureCategory?: string;
 	/** Detailed root cause explanation */
 	rootCause?: string;
+	/** Verifier returned no verdict after all attempts (infra failure, not a
+	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
+	 *  mirroring `BuildExpectationResult.incomplete`. */
+	incomplete?: boolean;
 }
 
-/** Verdict for one author-written build expectation. Informational only. */
+/** Verdict for one author-written build expectation. Scored as a unit in the
+ *  pass rate alongside execution scenarios. */
 export interface BuildExpectationResult {
 	expectation: string;
 	pass: boolean;
@@ -270,7 +275,8 @@ export interface WorkflowTestCaseResult {
 	workflowChecks?: CheckOutcome[];
 	/** Captured build-time sub-agent/tool activity for builder debugging. */
 	buildTrace?: BuildTrace;
-	/** Per-expectation verdicts from the build-expectations judge. Not consumed by pass@k. */
+	/** Per-expectation verdicts from the build-expectations judge. Aggregated as
+	 *  scoring units alongside execution scenarios. */
 	buildExpectationResults?: BuildExpectationResult[];
 	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
 	 *  configs each get their own URL for canvas/execution links. */
@@ -380,6 +386,8 @@ export interface SetupCardRequest {
 export interface ExecutionScenarioAggregation {
 	scenario: ExecutionScenario;
 	runs: ExecutionScenarioResult[];
+	/** Runs where the verifier returned a verdict (excludes `incomplete`). */
+	evaluatedCount: number;
 	passCount: number;
 	passRate: number;
 	/** probability at least 1 of k attempts passes */

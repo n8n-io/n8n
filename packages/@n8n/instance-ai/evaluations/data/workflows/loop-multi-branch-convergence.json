@@ -1,0 +1,19 @@
+{
+	"description": "Per-workflow parallel extraction with convergence: each workflow in the array gets node list, connections, and metadata extracted in parallel branches that merge, then one signed payload POST. Loop Over Items or Split Out are both valid ways to iterate the array.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When the webhook receives a workflows array, process each workflow definition independently — extract its node list, connection map, and metadata in parallel, combine those pieces, then move on to the next workflow. When all workflows are processed, output one signed payload via POST https://api.example.com/sign."
+		}
+	],
+	"messageBudget": 10,
+	"complexity": "complex",
+	"tags": ["build", "loops", "webhook", "http-request", "merge"],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"Each workflow in the input array is processed individually (via Split Out, Loop Over Items, or equivalent per-item iteration over the workflows array).",
+		"For each workflow, multiple parallel branches extract node list, connections, and metadata and converge via Merge (or equivalent) before moving to the next workflow or the final sign step.",
+		"A single POST to https://api.example.com/sign runs once per webhook execution with the aggregated signed payload (executeOnce or runOnceForAllItems on the sign/aggregate step if it uses $input.all())."
+	]
+}

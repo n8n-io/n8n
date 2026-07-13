@@ -229,6 +229,112 @@ describe('processRunExecutionData', () => {
 			// the status was `waiting` before
 			expect(result.data.resultData.runData.waitingNode[0].executionStatus).toEqual('success');
 		});
+
+		test('restores dynamic-credential usage stashed on the resumed stack entry', async () => {
+			// ARRANGE
+			// The waiting task carrying the flags is popped on resume and the node re-runs
+			// disabled, so the usage a sub-execution reported while this execution waited
+			// rides on the stack entry metadata and must reach the freshly stamped task.
+			const node = createNodeData({ name: 'waitingNode', type: types.passThrough });
+			const workflow = new DirectedGraph()
+				.addNodes(node)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const data: IDataObject = { foo: 1 };
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: node.name, sourceData: null }] },
+				resultData: {
+					runData: {
+						waitingNode: [
+							toITaskData([{ data }], {
+								executionStatus: 'waiting',
+								usedDynamicCredentials: true,
+							}),
+						],
+					},
+					lastNodeExecuted: 'waitingNode',
+				},
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: { main: [[{ json: data }]] },
+							node,
+							source: null,
+							metadata: {
+								dynamicCredentialsUsage: {
+									usedDynamicCredentials: true,
+									attemptedDynamicCredentials: true,
+									dynamicCredentialsResolvedUserId: 'resolved-user',
+								},
+							},
+						},
+					],
+					runtimeData: { version: 1, establishedAt: 0, source: 'trigger' },
+				},
+				waitTill: new Date('2024-01-01'),
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			const [taskData] = result.data.resultData.runData.waitingNode;
+			expect(result.data.resultData.runData.waitingNode).toHaveLength(1);
+			expect(taskData.executionStatus).toEqual('success');
+			expect(taskData.usedDynamicCredentials).toBe(true);
+			expect(taskData.attemptedDynamicCredentials).toBe(true);
+			expect(result.data.executionData?.runtimeData?.executedByUserId).toBe('resolved-user');
+			// The stash is transport-only and must not persist into the task metadata.
+			expect(taskData.metadata?.dynamicCredentialsUsage).toBeUndefined();
+		});
+
+		test('restores an attempted-only stash without recording a resolved user', async () => {
+			// ARRANGE
+			const node = createNodeData({ name: 'waitingNode', type: types.passThrough });
+			const workflow = new DirectedGraph()
+				.addNodes(node)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const data: IDataObject = { foo: 1 };
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: node.name, sourceData: null }] },
+				resultData: {
+					runData: { waitingNode: [toITaskData([{ data }], { executionStatus: 'waiting' })] },
+					lastNodeExecuted: 'waitingNode',
+				},
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: { main: [[{ json: data }]] },
+							node,
+							source: null,
+							metadata: {
+								dynamicCredentialsUsage: {
+									attemptedDynamicCredentials: true,
+									// Must be ignored: a resolved user requires a used flag.
+									dynamicCredentialsResolvedUserId: 'resolved-user',
+								},
+							},
+						},
+					],
+					runtimeData: { version: 1, establishedAt: 0, source: 'trigger' },
+				},
+				waitTill: new Date('2024-01-01'),
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			const [taskData] = result.data.resultData.runData.waitingNode;
+			expect(taskData.attemptedDynamicCredentials).toBe(true);
+			expect(taskData.usedDynamicCredentials).toBeUndefined();
+			expect(result.data.executionData?.runtimeData?.executedByUserId).toBeUndefined();
+		});
 	});
 
 	describe('workflow issues', () => {

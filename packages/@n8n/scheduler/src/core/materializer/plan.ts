@@ -1,6 +1,7 @@
 import { Time } from '@n8n/constants';
 
-import { computeNextRunAt } from '../recurrence/next-run';
+import { occurrencesFrom } from '../recurrence/next-run';
+import { resolveSchedule } from '../recurrence/resolve';
 import type { ScheduledJob } from '../types';
 
 /**
@@ -32,24 +33,32 @@ export interface OccurrencePlan {
 export function planOccurrences(
 	job: ScheduledJob,
 	now: Date,
-	options: { windowSeconds: number; maxPerJob: number },
+	options: { windowSeconds: number; maxPerJob: number; defaultTimezone: string },
 ): OccurrencePlan {
+	// Resolved here, not at claim time, so a corrupt row throws inside the
+	// materializer's per-job isolation and defers only this job.
+	const schedule = resolveSchedule(job, options.defaultTimezone);
 	const windowEnd = now.getTime() + options.windowSeconds * Time.seconds.toMilliseconds;
 
+	if (job.nextRunAt === null) {
+		return { occurrences: [], nextRunAt: null, lastFiredAt: job.lastFiredAt };
+	}
+
 	const occurrences: Date[] = [];
-	let cursor = job.nextRunAt;
+	const fires = occurrencesFrom(schedule, job.nextRunAt);
+	let fire = fires.next();
 	while (
-		cursor !== null &&
-		cursor.getTime() <= windowEnd &&
+		!fire.done &&
+		fire.value.getTime() <= windowEnd &&
 		occurrences.length < options.maxPerJob
 	) {
-		occurrences.push(cursor);
-		cursor = computeNextRunAt(job.schedule, cursor);
+		occurrences.push(fire.value);
+		fire = fires.next();
 	}
 
 	return {
 		occurrences,
-		nextRunAt: cursor,
+		nextRunAt: fire.done ? null : fire.value,
 		lastFiredAt: occurrences.at(-1) ?? job.lastFiredAt,
 	};
 }

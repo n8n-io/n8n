@@ -1,6 +1,5 @@
 import type { Folder, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -9,9 +8,11 @@ import { FolderSerializer } from './folder.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
 import type { WorkflowExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
+import type { WorkflowExportResult } from '../workflow/workflow.exporter';
 
 export interface FolderExportRequest {
 	user: User;
@@ -34,6 +35,12 @@ export interface FolderExportResult {
 	requirements: WorkflowExportRequirements;
 }
 
+interface FolderWriteContext {
+	childrenByParent: Map<string, Folder[]>;
+	workflowIdsByFolder: Map<string, string[]>;
+	request: FolderExportRequest;
+}
+
 @Service()
 export class FolderExporter {
 	constructor(
@@ -50,7 +57,12 @@ export class FolderExporter {
 			['folder:read'],
 		);
 
-		this.assertAllRequestedFoldersFound(request.folderIds, folders);
+		await assertEveryRequestedEntityAccessible(
+			'folder',
+			request.folderIds,
+			folders,
+			async (ids) => await this.folderFinder.findExistingFolderIds(ids),
+		);
 
 		const { roots, childrenByParent } = this.buildForest(folders);
 
@@ -59,14 +71,11 @@ export class FolderExporter {
 		);
 
 		const foldersDir = request.basePrefix ? `${request.basePrefix}/folders` : 'folders';
-		return await this.writeLevel(
-			roots,
-			foldersDir,
-			null,
+		return await this.exportLevel(roots, foldersDir, null, {
 			childrenByParent,
 			workflowIdsByFolder,
 			request,
-		);
+		});
 	}
 
 	/**
@@ -97,73 +106,91 @@ export class FolderExporter {
 		return { roots, childrenByParent };
 	}
 
-	/**
-	 * Writes a set of sibling folders and their descendants under `parentDir`,
-	 * returning the folder shells plus the workflows contained in each folder. A
-	 * fresh allocator per call scopes slug collisions to the parent directory;
-	 * sub-folders nest directly (no repeated `folders/` segment). Contained
-	 * workflows are delegated to `WorkflowExporter` with the folder's own target
-	 * as `basePrefix`, so they land under `<folderTarget>/workflows/...`.
-	 *
-	 * `reservedName` is the `workflows` container dir already written under
-	 * `parentDir` by the parent folder — reserving it makes a sibling folder that
-	 * slugifies to `workflows` get suffixed instead of swallowing those workflows.
-	 */
-	private async writeLevel(
+	private async exportLevel(
 		siblings: Folder[],
 		parentDir: string,
 		effectiveParentId: string | null,
-		childrenByParent: Map<string, Folder[]>,
-		workflowIdsByFolder: Map<string, string[]>,
-		request: FolderExportRequest,
+		context: FolderWriteContext,
 		reservedName?: string,
 	): Promise<FolderExportResult> {
+		// File names need to be unique within a folder only.
 		const allocator = new UniqueFilenameAllocator(parentDir, 'folder');
 		if (reservedName) allocator.reserve(reservedName);
-		const entries: ManifestEntry[] = [];
-		const workflowEntries: ManifestEntry[] = [];
-		const requirementParts: WorkflowExportRequirements[] = [];
 
+		const results: FolderExportResult[] = [];
 		for (const folder of this.orderedByCreation(siblings)) {
 			const target = allocator.allocate(folder.name);
-			const serialized = this.folderSerializer.serialize(folder, effectiveParentId);
-
-			request.writer.writeDirectory(target);
-			request.writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
-
-			entries.push({ id: folder.id, name: folder.name, target });
-
-			const workflowIds = workflowIdsByFolder.get(folder.id);
-			let hasContainedWorkflows = false;
-			if (workflowIds && workflowIds.length > 0) {
-				hasContainedWorkflows = true;
-				const contained = await this.workflowExporter.export({
-					user: request.user,
-					writer: request.writer,
-					workflowIds,
-					basePrefix: target,
-				});
-				workflowEntries.push(...contained.entries);
-				requirementParts.push(contained.requirements);
-			}
-
-			const children = childrenByParent.get(folder.id) ?? [];
-			const descendants = await this.writeLevel(
-				children,
-				target,
-				folder.id,
-				childrenByParent,
-				workflowIdsByFolder,
-				request,
-				// Reserve the workflows container so a child folder can't collide with it.
-				hasContainedWorkflows ? 'workflows' : undefined,
-			);
-			entries.push(...descendants.entries);
-			workflowEntries.push(...descendants.workflowEntries);
-			requirementParts.push(descendants.requirements);
+			results.push(await this.exportFolder(folder, target, effectiveParentId, context));
 		}
 
-		return { entries, workflowEntries, requirements: mergeRequirements(...requirementParts) };
+		return this.mergeFolderExportResults(results);
+	}
+
+	private async exportFolder(
+		folder: Folder,
+		target: string,
+		effectiveParentId: string | null,
+		context: FolderWriteContext,
+	): Promise<FolderExportResult> {
+		const { childrenByParent, workflowIdsByFolder, request } = context;
+
+		this.exportFolderShell(folder, target, effectiveParentId, request.writer);
+
+		const workflowIds = workflowIdsByFolder.get(folder.id) ?? [];
+		const contained = await this.exportContainedWorkflows(workflowIds, target, request);
+
+		const descendants = await this.exportLevel(
+			childrenByParent.get(folder.id) ?? [],
+			target,
+			folder.id,
+			context,
+			// Reserve the workflows folder so a child folder can't collide with it.
+			workflowIds.length > 0 ? 'workflows' : undefined,
+		);
+
+		const own: FolderExportResult = {
+			entries: [{ id: folder.id, name: folder.name, target }],
+			workflowEntries: contained.entries,
+			requirements: contained.requirements,
+		};
+
+		return this.mergeFolderExportResults([own, descendants]);
+	}
+
+	private exportFolderShell(
+		folder: Folder,
+		target: string,
+		effectiveParentId: string | null,
+		writer: PackageWriter,
+	): void {
+		const serialized = this.folderSerializer.serialize(folder, effectiveParentId);
+		writer.writeDirectory(target);
+		writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
+	}
+
+	private async exportContainedWorkflows(
+		workflowIds: string[],
+		basePrefix: string,
+		request: FolderExportRequest,
+	): Promise<WorkflowExportResult> {
+		if (workflowIds.length === 0) {
+			return { entries: [], requirements: mergeRequirements() };
+		}
+
+		return await this.workflowExporter.export({
+			user: request.user,
+			writer: request.writer,
+			workflowIds,
+			basePrefix,
+		});
+	}
+
+	private mergeFolderExportResults(results: FolderExportResult[]): FolderExportResult {
+		return {
+			entries: results.flatMap((result) => result.entries),
+			workflowEntries: results.flatMap((result) => result.workflowEntries),
+			requirements: mergeRequirements(...results.map((result) => result.requirements)),
+		};
 	}
 
 	/**
@@ -174,30 +201,7 @@ export class FolderExporter {
 	private orderedByCreation(folders: Folder[]): Folder[] {
 		return [...folders].sort((a, b) => {
 			const byCreatedAt = a.createdAt.getTime() - b.createdAt.getTime();
-			if (byCreatedAt !== 0) return byCreatedAt;
-			return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+			return byCreatedAt !== 0 ? byCreatedAt : a.id.localeCompare(b.id);
 		});
-	}
-
-	private assertAllRequestedFoldersFound(
-		requestedFolderIds: string[],
-		foundFolders: Array<{ id: string }>,
-	) {
-		const foundFolderIds = new Set(foundFolders.map(({ id }) => id));
-		const missingFolderIds = requestedFolderIds.filter((id) => !foundFolderIds.has(id));
-
-		if (missingFolderIds.length > 0) {
-			const displayedFolderIds = missingFolderIds.slice(0, 20);
-			const omittedCount = missingFolderIds.length - displayedFolderIds.length;
-
-			throw new UserError(
-				`${missingFolderIds.length} folder(s) not found or not accessible. Export aborted.`,
-				{
-					description: `Missing folder IDs: ${displayedFolderIds.join(', ')}${
-						omittedCount > 0 ? `, and ${omittedCount} more` : ''
-					}`,
-				},
-			);
-		}
 	}
 }

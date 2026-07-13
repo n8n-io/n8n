@@ -92,7 +92,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
-| [public.scheduled_job](public.scheduled_job.md) | 17 |  | BASE TABLE |
+| [public.scheduled_job](public.scheduled_job.md) | 19 |  | BASE TABLE |
 | [public.scheduled_task](public.scheduled_task.md) | 16 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
@@ -119,6 +119,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
+| [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -1108,6 +1109,8 @@ erDiagram
   timestamp_3__with_time_zone nextRunAt
   varchar_36_ nodeId
   json payload
+  integer recurrenceSize
+  varchar_16_ recurrenceUnit
   varchar_128_ taskType
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
@@ -1369,6 +1372,14 @@ erDiagram
   timestamp_3__with_time_zone latestEvent
   varchar_128_ name
   bigint rootCount
+  varchar_36_ workflowId
+  varchar_128_ workflowName
+}
+"public.workflow_statistics_delta" {
+  timestamp_3__with_time_zone createdAt
+  bigint id
+  varchar_128_ name
+  smallint rootCountDelta
   varchar_36_ workflowId
   varchar_128_ workflowName
 }

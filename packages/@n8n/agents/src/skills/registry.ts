@@ -27,6 +27,10 @@ export class InvalidRuntimeSkillError extends Error {
 	}
 }
 
+export interface LoadRuntimeSkillSourceFromDirectoryOptions {
+	exclude?: string[];
+}
+
 export function createRuntimeSkillSource(skills: RuntimeSkill[]): RuntimeSkillSource {
 	const normalizedSkills = normalizeRuntimeSkills(skills);
 	const skillsById = new Map(normalizedSkills.map((skill) => [skill.id, skill]));
@@ -51,8 +55,45 @@ export function createRuntimeSkillRegistry(skills: RuntimeSkill[]): RuntimeSkill
 	};
 }
 
-export function loadRuntimeSkillSourceFromDirectory(rootDir: string): RuntimeSkillSource {
-	const skills = loadRuntimeSkillsFromDirectory(rootDir);
+/**
+ * Hide skills from an already-loaded source. Recomputes `skillsHash` so
+ * manifests/prebaked bundles keyed on it can't match a differently-filtered
+ * catalog, and wraps the loaders so hidden skills are unavailable rather than
+ * just absent from the registry.
+ */
+export function filterRuntimeSkillSource(
+	source: RuntimeSkillSource,
+	excludeSkillIds: string[],
+): RuntimeSkillSource {
+	const excluded = new Set(excludeSkillIds);
+	const skills = source.registry.skills.filter((skill) => !excluded.has(skill.id));
+	const { loadFile } = source;
+
+	return {
+		...source,
+		registry: {
+			...source.registry,
+			skillsHash: hashRegistry(skills),
+			skills,
+		},
+		loadSkill: async (skillId) => (excluded.has(skillId) ? null : await source.loadSkill(skillId)),
+		...(loadFile
+			? {
+					loadFile: async (skillId: string, filePath: string) =>
+						excluded.has(skillId) ? null : await loadFile(skillId, filePath),
+				}
+			: {}),
+	};
+}
+
+export function loadRuntimeSkillSourceFromDirectory(
+	rootDir: string,
+	options: LoadRuntimeSkillSourceFromDirectoryOptions = {},
+): RuntimeSkillSource {
+	const excludedSkillIds = new Set(options.exclude ?? []);
+	const skills = loadRuntimeSkillsFromDirectory(rootDir).filter(
+		(skill) => !excludedSkillIds.has(skill.id),
+	);
 	const source = createRuntimeSkillSource(skills);
 	const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
 
