@@ -6,6 +6,8 @@ import { useEventListener, useSessionStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
@@ -20,6 +22,8 @@ const documentTitle = useDocumentTitle();
 const route = useRoute();
 const router = useRouter();
 const uiStore = useUIStore();
+const rootStore = useRootStore();
+const telemetry = useTelemetry();
 const { isCtrlKeyPressed } = useDeviceSupport();
 
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
@@ -77,6 +81,16 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
 // These run once when the user enters the InstanceAi feature. Route changes
 // (empty ↔ thread) don't remount the layout, so the listeners persist.
 onMounted(() => {
+	// In-app navigations expose the previous route via history state; direct
+	// visits (bookmark, external link) fall back to the document referrer.
+	const previousRoute = router.options.history.state.back;
+	const sourceUrl = typeof previousRoute === 'string' ? previousRoute : document.referrer || null;
+
+	telemetry.track('User viewed AI assistant', {
+		instance_id: rootStore.instanceId,
+		source_url: sourceUrl,
+	});
+
 	void store.loadThreads();
 	void store.fetchCredits();
 	store.startCreditsPushListener();

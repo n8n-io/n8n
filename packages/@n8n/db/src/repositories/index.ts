@@ -36,6 +36,10 @@ export { ProjectRepository, type ProjectListOptions } from './project.repository
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
 export { ScheduledJobRepository } from './scheduled-job.repository';
+export type {
+	NewScheduledJob,
+	ScheduledJobDefinitionUpdate,
+} from './scheduled-job.repository';
 export { ScheduledTaskRepository } from './scheduled-task.repository';
 export type {
 	ClaimDueTasksOptions,

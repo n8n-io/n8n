@@ -12,7 +12,7 @@
 		{
 			"role": "user",
 			"text": [
-				"Scrape the top trending topics from Hacker News, and read the 'Content Ideas' tab in my Marketing spreadsheet. Use Gemini to tailor the copy per platform — concise with hashtags for X, professional for LinkedIn, a discussion-style post for Reddit. Stagger them across the week: X on Monday 9am, LinkedIn on Wednesday 2pm, Reddit on Friday 11am.",
+				"Scrape the top trending topics from Hacker News — the top 5 titles are plenty — and read the 'Content Ideas' tab in my Marketing spreadsheet. Use Gemini to tailor the copy per platform — concise with hashtags for X, professional for LinkedIn, a discussion-style post for Reddit — one post per platform is enough. Stagger them across the week: X on Monday 9am, LinkedIn on Wednesday 2pm, Reddit on Friday 11am.",
 				"For every HITL step during the build — keep the run moving without stalling. Allow all permissions. Use any of the existing credentials or skip."
 			]
 		},

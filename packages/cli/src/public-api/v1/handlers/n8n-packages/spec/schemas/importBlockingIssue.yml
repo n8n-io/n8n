@@ -86,6 +86,45 @@ oneOf:
       name:
         type: string
   - type: object
+    description: >
+      A package folder that cannot be imported as-is. `kind` distinguishes the cause:
+      `parent-mismatch` (a folder matched by id sits under a different parent than the
+      package places it), `id-in-other-project` (the folder id already exists in a
+      different project — ids are globally unique), or `fail-policy` (the folder already
+      exists and `folderConflictPolicy` is `fail`).
+    required:
+      - type
+      - kind
+      - sourceFolderId
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - folder-conflict
+      kind:
+        type: string
+        enum:
+          - parent-mismatch
+          - id-in-other-project
+          - fail-policy
+      sourceFolderId:
+        type: string
+      name:
+        type: string
+      existingParentFolderId:
+        type: string
+        nullable: true
+        description: "For `parent-mismatch`: the matched folder's current parent in the target."
+      expectedParentFolderId:
+        type: string
+        nullable: true
+        description: 'For `parent-mismatch`: the parent the package would place the folder under.'
+      existingProjectId:
+        type: string
+        nullable: true
+        description: 'For `id-in-other-project`: the project that already owns the id.'
+  - type: object
     description: A credential reference that could not be resolved in the target project.
     required:
       - type
