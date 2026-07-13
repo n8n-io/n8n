@@ -256,6 +256,39 @@ describe('Aws Credential', () => {
 			});
 		});
 
+		describe('Dual-stack and FIPS endpoints', () => {
+			it.each([
+				{
+					host: 's3.dualstack.us-east-1.amazonaws.com',
+					path: '/bucket/key',
+				},
+			])(
+				'should sign $host requests with the s3 service and the host-derived region',
+				async ({ host, path }) => {
+					const result = await aws.authenticate(credentials, {
+						...requestOptions,
+						baseURL: '',
+						url: `https://${host}${path}`,
+					});
+
+					// The credential region is eu-central-1; the endpoint's region must win.
+					// The resolved s3 service must also get the S3-specific signer rules.
+					expect(MockSignatureV4).toHaveBeenCalledWith(
+						expect.objectContaining({
+							service: 's3',
+							region: 'us-east-1',
+							applyChecksum: true,
+							uriEscapePath: false,
+						}),
+					);
+					expect(mockSmithySignFn).toHaveBeenCalledWith(
+						expect.objectContaining({ hostname: host, path }),
+					);
+					expect(result.url).toBe(`https://${host}${path}`);
+				},
+			);
+		});
+
 		it('should handle an IRequestOptions object with form instead of body', async () => {
 			const result = await aws.authenticate({ ...credentials }, {
 				...requestOptions,

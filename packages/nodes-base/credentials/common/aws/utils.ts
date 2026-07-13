@@ -215,14 +215,23 @@ export function assertSupportedAwsRegion(region: unknown): asserts region is AWS
 }
 
 /**
+ * Shape of an AWS region label (`us-east-1`, `us-gov-west-1`). Fallback only:
+ * lets a mistyped or not-yet-supported region reach the caller's validation
+ * instead of being silently dropped.
+ */
+export const AWS_REGION_SHAPE_PATTERN = /^[a-z]{2}(-[a-z]+)+-\d+$/;
+
+/**
  * Parses an AWS service URL to extract the service name and region.
  * Some AWS services are global and don't have a region. Recognizes both
- * public endpoints (`<service>.<region>.amazonaws.com`) and PrivateLink
- * endpoints (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`).
+ * public endpoints (`<service>.<region>.amazonaws.com`, including dual-stack
+ * and FIPS variants) and PrivateLink endpoints
+ * (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`).
  *
- * The returned region is not validated against the supported region list;
- * callers must check it (e.g. with {@link assertSupportedAwsRegion}) before
- * using it for signing.
+ * The region is the rightmost hostname label that is a supported AWS region,
+ * else the rightmost region-shaped label, else null. It is not validated
+ * against the supported region list; callers must check it (e.g. with
+ * {@link assertSupportedAwsRegion}) before using it for signing.
  *
  * @param url - The AWS service URL to parse
  * @returns Object containing the service name and region (null for global services)
@@ -237,8 +246,21 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
 		return { service, region };
 	}
 	// Handle both .amazonaws.com and .amazonaws.com.cn domains
-	const [service, region] = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
-	return { service, region: region ?? null };
+	const labels = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
+	// AWS places the region closest to the domain suffix; dualstack/fips/access-point
+	// labels — and bucket names, which may themselves look like a region — sit further
+	// left. Scan right-to-left: prefer the rightmost supported region, else the
+	// rightmost region-shaped label so unknown regions still fail validation downstream.
+	const findRightmost = (test: (label: string) => boolean): string | null => {
+		for (let i = labels.length - 1; i >= 0; i--) {
+			if (test(labels[i])) return labels[i];
+		}
+		return null;
+	};
+	const region =
+		findRightmost(isSupportedAwsRegion) ??
+		findRightmost((label) => AWS_REGION_SHAPE_PATTERN.test(label));
+	return { service: labels[0], region };
 }
 
 /**
@@ -592,8 +614,9 @@ export async function signOptions(
 
 	const httpRequest = buildSmithyHttpRequest(signOpts, method);
 
-	// signOpts.service is set only when the signing name differs from the endpoint name
-	// (e.g. bedrock-runtime → bedrock). Fall back to the first label of the hostname.
+	// awsGetSignInOptionsAndUpdateRequest always sets signOpts.service to the resolved
+	// signing name; the raw first-hostname-label fallback is defensive only and does
+	// not normalize (e.g. bedrock-runtime → bedrock).
 	const service = signOpts.service ?? httpRequest.hostname.split('.')[0];
 	const region = signOpts.region ?? 'us-east-1';
 
