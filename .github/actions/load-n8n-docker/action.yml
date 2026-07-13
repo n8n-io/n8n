@@ -55,7 +55,17 @@ runs:
 
     # An on-runner rebuild leaves tens of GB of builder cache behind; long
     # jobs (e.g. eval baselines) have exhausted runner disk because of it.
+    # Prune only under disk pressure: this action is shared, and sticky-disk
+    # runners keep the builder cache warm across jobs — an unconditional prune
+    # would cold-start the next on-runner build in every workflow using it.
     - name: Reclaim builder cache after fallback rebuild
       if: steps.restore.outputs.cache-hit != 'true'
       shell: bash
-      run: docker builder prune -f
+      run: |
+        free_gb=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+        if [ "${free_gb:-0}" -lt 25 ]; then
+          echo "Only ${free_gb}GB free — pruning builder cache"
+          docker builder prune -f
+        else
+          echo "Skipping prune: ${free_gb}GB free"
+        fi
