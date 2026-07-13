@@ -266,6 +266,8 @@ export const CustomTags = {
 						:style="{
 							width: 'var(--spacing--2xs)',
 							height: 'var(--spacing--2xs)',
+							marginTop: 'var(--spacing--5xs)',
+							marginInlineEnd: 'var(--spacing--4xs)',
 							borderRadius: 'var(--radius--full)',
 							backgroundColor: tag.color,
 							flexShrink: 0,
@@ -273,7 +275,7 @@ export const CustomTags = {
 					/>
 					<TagsInputItemText :class="ui.text" />
 					<TagsInputItemDelete :class="ui.delete" :disabled="disabled">
-						<N8nIcon icon="circle-x" size="small" />
+						<N8nIcon icon="x" size="small" />
 					</TagsInputItemDelete>
 				</template>
 			</TagsInput>

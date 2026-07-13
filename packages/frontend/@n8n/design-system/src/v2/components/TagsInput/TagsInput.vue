@@ -173,7 +173,12 @@ function getInputClass(isEmpty: boolean): string {
 	width: 100%;
 	min-height: var(--input--height);
 	max-height: var(--tags-input--max-height, none);
-	/* Padding lives on `.tags` so the scrollbar sits flush with the border. */
+	/*
+	 * Inset border shadow paints under content. Keep a 1px chrome gutter so
+	 * scrolling tags clip before the border; remaining inset stays on `.tags`
+	 * so the scrollbar sits flush with that edge.
+	 */
+	padding: var(--border-width, 1px);
 	overflow: hidden;
 	border-radius: var(--input--radius);
 	background-color: var(--input--color--background);
@@ -264,7 +269,7 @@ function getInputClass(isEmpty: boolean): string {
 	min-width: 0;
 	min-height: 0;
 	width: 100%;
-	padding: var(--tags-input--padding);
+	padding: calc(var(--tags-input--padding) - var(--border-width, 1px));
 	overflow: auto;
 }
 
@@ -331,6 +336,7 @@ function getInputClass(isEmpty: boolean): string {
 	min-width: var(--spacing--2xl);
 	min-height: var(--tag--height);
 	padding: 0;
+	padding-inline-start: var(--spacing--4xs);
 	border: none;
 	background: transparent;
 	outline: none;
