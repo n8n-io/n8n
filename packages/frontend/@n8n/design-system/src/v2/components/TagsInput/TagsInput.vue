@@ -247,7 +247,7 @@ onBeforeUnmount(() => {
 	width: 100%;
 	min-height: var(--input--height);
 	max-height: var(--tags-input--max-height, none);
-	padding: var(--border-width, 1px);
+	padding: 1px;
 	overflow: hidden;
 	border-radius: var(--input--radius);
 	background-color: var(--input--color--background);
@@ -343,7 +343,7 @@ onBeforeUnmount(() => {
 	min-width: 0;
 	min-height: 0;
 	width: 100%;
-	padding: calc(var(--tags-input--padding) - var(--border-width, 1px));
+	padding: calc(var(--tags-input--padding) - 1px);
 	overflow: auto;
 }
 
@@ -487,7 +487,7 @@ onBeforeUnmount(() => {
 	border: none;
 	border-radius: var(--radius--full);
 	background: transparent;
-	color: var(--color--text--tint-1);
+	color: var(--icon-color);
 	cursor: pointer;
 	margin-top: var(--tag--delete--offset);
 	transition: color var(--duration--snappy) var(--easing--ease-out);
@@ -495,7 +495,7 @@ onBeforeUnmount(() => {
 	&:hover,
 	&:focus {
 		outline: none;
-		color: var(--color--text--shade-1);
+		color: var(--icon-color--strong);
 	}
 
 	&:disabled,
