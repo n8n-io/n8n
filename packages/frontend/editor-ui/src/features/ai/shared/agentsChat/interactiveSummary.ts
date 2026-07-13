@@ -75,8 +75,18 @@ export function summariseInteractiveOutput(
 	}
 
 	if (toolName === CONFIGURE_CHANNEL_TOOL_NAME) {
-		if (typeof output.connected !== 'boolean') return undefined;
-		return output.connected ? 'Connected' : 'Skipped';
+		// `output` is the real tool result (`{ connected }`) once settled, but
+		// the optimistic update right after resume stores the raw resume
+		// payload (`{ approved }`) instead — mirrors the `connected`/`approved`
+		// fallback in `parseChannelResolvedValue` (messageMappers.ts).
+		const connected =
+			typeof output.connected === 'boolean'
+				? output.connected
+				: typeof output.approved === 'boolean'
+					? output.approved
+					: undefined;
+		if (connected === undefined) return undefined;
+		return connected ? 'Connected' : 'Skipped';
 	}
 
 	if (toolName === N8N_CHAT_ACTION_TOOL_NAME) {

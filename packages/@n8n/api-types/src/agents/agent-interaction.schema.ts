@@ -95,7 +95,7 @@ export type CredentialSuspendPayload = z.infer<typeof credentialSuspendPayloadSc
  */
 export const credentialResumeSchema = z.union([
 	z.object({ credentials: z.record(z.string()) }),
-	z.object({ approved: z.boolean() }),
+	z.object({ approved: z.literal(false) }),
 	z.object({ skipped: z.literal(true) }),
 ]);
 export type CredentialResumeData = z.infer<typeof credentialResumeSchema>;
