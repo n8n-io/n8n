@@ -453,6 +453,35 @@ describe('folder shell import', () => {
 		expect(await Container.get(WorkflowRepository).countBy({ id: localId })).toBe(1);
 	});
 
+	it('rejects a folder-nested workflow whose folder is missing from the manifest', async () => {
+		// Workflow nested under `folders/orphan`, but no such folder is declared.
+		const packageBuffer = await buildEntityPackageBuffer({
+			workflows: [
+				{
+					target: 'folders/orphan/workflows/triage',
+					workflow: serializedWorkflow({ id: 'WF', name: 'triage' }),
+				},
+			],
+		});
+
+		await expect(
+			importFolders({ user: owner, projectId: project.id, packageBuffer }),
+		).rejects.toThrow(/missing from the manifest/i);
+		expect(await Container.get(WorkflowRepository).countBy({ id: 'WF' })).toBe(0);
+	});
+
+	it('rejects a package whose manifest folder id disagrees with its folder.json', async () => {
+		const packageBuffer = await buildEntityPackageBuffer({
+			folders: [{ target: 'folders/f', folder: serializedFolder({ id: 'real-id', name: 'f' }) }],
+			// Manifest points the same target at a different id than folder.json declares.
+			manifestExtras: { folders: [{ id: 'manifest-id', name: 'f', target: 'folders/f' }] },
+		});
+
+		await expect(
+			importFolders({ user: owner, projectId: project.id, packageBuffer }),
+		).rejects.toThrow(/declares id "real-id" but the manifest lists it as "manifest-id"/);
+	});
+
 	it('blocks when a folder-nested workflow needs a credential missing under must-preexist', async () => {
 		const nestedWorkflow = serializedWorkflowWithCredential({
 			id: 'WF',

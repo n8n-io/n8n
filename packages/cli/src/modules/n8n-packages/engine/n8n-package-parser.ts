@@ -14,7 +14,7 @@ import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
-import { serializedFolderSchema } from '../spec/serialized/folder.schema';
+import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
 import { serializedProjectSchema } from '../spec/serialized/project.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
@@ -107,19 +107,29 @@ export class N8nPackageParser {
 		const path = `${entry.target}/folder.json`;
 		const wire = await this.readJson(reader, path, 'folder');
 
+		let folder: SerializedFolder;
 		try {
-			const folder = serializedFolderSchema.parse(wire);
-			return {
-				sourceFolderId: folder.id,
-				name: folder.name,
-				parentFolderId: folder.parentFolderId,
-			};
+			folder = serializedFolderSchema.parse(wire);
 		} catch (cause) {
 			if (cause instanceof ZodError) {
 				throw new UserError(`Package folder file at ${path} failed schema validation.`, { cause });
 			}
 			throw cause;
 		}
+
+		// Nested workflows route to folders by manifest id, but folders are created
+		// under folder.json's id — a mismatch would place a workflow in the wrong folder.
+		if (folder.id !== entry.id) {
+			throw new UserError(
+				`Package folder at ${path} declares id "${folder.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		return {
+			sourceFolderId: folder.id,
+			name: folder.name,
+			parentFolderId: folder.parentFolderId,
+		};
 	}
 
 	private async readProject(reader: PackageReader, entry: ManifestEntry): Promise<PreparedProject> {

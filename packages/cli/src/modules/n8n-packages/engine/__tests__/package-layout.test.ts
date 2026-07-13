@@ -69,8 +69,14 @@ describe('package-layout', () => {
 			expect(deriveParentFolderId('projects/x/folders/c/workflows/wf', map)).toBe('C');
 		});
 
-		it('returns null when the folder is not in the map', () => {
-			expect(deriveParentFolderId('folders/missing/workflows/wf', map)).toBeNull();
+		it('throws when a folder-nested workflow references a folder missing from the manifest', () => {
+			expect(() => deriveParentFolderId('folders/missing/workflows/wf', map)).toThrow(
+				/missing from the manifest/,
+			);
+		});
+
+		it('returns null for a project-root workflow even when its project has no folder entry', () => {
+			expect(deriveParentFolderId('projects/unknown/workflows/wf', map)).toBeNull();
 		});
 	});
 });
