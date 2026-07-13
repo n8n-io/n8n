@@ -5,6 +5,8 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import { sleep, UnexpectedError } from 'n8n-workflow';
 import type {
+	Cron,
+	CronExpression,
 	ExecutionError,
 	IConnections,
 	INode,
@@ -264,6 +266,66 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 				});
+			});
+		});
+
+		describe('schedule trigger interception', () => {
+			test('hands the registrar collector to the trigger context of an intercepted node', () => {
+				scheduleTriggerJobRegistrar.interceptsNode.mockReturnValue(true);
+				const registerCron = vi.fn();
+				scheduleTriggerJobRegistrar.createCollector.mockReturnValue({ registerCron });
+
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Schedule Trigger Node' });
+
+				const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+					vi.fn(),
+				);
+				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+
+				expect(scheduleTriggerJobRegistrar.interceptsNode).toHaveBeenCalledWith(node);
+				expect(scheduleTriggerJobRegistrar.createCollector).toHaveBeenCalledWith(workflow, node);
+
+				// The node's registerCron calls must reach the collector, not the
+				// in-memory scheduler.
+				const cron: Cron = { expression: '0 0 9 * * *' as CronExpression };
+				const onTick = vi.fn();
+				context.helpers.registerCron(cron, onTick);
+
+				expect(registerCron).toHaveBeenCalledWith(cron, onTick);
+			});
+
+			test('keeps the in-memory scheduling functions for a non-intercepted node', () => {
+				// interceptsNode returns false by default in this suite.
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Trigger Node' });
+
+				const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+					vi.fn(),
+				);
+				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+
+				expect(scheduleTriggerJobRegistrar.createCollector).not.toHaveBeenCalled();
+				// The context still exposes the default in-memory scheduling helper.
+				expect(typeof context.helpers.registerCron).toBe('function');
 			});
 		});
 
