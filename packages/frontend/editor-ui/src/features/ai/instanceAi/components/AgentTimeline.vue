@@ -254,6 +254,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				:agent-node="props.agentNode"
 				:entries="block.entries"
 				:active="block.active"
+				:awaiting-input="block.active && thread.isAwaitingConfirmation"
 			/>
 
 			<!-- User-facing text (leaf keeps the per-token content read out of this render) -->

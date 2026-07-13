@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon } from '@n8n/design-system';
 import type { InstanceAiMessage } from '@n8n/api-types';
 import { useThread } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
@@ -55,17 +54,16 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 	return { label: i18n.baseText('instanceAi.statusBar.thinking') };
 }
 
-const activity = computed(() => {
-	if (thread.isAwaitingConfirmation) {
-		return { label: i18n.baseText('instanceAi.statusBar.waitingForInput') };
-	}
-	return deriveActivity(thread.messages);
-});
+const activity = computed(() => deriveActivity(thread.messages));
 
 // Stay visible while the orchestrator streams, and also while a builder runs in
 // the background after the orchestrator run has ended (isStreaming === false).
+// Hidden while a confirmation is pending — the thinking-block header reads
+// "Waiting for your input" then, and the pending card itself is the prompt.
 const isVisible = computed(
-	() => thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0,
+	() =>
+		!thread.isAwaitingConfirmation &&
+		(thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0),
 );
 
 const formattedElapsed = computed(() => {
@@ -76,18 +74,11 @@ const formattedElapsed = computed(() => {
 	return `${String(m)}m ${String(remaining).padStart(2, '0')}s`;
 });
 
-const isCountingElapsed = computed(() => isVisible.value && !thread.isAwaitingConfirmation);
-
-watch(isVisible, (visible) => {
-	if (visible) {
-		elapsed.value = 0;
-	}
-});
-
 watch(
-	isCountingElapsed,
-	(counting) => {
-		if (counting) {
+	isVisible,
+	(visible) => {
+		if (visible) {
+			elapsed.value = 0;
 			timer = setInterval(() => {
 				elapsed.value++;
 			}, 1000);
@@ -108,25 +99,13 @@ onUnmounted(() => {
 
 <template>
 	<Transition name="status-bar">
-		<div
-			v-if="isVisible && activity"
-			:class="[$style.bar, { [$style.muted]: thread.isAwaitingConfirmation }]"
-			data-test-id="instance-ai-status-bar"
-		>
-			<N8nIcon
-				v-if="thread.isAwaitingConfirmation"
-				:class="$style.glyph"
-				icon="circle-pause"
-				size="xsmall"
-			/>
-			<span v-else :class="$style.dot" />
+		<div v-if="isVisible && activity" :class="$style.bar" data-test-id="instance-ai-status-bar">
+			<span :class="$style.dot" />
 			<span :class="$style.label">{{ activity.label }}</span>
 			<span v-if="activity.detail" :class="$style.separator">&middot;</span>
 			<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
-			<template v-if="!thread.isAwaitingConfirmation">
-				<span :class="$style.separator">&middot;</span>
-				<span :class="$style.elapsed">{{ formattedElapsed }}</span>
-			</template>
+			<span :class="$style.separator">&middot;</span>
+			<span :class="$style.elapsed">{{ formattedElapsed }}</span>
 		</div>
 	</Transition>
 </template>
@@ -142,20 +121,6 @@ onUnmounted(() => {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	pointer-events: none;
-}
-
-.muted {
-	color: var(--color--text--tint-1);
-
-	.label {
-		color: var(--color--text--tint-1);
-		font-weight: var(--font-weight--regular);
-	}
-}
-
-.glyph {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
 }
 
 .dot {

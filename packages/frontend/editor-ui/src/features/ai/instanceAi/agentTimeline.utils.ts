@@ -18,6 +18,13 @@ const TAIL_NARRATION_MAX_LENGTH = 200;
 
 type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
 
+/** First sentence of a streamed markdown-ish text, for trace status lines. */
+export function firstSentence(content: string): string {
+	const plain = content.replace(/[*_`#]/g, '').trim();
+	const match = plain.match(/^.*?[.!?](?=\s|$)/s);
+	return (match ? match[0] : plain).trim();
+}
+
 /**
  * The timeline reduced to renderable blocks.
  *

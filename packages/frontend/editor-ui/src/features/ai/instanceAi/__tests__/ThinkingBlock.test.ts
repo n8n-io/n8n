@@ -174,7 +174,7 @@ describe('ThinkingBlock', () => {
 		);
 	});
 
-	it('should title an expanded streaming block "Thinking"', async () => {
+	it('should keep the status line unchanged when expanded mid-stream', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active' }),
@@ -187,7 +187,69 @@ describe('ThinkingBlock', () => {
 		await userEvent.click(header);
 
 		expect(header.getAttribute('aria-expanded')).toBe('true');
-		expect(header).toHaveTextContent('Thinking');
+		expect(header).toHaveTextContent('Some reasoning.');
+	});
+
+	it('should title the block "Waiting for your input" while paused on a confirmation', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('Some reasoning. More.')],
+				active: true,
+				awaitingInput: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Waiting for your input');
+	});
+
+	it('should show the latest tool call on a subline while it is the tail entry', () => {
+		const tc = makeToolCall({ toolCallId: 'tc-1', toolName: 'search-nodes', isLoading: true });
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
+				entries: [reasoning('Looking for nodes. Now searching.'), toolEntry('tc-1')],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-tool-line')).toBeInTheDocument();
+	});
+
+	it('should hide the tool subline once further trace content streams', () => {
+		const tc = makeToolCall({ toolCallId: 'tc-1' });
+		const { queryByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
+				entries: [toolEntry('tc-1'), reasoning('Got the results. Next step.')],
+				active: true,
+			},
+		});
+
+		expect(queryByTestId('thinking-block-tool-line')).not.toBeInTheDocument();
+	});
+
+	it('should hide the tool subline when the block settles or pauses for input', () => {
+		const tc = makeToolCall({ toolCallId: 'tc-1' });
+		const settled = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry('tc-1')],
+				active: false,
+			},
+		});
+		expect(settled.queryByTestId('thinking-block-tool-line')).not.toBeInTheDocument();
+		settled.unmount();
+
+		const paused = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
+				entries: [toolEntry('tc-1')],
+				active: true,
+				awaitingInput: true,
+			},
+		});
+		expect(paused.queryByTestId('thinking-block-tool-line')).not.toBeInTheDocument();
 	});
 
 	it('should collapse a user-expanded block and settle the title when streaming ends', async () => {
@@ -213,7 +275,7 @@ describe('ThinkingBlock', () => {
 
 	it('should render narration, reasoning, and tool rows inside the rail when expanded', async () => {
 		const tc = makeToolCall({ toolCallId: 'tc-1', toolName: 'credentials' });
-		const { getByTestId, getByText } = renderComponent({
+		const { getByTestId, getAllByText, getByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
 				entries: [reasoning('deep thoughts'), text('Checking credentials now.'), toolEntry('tc-1')],
@@ -223,7 +285,9 @@ describe('ThinkingBlock', () => {
 
 		await userEvent.click(getByTestId('thinking-block-header'));
 
-		expect(getByText('Checking credentials now.')).toBeInTheDocument();
-		expect(getByText('Reasoning')).toBeInTheDocument();
+		// Appears twice: as the header status line and as the narration paragraph
+		expect(getAllByText('Checking credentials now.')).toHaveLength(2);
+		// Reasoning rows are labeled with their own first sentence
+		expect(getByText('deep thoughts')).toBeInTheDocument();
 	});
 });

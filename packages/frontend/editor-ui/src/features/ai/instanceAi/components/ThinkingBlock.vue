@@ -12,7 +12,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
-import { isStreamingTimelineEntry } from '../agentTimeline.utils';
+import { firstSentence, isStreamingTimelineEntry } from '../agentTimeline.utils';
 import { useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ReasoningBlock from './ReasoningBlock.vue';
@@ -27,15 +27,21 @@ import ToolResultRenderer from './ToolResultRenderer.vue';
  *
  * Collapsed by default. While streaming, the header shows a live status
  * line — the first sentence of the latest trace segment, replaced (with a
- * fade) whenever a new segment starts. Expanding mid-stream titles the block
- * "Thinking"; once settled the header reads "Thought for Xs".
+ * fade) whenever a new segment starts — and the latest tool call on an
+ * indented subline until further trace content streams. Once settled the
+ * header reads "Thought for Xs".
  */
-const props = defineProps<{
-	agentNode: InstanceAiAgentNode;
-	entries: InstanceAiTimelineEntry[];
-	/** True while this block is still receiving stream deltas. */
-	active: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		agentNode: InstanceAiAgentNode;
+		entries: InstanceAiTimelineEntry[];
+		/** True while this block is still receiving stream deltas. */
+		active: boolean;
+		/** True while the run is paused on a confirmation (HITL). */
+		awaitingInput?: boolean;
+	}>(),
+	{ awaitingInput: false },
+);
 
 const i18n = useI18n();
 const { getToolLabel } = useToolLabel();
@@ -65,12 +71,18 @@ function toolCallFor(entry: InstanceAiTimelineEntry): InstanceAiToolCallState | 
 	return entry.type === 'tool-call' ? toolCallsById.value[entry.toolCallId] : undefined;
 }
 
-/** First sentence of a streamed markdown-ish text, for the status line. */
-function firstSentence(content: string): string {
-	const plain = content.replace(/[*_`#]/g, '').trim();
-	const match = plain.match(/^.*?[.!?](?=\s|$)/s);
-	return (match ? match[0] : plain).trim();
-}
+/**
+ * The block's latest tool call while it is still the tail entry — shown on an
+ * indented subline under the status line. It naturally clears when further
+ * trace content streams (no longer the tail), swaps when another tool call
+ * starts, and hides when the run settles or pauses for input.
+ */
+const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
+	if (!props.active || props.awaitingInput) return undefined;
+	const last = props.entries[props.entries.length - 1];
+	if (!last || last.type !== 'tool-call') return undefined;
+	return toolCallsById.value[last.toolCallId];
+});
 
 /** Total duration from the block's tool-call timestamps, if available. */
 const durationSec = computed<number | undefined>(() => {
@@ -112,17 +124,17 @@ const title = computed<{ key: string; text: string }>(() => {
 		return { key: 'done', text };
 	}
 
-	if (expanded.value) {
-		return { key: 'active', text: i18n.baseText('instanceAi.thinking.active') };
+	if (props.awaitingInput) {
+		return { key: 'waiting', text: i18n.baseText('instanceAi.thinking.waitingForInput') };
 	}
 
-	// Collapsed while streaming: the first sentence of the LATEST trace
-	// segment (narration or reasoning), replaced when a new segment starts.
-	// Segments whose streamed content is still blank (reasoning often opens
-	// with whitespace) don't take over the line — the previous segment keeps
-	// it until real text arrives. Reading entry content here is intentional —
-	// this branch is the only one that re-renders per token, and only while
-	// the block is collapsed.
+	// While streaming: the first sentence of the LATEST trace segment
+	// (narration or reasoning), replaced when a new segment starts. The line
+	// stays put on expand/collapse — swapping it for a generic "Thinking" read
+	// as instability. Segments whose streamed content is still blank (reasoning
+	// often opens with whitespace) don't take over the line — the previous
+	// segment keeps it until real text arrives. Reading entry content here is
+	// intentional — this is the only branch that re-renders per token.
 	for (let i = props.entries.length - 1; i >= 0; i--) {
 		const entry = props.entries[i];
 		if (entry.type !== 'text' && entry.type !== 'reasoning') continue;
@@ -146,15 +158,24 @@ const title = computed<{ key: string; text: string }>(() => {
 				:aria-expanded="expanded"
 				data-test-id="thinking-block-header"
 			>
-				<span v-if="props.active" :class="$style.dot" />
 				<Transition name="thinking-title" mode="out-in">
-					<span :key="title.key" :class="{ [$style.title]: true, [$style.shimmer]: props.active }">
+					<span :key="title.key" :class="$style.title">
 						{{ title.text }}
 					</span>
 				</Transition>
 				<N8nAiActivityStepChevron :open="expanded" />
 			</button>
 		</CollapsibleTrigger>
+		<Transition name="thinking-title" mode="out-in">
+			<div
+				v-if="!expanded && tailToolCall"
+				:key="tailToolCall.toolCallId"
+				:class="$style.subline"
+				data-test-id="thinking-block-tool-line"
+			>
+				{{ getToolLabel(tailToolCall.toolName, tailToolCall.args) }}
+			</div>
+		</Transition>
 		<N8nAnimatedCollapsibleContent>
 			<div :class="$style.content">
 				<template v-for="(entry, idx) in props.entries" :key="idx">
@@ -215,7 +236,6 @@ const title = computed<{ key: string; text: string }>(() => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	width: 100%;
-	max-width: 90%;
 	border: 0;
 	background: transparent;
 	padding: var(--spacing--4xs) 0;
@@ -223,6 +243,8 @@ const title = computed<{ key: string; text: string }>(() => {
 	text-align: left;
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--sm);
+	/* The design-system reset bolds all <button> elements */
+	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--lg);
 
 	&:hover {
@@ -238,7 +260,7 @@ const title = computed<{ key: string; text: string }>(() => {
 	white-space: nowrap;
 }
 
-.shimmer {
+.subline {
 	--animation--shimmer--duration: 1.5s;
 	--animation--shimmer--background: color-mix(
 		in srgb,
@@ -247,18 +269,15 @@ const title = computed<{ key: string; text: string }>(() => {
 	);
 	--animation--shimmer--foreground: var(--text-color--subtler);
 	@include motion.shimmer;
-}
 
-.dot {
-	--animation--opacity-pulse--duration: 1.5s;
-	--animation--opacity-pulse--opacity-end: 0.3;
-
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: var(--color--primary);
-	flex-shrink: 0;
-	@include motion.opacity-pulse;
+	margin-left: var(--spacing--sm);
+	max-width: 90%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
+	color: var(--text-color--subtler);
 }
 
 /* Indented rail, like sub-agent sections */
