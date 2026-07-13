@@ -1,11 +1,11 @@
 import { Time } from '@n8n/constants';
-import { Delete, Get, Options, Param, Post, RestController } from '@n8n/decorators';
 import { CredentialsEntity, AuthenticatedRequest, isAuthenticatedRequest, User } from '@n8n/db';
-import type { Scope } from '@n8n/permissions';
+import { Delete, Get, Options, Param, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -177,7 +177,6 @@ export class DynamicCredentialsController {
 			});
 		}
 
-		console.log('SECURITY_DEBUG: authorizeCredential called');
 		// Best-effort: bind the callback to the intended n8n user when the resolver
 		// names one, so `decodeCsrfState` rejects a mismatched session. External
 		// machine callers legitimately have no n8n user, so this never fails the POST.
@@ -185,7 +184,6 @@ export class DynamicCredentialsController {
 			credentialContext,
 			resolverEntity.id,
 		);
-		console.log('SECURITY_DEBUG: authorizeCredential ownership:', ownership);
 
 		const csrfData: CreateCsrfStateData = {
 			cid: credential.id,
@@ -242,7 +240,6 @@ export class DynamicCredentialsController {
 			return;
 		}
 
-		console.log('SECURITY_DEBUG: authorizeCredentialRedirect called');
 		// When the link is bound to an n8n user, the clicker must be that user.
 		if (intent.userId) {
 			const user = isAuthenticatedRequest(req) ? req.user : undefined;

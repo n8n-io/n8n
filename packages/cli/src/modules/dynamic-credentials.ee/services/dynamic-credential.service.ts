@@ -193,7 +193,6 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	): Promise<
 		{ status: 'unbound' } | { status: 'bound'; userId: string } | { status: 'unresolved' }
 	> {
-		console.log('SECURITY_DEBUG: resolveOwningUserIdForAuthorization called');
 		const resolverEntity = await this.resolverRepository.findOneBy({ id: resolverId });
 		const resolver =
 			resolverEntity && this.resolverRegistry.getResolverByTypename(resolverEntity.type);

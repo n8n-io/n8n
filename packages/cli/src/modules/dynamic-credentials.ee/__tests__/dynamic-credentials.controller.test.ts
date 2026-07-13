@@ -573,6 +573,66 @@ describe('DynamicCredentialsController', () => {
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
+		it('proceeds through the OAuth1 flow when a bound link is opened by the intended user', async () => {
+			const req = mock<AuthenticatedRequest>({
+				params: { id: 'cred-1' },
+				query: { token: 'tok' },
+				user: mock<AuthenticatedRequest['user']>({ id: 'user-1' }),
+			});
+			const res = mock<Response>();
+			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'twitterOAuth1Api' });
+
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				userId: 'user-1',
+				metadata: {},
+			});
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			oauthService.generateAOauth1AuthUri.mockResolvedValue(
+				'https://api.twitter.com/oauth/authorize?x=1',
+			);
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				expect.objectContaining({ userId: 'user-1' }),
+				req,
+				res,
+			);
+			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+			expect(res.redirect).toHaveBeenCalledWith('https://api.twitter.com/oauth/authorize?x=1');
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('rejects a bound OAuth1 link opened by a different account before materializing the flow', async () => {
+			const req = mock<AuthenticatedRequest>({
+				params: { id: 'cred-1' },
+				query: { token: 'tok' },
+				user: mock<AuthenticatedRequest['user']>({ id: 'user-2' }),
+			});
+			const res = mock<Response>();
+
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				userId: 'user-1',
+				metadata: {},
+			});
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(eventService.emit).toHaveBeenCalledWith('dynamic-credential-authorize-rejected', {
+				reason: 'user-mismatch',
+				credentialId: 'cred-1',
+			});
+			expect(oauthService.generateAOauth1AuthUri).not.toHaveBeenCalled();
+			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
 		it('redirects an anonymous clicker of a bound link to sign in', async () => {
 			const req = mock<Request>({
 				params: { id: 'cred-1' },

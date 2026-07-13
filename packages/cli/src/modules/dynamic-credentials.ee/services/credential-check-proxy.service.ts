@@ -84,7 +84,6 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 		resolverId: string,
 		credentialContext: ICredentialContext,
 	): Promise<string | undefined> {
-		console.log('SECURITY_DEBUG: generateAuthorizationUrl called');
 		const credential = await this.enterpriseCredentialsService.getOne(credentialId);
 		if (!credential) return undefined;
 
