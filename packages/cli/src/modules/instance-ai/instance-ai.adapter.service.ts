@@ -9,6 +9,8 @@ import type {
 	InstanceAiNodeService,
 	InstanceAiDataTableService,
 	InstanceAiWebResearchService,
+	InstanceAiWorkspaceService,
+	InstanceAiWorkflowTemplateService,
 	FetchedPage,
 	DataTableSummary,
 	DataTableColumnInfo,
@@ -27,9 +29,9 @@ import type {
 	NodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,
+	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
-	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
@@ -50,12 +52,13 @@ import {
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { upsertEvaluationConfigSchema } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { LICENSE_FEATURES, Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { WorkflowTemplatesService } from './workflow-templates.service';
 import {
 	buildInstanceAiRunPinDataPlan,
 	pruneUnreachedVerificationPinData,
@@ -119,13 +122,15 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
-import { InstanceAiAgentBuilderAdapterService } from '@/modules/agents/instance-ai-agent-builder.adapter';
+import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -252,6 +257,7 @@ export class InstanceAiAdapterService {
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly workflowTemplatesService: WorkflowTemplatesService,
 		private readonly nodeCatalogService?: NodeCatalogService,
 		// Optional: absent only in package/test contexts constructed without DI.
 		// DI (by type, not position) always provides it in a running instance.
@@ -274,13 +280,19 @@ export class InstanceAiAdapterService {
 			/** Eval-only: restrict the credential `list()` view to these IDs. */
 			credentialIdAllowlist?: string[];
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
-			 *  assistant can create one via the create_agent tool. */
+			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
 		},
 	): InstanceAiContext {
 		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist, agentId } =
 			options ?? {};
-		const agentBuilderAdapter = this.getAgentBuilderAdapter();
+
+		// Record gateway availability once per context. Fire-and-forget: the
+		// underlying config is cached process-wide (1h TTL) so this rarely hits
+		// the network, and telemetry must never block context creation.
+		void this.trackGatewayAvailability();
+
+		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
 		return {
 			userId: user.id,
 			projectId,
@@ -300,33 +312,79 @@ export class InstanceAiAdapterService {
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
+			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			allowSendingParameterValues: this.allowSendingParameterValues,
-			...(agentBuilderAdapter
-				? { agentBuilderService: agentBuilderAdapter.createAdapter(user, projectId) }
-				: {}),
-			...(agentBuilderAdapter && agentId && projectId
+			...(builderDelegateAdapter && agentId && projectId
 				? { agentBuilderTarget: { agentId, projectId } }
+				: {}),
+			...(builderDelegateAdapter && projectId
+				? {
+						builderDelegate: builderDelegateAdapter.createDelegate(
+							user,
+							projectId,
+							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+						),
+					}
 				: {}),
 		};
 	}
 
 	/**
-	 * Resolve the agent-builder adapter only when the `agents` module is active.
-	 * The adapter class is statically imported (so its `@Service` is always
-	 * registered), so the module-enabled check is what gates
-	 * agent-building. Returns null when the module is off, so the tools are simply
-	 * absent.
+	 * Resolve the builder-delegate adapter only when the `agents` module is
+	 * active. The adapter class is statically imported (so its `@Service` is
+	 * always registered), so the module-enabled check is what gates
+	 * agent-building. Returns null when the module is off, so `builderDelegate`
+	 * (and the build-agent sub-agent tool it powers) is simply absent from the
+	 * context.
 	 */
-	private getAgentBuilderAdapter(): InstanceAiAgentBuilderAdapterService | null {
+	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
 		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
 		try {
-			return Container.get(InstanceAiAgentBuilderAdapterService);
+			return Container.get(InstanceAiBuilderDelegateAdapterService);
 		} catch {
 			return null;
 		}
+	}
+
+	/**
+	 * Fail-open read of the AI Gateway config. Returns null when the instance is
+	 * unlicensed for the gateway or the fetch fails for any reason. Every consumer
+	 * (node annotations, credential list, verifier) treats a null as "gateway not
+	 * available", a valid degraded state. Backed by `AiGatewayService`'s own
+	 * process-wide cache (1h TTL), so repeated calls are cheap.
+	 */
+	private async getGatewayConfigOrNull(): Promise<AiGatewayConfigDto | null> {
+		// Gate on the AI Gateway license before touching the config. The FE path
+		// is gated by `@Licensed('feat:aiGateway')` on the controller; this adapter
+		// calls the service directly, so it must enforce the same license itself —
+		// otherwise unlicensed instances would surface n8n Connect (node metadata,
+		// managed credentials) and count it as available in telemetry.
+		if (!this.license.isLicensed(LICENSE_FEATURES.AI_GATEWAY)) return null;
+		try {
+			return await this.aiGatewayService.getGatewayConfig();
+		} catch {
+			return null;
+		}
+	}
+
+	private buildAiGatewayNodeMeta(
+		config: AiGatewayConfigDto | null,
+		nodeName: string,
+	): AiGatewayNodeMeta | undefined {
+		if (!config) return undefined;
+		if (!config.nodes.includes(nodeName)) return undefined;
+
+		const meta: AiGatewayNodeMeta = { supported: true };
+		const operations = config.supportedActions?.[nodeName];
+		if (operations && Object.keys(operations).length > 0) meta.operations = operations;
+		const minVersion = config.minNodeTypeVersion?.[nodeName];
+		if (minVersion !== undefined) meta.minVersion = minVersion;
+		const hiddenProperties = config.hiddenNodeProperties?.[nodeName];
+		if (hiddenProperties && hiddenProperties.length > 0) meta.hiddenProperties = hiddenProperties;
+		return meta;
 	}
 
 	private getTemplatesService(): BuilderTemplatesServiceInstance {
@@ -338,6 +396,15 @@ export class InstanceAiAdapterService {
 			});
 		}
 		return this.templatesService;
+	}
+
+	private createWorkflowTemplateAdapter(): InstanceAiWorkflowTemplateService {
+		const workflowTemplatesService = this.workflowTemplatesService;
+		return {
+			async getTemplate(templateId: string) {
+				return await workflowTemplatesService.getTemplate(templateId);
+			},
+		};
 	}
 
 	private buildLicenseHints(): string[] {
@@ -353,6 +420,16 @@ export class InstanceAiAdapterService {
 			);
 		}
 		return hints;
+	}
+
+	/** Emit the gateway-availability telemetry event when the gateway is reachable. */
+	private async trackGatewayAvailability(): Promise<void> {
+		const config = await this.getGatewayConfigOrNull();
+		if (!config) return;
+		this.telemetry.track('instance_ai_gateway_available', {
+			nodeCount: config.nodes.length,
+			credentialTypeCount: config.credentialTypes.length,
+		});
 	}
 
 	private assertInstanceNotReadOnly(resourceType: string) {
@@ -1254,12 +1331,8 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		credentialIdAllowlist?: string[],
 	): InstanceAiCredentialService {
-		const {
-			credentialsService,
-			credentialsFinderService,
-			loadNodesAndCredentials,
-			aiGatewayService,
-		} = this;
+		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
+		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 
 		const adapter: InstanceAiCredentialService = {
 			async list(options) {
@@ -1575,14 +1648,15 @@ export class InstanceAiAdapterService {
 			},
 
 			async isAiGatewayCredentialType(credType: string): Promise<boolean> {
-				try {
-					const config = await aiGatewayService.getGatewayConfig();
-					return config.credentialTypes.includes(credType);
-				} catch {
-					// Fail open if the gateway config is unavailable — the credential
-					// type check is a best-effort validation, not a security gate.
-					return false;
-				}
+				// Fail open if the gateway config is unavailable — the credential
+				// type check is a best-effort validation, not a security gate.
+				const config = await getGatewayConfig();
+				return config?.credentialTypes.includes(credType) ?? false;
+			},
+
+			async listAiGatewayCredentialTypes(): Promise<string[]> {
+				const config = await getGatewayConfig();
+				return config?.credentialTypes ?? [];
 			},
 		};
 
@@ -2112,6 +2186,9 @@ export class InstanceAiAdapterService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getNodes = async () => await this.getNodesFromCache();
+		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
+		const buildMeta = (config: AiGatewayConfigDto | null, nodeName: string) =>
+			this.buildAiGatewayNodeMeta(config, nodeName);
 
 		/** Find a node description matching type and optionally version. Falls back to any version. */
 		const findNodeByVersion = (
@@ -2132,12 +2209,15 @@ export class InstanceAiAdapterService {
 
 		return {
 			async listAvailable(options) {
-				const nodes = await getNodes();
+				const [nodes, gatewayConfig] = await Promise.all([
+					getNodes(),
+					options?.n8nConnectOnly ? getGatewayConfig() : Promise.resolve(null),
+				]);
 				let filtered = nodes;
 
 				if (options?.query) {
 					const q = options.query.toLowerCase();
-					filtered = nodes.filter(
+					filtered = filtered.filter(
 						(n) =>
 							n.displayName.toLowerCase().includes(q) ||
 							n.name.toLowerCase().includes(q) ||
@@ -2145,19 +2225,26 @@ export class InstanceAiAdapterService {
 					);
 				}
 
-				return filtered.map(
-					(n): NodeSummary => ({
+				const summaries = filtered.map((n): NodeSummary => {
+					const summary: NodeSummary = {
 						name: n.name,
 						displayName: n.displayName,
 						description: n.description ?? '',
 						group: n.group ?? [],
 						version: Array.isArray(n.version) ? n.version[n.version.length - 1] : n.version,
-					}),
-				);
+					};
+					const meta = buildMeta(gatewayConfig, n.name);
+					if (meta) summary.aiGateway = meta;
+					return summary;
+				});
+
+				// n8nConnectOnly answers "which nodes support n8n Connect?" — keep only
+				// nodes the gateway covers (meta present).
+				return options?.n8nConnectOnly ? summaries.filter((s) => s.aiGateway) : summaries;
 			},
 
 			async listSearchable() {
-				const nodes = await getNodes();
+				const [nodes, gatewayConfig] = await Promise.all([getNodes(), getGatewayConfig()]);
 
 				const toStringArray = (
 					value: (typeof nodes)[number]['inputs'] | (typeof nodes)[number]['outputs'],
@@ -2175,6 +2262,8 @@ export class InstanceAiAdapterService {
 						inputs: toStringArray(n.inputs),
 						outputs: toStringArray(n.outputs),
 					};
+					const meta = buildMeta(gatewayConfig, n.name);
+					if (meta) result.aiGateway = meta;
 					if (n.codex?.alias) {
 						result.codex = { alias: n.codex.alias };
 					}
@@ -2219,7 +2308,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async getDescription(nodeType: string, version?: number) {
-				const nodes = await getNodes();
+				const [nodes, gatewayConfig] = await Promise.all([getNodes(), getGatewayConfig()]);
 				let desc =
 					version !== undefined
 						? nodes.find((n) => {
@@ -2236,6 +2325,8 @@ export class InstanceAiAdapterService {
 				if (!desc) {
 					throw new Error(`Node type ${nodeType} not found`);
 				}
+
+				const meta = buildMeta(gatewayConfig, desc.name);
 
 				return {
 					name: desc.name,
@@ -2274,6 +2365,7 @@ export class InstanceAiAdapterService {
 					...(desc.webhooks ? { webhooks: desc.webhooks as unknown[] } : {}),
 					...(desc.polling ? { polling: desc.polling } : {}),
 					...(desc.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
+					...(meta ? { aiGateway: meta } : {}),
 				} satisfies NodeDescription;
 			},
 

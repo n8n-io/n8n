@@ -584,19 +584,32 @@ describe('InstanceAiThreadView', () => {
 				textContent: '',
 				reasoning: '',
 				timeline: [],
-				children: [],
-				toolCalls: [
+				children: [
 					{
-						toolCallId: 'tc-create-agent',
-						toolName: 'agent_builder',
-						args: { action: 'create_agent' },
-						isLoading: false,
-						result: {
-							ok: true,
-							agentId: 'agent-1',
+						agentId: 'agent-builder-child',
+						role: 'agent-builder',
+						kind: 'builder',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						timeline: [],
+						children: [],
+						toolCalls: [],
+						targetResource: {
+							type: 'agent',
+							id: 'agent-1',
 							projectId: 'proj-1',
 							name: 'SEO Auditor',
 						},
+					},
+				],
+				toolCalls: [
+					{
+						toolCallId: 'tc-create-agent',
+						toolName: 'build-agent',
+						args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
+						isLoading: false,
+						result: { ok: true, builderReply: 'Created the agent.' },
 					},
 				],
 			},
@@ -631,19 +644,32 @@ describe('InstanceAiThreadView', () => {
 				textContent: '',
 				reasoning: '',
 				timeline: [],
-				children: [],
-				toolCalls: [
+				children: [
 					{
-						toolCallId: 'tc-create-agent',
-						toolName: 'agent_builder',
-						args: { action: 'create_agent' },
-						isLoading: false,
-						result: {
-							ok: true,
-							agentId: 'agent-1',
+						agentId: 'agent-builder-child',
+						role: 'agent-builder',
+						kind: 'builder',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						timeline: [],
+						children: [],
+						toolCalls: [],
+						targetResource: {
+							type: 'agent',
+							id: 'agent-1',
 							projectId: 'proj-1',
 							name: 'SEO Auditor',
 						},
+					},
+				],
+				toolCalls: [
+					{
+						toolCallId: 'tc-create-agent',
+						toolName: 'build-agent',
+						args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
+						isLoading: false,
+						result: { ok: true, builderReply: 'Created the agent.' },
 					},
 				],
 			},

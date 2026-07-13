@@ -709,7 +709,56 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('auto-open agent preview', () => {
-		test('auto-opens agent artifact when create_agent succeeds', async () => {
+		test('auto-opens preview when an agent-builder sub-agent spawns, before any build-agent result', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-child',
+								kind: 'agent-builder',
+								status: 'active',
+								targetResource: { type: 'agent', id: 'agent-7', projectId: 'p1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('agent-7');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('does not auto-open on agent-builder spawn while hydrating historical messages', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-child',
+								kind: 'agent-builder',
+								status: 'completed',
+								targetResource: { type: 'agent', id: 'agent-7', projectId: 'p1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('auto-opens agent artifact when build-agent creates a new agent', async () => {
 			const ctx = setup();
 			ctx.thread.isStreaming = true;
 			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
@@ -717,17 +766,25 @@ describe('useCanvasPreview', () => {
 			ctx.thread.messages = [
 				makeMessage({
 					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-create-agent',
-								toolName: 'agent_builder',
-								args: { action: 'create_agent', name: 'SEO Auditor' },
-								result: {
-									ok: true,
-									agentId: 'agent-1',
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-child',
+								role: 'agent-builder',
+								kind: 'builder',
+								targetResource: {
+									type: 'agent',
+									id: 'agent-1',
 									projectId: 'project-1',
 									name: 'SEO Auditor',
 								},
+							}),
+						],
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-create-agent',
+								toolName: 'build-agent',
+								args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
+								result: { ok: true, builderReply: 'Created the agent.' },
 							}),
 						],
 					}),
@@ -748,17 +805,25 @@ describe('useCanvasPreview', () => {
 			ctx.thread.messages = [
 				makeMessage({
 					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-create-agent',
-								toolName: 'agent_builder',
-								args: { action: 'create_agent', name: 'SEO Auditor' },
-								result: {
-									ok: true,
-									agentId: 'agent-1',
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-child',
+								role: 'agent-builder',
+								kind: 'builder',
+								targetResource: {
+									type: 'agent',
+									id: 'agent-1',
 									projectId: 'project-1',
 									name: 'SEO Auditor',
 								},
+							}),
+						],
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-create-agent',
+								toolName: 'build-agent',
+								args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
+								result: { ok: true, builderReply: 'Created the agent.' },
 							}),
 						],
 					}),
@@ -783,9 +848,9 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build-agent',
-								toolName: 'agent_builder',
-								args: { action: 'build_agent' },
-								result: { ok: true, configHash: 'hash-1' },
+								toolName: 'build-agent',
+								args: { message: 'add a skill' },
+								result: { ok: true, configUpdated: true },
 							}),
 						],
 					}),
@@ -809,9 +874,9 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build-agent',
-								toolName: 'agent_builder',
-								args: { action: 'build_agent' },
-								result: { ok: true, configHash: 'hash-1' },
+								toolName: 'build-agent',
+								args: { message: 'add a skill' },
+								result: { ok: true, configUpdated: true },
 							}),
 						],
 					}),
@@ -821,6 +886,31 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.agentRefreshKey.value).toBe(initialKey + 1);
 			expect(ctx.activeAgentId.value).toBe('agent-1');
+		});
+
+		test('does not open or refresh on a reply-only turn (no name, no configUpdated)', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
+			ctx.openAgentPreview('agent-1', 'project-1');
+			const initialKey = ctx.agentRefreshKey.value;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-build-agent-reply',
+								toolName: 'build-agent',
+								args: { message: 'what does this agent do?' },
+								result: { ok: true, builderReply: 'It triages your inbox.' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.agentRefreshKey.value).toBe(initialKey);
 		});
 	});
 

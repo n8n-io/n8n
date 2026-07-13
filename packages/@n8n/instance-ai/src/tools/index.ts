@@ -33,6 +33,10 @@ const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
+const loadBuildAgentTool = lazyMod(
+	() =>
+		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
+);
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
 		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
@@ -76,6 +80,9 @@ const loadBuildWorkflowTool = lazyMod(
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
 );
+const loadTemplatesTool = lazyMod(
+	() => require('./templates.tool') as typeof import('./templates.tool'),
+);
 const loadWorkspaceTool = lazyMod(
 	() => require('./workspace.tool') as typeof import('./workspace.tool'),
 );
@@ -98,6 +105,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		[DOMAIN_TOOL_IDS.TEMPLATES, loadTemplatesTool().createTemplatesTool(context)],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -126,6 +134,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		[DOMAIN_TOOL_IDS.TEMPLATES, loadTemplatesTool().createTemplatesTool(context)],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -169,6 +178,13 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS,
 			loadApplyWorkflowCredentialsTool().createApplyWorkflowCredentialsTool(context),
+		]);
+	}
+
+	if (context.domainContext?.builderDelegate) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
+			loadBuildAgentTool().createBuildAgentTool(context),
 		]);
 	}
 

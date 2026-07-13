@@ -8,12 +8,14 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { topLevelFolders, topLevelWorkflows } from './package-layout';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
+import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
 import { serializedFolderSchema } from '../spec/serialized/folder.schema';
+import { serializedProjectSchema } from '../spec/serialized/project.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
@@ -59,6 +61,17 @@ export class N8nPackageParser {
 		return folders;
 	}
 
+	/** Reads the package's project shells. */
+	async getProjects(reader: PackageReader): Promise<PreparedProject[]> {
+		const manifest = await this.getManifest(reader);
+
+		const projects: PreparedProject[] = [];
+		for (const entry of manifest.projects ?? []) {
+			projects.push(await this.readProject(reader, entry));
+		}
+		return projects;
+	}
+
 	private async readWorkflow(
 		reader: PackageReader,
 		entry: ManifestEntry,
@@ -98,6 +111,26 @@ export class N8nPackageParser {
 		} catch (cause) {
 			if (cause instanceof ZodError) {
 				throw new UserError(`Package folder file at ${path} failed schema validation.`, { cause });
+			}
+			throw cause;
+		}
+	}
+
+	private async readProject(reader: PackageReader, entry: ManifestEntry): Promise<PreparedProject> {
+		const path = `${entry.target}/project.json`;
+		const wire = await this.readJson(reader, path, 'project');
+
+		try {
+			const project = serializedProjectSchema.parse(wire);
+			return {
+				sourceProjectId: project.id,
+				name: project.name,
+				...(project.description !== undefined ? { description: project.description } : {}),
+				...(project.icon !== undefined ? { icon: project.icon } : {}),
+			};
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package project file at ${path} failed schema validation.`, { cause });
 			}
 			throw cause;
 		}

@@ -765,7 +765,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(loadInstanceAiRuntimeSkillSource as Mock).mockImplementation(() => ({
 			registry: {
 				skillsHash: 'runtime-skills-hash',
-				skills: [{ id: 'data-table-manager' }, { id: 'agent-builder' }],
+				skills: [{ id: 'data-table-manager' }],
 			},
 			loadSkill: vi.fn(),
 		}));
@@ -826,7 +826,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			moduleRegistry: { isActive: Mock };
 		};
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -894,7 +893,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
-		service.moduleRegistry = { isActive: vi.fn(() => true) };
 		(createAllTools as Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -921,7 +919,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalledTimes(1);
 		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
-			{ id: 'agent-builder' },
 		]);
 		expect(createSandbox).not.toHaveBeenCalled();
 		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as Mock).mock.calls[0]?.[0]
@@ -976,49 +973,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
-		// The agent-builder skill needs the sandbox workspace (build_agent reads
-		// config files from it), so it is hidden when the sandbox is unavailable.
+		// Without a sandbox the runtime skill catalog is used as-is (no
+		// workspace-materialized wrapper).
 		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
-		// Hidden means unloadable too, and the filtered catalog gets its own hash
-		// so workspace manifests keyed on it can't match the unfiltered set.
-		await expect(
-			unavailableEnvironment.orchestrationContext.runtimeSkills?.loadSkill('agent-builder'),
-		).resolves.toBeNull();
-		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skillsHash).not.toBe(
-			'runtime-skills-hash',
-		);
 		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
 		expect(createLazyWorkspaceRuntimeSkillSource).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
-
-		// Third phase: sandbox available again, but the agents module is inactive.
-		// The agent-builder skill must still be hidden via withoutAgentBuilderSkill.
-		(loadInstanceAiRuntimeSkillSource as Mock).mockClear();
-		(createLazyWorkspaceRuntimeSkillSource as Mock).mockClear();
-		service.settingsService.getSandboxStatus.mockReturnValue({
-			enabled: true,
-			provider: 'n8n-sandbox',
-			workflowBuilderAvailable: true,
-			unavailableReason: null,
-		});
-		service.moduleRegistry.isActive = vi.fn((mod: string) => mod !== 'agents');
-
-		const agentsInactiveEnvironment = await service.createExecutionEnvironment(
-			fakeUser,
-			'thread-3',
-			'run-3',
-			new AbortController().signal,
-		);
-
-		expect(agentsInactiveEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
-			{ id: 'data-table-manager' },
-		]);
-		await expect(
-			agentsInactiveEnvironment.orchestrationContext.runtimeSkills?.loadSkill('agent-builder'),
-		).resolves.toBeNull();
 	});
 });
 

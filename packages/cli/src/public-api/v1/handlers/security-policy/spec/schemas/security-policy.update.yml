@@ -1,0 +1,23 @@
+type: object
+additionalProperties: false
+description: Security policy fields to update. Omitted fields are left unchanged.
+properties:
+  personalSpacePublishing:
+    type: boolean
+    description: Whether members may publish workflows and agents from their personal space.
+    example: false
+  personalSpaceSharing:
+    type: boolean
+    description: Whether members may share workflows and credentials from their personal space.
+    example: false
+  redactionEnforcement:
+    type: object
+    additionalProperties: false
+    required:
+      - floor
+    properties:
+      floor:
+        type: string
+        enum: [off, production, all]
+        description: Minimum execution-data redaction level enforced across the instance.
+        example: production

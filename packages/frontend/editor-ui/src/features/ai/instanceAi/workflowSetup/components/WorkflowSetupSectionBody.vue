@@ -95,12 +95,15 @@ const assignmentCollectionEditableValueIndices = computed<Record<string, number[
 	return result;
 });
 
-const revealedIssues = ref(new Set<string>());
+// Reveal validation for the setup-flagged parameters up front, so a required
+// field the builder left unset (e.g. an empty resource locator) shows why the
+// step is blocked instead of only surfacing after the user edits it.
+const revealedIssues = ref(new Set<string>(props.section.parameterNames));
 
 watch(
 	() => props.section.id,
 	() => {
-		revealedIssues.value = new Set();
+		revealedIssues.value = new Set(props.section.parameterNames);
 	},
 );
 

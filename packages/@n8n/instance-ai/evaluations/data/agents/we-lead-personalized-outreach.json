@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: wf, embedsOther: true} — deterministic per-lead loop plus enrichment; the personalized outreach draft requires weighing per-lead context, so it is an embedded agent step, not a bounded template fill. The implicit-embeds probe: the request never says 'agent' for the shell, only for the drafting.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "For each new lead in the CRM, enrich it with LinkedIn data, then have an agent draft a personalized outreach based on the lead's profile and our product, and queue it for the SDR to review. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "complex",
+	"tags": ["intent-resolution", "batch", "embed-agent", "human-in-loop"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes a workflow shell — per-lead trigger/loop, LinkedIn enrichment, and queueing for SDR review as fixed steps — and does not propose a standalone n8n Agent.",
+		"In the proposed design the personalized outreach drafting is handled by an embedded agent or open-ended AI step that weighs the lead's profile and the product, not reduced to a fixed single-prompt template."
+	]
+}

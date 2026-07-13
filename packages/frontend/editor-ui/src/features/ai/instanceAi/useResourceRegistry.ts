@@ -115,7 +115,6 @@ const ARTIFACT_TOOLS = new Set([
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
-	'agent_builder',
 ]);
 const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
 function entryFromAgentBuilderTarget(
@@ -268,33 +267,6 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			},
 			{ linkable: !isReadOnlyLookup },
 		);
-	}
-
-	// --- Agents ----------------------------------------------------------
-	if (tc.toolName === 'agent_builder') {
-		const action = optionalString(tc.args?.action);
-
-		// List result: { agents: [{ id, name, projectId? }, ...] } — index by name only.
-		if (action === 'list_agents' && Array.isArray(result.agents)) {
-			for (const agent of result.agents as Array<Record<string, unknown>>) {
-				const entry = entryFromListItem('agent', agent);
-				if (entry) indexByName(col, entry);
-			}
-		}
-
-		// create_agent: { ok: true, agentId, projectId, name } — produced.
-		if (action === 'create_agent' && result.ok === true && typeof result.agentId === 'string') {
-			const existing = col.produced.get(result.agentId);
-			const name =
-				optionalString(result.name) ??
-				optionalString(tc.args?.name) ??
-				existing?.name ??
-				'Untitled';
-			const entry: ResourceEntry = { type: 'agent', id: result.agentId, name };
-			const projectId = optionalString(result.projectId) ?? existing?.projectId;
-			if (projectId !== undefined) entry.projectId = projectId;
-			recordProduced(col, entry);
-		}
 	}
 }
 

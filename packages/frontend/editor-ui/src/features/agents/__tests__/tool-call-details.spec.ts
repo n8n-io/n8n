@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ASK_CREDENTIAL_TOOL_NAME, ASK_QUESTION_TOOL_NAME } from '@n8n/api-types';
+import { ASK_CREDENTIAL_TOOL_NAME, ASK_QUESTIONS_TOOL_NAME } from '@n8n/api-types';
 import { TOOL_CALL_STATE } from '../constants';
 import {
 	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
@@ -72,7 +72,7 @@ describe('tool-call-details', () => {
 		it('does not expose resolved interactive tool resume payloads', () => {
 			expect(
 				getToolCallDetails({
-					tool: ASK_QUESTION_TOOL_NAME,
+					tool: ASK_QUESTIONS_TOOL_NAME,
 					output: { values: ['slack'] },
 					state: TOOL_CALL_STATE.DONE,
 				}),
