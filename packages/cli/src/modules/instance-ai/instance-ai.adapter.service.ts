@@ -46,6 +46,7 @@ import {
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
+	WorkflowSaveConflictError,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { upsertEvaluationConfigSchema } from '@n8n/api-types';
@@ -77,7 +78,7 @@ import {
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
-import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
 import {
@@ -106,9 +107,11 @@ import {
 	UnexpectedError,
 	jsonParse,
 	createRunExecutionData,
+	calculateWorkflowChecksum,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
@@ -514,7 +517,7 @@ export class InstanceAiAdapterService {
 					throw new Error(`Workflow ${workflowId} not found or not accessible`);
 				}
 
-				return toWorkflowDetail(workflow, { redactParameters });
+				return await toWorkflowDetailWithChecksum(workflow, { redactParameters });
 			},
 
 			async archive(workflowId: string) {
@@ -757,13 +760,13 @@ export class InstanceAiAdapterService {
 					});
 				}
 
-				return toWorkflowDetail(updated, { redactParameters });
+				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
 			},
 
 			async updateFromWorkflowJSON(
 				workflowId: string,
 				json: WorkflowJSON,
-				_options?: { projectId?: string },
+				options?: { projectId?: string; expectedChecksum?: string },
 			) {
 				assertNotReadOnly();
 				// Strip redactionPolicy if the user lacks the required directional scope —
@@ -817,8 +820,12 @@ export class InstanceAiAdapterService {
 
 					updated = await workflowService.update(user, updateData, workflowId, {
 						source: 'n8n-ai',
+						...(options?.expectedChecksum ? { expectedChecksum: options.expectedChecksum } : {}),
 					});
 				} catch (error) {
+					if (error instanceof ConflictError) {
+						throw new WorkflowSaveConflictError(workflowId);
+					}
 					logger.warn('AI-builder workflow save failed', {
 						threadId,
 						workflowId,
@@ -834,7 +841,7 @@ export class InstanceAiAdapterService {
 					});
 				}
 
-				return toWorkflowDetail(updated, { redactParameters });
+				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
 			},
 
 			async listVersions(workflowId, options) {
@@ -937,7 +944,6 @@ export class InstanceAiAdapterService {
 			executionRepository,
 			nodeTypes,
 			allowSendingParameterValues,
-			license,
 			roleService,
 			telemetry,
 			logger,
@@ -977,17 +983,15 @@ export class InstanceAiAdapterService {
 			async list(options) {
 				const scope: Scope = 'workflow:read';
 
-				let sharingOptions: ExecutionSummaries.RangeQuery['sharingOptions'];
-				if (license.isSharingEnabled()) {
-					const projectRoles = await roleService.rolesWithScope('project', [scope]);
-					const workflowRoles = await roleService.rolesWithScope('workflow', [scope]);
-					sharingOptions = { scopes: [scope], projectRoles, workflowRoles };
-				} else {
-					sharingOptions = {
-						workflowRoles: ['workflow:owner'],
-						projectRoles: [PROJECT_OWNER_ROLE_SLUG],
-					};
-				}
+				// Visibility from role scopes, not the sharing license — mirrors
+				// ExecutionService.buildSharingOptions and the REST executions list.
+				const projectRoles = await roleService.rolesWithScope('project', [scope]);
+				const workflowRoles = await roleService.rolesWithScope('workflow', [scope]);
+				const sharingOptions: ExecutionSummaries.RangeQuery['sharingOptions'] = {
+					scopes: [scope],
+					projectRoles,
+					workflowRoles,
+				};
 
 				const query: ExecutionSummaries.RangeQuery = {
 					kind: 'range' as const,
@@ -3458,4 +3462,13 @@ function toWorkflowDetail(
 		connections: workflow.connections as Record<string, unknown>,
 		settings: workflow.settings as Record<string, unknown> | undefined,
 	};
+}
+
+async function toWorkflowDetailWithChecksum(
+	workflow: WorkflowEntity,
+	options?: { redactParameters?: boolean },
+): Promise<WorkflowDetail> {
+	const detail = toWorkflowDetail(workflow, options);
+	detail.checksum = await calculateWorkflowChecksum(workflow);
+	return detail;
 }

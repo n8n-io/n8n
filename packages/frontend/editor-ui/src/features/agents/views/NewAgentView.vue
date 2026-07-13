@@ -10,7 +10,7 @@ import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { createAgent } from '../composables/useAgentApi';
-import { AGENT_BUILDER_VIEW } from '../constants';
+import { AGENT_BUILDER_VIEW, AGENT_BUILDER_PROMPT_MAX_LENGTH } from '../constants';
 import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
@@ -286,6 +286,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 							:can-submit="inputText.trim().length > 0 && !isCreating"
 							:show-voice="true"
 							:show-attach="false"
+							:max-length="AGENT_BUILDER_PROMPT_MAX_LENGTH"
 							@submit="submitDescription"
 						/>
 					</div>

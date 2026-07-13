@@ -71,6 +71,8 @@ export interface WorkflowDetail extends WorkflowSummary {
 	nodes: WorkflowNode[];
 	connections: Record<string, unknown>;
 	settings?: Record<string, unknown>;
+	/** SHA-256 checksum of workflow content fields — used for optimistic-concurrency saves. */
+	checksum?: string;
 }
 
 export interface WorkflowNode {
@@ -317,7 +319,7 @@ export interface InstanceAiWorkflowService {
 	updateFromWorkflowJSON(
 		workflowId: string,
 		json: WorkflowJSON,
-		options?: { projectId?: string },
+		options?: { projectId?: string; expectedChecksum?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	unarchive(workflowId: string): Promise<void>;

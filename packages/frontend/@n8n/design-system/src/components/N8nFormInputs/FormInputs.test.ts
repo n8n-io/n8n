@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import type { IFormInput } from '@n8n/design-system/types';
 
 import FormInputs from './FormInputs.vue';
+import N8nFormInput from '../N8nFormInput';
 
 describe('FormInputs', () => {
 	describe('dangling field removal', () => {
@@ -436,6 +437,57 @@ describe('FormInputs', () => {
 			expect(result.field1.metadata).toEqual({ userId: 123, role: 'admin' });
 			expect(result.field1.metadata?.userId).toBe(123);
 			expect(result.field1.metadata?.role).toBe('admin');
+		});
+	});
+
+	describe('tag size', () => {
+		const multiSelectInput: IFormInput = {
+			name: 'skills',
+			properties: {
+				type: 'multi-select',
+				label: 'Skills',
+				options: [
+					{ label: 'One', value: 'one' },
+					{ label: 'Two', value: 'two' },
+				],
+			},
+		};
+
+		it('should pass tagSize down to each form input', () => {
+			const wrapper = mount(FormInputs, {
+				props: {
+					inputs: [multiSelectInput],
+					tagSize: 'small',
+				},
+			});
+
+			expect(wrapper.findComponent(N8nFormInput).props('tagSize')).toBe('small');
+		});
+
+		it('should let a per-field tagSize override the form-level one', () => {
+			const wrapper = mount(FormInputs, {
+				props: {
+					inputs: [
+						{
+							...multiSelectInput,
+							properties: { ...multiSelectInput.properties, tagSize: 'medium' },
+						},
+					],
+					tagSize: 'small',
+				},
+			});
+
+			expect(wrapper.findComponent(N8nFormInput).props('tagSize')).toBe('medium');
+		});
+
+		it('should keep the form input default when no tagSize is set', () => {
+			const wrapper = mount(FormInputs, {
+				props: {
+					inputs: [multiSelectInput],
+				},
+			});
+
+			expect(wrapper.findComponent(N8nFormInput).props('tagSize')).toBe('large');
 		});
 	});
 });

@@ -1196,7 +1196,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	margin: 0;
 	text-align: center;
 	color: var(--color--text--tint-1);
-	font-size: var(--font-size--3xs);
+	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--md);
 }
 
