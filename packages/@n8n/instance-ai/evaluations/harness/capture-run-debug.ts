@@ -11,6 +11,10 @@ const RUN_FETCH_CONCURRENCY = 4;
  *  block that row — and with it the run — indefinitely. */
 const CAPTURE_DEADLINE_MS = 60_000;
 
+/** Per-request abort so a stalled call releases its socket instead of running
+ *  on after the outer deadline resolves the race. */
+const REQUEST_TIMEOUT_MS = 20_000;
+
 export async function captureThreadRunDebug(
 	client: N8nClient,
 	threadId: string,
@@ -41,7 +45,7 @@ async function captureAllRuns(
 	logger?: EvalLogger,
 ): Promise<InstanceAiRunDebugResponse[]> {
 	try {
-		const response = await client.listThreadDebugRuns(threadId);
+		const response = await client.listThreadDebugRuns(threadId, REQUEST_TIMEOUT_MS);
 		const runs = response.runs ?? [];
 		if (runs.length === 0) {
 			logger?.verbose(`  No run debug records for thread ${threadId}`);
@@ -54,7 +58,7 @@ async function captureAllRuns(
 				async (summary) =>
 					await limit(async (): Promise<InstanceAiRunDebugResponse | null> => {
 						try {
-							const record = await client.getRunDebug(summary.runId);
+							const record = await client.getRunDebug(summary.runId, REQUEST_TIMEOUT_MS);
 							return summary.label ? { ...record, label: summary.label } : record;
 						} catch (error: unknown) {
 							logger?.warn(

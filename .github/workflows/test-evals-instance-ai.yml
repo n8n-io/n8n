@@ -324,8 +324,9 @@ jobs:
           free_gb=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
           if [ "${free_gb:-0}" -lt 30 ]; then
             echo "Only ${free_gb}GB free — reclaiming builder cache before the run accretes data"
-            docker builder prune -f
-            df -h /
+            # Best-effort: a prune failure must not skip the eval run itself.
+            docker builder prune -f || echo "::warning::builder prune failed — continuing with ${free_gb}GB free"
+            df -h / || true
           else
             echo "Disk runway OK: ${free_gb}GB free"
           fi
