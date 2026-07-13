@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "editor" },
   "name": "@n8n/codemirror-lang",
   "version": "0.10.0",
   "description": "Language support package for CodeMirror 6 in n8n",

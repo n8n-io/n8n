@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "app", "scope": "ai" },
   "name": "@n8n/mcp-browser-extension",
   "version": "0.0.4",
   "private": true,

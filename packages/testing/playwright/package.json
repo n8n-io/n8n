@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "tooling", "scope": "tooling" },
   "name": "n8n-playwright",
   "private": true,
   "scripts": {

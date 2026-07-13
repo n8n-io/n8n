@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "tooling", "scope": "tooling" },
   "private": true,
   "name": "@n8n/eslint-config",
   "type": "module",

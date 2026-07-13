@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "app", "scope": "ai" },
   "name": "@n8n/computer-use",
   "version": "0.14.0",
   "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",

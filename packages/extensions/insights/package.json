@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "feature", "scope": "insights" },
   "name": "@n8n/n8n-extension-insights",
   "version": "0.17.0",
   "type": "module",

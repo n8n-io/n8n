@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "platform" },
   "name": "@n8n/client-oauth2",
   "version": "1.12.0",
   "scripts": {

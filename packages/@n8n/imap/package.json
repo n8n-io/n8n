@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "platform" },
   "name": "@n8n/imap",
   "version": "0.23.0",
   "scripts": {

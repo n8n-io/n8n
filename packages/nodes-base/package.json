@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "nodes", "scope": "nodes" },
   "name": "n8n-nodes-base",
   "version": "2.30.0",
   "description": "Base nodes of n8n",

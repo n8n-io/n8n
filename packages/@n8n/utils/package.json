@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "shared" },
   "name": "@n8n/utils",
   "type": "module",
   "version": "1.38.0",

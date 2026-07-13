@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "platform" },
   "name": "@n8n/backend-common",
   "version": "1.30.0",
   "scripts": {

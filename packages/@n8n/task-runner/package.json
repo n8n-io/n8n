@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "app", "scope": "workflow-engine" },
   "name": "@n8n/task-runner",
   "version": "2.30.0",
   "scripts": {

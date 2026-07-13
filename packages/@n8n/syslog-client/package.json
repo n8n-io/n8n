@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "util", "scope": "platform" },
   "name": "@n8n/syslog-client",
   "version": "1.7.0",
   "scripts": {

@@ -1,4 +1,5 @@
 {
+  "boundaries": { "type": "tooling", "scope": "nodes" },
   "name": "@n8n/node-cli",
   "version": "0.39.0",
   "description": "Official CLI for developing community nodes for n8n",
