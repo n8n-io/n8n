@@ -61,6 +61,30 @@ export interface NodeExecutionResult {
 const OPERATION_BLACKLIST = [SEND_AND_WAIT_OPERATION, 'dispatchAndWait'];
 
 /**
+ * Node types that must never run as an agent tool, regardless of RBAC —
+ * they grant command execution or arbitrary file-system access, which is a
+ * different trust tier than "call an API with a shared credential". This is
+ * a defense-in-depth backstop applied to every execution path (chat,
+ * published integrations, tasks, workflows), independent of the per-user
+ * access checks applied when building the tool list.
+ */
+export const AGENT_TOOL_NODE_DENYLIST = new Set<string>([
+	'n8n-nodes-base.executeCommand',
+	'n8n-nodes-base.ssh',
+	'n8n-nodes-base.readWriteFile',
+]);
+
+/**
+ * The node-types resolver may hand us the `*Tool` variant of a node
+ * (e.g. `executeCommand` -> `executeCommandTool`, see `resolveToolNodeType`
+ * in `node-tool-factory.ts`). Strip that suffix before checking the denylist
+ * so both the base and tool-wrapped forms are caught.
+ */
+function stripAgentToolSuffix(nodeType: string): string {
+	return nodeType.endsWith('Tool') ? nodeType.slice(0, -'Tool'.length) : nodeType;
+}
+
+/**
  * Vendor-API nodes the agent runtime can execute even though they aren't
  * marked `usableAsTool`. They expose the full provider API (image generation,
  * audio, files, embeddings, etc.) — not just chat completion — and are
@@ -212,6 +236,12 @@ export class EphemeralNodeExecutor {
 		typeVersion: number,
 		nodeParameters: INodeParameters,
 	): void {
+		if (AGENT_TOOL_NODE_DENYLIST.has(stripAgentToolSuffix(nodeType))) {
+			throw new UserError('Node type is not permitted for agent tool execution', {
+				extra: { nodeType },
+			});
+		}
+
 		const resolved = this.nodeTypes.getByNameAndVersion(nodeType, typeVersion);
 
 		if (!isUsableAsAgentTool(resolved.description) && !isAgentProviderNode(nodeType)) {

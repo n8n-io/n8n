@@ -8,4 +8,8 @@ export class VersionsPage extends BasePage {
 	getVersionCard() {
 		return this.container.getByTestId('version-card');
 	}
+
+	getSecurityBadge() {
+		return this.getVersionCard().first().locator('.el-tag--danger').getByText('Security update');
+	}
 }

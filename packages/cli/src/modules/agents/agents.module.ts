@@ -18,6 +18,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-chat.controller');
 		await import('./agent-builder.controller');
 		await import('./agent-integrations.controller');
+		await import('./agent-vector-stores.controller');
 		await import('./agent-tasks.controller');
 		await import('./agent-sandbox.controller');
 		await import('./agents-list.controller');

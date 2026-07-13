@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { WorkflowListItem, UserAction } from '@/Interface';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
@@ -14,6 +14,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
+import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 import router from '@/app/router';
@@ -58,6 +59,7 @@ const tableSortBy = computed({
 
 const emit = defineEmits<{
 	removeMcpAccess: [workflow: WorkflowListItem];
+	bulkRemoveMcpAccess: [workflowIds: string[]];
 	connectWorkflows: [];
 	updateDescription: [workflow: WorkflowListItem];
 	'update:options': [payload: TableOptions];
@@ -66,6 +68,27 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const itemsLength = computed(() => props.totalCount ?? props.workflows.length);
+
+const selectedWorkflowIds = ref<string[]>([]);
+
+// Selection references loaded rows, so any data reload invalidates it
+watch(
+	() => props.workflows,
+	() => {
+		selectedWorkflowIds.value = [];
+	},
+);
+
+const isRowSelectable = (workflow: WorkflowListItem) =>
+	!!getResourcePermissions(workflow.scopes).workflow.update;
+
+const clearSelection = () => {
+	selectedWorkflowIds.value = [];
+};
+
+const onBulkRemoveMcpAccess = () => {
+	emit('bulkRemoveMcpAccess', selectedWorkflowIds.value);
+};
 
 const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 	{
@@ -148,17 +171,20 @@ const onConnectClick = () => {
 			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
-		<div v-else class="mt-s mb-xl">
+		<div v-else class="mt-s mb-xl" :class="$style['table-container']">
 			<N8nDataTableServer
 				v-model:sort-by="tableSortBy"
 				v-model:page="tablePage"
 				v-model:items-per-page="tableItemsPerPage"
+				v-model:selection="selectedWorkflowIds"
 				:class="$style['workflow-table']"
 				data-test-id="mcp-workflow-table"
 				:headers="tableHeaders"
 				:items="props.workflows"
 				:items-length="itemsLength"
 				:page-sizes="[10, 25, 50]"
+				:show-select="itemsLength > 0"
+				:item-selectable="isRowSelectable"
 				@update:options="emit('update:options', $event)"
 			>
 				<template v-if="itemsLength === 0" #cover>
@@ -257,6 +283,20 @@ const onConnectClick = () => {
 					/>
 				</template>
 			</N8nDataTableServer>
+			<SelectedItemsInfo
+				:class="$style['selection-bar']"
+				:selected-count="selectedWorkflowIds.length"
+				@clear-selection="clearSelection"
+			>
+				<template #actions>
+					<N8nButton
+						variant="subtle"
+						data-test-id="mcp-bulk-remove-access-button"
+						:label="i18n.baseText('settings.mcp.workflows.table.action.removeMCPAccess')"
+						@click="onBulkRemoveMcpAccess"
+					/>
+				</template>
+			</SelectedItemsInfo>
 		</div>
 	</div>
 </template>
@@ -266,6 +306,19 @@ const onConnectClick = () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+// The selection bar's default absolute positioning assumes a tall anchor
+// container and overlaps the header when the table is short. Sticky keeps
+// it below the table, floating at the viewport bottom only while a long
+// table extends past it.
+.table-container .selection-bar {
+	position: sticky;
+	bottom: var(--spacing--3xl);
+	left: auto;
+	transform: none;
+	width: fit-content;
+	margin: 0 auto;
 }
 
 .workflow-table {

@@ -23,6 +23,7 @@ import {
 	type ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 import { useInstanceAiMcpStore } from '../../instanceAiMcp.store';
+import { useInstanceAiMcpTelemetry } from '../../instanceAiMcp.telemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import type {
 	InstanceAiMcpConnectionResponse,
@@ -56,6 +57,7 @@ const props = defineProps<{
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
+const mcpTelemetry = useInstanceAiMcpTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
 const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
@@ -407,6 +409,34 @@ function findServerForItem(item: McpServerConnectionItem): McpRegistryServerResp
 	return mcpStore.catalog?.find((s) => s.slug === slug);
 }
 
+function trackMcpCredentialInteraction(
+	item: ToolConnectionItem,
+	track: (serverSlug: string) => void,
+): void {
+	if (item.kind !== 'mcp-server') return;
+	const server = findServerForItem(item);
+	if (!server) return;
+	track(server.slug);
+}
+
+function handleFirstCredentialConnect(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackFirstCredentialConnectionStart(serverSlug);
+	});
+}
+
+function handleCredentialDropdownOpen(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackCredentialDropdownOpened(serverSlug);
+	});
+}
+
+function handleNewCredentialConnect(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackNewCredentialConnectionStart(serverSlug);
+	});
+}
+
 async function handleSelectCredential(
 	item: ToolConnectionItem,
 	_authType: string,
@@ -415,6 +445,7 @@ async function handleSelectCredential(
 	if (item.kind !== 'mcp-server') return;
 	const server = findServerForItem(item);
 	if (!server) return;
+	mcpTelemetry.trackExistingCredentialSelected(server.slug);
 	const ok = await connectOrSwapCredential(server.slug, credentialId);
 	if (ok) showSettingsForServer(server.slug);
 }
@@ -427,6 +458,7 @@ async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSet
 		excludedTools: settings.excludedTools,
 	});
 	if (!updated) return;
+	mcpTelemetry.trackToolFilterSettingsUpdated(updated.serverSlug, settings.inclusionMode);
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('instanceAi.mcp.settings.saved'),
@@ -464,6 +496,9 @@ async function handleConnect(item: ToolConnectionItem) {
 		:hide-back-button="shouldHideBackButton"
 		@update:detail-item="(item) => (activeItemId = item?.id ?? null)"
 		@select-credential="handleSelectCredential"
+		@credential-dropdown-open="handleCredentialDropdownOpen"
+		@first-credential-connect="handleFirstCredentialConnect"
+		@new-credential-connect="handleNewCredentialConnect"
 		@connect="handleConnect"
 		@save="handleSave"
 		@disconnect="handleDisconnect"

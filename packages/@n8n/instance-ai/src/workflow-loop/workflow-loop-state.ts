@@ -265,6 +265,14 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Map of node name → credential types that were mocked on that node. */
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
 	/**
+	 * Map of node name → credentials the build attached automatically (restored
+	 * from the saved workflow or auto-bound to the sole existing candidate).
+	 * These nodes are already connected — no credential setup is needed for them.
+	 */
+	resolvedCredentialsByNode: z
+		.record(z.array(z.object({ type: z.string(), id: z.string(), name: z.string() })))
+		.optional(),
+	/**
 	 * @deprecated Legacy `{_mockedCredential}` marker channel. No longer
 	 * written — `nodeSimulationPlan` + `simulationFixtures` replaced it. Kept
 	 * in the schema so build outcomes stored before the change still parse and

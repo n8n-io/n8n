@@ -1,10 +1,11 @@
-import { mockInstance, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
+import { EventService } from '@/events/event.service';
 import {
 	buildImportPackageBuffer,
 	serializedWorkflowWithCredential,
@@ -12,7 +13,7 @@ import {
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { Telemetry } from '@/telemetry';
 
-import { createOwnerWithApiKey } from '../shared/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -119,6 +120,77 @@ describe('POST /n8n-packages/import', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('rejects import when the API key lacks workflow:import scope', async () => {
+		const limitedOwner = await createOwnerWithApiKey({ scopes: ['workflow:export'] });
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const tarBuffer = await buildImportPackage();
+
+		const response = await testServer
+			.publicApiAgentFor(limitedOwner)
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(403);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'access-denied' }),
+		);
+	});
+
+	test('rejects import into a project the caller has no access to', async () => {
+		const projectOwner = await createOwnerWithApiKey();
+		const project = await createTeamProject('Someone else project', projectOwner);
+		const outsider = await createMemberWithApiKey();
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const tarBuffer = await buildImportPackage();
+
+		const response = await testServer
+			.publicApiAgentFor(outsider)
+			.post('/n8n-packages/import')
+			.field('projectId', project.id)
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(403);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'access-denied', projectId: project.id }),
+		);
+	});
+
+	test('rejects import when the projectId does not exist', async () => {
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', 'does-not-exist')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(404);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'entity-not-found', projectId: 'does-not-exist' }),
+		);
+	});
+
+	test('rejects bindings keyed by an unsupported entity type', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			// "credential" (no trailing s) is a plausible typo that must error, not silently no-op.
+			.field('bindings', '{"credential":{"source":"target"}}')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Unrecognized key');
+		expect(response.body.message).toContain('credential');
+	});
+
 	test('imports a package and returns the rich ImportResult', async () => {
 		const tarBuffer = await buildImportPackage();
 
@@ -146,6 +218,7 @@ describe('POST /n8n-packages/import', () => {
 					status: 'created',
 				},
 			],
+			folders: [],
 			bindings: {
 				workflows: { 'wf-http-source': expect.any(String) },
 				credentials: {},
@@ -168,7 +241,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('folderId', '')
 			.field('credentialMatchingMode', 'id-only')
 			.field('credentialMissingMode', 'must-preexist')
-			.field('credentialBindings', '{}')
+			.field('bindings', '{}')
 			.field('workflowConflictPolicy', 'fail')
 			.field('workflowIdPolicy', 'new')
 			.attach('package', tarBuffer, 'import.n8np');
@@ -189,6 +262,7 @@ describe('POST /n8n-packages/import', () => {
 		expect(first.statusCode).toBe(200);
 		const existingWorkflowId = first.body.workflows[0].localId;
 
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 		const secondBuffer = await buildImportPackage();
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
@@ -209,6 +283,10 @@ describe('POST /n8n-packages/import', () => {
 				},
 			],
 		});
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'blocked' }),
+		);
 	});
 
 	test('returns 422 when credential references cannot be resolved under must-preexist', async () => {

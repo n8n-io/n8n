@@ -81,14 +81,9 @@ export function useWorkflowsEmptyState() {
 				});
 			}
 			return i18n.baseText('workflows.empty.heading.userNotSetup');
-		} else {
-			if (firstName) {
-				return i18n.baseText('workflows.empty.headingWithIcon', {
-					interpolate: { name: firstName },
-				});
-			}
-			return i18n.baseText('workflows.empty.headingWithIcon.userNotSetup');
 		}
+
+		return i18n.baseText('workflows.empty.onboarding.heading');
 	});
 
 	const emptyStateDescription = computed(() => {
