@@ -28,6 +28,8 @@ async function importProjects(user: User, packageBuffer: Buffer, apiKeyScopes?: 
 		workflowPublishingPolicy: 'preserve-published-state',
 		workflowIdPolicy: 'new',
 		folderConflictPolicy: 'merge',
+		dataTableMatchingMode: 'by-id',
+		dataTableMissingMode: 'create',
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
 }

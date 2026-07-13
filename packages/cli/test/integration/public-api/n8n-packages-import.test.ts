@@ -245,10 +245,24 @@ describe('POST /n8n-packages/import', () => {
 			.field('bindings', '{}')
 			.field('workflowConflictPolicy', 'fail')
 			.field('workflowIdPolicy', 'new')
+			.field('dataTableMatchingMode', 'by-id')
+			.field('dataTableMissingMode', 'must-preexist')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('rejects an unsupported dataTableMissingMode value', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.field('dataTableMissingMode', 'recreate')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('returns 409 with conflict metadata when a workflow already exists under fail policy', async () => {

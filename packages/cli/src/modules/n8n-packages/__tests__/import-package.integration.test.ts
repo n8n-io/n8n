@@ -37,6 +37,8 @@ import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
 import {
 	FolderConflictPolicy,
+	DataTableMatchingMode,
+	DataTableMissingMode,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
@@ -63,6 +65,8 @@ type ImportPackageParams = Omit<
 	| 'workflowPublishingPolicy'
 	| 'workflowIdPolicy'
 	| 'folderConflictPolicy'
+	| 'dataTableMatchingMode'
+	| 'dataTableMissingMode'
 > &
 	Partial<
 		Pick<
@@ -74,6 +78,8 @@ type ImportPackageParams = Omit<
 			| 'workflowPublishingPolicy'
 			| 'workflowIdPolicy'
 			| 'folderConflictPolicy'
+			| 'dataTableMatchingMode'
+			| 'dataTableMissingMode'
 		>
 	>;
 
@@ -85,6 +91,8 @@ async function importPackage(params: ImportPackageParams) {
 		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		workflowIdPolicy: WorkflowIdPolicy.New,
 		folderConflictPolicy: FolderConflictPolicy.Merge,
+		dataTableMatchingMode: DataTableMatchingMode.ById,
+		dataTableMissingMode: DataTableMissingMode.Create,
 		...params,
 	});
 }

@@ -1,5 +1,6 @@
 import type { User } from '@n8n/db';
 
+import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
 import type { WorkflowIdConflict } from './entities/workflow/workflow-import-match.service';
 import type {
 	WorkflowConflict,
@@ -51,6 +52,20 @@ export const MissingWorkflowDependencyPolicy = {
 	/** Reserved for automatically adding missing static sub-workflows to the package. */
 	IncludeInPackage: 'include-in-package',
 } as const;
+
+export const DataTableMatchingMode = {
+	/** Matches a package table to the target-project table with the same id. Never falls back to name matching. */
+	ById: 'by-id',
+} as const;
+
+export const DataTableMissingMode = {
+	/** Creates absent tables from the package schema, keeping the package (source) id. */
+	Create: 'create',
+	/** Fails the import if a referenced table is absent in the target project. */
+	MustPreexist: 'must-preexist',
+	/** Imports the workflows without creating absent tables. Matched tables are still validated. */
+	DoNothing: 'do-nothing',
+} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type WorkflowConflictPolicy =
@@ -62,6 +77,11 @@ export type FolderConflictPolicy = (typeof FolderConflictPolicy)[keyof typeof Fo
 
 export type MissingWorkflowDependencyPolicy =
 	(typeof MissingWorkflowDependencyPolicy)[keyof typeof MissingWorkflowDependencyPolicy];
+
+export type DataTableMatchingMode =
+	(typeof DataTableMatchingMode)[keyof typeof DataTableMatchingMode];
+
+export type DataTableMissingMode = (typeof DataTableMissingMode)[keyof typeof DataTableMissingMode];
 
 export interface ExportPackageRequest {
 	user: User;
@@ -80,7 +100,8 @@ export type ImportPackageRequest = {
 	apiKeyScopes?: string[];
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
-	ImportFolderProperties;
+	ImportFolderProperties &
+	ImportDataTableProperties;
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
@@ -95,6 +116,11 @@ export type ImportWorkflowProperties = {
 
 export type ImportFolderProperties = {
 	folderConflictPolicy: FolderConflictPolicy;
+};
+
+export type ImportDataTableProperties = {
+	dataTableMatchingMode: DataTableMatchingMode;
+	dataTableMissingMode: DataTableMissingMode;
 };
 
 /**
@@ -190,7 +216,8 @@ export type BlockingIssue =
 			actualType?: string;
 			usedByWorkflows: string[];
 	  }
-	| ({ type: 'folder-conflict' } & FolderConflict);
+	| ({ type: 'folder-conflict' } & FolderConflict)
+	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure);
 
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';

@@ -162,6 +162,29 @@ describe('N8nClient packages', () => {
 			expect(form.get('credentialMissingMode')).toBe('create-stub');
 		});
 
+		it('sends the data table modes when provided', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{
+					workflowConflictPolicy: 'fail',
+					dataTableMatchingMode: 'by-id',
+					dataTableMissingMode: 'do-nothing',
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('dataTableMatchingMode')).toBe('by-id');
+			expect(form.get('dataTableMissingMode')).toBe('do-nothing');
+		});
+
 		it('forwards bindings verbatim as a form field', async () => {
 			fetchMock.mockResolvedValue(
 				jsonResponse(200, {

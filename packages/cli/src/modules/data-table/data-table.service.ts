@@ -1,6 +1,7 @@
 import type {
 	AddDataTableColumnDto,
 	CreateDataTableDto,
+	DataTableCreateColumnSchema,
 	DeleteDataTableRowsDto,
 	ListDataTableContentQueryDto,
 	MoveDataTableColumnDto,
@@ -31,7 +32,9 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { RoleService } from '@/services/role.service';
 
 import { DataTableColumn } from './data-table-column.entity';
@@ -115,6 +118,62 @@ export class DataTableService {
 		this.dataTableSizeValidator.reset();
 
 		return result;
+	}
+
+	/**
+	 * Package-import-only creation path: creates a table that keeps the id it had
+	 * on the exporting instance. Not reachable over REST — the public create
+	 * endpoint always mints a fresh id.
+	 */
+	async createDataTableFromImport(
+		user: User,
+		projectId: string,
+		dataTable: { id: string; name: string; columns: DataTableCreateColumnSchema[] },
+	) {
+		if (!(await userHasScopes(user, ['dataTable:create'], false, { projectId }))) {
+			throw new ForbiddenError('User is missing a scope required to create a data table');
+		}
+
+		await this.validateUniqueName(dataTable.name, projectId);
+
+		const result = await this.dataTableRepository.createDataTable(
+			projectId,
+			dataTable.name,
+			dataTable.columns,
+			undefined,
+			dataTable.id,
+		);
+
+		this.dataTableSizeValidator.reset();
+
+		return result;
+	}
+
+	/**
+	 * Instance-wide id lookup (with columns) used by package import: same-project
+	 * hits are match candidates, cross-project hits are id conflicts.
+	 * Authorization is the import flow's concern.
+	 */
+	async findDataTablesByIds(dataTableIds: string[]): Promise<DataTable[]> {
+		if (dataTableIds.length === 0) return [];
+
+		return await this.dataTableRepository.find({
+			where: { id: In(dataTableIds) },
+			relations: { columns: true },
+		});
+	}
+
+	/** Project-scoped name lookup used by package import to detect name conflicts before creating tables. */
+	async findDataTablesByNamesInProject(
+		projectId: string,
+		names: string[],
+	): Promise<Array<Pick<DataTable, 'id' | 'name'>>> {
+		if (names.length === 0) return [];
+
+		return await this.dataTableRepository.find({
+			select: ['id', 'name'],
+			where: { projectId, name: In(names) },
+		});
 	}
 
 	async importCsvToExistingTable(

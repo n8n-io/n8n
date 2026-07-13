@@ -11,6 +11,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
+import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type {
 	PreparedWorkflow,
 	WorkflowImportOutcome,
@@ -18,7 +19,6 @@ import type {
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
 import type { PackageReader } from '../io/package-reader';
 import type { PackageManifest } from '../spec/manifest.schema';
-import type { PackageCredentialRequirement } from '../spec/requirements.schema';
 import { ImportOrchestrator, type ImportOrchestrationResult } from './import-orchestrator';
 import {
 	assertPackageImportApiKeyScopes,
@@ -68,11 +68,26 @@ export class WorkflowPackageImporter {
 			credentialBindings: request.bindings?.credentials,
 		};
 
+		const dataTableRequirements = identifyRequirements(
+			manifest.requirements?.dataTables,
+			workflows,
+		);
+		if (dataTableRequirements?.length && request.dataTableMissingMode === 'create') {
+			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['dataTable:create']);
+		}
+		const dataTableRequest: DataTableImportRequest = {
+			requirements: dataTableRequirements,
+			packageDataTables: await this.packageParser.getDataTables(reader),
+			matchingMode: request.dataTableMatchingMode,
+			missingMode: request.dataTableMissingMode,
+		};
+
 		const imported = await this.importOrchestrator.import({
 			context,
 			folders,
 			workflows,
 			credentialRequest,
+			dataTableRequest,
 			options: request,
 		});
 
@@ -205,11 +220,11 @@ export class WorkflowPackageImporter {
 	}
 }
 
-/** Keeps only the credential requirements used by the imported workflows, trimming `usedByWorkflows` to match. */
-function identifyRequirements(
-	requirements: PackageCredentialRequirement[] | undefined,
+/** Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match. */
+function identifyRequirements<T extends { usedByWorkflows: string[] }>(
+	requirements: T[] | undefined,
 	workflows: PreparedWorkflow[],
-): PackageCredentialRequirement[] | undefined {
+): T[] | undefined {
 	if (!requirements) return undefined;
 
 	const importedIds = new Set(workflows.map((workflow) => workflow.sourceWorkflowId));

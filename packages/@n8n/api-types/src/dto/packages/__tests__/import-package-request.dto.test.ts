@@ -13,6 +13,8 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
 			});
 		}
 	});
@@ -33,6 +35,8 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
 			});
 		}
 	});
@@ -55,6 +59,8 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
 			});
 		}
 	});
@@ -76,6 +82,8 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
 			});
 		}
 	});
@@ -107,6 +115,38 @@ describe('ImportPackageRequestDto', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
 				credentialMissingMode: 'auto-create',
+				workflowConflictPolicy: 'fail',
+			}).success,
+		).toBe(false);
+	});
+
+	it.each(['create', 'must-preexist', 'do-nothing'] as const)(
+		'accepts %s as a dataTableMissingMode value',
+		(dataTableMissingMode) => {
+			const result = ImportPackageRequestDto.safeParse({
+				dataTableMissingMode,
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.dataTableMissingMode).toBe(dataTableMissingMode);
+			}
+		},
+	);
+
+	it('rejects unsupported dataTableMissingMode values', () => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				dataTableMissingMode: 'recreate',
+				workflowConflictPolicy: 'fail',
+			}).success,
+		).toBe(false);
+	});
+
+	it('rejects unsupported dataTableMatchingMode values', () => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				dataTableMatchingMode: 'by-name',
 				workflowConflictPolicy: 'fail',
 			}).success,
 		).toBe(false);

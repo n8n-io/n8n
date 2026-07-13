@@ -14,6 +14,8 @@ import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
+import { serializedDataTableSchema } from '../spec/serialized/data-table.schema';
+import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
 import { serializedProjectSchema } from '../spec/serialized/project.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
@@ -59,6 +61,29 @@ export class N8nPackageParser {
 			folders.push(await this.readFolder(reader, entry));
 		}
 		return folders;
+	}
+
+	/** Reads the package's data table schemas. */
+	async getDataTables(reader: PackageReader): Promise<SerializedDataTable[]> {
+		const manifest = await this.getManifest(reader);
+
+		const dataTables: SerializedDataTable[] = [];
+		for (const entry of manifest.dataTables ?? []) {
+			const path = `${entry.target}/data-table.json`;
+			const wire = await this.readJson(reader, path, 'data table');
+
+			try {
+				dataTables.push(serializedDataTableSchema.parse(wire));
+			} catch (cause) {
+				if (cause instanceof ZodError) {
+					throw new UserError(`Package data table file at ${path} failed schema validation.`, {
+						cause,
+					});
+				}
+				throw cause;
+			}
+		}
+		return dataTables;
 	}
 
 	/** Reads the package's project shells. */

@@ -8,6 +8,11 @@ import type {
 	CredentialResolution,
 	CredentialResolutionFailure,
 } from '../entities/credential/credential.types';
+import { DataTableImporter } from '../entities/data-table/data-table-importer';
+import type {
+	DataTableImportPlan,
+	DataTableImportRequest,
+} from '../entities/data-table/data-table.types';
 import { FolderImporter } from '../entities/folder/folder-importer';
 import type { FolderImportPlan, PreparedFolder } from '../entities/folder/folder-import.types';
 import type {
@@ -33,6 +38,7 @@ export interface ImportOrchestrationInput {
 	folders: PreparedFolder[];
 	workflows: PreparedWorkflow[];
 	credentialRequest: CredentialBindingRequest;
+	dataTableRequest: DataTableImportRequest;
 	options: ImportWorkflowProperties & ImportFolderProperties;
 }
 
@@ -51,13 +57,14 @@ export interface ImportOrchestrationResult {
 export class ImportOrchestrator {
 	constructor(
 		private readonly credentialImporter: CredentialImporter,
+		private readonly dataTableImporter: DataTableImporter,
 		private readonly folderImporter: FolderImporter,
 		private readonly workflowImporter: WorkflowImporter,
 		private readonly workflowPublisher: WorkflowPublisher,
 	) {}
 
 	async import(input: ImportOrchestrationInput): Promise<ImportOrchestrationResult> {
-		const { context, folders, workflows, credentialRequest, options } = input;
+		const { context, folders, workflows, credentialRequest, dataTableRequest, options } = input;
 
 		// PublishAll requires publish scope up front; other policies are checked per workflow.
 		await this.workflowPublisher.assertCanPublish(
@@ -67,6 +74,7 @@ export class ImportOrchestrator {
 		);
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
+		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
@@ -76,6 +84,7 @@ export class ImportOrchestrator {
 			credentialPlan,
 			credentialRequest,
 			folderPlan,
+			dataTablePlan,
 		);
 
 		if (blockingIssues.length > 0) {
@@ -89,6 +98,8 @@ export class ImportOrchestrator {
 			credentialRequest,
 			credentialPlan,
 		);
+
+		await this.dataTableImporter.apply(context, dataTablePlan);
 		const publishBlockedSourceWorkflowIds = workflowsBlockedFromPublish(
 			credentialRequest.requirements,
 			new Set(credentialResult.stubbed),
@@ -117,6 +128,7 @@ export class ImportOrchestrator {
 		credentialResolution: CredentialResolution,
 		credentialRequest: CredentialBindingRequest,
 		folderPlan: FolderImportPlan,
+		dataTablePlan: DataTableImportPlan,
 	): BlockingIssue[] {
 		return [
 			...workflowPlan.conflicts.map(
@@ -130,6 +142,9 @@ export class ImportOrchestrator {
 			),
 			...folderPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'folder-conflict', ...conflict }),
+			),
+			...dataTablePlan.failures.map(
+				(failure): BlockingIssue => ({ type: 'data-table-unresolved', ...failure }),
 			),
 			...this.credentialImporter
 				.blockingFailures(credentialRequest, credentialResolution)

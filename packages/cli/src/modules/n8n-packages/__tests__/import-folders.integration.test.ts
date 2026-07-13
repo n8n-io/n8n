@@ -43,6 +43,8 @@ async function importFolders(params: FolderImportParams) {
 		workflowPublishingPolicy: 'preserve-published-state',
 		workflowIdPolicy: 'new',
 		folderConflictPolicy: params.folderConflictPolicy ?? 'merge',
+		dataTableMatchingMode: 'by-id',
+		dataTableMissingMode: 'create',
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
 }
