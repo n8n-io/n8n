@@ -20,6 +20,20 @@ export const ASK_QUESTION_TOOL_NAME = 'ask_question' as const;
  */
 export const APPROVAL_TOOL_NAME = 'approval' as const;
 
+/**
+ * Stable code on `BuilderNotConfiguredError` (`packages/cli/src/modules/agents/builder/errors.ts`)
+ * so callers that can't import that class directly (e.g. instance AI) can
+ * still detect the unconfigured state by matching the thrown error's `code`.
+ */
+export const BUILDER_NOT_CONFIGURED_CODE = 'BUILDER_NOT_CONFIGURED' as const;
+
+/**
+ * The only two agent-builder tools that mutate the agent config. Mirrors
+ * `BUILDER_TOOLS.WRITE_CONFIG` / `PATCH_CONFIG` in
+ * `packages/cli/src/modules/agents/builder/builder-tool-names.ts`.
+ */
+export const CONFIG_MUTATION_TOOL_NAMES = ['write_config', 'patch_config'] as const;
+
 export const interactiveToolNameSchema = z.union([
 	z.literal(ASK_LLM_TOOL_NAME),
 	z.literal(ASK_CREDENTIAL_TOOL_NAME),

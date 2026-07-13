@@ -139,6 +139,107 @@ describe('useContextMenu', () => {
 		});
 	});
 
+	describe('group_nodes gating', () => {
+		beforeEach(() => {
+			// Connect the first two nodes so they form a groupable subgraph
+			workflowDocumentStore.setConnections({
+				[nodes[0].name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: nodes[1].name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			});
+		});
+
+		it('shows "Group nodes" enabled for a groupable selection', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
+
+			const item = actions.value.find((action) => action.id === 'group_nodes');
+			expect(item).toBeDefined();
+			expect(item?.disabled).toBe(false);
+		});
+
+		it('ignores unresolvable ids in the target when computing enablement', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, {
+				source: 'canvas',
+				nodeIds: [nodes[0].id, nodes[1].id, 'deleted-node-id'],
+			});
+
+			expect(actions.value.find((action) => action.id === 'group_nodes')?.disabled).toBe(false);
+		});
+
+		it('shows "Group nodes" disabled for an ineligible selection (disconnected nodes)', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[2].id] });
+
+			const item = actions.value.find((action) => action.id === 'group_nodes');
+			expect(item).toBeDefined();
+			expect(item?.disabled).toBe(true);
+		});
+
+		it('shows "Group nodes" disabled for nodes that are already grouped', () => {
+			workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'Group 1');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
+
+			expect(actions.value.find((action) => action.id === 'group_nodes')?.disabled).toBe(true);
+		});
+
+		it('shows "Group nodes" disabled in read-only mode', () => {
+			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
+
+			expect(actions.value.find((action) => action.id === 'group_nodes')?.disabled).toBe(true);
+		});
+	});
+
+	describe('group target', () => {
+		it('shows only the group actions and resolves member node ids', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
+			const { open, actions, targetNodeIds, targetGroupId } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+
+			expect(actions.value.map((action) => action.id)).toEqual(['rename_group', 'ungroup_nodes']);
+			expect(actions.value.every((action) => !action.disabled)).toBe(true);
+			expect(targetNodeIds.value).toEqual([nodes[0].id, nodes[1].id]);
+			expect(targetGroupId.value).toBe(group.id);
+		});
+
+		it('disables the group actions in read-only mode', () => {
+			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+
+			expect(actions.value.map((action) => action.id)).toEqual(['rename_group', 'ungroup_nodes']);
+			expect(actions.value.every((action) => action.disabled)).toBe(true);
+		});
+
+		it('closes when re-invoked on the same group, letting the native menu through', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, isOpen } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+			expect(isOpen.value).toBe(true);
+
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+			expect(isOpen.value).toBe(false);
+		});
+
+		it('retargets when invoked on a different group', () => {
+			const groupA = workflowDocumentStore.createGroup([nodes[0].id], 'A');
+			const groupB = workflowDocumentStore.createGroup([nodes[1].id], 'B');
+			const { open, isOpen, targetGroupId } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: groupA.id, nodeIds: groupA.nodeIds });
+			open(mockEvent, { source: 'group', groupId: groupB.id, nodeIds: groupB.nodeIds });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetGroupId.value).toBe(groupB.id);
+		});
+	});
+
 	it('should support opening and closing (default = right click on canvas)', () => {
 		const { open, close, isOpen, actions, position, target, targetNodeIds } = useContextMenu();
 		expect(isOpen.value).toBe(false);

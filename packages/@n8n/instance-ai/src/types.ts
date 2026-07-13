@@ -833,6 +833,48 @@ export interface InstanceAiWorkflowTemplateService {
 	): Promise<{ available: true; template: Record<string, unknown> } | { available: false }>;
 }
 
+// ── Builder delegate (sub-agent) ─────────────────────────────────────────────
+
+/** Reference to a workflow the current instance-AI session built or touched. */
+export interface SessionWorkflowRef {
+	id: string;
+	name: string;
+	description?: string;
+}
+
+/** Instance-AI-scoped builder session. */
+export interface BuilderDelegateSession {
+	/** Builder persistence thread id, e.g. `ia-builder:<instanceThreadId>:<agentId>`. */
+	threadId: string;
+	/**
+	 * Host-resolved model for the builder run — overrides the agents-module
+	 * builder's own model settings so the sub-agent inherits the instance-AI
+	 * model.
+	 */
+	modelConfig?: ModelConfig;
+}
+
+/** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
+export interface BuilderTurnStream {
+	fullStream: AsyncIterable<unknown>;
+	text: Promise<string>;
+}
+
+/**
+ * Narrow delegate wrapping the agents-module builder for sub-agent use.
+ * Provided by the host (cli) only when the agents module is active. This
+ * version excludes interactive builder tools at the session level, so every
+ * `streamBuild` call completes, errors, or is cancelled — never suspends.
+ */
+export interface InstanceAiBuilderDelegate {
+	createAgent(name: string): Promise<{ agentId: string; projectId: string }>;
+	streamBuild(
+		agentId: string,
+		message: string,
+		session: BuilderDelegateSession,
+	): Promise<BuilderTurnStream>;
+}
+
 // ── Local gateway status ─────────────────────────────────────────────────────
 
 export type LocalGatewayStatus =
@@ -862,8 +904,10 @@ export interface InstanceAiContext {
 	dataTableService: InstanceAiDataTableService;
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
-	/** The target n8n Agent being built/edited in this conversation, when pre-bound by the host. */
+	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
 	agentBuilderTarget?: { agentId: string; projectId: string };
+	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
+	builderDelegate?: InstanceAiBuilderDelegate;
 	webResearchService?: InstanceAiWebResearchService;
 	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
 	templatesService?: BuilderTemplatesService;

@@ -106,6 +106,37 @@ export function getLatestBuilderTarget(node: InstanceAiAgentNode): BuilderTarget
 	return undefined;
 }
 
+export interface AgentBuilderTarget {
+	/** The builder sub-agent node id (`agent-builder:<targetAgentId>`). */
+	agentId: string;
+	targetAgentId: string;
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the agentId
+ * (node id) and targetAgentId of the latest agent-builder sub-agent that was
+ * spawned with a concrete `targetResource.id`. Used to open the canvas
+ * preview at spawn time, before the first build-agent tool call returns a
+ * result — mirrors getLatestBuilderTarget for workflows.
+ */
+export function getLatestAgentBuilderTarget(
+	node: InstanceAiAgentNode,
+): AgentBuilderTarget | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const child = node.children[i];
+		const nested = getLatestAgentBuilderTarget(child);
+		if (nested) return nested;
+		if (
+			child.kind === 'agent-builder' &&
+			child.targetResource?.type === 'agent' &&
+			typeof child.targetResource.id === 'string'
+		) {
+			return { agentId: child.agentId, targetAgentId: child.targetResource.id };
+		}
+	}
+	return undefined;
+}
+
 const WORKFLOW_SETUP_TOOLS = new Set(['setup-workflow', 'apply-workflow-credentials']);
 
 /**
@@ -356,18 +387,67 @@ function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefi
 	};
 }
 
+interface AgentArtifactWalk {
+	result?: AgentArtifactResult;
+	/**
+	 * Most specific agent target found in this subtree: this node's own
+	 * targetResource, or one bubbled up from a child. Lets an orchestrator's
+	 * own `build-agent` tool call (which carries no agentId in its result)
+	 * resolve identity from the builder sub-agent it just spawned, whose
+	 * targetResource carries the agentId via the `agent-spawned` event.
+	 */
+	target?: AgentArtifactTarget;
+}
+
+function walkAgentArtifact(
+	node: InstanceAiAgentNode,
+	fallbackTarget: AgentArtifactTarget | undefined,
+): AgentArtifactWalk {
+	const ownTarget = getAgentTarget(node);
+	const target = ownTarget ?? fallbackTarget;
+
+	let childTarget: AgentArtifactTarget | undefined;
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childWalk = walkAgentArtifact(node.children[i], target);
+		if (childWalk.result) return childWalk;
+		if (childTarget === undefined) childTarget = childWalk.target;
+	}
+
+	// Identity for this node's own build-agent call: prefer its own
+	// targetResource, then one discovered on a child (the builder sub-agent
+	// spawned by this call), then the fallback threaded down from an ancestor.
+	const callTarget = ownTarget ?? childTarget ?? fallbackTarget;
+
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		if (tc.isLoading || !tc.result || typeof tc.result !== 'object') continue;
+		const result = tc.result as Record<string, unknown>;
+		const args = tc.args as Record<string, unknown> | undefined;
+
+		if (tc.toolName === 'build-agent' && result.ok === true && callTarget) {
+			if (typeof args?.name === 'string') {
+				return {
+					result: { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' },
+					target: callTarget,
+				};
+			}
+			if (result.configUpdated === true) {
+				return {
+					result: { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' },
+					target: callTarget,
+				};
+			}
+		}
+	}
+
+	return { target: callTarget };
+}
+
 export function getLatestAgentArtifactResult(
 	node: InstanceAiAgentNode,
 	fallbackTarget?: AgentArtifactTarget,
 ): AgentArtifactResult | undefined {
-	const target = getAgentTarget(node) ?? fallbackTarget;
-
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestAgentArtifactResult(node.children[i], target);
-		if (childResult) return childResult;
-	}
-
-	return undefined;
+	return walkAgentArtifact(node, fallbackTarget).result;
 }
 
 /**
