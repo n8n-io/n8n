@@ -48,7 +48,7 @@ import {
 	WorkflowSaveConflictError,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { upsertEvaluationConfigSchema } from '@n8n/api-types';
+import { CONFIG_EVALS_FLAG, upsertEvaluationConfigSchema } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
@@ -117,6 +117,7 @@ import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.servi
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
+import { PostHogClient } from '@/posthog';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { InstanceAiAgentBuilderAdapterService } from '@/modules/agents/instance-ai-agent-builder.adapter';
@@ -276,10 +277,21 @@ export class InstanceAiAdapterService {
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the create_agent tool. */
 			agentId?: string;
+			/** Gate for config-based evals (`088_instance_ai_config_evals`). Resolved
+			 *  per-user by the caller via `isConfigEvalsEnabled`. When falsy, the
+			 *  eval-config service is not wired and the tool is not exposed. */
+			configEvalsEnabled?: boolean;
 		},
 	): InstanceAiContext {
-		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist, agentId } =
-			options ?? {};
+		const {
+			searchProxyConfig,
+			pushRef,
+			threadId,
+			projectId,
+			credentialIdAllowlist,
+			agentId,
+			configEvalsEnabled,
+		} = options ?? {};
 		const agentBuilderAdapter = this.getAgentBuilderAdapter();
 		return {
 			userId: user.id,
@@ -289,7 +301,7 @@ export class InstanceAiAdapterService {
 			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
-			...(this.evaluationConfigService
+			...(configEvalsEnabled && this.evaluationConfigService
 				? {
 						evaluationConfigService: this.createEvaluationConfigAdapter(
 							this.evaluationConfigService,
@@ -327,6 +339,18 @@ export class InstanceAiAdapterService {
 		} catch {
 			return null;
 		}
+	}
+
+	/**
+	 * Per-user gate for the config-based eval capability, backed by the
+	 * `088_instance_ai_config_evals` PostHog flag (operator override via
+	 * `N8N_INSTANCE_AI_CONFIG_EVALS_ENABLED`). `getFeatureFlags` swallows PostHog
+	 * errors and returns `{}`, so an outage fails closed (capability disabled).
+	 * Pass the result into `createContext({ configEvalsEnabled })`.
+	 */
+	async isConfigEvalsEnabled(user: User): Promise<boolean> {
+		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		return flags?.[CONFIG_EVALS_FLAG] === true;
 	}
 
 	private getTemplatesService(): BuilderTemplatesServiceInstance {

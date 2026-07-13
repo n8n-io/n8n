@@ -1427,6 +1427,15 @@ export interface InstanceAiEvalMockedCredential {
 export const EVAL_VENDOR_SDK_INTERCEPTION_FLAG = '085_eval_vendor_sdk_interception';
 
 /**
+ * PostHog rollout flag gating the config-based evaluation capability in
+ * Instance AI (the `eval-config` tool and the config-evals skill). When absent
+ * or not `true` for a user, the capability is neither wired into the agent
+ * context nor exposed as a tool. Per-user; operator override via
+ * `N8N_INSTANCE_AI_CONFIG_EVALS_ENABLED`.
+ */
+export const CONFIG_EVALS_FLAG = '088_instance_ai_config_evals';
+
+/**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
  * server) during evaluation. Populated for every AI root the server intercepts;
  * empty when the kill-switch is off or every root was auto-/explicit-pinned.

@@ -1848,12 +1848,14 @@ export class InstanceAiService {
 		const { searchProxyConfig, tracingProxyConfig, tokenManager, proxyBaseUrl } =
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
+		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
 			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
+			configEvalsEnabled,
 		});
 
 		// Merge both local gateway and direct browser-use into a single

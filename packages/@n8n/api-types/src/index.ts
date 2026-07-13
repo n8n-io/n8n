@@ -316,6 +316,7 @@ export {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	UNLIMITED_CREDITS,
 	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
+	CONFIG_EVALS_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
