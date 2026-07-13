@@ -131,7 +131,7 @@ export class WorkflowExecutionService {
 		// execution. ManualRunDto already strips it for endpoint traffic; this
 		// keeps the same precedence for direct callers.
 		// TODO: Remove once the FE stops sending it (CAT-1808)
-		if ('triggerToStartFrom' in payload) {
+		if ('triggerToStartFrom' in payload && payload.triggerToStartFrom !== undefined) {
 			Reflect.deleteProperty(payload, 'runData');
 		}
 
@@ -597,7 +597,9 @@ export class WorkflowExecutionService {
 function isPartialExecution(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.PartialManualExecutionToDestinationPayload {
-	return 'runData' in payload && 'destinationNode' in payload;
+	return (
+		'runData' in payload && payload.runData !== undefined && payload.destinationNode !== undefined
+	);
 }
 
 /**
@@ -609,7 +611,7 @@ function isPartialExecution(
 function isFullExecutionFromKnownTrigger(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.FullManualExecutionFromKnownTriggerPayload {
-	return 'triggerToStartFrom' in payload;
+	return 'triggerToStartFrom' in payload && payload.triggerToStartFrom !== undefined;
 }
 
 /**
@@ -622,10 +624,10 @@ function isFullExecutionFromKnownTrigger(
 function isFullExecutionFromUnknownTrigger(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload {
-	if ('triggerToStartFrom' in payload) {
+	if ('triggerToStartFrom' in payload && payload.triggerToStartFrom !== undefined) {
 		return false;
 	}
-	if ('runData' in payload) {
+	if ('runData' in payload && payload.runData !== undefined) {
 		return false;
 	}
 	return payload.destinationNode !== undefined;
