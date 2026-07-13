@@ -2,8 +2,8 @@ import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 import { h } from 'vue';
 
-import TagsInput from './TagsInput.vue';
 import { TagsInputItemDelete, TagsInputItemText, TagsInputInput } from './reka-ui';
+import TagsInput from './TagsInput.vue';
 
 describe('v2/components/TagsInput', () => {
 	describe('rendering', () => {

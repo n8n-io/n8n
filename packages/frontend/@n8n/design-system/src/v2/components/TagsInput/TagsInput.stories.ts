@@ -3,8 +3,8 @@ import { ref } from 'vue';
 
 import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-import TagsInput from './TagsInput.vue';
 import { TagsInputItemDelete, TagsInputItemText } from './reka-ui';
+import TagsInput from './TagsInput.vue';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;

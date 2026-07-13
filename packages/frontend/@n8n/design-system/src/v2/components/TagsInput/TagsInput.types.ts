@@ -1,10 +1,10 @@
-import type { InputSize } from '../../../components/N8nInput/Input.types';
 import type {
 	AcceptableInputValue,
 	TagsInputInputProps,
 	TagsInputRootEmits,
 	TagsInputRootProps,
 } from './reka-ui';
+import type { InputSize } from '../../../components/N8nInput/Input.types';
 
 export type TagsInputValue = AcceptableInputValue;
 

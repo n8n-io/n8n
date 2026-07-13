@@ -4,13 +4,6 @@ import { nextTick, onBeforeUnmount, ref, useCssModule, useTemplateRef } from 'vu
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-import type {
-	TagsInputEmits,
-	TagsInputProps,
-	TagsInputSizes,
-	TagsInputSlots,
-	TagsInputValue,
-} from './TagsInput.types';
 import {
 	TagsInputInput,
 	TagsInputItem,
@@ -19,6 +12,13 @@ import {
 	TagsInputRoot,
 	useForwardPropsEmits,
 } from './reka-ui';
+import type {
+	TagsInputEmits,
+	TagsInputProps,
+	TagsInputSizes,
+	TagsInputSlots,
+	TagsInputValue,
+} from './TagsInput.types';
 
 defineOptions({ inheritAttrs: false });
 
@@ -211,9 +211,9 @@ onBeforeUnmount(() => {
 				</TagsInputItem>
 
 				<slot
+					:id="props.id"
 					name="input"
 					:placeholder="modelValue.length ? '' : props.placeholder"
-					:id="props.id"
 					:auto-focus="props.autoFocus"
 					:disabled="props.disabled"
 					:class="getInputClass(modelValue.length === 0)"
