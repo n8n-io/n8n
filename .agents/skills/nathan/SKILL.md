@@ -74,9 +74,11 @@ Key flags (pass after the deploy args): `--license community|enterprise|starter|
 `pnpm nathan local ...` generates a runnable `docker run` bundle, but Nathan
 delivers it as **Slack file attachments** (`run-n8n.sh` + `.env`), not to the
 terminal — they land in **#updates-pnpm-nathan**
-(https://n8nio.slack.com/archives/C0BGVHZ0SCW). Override the destination with
-`NATHAN_SLACK_CHANNEL=<slack channel id>`. `deploy` and `help` return fully in
-the terminal.
+(https://n8nio.slack.com/archives/C0BGVHZ0SCW). `deploy` and `help` return fully
+in the terminal.
+
+**Do not invent a `NATHAN_SLACK_CHANNEL`.** Leave it unset (it defaults to
+#updates-pnpm-nathan); only set it if the user explicitly gives you a channel id.
 
 ## Unsupported
 
