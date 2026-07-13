@@ -246,6 +246,21 @@ export class ScheduleTriggerJobRegistrar {
 	async remove(workflowId: string, nodeId: string): Promise<void> {
 		await this.jobProvisioner.deprovision(workflowId, nodeId);
 	}
+
+	/**
+	 * Delete every durable job the workflow's Schedule Trigger nodes committed;
+	 * their queued tasks cascade away. The whole-workflow counterpart to
+	 * {@link remove}, for deactivation paths that tear down all of a workflow's
+	 * triggers at once. Keyed by the workflow alone, not by the node ids
+	 * registered in memory, so a deactivation retried after a failure still finds
+	 * the rows once the in-memory registration is gone. Like {@link remove}, runs
+	 * regardless of the current interception state.
+	 *
+	 * @param workflowId The deactivating workflow whose durable jobs to delete.
+	 */
+	async removeWorkflow(workflowId: string): Promise<void> {
+		await this.jobProvisioner.deprovisionWorkflow(workflowId, SCHEDULE_TRIGGER_TASK_TYPE);
+	}
 }
 
 const pendingKey = (workflowId: string, nodeId: string): string => `${workflowId}:${nodeId}`;

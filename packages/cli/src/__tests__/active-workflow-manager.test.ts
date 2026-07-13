@@ -837,7 +837,7 @@ describe('ActiveWorkflowManager', () => {
 			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-desynced'))).toBe(false);
 		});
 
-		it('should deprovision durable schedule jobs of the registered nodes on removal', async () => {
+		it('should deprovision the durable schedule jobs of the workflow on removal', async () => {
 			// A deactivation through the legacy path (e.g. a workflow transfer with the
 			// publication flag on) must delete the durable rows its activation committed,
 			// or the durable scheduler keeps firing a workflow now marked inactive.
@@ -853,10 +853,17 @@ describe('ActiveWorkflowManager', () => {
 
 			await activeWorkflowManager.removeNonWebhookTriggers('wf-durable');
 
-			expect(scheduleTriggerJobRegistrar.remove).toHaveBeenCalledWith(
-				'wf-durable',
-				'schedule-node',
-			);
+			expect(scheduleTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-durable');
+		});
+
+		it('should deprovision durable schedule jobs even with no in-memory registration', async () => {
+			// An earlier removal may have cleared the in-memory registration and then
+			// failed on the durable delete; the retry must still find and drop the rows.
+			expect(realActiveWorkflowTriggers.isActive('wf-retry')).toBe(false);
+
+			await activeWorkflowManager.removeNonWebhookTriggers('wf-retry');
+
+			expect(scheduleTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-retry');
 		});
 
 		it('should stop a stranded cron on leader stepdown / shutdown', async () => {
@@ -880,7 +887,7 @@ describe('ActiveWorkflowManager', () => {
 			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-orphan'))).toBe(false);
 			// Durable jobs track the published state of a workflow, not this instance's
 			// leadership, so stepdown/shutdown must never deprovision them.
-			expect(scheduleTriggerJobRegistrar.remove).not.toHaveBeenCalled();
+			expect(scheduleTriggerJobRegistrar.removeWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('does not tear down triggers under the publication service flag', async () => {

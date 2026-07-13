@@ -332,6 +332,26 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		});
 	});
 
+	describe('removeWorkflow', () => {
+		it('removes the durable jobs of all schedule nodes of a deactivated workflow', async () => {
+			await makeRegistrar().removeWorkflow(WORKFLOW_ID);
+
+			expect(jobProvisioner.deprovisionWorkflow).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+			);
+		});
+
+		it('removes durable jobs left by an earlier activation even while the scheduler is off', async () => {
+			await makeRegistrar({ schedulerEnabled: false }).removeWorkflow(WORKFLOW_ID);
+
+			expect(jobProvisioner.deprovisionWorkflow).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+			);
+		});
+	});
+
 	describe('configuration warning', () => {
 		// The registrar scopes its logger, so warnings land on the scoped instance.
 		const construct = ({ schedulerEnabled = true, publicationEnabled = true } = {}) => {

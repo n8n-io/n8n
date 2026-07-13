@@ -24,8 +24,10 @@ interface ProvisionScope {
 	payload: Record<string, unknown>;
 }
 
-/** Identifies one workflow node's jobs for deletion. */
-type DeprovisionScope = Pick<ProvisionScope, 'workflowId' | 'nodeId'>;
+/** Identifies jobs for deletion: one node's jobs, or one workflow's jobs of a task type. */
+type DeprovisionScope =
+	| Pick<ProvisionScope, 'workflowId' | 'nodeId'>
+	| Pick<ProvisionScope, 'workflowId' | 'taskType'>;
 
 /** A job row's schedule columns: one `ScheduleDefinition` flattened for storage. */
 type ScheduleColumns = Pick<
@@ -90,6 +92,15 @@ export class DurableJobProvisioner {
 		return await this.provisioner.deprovision({ workflowId, nodeId });
 	}
 
+	/**
+	 * Delete all of a workflow's jobs of one task type, whichever nodes own them;
+	 * their queued tasks cascade away. For teardown paths that no longer know the
+	 * owning node ids.
+	 */
+	async deprovisionWorkflow(workflowId: string, taskType: string): Promise<{ removed: number }> {
+		return await this.provisioner.deprovision({ workflowId, taskType });
+	}
+
 	private provisionTransaction({
 		workflowId,
 		nodeId,
@@ -137,16 +148,19 @@ export class DurableJobProvisioner {
 			);
 	}
 
-	private deprovisionTransaction({
-		workflowId,
-		nodeId,
-	}: DeprovisionScope): RunInDeprovisionTransaction {
+	private deprovisionTransaction(scope: DeprovisionScope): RunInDeprovisionTransaction {
 		return async (work) =>
 			await this.dataSource.transaction(
 				async (manager) =>
 					await work({
 						deleteAll: async () =>
-							await this.jobs.deleteByWorkflowNode(manager, workflowId, nodeId),
+							'nodeId' in scope
+								? await this.jobs.deleteByWorkflowNode(manager, scope.workflowId, scope.nodeId)
+								: await this.jobs.deleteByWorkflowTaskType(
+										manager,
+										scope.workflowId,
+										scope.taskType,
+									),
 					}),
 			);
 	}

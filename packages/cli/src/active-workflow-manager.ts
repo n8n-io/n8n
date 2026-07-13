@@ -955,8 +955,6 @@ export class ActiveWorkflowManager {
 	 * and drop the durable schedule jobs its activation committed.
 	 */
 	async removeNonWebhookTriggers(workflowId: WorkflowId) {
-		const registeredNodeIds = this.activeWorkflowTriggers.getRegisteredTriggerNodeIds(workflowId);
-
 		// `activeWorkflowTriggers.remove` is idempotent and always deregisters the workflow's
 		// crons, to ensure they stop running on a deactivated workflow
 		const wasRemoved = await this.activeWorkflowTriggers.remove(workflowId);
@@ -964,12 +962,13 @@ export class ActiveWorkflowManager {
 		// A deactivation through this legacy path must also deprovision the durable
 		// jobs that addNonWebhookTriggers committed, exactly like the publication
 		// path's deregister does. Otherwise the durable scheduler keeps firing the
-		// schedule nodes of a workflow now marked inactive. A no-op for nodes
-		// without durable rows. Leader stepdown/shutdown must NOT reach this:
-		// they tear down in-memory state via removeAllNonWebhookTriggerWorkflows.
-		for (const nodeId of registeredNodeIds) {
-			await this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId);
-		}
+		// schedule nodes of a workflow now marked inactive. Keyed by the workflow
+		// alone, not the node ids registered in memory: those are already gone if
+		// an earlier removal failed here, and a retry must stay idempotent. A no-op
+		// for workflows without durable rows. Leader stepdown/shutdown must NOT
+		// reach this: they tear down in-memory state via
+		// removeAllNonWebhookTriggerWorkflows.
+		await this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId);
 
 		if (wasRemoved) {
 			this.logger.debug(`Removed non-webhook triggers for workflow "${workflowId}"`, {
