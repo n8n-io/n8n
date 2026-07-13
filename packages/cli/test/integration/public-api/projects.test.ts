@@ -33,12 +33,10 @@ describe('Projects in Public API', () => {
 	});
 
 	describe('GET /projects', () => {
-		it('if licensed, should return all projects with pagination', async () => {
+		it('should return all projects with pagination', async () => {
 			/**
 			 * Arrange
 			 */
-			testServer.license.setQuota('quota:maxTeamProjects', -1);
-			testServer.license.enable('feat:projectRole:admin');
 			const owner = await createOwnerWithApiKey();
 			const projects = await Promise.all([
 				createTeamProject(),
@@ -65,20 +63,7 @@ describe('Projects in Public API', () => {
 			});
 		});
 
-		it('if not authenticated, should reject', async () => {
-			/**
-			 * Act
-			 */
-			const response = await testServer.publicApiAgentWithoutApiKey().get('/projects');
-
-			/**
-			 * Assert
-			 */
-			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
-		});
-
-		it('if not licensed, should reject', async () => {
+		it('if not licensed, should still return projects (listing is not gated by license)', async () => {
 			/**
 			 * Arrange
 			 */
@@ -92,19 +77,28 @@ describe('Projects in Public API', () => {
 			/**
 			 * Assert
 			 */
-			expect(response.status).toBe(403);
-			expect(response.body).toHaveProperty(
-				'message',
-				new FeatureNotLicensedError('feat:projectRole:admin').message,
-			);
+			expect(response.status).toBe(200);
+			expect(response.body).toHaveProperty('data');
+			expect(response.body.data).toContainEqual(expect.objectContaining({ type: 'personal' }));
+		});
+
+		it('if not authenticated, should reject', async () => {
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentWithoutApiKey().get('/projects');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(401);
+			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
 		});
 
 		it('if missing scope, should reject', async () => {
 			/**
 			 * Arrange
 			 */
-			testServer.license.setQuota('quota:maxTeamProjects', -1);
-			testServer.license.enable('feat:projectRole:admin');
 			const member = await createMemberWithApiKey();
 
 			/**
