@@ -24,11 +24,53 @@ interface CollectedSchedule {
 }
 
 /**
+ * One activation attempt's rule collection, from {@link ScheduleTriggerJobRegistrar.createSession}.
+ *
+ * Scoped to the attempt on purpose: rules collected here can only be committed
+ * or discarded through this same session, so two activations racing on the
+ * same workflow and node (possible on the legacy path, which has no lifecycle
+ * lock) can never consume each other's half-collected rules.
+ */
+export interface ScheduleTriggerCollectionSession {
+	/**
+	 * The scheduling functions handed to an intercepted node's trigger context.
+	 * Each `registerCron` call picks the rule's kind and plans its first fire synchronously.
+	 *
+	 * Creating a collector replaces any half-collected rules from a previous
+	 * failed attempt for the same node within this session.
+	 *
+	 * @param workflow The activating workflow, read for its id and timezone setting.
+	 * @param node The Schedule Trigger node whose rules are being collected.
+	 * @returns Scheduling functions whose `registerCron` collects rules for {@link commit}.
+	 */
+	createCollector(workflow: Workflow, node: INode): SchedulingFunctions;
+
+	/**
+	 * Persist the rules this session collected for one node, reconciling them
+	 * against the node's existing jobs (see {@link ScheduleTriggerJobRegistrar}
+	 * for why unchanged jobs must keep their rows).
+	 *
+	 * @param workflowId The activating workflow whose collected rules to persist.
+	 * @param nodeId The Schedule Trigger node those rules belong to.
+	 */
+	commit(workflowId: string, nodeId: string): Promise<void>;
+
+	/**
+	 * Drop this session's collected-but-uncommitted rules after a failed activation.
+	 *
+	 * @param workflowId The workflow whose pending rules to discard.
+	 * @param nodeId The Schedule Trigger node those rules belong to.
+	 */
+	discard(workflowId: string, nodeId: string): void;
+}
+
+/**
  * Registers a Schedule Trigger node's rules as durable `scheduled_job` rows.
  * The publication activation path's counterpart to the in-memory `ScheduledTaskManager`.
  *
- * Collection is synchronous, so the rules are persisted right
- * after the node finishes registering, by {@link commit}.
+ * Each activation attempt works through its own {@link ScheduleTriggerCollectionSession}:
+ * collection is synchronous, so the rules are persisted right after the node
+ * finishes registering, by the session's `commit`.
  *
  * Each rule is stored under the best-fitting scheduler kind (see {@link toSchedule}):
  * - a fixed second/minute cadence as `interval`
@@ -48,13 +90,6 @@ interface CollectedSchedule {
  */
 @Service()
 export class ScheduleTriggerJobRegistrar {
-	/**
-	 * Rules collected from a node's `trigger()` run, awaiting {@link commit},
-	 * keyed by {@link pendingKey}. An entry exists only between
-	 * {@link createCollector} and the {@link commit}/{@link discard} that consumes it.
-	 */
-	private readonly pending = new Map<string, CollectedSchedule[]>();
-
 	/** Whether this instance diverts schedule trigger registrations to durable jobs. */
 	private readonly intercepting: boolean;
 
@@ -92,49 +127,70 @@ export class ScheduleTriggerJobRegistrar {
 	}
 
 	/**
-	 * The scheduling functions handed to an intercepted node's trigger context.
-	 * Each `registerCron` call picks the rule's kind and plans its first fire synchronously.
+	 * A rule-collection session for one activation attempt.
 	 *
-	 * Creating a collector replaces any half-collected rules from a previous failed attempt for the same node.
-	 *
-	 * @param workflow The activating workflow, read for its id and timezone setting.
-	 * @param node The Schedule Trigger node whose rules are being collected.
-	 * @returns Scheduling functions whose `registerCron` collects rules for {@link commit}.
+	 * The session is the only holder of the rules it collects, so a concurrent
+	 * attempt for the same workflow and node (its own session) cannot commit or
+	 * discard them. See {@link ScheduleTriggerCollectionSession}.
 	 */
-	createCollector(workflow: Workflow, node: INode): SchedulingFunctions {
-		const timezone = explicitTimezone(workflow);
-		const collected: CollectedSchedule[] = [];
-		this.pending.set(pendingKey(workflow.id, node.id), collected);
+	createSession(): ScheduleTriggerCollectionSession {
+		/**
+		 * Rules collected from a node's `trigger()` run, awaiting commit, keyed by
+		 * {@link pendingKey}. An entry exists only between `createCollector` and
+		 * the `commit`/`discard` that consumes it.
+		 */
+		const pending = new Map<string, CollectedSchedule[]>();
 
 		return {
-			registerCron: ({ expression, recurrence, source }: Cron) => {
-				const schedule = this.toSchedule(expression, timezone, recurrence, source);
+			createCollector: (workflow: Workflow, node: INode): SchedulingFunctions => {
+				const timezone = explicitTimezone(workflow);
+				const collected: CollectedSchedule[] = [];
+				pending.set(pendingKey(workflow.id, node.id), collected);
 
-				if (isDegenerateRecurrence(recurrence)) {
-					// The legacy engine never fires such a rule (its recurrence check
-					// rejects every tick), so mirror that as a job with no next run
-					// instead of failing an activation that used to succeed. The rule
-					// must still be well-formed: the legacy engine parses the
-					// expression/timezone at registration, before its recurrence check
-					// ever runs, so a malformed rule fails activation regardless of
-					// the gate. No first run to compute: the row is stored clock-dead
-					// and never claimed.
-					validateSchedule(schedule);
+				return {
+					registerCron: ({ expression, recurrence, source }: Cron) => {
+						const schedule = this.toSchedule(expression, timezone, recurrence, source);
 
-					this.logger.warn(
-						'Schedule trigger rule has a non-positive recurrence interval; it will never fire',
-						{ workflowId: workflow.id, nodeId: node.id },
-					);
-					collected.push({ schedule, firstRunAt: null });
-				} else {
-					// Validates the expression/timezone and returns the first instant.
-					const computed = computeFirstRunAt(
-						withResolvedTimezone(schedule, this.defaultTimezone),
-						new Date(),
-					);
+						if (isDegenerateRecurrence(recurrence)) {
+							// The legacy engine never fires such a rule (its recurrence check
+							// rejects every tick), so mirror that as a job with no next run
+							// instead of failing an activation that used to succeed. The rule
+							// must still be well-formed: the legacy engine parses the
+							// expression/timezone at registration, before its recurrence check
+							// ever runs, so a malformed rule fails activation regardless of
+							// the gate. No first run to compute: the row is stored clock-dead
+							// and never claimed.
+							validateSchedule(schedule);
 
-					collected.push({ schedule, firstRunAt: computed });
+							this.logger.warn(
+								'Schedule trigger rule has a non-positive recurrence interval; it will never fire',
+								{ workflowId: workflow.id, nodeId: node.id },
+							);
+							collected.push({ schedule, firstRunAt: null });
+						} else {
+							// Validates the expression/timezone and returns the first instant.
+							const computed = computeFirstRunAt(
+								withResolvedTimezone(schedule, this.defaultTimezone),
+								new Date(),
+							);
+
+							collected.push({ schedule, firstRunAt: computed });
+						}
+					},
+				};
+			},
+
+			commit: async (workflowId: string, nodeId: string): Promise<void> => {
+				const key = pendingKey(workflowId, nodeId);
+				const collected = pending.get(key);
+				if (collected !== undefined) {
+					pending.delete(key);
+					await this.provisionCollected(workflowId, nodeId, collected);
 				}
+			},
+
+			discard: (workflowId: string, nodeId: string): void => {
+				pending.delete(pendingKey(workflowId, nodeId));
 			},
 		};
 	}
@@ -185,58 +241,47 @@ export class ScheduleTriggerJobRegistrar {
 	}
 
 	/**
-	 * Persist the rules collected for one node, reconciling them against the
-	 * node's existing jobs (see the class doc for why unchanged jobs must keep
-	 * their rows).
+	 * Persist one node's collected rules, reconciling them against the node's
+	 * existing jobs (see the class doc for why unchanged jobs must keep their rows).
 	 *
 	 * @param workflowId The activating workflow whose collected rules to persist.
 	 * @param nodeId The Schedule Trigger node those rules belong to.
+	 * @param collected The rules a session collected from the node's `trigger()` run.
 	 */
-	async commit(workflowId: string, nodeId: string): Promise<void> {
-		const key = pendingKey(workflowId, nodeId);
-		const collected = this.pending.get(key);
-		if (collected !== undefined) {
-			this.pending.delete(key);
-			const seen = new Map<string, number>();
-			const desired = collected.map(({ schedule, firstRunAt }) => {
-				const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
-				const occurrence = seen.get(fingerprint) ?? 0;
-				seen.set(fingerprint, occurrence + 1);
-				return {
-					name: `${workflowId}:${nodeId}:${fingerprint}:${occurrence}`,
-					schedule,
-					firstRunAt,
-				};
-			});
+	private async provisionCollected(
+		workflowId: string,
+		nodeId: string,
+		collected: CollectedSchedule[],
+	): Promise<void> {
+		const seen = new Map<string, number>();
+		const desired = collected.map(({ schedule, firstRunAt }) => {
+			const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
+			const occurrence = seen.get(fingerprint) ?? 0;
+			seen.set(fingerprint, occurrence + 1);
+			return {
+				name: `${workflowId}:${nodeId}:${fingerprint}:${occurrence}`,
+				schedule,
+				firstRunAt,
+			};
+		});
 
-			const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
-			const summary = await this.jobProvisioner.provision(
-				workflowId,
-				nodeId,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ ...payload },
-				desired,
-			);
+		const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
+		const summary = await this.jobProvisioner.provision(
+			workflowId,
+			nodeId,
+			SCHEDULE_TRIGGER_TASK_TYPE,
+			{ ...payload },
+			desired,
+		);
 
-			this.logger.debug('Provisioned durable schedules for trigger node', {
-				workflowId,
-				nodeId,
-				inserted: summary.inserted.length,
-				redefined: summary.redefined.length,
-				unchanged: summary.unchanged.length,
-				removed: summary.removed.length,
-			});
-		}
-	}
-
-	/**
-	 * Drop collected-but-uncommitted rules after a failed activation.
-	 *
-	 * @param workflowId The workflow whose pending rules to discard.
-	 * @param nodeId The Schedule Trigger node those rules belong to.
-	 */
-	discard(workflowId: string, nodeId: string): void {
-		this.pending.delete(pendingKey(workflowId, nodeId));
+		this.logger.debug('Provisioned durable schedules for trigger node', {
+			workflowId,
+			nodeId,
+			inserted: summary.inserted.length,
+			redefined: summary.redefined.length,
+			unchanged: summary.unchanged.length,
+			removed: summary.removed.length,
+		});
 	}
 
 	/**

@@ -36,7 +36,10 @@ import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import type {
+	ScheduleTriggerCollectionSession,
+	ScheduleTriggerJobRegistrar,
+} from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -394,6 +397,7 @@ describe('ActiveWorkflowManager', () => {
 					mode,
 					activation,
 					async () => workflowData,
+					mock<ScheduleTriggerCollectionSession>(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -435,6 +439,7 @@ describe('ActiveWorkflowManager', () => {
 					mode,
 					activation,
 					async () => workflowData,
+					mock<ScheduleTriggerCollectionSession>(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -472,6 +477,7 @@ describe('ActiveWorkflowManager', () => {
 					mode,
 					activation,
 					async () => workflowData,
+					mock<ScheduleTriggerCollectionSession>(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -501,6 +507,7 @@ describe('ActiveWorkflowManager', () => {
 					mode,
 					activation,
 					async () => workflowData,
+					mock<ScheduleTriggerCollectionSession>(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -541,6 +548,7 @@ describe('ActiveWorkflowManager', () => {
 					mode,
 					activation,
 					async () => workflowData,
+					mock<ScheduleTriggerCollectionSession>(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -574,6 +582,7 @@ describe('ActiveWorkflowManager', () => {
 					mode,
 					activation,
 					async () => workflowData,
+					mock<ScheduleTriggerCollectionSession>(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -609,6 +618,7 @@ describe('ActiveWorkflowManager', () => {
 					mode,
 					activation,
 					async () => workflowData,
+					mock<ScheduleTriggerCollectionSession>(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -937,6 +947,7 @@ describe('ActiveWorkflowManager', () => {
 		// just like on the publication path.
 		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 		const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
+		const scheduleCollectionSession = mock<ScheduleTriggerCollectionSession>();
 		const triggerNode = mock<INode>({ id: 'trigger-a' });
 
 		const makeManager = () =>
@@ -976,6 +987,7 @@ describe('ActiveWorkflowManager', () => {
 
 		beforeEach(() => {
 			vi.clearAllMocks();
+			scheduleTriggerJobRegistrar.createSession.mockReturnValue(scheduleCollectionSession);
 		});
 
 		test('commits collected durable schedules after in-memory registration, then discards', async () => {
@@ -987,8 +999,8 @@ describe('ActiveWorkflowManager', () => {
 				registrationContext(),
 			);
 
-			expect(scheduleTriggerJobRegistrar.commit).toHaveBeenCalledWith('wf-1', 'trigger-a');
-			expect(scheduleTriggerJobRegistrar.discard).toHaveBeenCalledWith('wf-1', 'trigger-a');
+			expect(scheduleCollectionSession.commit).toHaveBeenCalledWith('wf-1', 'trigger-a');
+			expect(scheduleCollectionSession.discard).toHaveBeenCalledWith('wf-1', 'trigger-a');
 		});
 
 		test('discards without committing when in-memory registration fails', async () => {
@@ -1003,8 +1015,8 @@ describe('ActiveWorkflowManager', () => {
 				),
 			).rejects.toThrow('activation failed');
 
-			expect(scheduleTriggerJobRegistrar.commit).not.toHaveBeenCalled();
-			expect(scheduleTriggerJobRegistrar.discard).toHaveBeenCalledWith('wf-1', 'trigger-a');
+			expect(scheduleCollectionSession.commit).not.toHaveBeenCalled();
+			expect(scheduleCollectionSession.discard).toHaveBeenCalledWith('wf-1', 'trigger-a');
 		});
 	});
 });

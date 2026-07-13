@@ -18,6 +18,7 @@ import type {
 	WorkflowId,
 } from 'n8n-workflow';
 
+import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-execution-context.factory';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
@@ -36,6 +37,8 @@ export interface PreparedNonWebhookTriggerRegistration {
 	additionalData: IWorkflowExecuteAdditionalData;
 	getTriggerFunctions: IGetExecuteTriggerFunctions;
 	getPollFunctions: IGetExecutePollFunctions;
+	/** This activation attempt's rule collection, committed or discarded per node by {@link NonWebhookTriggerRegistrar.register}. */
+	scheduleCollectionSession: ScheduleTriggerCollectionSession;
 }
 
 /**
@@ -81,6 +84,8 @@ export class NonWebhookTriggerRegistrar {
 			onTriggerFailure,
 		}: NonWebhookTriggerRegistrationContext,
 	) {
+		const scheduleCollectionSession = this.scheduleTriggerJobRegistrar.createSession();
+
 		const getTriggerFunctions = this.triggerExecutionContextFactory.getExecuteTriggerFunctions(
 			dbWorkflow,
 			additionalData,
@@ -88,6 +93,7 @@ export class NonWebhookTriggerRegistrar {
 			activationMode,
 			resolveWorkflowData,
 			onTriggerFailure,
+			scheduleCollectionSession,
 		);
 
 		const getPollFunctions = this.triggerExecutionContextFactory.getExecutePollFunctions(
@@ -104,6 +110,7 @@ export class NonWebhookTriggerRegistrar {
 			additionalData,
 			getTriggerFunctions,
 			getPollFunctions,
+			scheduleCollectionSession,
 		};
 	}
 
@@ -118,6 +125,7 @@ export class NonWebhookTriggerRegistrar {
 			additionalData,
 			getTriggerFunctions,
 			getPollFunctions,
+			scheduleCollectionSession,
 		}: PreparedNonWebhookTriggerRegistration,
 		nodeId: INode['id'],
 	) {
@@ -144,9 +152,9 @@ export class NonWebhookTriggerRegistrar {
 						getTriggerFunctions,
 						getPollFunctions,
 					);
-					await this.scheduleTriggerJobRegistrar.commit(workflow.id, nodeId);
+					await scheduleCollectionSession.commit(workflow.id, nodeId);
 				} finally {
-					this.scheduleTriggerJobRegistrar.discard(workflow.id, nodeId);
+					scheduleCollectionSession.discard(workflow.id, nodeId);
 				}
 
 				span.setStatus({ code: SpanStatus.ok });

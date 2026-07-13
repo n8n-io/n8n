@@ -47,6 +47,7 @@ import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -344,6 +345,7 @@ export class ActiveWorkflowManager {
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
+		scheduleCollectionSession: ScheduleTriggerCollectionSession,
 	): IGetExecuteTriggerFunctions {
 		return this.triggerExecutionContextFactory.getExecuteTriggerFunctions(
 			workflowData,
@@ -375,6 +377,7 @@ export class ActiveWorkflowManager {
 				this.executeErrorWorkflow(activationError, failedWorkflowData, failureMode);
 				this.addQueuedWorkflowActivation(failureActivation, failedWorkflowData as WorkflowEntity);
 			},
+			scheduleCollectionSession,
 		);
 	}
 
@@ -997,12 +1000,15 @@ export class ActiveWorkflowManager {
 			nodeIds?: Set<string>;
 		},
 	) {
+		const scheduleCollectionSession = this.scheduleTriggerJobRegistrar.createSession();
+
 		const getTriggerFunctions = this.getExecuteTriggerFunctions(
 			dbWorkflow,
 			additionalData,
 			executionMode,
 			activationMode,
 			resolveWorkflowData,
+			scheduleCollectionSession,
 		);
 
 		const getPollFunctions = this.getExecutePollFunctions(
@@ -1049,11 +1055,11 @@ export class ActiveWorkflowManager {
 				getPollFunctions,
 			);
 			for (const nodeId of nodeIdsToAdd) {
-				await this.scheduleTriggerJobRegistrar.commit(workflow.id, nodeId);
+				await scheduleCollectionSession.commit(workflow.id, nodeId);
 			}
 		} finally {
 			for (const nodeId of nodeIdsToAdd) {
-				this.scheduleTriggerJobRegistrar.discard(workflow.id, nodeId);
+				scheduleCollectionSession.discard(workflow.id, nodeId);
 			}
 		}
 

@@ -4,7 +4,10 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveWorkflowTriggers, Span, Tracing } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import type {
+	ScheduleTriggerCollectionSession,
+	ScheduleTriggerJobRegistrar,
+} from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
@@ -13,11 +16,13 @@ import { createWorkflow, logger, node } from './trigger-test-utils';
 describe('NonWebhookTriggerRegistrar', () => {
 	const tracing = mock<Tracing>();
 	const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
+	const scheduleCollectionSession = mock<ScheduleTriggerCollectionSession>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.restoreAllMocks();
 		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
+		scheduleTriggerJobRegistrar.createSession.mockReturnValue(scheduleCollectionSession);
 	});
 
 	test('resolves trigger and poll node ids', () => {
@@ -154,8 +159,8 @@ describe('NonWebhookTriggerRegistrar', () => {
 
 			await registrar.register(workflow, registration, 'trigger-a');
 
-			expect(scheduleTriggerJobRegistrar.commit).toHaveBeenCalledWith(workflow.id, 'trigger-a');
-			expect(scheduleTriggerJobRegistrar.discard).toHaveBeenCalledWith(workflow.id, 'trigger-a');
+			expect(scheduleCollectionSession.commit).toHaveBeenCalledWith(workflow.id, 'trigger-a');
+			expect(scheduleCollectionSession.discard).toHaveBeenCalledWith(workflow.id, 'trigger-a');
 		});
 
 		test('register discards without committing when in-memory registration fails', async () => {
@@ -167,19 +172,19 @@ describe('NonWebhookTriggerRegistrar', () => {
 				'activation failed',
 			);
 
-			expect(scheduleTriggerJobRegistrar.commit).not.toHaveBeenCalled();
-			expect(scheduleTriggerJobRegistrar.discard).toHaveBeenCalledWith(workflow.id, 'trigger-a');
+			expect(scheduleCollectionSession.commit).not.toHaveBeenCalled();
+			expect(scheduleCollectionSession.discard).toHaveBeenCalledWith(workflow.id, 'trigger-a');
 		});
 
 		test('register fails the node activation when the commit fails', async () => {
 			const { registrar, registration } = makeRegistrar();
 			const workflow = createWorkflow([node('trigger-a', 'trigger')]);
-			scheduleTriggerJobRegistrar.commit.mockRejectedValue(new Error('db down'));
+			scheduleCollectionSession.commit.mockRejectedValue(new Error('db down'));
 
 			await expect(registrar.register(workflow, registration, 'trigger-a')).rejects.toThrow(
 				'db down',
 			);
-			expect(scheduleTriggerJobRegistrar.discard).toHaveBeenCalledWith(workflow.id, 'trigger-a');
+			expect(scheduleCollectionSession.discard).toHaveBeenCalledWith(workflow.id, 'trigger-a');
 		});
 
 		test('deregister removes durable jobs alongside in-memory triggers', async () => {
