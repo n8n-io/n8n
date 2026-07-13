@@ -565,7 +565,6 @@ export class TestRunnerService {
 			evaluationConfigId?: string;
 			evaluationConfigSnapshot?: IDataObject;
 			compileFromConfig?: boolean;
-			// Trigger source for telemetry; defaults to 'ui'.
 			via?: 'ui' | 'public-api';
 		},
 	): Promise<{ testRun: TestRun; finished: Promise<void> }> {
@@ -680,7 +679,7 @@ export class TestRunnerService {
 		effectiveConcurrency,
 		concurrencyLimitedByConfig,
 		runType,
-		via,
+		via = 'ui',
 	}: {
 		user: User;
 		workflowId: string;
@@ -697,6 +696,7 @@ export class TestRunnerService {
 			test_type: 'evaluation',
 			run_id: testRun.id,
 			run_type: runType,
+			via,
 			start: Date.now(),
 			status: 'success' as 'success' | 'fail' | 'cancelled',
 			test_case_count: 0,
@@ -743,7 +743,7 @@ export class TestRunnerService {
 				run_id: testRun.id,
 				workflow_id: workflowId,
 				run_type: runType,
-				via: via ?? 'ui',
+				via,
 			});
 
 			///

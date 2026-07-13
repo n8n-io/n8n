@@ -166,7 +166,6 @@ const evaluationsHandlers: EvaluationsHandlers = {
 			const body: TestRunDto = {
 				id: testRun.id,
 				status: testRun.status,
-				workflowId,
 				createdAt: testRun.createdAt.toISOString(),
 			};
 			return res.status(201).json(body);

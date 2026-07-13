@@ -246,7 +246,6 @@ describe('POST /workflows/:id/test-runs', () => {
 		expect(response.body).toEqual({
 			id: testRun.id,
 			status: testRun.status,
-			workflowId: workflow.id,
 			createdAt: testRun.createdAt.toISOString(),
 		});
 		expect(testRunner.startTestRun).toHaveBeenCalledWith(
@@ -270,7 +269,8 @@ describe('POST /workflows/:id/test-runs', () => {
 		testServer.license.setQuota(LICENSE_QUOTAS.WORKFLOWS_WITH_EVALUATION_LIMIT, 0);
 		const workflow = await createWorkflow({ nodes: evaluationTriggerNodes }, owner);
 
-		await authOwnerAgent.post(`/workflows/${workflow.id}/test-runs`).expect(403);
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/test-runs`).expect(403);
+		expect(response.body.message).toBe('Evaluations are not available on your plan');
 		expect(testRunner.startTestRun).not.toHaveBeenCalled();
 	});
 
@@ -392,7 +392,10 @@ describe('POST /workflows/:id/test-runs/:runId/cancel', () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const run = await createTestRun(workflow.id, { status: 'running' });
 
-		await authOwnerAgent.post(`/workflows/${workflow.id}/test-runs/${run.id}/cancel`).expect(403);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/test-runs/${run.id}/cancel`)
+			.expect(403);
+		expect(response.body.message).toBe('Evaluations are not available on your plan');
 		expect(testRunner.cancelTestRun).not.toHaveBeenCalled();
 	});
 });
