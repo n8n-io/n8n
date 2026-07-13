@@ -569,23 +569,48 @@ watch(
 
 watch(
 	() => stringify(props.node?.credentials ?? {}),
-	(currentValue, oldValue) => {
+	async (currentValue, oldValue) => {
 		const emptyCredentials = stringify({});
 		const isUpdated =
 			oldValue !== undefined && oldValue !== emptyCredentials && currentValue !== oldValue;
 		if (
-			isUpdated &&
-			props.modelValue &&
-			isResourceLocatorValue(props.modelValue) &&
-			props.modelValue.value !== ''
+			!isUpdated ||
+			!props.modelValue ||
+			!isResourceLocatorValue(props.modelValue) ||
+			props.modelValue.value === '' ||
+			// Manual (id/url) mode: keep the user-entered value.
+			!isListMode.value
 		) {
+			return;
+		}
+
+		// Validate against the full current list: reset any stale search filter and clear the cache
+		// directly (skipping refreshList()'s "user refreshed" telemetry).
+		searchFilter.value = '';
+		cachedResponses.value = {};
+		await loadResources();
+
+		// Credentials changed again while loading — a newer run will validate the fresh results.
+		if (stringify(props.node?.credentials ?? {}) !== currentValue) return;
+
+		const selected = props.modelValue.value;
+		const match = currentQueryResults.value.find((result) => result.value === selected);
+		if (match) {
 			emit('update:modelValue', {
 				...props.modelValue,
-				cachedResultName: '',
-				cachedResultUrl: '',
-				value: '',
+				cachedResultName: match.name ?? '',
+				cachedResultUrl: match.url ?? '',
 			});
+			return;
 		}
+
+		const mayExistElsewhere = currentQueryHasMore.value || requiresSearchFilter.value;
+		emit('update:modelValue', {
+			...props.modelValue,
+			cachedResultName: '',
+			cachedResultUrl: '',
+			...(mayExistElsewhere ? {} : { value: '' }),
+		});
 	},
 );
 

@@ -3,8 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { computed, h, ref } from 'vue';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
+	ASK_QUESTIONS_TOOL_NAME,
 	type InteractiveToolName,
 } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
@@ -32,7 +31,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
 		name: 'ChatInputBase',
 		template:
 			'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="footer-start" /></form>',
-		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled'],
+		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
 		emits: ['submit', 'stop', 'update:modelValue'],
 	},
 }));
@@ -101,7 +100,7 @@ describe('AgentChatPanel', () => {
 	}
 
 	function openInteractiveMessage(
-		toolName: InteractiveToolName = ASK_QUESTION_TOOL_NAME,
+		toolName: InteractiveToolName = ASK_QUESTIONS_TOOL_NAME,
 	): ChatMessage {
 		return {
 			id: 'assistant-1',
@@ -109,32 +108,37 @@ describe('AgentChatPanel', () => {
 			content: '',
 			status: 'awaitingUser',
 			interactive:
-				toolName === ASK_QUESTION_TOOL_NAME
+				toolName === ASK_QUESTIONS_TOOL_NAME
 					? {
-							toolName: ASK_QUESTION_TOOL_NAME,
+							toolName: ASK_QUESTIONS_TOOL_NAME,
 							toolCallId: 'tc-1',
 							runId: 'run-1',
 							input: {
-								question: 'Pick one',
-								options: [{ label: 'Slack', value: 'slack' }],
+								requestId: 'req-1',
+								message: 'Pick one',
+								severity: 'info',
+								inputType: 'questions',
+								questions: [{ id: 'q1', question: 'Pick one', type: 'single', options: ['slack'] }],
 							},
 						}
-					: toolName === ASK_LLM_TOOL_NAME
-						? {
-								toolName: ASK_LLM_TOOL_NAME,
-								toolCallId: 'tc-1',
-								runId: 'run-1',
-								input: { purpose: 'Choose a model' },
-							}
-						: {
-								toolName: ASK_CREDENTIAL_TOOL_NAME,
-								toolCallId: 'tc-1',
-								runId: 'run-1',
-								input: {
-									purpose: 'Choose Slack credentials',
-									credentialType: 'slackApi',
-								},
+					: {
+							toolName: ASK_CREDENTIAL_TOOL_NAME,
+							toolCallId: 'tc-1',
+							runId: 'run-1',
+							input: {
+								requestId: 'req-1',
+								message: 'Choose Slack credentials',
+								severity: 'info',
+								credentialRequests: [
+									{
+										credentialType: 'slackApi',
+										reason: 'Choose Slack credentials',
+										existingCredentials: [],
+									},
+								],
+								credentialFlow: { stage: 'generic' },
 							},
+						},
 		};
 	}
 
@@ -290,14 +294,20 @@ describe('AgentChatPanel', () => {
 				...openInteractiveMessage(),
 				status: 'success',
 				interactive: {
-					toolName: ASK_QUESTION_TOOL_NAME,
+					toolName: ASK_QUESTIONS_TOOL_NAME,
 					toolCallId: 'tc-1',
 					resolvedAt: 1,
 					input: {
-						question: 'Pick one',
-						options: [{ label: 'Slack', value: 'slack' }],
+						requestId: 'req-1',
+						message: 'Pick one',
+						severity: 'info',
+						inputType: 'questions',
+						questions: [{ id: 'q1', question: 'Pick one', type: 'single', options: ['slack'] }],
 					},
-					resolvedValue: { values: ['slack'] },
+					resolvedValue: {
+						answered: true,
+						answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
+					},
 				},
 			},
 		];
@@ -349,14 +359,20 @@ describe('AgentChatPanel', () => {
 				...openInteractiveMessage(),
 				status: 'success',
 				interactive: {
-					toolName: ASK_QUESTION_TOOL_NAME,
+					toolName: ASK_QUESTIONS_TOOL_NAME,
 					toolCallId: 'tc-1',
 					resolvedAt: 1,
 					input: {
-						question: 'Pick one',
-						options: [{ label: 'Slack', value: 'slack' }],
+						requestId: 'req-1',
+						message: 'Pick one',
+						severity: 'info',
+						inputType: 'questions',
+						questions: [{ id: 'q1', question: 'Pick one', type: 'single', options: ['slack'] }],
 					},
-					resolvedValue: { values: ['slack'] },
+					resolvedValue: {
+						answered: true,
+						answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
+					},
 				},
 			},
 		];
@@ -368,7 +384,7 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('placeholder')).toBe('agents.chat.input.placeholder');
 	});
 
-	it.each([ASK_LLM_TOOL_NAME, ASK_CREDENTIAL_TOOL_NAME])(
+	it.each([ASK_QUESTIONS_TOOL_NAME, ASK_CREDENTIAL_TOOL_NAME])(
 		'enables chat input while %s is unresolved (cancel-and-steer mode)',
 		(toolName) => {
 			messagesMock.value = [openInteractiveMessage(toolName)];
@@ -380,4 +396,31 @@ describe('AgentChatPanel', () => {
 			expect(chatInput.props('disabled')).toBe(false);
 		},
 	);
+
+	it('lifts the character limit for the build endpoint', () => {
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('maxLength')).toBe(25_000);
+	});
+
+	it('keeps the default character limit for the chat endpoint', () => {
+		const wrapper = mount(AgentChatPanel, {
+			props: {
+				projectId: 'p1',
+				agentId: 'a1',
+				endpoint: 'chat',
+				agentConfig: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help.',
+				},
+				agentStatus: 'draft',
+				connectedTriggers: [],
+			},
+		});
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('maxLength')).toBe(undefined);
+	});
 });

@@ -23,12 +23,19 @@ const loadDataTablesTool = lazyMod(
 const loadEvalsTool = lazyMod(
 	() => require('./evals/evals.tool') as typeof import('./evals/evals.tool'),
 );
+const loadEvalConfigTool = lazyMod(
+	() => require('./evals/eval-config.tool') as typeof import('./evals/eval-config.tool'),
+);
 const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
+);
+const loadBuildAgentTool = lazyMod(
+	() =>
+		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
 );
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
@@ -73,6 +80,9 @@ const loadBuildWorkflowTool = lazyMod(
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
 );
+const loadTemplatesTool = lazyMod(
+	() => require('./templates.tool') as typeof import('./templates.tool'),
+);
 const loadWorkspaceTool = lazyMod(
 	() => require('./workspace.tool') as typeof import('./workspace.tool'),
 );
@@ -88,12 +98,14 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.EXECUTIONS, loadExecutionsTool().createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, loadCredentialsTool().createCredentialsTool(context)],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, loadDataTablesTool().createDataTablesTool(context)],
+		[DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)],
 		[DOMAIN_TOOL_IDS.WORKSPACE, loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		[DOMAIN_TOOL_IDS.TEMPLATES, loadTemplatesTool().createTemplatesTool(context)],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -115,12 +127,14 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.EXECUTIONS, loadExecutionsTool().createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, loadCredentialsTool().createCredentialsTool(context)],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, loadDataTablesTool().createDataTablesTool(context)],
+		[DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)],
 		[DOMAIN_TOOL_IDS.WORKSPACE, loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		[DOMAIN_TOOL_IDS.TEMPLATES, loadTemplatesTool().createTemplatesTool(context)],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -164,6 +178,13 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS,
 			loadApplyWorkflowCredentialsTool().createApplyWorkflowCredentialsTool(context),
+		]);
+	}
+
+	if (context.domainContext?.builderDelegate) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
+			loadBuildAgentTool().createBuildAgentTool(context),
 		]);
 	}
 

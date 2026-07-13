@@ -6,7 +6,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
-import { nextTick, shallowRef } from 'vue';
+import { nextTick, ref, shallowRef } from 'vue';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
@@ -64,7 +64,7 @@ import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
-import { WAIT_NODE_TYPE } from '@/app/constants';
+import { WAIT_NODE_TYPE, AGENT_NODE_TYPE } from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 
 const mockConfirm = vi.fn();
@@ -119,6 +119,7 @@ const workflowDocumentStoreMock = {
 	getParentNodes: vi.fn().mockReturnValue([]),
 	getParentNodesByDepth: vi.fn().mockReturnValue([]),
 	getNodeByName: vi.fn().mockReturnValue(undefined),
+	checkIfNodeHasChatOrManualChatParent: vi.fn().mockReturnValue(false),
 	name: '',
 	settings: {},
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
@@ -148,6 +149,7 @@ describe('ParameterInputList', () => {
 		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);
 		workflowDocumentStoreMock.getNodeByName.mockReturnValue(undefined);
+		workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
 			shallowRef(workflowDocumentStoreMock) as unknown as ReturnType<
 				typeof injectWorkflowDocumentStore
@@ -1177,6 +1179,143 @@ describe('ParameterInputList', () => {
 
 			// Options collection should be rendered when Form Trigger is not connected
 			expect(await findByText('Options')).toBeInTheDocument();
+		});
+	});
+
+	/**
+	 * Tests special parameter handling for Agent v3+ nodes.
+	 * Validates that the 'auto' promptType option stays visible and toggles disabled state
+	 * based on chat-trigger ancestry (Chat Trigger or Manual Chat Trigger).
+	 */
+	describe('updateAgentParameters', () => {
+		const agentParameters: INodeProperties[] = [
+			{
+				displayName: 'Source for Prompt (User Message)',
+				name: 'promptType',
+				type: 'options',
+				default: 'auto',
+				options: [
+					{ name: 'Connected Chat Trigger Node', value: 'auto' },
+					{ name: 'Define below', value: 'define' },
+				],
+			},
+		];
+
+		const optionsListStub = {
+			props: ['parameter'],
+			template:
+				'<div data-test-id="param-options"><span v-for="o in parameter.options" :key="o.value" :data-test-id="`param-option-${o.value}`" :data-disabled="String(o.disabled === true)" :data-description="o.description ?? \'\'">{{ o.name }}</span></div>',
+		};
+
+		const agentNode = (typeVersion: number) =>
+			({
+				id: 'agent-123',
+				name: 'AI Agent',
+				type: AGENT_NODE_TYPE,
+				typeVersion,
+				position: [100, 200],
+				parameters: {},
+			}) as INodeUi;
+
+		it('should keep the auto option visible but disabled when no chat trigger is connected', async () => {
+			ndvStore.activeNode = agentNode(3.1);
+			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
+
+			const { findByText, getByTestId } = renderComponent({
+				props: {
+					parameters: agentParameters,
+					nodeValues: {},
+				},
+				global: {
+					stubs: {
+						ParameterInputFull: optionsListStub,
+						Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+					},
+				},
+			});
+
+			// 'Define below' remains available
+			expect(await findByText('Define below')).toBeInTheDocument();
+			// 'auto' remains visible but disabled when there is no chat trigger ancestor
+			expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
+			expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'true');
+			expect(getByTestId('param-option-auto')).toHaveAttribute(
+				'data-description',
+				'parameterInputList.autoRequiresChatTriggerDescription',
+			);
+		});
+
+		it('should keep the auto option when a chat trigger is connected', async () => {
+			ndvStore.activeNode = agentNode(3.1);
+			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(true);
+
+			const { findByText, getByTestId } = renderComponent({
+				props: {
+					parameters: agentParameters,
+					nodeValues: {},
+				},
+				global: {
+					stubs: {
+						ParameterInputFull: optionsListStub,
+						Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+					},
+				},
+			});
+
+			expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
+			expect(await findByText('Define below')).toBeInTheDocument();
+			expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'false');
+		});
+
+		it('should toggle auto option disabled state when chat-trigger ancestry changes live', async () => {
+			// Drive the ancestry check from a reactive ref so toggling it mimics wiring/removing a
+			// chat trigger upstream while the Agent NDV is open. The computed watch source must pick
+			// up the change and re-run the parameter transform without a full re-render.
+			vi.useFakeTimers();
+			try {
+				const hasChatParent = ref(false);
+				workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockImplementation(
+					() => hasChatParent.value,
+				);
+
+				ndvStore.activeNode = agentNode(3.1);
+
+				const { findByText, getByTestId } = renderComponent({
+					props: {
+						parameters: agentParameters,
+						nodeValues: {},
+					},
+					global: {
+						stubs: {
+							ParameterInputFull: optionsListStub,
+							Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+						},
+					},
+				});
+
+				// Initially no chat-trigger ancestry: 'auto' is disabled.
+				expect(await findByText('Define below')).toBeInTheDocument();
+				expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
+				expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'true');
+
+				// Wire a chat trigger upstream (ancestry flips to true): 'auto' is enabled.
+				hasChatParent.value = true;
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(250);
+				await flushPromises();
+
+				expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'false');
+
+				// Remove the chat trigger upstream (ancestry flips back to false): 'auto' is disabled again.
+				hasChatParent.value = false;
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(250);
+				await flushPromises();
+
+				expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'true');
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 

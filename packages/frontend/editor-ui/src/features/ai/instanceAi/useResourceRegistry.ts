@@ -6,7 +6,7 @@ import type {
 } from '@n8n/api-types';
 
 export type ResourceEntry = {
-	type: 'workflow' | 'credential' | 'data-table';
+	type: 'workflow' | 'credential' | 'data-table' | 'agent';
 	id: string;
 	name: string;
 	createdAt?: string;
@@ -40,6 +40,11 @@ function optionalString(val: unknown): string | undefined {
 
 type RecordProducedOptions = {
 	linkable?: boolean;
+};
+
+type AgentBuilderTargetMetadata = {
+	agentId: string;
+	projectId: string;
 };
 
 /**
@@ -112,6 +117,21 @@ const ARTIFACT_TOOLS = new Set([
 	'delete-data-table-rows',
 ]);
 const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
+function entryFromAgentBuilderTarget(
+	target: InstanceAiAgentNode['targetResource'],
+	existing?: ResourceEntry,
+	fallbackName = 'Untitled',
+): ResourceEntry | undefined {
+	if (target?.type !== 'agent' || !target.id) return undefined;
+	const entry: ResourceEntry = {
+		type: 'agent',
+		id: target.id,
+		name: optionalString(target.name) ?? existing?.name ?? fallbackName,
+	};
+	const projectId = optionalString(target.projectId) ?? existing?.projectId;
+	if (projectId !== undefined) entry.projectId = projectId;
+	return entry;
+}
 
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
 	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
@@ -260,10 +280,15 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections): void {
 	const target = node.targetResource;
 	if (!target?.id) return;
-	if (target.type !== 'workflow' && target.type !== 'data-table') return;
+	if (target.type !== 'workflow' && target.type !== 'data-table' && target.type !== 'agent') return;
 
 	const existing = col.produced.get(target.id);
 	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
+	if (target.type === 'agent') {
+		const entry = entryFromAgentBuilderTarget(target, existing, name);
+		if (entry) recordProduced(col, entry);
+		return;
+	}
 	recordProduced(col, { type: target.type, id: target.id, name });
 }
 
@@ -291,6 +316,25 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 			name: attachment.name ?? 'Untitled',
 		});
 	}
+}
+
+function enrichAgentFromBuilderTarget(
+	col: Collections,
+	target: AgentBuilderTargetMetadata | undefined,
+): void {
+	if (!target) return;
+	const existing = col.produced.get(target.agentId);
+	if (existing && existing.type !== 'agent') return;
+	recordProduced(
+		col,
+		{
+			type: 'agent',
+			id: target.agentId,
+			name: existing?.name ?? 'Untitled',
+			projectId: target.projectId,
+		},
+		{ linkable: existing !== undefined },
+	);
 }
 
 function enrichWorkflowNames(
@@ -334,6 +378,7 @@ export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
 	workflowNameLookup?: (id: string) => string | undefined,
 	archivedWorkflowIds?: () => ReadonlySet<string>,
+	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -357,6 +402,7 @@ export function useResourceRegistry(
 				collectFromMessageAttachments(msg, col);
 				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
 			}
+			enrichAgentFromBuilderTarget(col, agentBuilderTarget?.());
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);

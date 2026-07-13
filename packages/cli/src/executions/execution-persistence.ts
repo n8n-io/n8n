@@ -1,4 +1,4 @@
-import { Logger, parseFlatted } from '@n8n/backend-common';
+import { parseFlatted } from '@n8n/backend-common';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -26,13 +26,12 @@ import {
 
 import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
 import { DbStore } from './execution-data/db-store';
-import { FsStore } from './execution-data/fs-store';
+import { ExecutionDataJsonStore } from './execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import type {
 	BlobStorageLocation,
 	BundleWorkflowSnapshot,
 	ExecutionDataPayload,
-	ExecutionDataStore,
 	ExecutionRef,
 	WorkflowSnapshot,
 } from './execution-data/types';
@@ -62,35 +61,22 @@ type UpdatableEntityColumns = Omit<
  */
 @Service()
 export class ExecutionPersistence {
-	private s3Store: ExecutionDataStore | undefined;
-
-	private azStore: ExecutionDataStore | undefined;
-
 	constructor(
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
-		private readonly fsStore: FsStore,
+		private readonly jsonStore: ExecutionDataJsonStore,
 		private readonly dbStore: DbStore,
 		private readonly storageConfig: StorageConfig,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
-		private readonly logger: Logger,
 	) {}
-
-	setS3Store(store: ExecutionDataStore) {
-		this.s3Store = store;
-	}
-
-	setAzStore(store: ExecutionDataStore) {
-		this.azStore = store;
-	}
 
 	/**
 	 * Create an execution entity and persist its data to the configured storage.
 	 * - In `db` mode, we write both entity and data to the DB in a transaction.
-	 * - In `fs` mode, we write the entity to the DB and its data to the filesystem.
+	 * - In blob modes (`fs`, `s3`, `az`), we write the entity to the DB and its data to the blob store.
 	 */
 	async create(payload: CreateExecutionPayload) {
 		const { data: rawData, workflowData, ...rest } = payload;
@@ -141,7 +127,7 @@ export class ExecutionPersistence {
 	/**
 	 * Update an existing execution and, if the payload includes data fields, its data in the configured storage.
 	 * - In `db` mode, we update both entity and data in the DB in a transaction.
-	 * - In `fs` mode, we update the entity in the DB and write its data to the filesystem in a transaction.
+	 * - In blob modes (`fs`, `s3`, `az`), we update the entity in the DB and write its data to the blob store.
 	 */
 	async updateExistingExecution(
 		executionId: string,
@@ -175,14 +161,15 @@ export class ExecutionPersistence {
 	/**
 	 * Find a single execution by id, dispatching data reads to the store matching its `storedAt`.
 	 * - In `db` mode, we load entity, metadata, optional annotation, and data via `DbStore`.
-	 * - In `fs` mode, we load entity, metadata, optional annotation from the DB, and data via `FsStore`.
+	 * - In blob modes (`fs`, `s3`, `az`), we load entity, metadata, optional annotation from the DB,
+	 *   and data via the JSON store.
 	 *
 	 * A missing data bundle is handled differently per store. In `db` mode the entity and its data
 	 * share one database, so an absent data row means a known-corrupt record we report and skip
-	 * (soft). In `fs` and `s3` modes the entity lives in the DB while its data lives out of band on
-	 * disk or in object storage, so a missing bundle points at an out-of-band loss (deletion,
-	 * unmounted volume, expired object) that a single-execution read should surface loudly rather
-	 * than silently swallow (hard).
+	 * (soft). In blob modes the entity lives in the DB while its data lives out of band on disk or
+	 * in object storage, so a missing bundle points at an out-of-band loss (deletion, unmounted
+	 * volume, expired object) that a single-execution read should surface loudly rather than
+	 * silently swallow (hard).
 	 */
 	async findSingleExecution(
 		id: string,
@@ -287,7 +274,7 @@ export class ExecutionPersistence {
 	 * Find multiple executions matching `queryParams`. With `includeData: true`, partitions
 	 * entities by `storedAt` and batch-fetches bundles from each store to avoid n+1 reads.
 	 * - In `db` mode, we issue one `In(ids)` query against `execution_data` per batch.
-	 * - In `fs` mode, we fan out reads across the filesystem.
+	 * - In blob modes (`fs`, `s3`, `az`), we fan out reads across the blob store.
 	 */
 	async findMultipleExecutions(
 		queryParams: FindManyOptions<ExecutionEntity>,
@@ -375,7 +362,7 @@ export class ExecutionPersistence {
 					const bundles =
 						location === 'db'
 							? await this.dbStore.readMany(refs)
-							: await this.getStoreFor(location).readMany(refs);
+							: await this.jsonStore.readMany(refs.map((ref) => ({ ...ref, storedAt: location })));
 					const missing = group.filter((e) => !bundles.has(e.id));
 					if (missing.length > 0) this.executionRepository.reportInvalidExecutions(missing);
 					unreadableBundles = missing.length;
@@ -527,55 +514,19 @@ export class ExecutionPersistence {
 		await Promise.all([
 			this.executionRepository.deleteByIds(targets.map((t) => t.executionId)),
 			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
-			this.deleteFsData(targets.filter((t) => t.storedAt === 'fs')),
-			this.deleteS3Data(targets.filter((t) => t.storedAt === 's3')),
-			this.deleteAzData(targets.filter((t) => t.storedAt === 'az')),
+			this.jsonStore.delete(this.toBlobRefs(targets)),
 		]);
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
 		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
 
-		await this.deleteFsData(refs.filter((r) => r.storedAt === 'fs'));
-		await this.deleteS3Data(refs.filter((r) => r.storedAt === 's3'));
-		await this.deleteAzData(refs.filter((r) => r.storedAt === 'az'));
+		await this.jsonStore.delete(this.toBlobRefs(refs));
 	}
 
-	private async deleteFsData(refs: ExecutionRef[]) {
-		if (refs.length === 0) return;
-
-		await this.fsStore.delete(refs);
-	}
-
-	/**
-	 * Delete S3-stored execution data. If the S3 store is unavailable, e.g. external
-	 * storage was unconfigured after S3-stored executions were created, we skip data
-	 * deletion rather than block entity deletion.
-	 */
-	private async deleteS3Data(refs: ExecutionRef[]) {
-		if (refs.length === 0) return;
-
-		if (!this.s3Store) {
-			this.logger.warn('Skipped deleting S3 execution data - S3 store is not initialized', {
-				executionIds: refs.map((r) => r.executionId),
-			});
-			return;
-		}
-
-		await this.s3Store.delete(refs);
-	}
-
-	private async deleteAzData(refs: ExecutionRef[]) {
-		if (refs.length === 0) return;
-
-		if (!this.azStore) {
-			this.logger.warn('Skipped deleting Azure execution data - Azure store is not initialized', {
-				executionIds: refs.map((r) => r.executionId),
-			});
-			return;
-		}
-
-		await this.azStore.delete(refs);
+	/** Narrow deletion targets to those whose data lives in a blob store, i.e. all but `db`. */
+	private toBlobRefs<T extends { storedAt: ExecutionDataStorageLocation }>(targets: T[]) {
+		return targets.filter((t): t is T & { storedAt: BlobStorageLocation } => t.storedAt !== 'db');
 	}
 
 	private async updateEntityOnly(
@@ -638,7 +589,7 @@ export class ExecutionPersistence {
 
 					return mode === 'db'
 						? await this.dbStore.overwrite(ref, bundle, tx)
-						: await this.getStoreFor(mode).write(ref, bundle);
+						: await this.jsonStore.write(ref, bundle, mode);
 				});
 
 				await tx.update(
@@ -785,7 +736,7 @@ export class ExecutionPersistence {
 	): Promise<number> {
 		return mode === 'db'
 			? await this.dbStore.write(ref, payload, tx)
-			: await this.getStoreFor(mode).write(ref, payload);
+			: await this.jsonStore.write(ref, payload, mode);
 	}
 
 	/** Read execution data from `mode` storage. In `db` mode, the read participates in `tx` when given. */
@@ -794,32 +745,9 @@ export class ExecutionPersistence {
 		ref: ExecutionRef,
 		tx?: EntityManager,
 	): Promise<ExecutionDataPayload | null> {
-		if (mode !== 'db') return await this.getStoreFor(mode).read(ref);
+		if (mode !== 'db') return await this.jsonStore.read(ref, mode);
 
 		return tx ? await this.dbStore.read(ref, tx) : await this.dbStore.read(ref);
-	}
-
-	private getStoreFor(location: BlobStorageLocation): ExecutionDataStore {
-		switch (location) {
-			case 'fs':
-				return this.fsStore;
-			case 's3':
-				if (!this.s3Store) {
-					throw new UnexpectedError(
-						'Execution data is stored on S3 but the S3 store is not initialized. Check that S3 is configured.',
-					);
-				}
-				return this.s3Store;
-			case 'az':
-				if (!this.azStore) {
-					throw new UnexpectedError(
-						'Execution data is stored on Azure Blob Storage but the Azure store is not initialized. Check that Azure is configured.',
-					);
-				}
-				return this.azStore;
-		}
-		const _exhaustive: never = location;
-		throw new Error(`Unknown storage location: ${String(_exhaustive)}`);
 	}
 
 	private toWorkflowSnapshot(

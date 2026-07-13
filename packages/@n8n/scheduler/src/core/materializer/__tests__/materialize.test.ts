@@ -16,6 +16,8 @@ const makeJob = (id: number): ScheduledJob => ({
 	timezone: null,
 	intervalSeconds: 10,
 	fireAt: null,
+	recurrenceUnit: null,
+	recurrenceSize: null,
 	nextRunAt: NOW,
 	lastFiredAt: null,
 	maxAttempts: 1,
@@ -42,7 +44,7 @@ describe('materialize', () => {
 
 		const summary = await materialize(runnerWith(tx), options);
 
-		expect(summary).toEqual({ claimedJobs: 0, occurrences: 0, deferredJobs: 0 });
+		expect(summary).toEqual({ claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 });
 		expect(tx.recordOccurrences).not.toHaveBeenCalled();
 		expect(tx.advanceJobs).not.toHaveBeenCalled();
 	});
@@ -51,12 +53,12 @@ describe('materialize', () => {
 		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [makeJob(1), makeJob(2)] });
 		// windowSeconds: 0 means one occurrence per job: the due fire, both newly recorded.
-		tx.recordOccurrences.mockResolvedValue(2);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
 
 		const summary = await materialize(runnerWith(tx), options);
 
 		// The summary reports the count `recordOccurrences` returned, not the plan's size.
-		expect(summary).toEqual({ claimedJobs: 2, occurrences: 2, deferredJobs: 0 });
+		expect(summary).toEqual({ claimedJobs: 2, occurrences: 2, created: [], deferredJobs: 0 });
 
 		// One insert and one update for the whole batch, not a pair per job.
 		expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);
@@ -97,7 +99,7 @@ describe('materialize', () => {
 		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [makeJob(1), makeJob(2)] });
 		// Two planned, one already recorded (e.g. by a concurrent pass).
-		tx.recordOccurrences.mockResolvedValue(1);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
 		const onSkippedDuplicates = vi.fn(() => {
 			throw new Error('logger down');
 		});
@@ -105,14 +107,14 @@ describe('materialize', () => {
 		const summary = await materialize(runnerWith(tx), options, { onSkippedDuplicates });
 
 		expect(onSkippedDuplicates).toHaveBeenCalledWith({ planned: 2, recorded: 1 });
-		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 0 });
+		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, created: [], deferredJobs: 0 });
 		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);
 	});
 
 	it('stays silent when every planned occurrence is newly recorded', async () => {
 		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [makeJob(1)] });
-		tx.recordOccurrences.mockResolvedValue(1);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
 		const onSkippedDuplicates = vi.fn();
 
 		await materialize(runnerWith(tx), options, { onSkippedDuplicates });
@@ -131,12 +133,12 @@ describe('materialize', () => {
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [good, bad] });
-		tx.recordOccurrences.mockResolvedValue(1);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
 		const onPlanError = vi.fn();
 
 		const summary = await materialize(runnerWith(tx), options, { onPlanError });
 
-		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
+		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, created: [], deferredJobs: 1 });
 		expect(onPlanError).toHaveBeenCalledTimes(1);
 		expect(onPlanError).toHaveBeenCalledWith(bad, expect.anything());
 
@@ -186,7 +188,7 @@ describe('materialize', () => {
 		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [makeJob(1)] });
 		tx.recordOccurrences.mockImplementation(async () => {
 			controller.abort();
-			return await Promise.resolve(1);
+			return await Promise.resolve({ recorded: 1, created: [] });
 		});
 		const onSkippedDuplicates = vi.fn();
 
@@ -208,7 +210,7 @@ describe('materialize', () => {
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [good, bad] });
-		tx.recordOccurrences.mockResolvedValue(1);
+		tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
 		// The reporter is host-supplied; a broken one must not turn a deferred job
 		// into a rolled-back pass.
 		const onPlanError = vi.fn(() => {
@@ -217,7 +219,7 @@ describe('materialize', () => {
 
 		const summary = await materialize(runnerWith(tx), options, { onPlanError });
 
-		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
+		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, created: [], deferredJobs: 1 });
 		expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);
 		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);
 	});

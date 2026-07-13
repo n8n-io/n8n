@@ -9,7 +9,7 @@ import {
 	TaskHandlerRegistry,
 } from './executor';
 import type { ExecutorOptions, ExecutorTaskStore } from './executor';
-import { DEFAULT_LIFECYCLE_OPTIONS, Loop } from './lifecycle';
+import { DEFAULT_LIFECYCLE_OPTIONS, Loop, PASS_TIMED_OUT } from './lifecycle';
 import type { LifecycleOptions } from './lifecycle';
 import { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
@@ -18,7 +18,12 @@ import type { ReaperOptions, ReaperTaskStore } from './reaper';
 import { DEFAULT_RETENTION_OPTIONS, prune } from './retention';
 import type { RetentionOptions, RetentionStore } from './retention';
 import type { Scheduler, SchedulerPasses } from './scheduler';
+import { SCHEDULER_ATTRIBUTES } from '../observability/attributes';
+import { createExecutorTracing, withHandoffTracing } from '../observability/executor-tracing';
+import { traceCreatedTasks } from '../observability/materializer-tracing';
 import { noopMetrics, type SchedulerMetrics } from '../observability/metrics';
+import { tracePass } from '../observability/pass-tracing';
+import { noopTracer, type Tracer } from '../observability/tracer';
 
 export type SchedulerEventLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -61,6 +66,9 @@ export interface SchedulerDeps {
 
 	onEvent?: (event: SchedulerEvent) => void;
 
+	/** Host tracer; defaults to a no-op. */
+	tracer?: Tracer;
+
 	/** Host metrics; defaults to a no-op. */
 	metrics?: SchedulerMetrics;
 }
@@ -90,6 +98,7 @@ function withDefaults<T extends object>(defaults: T, overrides: Partial<T> = {})
  */
 export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasses {
 	const { hostId, materializerTransaction, taskStore, onEvent } = deps;
+	const tracer = deps.tracer ?? noopTracer;
 	const metrics = deps.metrics ?? noopMetrics;
 	const materializerOptions = withDefaults(DEFAULT_MATERIALIZER_OPTIONS, deps.materializer);
 	const executorOptions = withDefaults(DEFAULT_EXECUTOR_OPTIONS, deps.executor);
@@ -165,45 +174,52 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	};
 
 	const registry = new TaskHandlerRegistry();
-	const executor = new Executor(taskStore, registry, new PrecisionTimer(), executorOptions, {
-		onLeaseShorterThanLookahead: (context) => {
-			emit(
-				'warn',
-				'Scheduler executor lookahead reaches or exceeds the lease; claimed tasks may lose their lease before firing',
-				{ ...context },
-			);
+	const executor = new Executor(
+		taskStore,
+		registry,
+		new PrecisionTimer(),
+		executorOptions,
+		{
+			onLeaseShorterThanLookahead: (context) => {
+				emit(
+					'warn',
+					'Scheduler executor lookahead reaches or exceeds the lease; claimed tasks may lose their lease before firing',
+					{ ...context },
+				);
+			},
+			onMissingHandler: (task) => {
+				emit('warn', 'Scheduler claimed a task with no registered handler; claim released', {
+					taskId: task.id,
+					taskType: task.taskType,
+				});
+			},
+			onFireError: (task, error) => {
+				emit('error', 'Scheduler could not record a task outcome; left for the reaper', {
+					taskId: task.id,
+					error: described(error),
+				});
+			},
+			onReleaseError: (taskId, error) => {
+				emit('error', 'Scheduler failed to release a claimed task; left for the reaper', {
+					taskId,
+					error: described(error),
+				});
+			},
+			onDispatch: (taskType, lagSeconds) =>
+				recordMetric(() => {
+					metrics.recordDispatch(taskType);
+					metrics.observeDispatchLagSeconds(taskType, lagSeconds);
+				}),
+			onFire: (taskType, result) =>
+				recordMetric(() => {
+					metrics.recordFireOutcome(taskType, result);
+					// An executor terminal failure (attempts exhausted) is a permanent failure = a dead-letter.
+					if (result === 'failure') metrics.recordDeadLettered();
+				}),
+			onRetry: (taskType) => recordMetric(() => metrics.recordRetry(taskType)),
 		},
-		onMissingHandler: (task) => {
-			emit('warn', 'Scheduler claimed a task with no registered handler; claim released', {
-				taskId: task.id,
-				taskType: task.taskType,
-			});
-		},
-		onFireError: (task, error) => {
-			emit('error', 'Scheduler could not record a task outcome; left for the reaper', {
-				taskId: task.id,
-				error: described(error),
-			});
-		},
-		onReleaseError: (taskId, error) => {
-			emit('error', 'Scheduler failed to release a claimed task; left for the reaper', {
-				taskId,
-				error: described(error),
-			});
-		},
-		onDispatch: (taskType, lagSeconds) =>
-			recordMetric(() => {
-				metrics.recordDispatch(taskType);
-				metrics.observeDispatchLagSeconds(taskType, lagSeconds);
-			}),
-		onFire: (taskType, result) =>
-			recordMetric(() => {
-				metrics.recordFireOutcome(taskType, result);
-				// An executor terminal failure (attempts exhausted) is a permanent failure = a dead-letter.
-				if (result === 'failure') metrics.recordDeadLettered();
-			}),
-		onRetry: (taskType) => recordMetric(() => metrics.recordRetry(taskType)),
-	});
+		createExecutorTracing(tracer),
+	);
 
 	if (retentionOptions.failedRetentionSeconds < retentionOptions.retentionSeconds) {
 		emit(
@@ -216,71 +232,127 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		);
 	}
 
-	const runMaterialize = async (signal?: AbortSignal) => {
-		const summary = await materialize(
-			materializerTransaction,
-			materializerOptions,
-			{
-				onPlanError: (job, error) => {
-					emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
-						jobId: job.id,
-						error: described(error),
-					});
-				},
-				onSkippedDuplicates: (context) => {
-					emit('debug', 'Scheduler materializer skipped occurrences that were already recorded', {
-						...context,
-					});
-				},
-			},
-			signal,
-		);
-		recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
-		return summary;
-	};
-
-	const runExecute = async (signal?: AbortSignal) =>
-		await executor.claimAndSchedule(hostId, signal);
-
-	const runReap = async (signal?: AbortSignal) => {
-		const result = await reap(
-			taskStore,
-			reaperOptions,
-			{
-				onRowError: (taskId, error) => {
-					emit(
-						'error',
-						'Scheduler could not recover an expired task; skipped until the next sweep',
-						{
-							taskId,
-							error: described(error),
+	// Unlike the other passes, the materializer must throw on an observed abort
+	// rather than returning early: it is one open transaction, and only a throw
+	// out of `runInTransaction`'s callback rolls it back. A timeout is a real
+	// fault (the span stays errored, same as any other pass timing out); a plain
+	// shutdown abort is expected and rolled back cleanly, so it is reported the
+	// same way the other passes report one: a no-op summary, span ok.
+	const runMaterialize = tracePass(
+		tracer,
+		{ name: 'Scheduler materialize', op: 'scheduler.materialize' },
+		async (signal) => {
+			try {
+				const summary = await materialize(
+					materializerTransaction,
+					materializerOptions,
+					{
+						onPlanError: (job, error) => {
+							emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
+								jobId: job.id,
+								error: described(error),
+							});
 						},
-					);
-				},
-				onDeadLetter: (task) => {
-					emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
-						...task,
-					});
-				},
-			},
-			signal,
-		);
-		recordMetric(() => metrics.recordReaped(result.reclaimed, result.deadLettered));
-		return result;
-	};
+						onSkippedDuplicates: (context) => {
+							emit(
+								'debug',
+								'Scheduler materializer skipped occurrences that were already recorded',
+								{ ...context },
+							);
+						},
+					},
+					signal,
+				);
+				await traceCreatedTasks(tracer, summary.created);
+				recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
+				return summary;
+			} catch (error) {
+				// `throwIfAborted` always throws `signal.reason` itself, so this only
+				// swallows the abort: a real storage failure that happens to race a
+				// shutdown throws its own error, not `signal.reason`, and still propagates.
+				if (
+					signal?.aborted === true &&
+					signal.reason !== PASS_TIMED_OUT &&
+					error === signal.reason
+				) {
+					return { claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 };
+				}
+				throw error;
+			}
+		},
+		(summary) => ({
+			[SCHEDULER_ATTRIBUTES.claimedJobs]: summary.claimedJobs,
+			[SCHEDULER_ATTRIBUTES.occurrences]: summary.occurrences,
+			[SCHEDULER_ATTRIBUTES.deferredJobs]: summary.deferredJobs,
+		}),
+	);
 
-	const runPrune = async (signal?: AbortSignal) => {
-		const summary = await prune(taskStore, retentionOptions, signal);
-		if (!summary.drained && signal?.aborted !== true) {
-			emit('warn', 'Scheduler retention pass hit its batch budget; backlog remains', {
-				...summary,
-			});
-		} else if (summary.drained && summary.deleted > 0) {
-			emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
-		}
-		recordMetric(() => metrics.recordPruned(summary.deleted));
-		return summary;
-	};
+	const runExecute = tracePass(
+		tracer,
+		{
+			name: 'Scheduler claim',
+			op: 'scheduler.claim',
+			attributes: { [SCHEDULER_ATTRIBUTES.host]: hostId },
+		},
+		async (signal) => await executor.claimAndSchedule(hostId, signal),
+		(tasks) => ({ [SCHEDULER_ATTRIBUTES.claimedCount]: tasks.length }),
+	);
+
+	const runReap = tracePass(
+		tracer,
+		{ name: 'Scheduler reap', op: 'scheduler.reap' },
+		async (signal) => {
+			const result = await reap(
+				taskStore,
+				reaperOptions,
+				{
+					onRowError: (taskId, error) => {
+						emit(
+							'error',
+							'Scheduler could not recover an expired task; skipped until the next sweep',
+							{
+								taskId,
+								error: described(error),
+							},
+						);
+					},
+					onDeadLetter: (task) => {
+						emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
+							...task,
+						});
+					},
+				},
+				signal,
+			);
+			recordMetric(() => metrics.recordReaped(result.reclaimed, result.deadLettered));
+			return result;
+		},
+		(result) => ({
+			[SCHEDULER_ATTRIBUTES.reclaimed]: result.reclaimed,
+			[SCHEDULER_ATTRIBUTES.deadLettered]: result.deadLettered,
+		}),
+	);
+
+	const runPrune = tracePass(
+		tracer,
+		{ name: 'Scheduler retention', op: 'scheduler.retention' },
+		async (signal) => {
+			const summary = await prune(taskStore, retentionOptions, signal);
+			if (!summary.drained && signal?.aborted !== true) {
+				emit('warn', 'Scheduler retention pass hit its batch budget; backlog remains', {
+					...summary,
+				});
+			} else if (summary.drained && summary.deleted > 0) {
+				emit('debug', 'Scheduler retention deleted finished tasks', { ...summary });
+			}
+			recordMetric(() => metrics.recordPruned(summary.deleted));
+			return summary;
+		},
+		(summary) => ({
+			[SCHEDULER_ATTRIBUTES.retentionDeleted]: summary.deleted,
+			[SCHEDULER_ATTRIBUTES.retentionDrained]: summary.drained,
+		}),
+	);
 
 	const loopOver = (
 		pass: string,
@@ -352,7 +424,9 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 
 	return {
 		registerTaskHandler(taskType, handler) {
-			registry.register(taskType, handler);
+			// Wrapped here, at registration, so the executor calls handlers without
+			// knowing a tracing span surrounds each run.
+			registry.register(taskType, withHandoffTracing(tracer, handler));
 		},
 
 		materialize: runMaterialize,

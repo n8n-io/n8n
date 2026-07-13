@@ -67,6 +67,22 @@ describe('extractArtifacts', () => {
 		]);
 	});
 
+	test('returns agent artifact from targetResource', () => {
+		const node = makeAgentNode({
+			targetResource: { id: 'agent-1', type: 'agent', name: 'SEO Auditor', projectId: 'proj-1' },
+		});
+
+		expect(extractArtifacts(node)).toEqual([
+			{
+				type: 'agent',
+				resourceId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'SEO Auditor',
+				completedAt: undefined,
+			},
+		]);
+	});
+
 	test('falls back to subtitle when targetResource has no name', () => {
 		const node = makeAgentNode({
 			subtitle: 'Sub Title',
