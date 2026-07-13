@@ -774,6 +774,7 @@ describe('ActiveWorkflowManager', () => {
 		// so the test asserts the cron is actually stopped, not just that a method was
 		// called.
 		const hourly = '0 * * * *' as CronExpression;
+		const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
 		let realScheduledTaskManager: ScheduledTaskManager;
 		let realActiveWorkflowTriggers: ActiveWorkflowTriggers;
 
@@ -809,7 +810,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
-				mock(), // scheduleTriggerJobRegistrar
+				scheduleTriggerJobRegistrar,
 			);
 		});
 
@@ -836,6 +837,28 @@ describe('ActiveWorkflowManager', () => {
 			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-desynced'))).toBe(false);
 		});
 
+		it('should deprovision durable schedule jobs of the registered nodes on removal', async () => {
+			// A deactivation through the legacy path (e.g. a workflow transfer with the
+			// publication flag on) must delete the durable rows its activation committed,
+			// or the durable scheduler keeps firing a workflow now marked inactive.
+			realScheduledTaskManager.register(
+				{
+					group: workflowGroup('wf-durable'),
+					targetId: 'schedule-node',
+					timezone: 'GMT',
+					expression: hourly,
+				},
+				vi.fn(),
+			);
+
+			await activeWorkflowManager.removeNonWebhookTriggers('wf-durable');
+
+			expect(scheduleTriggerJobRegistrar.remove).toHaveBeenCalledWith(
+				'wf-durable',
+				'schedule-node',
+			);
+		});
+
 		it('should stop a stranded cron on leader stepdown / shutdown', async () => {
 			// removeAllNonWebhookTriggerWorkflows is the @OnLeaderStepdown / @OnShutdown
 			// handler. On stepdown the process keeps running as a follower, so a stranded
@@ -855,6 +878,9 @@ describe('ActiveWorkflowManager', () => {
 			await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
 			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-orphan'))).toBe(false);
+			// Durable jobs track the published state of a workflow, not this instance's
+			// leadership, so stepdown/shutdown must never deprovision them.
+			expect(scheduleTriggerJobRegistrar.remove).not.toHaveBeenCalled();
 		});
 
 		it('does not tear down triggers under the publication service flag', async () => {
