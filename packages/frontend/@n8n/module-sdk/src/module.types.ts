@@ -1,8 +1,27 @@
-import type { ModalState } from '@/Interface';
-import type { DynamicTabOptions } from '@/app/utils/modules/tabUtils';
+import type { IMenuItem, TabOptions } from '@n8n/design-system';
+import type { Component } from 'vue';
 import type { RouteRecordRaw } from 'vue-router';
-import type { Component } from 'vue/dist/vue.js';
-import type { IMenuItem } from '@n8n/design-system';
+
+export type ModalState = {
+	open: boolean;
+	mode?: string | null;
+	data?: Record<string, unknown>;
+	activeId?: string | null;
+	curlCommand?: string;
+	httpNodeParameters?: string;
+};
+
+export type DynamicTabOptions = TabOptions<string> & {
+	dynamicRoute?: {
+		name: string;
+		includeProjectId?: boolean;
+	};
+	/**
+	 * Insert this tab immediately after the tab whose `value` matches.
+	 * If unset (or no match is found at render time), the tab is appended at the end.
+	 */
+	insertAfter?: string;
+};
 
 export type ModalDefinition = {
 	key: string;
