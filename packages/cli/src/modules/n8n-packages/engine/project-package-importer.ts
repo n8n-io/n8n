@@ -27,7 +27,7 @@ export class ProjectPackageImporter {
 		reader: PackageReader,
 		manifest: PackageManifest,
 	): Promise<ImportResult> {
-		assertPackageImportApiKeyScopes(request.apiKeyScopes, ['project:create']);
+assertPackageImportApiKeyScopes(request.apiKeyScopes, ['project:create', 'project:update']);
 
 		const projects = await this.packageParser.getProjects(reader);
 		const plan = await this.projectImporter.plan(request.user, projects);
