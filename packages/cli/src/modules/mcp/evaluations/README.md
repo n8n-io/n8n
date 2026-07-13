@@ -99,6 +99,7 @@ always pass a dedicated `--dataset` and `--baseline-prefix`:
 LANGSMITH_API_KEY=ls__... dotenvx run -f .env.mcp-evals -- \
   pnpm --filter @n8n/instance-ai run eval:instance-ai \
   --base-url http://localhost:5678 \
+  --source langtracer --suite n8n-workflows \
   --tier mcp \
   --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
   --dataset mcp-workflow-evals \
@@ -129,6 +130,7 @@ dataset and prefix (high `--iterations` for a low-noise reference point):
 LANGSMITH_API_KEY=ls__... dotenvx run -f .env.mcp-evals -- \
   pnpm --filter @n8n/instance-ai run eval:instance-ai \
   --base-url http://localhost:5678 \
+  --source langtracer --suite n8n-workflows \
   --tier mcp \
   --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
   --dataset mcp-workflow-evals \
@@ -204,6 +206,7 @@ and stay in lockstep:
 ```bash
 # 1. Build the cohort — only mcp-tier cases
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-mcp-manifest \
+  --source langtracer --suite n8n-workflows \
   --tier mcp \
   -n 3 \
   -j 3 \
@@ -213,6 +216,7 @@ dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-m
 # 2. Evaluate the same cohort
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:instance-ai \
   --base-url http://localhost:5678 \
+  --source langtracer --suite n8n-workflows \
   --tier mcp \
   --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
   --iterations 3 \
@@ -232,12 +236,14 @@ them; narrow its build set with positional slugs instead (e.g. append
 ## Generate a cohort
 
 Without `--tier` or a positional slug, the build covers every test case in the
-source (pass `--source langtracer --suite n8n-workflows` for the real corpus;
-disk mode reads `data/workflows/`). From the repo root, build five workflows
-per test case with five concurrent Claude Code builds:
+source. The commands below pull the real corpus from LangTracer
+(`--source langtracer --suite n8n-workflows`); disk mode (`data/workflows/`)
+only holds the seeded carve-out cases. From the repo root, build five
+workflows per test case with five concurrent Claude Code builds:
 
 ```bash
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-mcp-manifest \
+  --source langtracer --suite n8n-workflows \
   -n 5 \
   -j 5 \
   --output-dir /tmp/n8n-mcp-cohort \
@@ -258,6 +264,7 @@ dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-m
   -j 5 \
   --output-dir /tmp/n8n-mcp-cohort \
   --mcp-server n8n-local \
+  --source langtracer --suite n8n-workflows \
   --model claude-opus-4-5
 ```
 
@@ -301,6 +308,7 @@ dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-m
   -j 5 \
   --output-dir /tmp/n8n-mcp-contact-form \
   --mcp-server n8n-local \
+  --source langtracer --suite n8n-workflows \
   contact-form-automation
 ```
 
@@ -317,6 +325,7 @@ concurrent eval workers:
 ```bash
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:instance-ai \
   --base-url http://localhost:5678 \
+  --source langtracer --suite n8n-workflows \
   --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
   --iterations 5 \
   --concurrency 5 \
@@ -333,6 +342,7 @@ Use `--filter` with the same slug that was used during manifest generation:
 ```bash
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:instance-ai \
   --base-url http://localhost:5678 \
+  --source langtracer --suite n8n-workflows \
   --prebuilt-workflows /tmp/n8n-mcp-contact-form/manifest.json \
   --filter contact-form-automation \
   --iterations 5 \

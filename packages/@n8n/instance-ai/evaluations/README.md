@@ -307,9 +307,12 @@ gh workflow run ci-instance-ai-evals.yml -f pr=<number>
 There is no auto-refresh — refresh explicitly when you want a new reference point, ideally with high N for low noise:
 
 ```bash
-# From packages/@n8n/instance-ai/, on master at the version you want to pin
+# From packages/@n8n/instance-ai/, on master at the version you want to pin.
+# The --dataset/--baseline-prefix pins mirror CI: langtracer mode otherwise
+# derives suite-scoped names, and later runs would never find this baseline.
 LANGSMITH_API_KEY=... dotenvx run -f ../../../.env.local -- \
   pnpm eval:instance-ai --source langtracer --suite n8n-workflows \
+  --dataset instance-ai-workflow-evals --baseline-prefix instance-ai-baseline- \
   --experiment-name instance-ai-baseline --iterations 10
 ```
 

@@ -185,7 +185,10 @@ for low noise:
 
 ```bash
 # with your env loaded and LANGSMITH_API_KEY set, from packages/@n8n/instance-ai/
+# (--dataset/--baseline-prefix mirror CI's pins — langtracer mode otherwise
+# derives suite-scoped names and later runs would never find this baseline)
 pnpm eval:instance-ai --source langtracer --suite n8n-workflows \
+  --dataset instance-ai-workflow-evals --baseline-prefix instance-ai-baseline- \
   --experiment-name instance-ai-baseline --iterations 10
 ```
 
