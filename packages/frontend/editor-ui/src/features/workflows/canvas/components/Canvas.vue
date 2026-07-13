@@ -52,7 +52,7 @@ import type {
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
-import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
 import type { CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
@@ -381,10 +381,9 @@ function onToggleZoomMode() {
 }
 
 function onNodeGroupCreated(groupId: string) {
-	autofocusGroupTitleId.value = groupId;
 	const group = workflowDocumentStore.value.getGroupById(groupId);
 	if (group) {
-		groupTelemetry.trackGrouped(group, 'group-toolbar');
+		handleGroupCreated(group, 'group-toolbar');
 	}
 }
 
@@ -397,6 +396,7 @@ function onNodeGroupTitleFocused(groupId: string) {
 const {
 	canGroup: canGroupSelection,
 	canUngroup: canUngroupSelection,
+	groupNodes,
 	groupSelection,
 	renameGroup,
 	ungroup,
@@ -407,11 +407,15 @@ const {
 
 const groupTelemetry = useCanvasNodeGroupTelemetry();
 
+function handleGroupCreated(group: IWorkflowGroup, source: CanvasNodeGroupEventSource) {
+	autofocusGroupTitleId.value = group.id;
+	groupTelemetry.trackGrouped(group, source);
+}
+
 function onKeyboardGroup() {
 	const group = groupSelection();
 	if (group) {
-		autofocusGroupTitleId.value = group.id;
-		groupTelemetry.trackGrouped(group, 'keyboard-shortcut');
+		handleGroupCreated(group, 'keyboard-shortcut');
 	}
 }
 
@@ -1051,7 +1055,10 @@ const groupNodeFallbackDataById = computed(() =>
 
 const contextMenu = useContextMenu();
 
-function onOpenContextMenu(event: MouseEvent, target?: Pick<ContextMenuTarget, 'nodeId'>) {
+function onOpenContextMenu(
+	event: MouseEvent,
+	target?: Pick<Extract<ContextMenuTarget, { source: 'canvas' }>, 'nodeId'>,
+) {
 	contextMenu.open(event, {
 		source: 'canvas',
 		nodeIds: selectedNodeIds.value,
@@ -1078,7 +1085,18 @@ function onOpenNodeContextMenu(
 	}
 }
 
-async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
+function onOpenGroupContextMenu(groupId: string, event: MouseEvent) {
+	// Both group actions mutate the workflow, so fall through to the native
+	// menu when this canvas instance is read-only or suppressed. The item
+	// disabled state only reflects instance-wide read-only checks, not these
+	// per-canvas props.
+	if (props.readOnly || props.suppressInteraction) return;
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	contextMenu.open(event, { source: 'group', groupId, nodeIds: [...group.nodeIds] });
+}
+
+async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[], groupId?: string) {
 	switch (action) {
 		case 'add_node':
 			return emit('create:node', 'context_menu');
@@ -1116,6 +1134,25 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return await onTidyUp({ source: 'context-menu' });
 		case 'extract_sub_workflow':
 			return emit('extract-workflow', nodeIds);
+		case 'group_nodes': {
+			const group = groupNodes(nodeIds);
+			if (group) {
+				handleGroupCreated(group, 'context-menu');
+			}
+			return;
+		}
+		case 'rename_group': {
+			if (groupId && workflowDocumentStore.value.getGroupById(groupId)) {
+				autofocusGroupTitleId.value = groupId;
+			}
+			return;
+		}
+		case 'ungroup_nodes': {
+			if (groupId) {
+				onCanvasGroupUngroup(groupId, 'context-menu');
+			}
+			return;
+		}
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}
@@ -1409,6 +1446,7 @@ defineExpose({
 				@update:name="onCanvasGroupNameUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
+				@open:contextmenu="onOpenGroupContextMenu"
 			/>
 		</template>
 
