@@ -46,6 +46,91 @@ function lookupRequiredPermissions(
 	return undefined;
 }
 
+type GraphRequestError = {
+	httpCode?: string | number | null;
+	statusCode?: string | number | null;
+	message?: string;
+	code?: string;
+	error?: { error?: GraphRequestError };
+};
+
+/** Best-effort; load-options contexts may not expose the resource parameter. */
+function nodeResourceName(this: IExecuteFunctions | ILoadOptionsFunctions): string | undefined {
+	try {
+		const resource = this.getNodeParameter('resource', 0);
+		if (typeof resource === 'string' && resource !== '') {
+			return capitalize(resource);
+		}
+	} catch {}
+	return undefined;
+}
+
+// App-only error bodies can include internal identifiers — surface only a
+// fixed message + status (which lives on `httpCode` as a string when wrapped)
+function servicePrincipalApiError(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	error: GraphRequestError,
+): NodeApiError {
+	const rawCode = error.httpCode ?? error.statusCode;
+	const httpCode: number | undefined =
+		rawCode === undefined || rawCode === null ? undefined : Number(rawCode);
+	const nodeResource = httpCode === 404 ? nodeResourceName.call(this) : undefined;
+
+	let message: string;
+	if (httpCode === 404 && nodeResource) {
+		message = `${nodeResource} not found`;
+	} else if (httpCode === 401) {
+		message =
+			"The Service Principal token was rejected. Check the app registration's client secret and that admin consent is granted.";
+	} else if (httpCode === 403) {
+		const permissions = lookupRequiredPermissions.call(this);
+		message = permissions
+			? `The app registration is missing a consented application permission for this operation: ${permissions.application}. Grant it and admin consent, then retry.`
+			: 'The app registration is missing a consented application permission for this operation. Grant the required Microsoft Graph application permission and admin consent, then retry.';
+	} else {
+		message = `Microsoft Graph rejected the request (HTTP ${httpCode ?? 'unknown'}). Check the operation's inputs and the app registration's permissions.`;
+	}
+
+	const sanitizedError: JsonObject = { message };
+	const errorOptions: IDataObject = { message };
+	if (httpCode !== undefined && !Number.isNaN(httpCode)) {
+		sanitizedError.httpStatusCode = httpCode;
+		errorOptions.httpCode = `${httpCode}`;
+	}
+	return new NodeApiError(this.getNode(), sanitizedError, errorOptions);
+}
+
+function delegatedApiError(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	error: GraphRequestError,
+): NodeApiError {
+	const errorOptions: IDataObject = {};
+	const statusCode = Number(error.statusCode ?? error.httpCode);
+	if (statusCode === 403) {
+		// Missing scope OR no access to the site; callers key off httpCode '403'
+		const permissions = lookupRequiredPermissions.call(this);
+		errorOptions.message = permissions
+			? `Microsoft Graph refused this request. The credential may be missing the ${permissions.delegated} permission, or the signed-in account may not have access to this resource`
+			: 'Microsoft Graph refused this request. The credential may be missing a required permission, or the signed-in account may not have access to this resource';
+		errorOptions.description =
+			"Check the credential's scopes (with admin consent if your tenant requires it) and that the signed-in account can access the site, then try again.";
+		errorOptions.httpCode = '403';
+	} else if (error.error?.error) {
+		const httpCode = error.statusCode;
+		error = error.error.error;
+		error.statusCode = httpCode;
+		errorOptions.message = error.message;
+
+		if (error.code === 'NotFound' && error.message === 'Resource not found') {
+			const nodeResource = nodeResourceName.call(this);
+			if (nodeResource) {
+				errorOptions.message = `${nodeResource} not found`;
+			}
+		}
+	}
+	return new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
+}
+
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
@@ -84,71 +169,8 @@ export async function microsoftApiRequest(
 		}
 		return await this.helpers.requestOAuth2.call(this, credentialType, options);
 	} catch (error) {
-		if (isServicePrincipal) {
-			// App-only error bodies can include internal identifiers — surface only a
-			// fixed message + status (which lives on `httpCode` as a string when wrapped)
-			const rawCode = error?.httpCode ?? error?.statusCode;
-			const httpCode: number | undefined =
-				rawCode === undefined || rawCode === null ? undefined : Number(rawCode);
-
-			let nodeResource: string | undefined;
-			try {
-				const resourceParam = this.getNodeParameter('resource', 0);
-				if (typeof resourceParam === 'string' && resourceParam !== '') {
-					nodeResource = capitalize(resourceParam);
-				}
-			} catch {
-				nodeResource = undefined;
-			}
-
-			let message: string;
-			if (httpCode === 404 && nodeResource) {
-				message = `${nodeResource} not found`;
-			} else if (httpCode === 401) {
-				message =
-					"The Service Principal token was rejected. Check the app registration's client secret and that admin consent is granted.";
-			} else if (httpCode === 403) {
-				const permissions = lookupRequiredPermissions.call(this);
-				message = permissions
-					? `The app registration is missing a consented application permission for this operation: ${permissions.application}. Grant it and admin consent, then retry.`
-					: 'The app registration is missing a consented application permission for this operation. Grant the required Microsoft Graph application permission and admin consent, then retry.';
-			} else {
-				message = `Microsoft Graph rejected the request (HTTP ${httpCode ?? 'unknown'}). Check the operation's inputs and the app registration's permissions.`;
-			}
-
-			const sanitizedError: JsonObject = { message };
-			const errorOptions: IDataObject = { message };
-			if (httpCode !== undefined && !Number.isNaN(httpCode)) {
-				sanitizedError.httpStatusCode = httpCode;
-				errorOptions.httpCode = `${httpCode}`;
-			}
-			throw new NodeApiError(this.getNode(), sanitizedError, errorOptions);
-		}
-
-		const errorOptions: IDataObject = {};
-		const statusCode = Number(error?.statusCode ?? error?.httpCode);
-		if (statusCode === 403) {
-			// Missing scope OR no access to the site; callers key off httpCode '403'
-			const permissions = lookupRequiredPermissions.call(this);
-			errorOptions.message = permissions
-				? `Microsoft Graph refused this request. The credential may be missing the ${permissions.delegated} permission, or the signed-in account may not have access to this resource`
-				: 'Microsoft Graph refused this request. The credential may be missing a required permission, or the signed-in account may not have access to this resource';
-			errorOptions.description =
-				"Check the credential's scopes (with admin consent if your tenant requires it) and that the signed-in account can access the site, then try again.";
-			errorOptions.httpCode = '403';
-		} else if (error.error?.error) {
-			const httpCode = error.statusCode;
-			error = error.error.error;
-			error.statusCode = httpCode;
-			errorOptions.message = error.message;
-
-			if (error.code === 'NotFound' && error.message === 'Resource not found') {
-				const resourceParam = this.getNodeParameter('resource', 0);
-				if (typeof resourceParam === 'string' && resourceParam !== '') {
-					errorOptions.message = `${capitalize(resourceParam)} not found`;
-				}
-			}
-		}
-		throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
+		throw isServicePrincipal
+			? servicePrincipalApiError.call(this, error)
+			: delegatedApiError.call(this, error);
 	}
 }
