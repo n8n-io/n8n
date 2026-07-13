@@ -30,7 +30,6 @@ import {
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 const handleError = (error: unknown) => {
-	// An unknown or cross-project folder surfaces as 404, matching the folders handler.
 	if (error instanceof FolderNotFoundError) {
 		throw new NotFoundError(error.message);
 	}
@@ -310,9 +309,7 @@ const workflowHandlers: WorkflowHandlers = {
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, rest);
 
-			// An explicit null moves the workflow to the project root, which the
-			// service expresses via the PROJECT_ROOT sentinel. Omitting the field
-			// (undefined) leaves the current folder untouched.
+			// null moves the workflow to the project root, (undefined) leaves the current folder untouched
 			const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
 
 			try {
