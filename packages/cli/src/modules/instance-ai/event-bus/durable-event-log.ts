@@ -53,6 +53,30 @@ interface PendingEvent {
 	enqueuedAt: number;
 }
 
+interface FlushSignal {
+	resolve: () => void;
+}
+
+/**
+ * A flush marker rides the same per-thread queue as events, so open buffers
+ * are persisted exactly at the marker's position: everything published before
+ * it lands first, everything after it lands later. Persisting outside the
+ * drain would race a concurrent publish for seqs and could reorder a block
+ * after the structural fact it must precede.
+ */
+type PendingEntry = PendingEvent | { flushSignal: FlushSignal };
+
+function isFlushMarker(entry: PendingEntry): entry is { flushSignal: FlushSignal } {
+	return 'flushSignal' in entry;
+}
+
+function serializedBytes(events: InstanceAiEvent[]): number {
+	return events.reduce(
+		(total, event) => total + Buffer.byteLength(JSON.stringify(event), 'utf8'),
+		0,
+	);
+}
+
 interface CoalesceBuffer {
 	text: string[];
 	reasoning: string[];
@@ -67,7 +91,7 @@ type EmitFn = (drained: DrainedEvent) => void;
 @Service()
 export class DurableEventLog {
 	/** publish() stays synchronous: events queue here, a per-thread drain assigns seq. */
-	private readonly pendingByThread = new Map<string, PendingEvent[]>();
+	private readonly pendingByThread = new Map<string, PendingEntry[]>();
 
 	/** In-flight drain per thread, awaited by flush(). */
 	private readonly draining = new Map<string, Promise<void>>();
@@ -128,8 +152,10 @@ export class DurableEventLog {
 	}
 
 	async getNextEventId(threadId: string): Promise<number> {
-		const cached = this.lastSeq.get(threadId);
-		if (cached !== undefined) return cached + 1;
+		// Always from the DB: the local cache only tracks THIS main's appends and
+		// goes stale the moment a sibling main wins a seq range, which would seed
+		// the client's replay cursor below rows its history response already
+		// covered. The cache stays writer-only (persistWithRetry).
 		return (await this.repo.maxSeq(threadId)) + 1;
 	}
 
@@ -141,6 +167,7 @@ export class DurableEventLog {
 	 * unbounded across a long-lived process.
 	 */
 	clearThread(threadId: string): void {
+		this.resolvePendingFlushes(threadId);
 		this.pendingByThread.delete(threadId);
 		this.lastSeq.delete(threadId);
 		this.buffers.delete(threadId);
@@ -152,6 +179,7 @@ export class DurableEventLog {
 
 	/** Drop all per-thread drain state. Used during module shutdown. */
 	clear(): void {
+		for (const threadId of this.pendingByThread.keys()) this.resolvePendingFlushes(threadId);
 		this.pendingByThread.clear();
 		this.lastSeq.clear();
 		this.buffers.clear();
@@ -160,34 +188,41 @@ export class DurableEventLog {
 		this.idleFlushTimers.clear();
 	}
 
+	/** A cleared thread has nothing left to flush — settle waiters so they never hang. */
+	private resolvePendingFlushes(threadId: string): void {
+		const pending = this.pendingByThread.get(threadId);
+		if (!pending) return;
+		for (const entry of pending) {
+			if (isFlushMarker(entry)) entry.flushSignal.resolve();
+		}
+	}
+
 	/**
-	 * Await the thread's in-flight drain, then persist any still-open coalesce
-	 * buffers as blocks so streamed text survives a shutdown mid-segment.
+	 * Persist any still-open coalesce buffers as blocks so streamed text
+	 * survives a shutdown mid-segment. Serialized through the per-thread drain
+	 * (as a queue marker), so it can never race a concurrent publish for seqs.
 	 */
 	async flush(threadId: string): Promise<void> {
-		await this.draining.get(threadId);
-		const threadBuffers = this.buffers.get(threadId);
-		if (!threadBuffers || threadBuffers.size === 0) return;
-
-		const blocks: InstanceAiEvent[] = [];
-		for (const [key, buffer] of threadBuffers) {
-			const separator = key.indexOf(':');
-			const runId = key.slice(0, separator);
-			const agentId = key.slice(separator + 1);
-			const reasoning = this.takeBlock('reasoning', runId, agentId, buffer);
-			if (reasoning) blocks.push(reasoning);
-			const text = this.takeBlock('text', runId, agentId, buffer);
-			if (text) blocks.push(text);
+		const hasBuffers = (this.buffers.get(threadId)?.size ?? 0) > 0;
+		if (!this.pendingByThread.has(threadId) && !this.draining.has(threadId) && !hasBuffers) {
+			return;
 		}
-		this.buffers.delete(threadId);
-		if (blocks.length === 0) return;
-
-		await this.persistWithRetry(threadId, blocks);
+		await new Promise<void>((resolve) => {
+			const entry: PendingEntry = { flushSignal: { resolve } };
+			const pending = this.pendingByThread.get(threadId);
+			if (pending) pending.push(entry);
+			else this.pendingByThread.set(threadId, [entry]);
+			this.ensureDraining(threadId);
+		});
 	}
 
 	/** Drain shutdown flush: called from module shutdown so no thread loses its tail. */
 	async flushAll(): Promise<void> {
-		const threadIds = new Set([...this.draining.keys(), ...this.buffers.keys()]);
+		const threadIds = new Set([
+			...this.draining.keys(),
+			...this.buffers.keys(),
+			...this.pendingByThread.keys(),
+		]);
 		for (const threadId of threadIds) {
 			try {
 				await this.flush(threadId);
@@ -206,7 +241,19 @@ export class DurableEventLog {
 			try {
 				let batch = this.takePending(threadId);
 				while (batch.length > 0) {
-					await this.drainBatch(threadId, batch);
+					try {
+						await this.drainBatch(threadId, batch);
+					} catch (error) {
+						// Keep the drain alive: a failed batch must not reject the
+						// (unawaited) drain promise or strand later publishes/flushes.
+						this.logger.error('Instance AI event log drain failed for a batch', {
+							threadId,
+							error,
+						});
+						for (const entry of batch) {
+							if (isFlushMarker(entry)) entry.flushSignal.resolve();
+						}
+					}
 					batch = this.takePending(threadId);
 				}
 			} finally {
@@ -216,16 +263,37 @@ export class DurableEventLog {
 		this.draining.set(threadId, drain);
 	}
 
-	private async drainBatch(threadId: string, batch: PendingEvent[]): Promise<void> {
+	private async drainBatch(threadId: string, batch: PendingEntry[]): Promise<void> {
+		const flushSignals: FlushSignal[] = [];
+		const settleFlushes = () => {
+			for (const signal of flushSignals) signal.resolve();
+		};
+
 		const emit = this.emitters.get(threadId);
-		if (!emit) return;
+		if (!emit) {
+			for (const entry of batch) {
+				if (isFlushMarker(entry)) entry.flushSignal.resolve();
+			}
+			return;
+		}
 
 		// Build the batch plan first; seqs are assigned inside persistWithRetry so
 		// an append conflict can re-assign them from a re-seeded counter.
 		const toPersist: InstanceAiEvent[] = [];
 		const toEmit: Array<{ event: InstanceAiEvent; persistIndex?: number; live: boolean }> = [];
 
-		for (const { event } of batch) {
+		for (const entry of batch) {
+			if (isFlushMarker(entry)) {
+				// Persist every open buffer at the marker's queue position, so the
+				// flush is ordered exactly against the events published around it.
+				for (const block of this.takeAllOpenBlocks(threadId)) {
+					toEmit.push({ event: block, persistIndex: toPersist.length, live: false });
+					toPersist.push(block);
+				}
+				flushSignals.push(entry.flushSignal);
+				continue;
+			}
+			const { event } = entry;
 			if (EPHEMERAL_TYPES.has(event.type)) {
 				// A delta with a new responseId starts a new segment: close the old
 				// one as a block first, so blocks stay exactly 1:1 with segments and
@@ -252,7 +320,9 @@ export class DurableEventLog {
 		if (toPersist.length > 0) {
 			firstSeq = await this.persistWithRetry(threadId, toPersist);
 			const persistedAt = Date.now();
-			for (const { enqueuedAt } of batch) this.metrics.recordQueueLatency(persistedAt - enqueuedAt);
+			for (const entry of batch) {
+				if (!isFlushMarker(entry)) this.metrics.recordQueueLatency(persistedAt - entry.enqueuedAt);
+			}
 		}
 
 		for (const drained of toEmit) {
@@ -262,6 +332,26 @@ export class DurableEventLog {
 					: undefined;
 			emit({ ...(id !== undefined ? { id } : {}), event: drained.event, live: drained.live });
 		}
+		settleFlushes();
+	}
+
+	/** Drain every open buffer of the thread into block facts (flush marker path). */
+	private takeAllOpenBlocks(threadId: string): InstanceAiEvent[] {
+		const threadBuffers = this.buffers.get(threadId);
+		if (!threadBuffers || threadBuffers.size === 0) return [];
+
+		const blocks: InstanceAiEvent[] = [];
+		for (const [key, buffer] of threadBuffers) {
+			const separator = key.indexOf(':');
+			const runId = key.slice(0, separator);
+			const agentId = key.slice(separator + 1);
+			const reasoning = this.takeBlock('reasoning', runId, agentId, buffer);
+			if (reasoning) blocks.push(reasoning);
+			const text = this.takeBlock('text', runId, agentId, buffer);
+			if (text) blocks.push(text);
+		}
+		this.buffers.delete(threadId);
+		return blocks;
 	}
 
 	/**
@@ -278,33 +368,47 @@ export class DurableEventLog {
 	): Promise<number | undefined> {
 		let lastError: unknown;
 		for (let attempt = 1; attempt <= MAX_APPEND_ATTEMPTS; attempt++) {
-			const firstSeq = (await this.currentSeq(threadId)) + 1;
+			// The seed read lives inside the try: a transient failure there must
+			// consume an attempt and retry, not reject the (unawaited) drain.
+			let firstSeq: number | undefined;
 			try {
+				firstSeq = (await this.currentSeq(threadId)) + 1;
 				const bytes = await this.repo.appendBatch(threadId, firstSeq, events);
 				this.lastSeq.set(threadId, firstSeq + events.length - 1);
 				this.metrics.recordDrainBatch(events.length, bytes);
 				return firstSeq;
 			} catch (error) {
 				lastError = error;
-				// Re-seed unconditionally: on a (threadId, seq) collision another
-				// main won the range; on any other failure the re-read is one cheap
-				// query, and it keeps the retry loop uniform even where a driver
-				// reports a PK violation under a code the detector doesn't know.
-				this.lastSeq.delete(threadId);
 				if (isUniqueConstraintError(error)) {
+					// (threadId, seq) collision: another main won the range — re-seed
+					// from the DB and try again.
+					this.lastSeq.delete(threadId);
 					this.metrics.recordAppendConflict(attempt);
 					this.logger.warn('Instance AI event log append conflict, retrying', {
 						threadId,
 						attempt,
 						error,
 					});
-				} else {
-					this.logger.warn('Instance AI event log append failed, retrying', {
-						threadId,
-						attempt,
-						error,
-					});
+					continue;
 				}
+				// Transient failure (seed read, connectivity, timeout). The append is
+				// a single INSERT, so if its commit outran a lost response the batch
+				// is already durable — detect that instead of re-appending it under
+				// fresh seqs, which would duplicate every fact in the replay.
+				if (firstSeq !== undefined && (await this.didBatchCommit(threadId, firstSeq, events))) {
+					this.lastSeq.set(threadId, firstSeq + events.length - 1);
+					this.metrics.recordDrainBatch(events.length, serializedBytes(events));
+					return firstSeq;
+				}
+				// Also covers a PK violation a driver reports under a code the
+				// detector doesn't know: the committed row differs from ours, so the
+				// re-seed below realigns and the next attempt lands cleanly.
+				this.lastSeq.delete(threadId);
+				this.logger.warn('Instance AI event log append failed, retrying', {
+					threadId,
+					attempt,
+					error,
+				});
 			}
 		}
 		this.metrics.recordAppendFailure(events.length);
@@ -314,6 +418,25 @@ export class DurableEventLog {
 			error: lastError,
 		});
 		return undefined;
+	}
+
+	/**
+	 * Whether a batch whose append errored actually committed: the first row of
+	 * the attempted range exists with exactly our payload (single-statement
+	 * INSERT, so the first row proves the whole batch). A read failure means
+	 * the DB is still unreachable — report not-committed and keep retrying.
+	 */
+	private async didBatchCommit(
+		threadId: string,
+		firstSeq: number,
+		events: InstanceAiEvent[],
+	): Promise<boolean> {
+		try {
+			const payload = await this.repo.payloadAt(threadId, firstSeq);
+			return payload !== null && payload === JSON.stringify(events[0]);
+		} catch {
+			return false;
+		}
 	}
 
 	/** Append a delta to its agent's open block. */
@@ -443,7 +566,7 @@ export class DurableEventLog {
 		return buffer;
 	}
 
-	private takePending(threadId: string): PendingEvent[] {
+	private takePending(threadId: string): PendingEntry[] {
 		const pending = this.pendingByThread.get(threadId);
 		if (!pending) return [];
 		this.pendingByThread.delete(threadId);
