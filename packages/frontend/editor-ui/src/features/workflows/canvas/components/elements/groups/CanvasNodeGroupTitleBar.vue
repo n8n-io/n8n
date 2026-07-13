@@ -691,9 +691,11 @@ $description-height: 48px;
 }
 
 .statusIcons {
+	position: absolute;
+	bottom: var(--spacing--3xs);
+	right: var(--spacing--3xs);
 	display: flex;
 	align-items: center;
-	margin-left: var(--spacing--xs);
 	flex-shrink: 0;
 }
 
