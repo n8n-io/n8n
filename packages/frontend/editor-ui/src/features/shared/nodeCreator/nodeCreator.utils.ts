@@ -184,7 +184,7 @@ function getLatestKnownVersion(nodeName: string): number {
 	const versions = nodeTypesStore.getNodeVersions(nodeName);
 	if (versions.length > 0) return Math.max(...versions);
 
-	const communityVersion = nodeTypesStore.communityNodeType(nodeName)?.nodeDescription?.version;
+	const communityVersion = nodeTypesStore.communityNodeType?.(nodeName)?.nodeDescription?.version;
 	if (Array.isArray(communityVersion)) return Math.max(...communityVersion);
 	return communityVersion ?? 1;
 }
