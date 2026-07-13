@@ -30,6 +30,7 @@ import {
 	getPromptFilesystemInstructions,
 	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
+	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
 	createInstanceAiLivenessPolicyConfig,
@@ -1977,7 +1978,16 @@ export class InstanceAiService {
 		// build_agent flow persists configs from workspace files, so the skill
 		// needs both the agents module and the sandbox workspace. Hide it when
 		// either is unavailable.
-		const allRuntimeSkills = loadInstanceAiRuntimeSkillSource();
+		// Per-user feature-flag skill gates: hide flag-gated skills (e.g. the
+		// config-evals skill) from users without the flag. `filterRuntimeSkillSource`
+		// returns a filtered copy and recomputes the skills hash, so the process-level
+		// catalog cache is preserved. Applied to the base source so every derived
+		// source (with/without agent-builder, materialized, catalog) inherits it.
+		const flagDisabledSkillIds = disabledInstanceAiSkillIds({ configEvalsEnabled });
+		const allRuntimeSkills =
+			flagDisabledSkillIds.length > 0
+				? filterRuntimeSkillSource(loadInstanceAiRuntimeSkillSource(), flagDisabledSkillIds)
+				: loadInstanceAiRuntimeSkillSource();
 		const agentsModuleActive = this.moduleRegistry.isActive('agents');
 		const withoutAgentBuilderSkill = filterRuntimeSkillSource(allRuntimeSkills, ['agent-builder']);
 		// Default assumes no workspace; the sandbox block below restores the
