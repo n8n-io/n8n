@@ -113,14 +113,12 @@ if (!token) process.exit(1);
 
 const text = process.argv.slice(2).join(' ').trim() || 'help';
 const isLocal = text.startsWith('local');
+const slackTarget = process.env.NATHAN_SLACK_CHANNEL
+	? `Slack channel ${process.env.NATHAN_SLACK_CHANNEL}`
+	: `#updates-pnpm-nathan (${DEFAULT_SLACK_CHANNEL_URL})`;
 if (isLocal) {
 	console.error('⚠️  `local` delivers its run-n8n.sh + .env (with the license cert) as Slack file');
-	if (process.env.NATHAN_SLACK_CHANNEL) {
-		console.error(`    attachments, not to this terminal — they post to Slack channel ${process.env.NATHAN_SLACK_CHANNEL}.\n`);
-	} else {
-		console.error('    attachments, not to this terminal — they post to #updates-pnpm-nathan:');
-		console.error(`    ${DEFAULT_SLACK_CHANNEL_URL}\n`);
-	}
+	console.error(`    attachments, not to this terminal — they post to ${slackTarget}.\n`);
 }
 
 // --- local sink for Nathan's callbacks ---------------------------------------
@@ -144,7 +142,7 @@ const server = http.createServer((req, res) => {
 		if (isAck(body)) {
 			// `local` posts its bundle to Slack, never to this callback — the ack is
 			// the last thing we'll see, so stop here instead of waiting for the timeout.
-			if (isLocal) { console.error('Bundle is being posted to Slack (see the note above).'); finish('local'); }
+			if (isLocal) { console.error(`Bundle is being posted to ${slackTarget}.`); finish('local'); }
 			return; // otherwise work is starting; wait (overall timeout backstops)
 		}
 		idleTimer = setTimeout(() => finish('idle'), IDLE_MS);
