@@ -394,6 +394,19 @@ describe('WorkflowExecutionService', () => {
 			expect(result).toEqual({ executionId });
 		});
 
+		test('should reject a payload with neither a trigger nor a destination node', async () => {
+			const user = mock<User>({ id: 'user-id' });
+			const workflowData = mock<IWorkflowBase>({ nodes: [], connections: {}, pinData: undefined });
+
+			await expect(
+				workflowExecutionService.executeManually(
+					workflowData,
+					{} as WorkflowRequest.ManualRunPayload,
+					user,
+				),
+			).rejects.toThrow('`executeManually` was called with an unexpected payload');
+		});
+
 		test('should force current version for manual execution even if workflow has active version', async () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';
