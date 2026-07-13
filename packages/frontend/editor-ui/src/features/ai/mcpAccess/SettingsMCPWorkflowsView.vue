@@ -185,9 +185,9 @@ onMounted(async () => {
 
 <template>
 	<N8nSettingsLayout
-		full-width
 		show-back
-		:back-label="i18n.baseText('generic.back')"
+		:back-label="i18n.baseText('settings.mcp.back')"
+		:class="$style.layout"
 		@back="onBack"
 	>
 		<N8nSettingsPageHeader
@@ -234,6 +234,20 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+/* The settings shell pads the page top (70.5px); pull the column up a step. */
+.layout {
+	margin-top: calc(-1 * var(--spacing--lg));
+}
+
+/* Pin the back action to the top-left of the settings area (the shell's
+   content container is position: relative), independent of the centered column. */
+.layout > div:first-child {
+	position: absolute;
+	top: var(--spacing--lg);
+	left: var(--spacing--lg);
+	width: auto;
+}
+
 .actions {
 	display: flex;
 	justify-content: flex-end;

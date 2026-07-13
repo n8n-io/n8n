@@ -21,16 +21,16 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
-import type { OAuthClientFilters } from '@/features/ai/mcpAccess/clients.utils';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from '@/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.vue';
 import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnectClientDialog.vue';
+import McpConnectedClientsPreview from '@/features/ai/mcpAccess/components/McpConnectedClientsPreview.vue';
 import McpStatusControl from '@/features/ai/mcpAccess/components/McpStatusControl.vue';
-import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
+import OAuthClientDetailsModal from '@/features/ai/mcpAccess/components/OAuthClientDetailsModal.vue';
 import RevokeOAuthClientConfirmModal from '@/features/ai/mcpAccess/components/RevokeOAuthClientConfirmModal.vue';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import {
-	LOADING_INDICATOR_TIMEOUT,
+	MCP_CLIENTS_VIEW,
 	MCP_DOCS_PAGE_URL,
 	MCP_WORKFLOWS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
@@ -58,9 +58,11 @@ const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpM
 
 const exposedWorkflowsCount = ref(0);
 
-const oAuthClientsLoading = ref(false);
 const revokeClient = ref<OAuthClientResponseDto | null>(null);
 const revoking = ref(false);
+// Stays set through the close animation.
+const detailsClient = ref<OAuthClientResponseDto | null>(null);
+const showDetailsModal = ref(false);
 
 const showCallbackUrlsDialog = ref(false);
 const savingCallbackUrls = ref(false);
@@ -133,47 +135,25 @@ const onConfirmDisable = async () => {
 
 const fetchoAuthCLients = async () => {
 	try {
-		oAuthClientsLoading.value = true;
 		await mcpStore.getAllOAuthClients();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
-	} finally {
-		setTimeout(() => {
-			oAuthClientsLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
 	}
 };
 
-const onOwnershipChange = async (ownership: 'mine' | 'all') => {
-	try {
-		oAuthClientsLoading.value = true;
-		await mcpStore.setOAuthClientsOwnership(ownership);
-		if (ownership === 'all') {
-			telemetry.track('User viewed all MCP clients');
-		}
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
-	} finally {
-		setTimeout(() => {
-			oAuthClientsLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
-	}
+/** Instance-wide count when the user can see it, own count otherwise. */
+const connectedClientsTotal = computed(
+	() => mcpStore.oauthClientTotals.all ?? mcpStore.oauthClientTotals.mine,
+);
+
+const onOpenClientDetails = (client: OAuthClientResponseDto) => {
+	detailsClient.value = client;
+	showDetailsModal.value = true;
+	telemetry.track('User opened MCP client details');
 };
 
-const onClientsFiltersChange = async (filters: OAuthClientFilters) => {
-	try {
-		await mcpStore.setOAuthClientsFilters(filters);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
-	}
-};
-
-const onClientsOptionsChange = async (options: { page: number; itemsPerPage: number }) => {
-	try {
-		await mcpStore.setOAuthClientsPagination(options.page, options.itemsPerPage);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
-	}
+const openClientsView = () => {
+	void router.push({ name: MCP_CLIENTS_VIEW });
 };
 
 const onRevokeRequest = (client: OAuthClientResponseDto) => {
@@ -244,7 +224,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<N8nSettingsLayout full-width>
+	<N8nSettingsLayout :class="$style.layout">
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.mcp.page.title')"
 			:description="i18n.baseText('settings.mcp.page.description')"
@@ -254,7 +234,6 @@ onMounted(async () => {
 
 		<MCPEmptyState
 			v-if="!mcpStore.mcpAccessEnabled"
-			:class="$style.capped"
 			:disabled="!canToggleMCP"
 			:loading="mcpStatusLoading"
 			:managed-by-env="mcpStore.mcpManagedByEnv"
@@ -265,12 +244,11 @@ onMounted(async () => {
 			<N8nNotice
 				v-if="showInstanceCapacityNotice"
 				theme="warning"
-				:class="$style.capped"
 				data-test-id="mcp-instance-capacity-notice"
 				:content="instanceCapacityNoticeContent"
 			/>
 
-			<N8nSettingsSection :class="$style.capped" data-test-id="mcp-enabled-section">
+			<N8nSettingsSection data-test-id="mcp-enabled-section">
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
 						:title="i18n.baseText('settings.mcp.status.title')"
@@ -303,7 +281,6 @@ onMounted(async () => {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
-				:class="$style.capped"
 				:title="i18n.baseText('settings.mcp.access.title')"
 				:description="i18n.baseText('settings.mcp.access.description')"
 			>
@@ -338,16 +315,12 @@ onMounted(async () => {
 				:title="i18n.baseText('settings.mcp.connectedClients.title')"
 				:description="i18n.baseText('settings.mcp.connectedClients.description')"
 			>
-				<OAuthClientsTable
-					:data-test-id="'mcp-oauth-clients-table'"
+				<McpConnectedClientsPreview
 					:clients="mcpStore.oauthClients"
-					:scope-tools="mcpStore.oauthClientScopeTools"
-					:loading="oAuthClientsLoading"
-					@revoke-client="onRevokeRequest"
-					@update:ownership="onOwnershipChange"
-					@update:filters="onClientsFiltersChange"
-					@update:options="onClientsOptionsChange"
-					@refresh="fetchoAuthCLients"
+					:total-count="connectedClientsTotal"
+					@open-details="onOpenClientDetails"
+					@revoke="onRevokeRequest"
+					@view-all="openClientsView"
 				/>
 			</N8nSettingsSection>
 		</template>
@@ -374,6 +347,13 @@ onMounted(async () => {
 
 		<McpConnectClientDialog />
 
+		<OAuthClientDetailsModal
+			v-model:open="showDetailsModal"
+			:client="detailsClient"
+			:scope-tools="mcpStore.oauthClientScopeTools"
+			@revoke="onRevokeRequest"
+		/>
+
 		<McpAllowedCallbackUrlsDialog
 			v-model:open="showCallbackUrlsDialog"
 			:uris="mcpStore.allowedRedirectUris"
@@ -396,9 +376,9 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-/* The layout runs full-width so the clients table can stretch; everything
-   else stays in the standard settings column. */
-.capped {
-	max-width: var(--settings-content--max-width, 45rem);
+/* The settings shell pads the page top (70.5px); collapse it so the page
+   header starts at the layout's own 24px inset, like the prototype. */
+.layout {
+	margin-top: -70.5px;
 }
 </style>

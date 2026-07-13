@@ -3,6 +3,7 @@ import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODALS } from '@/experiments/exposeAllWorkflowsToMcp/modals';
 import { SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS } from '@/experiments/surfaceMcpToNewCloudUsers/modals';
 import {
+	MCP_CLIENTS_VIEW,
 	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
 	MCP_SETTINGS_VIEW,
 	MCP_WORKFLOWS_VIEW,
@@ -14,6 +15,8 @@ const i18n = useI18n();
 const SettingsMCPView = async () => await import('@/features/ai/mcpAccess/SettingsMCPView.vue');
 const SettingsMCPWorkflowsView = async () =>
 	await import('@/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue');
+const SettingsMCPClientsView = async () =>
+	await import('@/features/ai/mcpAccess/SettingsMCPClientsView.vue');
 
 export const MCPModule: FrontendModuleDescription = {
 	id: 'mcp',
@@ -37,6 +40,18 @@ export const MCPModule: FrontendModuleDescription = {
 			path: 'mcp/workflows',
 			name: MCP_WORKFLOWS_VIEW,
 			component: SettingsMCPWorkflowsView,
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'custom'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		{
+			path: 'mcp/clients',
+			name: MCP_CLIENTS_VIEW,
+			component: SettingsMCPClientsView,
 			meta: {
 				layout: 'settings',
 				middleware: ['authenticated', 'custom'],

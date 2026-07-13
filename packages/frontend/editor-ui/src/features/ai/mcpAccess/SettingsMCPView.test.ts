@@ -10,7 +10,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { FrontendSettings } from '@n8n/api-types';
-import { MCP_WORKFLOWS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_CLIENTS_VIEW, MCP_WORKFLOWS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import type { WorkflowListItem } from '@/Interface';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
@@ -68,10 +68,10 @@ const createComponent = createComponentRenderer(SettingsMCPView, {
 				template:
 					'<div v-if="open" data-test-id="mcp-callback-urls-dialog-stub"><button data-test-id="stub-save-urls" @click="$emit(\'save\', [\'https://client.example.com/cb\'])">Save</button></div>',
 			},
-			OAuthClientsTable: {
-				inheritAttrs: true,
+			McpConnectedClientsPreview: {
+				props: ['clients', 'totalCount'],
 				template:
-					"<div>OAuth Clients Table<button data-test-id=\"stub-revoke-client\" @click=\"$emit('revokeClient', { id: 'client-1', name: 'Claude Code', owner: { id: 'user-2', firstName: 'Jane', lastName: 'Doe', email: 'jane@n8n.io' } })\">Revoke</button></div>",
+					"<div data-test-id=\"mcp-clients-preview\"><button data-test-id=\"stub-revoke-client\" @click=\"$emit('revoke', { id: 'client-1', name: 'Claude Code', owner: { id: 'user-2', firstName: 'Jane', lastName: 'Doe', email: 'jane@n8n.io' } })\">Revoke</button><button data-test-id=\"stub-view-all\" @click=\"$emit('viewAll')\">View all</button></div>",
 			},
 		},
 	},
@@ -110,6 +110,7 @@ describe('SettingsMCPView', () => {
 		};
 
 		mcpStore.allowedRedirectUris = [];
+		mcpStore.oauthClientTotals = { mine: 0 };
 		mcpStore.getAllOAuthClients.mockResolvedValue([]);
 		mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
 		mcpStore.fetchAllowedRedirectUris.mockResolvedValue([]);
@@ -135,15 +136,24 @@ describe('SettingsMCPView', () => {
 			enableMcpSettings();
 		});
 
-		it('should render the settings sections and the clients table', async () => {
+		it('should render the settings sections and the clients preview', async () => {
 			const { getByTestId, queryByTestId } = createComponent({ pinia });
 			await nextTick();
 
 			expect(getByTestId('mcp-settings-header')).toBeVisible();
 			expect(getByTestId('mcp-enabled-section')).toBeVisible();
 			expect(getByTestId('mcp-workflows-exposed-row')).toBeVisible();
-			expect(getByTestId('mcp-oauth-clients-table')).toBeVisible();
+			expect(getByTestId('mcp-clients-preview')).toBeVisible();
 			expect(queryByTestId('mcp-empty-state')).not.toBeInTheDocument();
+		});
+
+		it('should navigate to the connected clients sub-view from the preview', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await userEvent.click(getByTestId('stub-view-all'));
+
+			expect(routerPush).toHaveBeenCalledWith({ name: MCP_CLIENTS_VIEW });
 		});
 
 		it('should show the exposed workflows count on the access row', async () => {

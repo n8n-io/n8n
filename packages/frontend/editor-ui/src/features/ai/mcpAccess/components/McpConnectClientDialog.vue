@@ -159,6 +159,7 @@ const serverUrlDescription = computed(() =>
 							:empty-text="i18n.baseText('settings.mcp.connectDialog.search.empty')"
 							:items="clientMenuItems"
 							placement="bottom-end"
+							max-height="min(var(--reka-dropdown-menu-content-available-height), 30rem)"
 							data-test-id="mcp-connect-client-picker"
 							@select="onSelectClient"
 							@search="onClientSearch"
@@ -212,6 +213,7 @@ const serverUrlDescription = computed(() =>
 					>
 						<template #action>
 							<ConnectionParameter
+								:class="$style['copy-field']"
 								id="mcp-install-command"
 								:label="''"
 								:value="activeClient.installCommand ?? ''"
@@ -227,6 +229,7 @@ const serverUrlDescription = computed(() =>
 					>
 						<template #action>
 							<McpConfigSnippet
+								:class="$style['copy-field']"
 								:value="activeClient.configSnippet ?? ''"
 								:language="activeClient.id === 'codex' ? 'toml' : 'json'"
 								@copy="trackCopy('config')"
@@ -241,6 +244,7 @@ const serverUrlDescription = computed(() =>
 					>
 						<template #action>
 							<ConnectionParameter
+								:class="$style['copy-field']"
 								id="mcp-auth-command"
 								:label="''"
 								:value="activeClient.authCommand ?? '/mcp'"
@@ -307,6 +311,7 @@ const serverUrlDescription = computed(() =>
 					>
 						<template #action>
 							<ConnectionParameter
+								:class="$style['copy-field']"
 								id="mcp-server-url"
 								:label="''"
 								:value="serverUrl"
@@ -322,6 +327,7 @@ const serverUrlDescription = computed(() =>
 					>
 						<template #action>
 							<McpConfigSnippet
+								:class="$style['copy-field']"
 								:value="activeClient.configSnippet ?? ''"
 								@copy="trackCopy('config')"
 							/>
@@ -385,6 +391,12 @@ const serverUrlDescription = computed(() =>
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
 	color: var(--color--text--tint-1);
+}
+
+/* Vertical settings rows hug the action to its content; the copy fields
+   should span the full row width. */
+.copy-field {
+	width: 100%;
 }
 
 .token-toggle {
