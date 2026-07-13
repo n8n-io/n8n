@@ -34,7 +34,7 @@ Cap height with `--tags-input--max-height` on a parent (or the field). The chrom
 - `update:modelValue(value: TagsInputValue[])` - Fired when the tag list changes
 - `addTag(value: TagsInputValue)` - Fired when a tag is added
 - `removeTag(value: TagsInputValue)` - Fired when a tag is removed
-- `invalid(value: TagsInputValue)` - Fired when an add is rejected (duplicate/max). Draft text is cleared
+- `invalid(value: TagsInputValue)` - Fired when an add is rejected (duplicate/max). Draft text is cleared. On duplicate, a purple highlight travels around the existing tag.
 
 
 **Slots**

@@ -72,16 +72,18 @@ export const Disabled = {
 	render: (args) => ({
 		components: { TagsInput },
 		setup() {
-			return { args };
+			const emptyValue = ref<string[]>([]);
+			const filledValue = ref(['locked', 'tag']);
+			return { args, emptyValue, filledValue };
 		},
 		template: `
-		<div style="${storyContainerStyle}">
-			<TagsInput v-bind="args" />
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<TagsInput v-bind="args" v-model="emptyValue" placeholder="Disabled empty" />
+			<TagsInput v-bind="args" v-model="filledValue" placeholder="Disabled with tags" />
 		</div>
 		`,
 	}),
 	args: {
-		modelValue: ['locked', 'tag'],
 		disabled: true,
 	},
 } satisfies Story;
@@ -285,4 +287,212 @@ export const CustomTags = {
 	args: {
 		placeholder: 'Add tags...',
 	},
+} satisfies Story;
+
+export const Max = {
+	render: (args) => ({
+		components: { TagsInput },
+		setup() {
+			const value = ref(['workflow', 'production']);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyContainerStyle}">
+			<TagsInput v-bind="args" v-model="value" :max="2" placeholder="Max 2 tags — try adding another" />
+		</div>
+		`,
+	}),
+} satisfies Story;
+
+export const Duplicates = {
+	render: (args) => ({
+		components: { TagsInput },
+		setup() {
+			const value = ref(['workflow', 'workflow', 'production']);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyContainerStyle}">
+			<TagsInput
+				v-bind="args"
+				v-model="value"
+				:duplicate="true"
+				placeholder="Duplicates allowed — add workflow again"
+			/>
+		</div>
+		`,
+	}),
+} satisfies Story;
+
+export const DuplicateAnimation = {
+	render: (args) => ({
+		components: { TagsInput },
+		setup() {
+			const initialTags = ['workflow', 'production', 'staging'];
+			const value = ref([...initialTags]);
+			const fieldRef = ref<HTMLElement | null>(null);
+
+			function getInput() {
+				const input = fieldRef.value?.querySelector('input');
+				return input instanceof HTMLInputElement ? input : null;
+			}
+
+			function tryDuplicate(tag: string) {
+				const input = getInput();
+				if (!input) {
+					return;
+				}
+
+				input.focus();
+				input.value = tag;
+				input.dispatchEvent(new InputEvent('input', { bubbles: true, data: tag }));
+				input.dispatchEvent(
+					new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+				);
+			}
+
+			function reset() {
+				value.value = [...initialTags];
+				const input = getInput();
+				if (!input) {
+					return;
+				}
+
+				input.value = '';
+				input.dispatchEvent(new InputEvent('input', { bubbles: true, data: null }));
+				input.blur();
+			}
+
+			return { args, value, fieldRef, tryDuplicate, reset, initialTags };
+		},
+		template: `
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--sm);">
+			<p style="margin: 0; color: var(--color--text--tint-1); font-size: var(--font-size--xs);">
+				Duplicates are blocked. Use the buttons to replay the highlight animation.
+			</p>
+			<div ref="fieldRef">
+				<TagsInput
+					v-bind="args"
+					v-model="value"
+					:duplicate="false"
+					placeholder="Add tags..."
+				/>
+			</div>
+			<div style="display: flex; flex-wrap: wrap; gap: var(--spacing--2xs);">
+				<button
+					v-for="tag in initialTags"
+					:key="tag"
+					type="button"
+					style="
+						padding: var(--spacing--3xs) var(--spacing--xs);
+						border: var(--border);
+						border-radius: var(--radius--2xs);
+						background: var(--color--background);
+						color: var(--color--text);
+						cursor: pointer;
+						font: inherit;
+						font-size: var(--font-size--xs);
+					"
+					@click="tryDuplicate(tag)"
+				>
+					Add “{{ tag }}” again
+				</button>
+				<button
+					type="button"
+					style="
+						padding: var(--spacing--3xs) var(--spacing--xs);
+						border: var(--border);
+						border-radius: var(--radius--2xs);
+						background: transparent;
+						color: var(--color--text--tint-1);
+						cursor: pointer;
+						font: inherit;
+						font-size: var(--font-size--xs);
+					"
+					@click="reset"
+				>
+					Reset
+				</button>
+			</div>
+		</div>
+		`,
+	}),
+} satisfies Story;
+
+export const DelimiterPaste = {
+	render: (args) => ({
+		components: { TagsInput },
+		setup() {
+			const value = ref<string[]>([]);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyContainerStyle}">
+			<p style="margin: 0 0 var(--spacing--xs); color: var(--color--text--tint-1); font-size: var(--font-size--xs);">
+				Type commas or paste <code>alpha,beta,gamma</code>
+			</p>
+			<TagsInput
+				v-bind="args"
+				v-model="value"
+				delimiter=","
+				:add-on-paste="true"
+				placeholder="Add tags..."
+			/>
+		</div>
+		`,
+	}),
+} satisfies Story;
+
+export const OverflowingTag = {
+	render: (args) => ({
+		components: { TagsInput },
+		setup() {
+			const tag =
+				'this-is-an-extremely-long-tag-name-that-should-truncate-with-an-ellipsis-instead-of-wrapping';
+			const xlargeValue = ref([tag]);
+			const largeValue = ref([tag]);
+			const mediumValue = ref([tag]);
+			const smallValue = ref([tag]);
+			const miniValue = ref([tag]);
+			return { args, xlargeValue, largeValue, mediumValue, smallValue, miniValue };
+		},
+		template: `
+		<div style="padding: 40px; max-width: 280px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<TagsInput v-model="xlargeValue" size="xlarge" placeholder="xlarge (40px)" />
+			<TagsInput v-model="largeValue" size="large" placeholder="large (36px, default)" />
+			<TagsInput v-model="mediumValue" size="medium" placeholder="medium (32px)" />
+			<TagsInput v-model="smallValue" size="small" placeholder="small (28px)" />
+			<TagsInput v-model="miniValue" size="mini" placeholder="mini (24px)" />
+		</div>
+		`,
+	}),
+} satisfies Story;
+
+type LabeledTag = { label: string };
+
+export const ObjectTags = {
+	render: (args) => ({
+		components: { TagsInput },
+		setup() {
+			const value = ref<LabeledTag[]>([
+				{ label: 'production' },
+				{ label: 'billing' },
+				{ label: 'critical' },
+			]);
+			const displayValue = (tag: LabeledTag) => tag.label;
+			const convertValue = (input: string): LabeledTag => ({ label: input });
+			return { args, value, displayValue, convertValue };
+		},
+		template: `
+		<div style="${storyContainerStyle}">
+			<TagsInput
+				v-bind="args"
+				v-model="value"
+				:display-value="displayValue"
+				:convert-value="convertValue"
+				placeholder="Object tags via displayValue"
+			/>
+		</div>
+		`,
+	}),
 } satisfies Story;

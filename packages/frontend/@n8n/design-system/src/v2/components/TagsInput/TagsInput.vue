@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactivePick } from '@vueuse/core';
-import { useCssModule, useTemplateRef } from 'vue';
+import { nextTick, onBeforeUnmount, ref, useCssModule, useTemplateRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
@@ -44,6 +44,10 @@ const sizes: Record<TagsInputSizes, string> = {
 };
 
 const rootRef = useTemplateRef<HTMLElement>('root');
+const highlightedTagIndex = ref<number | null>(null);
+let duplicatePulseTimer: ReturnType<typeof setTimeout> | undefined;
+
+const DUPLICATE_BEAM_MS = 1000;
 
 const rootProps = useForwardPropsEmits(
 	reactivePick(
@@ -85,8 +89,7 @@ function getDisplayValue(value: TagsInputValue): string {
 	return '';
 }
 
-/** Reka keeps the draft text on duplicate/max; clear it so it feels like a successful add. */
-function onInvalid() {
+function clearDraftInput() {
 	const rootEl = rootRef.value;
 	if (!(rootEl instanceof HTMLElement)) {
 		return;
@@ -101,9 +104,81 @@ function onInvalid() {
 	input.dispatchEvent(new InputEvent('input', { bubbles: true, data: null }));
 }
 
+function findDuplicateTagIndex(value: TagsInputValue): number {
+	const label = getDisplayValue(value);
+	const tags = props.modelValue;
+
+	if (Array.isArray(tags)) {
+		const exactIndex = tags.findIndex((tag) => tag === value);
+		if (exactIndex !== -1) {
+			return exactIndex;
+		}
+
+		if (label) {
+			const labelIndex = tags.findIndex((tag) => getDisplayValue(tag) === label);
+			if (labelIndex !== -1) {
+				return labelIndex;
+			}
+		}
+	}
+
+	const rootEl = rootRef.value;
+	if (!(rootEl instanceof HTMLElement) || !label) {
+		return -1;
+	}
+
+	const textEls = rootEl.querySelectorAll(`.${$style.tagText}`);
+	for (let index = 0; index < textEls.length; index++) {
+		if (textEls[index]?.textContent === label) {
+			return index;
+		}
+	}
+
+	return -1;
+}
+
+/** Draw attention to the existing tag when a duplicate add is rejected. */
+function pulseDuplicateTag(value: TagsInputValue) {
+	const index = findDuplicateTagIndex(value);
+	if (index === -1) {
+		return;
+	}
+
+	highlightedTagIndex.value = null;
+	void nextTick(() => {
+		highlightedTagIndex.value = index;
+
+		const rootEl = rootRef.value;
+		const tagEl = rootEl?.querySelectorAll(`.${$style.tag}`)[index];
+		tagEl?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+	});
+
+	clearTimeout(duplicatePulseTimer);
+	duplicatePulseTimer = setTimeout(() => {
+		highlightedTagIndex.value = null;
+	}, DUPLICATE_BEAM_MS);
+}
+
+/** Reka keeps the draft text on duplicate/max; clear it so it feels like a successful add. */
+function onInvalid(value: TagsInputValue) {
+	emit('invalid', value);
+	clearDraftInput();
+	pulseDuplicateTag(value);
+}
+
+function getTagClass(index: number): string {
+	return [$style.tag, highlightedTagIndex.value === index && $style.tagDuplicateBeam]
+		.filter(Boolean)
+		.join(' ');
+}
+
 function getInputClass(isEmpty: boolean): string {
 	return [$style.input, isEmpty && $style.inputEmpty].filter(Boolean).join(' ');
 }
+
+onBeforeUnmount(() => {
+	clearTimeout(duplicatePulseTimer);
+});
 </script>
 
 <template>
@@ -119,7 +194,7 @@ function getInputClass(isEmpty: boolean): string {
 					v-for="(tag, index) in modelValue"
 					:key="getTagKey(tag, index)"
 					:value="tag"
-					:class="$style.tag"
+					:class="getTagClass(index)"
 				>
 					<slot
 						name="tag"
@@ -173,11 +248,6 @@ function getInputClass(isEmpty: boolean): string {
 	width: 100%;
 	min-height: var(--input--height);
 	max-height: var(--tags-input--max-height, none);
-	/*
-	 * Inset border shadow paints under content. Keep a 1px chrome gutter so
-	 * scrolling tags clip before the border; remaining inset stays on `.tags`
-	 * so the scrollbar sits flush with that edge.
-	 */
 	padding: var(--border-width, 1px);
 	overflow: hidden;
 	border-radius: var(--input--radius);
@@ -213,6 +283,7 @@ function getInputClass(isEmpty: boolean): string {
 	@include input-mixin.size-variables('mini');
 
 	--tags-input--padding: var(--spacing--4xs);
+	--tags-input--input--padding-inline-start: var(--spacing--5xs);
 	--tag--padding: 0 var(--spacing--5xs) 1px var(--spacing--4xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--3xs);
@@ -223,6 +294,7 @@ function getInputClass(isEmpty: boolean): string {
 	@include input-mixin.size-variables('small');
 
 	--tags-input--padding: var(--spacing--4xs);
+	--tags-input--input--padding-inline-start: var(--spacing--4xs);
 	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--3xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--2xs);
@@ -233,6 +305,7 @@ function getInputClass(isEmpty: boolean): string {
 	@include input-mixin.size-variables('medium');
 
 	--tags-input--padding: var(--spacing--4xs);
+	--tags-input--input--padding-inline-start: var(--spacing--4xs);
 	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--3xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--2xs);
@@ -243,6 +316,7 @@ function getInputClass(isEmpty: boolean): string {
 	@include input-mixin.size-variables('large');
 
 	--tags-input--padding: var(--spacing--4xs);
+	--tags-input--input--padding-inline-start: var(--spacing--3xs);
 	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--3xs);
 	--tag--radius: var(--radius--3xs);
 	--tag--font-size: var(--font-size--xs);
@@ -253,6 +327,7 @@ function getInputClass(isEmpty: boolean): string {
 	@include input-mixin.size-variables('xlarge');
 
 	--tags-input--padding: var(--spacing--4xs);
+	--tags-input--input--padding-inline-start: var(--spacing--2xs);
 	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--2xs);
 	--tag--radius: var(--radius--3xs);
 	--tag--font-size: var(--font-size--xs);
@@ -274,6 +349,7 @@ function getInputClass(isEmpty: boolean): string {
 }
 
 .tag {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--5xs);
@@ -288,11 +364,119 @@ function getInputClass(isEmpty: boolean): string {
 	font-size: var(--tag--font-size);
 	font-weight: var(--tag--font-weight);
 	line-height: var(--tag--line-height);
+	transition:
+		background-color var(--duration--snappy) var(--easing--ease-out),
+		color var(--duration--snappy) var(--easing--ease-out),
+		border-color var(--duration--snappy) var(--easing--ease-out);
 
 	&[data-state='active'],
 	&[aria-current='true'] {
 		background-color: var(--tag--color--background--hover);
 		border-color: var(--tag--border-color--hover);
+	}
+}
+
+.tagDuplicateBeam {
+	background-color: light-dark(var(--color--purple-100), var(--color--purple-950));
+	color: light-dark(var(--color--purple-700), var(--color--purple-300));
+	animation: tag-duplicate-fill var(--duration--slow) linear 1 forwards;
+
+	.tagDelete {
+		color: light-dark(var(--color--purple-500), var(--color--purple-400));
+		animation: tag-duplicate-delete-fade var(--duration--slow) linear 1 forwards;
+	}
+
+	&::before {
+		content: '';
+		position: absolute;
+		inset: -1px;
+		z-index: 1;
+		border-radius: inherit;
+		padding: 1px;
+		background: conic-gradient(
+			from var(--tag-beam-angle, 0deg),
+			transparent 0%,
+			transparent 52%,
+			var(--color--purple-alpha-200) 64%,
+			var(--color--purple-300) 74%,
+			var(--focus--border-color) 82%,
+			var(--color--purple-300) 88%,
+			var(--color--purple-alpha-200) 94%,
+			transparent 100%
+		);
+		pointer-events: none;
+		-webkit-mask:
+			linear-gradient(#fff 0 0) content-box,
+			linear-gradient(#fff 0 0);
+		mask:
+			linear-gradient(#fff 0 0) content-box,
+			linear-gradient(#fff 0 0);
+		-webkit-mask-composite: xor;
+		mask-composite: exclude;
+		animation:
+			tag-duplicate-beam-spin var(--duration--slow) cubic-bezier(0.55, 0.05, 0.2, 1) 1,
+			tag-duplicate-beam-fade var(--duration--slow) linear 1 forwards;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		border-color: var(--focus--border-color);
+		animation: none;
+
+		.tagDelete {
+			animation: none;
+		}
+
+		&::before {
+			animation: none;
+			background: var(--focus--border-color);
+		}
+	}
+}
+
+@property --tag-beam-angle {
+	syntax: '<angle>';
+	inherits: false;
+	initial-value: 0deg;
+}
+
+@keyframes tag-duplicate-beam-spin {
+	to {
+		--tag-beam-angle: 360deg;
+	}
+}
+
+@keyframes tag-duplicate-beam-fade {
+	0%,
+	45% {
+		opacity: 1;
+	}
+
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes tag-duplicate-fill {
+	0%,
+	45% {
+		background-color: light-dark(var(--color--purple-100), var(--color--purple-950));
+		color: light-dark(var(--color--purple-700), var(--color--purple-300));
+	}
+
+	100% {
+		background-color: var(--tag--color--background);
+		color: var(--tag--color--text);
+	}
+}
+
+@keyframes tag-duplicate-delete-fade {
+	0%,
+	45% {
+		color: light-dark(var(--color--purple-500), var(--color--purple-400));
+	}
+
+	100% {
+		color: var(--color--text--tint-1);
 	}
 }
 
@@ -316,6 +500,7 @@ function getInputClass(isEmpty: boolean): string {
 	color: var(--color--text--tint-1);
 	cursor: pointer;
 	margin-top: var(--tag--delete--offset);
+	transition: color var(--duration--snappy) var(--easing--ease-out);
 
 	&:hover,
 	&:focus {
@@ -336,7 +521,7 @@ function getInputClass(isEmpty: boolean): string {
 	min-width: var(--spacing--2xl);
 	min-height: var(--tag--height);
 	padding: 0;
-	padding-inline-start: var(--spacing--4xs);
+	padding-inline-start: var(--tags-input--input--padding-inline-start);
 	border: none;
 	background: transparent;
 	outline: none;
@@ -359,7 +544,6 @@ function getInputClass(isEmpty: boolean): string {
 		}
 	}
 
-	/* `.tags` already has --tags-input--padding; top up to --input--padding when empty. */
 	&.inputEmpty {
 		padding-inline: calc(var(--input--padding) - var(--tags-input--padding));
 	}
