@@ -1,0 +1,57 @@
+get:
+  x-eov-operation-id: getSecurityPolicy
+  x-required-scope: securitySettings:manage
+  x-eov-operation-handler: v1/handlers/security-policy/security-policy.handler
+  tags:
+    - SecurityPolicy
+  summary: Retrieve the security policy
+  description: >
+    Retrieve the instance security policy: personal-space publishing and sharing, the
+    execution-data redaction enforcement floor, and the read-only usage counts shown in the UI.
+    Requires the `securitySettings:manage` scope and the Personal Space Policy feature to be licensed.
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/security-policy.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+put:
+  x-eov-operation-id: updateSecurityPolicy
+  x-required-scope: securitySettings:manage
+  x-eov-operation-handler: v1/handlers/security-policy/security-policy.handler
+  tags:
+    - SecurityPolicy
+  summary: Update the security policy
+  description: >
+    Update the instance security policy. Only the provided fields are changed and the update
+    takes effect exactly as it would from the UI, using the same validation. Requires the
+    `securitySettings:manage` scope and the Personal Space Policy feature to be licensed.
+    When the group is managed via environment variables, the write is rejected with 409 and no
+    changes are made; a read still returns the current values.
+  requestBody:
+    description: The security policy fields to update.
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/security-policy.update.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/security-policy.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'
