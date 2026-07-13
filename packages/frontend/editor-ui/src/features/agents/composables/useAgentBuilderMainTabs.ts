@@ -32,9 +32,11 @@ function getSectionFromTab(tab: AgentBuilderMainTab): AgentBuilderSection {
 export function useAgentBuilderMainTabs({
 	executionsCount,
 	knowledgeBaseEnabled,
+	routeBacked = computed(() => true),
 }: {
 	executionsCount: ComputedRef<number>;
 	knowledgeBaseEnabled: ComputedRef<boolean>;
+	routeBacked?: ComputedRef<boolean>;
 }) {
 	const route = useRoute();
 	const router = useRouter();
@@ -43,6 +45,7 @@ export function useAgentBuilderMainTabs({
 
 	async function setSelectedSection(section: AgentBuilderSection) {
 		selectedSection.value = section;
+		if (!routeBacked.value) return;
 		await router.replace({
 			query: { ...route.query, [SECTION_QUERY_PARAM]: section ?? undefined },
 		});
@@ -94,8 +97,9 @@ export function useAgentBuilderMainTabs({
 	);
 
 	watch(
-		() => route.query[SECTION_QUERY_PARAM],
-		(section) => {
+		() => [routeBacked.value, route.query[SECTION_QUERY_PARAM]] as const,
+		([isRouteBacked, section]) => {
+			if (!isRouteBacked) return;
 			selectedSection.value = getSectionFromQuery(section);
 		},
 		{ immediate: true },

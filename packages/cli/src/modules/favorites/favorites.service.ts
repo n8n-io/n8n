@@ -17,6 +17,8 @@ import { DataTableRepository } from '@/modules/data-table/data-table.repository'
 
 import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
 
+import { AgentRepository } from '../agents/repositories/agent.repository';
+
 type ResourceMeta = { name: string; projectId: string };
 
 type Favorite = { resourceId: string; resourceType: FavoriteResourceType };
@@ -48,6 +50,7 @@ export class FavoritesService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly folderRepository: FolderRepository,
+		private readonly agentRepository: AgentRepository,
 	) {}
 
 	async getEnrichedFavorites(user: User) {
@@ -59,16 +62,18 @@ export class FavoritesService {
 			project: idsOfType(favorites, 'project'),
 			dataTable: idsOfType(favorites, 'dataTable'),
 			folder: idsOfType(favorites, 'folder'),
+			agent: idsOfType(favorites, 'agent'),
 		};
 
 		const accessibleProjects = await this.projectRepository.getAccessibleProjects(user.id);
 		const accessibleProjectIds = new Set(accessibleProjects.map((p) => p.id));
 
-		const [workflowNames, projectNames, dataTableMeta, folderMeta] = await Promise.all([
+		const [workflowNames, projectNames, dataTableMeta, folderMeta, agentMeta] = await Promise.all([
 			this.enrichWorkflowFavorites(user, ids.workflow, accessibleProjectIds),
 			this.enrichProjectFavorites(user, ids.project, accessibleProjects),
 			this.enrichDataTableFavorites(user, ids.dataTable, accessibleProjectIds),
 			this.enrichFolderFavorites(user, ids.folder, accessibleProjectIds),
+			this.enrichAgentFavorites(user, ids.agent, accessibleProjectIds),
 		]);
 
 		return favorites.flatMap((fav) => {
@@ -81,6 +86,8 @@ export class FavoritesService {
 					return enrichWithMeta(fav, dataTableMeta.get(fav.resourceId));
 				case 'folder':
 					return enrichWithMeta(fav, folderMeta.get(fav.resourceId));
+				case 'agent':
+					return enrichWithMeta(fav, agentMeta.get(fav.resourceId));
 				default:
 					return [];
 			}
@@ -183,6 +190,27 @@ export class FavoritesService {
 		return result;
 	}
 
+	private async enrichAgentFavorites(
+		user: User,
+		agentIds: string[],
+		accessibleProjectIds: Set<string>,
+	): Promise<Map<string, ResourceMeta>> {
+		const result = new Map<string, ResourceMeta>();
+		if (agentIds.length === 0) return result;
+
+		const hasGlobalAccess = hasGlobalScope(user, 'agent:read');
+		const agents = await this.agentRepository.find({
+			where: { id: In(agentIds) },
+		});
+
+		for (const agent of agents) {
+			if (hasGlobalAccess || accessibleProjectIds.has(agent.projectId)) {
+				result.set(agent.id, { name: agent.name, projectId: agent.projectId });
+			}
+		}
+		return result;
+	}
+
 	async addFavorite(userId: string, resourceId: string, resourceType: FavoriteResourceType) {
 		const existing = await this.userFavoriteRepository.findOne({
 			where: { userId, resourceId, resourceType },
@@ -219,6 +247,9 @@ export class FavoritesService {
 				break;
 			case 'folder':
 				exists = await this.folderRepository.existsBy({ id: resourceId });
+				break;
+			case 'agent':
+				exists = await this.agentRepository.existsBy({ id: resourceId });
 				break;
 		}
 

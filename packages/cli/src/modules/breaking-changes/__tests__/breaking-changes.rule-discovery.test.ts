@@ -10,8 +10,8 @@ describe('Breaking change rules auto-discovery', () => {
 		const entries = metadata.getEntries();
 
 		expect(entries.filter((entry) => entry.version === 'v2')).toHaveLength(16);
-		expect(entries.filter((entry) => entry.version === 'v3')).toHaveLength(2);
-		expect(entries).toHaveLength(18);
+		expect(entries.filter((entry) => entry.version === 'v3')).toHaveLength(10);
+		expect(entries).toHaveLength(26);
 	});
 
 	it('should resolve all registered rules with valid metadata from the DI container', () => {

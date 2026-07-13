@@ -29,6 +29,7 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/test-utils": "catalog:frontend",
     "unplugin-icons": "catalog:frontend",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:"

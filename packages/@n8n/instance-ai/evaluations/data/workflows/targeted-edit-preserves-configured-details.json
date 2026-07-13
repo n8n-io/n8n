@@ -1,0 +1,43 @@
+{
+	"description": "Regression guard for parameter fidelity on follow-up edits after inspect actions moved to parameter-stripped structure summaries (PRs #33541, #33604): the user pins several concrete details in the initial build, then asks for exactly one change (the schedule time). A correct edit is surgical; a build that regenerates the workflow from a structural summary loses the pinned URL, channel, gating, or message prefix and turns this red.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every weekday at 7:30am, fetch our status feed at https://status.acme-tools.dev/api/v1/incidents. If there are any open incidents, post a summary to Slack #ops-alerts starting with 'ACME status check:'. If there are none, do nothing."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[After the agent finishes the build, ask for exactly one change: run at 8:15am instead of 7:30am. Say nothing about any other part of the workflow.",
+				"If the agent asks whether other details should change, tell it to keep everything else exactly as it is. Approve any plan or confirmation that only moves the time.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["behaviour", "edit", "targeted-change", "schedule", "http-request", "slack"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"outcomeExpectations": [
+		"The Schedule Trigger runs on weekdays at 8:15am — reflecting the user's follow-up change, not the original 7:30am.",
+		"The HTTP Request still fetches https://status.acme-tools.dev/api/v1/incidents — the schedule change did not alter or lose the feed URL.",
+		"The Slack summary still posts to #ops-alerts, still starts with 'ACME status check:', and is still gated by a conditional so nothing is posted when there are no open incidents — none of these configured details were lost by the schedule edit."
+	],
+	"processExpectations": [
+		"The agent applied the 8:15am change as a targeted edit without asking the user to restate the feed URL, the Slack channel, or the message format."
+	],
+	"executionScenarios": [
+		{
+			"name": "open-incidents-post-summary",
+			"description": "Open incidents exist, so one summary message is posted.",
+			"dataSetup": "The incidents feed returns two open incidents ('API latency elevated', 'Webhook delivery delayed') and one resolved incident. The Slack postMessage call returns { \"ok\": true, \"ts\": \"1700000000.0001\" }.",
+			"successCriteria": "The run completes and posts one Slack message to #ops-alerts that starts with 'ACME status check:' and reflects the open incidents. The resolved incident does not produce its own message."
+		},
+		{
+			"name": "no-open-incidents-no-post",
+			"description": "No open incidents, so nothing is posted.",
+			"dataSetup": "The incidents feed returns no open incidents (an empty list, or only resolved incidents).",
+			"successCriteria": "The run completes without error and no Slack message is posted."
+		}
+	]
+}

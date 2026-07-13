@@ -1,9 +1,10 @@
 import {
 	compareBuckets,
+	unitKeyOf,
 	type ComparisonOutcome,
 	type ComparisonResult,
+	type EvaluationUnitCounts,
 	type ExperimentBucket,
-	type ScenarioCounts,
 } from '../comparison/compare';
 import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
 import type {
@@ -21,15 +22,19 @@ function slugMap(evaluation: MultiRunEvaluation, slugs: string[]): Map<WorkflowT
 	return new Map(evaluation.testCases.map((tc, i) => [tc.testCase, slugs[i] ?? 'unknown']));
 }
 
-function bucket(name: string, scenarios: ScenarioCounts[]): ExperimentBucket {
+function bucket(name: string, units: EvaluationUnitCounts[]): ExperimentBucket {
 	return {
 		experimentName: name,
-		scenarios: new Map(scenarios.map((s) => [`${s.testCaseFile}/${s.scenarioName}`, s])),
+		evaluationUnits: new Map(units.map((u) => [unitKeyOf(u), u])),
 	};
 }
 
-function s(file: string, scenario: string, passed: number, total: number): ScenarioCounts {
-	return { testCaseFile: file, scenarioName: scenario, passed, total };
+function s(file: string, scenario: string, passed: number, total: number): EvaluationUnitCounts {
+	return { kind: 'scenario', testCaseFile: file, name: scenario, passed, total };
+}
+
+function e(file: string, expectation: string, passed: number, total: number): EvaluationUnitCounts {
+	return { kind: 'expectation', testCaseFile: file, name: expectation, passed, total };
 }
 
 /** Minimal evaluation fixture matching the shape format.ts reads. */
@@ -39,6 +44,7 @@ function evaluation(
 		testCases?: Array<{
 			userText?: string;
 			buildSuccessCount?: number;
+			buildError?: string;
 			scenarios?: Array<{
 				name: string;
 				passCount: number;
@@ -114,10 +120,15 @@ function evaluation(
 				workflowBuildSuccess: buildSuccessCount > 0,
 				executionScenarioResults: [],
 				executionScenarios: scenarios,
-				runs: new Array(totalRuns).fill(null).map(() => ({
+				runs: new Array(totalRuns).fill(null).map((_, runIndex) => ({
 					testCase,
 					workflowBuildSuccess: buildSuccessCount > 0,
 					executionScenarioResults: [],
+					buildError: tc.buildError,
+					buildExpectationResults: buildExpectations.flatMap((ea) => {
+						const result = ea.runs[runIndex];
+						return result ? [result] : [];
+					}),
 				})),
 				buildSuccessCount,
 				buildExpectations,
@@ -231,7 +242,7 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toContain(
 			'**Aggregate**: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
 		);
-		expect(md).toMatch(/\| `build-only` \| ✓ \| 2\/2 \|/);
+		expect(md).toMatch(/\| `build-only` \| CHECKED \| 2\/2 \|/);
 
 		const terminal = formatComparisonTerminal(
 			buildOnly,
@@ -420,13 +431,13 @@ describe('formatComparisonMarkdown', () => {
 	it('marks new failure categories with 🆕', () => {
 		const pr: ExperimentBucket = {
 			experimentName: 'pr',
-			scenarios: new Map([['a/happy', { ...s('a', 'happy', 0, 3) }]]),
+			evaluationUnits: new Map([['a/happy', { ...s('a', 'happy', 0, 3) }]]),
 			failureCategoryTotals: { framework_issue: 9 },
 			trialTotal: 145,
 		};
 		const base: ExperimentBucket = {
 			experimentName: 'master',
-			scenarios: new Map([['a/happy', { ...s('a', 'happy', 5, 10) }]]),
+			evaluationUnits: new Map([['a/happy', { ...s('a', 'happy', 5, 10) }]]),
 			failureCategoryTotals: { framework_issue: 0 },
 			trialTotal: 290,
 		};
@@ -645,13 +656,13 @@ describe('formatComparisonMarkdown', () => {
 		// counts on both sides (non-notable but non-zero).
 		const pr: ExperimentBucket = {
 			experimentName: 'pr',
-			scenarios: new Map([['a/happy', { ...s('a', 'happy', 50, 100) }]]),
+			evaluationUnits: new Map([['a/happy', { ...s('a', 'happy', 50, 100) }]]),
 			failureCategoryTotals: { builder_issue: 25 },
 			trialTotal: 100,
 		};
 		const base: ExperimentBucket = {
 			experimentName: 'master',
-			scenarios: new Map([['a/happy', { ...s('a', 'happy', 50, 100) }]]),
+			evaluationUnits: new Map([['a/happy', { ...s('a', 'happy', 50, 100) }]]),
 			failureCategoryTotals: { builder_issue: 22 },
 			trialTotal: 100,
 		};
@@ -660,6 +671,45 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/`builder_issue`/);
 		// builder_issue isn't notable here, so no "notable" marker.
 		expect(md).not.toMatch(/builder_issue.*notable/);
+	});
+
+	it('renders expectation units in the regression tiers with the file :: text label', () => {
+		const evalWithExpectation = evaluation({
+			totalRuns: 3,
+			testCases: [
+				{
+					userText: 'a',
+					expectations: [{ text: 'asks before building anything', passes: [false, false, false] }],
+				},
+			],
+		});
+		const pr = bucket('pr', [e('a', 'asks before building anything', 0, 3)]);
+		const base = bucket('master', [e('a', 'asks before building anything', 10, 10)]);
+		const md = formatComparisonMarkdown(evalWithExpectation, ok(compareBuckets(pr, base)), {
+			slugByTestCase: slugMap(evalWithExpectation, ['a']),
+		});
+
+		expect(md).toMatch(/#### Regressions \(1\)/);
+		expect(md).toMatch(/\| Unit \| PR \| Baseline \| Δ \| p \|/);
+		expect(md).toContain('`a :: asks before building anything`');
+		// The expectation row gets its own failure-breakdown collapsible with judge text.
+		expect(md).toContain('<code>a :: asks before building anything</code>');
+		expect(md).toMatch(/3 of 3 failed/);
+	});
+
+	it('labels the with-baseline aggregate with the unit mix and flags expectations missing a baseline', () => {
+		const pr = bucket('pr', [
+			s('a', 'happy', 8, 10),
+			e('a', 'asks first', 9, 10),
+			e('a', 'stays quiet', 10, 10),
+		]);
+		const base = bucket('master', [s('a', 'happy', 8, 10), e('a', 'asks first', 9, 10)]);
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
+
+		expect(md).toContain('2 units (1 scenario + 1 expectation)');
+		expect(md).toContain(
+			'1 PR expectations have no baseline data (baseline predates expectation persistence)',
+		);
 	});
 });
 
@@ -699,5 +749,62 @@ describe('formatComparisonTerminal', () => {
 		const base = bucket('master', [s('a', 'happy', 8, 10), s('b', 'happy', 5, 10)]);
 		const out = formatComparisonTerminal(evalFixture, ok(compareBuckets(pr, base)));
 		expect(out).toMatch(/partial: 1 baseline scenarios not run by PR/);
+	});
+
+	it('does not render workflow build failure text for process-only checks', () => {
+		const agentsEval = evaluation({
+			totalRuns: 1,
+			testCases: [
+					{
+						userText: 'workflow-scheduled-weather-and-agent',
+						buildSuccessCount: 0,
+						buildError: "Agent response: Here's the intent I'd detect",
+						expectations: [{ text: 'classifies the request intent', passes: [true] }],
+					},
+				],
+			});
+
+		const out = formatComparisonTerminal(agentsEval);
+
+		expect(out).toMatch(/CHECKED/);
+		expect(out).not.toMatch(/BUILD FAILED/);
+		expect(out).not.toMatch(/Agent response/);
+	});
+
+	it('counts evaluated expectations in the terminal aggregate', () => {
+		const agentsEval = evaluation({
+			totalRuns: 1,
+			testCases: [
+					{
+						userText: 'workflow-scheduled-weather-and-agent',
+						buildSuccessCount: 0,
+						expectations: [
+							{ text: 'does not build', passes: [true] },
+							{ text: 'classifies weather as workflow', passes: [true] },
+							{ text: 'classifies support as agent', passes: [true] },
+							{ text: 'brief reasoning only', passes: [true] },
+						],
+					},
+				],
+		});
+
+		const out = formatComparisonTerminal(agentsEval);
+
+		expect(out).toMatch(
+			/Aggregate: 100\.0% pass \(4\/4 trials, 0 scenarios \+ 4 expectations, N=1\)/,
+		);
+	});
+
+	it('renders the unit mix in the aggregate heading and expectation rows in tier tables', () => {
+		const pr = bucket('pr', [s('a', 'happy', 3, 3), e('a', 'asks before building', 0, 3)]);
+		const base = bucket('master', [
+			s('a', 'happy', 10, 10),
+			e('a', 'asks before building', 10, 10),
+		]);
+		const out = formatComparisonTerminal(evalFixture, ok(compareBuckets(pr, base)));
+
+		expect(out).toMatch(/Aggregate \(2 units \(1 scenario \+ 1 expectation\)\)/);
+		expect(out).toMatch(/REGRESSIONS/);
+		expect(out).toContain('a :: asks before building');
 	});
 });

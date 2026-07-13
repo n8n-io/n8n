@@ -19,13 +19,16 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { EventService } from '@/events/event.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -60,6 +63,7 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
+import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -123,6 +127,8 @@ function makeRuntimeReconstructionService(
 		mock<AgentKnowledgeSandboxService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
+		mock<CredentialsFinderService>(),
+		mock<WorkflowFinderService>(),
 	);
 }
 
@@ -269,6 +275,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentTaskSnapshotRepository,
 			agentCustomToolsService,
 			runtimeCacheService,
+			mock<SubAgentCleanupService>(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory);
 		agentValidationService = new AgentValidationService(agentRepository, mock<AiService>());
@@ -279,6 +286,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentKnowledgeService,
 			runtimeCacheService,
 			agentTestChatService,
+			agentTaskRepository,
+			mock<SubAgentCleanupService>(),
+			mock<EventService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

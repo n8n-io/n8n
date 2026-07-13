@@ -205,6 +205,16 @@ describe('McpSettingsService', () => {
 			});
 
 			await expect(service.bulkSetAvailableInMCP(user, dto)).rejects.toThrow(BadRequestError);
+
+			const allWorkflowsDto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				allWorkflows: true,
+				projectId: 'project-1',
+			});
+
+			await expect(service.bulkSetAvailableInMCP(user, allWorkflowsDto)).rejects.toThrow(
+				BadRequestError,
+			);
 		});
 
 		test('filters unauthorized ids and applies updates inside a transaction', async () => {
@@ -301,6 +311,81 @@ describe('McpSettingsService', () => {
 			]);
 		});
 
+		test('computes checksums only for workflows with open editor sessions', async () => {
+			const stubs = setupRepository([
+				{ id: 'wf-open', settings: {} },
+				{ id: 'wf-closed', settings: {} },
+			]);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['wf-open', 'wf-closed']),
+			);
+			collaborationService.filterOpenWorkflowIds.mockResolvedValueOnce(['wf-open']);
+
+			const result = await service.bulkSetAvailableInMCP(
+				user,
+				new UpdateWorkflowsAvailabilityDto({
+					availableInMCP: true,
+					workflowIds: ['wf-open', 'wf-closed'],
+				}),
+			);
+
+			expect(collaborationService.filterOpenWorkflowIds).toHaveBeenCalledWith([
+				'wf-open',
+				'wf-closed',
+			]);
+			// Full checksum fields are fetched only for the open workflow.
+			expect(stubs.find).toHaveBeenCalledTimes(2);
+			expect(stubs.find.mock.calls[1][1].where.id.value).toEqual(['wf-open']);
+			expect(stubs.update).toHaveBeenCalledTimes(2);
+			expect(result.changedWorkflows).toEqual([
+				{
+					workflowId: 'wf-open',
+					settings: { availableInMCP: true },
+					checksum: expect.stringMatching(/^[a-f0-9]{64}$/),
+				},
+				{ workflowId: 'wf-closed', settings: { availableInMCP: true } },
+			]);
+		});
+
+		test('skips the checksum fetch entirely when no changed workflows are open', async () => {
+			const stubs = setupRepository([{ id: 'wf-1', settings: {} }]);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+			collaborationService.filterOpenWorkflowIds.mockResolvedValueOnce([]);
+
+			const result = await service.bulkSetAvailableInMCP(
+				user,
+				new UpdateWorkflowsAvailabilityDto({ availableInMCP: true, workflowIds: ['wf-1'] }),
+			);
+
+			expect(stubs.find).toHaveBeenCalledTimes(1);
+			expect(stubs.update).toHaveBeenCalledTimes(1);
+			expect(result.updatedCount).toBe(1);
+			expect(result.changedWorkflows).toEqual([
+				{ workflowId: 'wf-1', settings: { availableInMCP: true } },
+			]);
+		});
+
+		test('proceeds without checksums when resolving open workflows fails', async () => {
+			const stubs = setupRepository([{ id: 'wf-1', settings: {} }]);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+			collaborationService.filterOpenWorkflowIds.mockRejectedValueOnce(new Error('cache down'));
+
+			const result = await service.bulkSetAvailableInMCP(
+				user,
+				new UpdateWorkflowsAvailabilityDto({ availableInMCP: true, workflowIds: ['wf-1'] }),
+			);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to resolve open workflows before bulk MCP availability update',
+				{ cause: 'cache down' },
+			);
+			expect(stubs.update).toHaveBeenCalledTimes(1);
+			expect(result.updatedCount).toBe(1);
+			expect(result.changedWorkflows).toEqual([
+				{ workflowId: 'wf-1', settings: { availableInMCP: true } },
+			]);
+		});
+
 		test('skips archived workflows and reports them as skipped', async () => {
 			const stubs = setupRepository([
 				{ id: 'wf-1', settings: {}, isArchived: false },
@@ -321,7 +406,7 @@ describe('McpSettingsService', () => {
 			expect(stubs.update).toHaveBeenCalledTimes(1);
 			expect(stubs.update).toHaveBeenCalledWith(
 				WorkflowEntity,
-				{ id: 'wf-1' },
+				{ id: 'wf-1', isArchived: false },
 				expect.objectContaining({ settings: expect.objectContaining({ availableInMCP: true }) }),
 			);
 			expect(result).toEqual({
@@ -548,6 +633,57 @@ describe('McpSettingsService', () => {
 				'folder-1',
 				'project-1',
 			);
+		});
+
+		test('resolves candidates across all accessible workflows when scoped by allWorkflows', async () => {
+			const stubs = setupRepository([
+				{ id: 'wf-1', settings: {} },
+				{ id: 'wf-2', settings: {} },
+			]);
+			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1', 'wf-2']);
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				allWorkflows: true,
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+			expect(workflowFinderService.hasProjectScopeForUser).not.toHaveBeenCalled();
+			expect(workflowFinderService.findAllWorkflowIdsForUser).toHaveBeenCalledWith(user, [
+				'workflow:update',
+			]);
+			expect(stubs.update).toHaveBeenCalledTimes(2);
+			expect(result.updatedCount).toBe(2);
+		});
+
+		test('omits workflow ids from the response when scoped by allWorkflows', async () => {
+			setupRepository([{ id: 'wf-1', settings: {} }]);
+			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1']);
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				allWorkflows: true,
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(result).toEqual({
+				updatedCount: 1,
+				unchangedCount: 0,
+				skippedCount: 0,
+				failedCount: 0,
+				changedWorkflows: [
+					{
+						workflowId: 'wf-1',
+						settings: { availableInMCP: true },
+						checksum: expect.stringMatching(/^[a-f0-9]{64}$/),
+					},
+				],
+			});
+			expect(result).not.toHaveProperty('updatedIds');
+			expect(result).not.toHaveProperty('unchangedIds');
 		});
 
 		test('does not resolve folder-scoped workflows when folder project cannot be scoped', async () => {
@@ -813,6 +949,18 @@ describe('McpSettingsService', () => {
 				'wf-1',
 				{ availableInMCP: true },
 				'checksum-wf-1',
+			);
+		});
+
+		test('broadcasts without a checksum when the change has none', async () => {
+			await service.broadcastWorkflowMCPAvailabilityChanged([
+				{ workflowId: 'wf-1', settings: { availableInMCP: true } },
+			]);
+
+			expect(collaborationService.broadcastWorkflowSettingsUpdated).toHaveBeenCalledWith(
+				'wf-1',
+				{ availableInMCP: true },
+				undefined,
 			);
 		});
 

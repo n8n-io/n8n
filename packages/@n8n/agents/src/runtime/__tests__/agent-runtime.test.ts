@@ -2376,6 +2376,51 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		}
 	});
 
+	it('batches a renamed delegate tool by maxChildren via metadata, not by tool name', async () => {
+		let activeDelegations = 0;
+		let peakDelegations = 0;
+
+		const runSubAgent: DelegateSubAgentRunner = async (request) => {
+			activeDelegations++;
+			peakDelegations = Math.max(peakDelegations, activeDelegations);
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			activeDelegations--;
+			return {
+				status: 'completed',
+				taskPath: request.taskPath,
+				answer: `done:${request.taskName}`,
+			};
+		};
+
+		const delegateTool = createDelegateSubAgentTool({
+			name: 'agent',
+			policy: { maxChildren: 2 },
+			runSubAgent,
+		});
+		const { runtime } = createRuntimeWithTools([delegateTool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls(
+					Array.from({ length: 4 }, (_, index) => ({
+						toolCallId: `tc-${index + 1}`,
+						toolName: 'agent',
+						args: {
+							subAgentId: 'inline',
+							taskName: `ping_${index + 1}`,
+							goal: 'Reply with ping.',
+						},
+					})),
+				),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const result = await runtime.generate('spawn 4 sub agents');
+
+		expect(result.finishReason).toBe('stop');
+		expect(peakDelegations).toBe(2);
+	});
+
 	it('fails fast when delegate metadata has an invalid maxChildren batch size', async () => {
 		const malformedDelegateTool: BuiltTool = {
 			name: DELEGATE_SUB_AGENT_TOOL_NAME,

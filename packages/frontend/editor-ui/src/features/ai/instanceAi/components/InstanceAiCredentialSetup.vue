@@ -613,8 +613,8 @@ async function handleSetupAutomatically() {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0;
-	border: var(--border);
-	border-radius: var(--radius);
+	border: 2px solid var(--color--primary);
+	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 }
 

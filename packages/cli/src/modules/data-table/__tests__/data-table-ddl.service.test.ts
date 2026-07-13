@@ -10,6 +10,7 @@ import * as sqlUtils from '../utils/sql-utils';
 vi.mock('../utils/sql-utils', async () => ({
 	...(await vi.importActual<typeof import('../utils/sql-utils')>('../utils/sql-utils')),
 	renameColumnQuery: vi.fn(),
+	renameTableQuery: vi.fn(),
 	toTableName: vi.fn(),
 }));
 
@@ -47,6 +48,47 @@ describe('DataTableDDLService', () => {
 
 		// Reset all mocks
 		vi.clearAllMocks();
+	});
+
+	describe('renameTable', () => {
+		beforeEach(() => {
+			(sqlUtils.toTableName as Mock).mockImplementation(
+				(id: string) => `n8n_data_table_user_${id}`,
+			);
+		});
+
+		it('should execute the rename table query', async () => {
+			const expectedQuery =
+				'ALTER TABLE "n8n_data_table_user_oldId1" RENAME TO "n8n_data_table_user_newId1"';
+			(sqlUtils.renameTableQuery as Mock).mockReturnValue(expectedQuery);
+
+			await ddlService.renameTable('oldId1', 'newId1', 'postgres');
+
+			expect(sqlUtils.renameTableQuery).toHaveBeenCalledWith(
+				'n8n_data_table_user_oldId1',
+				'n8n_data_table_user_newId1',
+				'postgres',
+			);
+			expect(mockEntityManager.query).toHaveBeenCalledWith(expectedQuery);
+		});
+
+		it('should reject invalid data table ids', async () => {
+			await expect(ddlService.renameTable('old-id!', 'newId1', 'postgres')).rejects.toThrow(
+				'Invalid data table ID',
+			);
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('tableExists', () => {
+		it('should check the physical table via the query runner', async () => {
+			(sqlUtils.toTableName as Mock).mockReturnValue('n8n_data_table_user_dt1');
+			const hasTable = vi.fn().mockResolvedValue(true);
+			(mockEntityManager as any).queryRunner = { hasTable };
+
+			await expect(ddlService.tableExists('dt1')).resolves.toBe(true);
+			expect(hasTable).toHaveBeenCalledWith('n8n_data_table_user_dt1');
+		});
 	});
 
 	describe('renameColumn', () => {

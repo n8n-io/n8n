@@ -2,7 +2,6 @@
 import debounce from 'lodash/debounce';
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nActionBox } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE, getDebounceTime } from '@/app/constants';
@@ -10,6 +9,7 @@ import { useDebounce } from '@/app/composables/useDebounce';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
+import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
@@ -208,20 +208,11 @@ onMounted(async () => {
 		</template>
 
 		<template #empty>
-			<N8nActionBox
-				data-test-id="empty-agents-action-box"
-				:heading="locale.baseText('agents.list.empty.heading')"
-				:description="locale.baseText('agents.list.empty.description')"
-				:button-text="locale.baseText('agents.list.empty.button.label')"
-				button-type="secondary"
+			<ResourcesListEmptyState
+				resource-key="agents"
 				:button-disabled="!canCreateAgent"
-				:button-icon="!canCreateAgent ? 'lock' : undefined"
 				@click:button="onCreateAgentClick"
-			>
-				<template #disabledButtonTooltip>
-					{{ locale.baseText('agents.list.empty.button.disabled.tooltip') }}
-				</template>
-			</N8nActionBox>
+			/>
 		</template>
 
 		<template #item="{ item: data }">

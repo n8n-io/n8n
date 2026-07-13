@@ -15,6 +15,18 @@
       ],
       "sandbox": [
         "dist/workspace/sandbox/index.d.ts"
+      ],
+      "vector-stores/postgres": [
+        "dist/vector-stores/postgres.d.ts"
+      ],
+      "vector-stores/pinecone": [
+        "dist/vector-stores/pinecone.d.ts"
+      ],
+      "vector-stores/qdrant": [
+        "dist/vector-stores/qdrant.d.ts"
+      ],
+      "vector-stores/supabase": [
+        "dist/vector-stores/supabase.d.ts"
       ]
     }
   },
@@ -35,6 +47,22 @@
     "./sandbox": {
       "types": "./dist/workspace/sandbox/index.d.ts",
       "default": "./dist/workspace/sandbox/index.js"
+    },
+    "./vector-stores/postgres": {
+      "types": "./dist/vector-stores/postgres.d.ts",
+      "default": "./dist/vector-stores/postgres.js"
+    },
+    "./vector-stores/pinecone": {
+      "types": "./dist/vector-stores/pinecone.d.ts",
+      "default": "./dist/vector-stores/pinecone.js"
+    },
+    "./vector-stores/qdrant": {
+      "types": "./dist/vector-stores/qdrant.d.ts",
+      "default": "./dist/vector-stores/qdrant.js"
+    },
+    "./vector-stores/supabase": {
+      "types": "./dist/vector-stores/supabase.d.ts",
+      "default": "./dist/vector-stores/supabase.js"
     }
   },
   "files": [
@@ -56,7 +84,8 @@
     "test:dev": "vitest --silent=false",
     "test:integration": "vitest run --config vitest.integration.config.mjs",
     "test:integration:replay": "cross-env CI=1 vitest run --config vitest.integration.config.mjs",
-    "test:integration:record": "cross-env VCR_MODE=record vitest run --config vitest.integration.config.mjs"
+    "test:integration:record": "cross-env VCR_MODE=record vitest run --config vitest.integration.config.mjs",
+    "fixtures:generate": "tsx src/__tests__/fixtures/generate-bulk-vector-fixture.ts"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "catalog:",
@@ -89,6 +118,10 @@
     "zod-to-json-schema": "catalog:"
   },
   "peerDependencies": {
+    "@pinecone-database/pinecone": "catalog:",
+    "@qdrant/js-client-rest": "catalog:",
+    "@supabase/supabase-js": "catalog:",
+    "pg": "catalog:",
     "zod": "catalog:"
   },
   "peerDependenciesMeta": {
@@ -103,16 +136,35 @@
     },
     "@opentelemetry/exporter-trace-otlp-http": {
       "optional": true
+    },
+    "pg": {
+      "optional": true
+    },
+    "@pinecone-database/pinecone": {
+      "optional": true
+    },
+    "@qdrant/js-client-rest": {
+      "optional": true
+    },
+    "@supabase/supabase-js": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@pinecone-database/pinecone": "catalog:",
+    "@qdrant/js-client-rest": "catalog:",
+    "@supabase/supabase-js": "catalog:",
     "@types/json-schema": "catalog:",
+    "@types/pg": "^8.15.6",
     "@vitest/coverage-v8": "catalog:",
     "dotenv": "catalog:",
     "cross-env": "catalog:",
     "nock": "catalog:",
+    "pg": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
