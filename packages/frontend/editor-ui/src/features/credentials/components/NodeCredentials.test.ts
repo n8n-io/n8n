@@ -1621,7 +1621,6 @@ describe('NodeCredentials', () => {
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
-				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: computed(() => undefined),
 				budget: computed(() => undefined),

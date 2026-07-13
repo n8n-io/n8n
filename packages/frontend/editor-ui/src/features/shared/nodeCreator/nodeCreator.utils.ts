@@ -345,7 +345,6 @@ export function extractAiGatewaySection(
 			title: i18n.baseText('nodeCreator.sectionNames.includedInN8n'),
 			children: finalizeItems(sortNodeCreateElements(supported)),
 			showSeparator: true,
-			trailing: 'creditsBalance',
 		},
 		rest,
 	};

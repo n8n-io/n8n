@@ -912,7 +912,6 @@ describe('NodeCreator - utils', () => {
 			expect(result).not.toBeNull();
 			expect(result?.section.key).toBe('n8nConnect');
 			expect(result?.section.title).toBe('Included in n8n');
-			expect(result?.section.trailing).toBe('creditsBalance');
 			expect(result?.section.showSeparator).toBe(true);
 			expect(result?.section.children.map((child) => child.key)).toEqual(['supportedNode']);
 			expect(result?.rest).toEqual([other]);
