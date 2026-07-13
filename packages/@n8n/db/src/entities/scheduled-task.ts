@@ -24,10 +24,16 @@ export {
  * - and who is currently running it ({@link claimedBy} and the lease columns)
  *
  * "Claiming" a row means a worker briefly reserves it
- * so two workers don't run the same task at once.
+ * so two workers don't *claim* the same task at once.
  *
  * That reservation (a "lease") expires after a while,
  * so if the worker dies mid-run another worker can take over.
+ * The reverse also holds: a worker that outlives its lease may still be running
+ * the task while another worker claims it, so the claim alone does not prevent
+ * two workers running one task. The scheduler is at-least-once (a lost run is
+ * worse than a duplicate), and running the same occurrence's effect twice is
+ * suppressed best-effort by the unique `deduplicationKey` index on
+ * `execution_entity`.
  */
 @Entity({ name: 'scheduled_task' })
 @Index(['jobId', 'scheduledFor'], { unique: true })

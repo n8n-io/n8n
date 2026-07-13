@@ -68,7 +68,10 @@ describe('executor claims far enough ahead to fire on time', () => {
 			);
 		}
 
-		async markStarted(): Promise<number> {
+		async confirmClaim(): Promise<boolean> {
+			return await Promise.resolve(true);
+		}
+		async markDispatched(): Promise<number> {
 			return await Promise.resolve(1);
 		}
 		async completeTask(): Promise<number> {
@@ -101,8 +104,9 @@ describe('executor claims far enough ahead to fire on time', () => {
 		const registry = new TaskHandlerRegistry();
 		const firedAt = new Map<string, number>();
 		registry.register(TASK_TYPE, {
-			execute: async (t) => {
+			execute: async (t, onDispatch) => {
 				firedAt.set(t.id, Date.now());
+				onDispatch();
 				await Promise.resolve();
 			},
 		});

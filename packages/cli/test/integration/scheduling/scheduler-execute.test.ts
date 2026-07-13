@@ -37,8 +37,11 @@ describe('scheduler execution over the storage bindings', () => {
 			taskStore: taskRepo,
 		});
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (task) => {
+			execute: async (task, onDispatch) => {
 				executed.push(task);
+				// The fake's effect is the push above; report it so the task carries its
+				// dispatch marker (startedAt) like a real handler would.
+				onDispatch();
 			},
 		});
 	});

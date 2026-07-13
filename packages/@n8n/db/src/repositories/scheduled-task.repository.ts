@@ -284,12 +284,32 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
-	 * Set `startedAt` on a task about to dispatch, guarded so it only affects the row
-	 * this `claim` still owns (`running`, same `host` and `leaseEpoch`). Doubles as the
-	 * pre-dispatch existence check: 0 rows means the row was deleted or reclaimed, so
-	 * don't dispatch. Returns rows affected (0 = benign, 1 = proceed).
+	 * Pre-dispatch ownership check: whether this `claim` still owns a live row
+	 * (`running`, same `host` and `leaseEpoch`). `true` means go ahead and dispatch;
+	 * `false` means the row was deleted or reclaimed, so skip. Read-only — the dispatch
+	 * marker is written only once the handler reports its effect handed off (see
+	 * {@link markDispatched}), never speculatively before dispatch. Uses `EXISTS` (not a
+	 * count) since only presence matters, so the DB can stop at the first matching row.
 	 */
-	async markStarted(claim: HostedClaimedRef): Promise<number> {
+	async confirmClaim(claim: HostedClaimedRef): Promise<boolean> {
+		return await this.existsBy({
+			id: claim.id,
+			status: ScheduledTaskStatus.Running,
+			claimedBy: claim.host,
+			leaseEpoch: claim.claimedEpoch,
+		});
+	}
+
+	/**
+	 * Stamp `startedAt`, the dispatch marker, once the handler reports its effect was
+	 * handed off. Guarded so it only affects the row this `claim` still owns; 0 rows
+	 * is a benign no-op (the row was reclaimed meanwhile — the new owner stamps its
+	 * own). Deliberately not fenced on `startedAt IS NULL`: the scheduler is
+	 * at-least-once, so a redelivered occurrence is allowed back to its handler; the
+	 * marker only records that a dispatch happened, so the reaper can avoid recording
+	 * a handled occurrence as failed.
+	 */
+	async markDispatched(claim: HostedClaimedRef): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
 			startedAt: () => dbNowLiteral(this.isPostgres),
 		});
@@ -443,9 +463,12 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			claimedBy: null,
 			leaseExpiresAt: null,
 			errorMessage,
-			// The next attempt sets its own start; clear this one's so a pending row
-			// doesn't carry a stale `startedAt`.
-			startedAt: null,
+			// `startedAt` is deliberately preserved (not cleared): it is the dispatch
+			// marker, recording that this occurrence's effect already happened. It does
+			// not fence the redelivery (the scheduler is at-least-once, so a reclaimed row
+			// is fired again); it lets the reaper resolve a later last-attempt expiry as
+			// completed rather than failed. A row that died before dispatch keeps
+			// `startedAt` null.
 		});
 	}
 
@@ -460,6 +483,20 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			finishedAt: () => dbNowLiteral(this.isPostgres),
 			attempts: () => 'attempts + 1',
 			errorMessage,
+		});
+	}
+
+	/**
+	 * Reaper completion: an expired-lease `running` task that was already dispatched
+	 * (its effect happened) to terminal `succeeded`, on its last attempt. Recording it
+	 * failed would blame the scheduler for work that was done, and reclaiming it would
+	 * dispatch the same occurrence twice; completing it does neither. Same guard as
+	 * {@link deadLetterExpired}; terminal, so no epoch bump. Returns rows affected.
+	 */
+	async completeExpired(ref: ClaimedRef): Promise<number> {
+		return await this.runReaperUpdate(ref, {
+			status: ScheduledTaskStatus.Succeeded,
+			finishedAt: () => dbNowLiteral(this.isPostgres),
 		});
 	}
 

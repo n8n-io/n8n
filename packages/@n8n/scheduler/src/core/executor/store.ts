@@ -44,8 +44,17 @@ export interface ExecutorTaskStore {
 	 */
 	claimDueTasks(batch: ClaimDueTasksBatch): Promise<ClaimedTask[]>;
 
-	/** Record that a claimed task actually began executing (sets `startedAt`). */
-	markStarted(claim: ClaimedTaskRef): Promise<number>;
+	/**
+	 * Pre-dispatch ownership check: `true` when the claim still owns a live row,
+	 * `false` when the row was deleted or reclaimed (skip the dispatch). Read-only.
+	 */
+	confirmClaim(claim: ClaimedTaskRef): Promise<boolean>;
+
+	/**
+	 * Stamp the dispatch marker (`startedAt`) once the handler reports its effect
+	 * handed off. Guarded on the claim; 0 rows affected is a benign no-op.
+	 */
+	markDispatched(claim: ClaimedTaskRef): Promise<number>;
 
 	/** Terminal success. */
 	completeTask(claim: ClaimedTaskRef): Promise<number>;

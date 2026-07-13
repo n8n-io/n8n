@@ -219,13 +219,46 @@ describe('ScheduledTaskRepository executor methods', () => {
 			return { id: claimed.id, epoch: claimed.leaseEpoch };
 		}
 
-		it('markStarted sets startedAt for the owner, and is a no-op for a non-owner host', async () => {
+		it('confirmClaim reports ownership without writing, and rejects a non-owner host', async () => {
 			const { id, epoch } = await claimOne();
 
-			expect(await taskRepository.markStarted({ host: HOST_B, id, claimedEpoch: epoch })).toBe(0);
+			// Read-only: a non-owner sees nothing, and neither call touches startedAt.
+			expect(await taskRepository.confirmClaim({ host: HOST_B, id, claimedEpoch: epoch })).toBe(
+				false,
+			);
+			expect(await taskRepository.confirmClaim({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
+				true,
+			);
+			expect((await reload(id)).startedAt).toBeNull();
+		});
+
+		it('markDispatched stamps startedAt for the owner, and is a no-op for a non-owner host', async () => {
+			const { id, epoch } = await claimOne();
+
+			expect(await taskRepository.markDispatched({ host: HOST_B, id, claimedEpoch: epoch })).toBe(
+				0,
+			);
 			expect((await reload(id)).startedAt).toBeNull();
 
-			expect(await taskRepository.markStarted({ host: HOST_A, id, claimedEpoch: epoch })).toBe(1);
+			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
+				1,
+			);
+			expect((await reload(id)).startedAt).not.toBeNull();
+		});
+
+		it('markDispatched is not fenced on an existing marker (at-least-once allows redelivery)', async () => {
+			const { id, epoch } = await claimOne();
+
+			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
+				1,
+			);
+			expect((await reload(id)).startedAt).not.toBeNull();
+
+			// A redelivered occurrence is allowed back to its handler, so a second
+			// markDispatched at the same claim still lands (no startedAt IS NULL fence).
+			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
+				1,
+			);
 			expect((await reload(id)).startedAt).not.toBeNull();
 		});
 
@@ -314,7 +347,9 @@ describe('ScheduledTaskRepository executor methods', () => {
 			const { id, epoch } = await claimOne();
 			const stale = epoch + 1;
 
-			expect(await taskRepository.markStarted({ host: HOST_A, id, claimedEpoch: stale })).toBe(0);
+			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: stale })).toBe(
+				0,
+			);
 			expect(await taskRepository.completeTask({ host: HOST_A, id, claimedEpoch: stale })).toBe(0);
 			expect(
 				await taskRepository.failTaskTerminal({ host: HOST_A, id, claimedEpoch: stale }, 'x'),
@@ -333,7 +368,9 @@ describe('ScheduledTaskRepository executor methods', () => {
 			const { id, epoch } = await claimOne();
 			await taskRepository.delete({ id });
 
-			expect(await taskRepository.markStarted({ host: HOST_A, id, claimedEpoch: epoch })).toBe(0);
+			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
+				0,
+			);
 			expect(await taskRepository.completeTask({ host: HOST_A, id, claimedEpoch: epoch })).toBe(0);
 			expect(
 				await taskRepository.failTaskTerminal({ host: HOST_A, id, claimedEpoch: epoch }, 'x'),
@@ -361,7 +398,9 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(await taskRepository.completeTask({ host: HOST_A, id, claimedEpoch: epoch })).toBe(1);
 
 			expect(await taskRepository.completeTask({ host: HOST_A, id, claimedEpoch: epoch })).toBe(0);
-			expect(await taskRepository.markStarted({ host: HOST_A, id, claimedEpoch: epoch })).toBe(0);
+			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
+				0,
+			);
 
 			const row = await reload(id);
 			expect(row.status).toBe('succeeded');
@@ -395,7 +434,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			// epoch is a 0-row no-op regardless of which transition the stalled owner calls.
 			const start = await claimOne();
 			expect(
-				await taskRepository.markStarted({
+				await taskRepository.markDispatched({
 					host: HOST_A,
 					id: start.id,
 					claimedEpoch: start.epoch - 1,
@@ -535,6 +574,23 @@ describe('ScheduledTaskRepository executor methods', () => {
 				expect(row.runAt.getTime()).toBeGreaterThan(Date.now());
 			});
 
+			it('preserves startedAt (the dispatch marker) across a reclaim so a later expiry resolves honestly', async () => {
+				const task = await createExpiredRunning({ leaseEpoch: 2, startedAt: past() });
+
+				expect(
+					await taskRepository.reclaimExpired(
+						{ id: task.id, claimedEpoch: 2 },
+						30_000,
+						'lease expired',
+					),
+				).toBe(1);
+
+				// startedAt survives the reclaim: it records that the effect happened, so a
+				// later last-attempt expiry can be completed rather than recorded failed.
+				// It does not fence the redelivery (at-least-once runs the handler again).
+				expect((await reload(task.id)).startedAt).not.toBeNull();
+			});
+
 			it('is a no-op at a stale epoch (a concurrent reaper already reclaimed it)', async () => {
 				const task = await createExpiredRunning({ leaseEpoch: 5 });
 
@@ -668,6 +724,48 @@ describe('ScheduledTaskRepository executor methods', () => {
 				const row = await reload(task.id);
 				expect(row.status).toBe('failed');
 				expect(row.attempts).toBe(1); // counted once, not twice
+			});
+		});
+
+		describe('completeExpired', () => {
+			it('completes the task as succeeded, stamping finishedAt without failing it', async () => {
+				const task = await createExpiredRunning({ attempts: 0, maxAttempts: 1, leaseEpoch: 1 });
+
+				expect(await taskRepository.completeExpired({ id: task.id, claimedEpoch: 1 })).toBe(1);
+
+				const row = await reload(task.id);
+				expect(row.status).toBe('succeeded');
+				expect(row.finishedAt).not.toBeNull();
+				expect(row.errorMessage).toBeNull();
+			});
+
+			it('is a no-op at a stale epoch', async () => {
+				const task = await createExpiredRunning({ leaseEpoch: 5 });
+
+				expect(await taskRepository.completeExpired({ id: task.id, claimedEpoch: 4 })).toBe(0);
+				expect((await reload(task.id)).status).toBe('running');
+			});
+
+			it('is a no-op when the lease is still live (renewed since the sweep read)', async () => {
+				const task = await createExpiredRunning({
+					leaseEpoch: 1,
+					leaseExpiresAt: new Date(Date.now() + 60_000),
+				});
+
+				expect(await taskRepository.completeExpired({ id: task.id, claimedEpoch: 1 })).toBe(0);
+				expect((await reload(task.id)).status).toBe('running');
+			});
+
+			it('never lets two concurrent reapers complete the same expired lease', async () => {
+				const task = await createExpiredRunning({ leaseEpoch: 1 });
+
+				const [a, b] = await Promise.all([
+					taskRepository.completeExpired({ id: task.id, claimedEpoch: 1 }),
+					taskRepository.completeExpired({ id: task.id, claimedEpoch: 1 }),
+				]);
+
+				expect([a, b].sort()).toEqual([0, 1]); // exactly one call completed the row
+				expect((await reload(task.id)).status).toBe('succeeded');
 			});
 		});
 	});

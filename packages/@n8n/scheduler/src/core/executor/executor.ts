@@ -53,7 +53,12 @@ export interface ExecutorHooks {
 /**
  * Claims due tasks, fires each at its `runAt`, dispatches to the handler registered
  * for its `taskType`, and records the outcome. Runs on every main; the claim's
- * locking guarantees each task is owned by one instance.
+ * locking guarantees no two instances *claim* a task at once. Ownership only lasts
+ * as long as the lease: an owner stalled past it can still be mid-handler while the
+ * reaper reclaims the row and another instance claims it, so two handlers can
+ * overlap for one task. The contract is at-least-once — a redelivered occurrence is
+ * run again — and duplicate effects are suppressed best-effort by the unique
+ * `deduplicationKey` index on `execution_entity`, not by the claim.
  *
  * This is the executor logic only: a driver (the multi-main loop) calls
  * {@link claimAndSchedule} on a cadence and supplies the instance host id. The
@@ -198,10 +203,10 @@ export class Executor {
 	private async runFire(host: string, task: ClaimedTask): Promise<FireResult> {
 		const claim: ClaimedTaskRef = { host, id: task.id, claimedEpoch: task.leaseEpoch };
 
-		// Resolve the handler before marking the task started: don't mark a task started
-		// we can't run, and skip the write on the missing-handler path. The claim is
-		// scoped to registered types, so this normally resolves; if the handler went away
-		// (e.g. a rolling restart), release without counting an attempt so it isn't lost.
+		// Resolve the handler before the ownership check: don't touch the DB for a task
+		// we can't run, and skip on the missing-handler path. The claim is scoped to
+		// registered types, so this normally resolves; if the handler went away (e.g. a
+		// rolling restart), release without counting an attempt so it isn't lost.
 		const handler = this.registry.resolve(task.taskType);
 		if (handler === undefined) {
 			this.hooks.onMissingHandler?.(task);
@@ -209,29 +214,46 @@ export class Executor {
 			return { outcome: 'skipped-no-handler' };
 		}
 
-		// Guard + set `startedAt` in one write. 0 rows => deleted or reclaimed; don't
-		// dispatch an execution for work that is gone or no longer ours.
-		const started = await this.store.markStarted(claim);
-		if (started === 0) {
+		// Read-only ownership check. False => deleted or reclaimed; don't dispatch work
+		// that is gone or no longer ours. The dispatch marker is written only once the
+		// handler reports its effect handed off (below), never speculatively here.
+		const owned = await this.store.confirmClaim(claim);
+		if (!owned) {
 			return { outcome: 'skipped-not-owned' };
 		}
 
-		// Now that the task is confirmed ours and started, it is genuinely being dispatched.
-		// Lag is measured against `runAt` (the effective fire time, pushed forward by retry
-		// backoff), not the fixed original slot, so a retry's backoff wait isn't logged as lag.
-		// The timer's clock (the one scheduling used) is used, not a fresh wall clock, so a
-		// skewed instance doesn't bias the lag it also scheduled against; clamp non-negative
-		// since a timer can fire marginally early.
+		// The task is confirmed ours and is being handed to its handler. Lag is measured
+		// against `runAt` (the effective fire time, pushed forward by retry backoff), not
+		// the fixed original slot, so a retry's backoff wait isn't logged as lag. The
+		// timer's clock (the one scheduling used) is used, not a fresh wall clock, so a
+		// skewed instance doesn't bias the lag it also scheduled against; clamp
+		// non-negative since a timer can fire marginally early.
 		const lagMs = this.timer.now() - task.runAt.getTime();
 		const lagSeconds = Math.max(0, lagMs) / Time.seconds.toMilliseconds;
 		this.hooks.onDispatch?.(task.taskType, lagSeconds);
+
+		// The handler reports the instant its effect was handed off; persist it as the
+		// task's dispatch marker so the reaper can tell an occurrence that ran from one
+		// that never did. The write is kicked off from the (synchronous) callback and its
+		// promise captured, then settled before any terminal write below so the marker
+		// can't land on — and be rejected by — an already-terminal row. A failed marker
+		// write is reported, not thrown: losing it only costs a redelivery, which the
+		// at-least-once contract accepts. `??=` makes a second onDispatch call a no-op.
+		let dispatchMark: Promise<void> | undefined;
+		const onDispatch = (): void => {
+			dispatchMark ??= this.store.markDispatched(claim).then(
+				() => undefined,
+				(error: unknown) => this.hooks.onFireError?.(task, error),
+			);
+		};
 
 		// Record success only after the try, so a failure to record it isn't taken for a
 		// handler failure. Such a failure propagates out (caught by the detached `.catch`
 		// in claimAndSchedule) and leaves the row `running` for the reaper.
 		try {
-			await handler.execute(task);
+			await handler.execute(task, onDispatch);
 		} catch (error) {
+			await dispatchMark;
 			const errorMessage = ensureError(error).message;
 			const nextAttempts = task.attempts + 1;
 			if (nextAttempts >= task.maxAttempts) {
@@ -259,6 +281,7 @@ export class Executor {
 			return { outcome: 'skipped-not-owned', errorMessage };
 		}
 
+		await dispatchMark;
 		const rowsAffected = await this.store.completeTask(claim);
 		if (rowsAffected > 0) {
 			this.hooks.onFire?.(task.taskType, 'success');
