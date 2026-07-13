@@ -59,8 +59,8 @@ export class WorkflowPublicationStatusService {
 		const counts = await this.triggerStatusRepository.getStatusCountsByWorkflowIds(workflowIds);
 
 		const statuses = new Map<string, WorkflowListPublicationStatus>();
+		// getStatusCountsByWorkflowIds only returns workflows with ≥1 settled row, so total is always ≥1.
 		for (const [workflowId, { total, failed }] of counts) {
-			if (total === 0) continue;
 			if (failed === 0) statuses.set(workflowId, 'published');
 			else statuses.set(workflowId, failed < total ? 'partial' : 'failed');
 		}

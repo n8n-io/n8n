@@ -44,6 +44,7 @@ describe('WorkflowService', () => {
 		let workflowService: WorkflowService;
 		let workflowRepositoryMock: MockProxy<{
 			getManyAndCountWithSharingSubquery: Mock;
+			getWorkflowsAndFoldersWithCountWithSharingSubquery: Mock;
 		}>;
 		let roleServiceMock: MockProxy<RoleService>;
 		let webhookServiceMock: MockProxy<WebhookService>;
@@ -341,6 +342,39 @@ describe('WorkflowService', () => {
 					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
 				).not.toHaveBeenCalled();
 				expect(workflows.every((w) => !('publicationStatus' in w))).toBe(true);
+			});
+
+			it('enriches the workflow row and leaves folder rows untouched on the folder list path', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+				workflowRepositoryMock.getWorkflowsAndFoldersWithCountWithSharingSubquery.mockResolvedValue(
+					[
+						[
+							{ id: 'folder-1', resource: 'folder' },
+							{ id: 'wf-1', resource: 'workflow' },
+						],
+						2,
+					],
+				);
+				// Only the workflow id has a settled status; the folder id never matches.
+				workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds.mockResolvedValue(
+					new Map([['wf-1', 'published']]),
+				);
+
+				const { workflows } = await workflowService.getMany(user, {}, false, true, false);
+
+				// Folder ids are never fed to the aggregate query.
+				expect(
+					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
+				).toHaveBeenCalledWith(['wf-1']);
+
+				expect(workflows.find((w) => w.id === 'wf-1')).toMatchObject({
+					resource: 'workflow',
+					publicationStatus: 'published',
+				});
+
+				const folder = workflows.find((w) => w.id === 'folder-1');
+				expect(folder).toMatchObject({ resource: 'folder' });
+				expect(folder).not.toHaveProperty('publicationStatus');
 			});
 		});
 	});

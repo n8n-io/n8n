@@ -237,12 +237,17 @@ export class WorkflowService {
 	private async addPublicationStatus<T extends { id: string }>(
 		workflows: T[],
 	): Promise<Array<T & { publicationStatus?: WorkflowListPublicationStatus }>> {
-		const ids = workflows.map((w) => w.id);
+		// On the folder list path `workflows` also contains folder rows; exclude them from the
+		// aggregate query (their ids can never match a trigger workflowId anyway).
+		const ids = workflows
+			.filter((w) => !('resource' in w) || w.resource !== 'folder')
+			.map((w) => w.id);
 		const statuses = await this.workflowPublicationStatusService.getListStatusesByWorkflowIds(ids);
 
 		return workflows.map((workflow) => {
 			const publicationStatus = statuses.get(workflow.id);
-			// Only attach when set, so workflows with no trigger rows keep the legacy card indicator.
+			// Only attach when set, so workflows with no trigger rows (and all folders) keep the
+			// legacy card indicator.
 			return publicationStatus ? { ...workflow, publicationStatus } : workflow;
 		});
 	}
