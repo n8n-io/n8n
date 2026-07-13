@@ -312,6 +312,10 @@ const {
 	executionButtonType,
 } = useEditorContext();
 
+const runWorkflowButtonType = computed(() =>
+	isDemoRoute.value ? 'secondary' : executionButtonType.value,
+);
+
 const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
@@ -2053,7 +2057,7 @@ onBeforeUnmount(() => {
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
 					:selected-trigger-node-name="workflowExecutionState.selectedTriggerNodeName"
-					:embedded="isDemoRoute || executionButtonType === 'secondary'"
+					:type="runWorkflowButtonType"
 					@mouseenter="onRunWorkflowButtonMouseEnter"
 					@mouseleave="onRunWorkflowButtonMouseLeave"
 					@execute="runEntireWorkflow('main')"
