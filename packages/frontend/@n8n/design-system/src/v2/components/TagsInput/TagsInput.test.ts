@@ -55,7 +55,10 @@ describe('v2/components/TagsInput', () => {
 			const wrapper = render(TagsInput, {
 				props: {
 					modelValue: [{ label: 'production' }],
-					displayValue: (tag: { label: string }) => tag.label,
+					displayValue: (value) =>
+						typeof value === 'object' && value !== null && 'label' in value
+							? String(value.label)
+							: '',
 				},
 			});
 
