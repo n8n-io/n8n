@@ -691,6 +691,20 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['root'].textContent).toBe('');
 			expect(state.agentsById['root'].timeline).toHaveLength(0);
 		});
+
+		it('still appends raw error text for an unrecognized error code', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'error',
+				runId: 'run-1',
+				agentId: 'root',
+				// Cast: an unknown code (older/newer service) has no dedicated UI state,
+				// so the transcript must still show the raw error.
+				payload: { content: 'boom', code: 'not_a_real_code' as 'quota_exhausted' },
+			});
+
+			expect(state.agentsById['root'].textContent).toContain('boom');
+		});
 	});
 
 	describe('deep nesting', () => {
