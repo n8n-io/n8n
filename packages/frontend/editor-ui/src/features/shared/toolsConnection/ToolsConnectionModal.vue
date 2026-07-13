@@ -40,6 +40,9 @@ const emit = defineEmits<{
 	disconnect: [item: ToolConnectionItem];
 	save: [item: ToolConnectionItem, settings?: ToolConnectionSettings];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
+	'credential-dropdown-open': [item: ToolConnectionItem];
+	'first-credential-connect': [item: ToolConnectionItem];
+	'new-credential-connect': [item: ToolConnectionItem];
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
 }>();
@@ -237,6 +240,9 @@ function handleOpenChange(value: boolean) {
 				@select-credential="
 					(item, authType, credentialId) => emit('select-credential', item, authType, credentialId)
 				"
+				@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+				@first-credential-connect="emit('first-credential-connect', $event)"
+				@new-credential-connect="emit('new-credential-connect', $event)"
 			>
 				<template v-if="$slots['settings-body']" #body="slotProps">
 					<slot name="settings-body" v-bind="slotProps" />
@@ -251,6 +257,9 @@ function handleOpenChange(value: boolean) {
 				@select-credential="
 					(item, authType, credentialId) => emit('select-credential', item, authType, credentialId)
 				"
+				@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+				@first-credential-connect="emit('first-credential-connect', $event)"
+				@new-credential-connect="emit('new-credential-connect', $event)"
 			>
 				<template v-if="$slots['detail-body']" #body="slotProps">
 					<slot name="detail-body" v-bind="slotProps" />
@@ -320,6 +329,9 @@ function handleOpenChange(value: boolean) {
 									(item, authType, credentialId) =>
 										emit('select-credential', item, authType, credentialId)
 								"
+								@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+								@first-credential-connect="emit('first-credential-connect', $event)"
+								@new-credential-connect="emit('new-credential-connect', $event)"
 							/>
 						</template>
 					</N8nRecycleScroller>

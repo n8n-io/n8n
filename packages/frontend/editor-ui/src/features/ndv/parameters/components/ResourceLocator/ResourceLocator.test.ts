@@ -9,6 +9,7 @@ import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { computed, shallowRef } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import { vi } from 'vitest';
@@ -789,52 +790,226 @@ describe('ResourceLocator', () => {
 		});
 	});
 
-	describe('credential change resets value', () => {
-		it('should reset value when node credentials change', async () => {
-			const modelValue: typeof TEST_MODEL_VALUE = {
-				...TEST_MODEL_VALUE,
-				value: 'selected-model',
-				cachedResultName: 'GPT-4',
-				cachedResultUrl: 'https://test.com/gpt-4',
-			};
+	describe('credential change validates value', () => {
+		const SELECTED_MODEL: typeof TEST_MODEL_VALUE = {
+			...TEST_MODEL_VALUE,
+			value: 'selected-model',
+			cachedResultName: 'GPT-4',
+			cachedResultUrl: 'https://test.com/gpt-4',
+		};
 
-			const node = { ...TEST_NODE_MULTI_MODE };
-
-			const { emitted, rerender } = renderComponent({
+		function renderWithValue(modelValue: typeof TEST_MODEL_VALUE) {
+			return renderComponent({
 				props: {
 					modelValue,
 					parameter: TEST_PARAMETER_MULTI_MODE,
 					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
-					node,
+					node: { ...TEST_NODE_MULTI_MODE },
 					displayTitle: 'Test Resource Locator',
 					expressionComputedValue: '',
 					isValueExpression: false,
 				},
 			});
+		}
 
-			// Change credentials on the node
+		async function switchCredentials(rerender: ReturnType<typeof renderComponent>['rerender']) {
 			await rerender({
 				node: {
-					...node,
-					credentials: {
-						testAuth: {
-							id: '5678',
-							name: 'Different Account',
-						},
-					},
+					...TEST_NODE_MULTI_MODE,
+					credentials: { testAuth: { id: '5678', name: 'Different Account' } },
 				},
 			});
+		}
 
-			expect(emitted('update:modelValue')).toEqual([
-				[
+		it('should preserve value and refresh cached label when it is still valid for the new credentials', async () => {
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [
+					{ name: 'GPT-4 (renamed)', value: 'selected-model', url: 'https://new.com/gpt-4' },
+					{ name: 'Other', value: 'other-model', url: 'https://new.com/other' },
+				],
+				paginationToken: undefined,
+			});
+
+			const { emitted, rerender } = renderWithValue(SELECTED_MODEL);
+			await switchCredentials(rerender);
+
+			await waitFor(() => {
+				expect(emitted('update:modelValue')).toEqual([
+					[
+						{
+							...SELECTED_MODEL,
+							cachedResultName: 'GPT-4 (renamed)',
+							cachedResultUrl: 'https://new.com/gpt-4',
+						},
+					],
+				]);
+			});
+		});
+
+		it('should reset value when it is no longer valid for the new credentials', async () => {
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [{ name: 'Other', value: 'other-model', url: 'https://new.com/other' }],
+				paginationToken: undefined,
+			});
+
+			const { emitted, rerender } = renderWithValue(SELECTED_MODEL);
+			await switchCredentials(rerender);
+
+			await waitFor(() => {
+				expect(emitted('update:modelValue')).toEqual([
+					[{ ...SELECTED_MODEL, cachedResultName: '', cachedResultUrl: '', value: '' }],
+				]);
+			});
+		});
+
+		it('should reset value when the reloaded list fails to load', async () => {
+			nodeTypesStore.getResourceLocatorResults.mockRejectedValue(new Error('Failed to load'));
+
+			const { emitted, rerender } = renderWithValue(SELECTED_MODEL);
+			await switchCredentials(rerender);
+
+			await waitFor(() => {
+				expect(emitted('update:modelValue')).toEqual([
+					[{ ...SELECTED_MODEL, cachedResultName: '', cachedResultUrl: '', value: '' }],
+				]);
+			});
+		});
+
+		it('should preserve value but clear cached label when the list cannot be confirmed complete', async () => {
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [{ name: 'Other', value: 'other-model', url: 'https://new.com/other' }],
+				paginationToken: 'next-page',
+			});
+
+			const { emitted, rerender } = renderWithValue(SELECTED_MODEL);
+			await switchCredentials(rerender);
+
+			await waitFor(() => {
+				expect(emitted('update:modelValue')).toEqual([
+					[{ ...SELECTED_MODEL, cachedResultName: '', cachedResultUrl: '' }],
+				]);
+			});
+		});
+
+		it('should preserve value but clear cached label when the list requires a search filter', async () => {
+			const searchRequiredParam: typeof TEST_PARAMETER_MULTI_MODE = {
+				...TEST_PARAMETER_MULTI_MODE,
+				name: 'searchRequiredParam',
+				modes: [
 					{
-						...modelValue,
-						cachedResultName: '',
-						cachedResultUrl: '',
-						value: '',
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'testSearch',
+							searchable: true,
+							searchFilterRequired: true,
+						},
 					},
 				],
-			]);
+			};
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue: SELECTED_MODEL,
+					parameter: searchRequiredParam,
+					path: `parameters.${searchRequiredParam.name}`,
+					node: { ...TEST_NODE_MULTI_MODE },
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+			await switchCredentials(rerender);
+
+			await waitFor(() => {
+				expect(emitted('update:modelValue')).toEqual([
+					[{ ...SELECTED_MODEL, cachedResultName: '', cachedResultUrl: '' }],
+				]);
+			});
+		});
+
+		it('should ignore a stale search filter and validate against the full list', async () => {
+			// A non-empty filter hides the selected value; the full (unfiltered) list contains it.
+			nodeTypesStore.getResourceLocatorResults.mockImplementation(async (params) => {
+				if (params.filter) {
+					return {
+						results: [{ name: 'Other', value: 'other-model', url: 'https://new.com/other' }],
+						paginationToken: undefined,
+					};
+				}
+				return {
+					results: [{ name: 'GPT-4', value: 'selected-model', url: 'https://new.com/gpt-4' }],
+					paginationToken: undefined,
+				};
+			});
+
+			const { emitted, rerender, getByTestId } = renderWithValue(SELECTED_MODEL);
+
+			// Leave a stale search filter that excludes the selected value.
+			await fireEvent.focus(getByTestId('rlc-input'));
+			await userEvent.type(getByTestId('rlc-search'), 'zzz');
+
+			await switchCredentials(rerender);
+			await flushPromises();
+
+			const updates = (emitted('update:modelValue') ?? []) as Array<[typeof SELECTED_MODEL]>;
+			expect(updates.every(([value]) => value.value === 'selected-model')).toBe(true);
+		});
+
+		it('should not reset value in manual (id) mode', async () => {
+			const { emitted, rerender } = renderWithValue({
+				...TEST_MODEL_VALUE,
+				mode: 'id',
+				value: 'manual-id',
+			});
+			await switchCredentials(rerender);
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not apply a stale reloaded list after credentials change again mid-load', async () => {
+			let resolveStale!: (result: INodeListSearchResult) => void;
+			const staleLoad = new Promise<INodeListSearchResult>((resolve) => {
+				resolveStale = resolve;
+			});
+			let resolveCurrent!: (result: INodeListSearchResult) => void;
+			const currentLoad = new Promise<INodeListSearchResult>((resolve) => {
+				resolveCurrent = resolve;
+			});
+			const validList = {
+				results: [{ name: 'GPT-4', value: 'selected-model', url: 'https://new.com/gpt-4' }],
+				paginationToken: undefined,
+			};
+			nodeTypesStore.getResourceLocatorResults
+				.mockReturnValueOnce(staleLoad)
+				.mockReturnValueOnce(currentLoad)
+				.mockResolvedValue(validList);
+
+			const { emitted, rerender } = renderWithValue(SELECTED_MODEL);
+			await rerender({
+				node: {
+					...TEST_NODE_MULTI_MODE,
+					credentials: { testAuth: { id: '5678', name: 'Second' } },
+				},
+			});
+			await rerender({
+				node: { ...TEST_NODE_MULTI_MODE, credentials: { testAuth: { id: '9999', name: 'Third' } } },
+			});
+
+			// Resolve the stale reload while the current one is still pending; the guard must drop it.
+			resolveStale({
+				results: [{ name: 'Other', value: 'other-model' }],
+				paginationToken: undefined,
+			});
+			await flushPromises();
+
+			resolveCurrent(validList);
+			await flushPromises();
+
+			const updates = (emitted('update:modelValue') ?? []) as Array<[typeof SELECTED_MODEL]>;
+			expect(updates.length).toBeGreaterThan(0);
+			expect(updates.every(([value]) => value.value === 'selected-model')).toBe(true);
 		});
 
 		it('should not reset value when credentials have not changed', async () => {

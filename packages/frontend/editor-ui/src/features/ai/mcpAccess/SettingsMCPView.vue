@@ -35,6 +35,7 @@ import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
 
 type MCPTabs = 'workflows' | 'oauth' | 'settings';
 
@@ -47,6 +48,7 @@ const telemetry = useTelemetry();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
+const { offerToExposeAllWorkflows } = useExposeAllWorkflowsToMcpOffer();
 
 const mcpStatusLoading = ref(false);
 const selectedTab = ref<MCPTabs>('workflows');
@@ -144,6 +146,15 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 			workflowsLoading.value = false;
 		}
 		mcp.trackUserToggledMcpAccess(enabled);
+		if (enabled && updated) {
+			// Best-effort offer; must not keep the toggle in its loading state.
+			// The popover only opens when the offer modal doesn't, so they never stack.
+			void offerToExposeAllWorkflows(refreshWorkflowsFromFirstPage).then((offered) => {
+				if (!offered) {
+					mcpStore.openConnectPopover();
+				}
+			});
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
 	} finally {
@@ -152,18 +163,54 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 	}
 };
 
+const showMcpAccessUpdatedToast = (count: number, enabled: boolean) => {
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText(
+			enabled
+				? 'settings.mcp.workflows.enableAccess.success.title'
+				: 'settings.mcp.workflows.removeAccess.success.title',
+			{
+				adjustToNumber: count,
+				interpolate: { count: String(count) },
+			},
+		),
+	});
+};
+
 const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean) => {
 	try {
 		await mcpStore.toggleWorkflowMcpAccess(workflowId, isEnabled);
 		if (isEnabled) {
-			workflowsTableState.value = { ...workflowsTableState.value, page: 0 };
-			await fetchAvailableWorkflows();
+			await refreshWorkflowsFromFirstPage();
 		} else {
+			showMcpAccessUpdatedToast(1, false);
 			await fetchAvailableWorkflows();
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
 		throw error;
+	}
+};
+
+const onBulkEnableWorkflowsMCPAccess = async (workflowIds: string[]) => {
+	try {
+		const response = await mcpStore.toggleWorkflowsMcpAccess({ workflowIds }, true);
+		showMcpAccessUpdatedToast(response.updatedCount, true);
+		await refreshWorkflowsFromFirstPage();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
+		throw error;
+	}
+};
+
+const onBulkRemoveWorkflowsMCPAccess = async (workflowIds: string[]) => {
+	try {
+		const response = await mcpStore.toggleWorkflowsMcpAccess({ workflowIds }, false);
+		showMcpAccessUpdatedToast(response.updatedCount, false);
+		await fetchAvailableWorkflows();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
 	}
 };
 
@@ -226,6 +273,11 @@ const fetchAvailableWorkflows = async () => {
 	}
 };
 
+const refreshWorkflowsFromFirstPage = async () => {
+	workflowsTableState.value = { ...workflowsTableState.value, page: 0 };
+	await fetchAvailableWorkflows();
+};
+
 const onRefreshWorkflows = async () => {
 	await fetchAvailableWorkflows();
 };
@@ -271,9 +323,7 @@ const openConnectWorkflowsModal = () => {
 	uiStore.openModalWithData({
 		name: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
 		data: {
-			onEnableMcpAccess: async (workflowId: string) => {
-				await onToggleWorkflowMCPAccess(workflowId, true);
-			},
+			onEnableMcpAccess: onBulkEnableWorkflowsMCPAccess,
 		},
 	});
 	telemetry.track('User clicked connect workflows from mcp settings');
@@ -475,6 +525,7 @@ onMounted(async () => {
 					:total-count="availableWorkflowsTotal"
 					:loading="workflowsLoading"
 					@remove-mcp-access="(workflow) => onToggleWorkflowMCPAccess(workflow.id, false)"
+					@bulk-remove-mcp-access="onBulkRemoveWorkflowsMCPAccess"
 					@connect-workflows="openConnectWorkflowsModal"
 					@update-description="onUpdateDescription"
 					@update:options="onWorkflowsTableUpdate"
