@@ -1,4 +1,4 @@
-import type { DynamicTabOptions } from '@n8n/module-sdk';
+import type { DynamicTabOptions } from '@n8n/frontend-module-sdk';
 import type { RouteLocationRaw } from 'vue-router';
 import type { TabOptions } from '@n8n/design-system';
 

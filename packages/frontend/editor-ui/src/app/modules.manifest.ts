@@ -1,4 +1,4 @@
-import type { FrontendModuleDescription } from '@n8n/module-sdk';
+import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { DataTableModule } from '@/features/core/dataTable/module.descriptor';
 import { InsightsModule } from '@/features/execution/insights/module.descriptor';
 import { MCPModule } from '@/features/ai/mcpAccess/module.descriptor';

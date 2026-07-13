@@ -6,7 +6,7 @@ import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { TabOptions } from '@n8n/design-system';
-import type { DynamicTabOptions } from '@n8n/module-sdk';
+import type { DynamicTabOptions } from '@n8n/frontend-module-sdk';
 import { processDynamicTabs } from '@/app/utils/modules/tabUtils';
 
 import { N8nTabs } from '@n8n/design-system';

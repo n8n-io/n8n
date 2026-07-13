@@ -2,12 +2,12 @@ import { createTestingPinia } from '@pinia/testing';
 import { defineComponent, nextTick } from 'vue';
 import { screen } from '@testing-library/vue';
 import DynamicModalLoader from '@/app/components/DynamicModalLoader.vue';
-import { modalRegistry } from '@n8n/module-sdk';
-import type { ModalDefinition } from '@n8n/module-sdk';
+import { modalRegistry } from '@n8n/frontend-module-sdk';
+import type { ModalDefinition } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@/__tests__/render';
 
 // Mock the modalRegistry namespace exported by the SDK barrel
-vi.mock('@n8n/module-sdk', () => ({
+vi.mock('@n8n/frontend-module-sdk', () => ({
 	modalRegistry: {
 		getAll: vi.fn(),
 		subscribe: vi.fn(),

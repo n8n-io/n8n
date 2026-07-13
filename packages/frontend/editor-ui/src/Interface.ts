@@ -10,7 +10,7 @@ import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/vi
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
-import type { ModalState } from '@n8n/module-sdk';
+import type { ModalState } from '@n8n/frontend-module-sdk';
 import type {
 	GenericValue,
 	IConnections,
@@ -646,7 +646,7 @@ export type Modals = {
 
 export type ModalKey = keyof Modals;
 
-// `ModalState` is owned by `@n8n/module-sdk`; re-exported here so existing
+// `ModalState` is owned by `@n8n/frontend-module-sdk`; re-exported here so existing
 // `@/Interface` importers stay unchanged.
 export type { ModalState };
 

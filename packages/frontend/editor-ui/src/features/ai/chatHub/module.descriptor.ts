@@ -1,4 +1,4 @@
-import { type FrontendModuleDescription } from '@n8n/module-sdk';
+import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import {
 	CHAT_VIEW,
 	CHAT_CONVERSATION_VIEW,

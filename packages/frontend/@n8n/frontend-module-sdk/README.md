@@ -1,4 +1,4 @@
-# @n8n/module-sdk
+# @n8n/frontend-module-sdk
 
 The frontend module contract and registries for n8n editor modules.
 
@@ -12,5 +12,5 @@ via the editor-ui Vite alias and `tsconfig` paths, and `src/index.ts` is the
 only public entry point.
 
 ```ts
-import { modalRegistry, registerResource, type FrontendModuleDescription } from '@n8n/module-sdk';
+import { modalRegistry, registerResource, type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 ```

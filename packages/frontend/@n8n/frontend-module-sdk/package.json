@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "name": "@n8n/module-sdk",
+  "name": "@n8n/frontend-module-sdk",
   "version": "0.1.0",
   "main": "src/index.ts",
   "import": "src/index.ts",

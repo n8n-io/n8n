@@ -1,5 +1,5 @@
 import { type Router } from 'vue-router';
-import { modalRegistry, registerResource } from '@n8n/module-sdk';
+import { modalRegistry, registerResource } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 import { modules } from '@/app/modules.manifest';
 import { useUIStore } from '@/app/stores/ui.store';

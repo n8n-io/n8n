@@ -1,4 +1,4 @@
-import type { ModalDefinition } from '@n8n/module-sdk';
+import type { ModalDefinition } from '@n8n/frontend-module-sdk';
 import {
 	SURFACE_MCP_FIRST_OPEN_INTRO_MODAL_KEY,
 	SURFACE_MCP_ONBOARDING_MODAL_KEY,
