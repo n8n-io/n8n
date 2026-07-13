@@ -101,8 +101,10 @@ export const createSearchWorkflowNodesTool = (
 			const coverage = toN8nConnectCoverage(availability);
 			if (coverage) structured.n8nConnect = coverage;
 
+			const text = coverage ? `${results}\n\nn8nConnect: ${JSON.stringify(coverage)}` : results;
+
 			return {
-				content: [{ type: 'text', text: results }],
+				content: [{ type: 'text', text }],
 				structuredContent: structured,
 			};
 		} catch (error) {

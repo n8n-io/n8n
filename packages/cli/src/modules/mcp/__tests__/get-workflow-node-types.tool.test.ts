@@ -73,6 +73,10 @@ describe('get-workflow-node-types MCP tool', () => {
 				nodes: ['@n8n/n8n-nodes-langchain.openAi'],
 			},
 		});
+		// Also mirrored into the unstructured content for text-only clients.
+		expect((result.content[0] as { text: string }).text).toBe(
+			'typescript definitions\n\nn8nConnect: {"credentialTypes":["openAiApi"],"nodes":["@n8n/n8n-nodes-langchain.openAi"]}',
+		);
 	});
 
 	test('omits n8nConnect block when unavailable', async () => {
@@ -82,5 +86,6 @@ describe('get-workflow-node-types MCP tool', () => {
 			{} as never,
 		);
 		expect(result.structuredContent).toEqual({ definitions: 'typescript definitions' });
+		expect((result.content[0] as { text: string }).text).toBe('typescript definitions');
 	});
 });

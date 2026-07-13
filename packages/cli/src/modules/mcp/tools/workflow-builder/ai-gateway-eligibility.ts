@@ -55,7 +55,7 @@ export function checkAiGatewayEligibility(
 	const hidden = config.hiddenNodeProperties?.[key];
 	if (hidden?.length) {
 		const params = node.parameters ?? {};
-		const offending = hidden.find((prop) => prop in params);
+		const offending = hidden.find((prop) => hasNestedProperty(params, prop));
 		if (offending !== undefined) {
 			return {
 				eligible: false,
@@ -96,4 +96,17 @@ function resolveNodeKey(nodeType: string, nodes: string[]): string | null {
 	const stripped = stripToolSuffix(nodeType);
 	if (stripped !== nodeType && nodes.includes(stripped)) return stripped;
 	return null;
+}
+
+/** Whether `key` appears as a property name at any depth in `value` (nested objects and arrays included). */
+function hasNestedProperty(value: unknown, key: string): boolean {
+	if (Array.isArray(value)) {
+		return value.some((item) => hasNestedProperty(item, key));
+	}
+	if (value !== null && typeof value === 'object') {
+		const record = value as Record<string, unknown>;
+		if (Object.prototype.hasOwnProperty.call(record, key)) return true;
+		return Object.values(record).some((v) => hasNestedProperty(v, key));
+	}
+	return false;
 }

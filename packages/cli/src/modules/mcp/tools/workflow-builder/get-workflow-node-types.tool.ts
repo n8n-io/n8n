@@ -100,8 +100,10 @@ export const createGetWorkflowNodeTypesTool = (
 			const coverage = toN8nConnectCoverage(availability);
 			if (coverage) structured.n8nConnect = coverage;
 
+			const text = coverage ? `${result}\n\nn8nConnect: ${JSON.stringify(coverage)}` : result;
+
 			return {
-				content: [{ type: 'text', text: result }],
+				content: [{ type: 'text', text }],
 				structuredContent: structured,
 			};
 		} catch (error) {

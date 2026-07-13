@@ -139,12 +139,17 @@ describe('search-workflow-nodes MCP tool', () => {
 					nodes: ['@n8n/n8n-nodes-langchain.openAi'],
 				},
 			});
+			// Also mirrored into the unstructured content for text-only clients.
+			expect((result.content[0] as { text: string }).text).toBe(
+				'search-result\n\nn8nConnect: {"credentialTypes":["openAiApi"],"nodes":["@n8n/n8n-nodes-langchain.openAi"]}',
+			);
 		});
 
 		test('omits n8nConnect block when unavailable', async () => {
 			const tool = createTool();
 			const result = await tool.handler({ queries: ['openai'] }, {} as never);
 			expect(result.structuredContent).toEqual({ results: 'search-result' });
+			expect((result.content[0] as { text: string }).text).toBe('search-result');
 		});
 	});
 });

@@ -141,6 +141,22 @@ describe('checkAiGatewayEligibility', () => {
 			);
 			expect(result).toEqual({ eligible: true });
 		});
+
+		it('returns hiddenPropertySet when a hidden property is nested inside a collection', () => {
+			const result = checkAiGatewayEligibility(
+				makeNode({
+					type: 'n8n-nodes-browserbase.browserbase',
+					parameters: { modelOptions: { modelSource: 'openai' } },
+				}),
+				'browserbaseApi',
+				makeConfig({
+					nodes: ['n8n-nodes-browserbase.browserbase'],
+					credentialTypes: ['browserbaseApi'],
+					hiddenNodeProperties: { 'n8n-nodes-browserbase.browserbase': ['modelSource'] },
+				}),
+			);
+			expect(result).toMatchObject({ eligible: false, reason: 'hiddenPropertySet' });
+		});
 	});
 
 	describe('supportedActions (with resource/operation)', () => {
