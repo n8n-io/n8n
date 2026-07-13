@@ -130,82 +130,19 @@ export function removeTrailingTrigger(searchFilter: string) {
 	return searchFilter;
 }
 
-// Modest on purpose: high-confidence matches on other nodes should still win.
-const AI_GATEWAY_SEARCH_BOOST = 75;
-const AI_GATEWAY_BOOST_MIN_QUERY_LENGTH = 3;
-
-/**
- * 1. exact alias match (any query length): `scrape` -> `scrape`
- * 2. whole-alias prefix match at 3+ chars: `scra` -> `scrape`
- * 3. alias-token prefix match at 3+ chars: `pdf` -> `pdf parser`
- */
-export function matchesAliasForConnectBoost(query: string, aliases: string[]): boolean {
-	const queryLower = query.toLowerCase();
-
-	return aliases.some((alias) => {
-		const aliasLower = alias.toLowerCase();
-
-		if (aliasLower === queryLower) return true;
-
-		if (queryLower.length < AI_GATEWAY_BOOST_MIN_QUERY_LENGTH) return false;
-
-		if (aliasLower.startsWith(queryLower)) return true;
-
-		return aliasLower.split(/\s+/).some((token) => token.startsWith(queryLower));
-	});
-}
-
-function stripAiGatewayToolSuffix(nodeName: string): string {
-	return nodeName.replace(/HitlTool$/, '').replace(/Tool$/, '');
-}
-
 function isAiGatewayEligibleNode(nodeName: string): boolean {
 	if (!useSettingsStore().isAiGatewayEnabled) return false;
 
 	const aiGatewayStore = useAiGatewayStore();
-	const baseName = stripAiGatewayToolSuffix(nodeName);
-	const candidates = [
-		nodeName,
-		baseName,
-		removePreviewToken(nodeName),
-		removePreviewToken(baseName),
-	];
-	const supportedName = candidates.find((n) => aiGatewayStore.isNodeSupported(n));
+	// Tool-variant node types carry a "Tool" suffix (e.g. "llamaParsePlatformTool"),
+	// but the gateway config lists the base name ("llamaParsePlatform").
+	const baseName = nodeName.replace(/Tool$/, '');
+	const supportedName = [nodeName, baseName].find((n) => aiGatewayStore.isNodeSupported(n));
 	if (!supportedName) return false;
 
-	return aiGatewayStore.isNodeTypeVersionSupported(
-		supportedName,
-		getLatestKnownVersion(supportedName),
-	);
-}
-
-function getLatestKnownVersion(nodeName: string): number {
-	const nodeTypesStore = useNodeTypesStore();
-	const versions = nodeTypesStore.getNodeVersions(nodeName);
-	if (versions.length > 0) return Math.max(...versions);
-
-	const communityVersion = nodeTypesStore.communityNodeType?.(nodeName)?.nodeDescription?.version;
-	if (Array.isArray(communityVersion)) return Math.max(...communityVersion);
-	return communityVersion ?? 1;
-}
-
-function getAiGatewaySearchBoosts(
-	query: string,
-	items: INodeCreateElement[],
-): Record<string, number> {
-	if (query === '' || !useSettingsStore().isAiGatewayEnabled) return {};
-
-	const boosts: Record<string, number> = {};
-	for (const item of items) {
-		if (item.type !== 'node') continue;
-
-		const aliases = item.properties.codex?.alias ?? [];
-		if (!matchesAliasForConnectBoost(query, aliases)) continue;
-		if (!isAiGatewayEligibleNode(item.properties.name)) continue;
-
-		boosts[item.key] = AI_GATEWAY_SEARCH_BOOST;
-	}
-	return boosts;
+	const versions = useNodeTypesStore().getNodeVersions(supportedName);
+	const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
+	return aiGatewayStore.isNodeTypeVersionSupported(supportedName, latestVersion);
 }
 
 export function searchNodes(
@@ -224,15 +161,7 @@ export function searchNodes(
 	// Please update the snapshots per the README next to the snapshots if you modify items significantly.
 	const searchResults = sublimeSearch<INodeCreateElement>(trimmedFilter, items) || [];
 
-	const aiGatewayBoost = getAiGatewaySearchBoosts(
-		trimmedFilter,
-		searchResults.map(({ item }) => item),
-	);
-
-	const reRankedResults = reRankSearchResults(searchResults, {
-		...additionalFactors,
-		aiGatewayBoost,
-	});
+	const reRankedResults = reRankSearchResults(searchResults, additionalFactors);
 
 	return reRankedResults.map(({ item }) => item);
 }
