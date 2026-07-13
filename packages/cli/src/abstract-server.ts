@@ -17,6 +17,7 @@ import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
 import { sendErrorResponse } from '@/response-helper';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
+import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
@@ -258,6 +259,13 @@ export abstract class AbstractServer {
 			this.app.all(
 				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
+			);
+
+			// Slack posts all button clicks to one fixed URL, so the ids travel in the button
+			// value instead of the path.
+			this.app.all(
+				`/${this.endpointWebhookWaiting}-slack`,
+				createWebhookHandlerFor(Container.get(SlackInteractionWebhooks)),
 			);
 
 			// Register a handler for live MCP servers

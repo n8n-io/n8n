@@ -427,6 +427,18 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 
 	const config = getSendAndWaitConfig(context);
 
+	const responseType = context.getNodeParameter('responseType', 0, 'approval');
+
+	// Capture-responder only works with Approve/Reject buttons. Free-text and custom-form
+	// replies still use the plain link button.
+	const captureResponder =
+		context.getNodeParameter('captureResponder', 0, false) === true && responseType === 'approval';
+
+	// Sent back to us in the button click so we know which execution and node to resume.
+	const interactionValue = captureResponder
+		? JSON.stringify({ executionId: context.getExecutionId(), nodeId: context.getNode().id })
+		: undefined;
+
 	const body: SendAndWaitMessageBody = {
 		channel: target,
 		blocks: [
@@ -453,18 +465,26 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 			},
 			{
 				type: 'actions',
-				elements: config.options.map((option) => {
-					return {
-						type: 'button',
-						style: option.style === 'primary' ? 'primary' : undefined,
-						text: {
-							type: 'plain_text',
-							text: option.label,
-							emoji: true,
-						},
-						url: option.url,
-					};
-				}),
+				elements: config.options.map((option) => ({
+					type: 'button',
+					style: option.style === 'primary' ? 'primary' : undefined,
+					text: {
+						type: 'plain_text',
+						text: option.label,
+						emoji: true,
+					},
+					// A button with a `url` is a plain link. In capture-responder mode we drop
+					// the url so Slack treats it as interactive and POSTs the click to us instead.
+					...(captureResponder
+						? {
+								action_id:
+									new URL(option.url).searchParams.get('approved') === 'false'
+										? 'n8n_hitl_decline'
+										: 'n8n_hitl_approve',
+								value: interactionValue,
+							}
+						: { url: option.url }),
+				})),
 			},
 		],
 	};

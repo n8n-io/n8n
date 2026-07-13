@@ -9,6 +9,8 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { SLACK_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeSettingsParameters } from './useNodeSettingsParameters';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
@@ -275,6 +277,89 @@ describe('useNodeSettingsParameters', () => {
 
 		afterEach(() => {
 			vi.resetAllMocks();
+		});
+
+		describe('enhanced HITL Slack gating', () => {
+			const captureResponderParameter: INodeProperties = {
+				name: 'captureResponder',
+				type: 'boolean',
+				displayName: 'Capture Who Responded',
+				default: false,
+			};
+			const slackNode: INodeUi = {
+				id: '1',
+				name: 'Slack',
+				type: SLACK_NODE_TYPE,
+				typeVersion: 2.3,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			function setFlag(enabled: boolean) {
+				const posthog = mockedStore(usePostHog);
+				posthog.isFeatureEnabled = vi.fn().mockReturnValue(enabled);
+			}
+
+			it('hides captureResponder on the Slack node when the experiment is off', async () => {
+				mockNodeHelpers();
+				setFlag(false);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, slackNode, captureResponderParameter);
+				expect(result).toBe(false);
+			});
+
+			it('shows captureResponder on the Slack node when the experiment is on', async () => {
+				mockNodeHelpers();
+				setFlag(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, slackNode, captureResponderParameter);
+				expect(result).toBe(true);
+			});
+
+			it('hides captureResponder on the Slack tool variant when the experiment is off', async () => {
+				mockNodeHelpers();
+				setFlag(false);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter(
+					{},
+					{ ...slackNode, type: `${SLACK_NODE_TYPE}Tool` },
+					captureResponderParameter,
+				);
+				expect(result).toBe(false);
+			});
+
+			it('hides the approvers field on the Slack node when the experiment is off', async () => {
+				mockNodeHelpers();
+				setFlag(false);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, slackNode, {
+					...captureResponderParameter,
+					name: 'approvers',
+					type: 'multiOptions',
+				});
+				expect(result).toBe(false);
+			});
+
+			it('does not gate unrelated parameters on the Slack node', async () => {
+				mockNodeHelpers();
+				setFlag(false);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, slackNode, {
+					...mockParameter,
+					displayOptions: undefined,
+				});
+				expect(result).toBe(true);
+			});
 		});
 
 		describe('hidden parameter type', () => {

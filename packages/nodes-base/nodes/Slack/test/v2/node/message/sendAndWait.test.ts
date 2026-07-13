@@ -1,10 +1,10 @@
+import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
 
-import { SlackV2 } from '../../../../V2/SlackV2.node';
 import * as GenericFunctions from '../../../../V2/GenericFunctions';
-import type { MockInstance } from 'vitest';
+import { SlackV2 } from '../../../../V2/SlackV2.node';
 
 describe('Test SlackV2, message => sendAndWait', () => {
 	let slack: SlackV2;
@@ -32,6 +32,7 @@ describe('Test SlackV2, message => sendAndWait', () => {
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getExecutionId.mockReturnValue('exec-1');
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: { data: 'test' } }]);
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 		mockExecuteFunctions.putExecutionToWait.mockImplementation(async () => {});
@@ -97,6 +98,39 @@ describe('Test SlackV2, message => sendAndWait', () => {
 				},
 			],
 		});
+	});
+
+	it('should render interactive buttons carrying the run and node ids when capturing the responder', async () => {
+		slackApiRequestSpy.mockResolvedValue({ ok: true });
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			if (key === 'authentication') return 'accessToken';
+			if (key === 'resource') return 'message';
+			if (key === 'operation') return SEND_AND_WAIT_OPERATION;
+			if (key === 'select') return 'channel';
+			if (key === 'channelId') return 'C123456789';
+			if (key === 'message') return 'test message';
+			if (key === 'subject') return '';
+			if (key === 'approvalOptions.values') return {};
+			if (key === 'options') return {};
+			if (key === 'options.limitWaitTime.values') return {};
+			if (key === 'responseType') return 'approval';
+			if (key === 'captureResponder') return true;
+			return undefined;
+		});
+
+		await slack.execute.call(mockExecuteFunctions);
+
+		const body = slackApiRequestSpy.mock.calls[0][2];
+		const actionsBlock = body.blocks.find(
+			(block: { type: string }) => block.type === 'actions',
+		) as { elements: Array<{ url?: string; action_id?: string; value?: string }> };
+		const [approveButton] = actionsBlock.elements;
+
+		expect(approveButton.url).toBeUndefined();
+		expect(approveButton.action_id).toBe('n8n_hitl_approve');
+		expect(approveButton.value).toBe(
+			JSON.stringify({ executionId: 'exec-1', nodeId: 'test-node-id' }),
+		);
 	});
 
 	it('should route API errors to error output when continueOnFail is true', async () => {

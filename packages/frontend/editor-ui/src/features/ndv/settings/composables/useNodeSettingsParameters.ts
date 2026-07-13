@@ -25,6 +25,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { CHAT_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/app/constants';
+import { SLACK_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useEnhancedHitlSlackExperiment } from '@/experiments/enhancedHitlSlack';
 import {
 	getMainAuthField,
 	getNodeAuthFields,
@@ -54,11 +56,18 @@ const stripPublicDisplayCondition = (parameter: INodeProperties): INodePropertie
 	};
 };
 
+const ADVANCED_HITL_SLACK_PARAMETERS = ['captureResponder', 'approvers'];
+
+/** Tool variant of the Slack node (usableAsTool appends `Tool` to the node type). */
+const SLACK_TOOL_NODE_TYPE = `${SLACK_NODE_TYPE}Tool`;
+
 export function useNodeSettingsParameters() {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
+
+	const { isFeatureEnabled: isEnhancedHitlSlackEnabled } = useEnhancedHitlSlackExperiment();
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers();
@@ -221,6 +230,15 @@ export function useNodeSettingsParameters() {
 			if (hasPublicDisplayCondition(effectiveParameter, false)) {
 				effectiveParameter = stripPublicDisplayCondition(effectiveParameter);
 			}
+		}
+
+		if (
+			displayKey === 'displayOptions' &&
+			(nodeTypeValue === SLACK_NODE_TYPE || nodeTypeValue === SLACK_TOOL_NODE_TYPE) &&
+			ADVANCED_HITL_SLACK_PARAMETERS.includes(effectiveParameter.name) &&
+			!isEnhancedHitlSlackEnabled.value
+		) {
+			return false;
 		}
 
 		// Fast path: hide parameters explicitly marked as cloud-only on cloud deployments
