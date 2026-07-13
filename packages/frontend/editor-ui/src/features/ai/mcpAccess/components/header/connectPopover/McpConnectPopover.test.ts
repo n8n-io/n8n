@@ -92,6 +92,14 @@ describe('McpConnectPopover', () => {
 			});
 		});
 
+		it('should not auto-open when the disabled prop changes to false', async () => {
+			const { rerender, queryByTestId } = renderComponent({ props: { disabled: true } });
+
+			await rerender({ disabled: false });
+
+			expect(queryByTestId('mcp-connect-popover-content')).not.toBeInTheDocument();
+		});
+
 		it('should reset current user MCP key when popover closes', async () => {
 			const user = userEvent.setup();
 			const { getByTestId, queryByTestId } = renderComponent();

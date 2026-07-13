@@ -5,21 +5,29 @@ import type { Readable } from 'node:stream';
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 
-import { ImportPipeline } from './engine/import-pipeline';
+import { N8nPackageParser } from './engine/n8n-package-parser';
+import { ProjectPackageImporter } from './engine/project-package-importer';
+import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { DataTableExporter } from './entities/data-table/data-table.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
+import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
+import { PackageImportConfig } from './n8n-packages.config';
 import type {
 	ExportPackageRequest,
 	ImportPackageRequest,
 	ImportResult,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
-import { type ManifestEntry, packageManifestSchema } from './spec/manifest.schema';
+import {
+	type ManifestEntry,
+	type PackageManifest,
+	packageManifestSchema,
+} from './spec/manifest.schema';
 import type { PackageRequirements } from './spec/requirements.schema';
 
 @Service()
@@ -31,7 +39,10 @@ export class N8nPackagesService {
 		private readonly credentialExporter: CredentialExporter,
 		private readonly dataTableExporter: DataTableExporter,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly importPipeline: ImportPipeline,
+		private readonly packageParser: N8nPackageParser,
+		private readonly packageImportConfig: PackageImportConfig,
+		private readonly projectPackageImporter: ProjectPackageImporter,
+		private readonly workflowPackageImporter: WorkflowPackageImporter,
 		private readonly eventService: EventService,
 	) {}
 
@@ -152,7 +163,12 @@ export class N8nPackagesService {
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
-		return await this.importPipeline.run(request);
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
+		const manifest = await this.packageParser.getManifest(reader);
+		if (isProjectPackage(manifest)) {
+			return await this.projectPackageImporter.import(request, reader, manifest);
+		}
+		return await this.workflowPackageImporter.import(request, reader, manifest);
 	}
 
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
@@ -170,4 +186,8 @@ export class N8nPackagesService {
 		};
 		return Object.keys(requirements).length > 0 ? requirements : undefined;
 	}
+}
+
+function isProjectPackage(manifest: PackageManifest): boolean {
+	return (manifest.projects?.length ?? 0) > 0;
 }
