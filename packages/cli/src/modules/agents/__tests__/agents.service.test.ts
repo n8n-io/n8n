@@ -18,6 +18,7 @@ import { ChatIntegrationService } from '../integrations/chat-integration.service
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
+import type { EventService } from '@/events/event.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -48,6 +49,7 @@ function makeService() {
 	const agentTaskRepository = mock<AgentTaskRepository>();
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const subAgentCleanupService = mock<SubAgentCleanupService>();
+	const eventService = mock<EventService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
@@ -66,6 +68,7 @@ function makeService() {
 		testChatService,
 		agentTaskRepository,
 		subAgentCleanupService,
+		eventService,
 	);
 
 	return {
@@ -78,6 +81,7 @@ function makeService() {
 		agentTaskRepository,
 		chatIntegrationService,
 		subAgentCleanupService,
+		eventService,
 	};
 }
 
@@ -123,6 +127,7 @@ describe('AgentsService', () => {
 			agentTaskService,
 			chatIntegrationService,
 			subAgentCleanupService,
+			eventService,
 		} = makeService();
 		const agent = makeAgent({
 			integrations: [
@@ -156,6 +161,27 @@ describe('AgentsService', () => {
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
 		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
+	});
+
+	it('emits agent-deleted only after the agent row is removed', async () => {
+		const { service, agentRepository, eventService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+		await service.delete(agentId, projectId);
+
+		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
+		expect(eventService.emit.mock.invocationCallOrder[0]).toBeGreaterThan(
+			agentRepository.remove.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('does not emit agent-deleted when the agent is missing', async () => {
+		const { service, agentRepository, eventService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+		await expect(service.delete(agentId, projectId)).resolves.toBe(false);
+		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 
 	it('still deletes the agent when best-effort cleanup fails', async () => {

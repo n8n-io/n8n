@@ -72,6 +72,7 @@ export function withHandoffTracing(tracer: Tracer, handler: TaskHandler): TaskHa
 					op: 'scheduler.handoff',
 					attributes: {
 						[SCHEDULER_ATTRIBUTES.taskId]: task.id,
+						[SCHEDULER_ATTRIBUTES.jobId]: task.jobId,
 						[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
 					},
 				},
