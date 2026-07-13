@@ -173,7 +173,8 @@ function getInputClass(isEmpty: boolean): string {
 	width: 100%;
 	min-height: var(--input--height);
 	max-height: var(--tags-input--max-height, none);
-	padding: var(--tags-input--padding);
+	/* Padding lives on `.tags` so the scrollbar sits flush with the border. */
+	overflow: hidden;
 	border-radius: var(--input--radius);
 	background-color: var(--input--color--background);
 	box-shadow:
@@ -263,6 +264,7 @@ function getInputClass(isEmpty: boolean): string {
 	min-width: 0;
 	min-height: 0;
 	width: 100%;
+	padding: var(--tags-input--padding);
 	overflow: auto;
 }
 
@@ -349,6 +351,11 @@ function getInputClass(isEmpty: boolean): string {
 		&::placeholder {
 			color: var(--input--placeholder--color--disabled);
 		}
+	}
+
+	/* `.tags` already has --tags-input--padding; top up to --input--padding when empty. */
+	&.inputEmpty {
+		padding-inline: calc(var(--input--padding) - var(--tags-input--padding));
 	}
 }
 </style>

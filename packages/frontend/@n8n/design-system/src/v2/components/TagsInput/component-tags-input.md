@@ -1,52 +1,56 @@
 # Component specification
 
-Freeform tag entry field. Users type values and create tags via delimiter (default comma), Enter, or optional paste/blur/tab. Removable chips use design-system tag tokens. Providing a custom `#input` slot embeds the field without chrome (Combobox multi-select uses this).
+Freeform tag entry field. Users type values and create tags via delimiter (default comma), Enter, or optional paste/blur/tab. Removable chips use design-system tag tokens.
 
 - **Component Name:** N8nTagsInput2
 - **Reka UI Component:** [Tags Input](https://reka-ui.com/docs/components/tags-input)
-- **Combobox composition:** [Combobox with TagsInput](https://reka-ui.com/examples/combobox-tags-input)
+- **Composition example:** [Combobox with TagsInput](https://reka-ui.com/examples/combobox-tags-input)
 
-## Public API
+
+## Public API Definition
 
 **Props**
 
-- `modelValue?: TagsInputValue[]` — Controlled tags. Bind with `v-model`
-- `defaultValue?: TagsInputValue[]` — Initial tags when uncontrolled
-- `placeholder?: string` — Shown when empty | `default: 'Add a tag...'`
-- `disabled?: boolean`
-- `id?: string` — Applied to the input
-- `autoFocus?: boolean`
-- `delimiter?: string | RegExp` — Creates a tag from typed input | `default: ','`. Pass `''` to disable (Combobox multi)
-- `displayValue?: (value: TagsInputValue) => string` — Label for object tags
-- `size?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge'` — Sets `--input--height`. Tag height is `height − 2× inset`, and inset/gap use the same `--tags-input--padding` | `default: 'large'`
-- `addOnPaste?: boolean` / `addOnBlur?: boolean` / `addOnTab?: boolean`
-- `max?: number` — Max tags (Reka: `0` = unlimited)
-- Also forwards Reka `TagsInputRoot` props: `duplicate`, `convertValue`, `name`, `required`
+- `modelValue?: TagsInputValue[]` - Controlled tags. Bind with `v-model`
+- `defaultValue?: TagsInputValue[]` - Initial tags when uncontrolled
+- `placeholder?: string` - Shown when empty. Default: `'Add a tag...'`
+- `disabled?: boolean` - When `true`, prevents interaction and dims the field. Default: `false`
+- `id?: string` - Applied to the text input
+- `autoFocus?: boolean` - Focus the input on mount
+- `delimiter?: string | RegExp` - Creates a tag from typed input. Default: `','`. Pass `''` to disable delimiter splitting
+- `displayValue?: (value: TagsInputValue) => string` - Label for object tags. Falls back to string value or `value.label`
+- `convertValue?: (value: string) => TagsInputValue` - Required when tags are objects
+- `size?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge'` - Sets `--input--height`. Tag height is `height − 2× inset`; inset/gap share `--tags-input--padding`. Default: `'large'`
+- `addOnPaste?: boolean` / `addOnBlur?: boolean` / `addOnTab?: boolean` - Extra ways to commit a tag
+- `max?: number` - Max tags. Reka treats `0` as unlimited
+- `duplicate?: boolean` - When `true`, allow duplicate tags
+- `name?: string` / `required?: boolean` - Form field props forwarded to Reka
 
 Cap height with `--tags-input--max-height` on a parent (or the field). The chrome stays fixed; tags scroll inside.
 
+
 **Events**
 
-- `update:modelValue(value: TagsInputValue[])`
+- `update:modelValue(value: TagsInputValue[])` - Fired when the tag list changes
+- `addTag(value: TagsInputValue)` - Fired when a tag is added
+- `removeTag(value: TagsInputValue)` - Fired when a tag is removed
+- `invalid(value: TagsInputValue)` - Fired when an add is rejected (duplicate/max). Draft text is cleared
+
 
 **Slots**
 
-- `input`: `{ id?, placeholder, autoFocus?, disabled?, class }` — Replace the default input (used by Combobox with `ComboboxInput as-child`). When provided, field chrome is omitted so the host can supply it.
-- `tag`: `{ value, displayValue, index, disabled, ui }` — Replace tag content inside the item chrome. Keep using `TagsInputItemText` / `TagsInputItemDelete` (re-exported from `@n8n/design-system`) for label + remove a11y. `ui.text` / `ui.delete` are the default class names.
+- `input`: `{ id?, placeholder, autoFocus?, disabled?, class }` - Replace the default text input. Apply `class` so the field keeps TagsInput input styles
+- `tag`: `{ value, displayValue, index, disabled, ui }` - Replace tag content inside the item chrome. Keep using `TagsInputItemText` / `TagsInputItemDelete` (re-exported from `@n8n/design-system`) for label + remove a11y. `ui.text` / `ui.delete` are the default class names
 
-## Usage
+
+### Template usage example
 
 ```vue
 <script setup lang="ts">
-import { ref } from 'vue';
-import {
-  N8nTagsInput2,
-  TagsInputItemDelete,
-  TagsInputItemText,
-  N8nIcon,
-} from '@n8n/design-system';
+import { ref } from 'vue'
+import { N8nTagsInput2 } from '@n8n/design-system'
 
-const tags = ref(['workflow', 'production']);
+const tags = ref(['workflow', 'production'])
 </script>
 
 <template>
@@ -57,8 +61,26 @@ const tags = ref(['workflow', 'production']);
 Custom tag content (keep `TagsInputItemText` / `TagsInputItemDelete` for a11y):
 
 ```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import {
+  N8nTagsInput2,
+  TagsInputItemDelete,
+  TagsInputItemText,
+  N8nIcon,
+} from '@n8n/design-system'
+
+const tags = ref([
+  { label: 'production', color: 'var(--color--success)' },
+])
+</script>
+
 <template>
-  <N8nTagsInput2 v-model="tags" :display-value="(t) => t.label">
+  <N8nTagsInput2
+    v-model="tags"
+    :display-value="(t) => t.label"
+    :convert-value="(input) => ({ label: input, color: 'var(--color--text--tint-1)' })"
+  >
     <template #tag="{ value, disabled, ui }">
       <span :style="{ backgroundColor: value.color }" />
       <TagsInputItemText :class="ui.text" />

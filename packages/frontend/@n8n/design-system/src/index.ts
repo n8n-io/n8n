@@ -26,12 +26,12 @@ export type * from './v2/components/RadioGroup/RadioGroupItem.types';
 export type * from './v2/components/RadioGroup/RadioGroup.types';
 export { default as N8nTree2 } from './v2/components/Tree/Tree.vue';
 export type * from './v2/components/Tree/Tree.types';
+export { default as N8nTagsInput2 } from './v2/components/TagsInput/TagsInput.vue';
 export {
-	N8nTagsInput2,
 	TagsInputInput,
 	TagsInputItemDelete,
 	TagsInputItemText,
-} from './v2/components/TagsInput';
+} from './v2/components/TagsInput/reka-ui';
 export type * from './v2/components/TagsInput/TagsInput.types';
 export { default as N8nSwitch2 } from './components/N8nSwitch/Switch.vue';
 export type * from './components/N8nSwitch/Switch.types';
