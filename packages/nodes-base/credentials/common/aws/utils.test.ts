@@ -1135,9 +1135,37 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 
 			expect(signOpts.service).toBe('s3');
 		});
+
+		it('signs a caller-supplied qualified S3 access-point service under the s3 service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'myap-123456789012.s3-accesspoint',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+		});
 	});
 
 	describe('region labels that cannot be adopted on AWS endpoint hosts', () => {
+		it('throws for a region-shaped bucket label on the legacy global S3 endpoint', () => {
+			const call = () =>
+				awsGetSignInOptionsAndUpdateRequest(
+					{ uri: 'https://test-logs-3.s3.amazonaws.com/key', headers: {} } as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				);
+
+			expect(call).toThrow(UserError);
+			expect(call).toThrow('test-logs-3');
+		});
+
 		it('throws for a mistyped region label', () => {
 			const call = () =>
 				awsGetSignInOptionsAndUpdateRequest(

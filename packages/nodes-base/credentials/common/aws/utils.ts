@@ -67,14 +67,10 @@ function getAwsSigningService(service: string): string {
 	// Virtual-hosted-style S3 requests arrive as `<bucket>.s3` (the node builds the
 	// endpoint `<bucket>.s3.<region>.amazonaws.com`). They all sign under the `s3`
 	// signing name, as do S3 access-point (`s3-accesspoint`) and S3 Control
-	// (`s3-control`) endpoints. aws4 derived this by inspecting the host; smithy
-	// does not, so we normalize it here.
-	if (
-		baseService === 's3' ||
-		baseService === 's3-accesspoint' ||
-		baseService === 's3-control' ||
-		baseService.endsWith('.s3')
-	) {
+	// (`s3-control`) endpoints — bare or with a bucket/access-point qualifier
+	// prefix. aws4 derived this by inspecting the host; smithy does not, so we
+	// normalize it here.
+	if (/(^|\.)s3(-accesspoint|-control)?$/.test(baseService)) {
 		return 's3';
 	}
 	switch (baseService) {
@@ -299,8 +295,9 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
  *   an AWS endpoint host, an unrecognized label (a malformed/mistyped host, or
  *   an odd endpoint shape the parser mis-split) throws a UserError, so the
  *   request fails fast with a clear message instead of signing with a bad
- *   region. On a custom (non-AWS) host, the second DNS label is usually not a
- *   region at all, so the credential region is kept instead.
+ *   region. On a custom (non-AWS) host, a region-shaped label is not
+ *   authoritative (proxies and S3-compatible stores use their own region
+ *   names), so the credential region is kept instead.
  */
 function resolveServiceAndRegion(
 	url: URL,
