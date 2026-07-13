@@ -149,6 +149,13 @@ export interface ImportedFolderSummary {
 	status: 'created' | 'skipped';
 }
 
+export interface ImportedProjectSummary {
+	sourceProjectId: string;
+	localId: string;
+	name: string;
+	status: 'created' | 'updated';
+}
+
 /**
  * A reason the import cannot proceed, produced by some policy from any subsystem.
  * Discriminated by `type` so new gates add a variant rather than a new throw site.
@@ -226,6 +233,7 @@ export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
 	folders: ImportedFolderSummary[];
+	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
 }

@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: agent, embedsOther: false or true} — skill accretion is first-class: the assistant learns from the team's past comments and improves over time, which no fixed workflow provides.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create a code-review assistant that comments on new PRs, learns from our team's past comments over time, and gets better at spotting our coding standards. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "self-improving", "event-triggered"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes an agent-anchored design — an n8n Agent that reviews PRs and improves from feedback over time — rather than a fixed workflow with a static review prompt.",
+		"The proposal grounds the agent choice in the learning/self-improvement requirement (accumulating the team's review standards across runs), not in the surface vocabulary of the request."
+	]
+}
