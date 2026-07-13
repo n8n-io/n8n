@@ -143,6 +143,29 @@ describe('WorkflowTriggerActivator', () => {
 		});
 	});
 
+	describe('getTriggerKinds', () => {
+		test('classifies nodes by execution mechanism, poll/trigger taking precedence over webhook', () => {
+			const activator = buildActivator();
+
+			const kinds = activator.getTriggerKinds([
+				node('p', 'poll'),
+				node('t', 'trigger'),
+				node('w', 'webhook'),
+				node('pw', 'poll-webhook'),
+				node('tw', 'trigger-webhook'),
+			]);
+
+			expect(kinds.get('p')).toBe('poll');
+			expect(kinds.get('t')).toBe('trigger');
+			expect(kinds.get('w')).toBe('webhook');
+			// Hybrid nodes register in memory, so the in-memory kind must win:
+			// classifying them 'webhook' would hide them from reconciliation.
+			expect(kinds.get('pw')).toBe('poll');
+			expect(kinds.get('tw')).toBe('trigger');
+			expect(kinds.size).toBe(5);
+		});
+	});
+
 	describe('getNodesWithUnregisteredWebhooks', () => {
 		test("delegates to the registrar with the version's enabled trigger node ids", async () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
