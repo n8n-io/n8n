@@ -3,10 +3,12 @@ import { computed, onScopeDispose, provide, ref, watch } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
+import InstanceAiCredentialForm from '../../components/InstanceAiCredentialForm.vue';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import { ExpressionLocalResolveContextSymbol, WorkflowDocumentStoreKey } from '@/app/constants';
 import {
 	createWorkflowDocumentId,
@@ -31,8 +33,16 @@ const ctx = useWorkflowSetupContext();
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
+const aiGateway = useAiGateway();
 
 const credentialType = computed(() => props.section.credentialType);
+
+// The node's target URL (HTTP Request node) — gives "Help me get this" real
+// provider context. Undefined when it's an expression or absent.
+const providerUrl = computed(() => {
+	const url = props.section.node.parameters?.url;
+	return typeof url === 'string' ? url : undefined;
+});
 
 const selectedCredentialId = computed(() =>
 	credentialType.value
@@ -54,6 +64,42 @@ const selectedCredentials = computed<INodeUi['credentials']>(() => {
 
 	return cred ? { [type]: { id: cred.id, name: cred.name } } : {};
 });
+
+// Gate on the same store source NodeCredentials builds its dropdown from. With no
+// usable credential of this type it would render an empty-state "set up" button
+// (which opens the modal) — render the inline form instead.
+const hasUsableCredentials = computed(() => {
+	const type = credentialType.value;
+	if (!type) return false;
+	return (credentialsStore.getUsableCredentialByType(type)?.length ?? 0) > 0;
+});
+
+// The AI-gateway "use n8n managed" option is offered by NodeCredentials even
+// with no existing credential — mirror NodeCredentials' showAiGatewaySelector so
+// the gate below doesn't hide it.
+const supportsAiGatewayManaged = computed(() => {
+	const type = credentialType.value;
+	if (!type || !aiGateway.isEnabled.value) return false;
+	return (
+		aiGateway.isNodeTypeVersionSupported(props.section.node.type, props.section.node.typeVersion) &&
+		aiGateway.isCredentialTypeSupported(type)
+	);
+});
+
+// Show the NodeCredentials selector when there's something to select — an
+// existing usable credential or the AI-gateway managed option. Otherwise the
+// inline form handles creating/connecting a new credential.
+const shouldRenderSelector = computed(
+	() => hasUsableCredentials.value || supportsAiGatewayManaged.value,
+);
+
+const inlineForm = ref<{
+	mode: 'new' | 'edit';
+	credentialType: string;
+	credentialId?: string;
+	/** Opened from the selector (create/edit events) — offer a way back to it. */
+	showBack: boolean;
+} | null>(null);
 
 const targetNodeNames = computed(() =>
 	props.section.credentialTargetNodes.map((node) => node.name),
@@ -101,7 +147,24 @@ watch(
 	() => props.section.id,
 	() => {
 		revealedIssues.value = new Set();
+		inlineForm.value = null;
 	},
+);
+
+// The default inline form must be held as STATE, not derived from the selector
+// gate: saving a credential mid-submit makes the store report usable
+// credentials, which would otherwise swap this form for the (auto-selecting)
+// selector before the save/auth-probe completes — discarding a probe rejection.
+// The form opens when there's nothing to select and closes only via its own
+// saved/back events (or the section-change reset above, which runs first).
+watch(
+	[() => props.section.id, credentialType, shouldRenderSelector],
+	([, type, selectorVisible]) => {
+		if (type && !selectorVisible && !inlineForm.value) {
+			inlineForm.value = { mode: 'new', credentialType: type, showBack: false };
+		}
+	},
+	{ immediate: true },
 );
 
 const hiddenIssuesInputs = computed(() =>
@@ -178,6 +241,24 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	ctx.setCredential(props.section, credId);
 }
 
+function openInlineCreate(type: string) {
+	inlineForm.value = { mode: 'new', credentialType: type, showBack: true };
+}
+
+function openInlineEdit(payload: { credentialType: string; credentialId: string }) {
+	inlineForm.value = {
+		mode: 'edit',
+		credentialType: payload.credentialType,
+		credentialId: payload.credentialId,
+		showBack: true,
+	};
+}
+
+function onInlineFormSaved(credentialId: string) {
+	ctx.setCredential(props.section, credentialId);
+	inlineForm.value = null;
+}
+
 function onParameterValueChanged(update: IUpdateInformation) {
 	const parameterName = update.name.replace(/^parameters\./, '');
 	ctx.setParameterValue(props.section, parameterName, update.value);
@@ -193,15 +274,33 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			telemetry-source="instanceAiWorkflowSetup"
 		/>
 
+		<InstanceAiCredentialForm
+			v-if="credentialType && inlineForm"
+			:key="`${inlineForm.mode}:${inlineForm.credentialType}:${inlineForm.credentialId ?? ''}`"
+			:credential-type="inlineForm.credentialType"
+			:mode="inlineForm.mode"
+			:credential-id="inlineForm.credentialId"
+			:setup-hint="inlineForm.credentialType === credentialType ? section.setupHint : undefined"
+			:project-id="ctx.projectId.value"
+			:provider-url="providerUrl"
+			:workflow-id="ctx.workflowId.value"
+			:node-name="section.targetNodeName"
+			:show-back="inlineForm.showBack"
+			@saved="onInlineFormSaved"
+			@back="inlineForm = null"
+		/>
 		<NodeCredentials
-			v-if="credentialType"
+			v-else-if="credentialType && shouldRenderSelector"
 			:node="displayNode"
 			:override-cred-type="credentialType"
 			:project-id="ctx.projectId.value"
 			standalone
 			hide-issues
 			hide-ask-assistant
+			inline-credential-actions
 			@credential-selected="onCredentialSelected"
+			@create-requested="openInlineCreate"
+			@edit-requested="openInlineEdit"
 		>
 			<template v-if="section.credentialTargetNodes.length > 1" #label-postfix>
 				<N8nTooltip placement="top">

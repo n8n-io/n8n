@@ -576,6 +576,42 @@ export async function buildSetupRequests(
 	return requests;
 }
 
+// ── Credential setup hints ──────────────────────────────────────────────────
+
+/** Agent-supplied credential recipe targeting a credential type (optionally one node). */
+export interface CredentialHintInput {
+	credentialType: string;
+	nodeName?: string;
+	prefill: Record<string, string>;
+	docsUrl?: string;
+	suggestedName?: string;
+}
+
+/**
+ * Attach agent-supplied credential recipes to matching setup requests, so the
+ * setup UI can pre-fill the credential's fields and ask the user only for the
+ * secrets. A node-scoped hint (nodeName) wins over a type-wide one.
+ */
+export function applyCredentialHints(
+	requests: SetupRequest[],
+	hints: CredentialHintInput[] | undefined,
+): void {
+	if (!hints?.length) return;
+	for (const request of requests) {
+		if (!request.credentialType) continue;
+		const hint =
+			hints.find(
+				(h) => h.credentialType === request.credentialType && h.nodeName === request.node.name,
+			) ?? hints.find((h) => h.credentialType === request.credentialType && !h.nodeName);
+		if (!hint) continue;
+		request.setupHint = {
+			prefill: hint.prefill,
+			...(hint.docsUrl ? { docsUrl: hint.docsUrl } : {}),
+			...(hint.suggestedName ? { suggestedName: hint.suggestedName } : {}),
+		};
+	}
+}
+
 // ── Execution order ─────────────────────────────────────────────────────────
 
 /**

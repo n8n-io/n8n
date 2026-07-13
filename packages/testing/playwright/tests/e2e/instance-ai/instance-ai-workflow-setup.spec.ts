@@ -34,6 +34,9 @@ const SELECT_EXISTING_WORKFLOW_NAME = 'B3 Workflow Setup Select Existing Credent
 const SELECT_EXISTING_INITIAL_CREDENTIAL_NAME = 'B3 Slack Trigger Initial Credential';
 const SELECT_EXISTING_TARGET_CREDENTIAL_NAME = 'B3 Slack Trigger Target Credential';
 
+const HINTED_WORKFLOW_NAME = 'B3 Workflow Setup Guided Credential Recipe';
+const HINTED_SECRET = 'fake-fal-key-for-testing';
+
 const PARAMETER_ISSUE_WORKFLOW_NAME = 'B3 Workflow Setup Required Parameter';
 const PARAMETER_APPLY_WORKFLOW_NAME = 'B3 Full Wizard Apply';
 const PARAMETER_CREDENTIAL_NAME = 'B3 Parameter Header Auth';
@@ -85,6 +88,22 @@ function createParameterAndCredentialWorkflow(name: string): Partial<IWorkflowBa
 		httpNode.parameters = {
 			method: 'GET',
 			url: '',
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpHeaderAuth',
+		};
+	}
+	return workflow;
+}
+
+function createHintedCredentialWorkflow(name: string): Partial<IWorkflowBase> {
+	const workflow = createParameterOnlyWorkflow(name);
+	const httpNode = workflow.nodes?.find((node) => node.name === 'HTTP Request');
+	if (httpNode) {
+		// A real provider URL gives the agent the context to supply a credential
+		// recipe (header name + value format + where to get the key).
+		httpNode.parameters = {
+			method: 'POST',
+			url: 'https://fal.run/fal-ai/flux/schnell',
 			authentication: 'genericCredentialType',
 			genericAuthType: 'httpHeaderAuth',
 		};
@@ -900,6 +919,102 @@ test.describe(
 			const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
 			expectAssignedCredentialName(persisted, 'Slack', 'slackApi', SLACK_CREDENTIAL_NAME);
 		});
+
+		test(
+			'should guide generic credential setup to a single secret input when the agent supplies a recipe',
+			{
+				annotation: [
+					{
+						type: 'expectation-slug',
+						description: 'should-guide-generic-credential-setup-with-agent-recipe',
+					},
+				],
+			},
+			async ({ n8n }) => {
+				const workflow = await n8n.api.workflows.createWorkflow(
+					createHintedCredentialWorkflow(HINTED_WORKFLOW_NAME),
+				);
+
+				await n8n.navigate.toInstanceAi();
+				await n8n.instanceAi.sendMessage(
+					`Set up the workflow named "${HINTED_WORKFLOW_NAME}". It calls the fal.ai API.`,
+				);
+
+				const setup = n8n.instanceAi.workflowSetup;
+				// The agent may research the provider's auth format on the way (domain
+				// access confirmation) — approve interstitials until the card renders.
+				await n8n.instanceAi.waitForWorkflowSetupCard();
+
+				// Guided form: one secret input (labeled via placeholder — the card
+				// title already names the service) and a link to where the key is
+				// obtained — no blank Name/Value fields, no HTTP jargon.
+				await expect(setup.getGuidedSecretInput()).toHaveCount(1);
+				await expect(setup.getGuidedSecretInput()).toHaveAttribute('placeholder', /.+/);
+				await expect(setup.getGuidedDocsLink()).toBeVisible();
+
+				// The full field set stays reachable, and the guided view is returnable.
+				await setup.getShowAllFieldsLink().click();
+				await expect(setup.getGuidedSecretInput()).toBeHidden();
+				await setup.getBackToSimpleViewLink().click();
+				await expect(setup.getGuidedSecretInput()).toBeVisible();
+
+				// Saving a generic credential in the wizard fires the server-side auth
+				// probe against the node's own URL. Control the verdict from the test:
+				// first a rejection (error + Retry), then acceptance on the retry.
+				let pingVerdict: 'Error' | 'OK' = 'Error';
+				let pingCount = 0;
+				await n8n.page.route('**/rest/instance-ai/credentials/ping', async (route) => {
+					pingCount += 1;
+					await route.fulfill({
+						status: 200,
+						contentType: 'application/json',
+						body: JSON.stringify({
+							data:
+								pingVerdict === 'Error'
+									? { status: 'Error', message: 'The service rejected the credential (HTTP 401).' }
+									: { status: 'OK', message: 'Connection successful!' },
+						}),
+					});
+				});
+
+				const credentialCreateResponsePromise = n8n.page.waitForResponse(
+					(response) =>
+						response.url().endsWith('/rest/credentials') && response.request().method() === 'POST',
+				);
+
+				await setup.getGuidedSecretInput().fill(HINTED_SECRET);
+				await setup.getGuidedSubmitButton().click();
+
+				// The created credential is composed from the recipe — the user typed
+				// only the key, the header name and value format came pre-filled.
+				const createResponse = await credentialCreateResponsePromise;
+				const createRequest = createResponse.request().postDataJSON() as {
+					type?: string;
+					data?: { name?: string; value?: string };
+				};
+				expect(createRequest.type).toBe('httpHeaderAuth');
+				expect(createRequest.data?.name).toBe('Authorization');
+				expect(createRequest.data?.value).toContain(HINTED_SECRET);
+				expect(createRequest.data?.value).not.toBe(HINTED_SECRET);
+
+				// A rejected probe keeps the form open with the error and a Retry button.
+				await expect(setup.getGuidedTestError()).toBeVisible();
+				await expect(setup.getGuidedSubmitButton()).toHaveText(/retry/i);
+
+				// An accepted probe lets the save complete.
+				pingVerdict = 'OK';
+				await setup.getGuidedSubmitButton().click();
+
+				await expect(setup.getCardCheck()).toBeVisible();
+				expect(pingCount).toBe(2);
+				await setup.getApplyButton().click();
+				await n8n.instanceAi.waitForResponseComplete();
+
+				const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
+				const httpNode = getNode(persisted, 'HTTP Request');
+				expect(httpNode?.credentials?.httpHeaderAuth).toBeDefined();
+			},
+		);
 
 		test('should persist a manually selected existing credential from the dropdown', async ({
 			n8n,

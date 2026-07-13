@@ -48,6 +48,58 @@ if the payload or prior verification evidence says mocked credentials,
 simulated node output, fixture overrides, temporary pin data, or another mocked
 input was used.
 
+### Credential hints for generic auth types
+
+When the workflow authenticates a service through a generic credential type
+(`httpHeaderAuth`, `httpQueryAuth`, `httpBasicAuth`, `httpBearerAuth`,
+`httpCustomAuth`), include `credentialHints` in the same
+`workflows(action="setup")` call so the setup card pre-fills the credential's
+fields and the user only pastes their secret — instead of facing empty
+Name/Value fields they'd have to decode from the provider's docs. Build each
+hint from the provider documentation you read during the build — never guess
+the auth format:
+
+- `prefill` — exact values for the credential's fields, with
+  `<__PLACEHOLDER_VALUE__label__>` marking each secret the user must paste.
+- `docsUrl` — the provider page where the user obtains the secret.
+- `suggestedName` — display name for the created credential.
+
+Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>`:
+
+```json
+{
+  "action": "setup",
+  "workflowId": "...",
+  "credentialHints": [
+    {
+      "credentialType": "httpHeaderAuth",
+      "suggestedName": "fal.ai API Key",
+      "prefill": {
+        "name": "Authorization",
+        "value": "Key <__PLACEHOLDER_VALUE__fal.ai API key__>"
+      },
+      "docsUrl": "https://fal.ai/dashboard/keys"
+    }
+  ]
+}
+```
+
+Never put a real secret in a hint — the user pastes it in the setup card. Add
+`nodeName` when several nodes use the same generic type for different services.
+
+The placeholder sentinel only ever exists in the hint and the card UI: the card
+asks the user to paste the real secret and creates the credential with the
+composed real value (e.g. `Key <their-key>`), never with the sentinel. You
+cannot see the secret, but once setup reports the credential applied, treat it
+as fully configured — do NOT tell the user the credential contains a
+placeholder or instruct them to open and edit it. If verification used mocked
+credentials, offer a live test run instead; a failing live test is the moment
+to revisit the credential value.
+
+If the user defers setup instead, don't hand them manual field-by-field
+credential instructions for the n8n editor — tell them to reopen setup when
+they're ready: the card pre-fills everything except their key.
+
 ## Publishing and testing
 
 **Publishing is never required for testing.** Both `executions(action="run")` and

@@ -178,6 +178,43 @@ export class InstanceAiPage extends BasePage {
 			.or(this.getCredentialContinue());
 	}
 
+	/**
+	 * Wait for the workflow-setup card, approving any interstitial
+	 * confirmations (domain access for research, plan review) the agent
+	 * raises on the way. Does NOT click credential-flow buttons — those are
+	 * usually what the test is exercising.
+	 */
+	async waitForWorkflowSetupCard(timeout = 150_000): Promise<void> {
+		await expect
+			.poll(
+				async () => {
+					for (const button of [
+						this.getConfirmAlwaysAllowButton(),
+						this.getDomainAccessAlwaysAllow(),
+						this.getConfirmApproveButton(),
+						this.getPlanApproveButton(),
+						this.getDomainAccessApprove(),
+						this.getGatewayDecisionApprove(),
+					]) {
+						if (
+							(await button.isVisible().catch(() => false)) &&
+							(await button.isEnabled().catch(() => false))
+						) {
+							await button.dispatchEvent('click');
+							return false;
+						}
+					}
+
+					return await this.workflowSetup
+						.getCard()
+						.isVisible()
+						.catch(() => false);
+				},
+				{ intervals: [500, 1_000, 2_000], timeout },
+			)
+			.toBe(true);
+	}
+
 	// ── Preview ───────────────────────────────────────────────────────
 	//
 	// The artifact preview mounts the workflow editor directly in the page

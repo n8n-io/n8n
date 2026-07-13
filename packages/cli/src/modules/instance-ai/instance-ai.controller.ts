@@ -1,5 +1,6 @@
 import {
 	InstanceAiConfirmRequestDto,
+	InstanceAiCredentialPingRequestDto,
 	InstanceAiFeedbackRequestDto,
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiGatewayCreateCredentialDto,
@@ -49,6 +50,7 @@ import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -57,7 +59,9 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
 import { ProjectService } from '@/services/project.service.ee';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 import { UrlService } from '@/services/url.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -112,6 +116,9 @@ export class InstanceAiController {
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
+		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly credentialsTester: CredentialsTester,
+		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		globalConfig: GlobalConfig,
@@ -570,6 +577,54 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:manage')
 	async listServiceCredentials(req: AuthenticatedRequest) {
 		return await this.settingsService.listServiceCredentials(req.user);
+	}
+
+	/**
+	 * Auth-probe a saved generic credential against a workflow node's own URL.
+	 * The target is always the persisted node's static `url` — never a
+	 * client- or model-supplied one — so the secret is only ever sent where
+	 * the workflow itself will send it at runtime.
+	 */
+	@Post('/credentials/ping')
+	@GlobalScope('instanceAi:message')
+	async pingCredential(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiCredentialPingRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			payload.credentialId,
+			req.user,
+			['credential:read'],
+		);
+		if (!credential) throw new NotFoundError('Credential not found');
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			payload.workflowId,
+			req.user,
+			['workflow:read'],
+		);
+		if (!workflow) throw new NotFoundError('Workflow not found');
+
+		const node = workflow.nodes.find((n) => n.name === payload.nodeName);
+		if (!node) throw new NotFoundError('Node not found in workflow');
+
+		// Expressions (leading '=') and non-http values are refused, not resolved.
+		const url = node.parameters?.url;
+		if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+			throw new BadRequestError('The node has no static URL to probe');
+		}
+
+		const data = await this.credentialsService.decrypt(credential, true);
+		return await this.credentialsTester.probeCredentialAuth(
+			req.user.id,
+			credential.type,
+			{ id: credential.id, name: credential.name, type: credential.type, data },
+			url,
+			{ acceptedStatusCodes: payload.acceptedStatusCodes },
+		);
 	}
 
 	@Get('/threads')
