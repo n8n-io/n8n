@@ -23,7 +23,6 @@ export type TagsInputTagUi = {
 };
 
 export type TagsInputSlots = {
-	/** Replace the default text input. Apply `class` to keep TagsInput field styles. */
 	input?: (props: {
 		id?: string;
 		placeholder: string;
@@ -31,7 +30,6 @@ export type TagsInputSlots = {
 		disabled?: boolean;
 		class: string;
 	}) => unknown;
-	/** Replace tag content inside the item chrome. Prefer `TagsInputItemText` / `TagsInputItemDelete` for a11y. */
 	tag?: (props: {
 		value: TagsInputValue;
 		displayValue: string;
