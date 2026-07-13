@@ -56,6 +56,7 @@ import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
 import type { CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
+import { shouldIgnoreCanvasShortcut } from '../canvas.utils';
 import {
 	computed,
 	inject,
@@ -319,6 +320,8 @@ const renameKeyCode = ' ';
 useShortKeyPress(
 	renameKeyCode,
 	() => {
+		const activeElement = document.activeElement;
+		if (activeElement && shouldIgnoreCanvasShortcut(activeElement)) return;
 		if (lastSelectedNode.value) {
 			emit('update:node:name', lastSelectedNode.value.id);
 		} else if (selectedGroupIds.value.length > 0) {
