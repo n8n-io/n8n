@@ -25,6 +25,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
@@ -103,6 +104,7 @@ const sessionsStore = useAgentSessionsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const favoritesStore = useFavoritesStore();
 
 // Gates the entire knowledge base feature (files panel + fetching) behind the
 // Daytona sandbox env vars on the backend (N8N_AGENTS_AI_SANDBOX_ENABLED + PROVIDER=daytona).
@@ -128,6 +130,7 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
+const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
 const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
 
@@ -252,6 +255,7 @@ watch(
 
 function syncAgentIdentityFromConfig(c: AgentJsonConfig) {
 	agentName.value = c.name;
+	favoritesStore.renameFavorite(agentId.value, 'agent', c.name);
 	if (!agent.value) return;
 	agent.value = {
 		...agent.value,
@@ -734,8 +738,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	// Mirror identity edits onto the agent resource so the header reflects them
 	// before the next fetch.
 	if (updates.name !== undefined) {
-		agentName.value = updates.name;
-		if (agent.value) agent.value = { ...agent.value, name: updates.name };
+		syncAgentIdentityFromConfig(localConfig.value);
 	}
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
@@ -873,6 +876,17 @@ const headerActions = computed(() => {
 		});
 	}
 
+	if (agent.value) {
+		actions.push({
+			id: 'toggleFavorite',
+			label:
+				isFavorite.value === true
+					? locale.baseText('favorites.remove')
+					: locale.baseText('favorites.add'),
+			icon: isFavorite.value === true ? 'star-filled' : 'star',
+		});
+	}
+
 	if (canDeleteAgent.value) {
 		actions.push({
 			id: 'delete',
@@ -930,6 +944,10 @@ async function onHeaderAction(action: string) {
 		openImportJsonModal();
 		return;
 	}
+	if (action === 'toggleFavorite') {
+		await favoritesStore.toggleFavorite(agentId.value, 'agent');
+		return;
+	}
 	if (action === 'delete') {
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.delete.modal.title', {
@@ -951,6 +969,7 @@ async function onHeaderAction(action: string) {
 		try {
 			await deleteAgent(rootStore.restApiContext, capturedProjectId, agentId.value);
 			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
+			favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
 		} catch (error) {
 			showError(error, 'Could not delete agent');
 			return;
