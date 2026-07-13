@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { INode, INodeCredentials, INodeTypeDescription } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+import type { INode, INodeCredentials, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { AgentJsonMcpServerConfig } from '../types';
@@ -48,11 +49,41 @@ function slugify(value: string): string {
 }
 
 function resolveDefaultParameter(nodeType: INodeTypeDescription, name: string): unknown {
-	const property = nodeType.properties.find((candidate) => candidate.name === name);
-	if (!property || !('default' in property)) {
+	const matches = nodeType.properties.filter((candidate) => candidate.name === name);
+	if (matches.length === 0) {
+		return undefined;
+	}
+
+	const property = pickVersionedProperty(nodeType, matches);
+	if (!('default' in property)) {
 		return undefined;
 	}
 	return property.default;
+}
+
+/**
+ * Several node properties are declared multiple times under the same name, each
+ * gated to a different `@version` range (e.g. the MCP `serverTransport` default
+ * is `sse` on v1.1 but `httpStreamable` from v1.2 on). A plain `.find()` would
+ * return the first declaration regardless of version. Since a newly added
+ * server always targets the node's latest version, prefer the declaration whose
+ * display conditions match that version, falling back to the LAST declaration
+ * rather than the first.
+ */
+function pickVersionedProperty(
+	nodeType: INodeTypeDescription,
+	matches: INodeProperties[],
+): INodeProperties {
+	if (matches.length === 1) {
+		return matches[0];
+	}
+
+	const latestVersion = pickLatestVersion(nodeType.version);
+	const versioned = matches.find((candidate) =>
+		NodeHelpers.displayParameter({}, candidate, { typeVersion: latestVersion }, nodeType),
+	);
+
+	return versioned ?? matches[matches.length - 1];
 }
 
 function resolveDefaultTimeout(nodeType: INodeTypeDescription): number | undefined {
