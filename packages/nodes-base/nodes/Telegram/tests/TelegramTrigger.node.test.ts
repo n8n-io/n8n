@@ -518,6 +518,39 @@ describe('TelegramTrigger', () => {
 				expect.objectContaining({ url: 'https://mybot.example.com/custom-waiting-telegram' }),
 			);
 		});
+
+		test('preserves a reverse-proxy path prefix instead of forwarding to the origin root', async () => {
+			// e.g. n8n served under https://example.com/n8n-instance/ : the own webhook URL
+			// carries that prefix before the live-webhook segment, and it must survive.
+			Container.set(
+				GlobalConfig,
+				mock<GlobalConfig>({
+					endpoints: { webhook: 'webhook', webhookWaiting: 'webhook-waiting' } as never,
+				}),
+			);
+			const httpRequest = vi.fn().mockResolvedValue({});
+			const telegramTrigger = new TelegramTrigger();
+			const webhookFunctions = mock<IWebhookFunctions>({
+				helpers: mock<IWebhookFunctions['helpers']>({ httpRequest }),
+				getNode: () => mock<INode>({ id: '2', typeVersion: 1.5 }),
+				getWorkflow: () => mock<Workflow>({ id: '1' }),
+				getNodeWebhookUrl: () => 'https://example.com/n8n-instance/webhook/abc/webhook',
+				getBodyData: () => ({
+					callback_query: { data: `${HITL_CALLBACK_PREFIX}42|a|deadbeef` },
+				}),
+				getHeaderData: () => ({ 'x-telegram-bot-api-secret-token': '1_2' }),
+				getCredentials: async <T extends object>() => ({ accessToken: '123456:test-token' }) as T,
+				getNodeParameter: () => [],
+			});
+
+			await telegramTrigger.webhook.call(webhookFunctions);
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: 'https://example.com/n8n-instance/webhook-waiting-telegram',
+				}),
+			);
+		});
 	});
 
 	describe('create', () => {

@@ -17,6 +17,20 @@ import { deriveHitlSecretToken } from './hitl/tokens';
 import type { IEvent } from './IEvent';
 import { downloadFile } from './util/triggerUtils';
 
+/**
+ * Builds the fixed HITL endpoint URL from this trigger's own webhook URL, preserving
+ * any reverse-proxy path prefix (everything before the live-webhook segment). Using
+ * `.origin` alone would silently drop that prefix on instances served under a subpath.
+ */
+function hitlForwardUrl(ownWebhookUrl: string): string {
+	const parsed = new URL(ownWebhookUrl);
+	const endpoints = Container.get(GlobalConfig).endpoints;
+	const liveWebhookSegment = `/${endpoints.webhook}/`;
+	const prefixEnd = parsed.pathname.indexOf(liveWebhookSegment);
+	const prefix = prefixEnd >= 0 ? parsed.pathname.slice(0, prefixEnd) : '';
+	return `${parsed.origin}${prefix}/${endpoints.webhookWaiting}${TELEGRAM_HITL_WEBHOOK_SUFFIX}`;
+}
+
 /** Update-type keys that `updates` (the "Trigger On" parameter) can select. */
 const UPDATE_TYPE_KEYS = [
 	'message',
@@ -312,10 +326,9 @@ export class TelegramTrigger implements INodeType {
 			try {
 				const ownWebhookUrl = this.getNodeWebhookUrl('default');
 				if (ownWebhookUrl) {
-					const webhookWaitingPath = Container.get(GlobalConfig).endpoints.webhookWaiting;
 					await this.helpers.httpRequest({
 						method: 'POST',
-						url: `${new URL(ownWebhookUrl).origin}/${webhookWaitingPath}${TELEGRAM_HITL_WEBHOOK_SUFFIX}`,
+						url: hitlForwardUrl(ownWebhookUrl),
 						body: bodyData,
 						json: true,
 						headers: {
