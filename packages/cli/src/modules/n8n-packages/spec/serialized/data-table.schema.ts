@@ -1,9 +1,16 @@
-import { dataTableColumnTypeSchema } from '@n8n/api-types';
+import {
+	dataTableColumnNameSchema,
+	dataTableColumnTypeSchema,
+	dataTableIdSchema,
+	dataTableNameSchema,
+} from '@n8n/api-types';
 import { z } from 'zod';
 
+// Import feeds these values into table creation (the id even names the physical
+// user table), so the package boundary enforces the same rules as the live API.
 export const serializedDataTableColumnSchema = z
 	.object({
-		name: z.string().min(1),
+		name: dataTableColumnNameSchema,
 		type: dataTableColumnTypeSchema,
 		index: z.number().int(),
 	})
@@ -11,8 +18,8 @@ export const serializedDataTableColumnSchema = z
 
 export const serializedDataTableSchema = z
 	.object({
-		id: z.string().min(1),
-		name: z.string().min(1),
+		id: dataTableIdSchema.min(1),
+		name: dataTableNameSchema,
 		columns: z.array(serializedDataTableColumnSchema),
 	})
 	.strict();
