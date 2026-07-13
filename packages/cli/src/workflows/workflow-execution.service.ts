@@ -597,7 +597,7 @@ export class WorkflowExecutionService {
 function isPartialExecution(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.PartialManualExecutionToDestinationPayload {
-	return 'destinationNode' in payload && 'runData' in payload;
+	return 'runData' in payload && 'destinationNode' in payload;
 }
 
 /**

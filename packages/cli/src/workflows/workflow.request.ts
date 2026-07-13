@@ -1,5 +1,5 @@
 import type {
-	ManualRunDto,
+	ManualRunPayload as ManualRunPayloadDto,
 	FullManualExecutionFromKnownTriggerPayload as FullManualExecutionFromKnownTriggerDto,
 	FullManualExecutionFromUnknownTriggerPayload as FullManualExecutionFromUnknownTriggerDto,
 	PartialManualExecutionToDestinationPayload as PartialManualExecutionToDestinationDto,
@@ -37,7 +37,7 @@ export declare namespace WorkflowRequest {
 	type FullManualExecutionFromUnknownTriggerPayload = FullManualExecutionFromUnknownTriggerDto;
 	type PartialManualExecutionToDestinationPayload = PartialManualExecutionToDestinationDto;
 
-	type ManualRunPayload = ManualRunDto;
+	type ManualRunPayload = ManualRunPayloadDto;
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 

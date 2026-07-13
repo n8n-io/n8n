@@ -497,7 +497,15 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
-	async runManually(req: WorkflowRequest.ManualRun, _res: unknown, @Body body: ManualRunDto) {
+	async runManually(req: WorkflowRequest.ManualRun) {
+		// Manually validated since the schema is picked per execution case and
+		// TypeScript reflection doesn't work with plain Zod schemas
+		const parseResult = ManualRunDto.safeParse(req.body);
+		if (!parseResult.success) {
+			throw new BadRequestError(parseResult.error.errors[0].message);
+		}
+		const body = parseResult.data;
+
 		const workflowId = req.params.workflowId;
 
 		// Always load the stored workflow from the database.

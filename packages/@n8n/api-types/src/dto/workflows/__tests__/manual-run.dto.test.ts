@@ -81,6 +81,14 @@ describe('ManualRunDto', () => {
 				name: 'a malformed trigger',
 				request: { triggerToStartFrom: { data: {} } },
 			},
+			{
+				name: 'an array as run data',
+				request: { destinationNode: { nodeName: 'Set', mode: 'inclusive' }, runData: [] },
+			},
+			{
+				name: 'an array as agent request',
+				request: { triggerToStartFrom: { name: 'Trigger' }, agentRequest: [] },
+			},
 		])('should reject $name with a case-specific error', ({ request }) => {
 			const result = ManualRunDto.safeParse(request);
 			expect(result.success).toBe(false);

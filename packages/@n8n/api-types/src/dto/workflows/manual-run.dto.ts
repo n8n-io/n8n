@@ -1,10 +1,9 @@
 import type { AiAgentRequest, IDestinationNode, IRunData, ITaskData } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { Z } from '../../zod-class';
-
 // The engine validates deeper states
-const isObject = (val: unknown): boolean => typeof val === 'object' && val !== null;
+const isObject = (val: unknown): boolean =>
+	typeof val === 'object' && val !== null && !Array.isArray(val);
 
 const destinationNodeSchema = z.object({
 	nodeName: z.string(),
@@ -79,25 +78,12 @@ function schemaFor(data: unknown) {
 		: fullManualExecutionFromUnknownTriggerSchema;
 }
 
-/**
- * The all-fields shape below only defines the class contract; validation
- * always goes through the per-case schemas via `parse`/`safeParse`. The
- * inherited constructor and `.extend()` bypass the case discrimination —
- * don't use them.
- */
-export class ManualRunDto extends Z.class({
-	agentRequest: agentRequestSchema.optional(),
-	chatSessionId: z.string().optional(),
-	destinationNode: destinationNodeSchema.optional(),
-	triggerToStartFrom: triggerToStartFromSchema.optional(),
-	runData: z.custom<IRunData>(isObject).optional(),
-	dirtyNodeNames: z.array(z.string()).optional(),
-}) {
-	static safeParse(data: unknown): z.SafeParseReturnType<unknown, ManualRunPayload> {
+// Not a ZodClass: case dispatch needs to pick the schema per payload, which
+// a single schema can't express with useful error messages. Controllers must
+// call `safeParse` manually instead of using `@Body` (TypeScript reflection
+// doesn't work without a class anyway).
+export const ManualRunDto = {
+	safeParse(data: unknown): z.SafeParseReturnType<unknown, ManualRunPayload> {
 		return schemaFor(data).safeParse(data);
-	}
-
-	static parse(data: unknown): ManualRunPayload {
-		return schemaFor(data).parse(data);
-	}
-}
+	},
+};
