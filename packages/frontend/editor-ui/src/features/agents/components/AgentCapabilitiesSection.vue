@@ -35,15 +35,19 @@ const props = withDefaults(
 		isPublished: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
+
 		/** Structured backend validation issues — drives the invalid state on capability chips. */
 		validationIssues?: AgentConfigValidationIssue[];
 		/** Capability sections to render. */
+
 		sections?: AgentCapabilitySection[];
 	}>(),
 	{
 		disabled: false,
 		taskRefs: () => [],
+
 		validationIssues: () => [],
+
 		sections: () => ['tools', 'skills', 'subAgents', 'tasks'],
 	},
 );
@@ -571,6 +575,7 @@ function openExistingSubAgentModal(subAgent: {
 					</template>
 
 					<N8nTooltip
+						v-if="!props.disabled"
 						:disabled="!hasTools"
 						:content="i18n.baseText('agents.builder.tools.add')"
 						placement="top"
@@ -615,6 +620,7 @@ function openExistingSubAgentModal(subAgent: {
 					</AgentChipButton>
 
 					<N8nTooltip
+						v-if="!props.disabled"
 						:disabled="!hasSkills"
 						:content="i18n.baseText('agents.builder.skills.add')"
 						placement="top"

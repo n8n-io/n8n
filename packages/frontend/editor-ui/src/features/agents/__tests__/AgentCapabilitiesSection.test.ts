@@ -813,24 +813,22 @@ describe('AgentCapabilitiesSection', () => {
 	});
 
 	describe('sections allowlist', () => {
-		it('renders every section by default', () => {
+		it('renders every capability section by default', () => {
 			const wrapper = mountSection([]);
 
-			expect(wrapper.find('[data-testid="agent-capabilities-add-channel"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-task"]').exists()).toBe(true);
 		});
 
-		it('renders only the allowlisted sections and skips channels + sub-agents', async () => {
+		it('renders only the allowlisted sections and skips sub-agents', async () => {
 			const wrapper = mount(AgentCapabilitiesSection, {
 				props: {
 					config: null,
 					tools: [],
 					customTools: {},
 					skills: [],
-					connectedTriggers: [],
 					projectId: 'project-id',
 					agentId: 'agent-id',
 					isPublished: false,
@@ -847,11 +845,9 @@ describe('AgentCapabilitiesSection', () => {
 						},
 						N8nIcon: { template: '<span />' },
 						N8nText: { template: '<span><slot /></span>' },
-						N8nTooltip: {
-							template:
-								'<span><slot /><span data-testid="stub-tooltip-content"><slot name="content" /></span></span>',
-						},
-						AgentChannelModal: { template: '<div data-testid="agent-channel-modal" />' },
+
+						N8nTooltip: { template: '<span><slot /></span>' },
+
 					},
 				},
 			});
@@ -863,10 +859,7 @@ describe('AgentCapabilitiesSection', () => {
 			expect(wrapper.find('[data-testid="agent-capabilities-add-task"]').exists()).toBe(true);
 
 			// Suppressed rows absent.
-			expect(wrapper.find('[data-testid="agent-capabilities-add-channel"]').exists()).toBe(false);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').exists()).toBe(false);
-			expect(wrapper.find('[data-testid="agent-capabilities-channel-row"]').exists()).toBe(false);
-			expect(wrapper.find('[data-testid="agent-channel-modal"]').exists()).toBe(false);
 
 			// The project-agents list (only needed for sub-agents) is not fetched.
 			expect(ensureProjectAgentsLoadedSpy).not.toHaveBeenCalled();
