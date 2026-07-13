@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "private": true,
   "engines": {
     "node": ">=22.22",
@@ -41,6 +41,7 @@
     "lint:ci": "turbo run lint lint:styles",
     "sync:skill-links": "node scripts/sync-agent-skill-links.mjs",
     "check:skill-links": "node scripts/sync-agent-skill-links.mjs --check",
+    "check:zod-peer-deps": "node scripts/check-zod-peer-deps.mjs",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "node scripts/os-normalize.mjs --dir packages/cli/bin n8n",
@@ -88,7 +89,7 @@
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
     "turbo": "2.9.15",
-    "typescript": "*",
+    "typescript": "6.0.2",
     "yaml": "catalog:",
     "zx": "^8.8.5"
   },
@@ -120,7 +121,6 @@
       "tar-fs": "2.1.4",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
-      "typescript": "catalog:",
       "vue-tsc": "catalog:frontend",
       "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",

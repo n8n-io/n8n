@@ -19,6 +19,20 @@ export function useAgentConfig() {
 		return `${projectId}:${agentId}`;
 	}
 
+	/**
+	 * Repoint the active (project, agent) pair without fetching: any in-flight
+	 * fetch/update for the previous pair resolves as stale, and the previous
+	 * pair's config is dropped so watchers stop serving it. Used on agent
+	 * switch BEFORE flushing the previous agent's pending save — otherwise that
+	 * save's response would land as current and repopulate the working copy
+	 * with the old agent's data.
+	 */
+	function repoint(projectId: string, agentId: string) {
+		latestKey = keyFor(projectId, agentId);
+		config.value = null;
+		loading.value = false;
+	}
+
 	async function fetchConfig(projectId: string, agentId: string) {
 		const key = keyFor(projectId, agentId);
 		latestKey = key;
@@ -43,5 +57,5 @@ export function useAgentConfig() {
 		return { versionId: result.versionId, stale };
 	}
 
-	return { config, loading, fetchConfig, updateConfig };
+	return { config, loading, repoint, fetchConfig, updateConfig };
 }

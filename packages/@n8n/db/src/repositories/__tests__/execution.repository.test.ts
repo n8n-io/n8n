@@ -109,9 +109,12 @@ describe('ExecutionRepository', () => {
 			test.each`
 				filterStatus  | entityStatus
 				${'canceled'} | ${'canceled'}
-				${'error'}    | ${In(['error', 'crashed'])}
+				${'crashed'}  | ${'crashed'}
+				${'error'}    | ${'error'}
+				${'new'}      | ${'new'}
 				${'running'}  | ${'running'}
 				${'success'}  | ${'success'}
+				${'unknown'}  | ${'unknown'}
 				${'waiting'}  | ${'waiting'}
 			`('should retrieve all $filterStatus executions', async ({ filterStatus, entityStatus }) => {
 				const limit = 10;
@@ -131,31 +134,20 @@ describe('ExecutionRepository', () => {
 				expect(result).toBe(mockCount);
 			});
 
-			test.each`
-				filterStatus
-				${'crashed'}
-				${'new'}
-				${'unknown'}
-			`(
-				'should find all executions and ignore status filter "$filterStatus"',
-				async ({ filterStatus }) => {
-					const limit = 10;
-					const mockCount = 20;
+			test('should find all executions without status filter', async () => {
+				const limit = 10;
+				const mockCount = 20;
 
-					entityManager.count.mockResolvedValueOnce(mockCount);
-					const result = await executionRepository.getExecutionsCountForPublicApi({
-						limit,
-						status: filterStatus,
-					});
+				entityManager.count.mockResolvedValueOnce(mockCount);
+				const result = await executionRepository.getExecutionsCountForPublicApi({ limit });
 
-					expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
-						where: {},
-						take: limit,
-					});
+				expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
+					where: {},
+					take: limit,
+				});
 
-					expect(result).toBe(mockCount);
-				},
-			);
+				expect(result).toBe(mockCount);
+			});
 		});
 	});
 

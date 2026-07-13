@@ -346,7 +346,7 @@ export class WorkflowValidationService {
 		triggers: { hasExternalIdentityTrigger: boolean; hasN8nIdentityTrigger: boolean },
 	): string | undefined {
 		if (!workflowResolverId) {
-			return `dynamic credentials (${credNames}) require a resolver to be configured.`;
+			return `end-user credentials (${credNames}) require a resolver to be configured.`;
 		}
 
 		const { hasExternalIdentityTrigger, hasN8nIdentityTrigger } = triggers;
@@ -355,13 +355,13 @@ export class WorkflowValidationService {
 			// System resolver: needs the n8n user identity.
 			return hasN8nIdentityTrigger
 				? undefined
-				: `private credentials (${credNames}) are only supported in workflows triggered manually, via chat, or as a sub-workflow.`;
+				: `end-user credentials (${credNames}) are only supported in workflows triggered manually, via chat, or as a sub-workflow.`;
 		}
 
 		// Custom resolver: needs an external identity from the trigger.
 		return hasExternalIdentityTrigger
 			? undefined
-			: `dynamic credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
+			: `end-user credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */

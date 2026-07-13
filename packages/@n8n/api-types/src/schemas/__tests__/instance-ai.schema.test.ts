@@ -1,11 +1,15 @@
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	applyBranchReadOnlyOverrides,
+	buildFetchUrlGrantKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
 	instanceAiEventSchema,
 	isDisplayableConfirmationRequest,
 	isInstanceAiSandboxProvider,
+	parseDomainAccessGrants,
+	WEB_SEARCH_GRANT_KEY,
 	workflowSetupNodeSchema,
 	type InstanceAiConfirmationInputType,
 	type InstanceAiConfirmationRequestPayload,
@@ -263,6 +267,14 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+				}),
+			),
+		).toBe(true);
 	});
 
 	it('does not treat credential flow metadata as displayable on its own', () => {
@@ -327,5 +339,41 @@ describe('isDisplayableConfirmationRequest', () => {
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
 		expect(Object.keys(handled)).toHaveLength(6);
+	});
+});
+
+describe('domain-access grant keys', () => {
+	it('builds and parses per-host grant keys round-trip', () => {
+		const key = buildFetchUrlGrantKey('example.com');
+		expect(key).toBe('fetch-url:example.com');
+
+		const parsed = parseDomainAccessGrants(new Set([key]));
+		expect(parsed.approvedDomains.has('example.com')).toBe(true);
+		expect(parsed.allDomainsApproved).toBe(false);
+		expect(parsed.webSearchApproved).toBe(false);
+	});
+
+	it('parses the blanket allow-all and web-search keys', () => {
+		const parsed = parseDomainAccessGrants(
+			new Set([FETCH_URL_ALLOW_ALL_GRANT_KEY, WEB_SEARCH_GRANT_KEY]),
+		);
+		expect(parsed.allDomainsApproved).toBe(true);
+		expect(parsed.webSearchApproved).toBe(true);
+		expect(parsed.approvedDomains.size).toBe(0);
+	});
+
+	it('ignores unrelated grant keys (e.g. executions:run)', () => {
+		const parsed = parseDomainAccessGrants(
+			new Set([buildFetchUrlGrantKey('a.com'), 'executions:run:wf-1']),
+		);
+		expect(parsed.approvedDomains).toEqual(new Set(['a.com']));
+		expect(parsed.allDomainsApproved).toBe(false);
+		expect(parsed.webSearchApproved).toBe(false);
+	});
+
+	it('does not treat the allow-all key as a host', () => {
+		const parsed = parseDomainAccessGrants(new Set([FETCH_URL_ALLOW_ALL_GRANT_KEY]));
+		expect(parsed.approvedDomains.size).toBe(0);
+		expect(parsed.allDomainsApproved).toBe(true);
 	});
 });

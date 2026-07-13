@@ -4,9 +4,10 @@
 import { LangTracerClient, type ExportedSuite } from './client';
 import { resolveLangTracerConfig } from './config';
 import { normalizeExportedCase } from './normalize';
-import { parseSubstringList, type WorkflowTestCaseWithFile } from '../data/workflows';
-import { WorkflowTestCaseSchema } from '../data/workflows/schema';
+import { type WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
+import { EvalTestCaseSchema } from '../harness/schema';
+import { parseSubstringList } from '../utils/get-json-files';
 
 export interface LangTracerLoadOptions {
 	/** Suite slug or numeric id. */
@@ -29,7 +30,7 @@ export function casesFromExportedFiles(
 
 	for (const [filename, raw] of Object.entries(files)) {
 		const fileSlug = filename.replace(/\.json$/i, '');
-		const parsed = WorkflowTestCaseSchema.safeParse(normalizeExportedCase(raw));
+		const parsed = EvalTestCaseSchema.safeParse(normalizeExportedCase(raw));
 		if (!parsed.success) {
 			const issues = parsed.error.issues
 				.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)

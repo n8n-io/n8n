@@ -1,0 +1,26 @@
+{
+	"description": "HTTP Request built-in pagination with cursor/starting_after style — not a hand-rolled Loop Over Items loop.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "On manual trigger, fetch all customers from GET https://api.stripe-style.example.com/v1/customers and return the full list. The API uses cursor paging — keep going until there is nothing left."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["build", "loops", "pagination", "manual", "http-request"],
+	"triggerType": "manual",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"The HTTP Request node fetches across all cursor pages via built-in pagination, not just the first page.",
+		"The agent did NOT work around paging with a Loop Over Items node, a Code node loop, or a hard-coded number of requests."
+	],
+	"executionScenarios": [
+		{
+			"name": "cursor-two-pages",
+			"description": "First page has has_more true; second page completes the list",
+			"dataSetup": "This is a CURSOR-PAGINATED endpoint. `GET https://api.stripe-style.example.com/v1/customers` with no starting_after returns { \"data\": [{ \"id\": \"cus_001\", \"name\": \"Acme\" }, { \"id\": \"cus_002\", \"name\": \"Beta Co\" }], \"has_more\": true }. `GET ...?starting_after=cus_002` (or equivalent cursor from the last item of page 1) returns { \"data\": [{ \"id\": \"cus_003\", \"name\": \"Gamma LLC\" }], \"has_more\": false }. Any request with starting_after=cus_003 or beyond returns { \"data\": [], \"has_more\": false }.",
+			"successCriteria": "The workflow executes without errors and returns all THREE customers — Acme, Beta Co, and Gamma LLC — having followed the cursor through both pages. A workflow that stops after the first page (only Acme and Beta Co) FAILS."
+		}
+	]
+}

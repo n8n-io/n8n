@@ -407,11 +407,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const disconnectMyConnection = async ({ id }: { id: string }) => {
 		await credentialsApi.disconnectMyConnection(rootStore.restApiContext, id);
+		setConnectedByMe(id, false);
+	};
+
+	const setConnectedByMe = (id: string, connectedByMe: boolean) => {
 		const existing = state.value.credentials[id];
 		if (existing) {
 			state.value.credentials = {
 				...state.value.credentials,
-				[id]: { ...existing, connectedByMe: false },
+				[id]: { ...existing, connectedByMe },
 			};
 		}
 	};
@@ -439,10 +443,13 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return result;
 	};
 
-	const getNewCredentialName = async (params: { credentialTypeName: string }): Promise<string> => {
+	const getNewCredentialName = async (params: {
+		credentialTypeName: string;
+		fallbackName?: string;
+	}): Promise<string> => {
+		const { credentialTypeName, fallbackName } = params;
 		try {
-			const { credentialTypeName } = params;
-			let newName = DEFAULT_CREDENTIAL_NAME;
+			let newName = fallbackName ?? DEFAULT_CREDENTIAL_NAME;
 			if (!TYPES_WITH_DEFAULT_NAME.includes(credentialTypeName)) {
 				const cred = getCredentialTypeByName.value(credentialTypeName);
 				newName = cred ? getAppNameFromCredType(cred.displayName) : '';
@@ -452,7 +459,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			const res = await credentialsApi.getCredentialsNewName(rootStore.restApiContext, newName);
 			return res.name;
 		} catch (e) {
-			return DEFAULT_CREDENTIAL_NAME;
+			return fallbackName ?? DEFAULT_CREDENTIAL_NAME;
 		}
 	};
 
@@ -519,6 +526,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		setCredentials,
 		deleteCredential,
 		disconnectMyConnection,
+		setConnectedByMe,
 		upsertCredential,
 		fetchCredentialTypes,
 		fetchAllCredentials,

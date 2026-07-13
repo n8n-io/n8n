@@ -14,7 +14,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { NewCredentialsModal } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
-import { within, waitFor } from '@testing-library/vue';
+import { within, waitFor, screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 import type { Scope } from '@n8n/permissions';
@@ -53,6 +53,18 @@ vi.mock('@/features/resolvers/composables/usePrivateCredentials', async () => {
 	const { ref } = await vi.importActual<typeof import('vue')>('vue');
 	return { usePrivateCredentials: () => ({ isEnabled: ref(true) }) };
 });
+
+// N8nDialog (reka-ui) doesn't render its portalled content in jsdom, so stub the
+// type-to-confirm dialog with a plain element that surfaces its title + message.
+vi.mock('./TypeToConfirmDialog.vue', () => ({
+	default: {
+		name: 'TypeToConfirmDialog',
+		props: ['open', 'title', 'message', 'confirmLabel', 'confirmKeyword', 'loading'],
+		emits: ['confirm', 'update:open'],
+		template:
+			'<div v-if="open" data-test-id="credential-type-to-confirm-dialog">{{ title }} {{ message }}</div>',
+	},
+}));
 
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
@@ -478,6 +490,7 @@ describe('CredentialEdit', () => {
 				updatedAt: '',
 				relations: [],
 				scopes: [],
+				rolesManaged: false,
 			};
 
 			renderComponent({
@@ -506,6 +519,7 @@ describe('CredentialEdit', () => {
 				updatedAt: '',
 				relations: [],
 				scopes: [],
+				rolesManaged: false,
 			};
 
 			const { getByTestId } = renderComponent({
@@ -760,6 +774,29 @@ describe('CredentialEdit', () => {
 
 			await retry(() => expect(queryByText('Custom Scopes')).toBeInTheDocument());
 			expect(queryByText('Enabled Scopes')).toBeInTheDocument();
+		});
+
+		test('hides scope fields for a managed-capable credential edited from the list (no active node context)', async () => {
+			const credentialsStore = setupStores(false);
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[discordOAuth2ApiManagedCapable.name]: discordOAuth2ApiManagedCapable,
+			};
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-1',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			expect(queryByText('Scope')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Enabled Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes Notice')).not.toBeInTheDocument();
 		});
 
 		it('should not block modal when external hooks throw', async () => {
@@ -1391,9 +1428,8 @@ describe('CredentialEdit', () => {
 			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
 		});
 
-		describe('switching a connected private credential to static', () => {
-			test('shows the confirmation modal when the current user just connected, even if the server count is stale', async () => {
-				confirmMock.mockResolvedValue('confirm');
+		describe('switching a connected end-user credential to Fixed', () => {
+			test('shows the type-to-confirm dialog with a pluralized person count when the current user just connected, even if the server count is stale', async () => {
 				const pinia = createPiniaForBannerTest();
 				// connectedByMe reflects the in-session connection; connectedUserCount is the
 				// stale server value (0) that does not yet include the current user.
@@ -1416,12 +1452,15 @@ describe('CredentialEdit', () => {
 
 				await userEvent.click(getByTestId('credential-type-card-fixed'));
 
-				await retry(() => expect(confirmMock).toHaveBeenCalled());
-				expect(confirmMock.mock.calls[0][0]).toContain('1 user(s)');
+				await waitFor(() =>
+					expect(screen.getByTestId('credential-type-to-confirm-dialog')).toBeInTheDocument(),
+				);
+				expect(screen.getByTestId('credential-type-to-confirm-dialog')).toHaveTextContent(
+					'1 person will lose their connection',
+				);
 			});
 
-			test('does not show the confirmation modal when no users are connected', async () => {
-				confirmMock.mockResolvedValue('confirm');
+			test('does not show the confirmation dialog when no users are connected', async () => {
 				const pinia = createPiniaForBannerTest();
 				const credentialsStore = setupOAuthCredential({
 					isResolvable: true,
@@ -1442,7 +1481,7 @@ describe('CredentialEdit', () => {
 
 				await userEvent.click(getByTestId('credential-type-card-fixed'));
 
-				expect(confirmMock).not.toHaveBeenCalled();
+				expect(screen.queryByTestId('credential-type-to-confirm-dialog')).not.toBeInTheDocument();
 			});
 		});
 

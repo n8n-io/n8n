@@ -17,6 +17,7 @@ import type {
 	ImportAuditCredentialIds,
 	ImportPackageEventCounts,
 	ImportPackageEventOptions,
+	PackageFailureReason,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 
@@ -104,7 +105,25 @@ export type RelayEventMap = {
 
 	'n8n-package-exported': {
 		user: UserLike;
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
 		counts: ExportPackageEventCounts;
+	};
+
+	'n8n-package-export-failed': {
+		user: UserLike;
+		reason: PackageFailureReason;
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
+	};
+
+	'n8n-package-import-failed': {
+		user: UserLike;
+		reason: PackageFailureReason;
+		projectId?: string;
+		folderId?: string;
 	};
 
 	'workflow-deleted': {
@@ -422,6 +441,8 @@ export type RelayEventMap = {
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	'credentials-shared': {
@@ -440,6 +461,8 @@ export type RelayEventMap = {
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	'credentials-deleted': {
@@ -480,6 +503,12 @@ export type RelayEventMap = {
 		credentialId: string;
 	};
 
+	'private-credential-connections-cleared': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
 	'private-credential-deleted': {
 		user: UserLike;
 		credentialType: string;
@@ -490,6 +519,8 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	// #endregion
@@ -1011,11 +1042,21 @@ export type RelayEventMap = {
 
 	// #endregion
 
+	// region Agents
+	'agent-deleted': {
+		agentId: string;
+		projectId: string;
+	};
+
 	// #region Instance Policies
 
 	'instance-policies-updated': { user: UserLike } & (
 		| {
-				settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
+				settingName:
+					| '2fa_enforcement'
+					| 'workflow_publishing'
+					| 'workflow_sharing'
+					| 'workflow_reviews';
 				value: boolean;
 		  }
 		| {

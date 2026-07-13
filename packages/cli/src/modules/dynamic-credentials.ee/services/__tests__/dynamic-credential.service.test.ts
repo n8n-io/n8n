@@ -550,7 +550,7 @@ describe('DynamicCredentialService', () => {
 						undefined,
 					),
 				).rejects.toThrow(
-					"'Test Credential' private credential is not connected for you. Connect yours to execute this workflow manually.",
+					"'Test Credential' end-user credential is not connected for you. Connect yours to execute this workflow manually.",
 				);
 			});
 
@@ -577,7 +577,7 @@ describe('DynamicCredentialService', () => {
 						undefined,
 					),
 				).rejects.toThrow(
-					"'Test Credential' private credential is not connected for you. Connect yours to execute this workflow manually.",
+					"'Test Credential' end-user credential is not connected for you. Connect yours to execute this workflow manually.",
 				);
 			});
 

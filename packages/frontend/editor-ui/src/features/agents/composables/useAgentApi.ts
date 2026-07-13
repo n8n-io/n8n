@@ -1,17 +1,21 @@
 import type {
 	AgentBuilderMessagesResponse,
+	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
+	AgentJsonVectorStoreConfig,
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
+	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
 	CreateSlackAgentAppResponse,
 	SlackAgentAppManifestResponse,
+	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -346,6 +350,20 @@ export const getModelCatalog = async (
 	);
 };
 
+export const getProviderModels = async (
+	context: IRestApiContext,
+	projectId: string,
+	provider: string,
+	credentialId?: string,
+): Promise<AgentProviderModelsResponse> => {
+	return await makeRestApiRequest<AgentProviderModelsResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/catalog/models/${provider}`,
+		credentialId ? { credentialId } : undefined,
+	);
+};
+
 export const publishAgent = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -421,6 +439,18 @@ export const getAgentConfig = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/config`,
+	);
+};
+
+export const getAgentCapabilitySummary = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentCapabilitySummary> => {
+	return await makeRestApiRequest<AgentCapabilitySummary>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/summary`,
 	);
 };
 
@@ -538,6 +568,19 @@ export const deleteCustomTool = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/tools/${toolId}`,
+	);
+};
+
+export const testAgentVectorStore = async (
+	context: IRestApiContext,
+	projectId: string,
+	vectorStore: AgentJsonVectorStoreConfig,
+): Promise<VectorStoreTestResult> => {
+	return await makeRestApiRequest<VectorStoreTestResult>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/vector-stores/test`,
+		{ vectorStore },
 	);
 };
 

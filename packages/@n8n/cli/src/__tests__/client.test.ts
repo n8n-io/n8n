@@ -68,6 +68,24 @@ describe('N8nClient packages', () => {
 			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
 			expect(init.body).toBe(JSON.stringify({ projectIds: ['proj-1', 'proj-2'] }));
 		});
+
+		it('includes folderIds in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], folderIds: ['f1'] });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], folderIds: ['f1'] }));
+		});
+
+		it('omits an empty collection from the body', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: [], folderIds: ['f1'] });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ folderIds: ['f1'] }));
+		});
 	});
 
 	describe('importPackage', () => {
@@ -125,6 +143,25 @@ describe('N8nClient packages', () => {
 
 			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
 			expect(form.get('credentialMissingMode')).toBe('create-stub');
+		});
+
+		it('forwards bindings verbatim as a form field', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			const bindings = '{"credentials":{"source-cred":"target-cred"}}';
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{ workflowConflictPolicy: 'fail', bindings },
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('bindings')).toBe(bindings);
 		});
 
 		it('omits credentialMissingMode so the instance default applies', async () => {
