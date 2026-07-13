@@ -295,6 +295,28 @@ describe('ActiveWorkflowManager', () => {
 				activeVersionId: null,
 			});
 		});
+
+		test('should still remove triggers when webhook cleanup fails', async () => {
+			vi.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
+			vi.spyOn(activeWorkflowManager, 'clearWebhooks').mockRejectedValue(
+				new Error('webhook cleanup failed'),
+			);
+			const removeNonWebhookTriggers = vi
+				.spyOn(activeWorkflowManager, 'removeNonWebhookTriggers')
+				.mockResolvedValue();
+
+			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+				activationMode: 'activate',
+			});
+
+			expect(removeNonWebhookTriggers).toHaveBeenCalledWith('wf-1');
+			expect(workflowRepository.update).toHaveBeenCalledWith('wf-1', {
+				active: false,
+				activeVersionId: null,
+			});
+		});
 	});
 
 	describe('activateWorkflow', () => {

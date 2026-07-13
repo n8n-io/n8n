@@ -756,12 +756,21 @@ export class ActiveWorkflowManager {
 			// Activation may have failed partway with triggers already registered,
 			// in memory and as durable schedule jobs. Tear them down before the
 			// deactivation below so the active version is still resolvable, or
-			// they keep firing a workflow marked inactive.
+			// they keep firing a workflow marked inactive. Each teardown is caught
+			// on its own so a webhook failure never skips the schedule-job cleanup.
 			try {
 				await this.clearWebhooks(workflowId);
+			} catch (cleanupError) {
+				this.logger.error(`Failed to remove webhooks of workflow "${workflowId}"`, {
+					workflowId,
+					error: ensureError(cleanupError),
+				});
+			}
+
+			try {
 				await this.removeNonWebhookTriggers(workflowId);
 			} catch (cleanupError) {
-				this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
+				this.logger.error(`Failed to remove triggers of workflow "${workflowId}"`, {
 					workflowId,
 					error: ensureError(cleanupError),
 				});
