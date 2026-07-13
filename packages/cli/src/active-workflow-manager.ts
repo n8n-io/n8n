@@ -753,6 +753,20 @@ export class ActiveWorkflowManager {
 
 			const dbWorkflow = await this.workflowRepository.findById(workflowId);
 
+			// Activation may have failed partway with triggers already registered,
+			// in memory and as durable schedule jobs. Tear them down before the
+			// deactivation below so the active version is still resolvable, or
+			// they keep firing a workflow marked inactive.
+			try {
+				await this.clearWebhooks(workflowId);
+				await this.removeNonWebhookTriggers(workflowId);
+			} catch (cleanupError) {
+				this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
+					workflowId,
+					error: ensureError(cleanupError),
+				});
+			}
+
 			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
 
 			if (dbWorkflow && (activationMode === 'init' || activationMode === 'leadershipChange')) {

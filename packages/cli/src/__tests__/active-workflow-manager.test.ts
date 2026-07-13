@@ -3,6 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
+import type { UpdateResult } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import {
@@ -246,6 +247,52 @@ describe('ActiveWorkflowManager', () => {
 			expect(push.broadcast).toHaveBeenCalledWith({
 				type: 'workflowFailedToActivate',
 				data: { workflowId: 'wf-1', errorMessage: 'Some error' },
+			});
+		});
+
+		test('should tear down partial registrations before deactivating when activation fails', async () => {
+			vi.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
+			const callOrder: string[] = [];
+			vi.spyOn(activeWorkflowManager, 'clearWebhooks').mockImplementation(async () => {
+				callOrder.push('clearWebhooks');
+			});
+			vi.spyOn(activeWorkflowManager, 'removeNonWebhookTriggers').mockImplementation(async () => {
+				callOrder.push('removeNonWebhookTriggers');
+			});
+			workflowRepository.update.mockImplementation(async () => {
+				callOrder.push('update');
+				return {} as UpdateResult;
+			});
+
+			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+				activationMode: 'activate',
+			});
+
+			expect(callOrder).toEqual(['clearWebhooks', 'removeNonWebhookTriggers', 'update']);
+			expect(workflowRepository.update).toHaveBeenCalledWith('wf-1', {
+				active: false,
+				activeVersionId: null,
+			});
+		});
+
+		test('should still deactivate the workflow when the teardown fails', async () => {
+			vi.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
+			vi.spyOn(activeWorkflowManager, 'clearWebhooks').mockResolvedValue();
+			vi.spyOn(activeWorkflowManager, 'removeNonWebhookTriggers').mockRejectedValue(
+				new Error('teardown failed'),
+			);
+
+			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+				activationMode: 'activate',
+			});
+
+			expect(workflowRepository.update).toHaveBeenCalledWith('wf-1', {
+				active: false,
+				activeVersionId: null,
 			});
 		});
 	});
