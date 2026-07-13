@@ -1,0 +1,47 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_ce8fb446b6e6f9::t_5c10a0b3a0a4e8 68
+  s_ce8fb446b6e6f9::t_3a35b9f7e6df54 108-123,128
+  s_ce8fb446b6e6f9::t_8d150060cc998e 18
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_ce8fb446b6e6f9::t_117be0ef60af15 179-185
+  s_ce8fb446b6e6f9::t_02157eb2321b81 202
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_ce8fb446b6e6f9::t_d66e382b0d6824 11
+  s_ce8fb446b6e6f9::t_4324e0c438cc50 27
+  s_ce8fb446b6e6f9::t_bef79b181e4e41 220-254
+  s_ce8fb446b6e6f9::t_5538618712999b 255-256
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ce8fb446b6e6f9::t_1ffe79225503b9 151-155
+  s_ce8fb446b6e6f9::t_9fc06704cf2365 150
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_ce8fb446b6e6f9::t_dfa3834dd69345 11
+  s_ce8fb446b6e6f9::t_14e9d8d063295c 1001-1129,1137
+  s_ce8fb446b6e6f9::t_77fcc674d507a6 1130-1132,1134-1136
+  s_ce8fb446b6e6f9::t_57580279de3c91 1138-1140
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_ce8fb446b6e6f9::t_a379eb7b2d71cc 65-75,85
+  s_ce8fb446b6e6f9::t_fcc05e6f6e565a 64
+packages/cli/src/workflows/workflow.service.ts
+  s_ce8fb446b6e6f9::t_3294efb7284eca 543
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "dfc02cac167add3596e309afb2db2974e4ec03c9",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ce8fb446b6e6f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a25c3681-60c8-448c-b7f5-842c52bcd385",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

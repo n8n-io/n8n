@@ -1,0 +1,30 @@
+packages/cli/src/modules/mcp/mcp.settings.service.ts
+  s_6c08fcb97d7a7b::t_8ddb5750f0ed73 195-207,210,213,216-219,222,224
+  h_df158766ffbd97 148
+  s_6c08fcb97d7a7b::t_4fb98cc8c5bb47 42-43
+packages/cli/src/modules/mcp/__tests__/mcp.settings.service.test.ts
+  s_6c08fcb97d7a7b::t_d83e2875bd144d 409
+  s_6c08fcb97d7a7b::t_393478016b7c4f 314-388
+  s_6c08fcb97d7a7b::t_97d69b3244d1c0 955-966
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "39ae905857f1f575dc43963f4c85f77c3fe06769",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6c08fcb97d7a7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92e4477d-f91e-4b63-bebd-2f676d82f548",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}
