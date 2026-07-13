@@ -226,6 +226,8 @@ export {
 export {
 	WorkflowPublicationStatusSchema,
 	type WorkflowPublicationStatus,
+	WorkflowListPublicationStatusSchema,
+	type WorkflowListPublicationStatus,
 } from './schemas/workflow-publication-status.schema';
 
 export type { UsageState } from './schemas/usage.schema';

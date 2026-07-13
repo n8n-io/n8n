@@ -25,6 +25,15 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 	// own workflow/version since they delete the parent.
 	let workflow: IWorkflowDb;
 
+	// Fixtures for the batch count query.
+	let wfAllOk: IWorkflowDb;
+	let wfPartial: IWorkflowDb;
+	let wfAllFailed: IWorkflowDb;
+	let wfNone: IWorkflowDb;
+	const versionId1 = 'v-count-1';
+	const versionId2 = 'v-count-2';
+	const versionId3 = 'v-count-3';
+
 	beforeAll(async () => {
 		await testDb.init();
 		repo = Container.get(WorkflowPublicationTriggerStatusRepository);
@@ -34,6 +43,14 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 
 		workflow = await createWorkflow();
 		await seedVersions(workflow, ['v1', 'v2']);
+
+		wfAllOk = await createWorkflow();
+		await seedVersions(wfAllOk, [versionId1]);
+		wfPartial = await createWorkflow();
+		await seedVersions(wfPartial, [versionId2]);
+		wfAllFailed = await createWorkflow();
+		await seedVersions(wfAllFailed, [versionId3]);
+		wfNone = await createWorkflow();
 	});
 	afterEach(async () => {
 		await testDb.truncate(['WorkflowPublicationTriggerStatus', 'WorkflowPublicationOutbox']);
@@ -134,5 +151,39 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 	it('findInFlightByWorkflowId returns null when no outbox records exist', async () => {
 		const wf = await createWorkflow();
 		expect(await outboxRepo.findInFlightByWorkflowId(wf.id)).toBeNull();
+	});
+
+	describe('getStatusCountsByWorkflowIds', () => {
+		it('returns total and failed counts grouped per workflow, and omits workflows with no rows', async () => {
+			// wfAllOk: 2 activated; wfPartial: 1 activated + 1 failed; wfAllFailed: 2 failed; wfNone: no rows
+			await repo.replaceForWorkflow(wfAllOk.id, [
+				{ nodeId: 'n1', versionId: versionId1, status: 'activated', errorMessage: null },
+				{ nodeId: 'n2', versionId: versionId1, status: 'activated', errorMessage: null },
+			]);
+			await repo.replaceForWorkflow(wfPartial.id, [
+				{ nodeId: 'n1', versionId: versionId2, status: 'activated', errorMessage: null },
+				{ nodeId: 'n2', versionId: versionId2, status: 'failed', errorMessage: 'boom' },
+			]);
+			await repo.replaceForWorkflow(wfAllFailed.id, [
+				{ nodeId: 'n1', versionId: versionId3, status: 'failed', errorMessage: 'boom' },
+				{ nodeId: 'n2', versionId: versionId3, status: 'failed', errorMessage: 'boom' },
+			]);
+
+			const counts = await repo.getStatusCountsByWorkflowIds([
+				wfAllOk.id,
+				wfPartial.id,
+				wfAllFailed.id,
+				wfNone.id,
+			]);
+
+			expect(counts.get(wfAllOk.id)).toEqual({ total: 2, failed: 0 });
+			expect(counts.get(wfPartial.id)).toEqual({ total: 2, failed: 1 });
+			expect(counts.get(wfAllFailed.id)).toEqual({ total: 2, failed: 2 });
+			expect(counts.has(wfNone.id)).toBe(false);
+		});
+
+		it('returns an empty map for an empty id list', async () => {
+			expect(await repo.getStatusCountsByWorkflowIds([])).toEqual(new Map());
+		});
 	});
 });

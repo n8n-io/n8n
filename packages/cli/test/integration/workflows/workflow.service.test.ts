@@ -32,6 +32,7 @@ import { RoleService } from '@/services/role.service';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -91,6 +92,7 @@ beforeAll(async () => {
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
 		mock(), // workflowPublicationNotifier
+		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 	);
 });
 
