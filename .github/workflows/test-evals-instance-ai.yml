@@ -312,6 +312,24 @@ jobs:
             exit 1
           fi
 
+      # Disk pressure develops during the eval (per-lane SQLite growth,
+      # verifier snapshots, logs), not at job start — so the runway check
+      # lives here, after the image load and lane startup, where "is there
+      # enough free disk for the next few hours" is a meaningful question.
+      # A run-A-style on-runner fallback build leaves tens of GB of builder
+      # cache that is safe to reclaim once every lane is up.
+      - name: Ensure disk runway for the eval run
+        shell: bash
+        run: |
+          free_gb=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "${free_gb:-0}" -lt 30 ]; then
+            echo "Only ${free_gb}GB free — reclaiming builder cache before the run accretes data"
+            docker builder prune -f
+            df -h /
+          else
+            echo "Disk runway OK: ${free_gb}GB free"
+          fi
+
       - name: Run Instance AI Evals
         continue-on-error: true
         working-directory: packages/@n8n/instance-ai

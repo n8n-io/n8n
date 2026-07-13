@@ -116,7 +116,10 @@ export class LaneAllocator<L extends AllocatableLane> {
 					);
 				}
 			}, graceMs);
-			this.allQuarantinedTimer.unref?.();
+			// Deliberately referenced (no unref): with every lane dead, queued
+			// acquire() promises hold no live handles — an unref'd deadline would
+			// let the process exit 0 mid-run instead of aborting loudly. readmit()
+			// clears it as soon as any lane recovers.
 		}
 	}
 

@@ -726,6 +726,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		string,
 		Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }>
 	>();
+	// Transport-evicted builds leave buildCache before any cleanup pass sees
+	// them, but their artifacts (restored workflows, data tables, thread — and
+	// with it the sandbox) are real. Stash them for the end-of-run drain; the
+	// lane may be mid-restart at eviction time, so immediate cleanup can't work.
+	const orphanedBuilds: Array<{ build: BuildResult; client: N8nClient }> = [];
 	const buildDurations = new Map<string, number>();
 
 	async function getOrBuild(
@@ -879,8 +884,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		// Evict transport-failed builds so a later scenario rebuilds. Agent build
 		// failures stay cached — they are the verdict; rebuilding just multiplies cost.
 		void promise.then(
-			({ build }) => {
-				if (build.transportFailure) buildCache.delete(key);
+			({ build, lane }) => {
+				if (build.transportFailure) {
+					orphanedBuilds.push({ build, client: lane.runner.client });
+					buildCache.delete(key);
+				}
 			},
 			() => buildCache.delete(key),
 		);
@@ -1314,6 +1322,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						await cleanupBuild(lane.runner.client, build, logger);
 					} catch {
 						// Best-effort
+					}
+				}),
+			);
+			await Promise.all(
+				orphanedBuilds.map(async ({ build, client }) => {
+					try {
+						await cleanupBuild(client, build, logger);
+					} catch {
+						// Best-effort — the lane may still be unreachable
 					}
 				}),
 			);
