@@ -1,0 +1,27 @@
+packages/cli/src/public-api/v1/openapi.yml
+  s_197645e4839b2c::t_c8dc817803cea7 21-22,29-32,35-36,39-52
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_197645e4839b2c::t_ca6b62206c5286 3,5,80-86
+  s_197645e4839b2c::t_c5111c020d694f 87-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "21042f1b489f64bba4224464cb841a564effa06b",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_197645e4839b2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82898b2b-d2ab-41b0-839f-2edea9e3e5f7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
