@@ -120,6 +120,15 @@ type WorkflowCredentialResult = {
 	connectedByMe?: boolean;
 };
 
+/** Codes an auth probe must not treat as rejection, stored as a JSON array in the credential. */
+function parseAcceptedStatusCodes(raw: unknown): number[] | undefined {
+	if (typeof raw !== 'string' || raw.trim() === '') return undefined;
+	const parsed = jsonParse<unknown>(raw, { fallbackValue: null });
+	if (!Array.isArray(parsed)) return undefined;
+	const codes = parsed.filter((code): code is number => Number.isInteger(code));
+	return codes.length > 0 ? codes : undefined;
+}
+
 @Service()
 export class CredentialsService {
 	constructor(
@@ -969,6 +978,45 @@ export class CredentialsService {
 		});
 
 		return await this.test(user.id, mergedCredentials);
+	}
+
+	/**
+	 * Auth-probe a stored credential against the test URL persisted in its own
+	 * data (e.g. Templated Custom Auth, whose type declares no test of its own).
+	 * The target is never caller-supplied, so a merely readable credential
+	 * cannot be pointed at an arbitrary endpoint.
+	 */
+	async probeById(user: User, credentialId: string) {
+		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:read'],
+		);
+
+		if (!storedCredential) {
+			throw new CredentialNotFoundError(credentialId);
+		}
+
+		const data = await this.decrypt(storedCredential, true);
+
+		// Expressions (leading '=') and non-http values are refused, not resolved.
+		const testUrl = data.testUrl;
+		if (typeof testUrl !== 'string' || !/^https?:\/\//i.test(testUrl)) {
+			throw new BadRequestError('The credential has no test URL to probe');
+		}
+
+		return await this.credentialsTester.probeCredentialAuth(
+			user.id,
+			storedCredential.type,
+			{
+				id: storedCredential.id,
+				name: storedCredential.name,
+				type: storedCredential.type,
+				data,
+			},
+			testUrl,
+			{ acceptedStatusCodes: parseAcceptedStatusCodes(data.acceptedStatusCodes) },
+		);
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.

@@ -155,6 +155,30 @@ export class CredentialsController {
 		}
 	}
 
+	/**
+	 * Auth-probe a stored credential against the test URL saved in the
+	 * credential itself. Complements `/test`, which needs the credential type
+	 * to declare a test; generic types (e.g. Templated Custom Auth) have none,
+	 * so they are probed against their own persisted test URL instead.
+	 */
+	@Post('/:credentialId/probe')
+	@ProjectScope('credential:read')
+	async probeCredentials(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+	) {
+		try {
+			return await this.credentialsService.probeById(req.user, credentialId);
+		} catch (error) {
+			if (error instanceof CredentialNotFoundError) {
+				throw new ForbiddenError();
+			}
+
+			throw error;
+		}
+	}
+
 	@Post('/')
 	async createCredentials(
 		req: AuthenticatedRequest,
