@@ -1,3 +1,4 @@
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
@@ -73,6 +74,17 @@ function makeNode(overrides: Partial<NodeJSON> = {}): NodeJSON {
 		...overrides,
 	} as NodeJSON;
 }
+
+/**
+ * The n8n Connect managed credential as written onto a node — `id` is `null`,
+ * which NodeJSON's credential slot (`id?: string`) doesn't model. Cast at this
+ * one boundary so the fixtures below stay readable.
+ */
+const MANAGED_NODE_CREDENTIAL = {
+	id: null,
+	name: 'n8n Connect',
+	__aiGatewayManaged: true,
+} as unknown as NonNullable<NodeJSON['credentials']>[string];
 
 function makeWorkflow(nodes: NodeJSON[], connections: Record<string, unknown> = {}): WorkflowJSON {
 	return { nodes, connections } as unknown as WorkflowJSON;
@@ -211,6 +223,29 @@ describe('validateWorkflowConfig', () => {
 						name: 'gateway',
 						__aiGatewayManaged: true,
 					} as unknown as { id: string; name: string },
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
+
+			expect(result.valid).toBe(true);
+			expect(result.issues).toEqual({});
+		});
+
+		it('skips the raw builder-emitted n8n Connect tag (not yet resolved)', async () => {
+			const context = createMockContext();
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
+				makeDescription({
+					credentials: [{ name: 'openAiApi', required: true }],
+				}),
+			);
+			const node = makeNode({
+				type: 'n8n-nodes-base.openAi',
+				credentials: {
+					openAiApi: { id: AI_GATEWAY_MANAGED_TAG, name: 'n8n Connect' } as unknown as {
+						id: string;
+						name: string;
+					},
 				},
 			});
 
@@ -832,6 +867,214 @@ describe('validateWorkflowConfig', () => {
 			expect(result.summary).toContain(
 				'HTTP Request: execution: A previous execution of this node failed: connect ECONNREFUSED',
 			);
+		});
+	});
+
+	describe('n8n Connect (AI Gateway) issues', () => {
+		function makeGatewayContext(overrides?: {
+			isAiGatewayCredentialType?: Mock;
+			nodeDesc?: NodeDescription;
+		}) {
+			const context = createMockContext();
+			if (overrides?.isAiGatewayCredentialType) {
+				(
+					context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+				).isAiGatewayCredentialType = overrides.isAiGatewayCredentialType;
+			}
+			if (overrides?.nodeDesc) {
+				(context.nodeService.getDescription as Mock).mockResolvedValue(overrides.nodeDesc);
+			} else {
+				(context.nodeService.getDescription as Mock).mockResolvedValue(
+					makeDescription({ credentials: [] }),
+				);
+			}
+			return context;
+		}
+
+		it('flags a managed credential on a credential type the gateway does not cover', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(false),
+			});
+			const node = makeNode({
+				credentials: { telegramApi: MANAGED_NODE_CREDENTIAL },
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.valid).toBe(false);
+			expect(result.issues[node.name!].aiGateway).toEqual({
+				unsupportedCredentialType: [expect.stringContaining('telegramApi')],
+			});
+			expect(
+				result.summary.some(
+					(line) => line.includes('unsupportedCredentialType') && line.includes('n8n Connect'),
+				),
+			).toBe(true);
+		});
+
+		it('flags a node whose typeVersion is below the gateway minimum', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: { supported: true, minVersion: 3 },
+				}),
+			});
+			const node = makeNode({
+				typeVersion: 2,
+				credentials: {
+					telegramApi: MANAGED_NODE_CREDENTIAL,
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.issues[node.name!].aiGateway).toEqual({
+				belowMinVersion: [expect.stringContaining('3')],
+			});
+		});
+
+		it('flags an operation the gateway does not cover', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: {
+						supported: true,
+						operations: { message: ['sendMessage'] },
+					},
+				}),
+			});
+			const node = makeNode({
+				parameters: { resource: 'message', operation: 'deleteMessage' },
+				credentials: {
+					telegramApi: MANAGED_NODE_CREDENTIAL,
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.issues[node.name!].aiGateway).toEqual({
+				unsupportedOperation: [expect.stringContaining('deleteMessage')],
+			});
+		});
+
+		it('flags a property set that the gateway hides on this node', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: { supported: true, hiddenProperties: ['baseURL'] },
+				}),
+			});
+			const node = makeNode({
+				parameters: { baseURL: 'https://proxy.example.com/v1' },
+				credentials: {
+					telegramApi: MANAGED_NODE_CREDENTIAL,
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.issues[node.name!].aiGateway).toEqual({
+				hiddenPropertySet: [expect.stringContaining('baseURL')],
+			});
+		});
+
+		it('produces no gateway issues when all four constraints hold', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: {
+						supported: true,
+						operations: { message: ['sendMessage'] },
+						minVersion: 1,
+						hiddenProperties: ['baseURL'],
+					},
+				}),
+			});
+			const node = makeNode({
+				typeVersion: 1,
+				parameters: { resource: 'message', operation: 'sendMessage' },
+				credentials: {
+					telegramApi: MANAGED_NODE_CREDENTIAL,
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.issues[node.name!]?.aiGateway).toBeUndefined();
+		});
+
+		it('emits instance_ai_gateway_verifier_failure per issue kind that fires', async () => {
+			const track = vi.fn();
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: {
+						supported: true,
+						operations: { message: ['sendMessage'] },
+						minVersion: 3,
+						hiddenProperties: ['baseURL'],
+					},
+				}),
+			});
+			(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+
+			const node = makeNode({
+				typeVersion: 2,
+				parameters: { resource: 'message', operation: 'deleteMessage', baseURL: 'https://x' },
+				credentials: {
+					telegramApi: MANAGED_NODE_CREDENTIAL,
+				},
+			});
+
+			await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
+
+			expect(track).toHaveBeenCalledWith('instance_ai_gateway_verifier_failure', {
+				kind: 'belowMinVersion',
+			});
+			expect(track).toHaveBeenCalledWith('instance_ai_gateway_verifier_failure', {
+				kind: 'unsupportedOperation',
+			});
+			expect(track).toHaveBeenCalledWith('instance_ai_gateway_verifier_failure', {
+				kind: 'hiddenPropertySet',
+			});
+		});
+
+		it('does not enforce gateway constraints when the node uses a stored credential', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: {
+						supported: true,
+						operations: { message: ['sendMessage'] },
+						minVersion: 3,
+						hiddenProperties: ['baseURL'],
+					},
+				}),
+			});
+			// typeVersion below min AND unsupported operation AND hidden property set
+			// — but the node uses a stored credential, so gateway constraints do
+			// not apply.
+			const node = makeNode({
+				typeVersion: 2,
+				parameters: { resource: 'message', operation: 'deleteMessage', baseURL: 'https://x' },
+				credentials: { telegramApi: { id: 'cred-1', name: 'My Telegram' } },
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.issues[node.name!]?.aiGateway).toBeUndefined();
 		});
 	});
 });

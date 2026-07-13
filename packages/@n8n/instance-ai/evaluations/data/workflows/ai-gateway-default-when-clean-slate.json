@@ -1,0 +1,24 @@
+{
+	"description": "With no stored OpenAI credential and the AI Gateway licensed on the instance, the setup service auto-applies the managed n8n Connect credential — the user is never prompted for an API key.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build me a webhook that takes some text in the body, summarises it in a couple of sentences using an LLM, and returns the summary."
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "simple",
+	"tags": ["build", "webhook", "llm", "ai-gateway", "n8n-connect"],
+	"triggerType": "webhook",
+	"datasets": ["ai-gateway"],
+	"processExpectations": [
+		"The agent did not ask the user to provide an OpenAI API key or set up a credential — no credential-setup suspension appeared in the transcript, because the n8n Connect managed credential covers the OpenAI type on this instance.",
+		"The agent referred to the managed credential feature as 'n8n Connect' rather than 'AI Gateway' if it mentioned it in chat at all."
+	],
+	"outcomeExpectations": [
+		"A Webhook trigger accepts an incoming request whose body carries the text to summarise.",
+		"An OpenAI-family chat model (an OpenAI node or a LangChain lmChatOpenAi) generates a short summary of the incoming text — the workflow does not use a different LLM provider.",
+		"The chat-model node's OpenAI credential entry has `id: null` and `__aiGatewayManaged: true` — the managed n8n Connect option, not a stored credential reference.",
+		"The workflow returns the summary text back to the webhook caller."
+	]
+}
