@@ -57,8 +57,6 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 		},
 	};
 
-	// OAuth2-only path (chatMessage is hidden + guarded under SP by throwIfChatUnsupported
-	// above), so `chatId` is interpolated raw without buildTeamsPath by design.
 	return await microsoftApiRequest.call(
 		this,
 		'POST',

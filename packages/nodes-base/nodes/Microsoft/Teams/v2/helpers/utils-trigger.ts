@@ -254,7 +254,9 @@ function throwWatchAllUnsupported(this: IHookFunctions): never {
  */
 function decodeSelectedId(this: IHookFunctions, id: string): string {
 	try {
-		return decodeURIComponent(id);
+		// A missing selection arrives as a non-string — keep it empty (not the
+		// string "undefined") so validation raises the required-ID error
+		return decodeURIComponent(String(id ?? ''));
 	} catch {
 		throw new NodeOperationError(this.getNode(), 'The ID is not valid', {
 			description: 'The ID could not be decoded. Re-select it from the list or by URL.',
