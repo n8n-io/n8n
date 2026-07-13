@@ -298,6 +298,7 @@ export class InstanceAiAdapterService {
 		// underlying config is cached process-wide (1h TTL) so this rarely hits
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
+
 		const agentBuilderAdapter = this.getAgentBuilderAdapter();
 		return {
 			userId: user.id,

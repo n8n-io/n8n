@@ -48,11 +48,12 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 } from 'n8n-workflow';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, CONFIG_EVALS_FLAG } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { NodeCatalogService } from '@/node-catalog';
 import type { NodeTypes } from '@/node-types';
+import type { PostHogClient } from '@/posthog';
 
 import {
 	extractExecutionResult,
@@ -3500,5 +3501,27 @@ describe('createNodeAdapter — n8n Connect annotations', () => {
 			supported: true,
 			operations: { __operation_only__: ['pdfToText', 'ocr'] },
 		});
+	});
+});
+
+describe('isConfigEvalsEnabled', () => {
+	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
+
+	it('resolves true when the flag is on', async () => {
+		const adapter = createAdapterWithGatewayMock(vi.fn());
+		const getFeatureFlags = vi.fn().mockResolvedValue({ [CONFIG_EVALS_FLAG]: true });
+		vi.spyOn(Container, 'get').mockReturnValue({ getFeatureFlags } as unknown as PostHogClient);
+
+		expect(await adapter.isConfigEvalsEnabled(user)).toBe(true);
+		expect(getFeatureFlags).toHaveBeenCalledWith(user);
+	});
+
+	it('resolves false when the flag is absent (PostHog outage returns {})', async () => {
+		const adapter = createAdapterWithGatewayMock(vi.fn());
+		vi.spyOn(Container, 'get').mockReturnValue({
+			getFeatureFlags: vi.fn().mockResolvedValue({}),
+		} as unknown as PostHogClient);
+
+		expect(await adapter.isConfigEvalsEnabled(user)).toBe(false);
 	});
 });
