@@ -15,6 +15,7 @@ import { InstanceAiThread } from './instance-ai-thread.entity';
  * table (MAX(seq)), unlike the previous in-memory counter.
  */
 @Entity({ name: 'instance_ai_events' })
+@Index(['threadId', 'runId'])
 export class InstanceAiEventLogEntry extends WithTimestamps {
 	@ManyToOne(() => InstanceAiThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })
@@ -27,8 +28,7 @@ export class InstanceAiEventLogEntry extends WithTimestamps {
 	@PrimaryColumn({ type: 'int' })
 	seq: number;
 
-	/** Indexed for run-scoped reads (agent-tree derivation, run summaries). */
-	@Index()
+	/** Indexed with threadId for run-scoped reads (agent-tree derivation, run summaries). */
 	@Column({ type: 'varchar', length: 64 })
 	runId: string;
 

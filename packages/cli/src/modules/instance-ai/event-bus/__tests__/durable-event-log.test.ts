@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
@@ -22,11 +23,18 @@ class FakeRepo {
 	/** When an append fails, advance the store as if the sibling wrote rows. */
 	siblingRowsPerConflict = 0;
 
+	/** Fail the next N appends with a NON-constraint error (e.g. connectivity). */
+	failNextAppendsTransient = 0;
+
 	async maxSeq(_threadId: string): Promise<number> {
 		return this.rows.length ? this.rows[this.rows.length - 1].seq : 0;
 	}
 
 	async appendBatch(_threadId: string, firstSeq: number, events: InstanceAiEvent[]) {
+		if (this.failNextAppendsTransient > 0) {
+			this.failNextAppendsTransient--;
+			throw new Error('connect ETIMEDOUT');
+		}
 		const conflict =
 			this.failNextAppends > 0 ||
 			this.rows.some((r) => r.seq >= firstSeq && r.seq < firstSeq + events.length);
@@ -46,7 +54,15 @@ class FakeRepo {
 					});
 				}
 			}
-			throw new Error('UNIQUE constraint failed: (threadId, seq)');
+			// Same shape a real (threadId, seq) PK collision produces, so the
+			// writer's isUniqueConstraintError classification is exercised.
+			throw new QueryFailedError(
+				'INSERT INTO instance_ai_events',
+				[],
+				Object.assign(new Error('SQLITE_CONSTRAINT: UNIQUE constraint failed: (threadId, seq)'), {
+					code: 'SQLITE_CONSTRAINT',
+				}),
+			);
 		}
 		let bytes = 0;
 		events.forEach((event, i) => {
@@ -232,6 +248,19 @@ describe('DurableEventLog', () => {
 		const ours = repo.rows.find((r) => r.event.type === 'tool-call');
 		expect(ours?.seq).toBe(3);
 		expect(emitted.find((e) => e.live)?.id).toBe(3);
+	});
+
+	it('retries a transient append failure without counting it as a conflict', async () => {
+		const repo = new FakeRepo();
+		repo.failNextAppendsTransient = 1; // e.g. a connectivity blip, not a PK collision
+		const { log, metrics } = buildLog(repo);
+
+		const emitted = await publishAll(log, [toolCall('tc-1')]);
+
+		expect(metrics.drain.appendConflicts).toBe(0);
+		expect(metrics.drain.appendFailures).toBe(0);
+		expect(repo.rows.find((r) => r.event.type === 'tool-call')?.seq).toBe(1);
+		expect(emitted.find((e) => e.live)?.id).toBe(1);
 	});
 
 	it('drops the batch after exhausting retries but still delivers live', async () => {
