@@ -13,7 +13,7 @@
 | nodeGroups | json | '[]'::json | false |  |  |  |
 | nodes | json |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| versionId | varchar(36) |  | false | [public.workflow_entity](public.workflow_entity.md) [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_published_version](public.workflow_published_version.md) |  |  |
+| versionId | varchar(36) |  | false | [public.workflow_entity](public.workflow_entity.md) [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_published_version](public.workflow_published_version.md) [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
@@ -48,6 +48,7 @@ erDiagram
 "public.workflow_publication_trigger_status" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.workflow_publish_history" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_published_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
+"public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;workflowVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_history" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.workflow_history" {
@@ -107,6 +108,12 @@ erDiagram
   varchar_36_ publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
+}
+"public.workflow_review_request_workflow" {
+  varchar_36_ id
+  varchar_36_ workflowId FK
+  varchar_36_ workflowReviewRequestId FK
+  varchar_36_ workflowVersionId FK
 }
 ```
 

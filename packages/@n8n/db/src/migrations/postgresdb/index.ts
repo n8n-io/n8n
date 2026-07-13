@@ -219,6 +219,7 @@ import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../comm
 import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-CreateSchedulerTables';
 import { AddPartialIndexForGlobalCredentials1784000000044 } from '../common/1784000000044-AddPartialIndexForGlobalCredentials';
 import { AddRecurringCronScheduleKind1784000000045 } from '../common/1784000000045-AddRecurringCronScheduleKind';
+import { CreateWorkflowReviewRequestTables1784000000046 } from '../common/1784000000046-CreateWorkflowReviewRequestTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -443,4 +444,5 @@ export const postgresMigrations: Migration[] = [
 	CreateWorkflowStatisticsDeltaTable1784000000043,
 	AddPartialIndexForGlobalCredentials1784000000044,
 	AddRecurringCronScheduleKind1784000000045,
+	CreateWorkflowReviewRequestTables1784000000046,
 ];
