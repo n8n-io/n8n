@@ -42,19 +42,19 @@ const getInputDataFieldNames = (inputDataFieldName: string) => {
 export const binaryResponse = async (context: IWebhookFunctions): Promise<BinaryResponse[]> => {
 	const inputDataFieldName = context.getNodeParameter('inputDataFieldName', '') as string;
 	const inputDataFieldNames = getInputDataFieldNames(inputDataFieldName);
-	const parentNodes = context.getParentNodes(context.getNode().name);
-	const reversedParentNodes = parentNodes.reverse();
 	const responses: BinaryResponse[] = [];
+	const parentNodesBinaries = context
+		.getParentNodes(context.getNode().name)
+		.reverse()
+		.map((node) => getBinaryDataFromNode(context, node.name) ?? {});
 
 	for (const fieldName of inputDataFieldNames) {
-		const binaryNode = reversedParentNodes.find((node) =>
-			Object.hasOwn(getBinaryDataFromNode(context, node.name) ?? {}, fieldName),
-		);
-		if (!binaryNode) {
+		const nodeBinary = parentNodesBinaries.find((bin) => Object.hasOwn(bin, fieldName));
+		if (!nodeBinary) {
 			throw new OperationalError(`No binary data with field ${fieldName} found.`);
 		}
 
-		const binaryData = getBinaryDataFromNode(context, binaryNode.name)?.[fieldName] as IBinaryData;
+		const binaryData = nodeBinary[fieldName] as IBinaryData;
 
 		responses.push({
 			// If a binaryData has an id, the following field is set:
