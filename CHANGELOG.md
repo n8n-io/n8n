@@ -1,3 +1,11 @@
+## [1.123.65](https://github.com/n8n-io/n8n/compare/n8n@1.123.64...n8n@1.123.65) (2026-07-13)
+
+
+### Bug Fixes
+
+* **core:** Settle webhook execution promise on early errors ([#33998](https://github.com/n8n-io/n8n/issues/33998)) ([ec985f4](https://github.com/n8n-io/n8n/commit/ec985f4bf5cd771b18ab4e922c5da350884ebc55))
+
+
 ## [1.123.64](https://github.com/n8n-io/n8n/compare/n8n@1.123.63...n8n@1.123.64) (2026-07-08)
 
 
