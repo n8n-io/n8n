@@ -95,6 +95,7 @@ export class ExecutionPersistence {
 
 		try {
 			return await this.executionRepository.manager.transaction(async (tx) => {
+				await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
 				const ref = { workflowId: id, executionId };
@@ -121,6 +122,33 @@ export class ExecutionPersistence {
 				throw new DuplicateExecutionError(executionEntity.deduplicationKey, error);
 			}
 			throw error;
+		}
+	}
+
+	/**
+	 * Clear an orphaned tombstone before claiming its dedup key.
+	 *
+	 * A prior attempt can insert the execution under this key and then die before
+	 * dispatching it, so the row never advances past `new`. That tombstone asserts
+	 * an effect that never happened: without clearing it, the redelivered occurrence
+	 * collides on insert and the caller mistakes it for an already-run handoff,
+	 * dropping the occurrence. Deleting it (cascading its data) lets the redelivery
+	 * take over the key. Any other status reflects a real dispatch, so it is left in
+	 * place and the insert still surfaces the duplicate.
+	 *
+	 * Known imprecision, accepted under the scheduler's at-least-once contract: in
+	 * queue mode an execution stays `new` between being enqueued and a worker picking
+	 * it up, so a redelivery racing that window deletes a genuinely enqueued row and
+	 * re-dispatches the occurrence (the worker's job then finds no execution and fails
+	 * noisily, but the occurrence still runs). Telling "inserted, never enqueued" from
+	 * "enqueued, not yet picked up" apart needs schema the misfire-policy work owns.
+	 */
+	private async reclaimTombstone(
+		tx: EntityManager,
+		deduplicationKey: string | null | undefined,
+	): Promise<void> {
+		if (deduplicationKey) {
+			await tx.delete(ExecutionEntity, { deduplicationKey, status: 'new' });
 		}
 	}
 
