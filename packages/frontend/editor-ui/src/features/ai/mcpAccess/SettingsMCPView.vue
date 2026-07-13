@@ -26,7 +26,6 @@ import {
 	N8nLink,
 	N8nInputLabel,
 	N8nInput,
-	N8nCallout,
 	N8nPreviewTag,
 } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
@@ -93,7 +92,6 @@ const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 const redirectUrisInput = ref('');
 const redirectUrisError = ref('');
 const redirectUrisLoading = ref(false);
-const redirectUriWarningDismissed = ref(false);
 
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
 
@@ -110,14 +108,6 @@ const instanceCapacityNoticeContent = computed(() => {
 		interpolate: { count: String(stats.count), limit: String(stats.limit) },
 	});
 });
-
-const showRedirectUriWarning = computed(
-	() =>
-		canManageMcpInstance.value &&
-		mcpStore.mcpAccessEnabled &&
-		mcpStore.allowedRedirectUris.length === 0 &&
-		!redirectUriWarningDismissed.value,
-);
 
 const showConnectWorkflowsButton = computed(() => {
 	return selectedTab.value === 'workflows' && availableWorkflowsTotal.value > 0;
@@ -458,23 +448,6 @@ onMounted(async () => {
 				@disable-mcp-access="onToggleMCPAccess(!mcpStore.mcpAccessEnabled)"
 			/>
 		</header>
-		<N8nCallout
-			v-if="showRedirectUriWarning"
-			theme="warning"
-			:class="$style['redirect-uri-warning']"
-			data-test-id="mcp-redirect-uri-warning"
-		>
-			{{ i18n.baseText('settings.mcp.allowedRedirectUris.warning') }}
-			<template #trailingContent>
-				<N8nButton
-					icon="x"
-					variant="ghost"
-					size="small"
-					iconOnly
-					@click="redirectUriWarningDismissed = true"
-				/>
-			</template>
-		</N8nCallout>
 		<MCPEmptyState
 			v-if="!mcpStore.mcpAccessEnabled"
 			:disabled="!canToggleMCP"
@@ -617,10 +590,6 @@ onMounted(async () => {
 .actions {
 	display: flex;
 	gap: var(--spacing--2xs);
-}
-
-.redirect-uri-warning {
-	margin-bottom: var(--spacing--sm);
 }
 
 .oauth-settings-content {
