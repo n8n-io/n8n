@@ -1,5 +1,6 @@
 import { INSTANCE_AI_EPHEMERAL_EVENT_TYPES, type InstanceAiEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
 
@@ -275,6 +276,7 @@ export class DurableEventLog {
 		threadId: string,
 		events: InstanceAiEvent[],
 	): Promise<number | undefined> {
+		let lastError: unknown;
 		for (let attempt = 1; attempt <= MAX_APPEND_ATTEMPTS; attempt++) {
 			const firstSeq = (await this.currentSeq(threadId)) + 1;
 			try {
@@ -283,19 +285,33 @@ export class DurableEventLog {
 				this.metrics.recordDrainBatch(events.length, bytes);
 				return firstSeq;
 			} catch (error) {
-				this.metrics.recordAppendConflict(attempt);
+				lastError = error;
+				// Re-seed unconditionally: on a (threadId, seq) collision another
+				// main won the range; on any other failure the re-read is one cheap
+				// query, and it keeps the retry loop uniform even where a driver
+				// reports a PK violation under a code the detector doesn't know.
 				this.lastSeq.delete(threadId);
-				this.logger.warn('Instance AI event log append conflict, retrying', {
-					threadId,
-					attempt,
-					error,
-				});
+				if (isUniqueConstraintError(error)) {
+					this.metrics.recordAppendConflict(attempt);
+					this.logger.warn('Instance AI event log append conflict, retrying', {
+						threadId,
+						attempt,
+						error,
+					});
+				} else {
+					this.logger.warn('Instance AI event log append failed, retrying', {
+						threadId,
+						attempt,
+						error,
+					});
+				}
 			}
 		}
 		this.metrics.recordAppendFailure(events.length);
 		this.logger.error('Instance AI event log append failed, dropping batch', {
 			threadId,
 			events: events.length,
+			error: lastError,
 		});
 		return undefined;
 	}
