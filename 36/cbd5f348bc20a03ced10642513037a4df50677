@@ -1,0 +1,29 @@
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_ce8fb446b6e6f9::t_856e4228c56484 172,177
+  s_ce8fb446b6e6f9::t_e5de0cb27331c4 260
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.yml
+  s_ce8fb446b6e6f9::t_3050a984d1dc3a 69-77
+packages/cli/src/public-api/types.ts
+  s_ce8fb446b6e6f9::t_8b13c50a3e40be 136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "36cbd5f348bc20a03ced10642513037a4df50677",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ce8fb446b6e6f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a25c3681-60c8-448c-b7f5-842c52bcd385",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
