@@ -140,17 +140,24 @@ const remainingChannelOptionLabels = computed(() => {
 	);
 	const remainingCount = remainingChannels.length - 3;
 
-	return (
-		remainingChannels
-			.map((channel) => channel.label)
-			.slice(0, 3)
-			.join(', ') + (remainingCount > 0 ? `, ${remainingCount} more` : '')
-	);
+	const labels = remainingChannels
+		.map((channel) => channel.label)
+		.slice(0, 3)
+		.join(', ');
+
+	return remainingCount > 0
+		? i18n.baseText('agents.builder.triggers.remaining', {
+				interpolate: { labels, count: remainingCount },
+			})
+		: labels;
 });
 </script>
 
 <template>
-	<div :class="$style.row">
+	<div
+		:class="[$style.row, props.disabled && $style.disabled]"
+		:inert="props.disabled || undefined"
+	>
 		<N8nText size="small" :class="$style.rowLabel">
 			{{ i18n.baseText('agents.builder.triggers.title') }}
 		</N8nText>
@@ -158,10 +165,12 @@ const remainingChannelOptionLabels = computed(() => {
 			<button
 				v-for="channel in channelRows"
 				:key="channel.type"
+
 				:class="[$style.channelCard, channel.invalidReasons.length > 0 && $style.channelCardInvalid]"
 				:disabled="props.disabled"
 				:aria-invalid="channel.invalidReasons.length > 0"
 				:title="channel.invalidReasons.join('\n')"
+
 				@click="openChannelEdit(channel.type)"
 			>
 				<N8nIcon v-if="channel.icon" :icon="channel.icon" size="large" />
@@ -206,6 +215,10 @@ const remainingChannelOptionLabels = computed(() => {
 .row {
 	display: flex;
 	flex-direction: column;
+}
+
+.disabled {
+	opacity: 0.5;
 }
 
 .rowLabel {

@@ -100,6 +100,7 @@ const i18n = useI18n();
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
 					<AgentChannelsSection
+						:key="`${projectId}:${agentId}`"
 						:connected-triggers="connectedTriggers"
 						:disabled="childrenDisabled"
 						:agent-id="agentId"

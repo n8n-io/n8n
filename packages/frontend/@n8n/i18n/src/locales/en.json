@@ -7412,6 +7412,7 @@
 	"agents.builder.triggers.count": "{count} channel connected | {count} channels connected",
 	"agents.builder.triggers.empty": "No channels connected yet.",
 	"agents.builder.triggers.add": "Add channel",
+	"agents.builder.triggers.remaining": "{labels}, {count} more",
 	"agents.builder.triggers.empty.title": "No triggers configured",
 	"agents.builder.triggers.empty.description": "Add a channel to let this agent respond to events from a chat platform.",
 	"agents.builder.addTrigger.modal.title": "Add trigger",
