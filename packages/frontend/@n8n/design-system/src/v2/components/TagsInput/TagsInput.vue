@@ -66,7 +66,7 @@ const rootProps = useForwardPropsEmits(
 );
 
 function getTagKey(value: TagsInputValue, index: number): string {
-	return typeof value === 'string' ? value : `tag-${index}`;
+	return typeof value === 'string' ? `${value}-${index}` : `tag-${index}`;
 }
 
 function getDisplayValue(value: TagsInputValue): string {

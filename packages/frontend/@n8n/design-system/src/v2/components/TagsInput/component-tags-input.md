@@ -39,7 +39,7 @@ Cap height with `--tags-input--max-height` on a parent (or the field). The chrom
 
 **Slots**
 
-- `input`: `{ id?, placeholder, autoFocus?, disabled?, class }` - Replace the default text input. Apply `class` so the field keeps TagsInput input styles
+- `input`: `{ id?, placeholder, autoFocus?, disabled?, class }` - Replace the default text input. Apply `class` so the field keeps TagsInput input styles. Re-exported `TagsInputInput` can be used when composing a custom input.
 - `tag`: `{ value, displayValue, index, disabled, ui }` - Replace tag content inside the item chrome. Keep using `TagsInputItemText` / `TagsInputItemDelete` (re-exported from `@n8n/design-system`) for label + remove a11y. `ui.text` / `ui.delete` are the default class names
 
 
@@ -72,6 +72,8 @@ import {
 
 const tags = ref([
   { label: 'production', color: 'var(--color--success)' },
+  { label: 'billing', color: 'var(--color--warning)' },
+  { label: 'critical', color: 'var(--color--danger)' },
 ])
 </script>
 
@@ -81,8 +83,19 @@ const tags = ref([
     :display-value="(t) => t.label"
     :convert-value="(input) => ({ label: input, color: 'var(--color--text--tint-1)' })"
   >
-    <template #tag="{ value, disabled, ui }">
-      <span :style="{ backgroundColor: value.color }" />
+    <template #tag="{ value: tag, disabled, ui }">
+      <span
+        aria-hidden="true"
+        :style="{
+          width: 'var(--spacing--2xs)',
+          height: 'var(--spacing--2xs)',
+          marginTop: 'var(--spacing--5xs)',
+          marginInlineEnd: 'var(--spacing--4xs)',
+          borderRadius: 'var(--radius--full)',
+          backgroundColor: tag.color,
+          flexShrink: 0,
+        }"
+      />
       <TagsInputItemText :class="ui.text" />
       <TagsInputItemDelete :class="ui.delete" :disabled="disabled">
         <N8nIcon icon="x" size="small" />
