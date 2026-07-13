@@ -226,19 +226,17 @@ describe('getSystemPrompt', () => {
 			expect(prompt).not.toContain('build-workflow-with-agent');
 		});
 
-		it('forbids the agent_builder tool during workflow building when the agents module is enabled', async () => {
+		it('forbids the build-agent tool during workflow building when the agents module is enabled', async () => {
 			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
 
-			expect(prompt).toContain('do not call `agent_builder` at all');
-			expect(prompt).toContain(
-				'do not route around that by creating a custom tool through `agent_builder`',
-			);
+			expect(prompt).toContain('do not call `build-agent` at all');
+			expect(prompt).toContain('do not route around that by delegating to `build-agent`');
 		});
 
-		it('omits the agent_builder fence and intent gate when the agents module is disabled', async () => {
+		it('omits the build-agent fence and intent gate when the agents module is disabled', async () => {
 			const prompt = await getSystemPromptWithEnabledModules(undefined);
 
-			expect(prompt).not.toContain('agent_builder');
+			expect(prompt).not.toContain('build-agent');
 			expect(prompt).not.toContain('Intent gate');
 		});
 

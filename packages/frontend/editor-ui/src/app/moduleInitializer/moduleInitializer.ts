@@ -4,7 +4,10 @@ import { VIEWS } from '@/app/constants';
 import { modules } from '@/app/modules.manifest';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { INSTANCE_AI_SETTINGS_VIEW } from '@/features/ai/instanceAi/constants';
+import {
+	INSTANCE_AI_NEW_VIEW,
+	INSTANCE_AI_SETTINGS_VIEW,
+} from '@/features/ai/instanceAi/constants';
 
 /**
  * Initialize modules resources (used in ResourcesListLayout), done in init.ts
@@ -62,11 +65,12 @@ const checkModuleAvailability = (options: any) => {
 		return false;
 	}
 
-	// Settings route is always accessible even when the admin toggle is off;
-	// other instance-ai routes are disabled.
+	// When the admin toggle is off, instance-ai routes are disabled except the
+	// settings route, and the template deep-link route, whose guard falls back
+	// to the classic template setup instead of losing the user's intent.
 	if (options.to.meta.moduleName === 'instance-ai') {
 		const routeName = options.to.name;
-		if (routeName !== INSTANCE_AI_SETTINGS_VIEW) {
+		if (routeName !== INSTANCE_AI_SETTINGS_VIEW && routeName !== INSTANCE_AI_NEW_VIEW) {
 			const enabled = settingsStore.moduleSettings['instance-ai']?.enabled;
 			if (enabled === false) {
 				return false;

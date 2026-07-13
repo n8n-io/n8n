@@ -50,7 +50,7 @@ export function getConfigRulesSection(): string {
 #### Agent Config Rules
 
 - \`model\` must be "provider/model-name".
-- \`credential\` must be the id returned by \`resolve_llm\` or \`ask_llm\`.
+- \`credential\` must be the id returned by \`resolve_llm\`.
 - Fresh agents must include
   \`memory: { "enabled": true, "storage": "n8n" }\`
   unless the user explicitly asks to disable memory.
@@ -58,7 +58,7 @@ export function getConfigRulesSection(): string {
 - \`memory.episodicMemory\` requires \`ask_embedding_credential\` with
   \`credentialType: "openAiApi"\`; use its returned \`credentialId\` value.
 - Memory worker model fields use \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`;
-  use only credential IDs returned by \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
+  use only credential IDs returned by \`resolve_llm\` or \`ask_credential\`.
 - Sub-agent configuration lives at top level under \`subAgents\`. Load
   \`agent-builder-sub-agents\` before adding refs or changing
   \`subAgents.maxChildren\`.
