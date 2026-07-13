@@ -31,6 +31,12 @@ export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3' | 'az';
 // Partial index (Postgres only) — supports paginated list queries filtered by
 // workflowId + status without full sequential scans. See migration 1784000000029.
 @Index(['workflowId', 'status', 'id'], { where: '"deletedAt" IS NULL' })
+// Partial unique index, load-bearing for the durable scheduler: this index — not
+// the scheduler's claim, lease, or epoch fencing — is what suppresses a duplicate
+// effect per deduplicationKey when the at-least-once scheduler redelivers an
+// occurrence. Dropping it silently removes that protection. See migration
+// 1778000000000.
+@Index(['deduplicationKey'], { unique: true, where: '"deduplicationKey" IS NOT NULL' })
 export class ExecutionEntity {
 	@Generated()
 	@PrimaryColumn({ transformer: idStringifier })
