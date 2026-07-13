@@ -418,9 +418,13 @@ async function consumeStreamPass(args: {
 			currentResponseId ?? syntheticSegmentId,
 		);
 
-		// A structural fact ends the synthetic segment; the next delta mints a
-		// fresh id so two different segments can never share one.
-		if (mappedEvent && !isDeltaChunk) syntheticSegmentId = undefined;
+		// A segment boundary ends the synthetic segment; the next delta mints a
+		// fresh id so two different segments can never share one. finish-step
+		// maps to no event but is still a boundary — left sticky, a provider
+		// that never emits start-step would leak one id across steps, and the
+		// reducer's id-keyed replace could then drop an earlier block on replay.
+		const isFinishStep = isRecord(chunk) && chunk.type === 'finish-step';
+		if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
 
 		// Scan/redact secrets & PII before events reach the user. Buffered
 		// delta text is released here at structural boundaries, so this may

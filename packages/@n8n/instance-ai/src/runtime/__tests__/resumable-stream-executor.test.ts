@@ -334,6 +334,43 @@ describe('executeResumableStream', () => {
 		expect(second?.responseId).not.toBe(first?.responseId);
 	});
 
+	it('rolls the synthetic responseId at a finish-step boundary that maps to no event', async () => {
+		const eventBus = createEventBus();
+
+		// finish-step publishes nothing, but it still separates two segments; a
+		// sticky synthetic id across it would let the reducer's id-keyed replace
+		// pair blocks from different steps.
+		await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					textChunk('First step text'),
+					{ type: 'finish-step' },
+					textChunk('Second step text'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
+		// The output redactor may merge contiguous deltas, so match by prefix.
+		const first = publishedEvents.find((event) => event.payload?.text?.startsWith('First'));
+		const second = publishedEvents.find((event) => event.payload?.text?.startsWith('Second'));
+
+		expect(first?.responseId).toBeDefined();
+		expect(second?.responseId).toBeDefined();
+		expect(second?.responseId).not.toBe(first?.responseId);
+	});
+
 	it('stops consuming after a requested handoff while publishing the current tool result', async () => {
 		const eventBus = createEventBus();
 		let shouldStop = false;
