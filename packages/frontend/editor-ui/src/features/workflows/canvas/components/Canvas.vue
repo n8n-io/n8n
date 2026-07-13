@@ -78,6 +78,7 @@ import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.v
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
+import { useCanvasNodeGroupSelection } from '../composables/useCanvasNodeGroupSelection';
 import {
 	useCanvasNodeGroupTelemetry,
 	type CanvasNodeGroupEventSource,
@@ -445,6 +446,18 @@ const keyMap = computed(() => {
 		z: onToggleZoomMode,
 	};
 
+	// Group collapse state is a view preference, so expanding/collapsing
+	// groups works in read-only canvases too.
+	const hasNoGroups = () => workflowDocumentStore.value.allGroups.length === 0;
+	readOnlyKeymap.alt_g = {
+		disabled: hasNoGroups,
+		run: () => onKeyboardSetGroupsExpanded(true),
+	};
+	readOnlyKeymap.shift_alt_g = {
+		disabled: hasNoGroups,
+		run: () => onKeyboardSetGroupsExpanded(false),
+	};
+
 	if (props.readOnly && props.canExecute) {
 		return { ...readOnlyKeymap, ctrl_enter: () => emit('run:workflow') };
 	}
@@ -507,8 +520,10 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
 
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
 
-// Selected node ids, with each selected collapsed group expanded to its members
-// so bulk operations (copy, duplicate, …) reach the nodes its title bar stands for.
+// Selected node ids, with each selected group expanded to its members so bulk
+// operations (copy, duplicate, …) reach the nodes its title bar stands for.
+// Expanded groups already have their members selected; this mainly covers
+// collapsed groups, whose members are hidden.
 const selectedNodeIdsWithGroupMembers = computed(() => {
 	const ids = new Set(selectedNodeIds.value);
 	for (const node of selectedNodesAndGroups.value) {
@@ -550,7 +565,7 @@ watch(selectedNodeIds, (newIds) => {
 	}
 });
 
-// Surface a selected collapsed group so surfaces outside the canvas (logs panel) can sync to it
+// Surface a selected group so surfaces outside the canvas (logs panel) can sync to it
 const selectedCanvasGroupId = computed(() => {
 	const groupNode = selectedNodesAndGroups.value.find((node) => isCanvasGroupNode(node));
 	return (groupNode && parseCanvasGroupNodeId(groupNode.id)) ?? null;
@@ -612,6 +627,31 @@ const groupDrag = useCanvasNodeGroupDrag({
 	onMovedExpandedGroups: commitPushedPositionsForSourceGroups,
 });
 
+// Groups select as one unit: title bar and member selection stay in sync,
+// and a fully selected group surfaces the selection instead of its members.
+const { fullySelectedGroupMemberIds, selectedElementCount, selectionBoxBounds } =
+	useCanvasNodeGroupSelection({
+		canvasId: props.id,
+		isEnabled: () => props.showNodeGroups,
+		getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
+		getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
+		isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
+	});
+
+// VueFlow sizes its selection box to the selected VueFlow nodes, but a group
+// node is only the title bar — its expanded frame overflows the box. Feed the
+// corrected bounds (full group frames included) to the box via CSS variables.
+const selectionBoxStyle = computed(() => {
+	const bounds = selectionBoxBounds.value;
+	if (!bounds) return undefined;
+	return {
+		'--canvas-selection-box--left': `${bounds.x}px`,
+		'--canvas-selection-box--top': `${bounds.y}px`,
+		'--canvas-selection-box--width': `${bounds.width}px`,
+		'--canvas-selection-box--height': `${bounds.height}px`,
+	};
+});
+
 function onNodeDragStart(event: NodeDragEvent) {
 	groupDrag.onNodeDragStart(event);
 }
@@ -633,7 +673,10 @@ function onSelectionDrag(event: NodeDragEvent) {
 	groupDrag.onSelectionDrag(event);
 }
 
-function onCanvasGroupToggle(groupId: string) {
+function onCanvasGroupToggle(
+	groupId: string,
+	source: CanvasNodeGroupEventSource = 'group-toolbar',
+) {
 	injectedNodeGroupView?.toggleCollapsed(groupId);
 
 	if (!injectedNodeGroupView) return;
@@ -642,15 +685,17 @@ function onCanvasGroupToggle(groupId: string) {
 	const group = workflowDocumentStore.value.getGroupById(groupId);
 	if (group) {
 		if (isCollapsed) {
-			groupTelemetry.trackCollapsed(group, 'group-toolbar');
+			groupTelemetry.trackCollapsed(group, source);
 		} else {
-			groupTelemetry.trackExpanded(group, 'group-toolbar');
+			groupTelemetry.trackExpanded(group, source);
 		}
 	}
 
+	const memberNodeIds = workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
 	if (isCollapsed) {
-		// Collapsing hides the members, so drop them from the selection to clear the lingering box.
-		const memberNodeIds = workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
+		// Collapsing hides the members, so drop them from the selection to clear
+		// the lingering box. A selected title bar stays selected and keeps
+		// representing the group.
 		const selectedMembers = memberNodeIds
 			.map((nodeId) => findNode(nodeId))
 			.filter((node): node is NonNullable<typeof node> => node?.selected ?? false);
@@ -658,10 +703,12 @@ function onCanvasGroupToggle(groupId: string) {
 			removeSelectedNodes(selectedMembers);
 		}
 	} else {
-		// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
+		// Expanding keeps the whole group selected: extend a selected title bar's
+		// selection to its now-visible members.
 		const groupNode = findNode(createCanvasGroupNodeId(groupId));
-		if (groupNode) {
-			removeSelectedNodes([groupNode]);
+		if (groupNode?.selected) {
+			const memberNodes = memberNodeIds.map(findNode).filter(isPresent);
+			addSelectedNodes([...selectedNodesAndGroups.value, ...memberNodes]);
 		}
 	}
 }
@@ -691,6 +738,71 @@ function onCanvasGroupUngroup(
 	if (group) {
 		groupTelemetry.trackUngrouped(group, source);
 	}
+}
+
+// Expand or collapse groups through the same path as the single toggle so
+// selection sync, push layout and telemetry stay consistent. Groups already
+// in the target state are left alone.
+function setGroupsExpanded(
+	groupIds: string[],
+	expanded: boolean,
+	source: CanvasNodeGroupEventSource,
+) {
+	if (!injectedNodeGroupView) return;
+	for (const groupId of groupIds) {
+		// Collapsed groups need a toggle to expand; expanded ones to collapse.
+		const needsToggle = injectedNodeGroupView.isGroupCollapsed(groupId) === expanded;
+		if (needsToggle) {
+			onCanvasGroupToggle(groupId, source);
+		}
+	}
+}
+
+function onSetAllGroupsExpanded(expanded: boolean, source: CanvasNodeGroupEventSource) {
+	setGroupsExpanded(
+		workflowDocumentStore.value.allGroups.map((group) => group.id),
+		expanded,
+		source,
+	);
+}
+
+// Distinct groups behind a context menu target: the carried group when a
+// title bar was targeted, otherwise the groups of the targeted nodes —
+// ungrouped nodes resolve to none and are ignored.
+function resolveTargetGroupIds(nodeIds: string[], groupId?: string): string[] {
+	if (groupId) return [groupId];
+	const groupIds = new Set<string>();
+	for (const nodeId of nodeIds) {
+		const group = workflowDocumentStore.value.getGroupForNode(nodeId);
+		if (group) groupIds.add(group.id);
+	}
+	return [...groupIds];
+}
+
+// Strict variant for groups-only targets: a single loose node yields
+// undefined. Keeps Alt+G aligned with the menu's expand/collapse visibility.
+function resolveGroupsOnlyTargetIds(nodeIds: string[]): string[] | undefined {
+	const groupIds = new Set<string>();
+	for (const nodeId of nodeIds) {
+		const group = workflowDocumentStore.value.getGroupForNode(nodeId);
+		if (!group) return undefined;
+		groupIds.add(group.id);
+	}
+	return groupIds.size > 0 ? [...groupIds] : undefined;
+}
+
+// Context-aware Alt+G / Shift+Alt+G: an empty selection targets every group;
+// a groups-only selection targets its groups. Mirrors the context menu, which
+// hides its expand/collapse items for mixed selections — so a selection
+// containing a loose node no-ops here too.
+function onKeyboardSetGroupsExpanded(expanded: boolean) {
+	if (selectedNodesAndGroups.value.length === 0) {
+		onSetAllGroupsExpanded(expanded, 'keyboard-shortcut');
+		return;
+	}
+	const groupIds = resolveGroupsOnlyTargetIds(selectedNodeIdsWithGroupMembers.value);
+	if (groupIds === undefined) return;
+	setGroupsExpanded(groupIds, expanded, 'keyboard-shortcut');
 }
 
 /**
@@ -725,7 +837,9 @@ function onSelectionDragStop(event: NodeDragEvent) {
 }
 
 function onSelectionEnd(event: MouseEvent) {
-	if (selectedNodes.value.length === 1) {
+	// A single-element selection (one node, or one whole group) surfaces
+	// itself — the selection box would only add noise.
+	if (selectedElementCount.value <= 1) {
 		nodesSelectionActive.value = false;
 	}
 
@@ -1055,13 +1169,21 @@ const groupNodeFallbackDataById = computed(() =>
 
 const contextMenu = useContextMenu();
 
+// Carried on the menu target so mutating items disable on canvases that are
+// read-only through props alone (e.g. while the AI builder streams) — the
+// instance-wide read-only checks don't cover per-canvas state.
+const isContextMenuReadOnly = computed(() => props.readOnly || props.suppressInteraction);
+
 function onOpenContextMenu(
 	event: MouseEvent,
 	target?: Pick<Extract<ContextMenuTarget, { source: 'canvas' }>, 'nodeId'>,
 ) {
 	contextMenu.open(event, {
 		source: 'canvas',
-		nodeIds: selectedNodeIds.value,
+		// Include collapsed group members so menu actions reach the nodes a
+		// selected title bar stands for.
+		nodeIds: selectedNodeIdsWithGroupMembers.value,
+		readOnly: isContextMenuReadOnly.value,
 		...target,
 	});
 }
@@ -1076,24 +1198,43 @@ function onOpenNodeContextMenu(
 	source: 'node-button' | 'node-right-click',
 ) {
 	if (source === 'node-button') {
-		contextMenu.open(event, { source, nodeId: id });
+		contextMenu.open(event, { source, nodeId: id, readOnly: isContextMenuReadOnly.value });
 	} else if (selectedNodeIds.value.length > 1 && selectedNodeIds.value.includes(id)) {
 		onOpenContextMenu(event, { nodeId: id });
 	} else {
 		onSelectNodes({ ids: [id] });
-		contextMenu.open(event, { source, nodeId: id });
+		contextMenu.open(event, { source, nodeId: id, readOnly: isContextMenuReadOnly.value });
 	}
 }
 
 function onOpenGroupContextMenu(groupId: string, event: MouseEvent) {
-	// Both group actions mutate the workflow, so fall through to the native
-	// menu when this canvas instance is read-only or suppressed. The item
-	// disabled state only reflects instance-wide read-only checks, not these
-	// per-canvas props.
-	if (props.readOnly || props.suppressInteraction) return;
+	// Fall through to the native menu when interaction is suppressed. A
+	// read-only canvas keeps the menu (like nodes do) — the target's readOnly
+	// flag disables the mutating items while view/copy actions stay usable.
+	if (props.suppressInteraction) return;
 	const group = workflowDocumentStore.value.getGroupById(groupId);
 	if (!group) return;
-	contextMenu.open(event, { source: 'group', groupId, nodeIds: [...group.nodeIds] });
+
+	// Mirror node behavior: a right-click inside a wider selection targets the
+	// whole selection; otherwise the group becomes the selection.
+	const groupNode = findNode(createCanvasGroupNodeId(groupId));
+	if (groupNode?.selected && selectedElementCount.value > 1) {
+		onOpenContextMenu(event);
+		return;
+	}
+
+	// Reselecting an already-selected group would pass through a members-only
+	// state the selection reconciler reads as a title-bar deselect, cascading
+	// to a full deselect — keep the selection untouched instead.
+	if (!groupNode?.selected) {
+		onSelectNodes({ ids: group.nodeIds });
+	}
+	contextMenu.open(event, {
+		source: 'group',
+		groupId,
+		nodeIds: [...group.nodeIds],
+		readOnly: isContextMenuReadOnly.value,
+	});
 }
 
 async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[], groupId?: string) {
@@ -1153,6 +1294,14 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			}
 			return;
 		}
+		case 'expand_all_groups':
+			return onSetAllGroupsExpanded(true, 'context-menu');
+		case 'collapse_all_groups':
+			return onSetAllGroupsExpanded(false, 'context-menu');
+		case 'expand_selected_groups':
+			return setGroupsExpanded(resolveTargetGroupIds(nodeIds, groupId), true, 'context-menu');
+		case 'collapse_selected_groups':
+			return setGroupsExpanded(resolveTargetGroupIds(nodeIds, groupId), false, 'context-menu');
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}
@@ -1401,6 +1550,7 @@ defineExpose({
 		:nodes="vueFlowNodes"
 		:edges="connections"
 		:class="classes"
+		:style="selectionBoxStyle"
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
 		:connection-radius="60"
@@ -1455,6 +1605,7 @@ defineExpose({
 				<Node
 					v-bind="nodeProps"
 					:data="nodeDataById[nodeProps.id]"
+					:selected="nodeProps.selected && !fullySelectedGroupMemberIds.has(nodeProps.id)"
 					:read-only="readOnly"
 					:can-execute="canExecute"
 					:event-bus="eventBus"
@@ -1512,6 +1663,7 @@ defineExpose({
 		<CanvasSelectionToolbar
 			v-if="showNodeGroups"
 			:selected-nodes="selectedNodes"
+			:selection-bounds="selectionBoxBounds"
 			:read-only="readOnly || suppressInteraction"
 			@group-created="onNodeGroupCreated"
 			@extract-workflow="emit('extract-workflow', $event)"
@@ -1574,6 +1726,20 @@ defineExpose({
 		/* stylelint-disable-next-line @n8n/css-var-naming */
 		--canvas-zoom-compensation-factor: 0.5;
 	}
+
+	// VueFlow sizes its selection box to the selected VueFlow nodes only, which
+	// cuts through expanded group frames (the frame overflows the title-bar
+	// node). Override its inline geometry with our corrected bounds (set as CSS
+	// variables in `selectionBoxStyle` whenever a selection exists), so the box
+	// always wraps selected groups in full.
+	/* stylelint-disable declaration-no-important */
+	:global(.vue-flow__nodesselection-rect) {
+		left: var(--canvas-selection-box--left) !important;
+		top: var(--canvas-selection-box--top) !important;
+		width: var(--canvas-selection-box--width) !important;
+		height: var(--canvas-selection-box--height) !important;
+	}
+	/* stylelint-enable declaration-no-important */
 }
 </style>
 

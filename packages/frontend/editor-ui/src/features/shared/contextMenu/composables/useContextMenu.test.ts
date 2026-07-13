@@ -34,6 +34,23 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	injectWorkflowDocumentStore: vi.fn(),
 }));
 
+// Collapse state is provided by the hosting canvas via injection, which is
+// unavailable in this non-component harness — stub it with a mutable holder.
+// undefined mirrors a host without a canvas (items stay enabled).
+const groupViewState = vi.hoisted(() => ({
+	current: undefined as { isGroupCollapsed: (groupId: string) => boolean } | undefined,
+}));
+vi.mock('./contextMenuGroupView', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./contextMenuGroupView')>()),
+	injectContextMenuGroupView: () => groupViewState.current,
+}));
+
+/** Fakes the canvas group view: the given group ids are collapsed, the rest expanded. */
+function fakeGroupView(collapsedGroupIds: string[] = []) {
+	const collapsed = new Set(collapsedGroupIds);
+	groupViewState.current = { isGroupCollapsed: (groupId) => collapsed.has(groupId) };
+}
+
 // useContextMenuItems resolves per-editor host overrides via inject, which is
 // unavailable in this non-component harness — stub it with mutable flags.
 const editorContextFlags = vi.hoisted(() => ({
@@ -85,6 +102,7 @@ describe('useContextMenu', () => {
 
 	// `restoreMocks` restores spies before each test, so re-establish them per-test.
 	beforeEach(() => {
+		groupViewState.current = undefined;
 		setActivePinia(createPinia());
 		sourceControlStore = useSourceControlStore();
 		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
@@ -197,25 +215,84 @@ describe('useContextMenu', () => {
 	});
 
 	describe('group target', () => {
-		it('shows only the group actions and resolves member node ids', () => {
+		it('shows the multi-selection actions with the group actions on top and resolves member node ids', () => {
 			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
 			const { open, actions, targetNodeIds, targetGroupId } = useContextMenu();
 			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
 
-			expect(actions.value.map((action) => action.id)).toEqual(['rename_group', 'ungroup_nodes']);
-			expect(actions.value.every((action) => !action.disabled)).toBe(true);
+			expect(actions.value.map((action) => action.id)).toEqual([
+				'rename_group',
+				'ungroup_nodes',
+				'toggle_activation',
+				'toggle_pin',
+				'copy',
+				'duplicate',
+				'tidy_up',
+				'expand_selected_groups',
+				'collapse_selected_groups',
+				'extract_sub_workflow',
+				'select_all',
+				'deselect_all',
+				'delete',
+			]);
 			expect(targetNodeIds.value).toEqual([nodes[0].id, nodes[1].id]);
 			expect(targetGroupId.value).toBe(group.id);
 		});
 
-		it('disables the group actions in read-only mode', () => {
+		it('words the bulk actions for the group instead of the node count', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+
+			const labels = Object.fromEntries(actions.value.map((action) => [action.id, action.label]));
+			expect(labels.toggle_activation).toBe('Deactivate group');
+			expect(labels.toggle_pin).toBe('Pin group');
+			expect(labels.copy).toBe('Copy group');
+			expect(labels.duplicate).toBe('Duplicate group');
+			expect(labels.extract_sub_workflow).toBe('Convert group to sub-workflow');
+			expect(labels.delete).toBe('Delete group');
+		});
+
+		it('keeps the group wording even for a single-member group and hides single-node actions', () => {
+			// The "Group nodes" item must be absent — an existing group offers
+			// ungroup instead.
+			const group = workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+
+			const ids = actions.value.map((action) => action.id);
+			expect(ids).not.toContain('group_nodes');
+			for (const singleNodeAction of ['open', 'execute', 'rename', 'replace']) {
+				expect(ids).not.toContain(singleNodeAction);
+			}
+			expect(actions.value.find((action) => action.id === 'copy')?.label).toBe('Copy group');
+		});
+
+		it('falls back to the group actions alone when no member node resolves', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: ['non-existent'] });
+
+			expect(actions.value.map((action) => action.id)).toEqual(['rename_group', 'ungroup_nodes']);
+		});
+
+		it('disables the mutating actions in read-only mode but keeps copy available', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
 			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
 
-			expect(actions.value.map((action) => action.id)).toEqual(['rename_group', 'ungroup_nodes']);
-			expect(actions.value.every((action) => action.disabled)).toBe(true);
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			for (const mutating of [
+				'rename_group',
+				'ungroup_nodes',
+				'toggle_activation',
+				'duplicate',
+				'delete',
+			]) {
+				expect(byId[mutating]?.disabled).toBe(true);
+			}
+			expect(byId.copy?.disabled).toBeFalsy();
 		});
 
 		it('closes when re-invoked on the same group, letting the native menu through', () => {
@@ -237,6 +314,236 @@ describe('useContextMenu', () => {
 
 			expect(isOpen.value).toBe(true);
 			expect(targetGroupId.value).toBe(groupB.id);
+		});
+	});
+
+	describe('target-level read-only', () => {
+		// The instance-wide flags stay editable in these tests (see beforeEach):
+		// only the opening canvas marks its target read-only, like an embedded
+		// read-only canvas on an editable route (e.g. while the AI builder
+		// streams).
+		it('disables the mutating actions when the canvas target is read-only', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, {
+				source: 'canvas',
+				nodeIds: selectedNodes.map((n) => n.id),
+				readOnly: true,
+			});
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			for (const mutating of ['toggle_activation', 'tidy_up', 'group_nodes', 'delete']) {
+				expect(byId[mutating]?.disabled).toBe(true);
+			}
+			expect(byId.copy?.disabled).toBeFalsy();
+			expect(byId.select_all?.disabled).toBeFalsy();
+		});
+
+		it('disables the group actions when the group target is read-only', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, {
+				source: 'group',
+				groupId: group.id,
+				nodeIds: group.nodeIds,
+				readOnly: true,
+			});
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			for (const mutating of ['rename_group', 'ungroup_nodes', 'toggle_activation', 'delete']) {
+				expect(byId[mutating]?.disabled).toBe(true);
+			}
+			// Copy and collapse state (a view preference) stay usable
+			expect(byId.copy?.disabled).toBeFalsy();
+			expect(byId.expand_selected_groups?.disabled).toBeFalsy();
+		});
+
+		it('disables the add actions in the empty-selection menu when the target is read-only', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [], readOnly: true });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.add_node?.disabled).toBe(true);
+			expect(byId.add_sticky?.disabled).toBe(true);
+		});
+
+		it('keeps the mutating actions enabled when the target is not read-only', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: selectedNodes.map((n) => n.id) });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.toggle_activation?.disabled).toBe(false);
+			expect(byId.delete?.disabled).toBe(false);
+		});
+	});
+
+	describe('expand/collapse all groups (empty selection menu)', () => {
+		it('shows the actions disabled when the workflow has no groups', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_all_groups?.disabled).toBe(true);
+			expect(byId.collapse_all_groups?.disabled).toBe(true);
+		});
+
+		it('shows the actions enabled when groups exist, also in read-only mode', () => {
+			// Collapse state is a view preference, not workflow data — read-only
+			// must not disable these. Without a canvas-provided group view
+			// (groupViewState stays undefined) both remain enabled.
+			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
+			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_all_groups?.disabled).toBe(false);
+			expect(byId.collapse_all_groups?.disabled).toBe(false);
+		});
+
+		it('disables "Expand all" when every group is already expanded', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'A');
+			workflowDocumentStore.createGroup([nodes[1].id], 'B');
+			fakeGroupView([]);
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_all_groups?.disabled).toBe(true);
+			expect(byId.collapse_all_groups?.disabled).toBe(false);
+		});
+
+		it('disables "Collapse all" when every group is already collapsed', () => {
+			const groupA = workflowDocumentStore.createGroup([nodes[0].id], 'A');
+			const groupB = workflowDocumentStore.createGroup([nodes[1].id], 'B');
+			fakeGroupView([groupA.id, groupB.id]);
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_all_groups?.disabled).toBe(false);
+			expect(byId.collapse_all_groups?.disabled).toBe(true);
+		});
+
+		it('keeps both actions enabled for mixed collapse states', () => {
+			const groupA = workflowDocumentStore.createGroup([nodes[0].id], 'A');
+			workflowDocumentStore.createGroup([nodes[1].id], 'B');
+			fakeGroupView([groupA.id]);
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_all_groups?.disabled).toBe(false);
+			expect(byId.collapse_all_groups?.disabled).toBe(false);
+		});
+
+		it('does not add the actions to node selection menus', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[1].id, nodes[2].id] });
+
+			const ids = actions.value.map((action) => action.id);
+			expect(ids).not.toContain('expand_all_groups');
+			expect(ids).not.toContain('collapse_all_groups');
+		});
+	});
+
+	describe('expand/collapse selected groups', () => {
+		const getIds = (actions: ReturnType<typeof useContextMenu>['actions']) =>
+			actions.value.map((action) => action.id);
+
+		it('shows the actions for a groups-only target spanning multiple groups', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'A');
+			workflowDocumentStore.createGroup([nodes[1].id], 'B');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
+
+			expect(getIds(actions)).toContain('expand_selected_groups');
+			expect(getIds(actions)).toContain('collapse_selected_groups');
+		});
+
+		it('shows the actions for a partial selection of group members', () => {
+			// Membership is enough — the group does not need to be fully selected.
+			workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id] });
+
+			expect(getIds(actions)).toContain('expand_selected_groups');
+			expect(getIds(actions)).toContain('collapse_selected_groups');
+		});
+
+		it('hides the actions when the target mixes grouped and loose nodes', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
+
+			expect(getIds(actions)).not.toContain('expand_selected_groups');
+			expect(getIds(actions)).not.toContain('collapse_selected_groups');
+		});
+
+		it('hides the actions when no targeted node belongs to a group', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[1].id, nodes[2].id] });
+
+			expect(getIds(actions)).not.toContain('expand_selected_groups');
+			expect(getIds(actions)).not.toContain('collapse_selected_groups');
+		});
+
+		it('disables "Expand" when every target group is already expanded', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'A');
+			workflowDocumentStore.createGroup([nodes[1].id], 'B');
+			fakeGroupView([]);
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_selected_groups?.disabled).toBe(true);
+			expect(byId.collapse_selected_groups?.disabled).toBe(false);
+		});
+
+		it('disables "Collapse" when every target group is already collapsed', () => {
+			const groupA = workflowDocumentStore.createGroup([nodes[0].id], 'A');
+			const groupB = workflowDocumentStore.createGroup([nodes[1].id], 'B');
+			fakeGroupView([groupA.id, groupB.id]);
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_selected_groups?.disabled).toBe(false);
+			expect(byId.collapse_selected_groups?.disabled).toBe(true);
+		});
+
+		it('keeps both actions enabled for mixed collapse states', () => {
+			const groupA = workflowDocumentStore.createGroup([nodes[0].id], 'A');
+			workflowDocumentStore.createGroup([nodes[1].id], 'B');
+			fakeGroupView([groupA.id]);
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, nodes[1].id] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_selected_groups?.disabled).toBe(false);
+			expect(byId.collapse_selected_groups?.disabled).toBe(false);
+		});
+
+		it('keeps both actions enabled without a canvas-provided group view', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id] });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_selected_groups?.disabled).toBe(false);
+			expect(byId.collapse_selected_groups?.disabled).toBe(false);
+		});
+
+		it('reflects the carried group state for a title bar target', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'My group');
+			fakeGroupView([group.id]);
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.expand_selected_groups?.disabled).toBe(false);
+			expect(byId.collapse_selected_groups?.disabled).toBe(true);
 		});
 	});
 

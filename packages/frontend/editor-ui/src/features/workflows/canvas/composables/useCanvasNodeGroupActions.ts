@@ -47,13 +47,13 @@ export function useCanvasNodeGroupActions(
 		if (isReadOnly.value) return [];
 		const ids = new Set<string>();
 		for (const node of toValue(selectedNodes)) {
-			// Collapsed group: selectable as one group node whose id carries the group id
+			// Selected title bar: its id carries the group id
 			const directGroupId = parseCanvasGroupNodeId(node.id);
 			if (directGroupId) {
 				ids.add(directGroupId);
 				continue;
 			}
-			// Expanded group: the group node isn't selectable, so map a selected member back to it
+			// Partial selection inside an expanded group: map a selected member back to it
 			const group = workflowDocumentStore.value.getGroupForNode(node.id);
 			if (group) {
 				ids.add(group.id);

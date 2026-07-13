@@ -55,6 +55,7 @@ const isAutofocusReady = computed(
 );
 const isCollapsed = computed(() => props.data.isCollapsed);
 const executionStatus = computed(() => props.data.executionStatus);
+const allNodesDisabled = computed(() => props.data.allNodesDisabled ?? false);
 
 // Statuses rendered as a status mark; running/waiting render as the animated border.
 const MARK_STATUSES = ['success', 'error', 'warning'] as const;
@@ -65,6 +66,7 @@ const wrapperClasses = computed(() => [
 	{
 		[$style.collapsed]: isCollapsed.value,
 		[$style.selected]: props.selected,
+		[$style.deactivated]: allNodesDisabled.value,
 		[$style.success]: executionStatus.value === 'success',
 		[$style.error]: executionStatus.value === 'error',
 		[$style.warning]: executionStatus.value === 'warning',
@@ -80,6 +82,13 @@ const frameStyle = computed(() => {
 		top: `${HEADER_HEIGHT}px`,
 		height: `${expanded.height - HEADER_HEIGHT}px`,
 	};
+});
+
+// An expanded selected group shows one ring around header + frame; the
+// title bar ring alone would read as only the header being selected.
+const selectionRingStyle = computed(() => {
+	const { expanded } = computeGroupFrameRects(props.data.nodesRect);
+	return { height: `${expanded.height}px` };
 });
 
 const isTitleTruncated = ref(false);
@@ -172,6 +181,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 	// Clicks on .nodrag children (chevron, title edit, ungroup) aren't drag intent.
 	const target = event.target as HTMLElement | null;
 	if (target?.closest('.nodrag')) return;
+
+	// Modifier-clicks add to the selection instead of replacing it.
+	if (event.ctrlKey || event.metaKey) return;
 
 	const selected = getSelectedNodes.value;
 	if (selected.length === 0) return;
@@ -268,6 +280,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 								:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
 								@update:model-value="onTitleUpdate"
 							/>
+							<div
+								v-if="allNodesDisabled"
+								:class="$style.deactivatedLabel"
+								data-test-id="canvas-node-group-deactivated-label"
+							>
+								({{ i18n.baseText('node.disabled') }})
+							</div>
 						</div>
 					</N8nTooltip>
 				</div>
@@ -293,6 +312,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 			:class="$style.frame"
 			:style="frameStyle"
 			data-test-id="canvas-node-group-frame"
+		/>
+
+		<div
+			v-if="!isCollapsed && selected"
+			:class="$style.selectionRing"
+			:style="selectionRingStyle"
+			data-test-id="canvas-node-group-selection-ring"
 		/>
 	</div>
 </template>
@@ -320,7 +346,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 		border-radius: var(--radius--lg);
 	}
 
-	.wrapper.selected & {
+	// When expanded, the selection ring is drawn by .selectionRing around the
+	// whole group instead.
+	.wrapper.collapsed.selected & {
 		@include styles.canvas-node-selected-ring;
 	}
 
@@ -387,8 +415,14 @@ function onWrapperPointerDown(event: PointerEvent) {
 	font-weight: var(--font-weight--medium);
 }
 
+.wrapper.deactivated .title {
+	color: var(--text-color--subtler);
+}
+
 .titleText {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	width: 100%;
 	min-width: 0;
 	max-width: 100%;
@@ -399,6 +433,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 .inlineEdit {
 	width: fit-content;
 	max-width: 100%;
+}
+
+.deactivatedLabel {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .statusIcons {
@@ -447,6 +486,16 @@ function onWrapperPointerDown(event: PointerEvent) {
 	pointer-events: none;
 	box-sizing: border-box;
 	z-index: 0;
+}
+
+.selectionRing {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	border-radius: var(--radius--lg);
+	pointer-events: none;
+	@include styles.canvas-node-selected-ring;
 }
 
 .handle {
