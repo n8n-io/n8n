@@ -6236,6 +6236,7 @@
 	"instanceAi.workflowSetup.triggerListening": "Listening for events…",
 	"instanceAi.workflowSetup.apply": "Apply",
 	"instanceAi.workflowSetup.credentialTestFailedTooltip": "Credential test failed. Update the credential and try again.",
+	"instanceAi.workflowSetup.stepIncompleteTooltip": "To continue, complete the required fields above or skip setup for now",
 	"instanceAi.workflowSetup.applyCompleted": "Apply completed",
 	"instanceAi.workflowSetup.later": "Skip setup for now",
 	"instanceAi.workflowSetup.loading": "Loading setup…",
