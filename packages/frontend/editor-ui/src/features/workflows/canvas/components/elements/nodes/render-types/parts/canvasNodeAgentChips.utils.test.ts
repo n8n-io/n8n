@@ -40,7 +40,7 @@ describe('buildAgentCardChips', () => {
 		expect(buildAgentCardChips(summary)[0].label).toBe('Send telegram message');
 	});
 
-	it('orders MCP servers between tools and skills, with the globe icon', () => {
+	it('orders MCP servers between tools and skills, with the MCP icon', () => {
 		const summary = makeSummary({
 			tools: [{ type: 'node', name: 'get_prs' }],
 			mcpServers: [{ name: 'notion-mcp' }],
@@ -49,7 +49,7 @@ describe('buildAgentCardChips', () => {
 
 		const chips = buildAgentCardChips(summary);
 		expect(chips.map((c) => c.label)).toEqual(['Get prs', 'Notion mcp', 'PR Reviewer']);
-		expect(chips[1]).toMatchObject({ key: 'mcp:notion-mcp', icon: 'globe' });
+		expect(chips[1]).toMatchObject({ key: 'mcp:notion-mcp', icon: 'mcp' });
 	});
 
 	it('collapses 2+ tools of the same resolved node type into one "N {NodeType}" chip', () => {

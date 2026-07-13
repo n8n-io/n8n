@@ -267,7 +267,7 @@ function toolLabel(entry: CapabilityToolEntry) {
 }
 
 function toolIcon(entry: CapabilityToolEntry): IconName {
-	if (entry.kind === 'mcpServer') return 'globe';
+	if (entry.kind === 'mcpServer') return 'mcp';
 	const { tool } = entry;
 	if (tool.type === 'workflow') return 'workflow';
 	if (tool.type === 'custom') return 'code';

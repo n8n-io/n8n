@@ -119,8 +119,7 @@ export function buildAgentCardChips(
 	for (const server of summary.mcpServers ?? []) {
 		chips.push({
 			key: `mcp:${server.name}`,
-			// Mirrors the capabilities section's MCP entry icon.
-			icon: 'globe',
+			icon: 'mcp',
 			label: formatToolNameForDisplay(server.name),
 		});
 	}
