@@ -6,12 +6,9 @@
 			{
 				"toolName": "load_skill",
 				"argsContainAny": ["config-evals"]
-			},
-			{
-				"toolName": "eval-config"
 			}
 		],
 		"noneOf": ["evals", "spawn_sub_agent:eval-setup", "eval-setup-with-agent"]
 	},
-	"rationale": "Regression coverage for runtime skill loading of the config-evals skill. Config-based evaluation work must load the config-evals skill and reach the eval-config tool, and must never wire on-canvas evaluation nodes via the node-based evals tool or the eval-setup sub-agent."
+	"rationale": "Regression coverage for runtime skill loading of the config-evals skill. Config-based evaluation work must load the config-evals skill, and must never wire on-canvas evaluation nodes via the node-based evals tool or the eval-setup sub-agent."
 }

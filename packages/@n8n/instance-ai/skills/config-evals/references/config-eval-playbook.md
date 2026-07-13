@@ -89,7 +89,7 @@ eval-config(
     preset: "helpfulness",
     provider: "anthropic",
     credentialId: "<cred_id>",
-    model: "claude-sonnet-4",
+    model: "claude-sonnet-4-5",
     userQuery: "{{ $json.input }}",
     actualAnswer: "{{ $json.output }}"
   }]
