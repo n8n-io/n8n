@@ -20,6 +20,7 @@ import type {
 	INodeTypes,
 	IPollFunctions,
 	IRun,
+	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -35,6 +36,7 @@ import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -67,6 +69,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock<TriggerExecutionContextFactory>(),
 			mock(),
+			mock(), // scheduleTriggerJobRegistrar
 		);
 	});
 
@@ -191,6 +194,7 @@ describe('ActiveWorkflowManager', () => {
 				push,
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
+				mock(), // scheduleTriggerJobRegistrar
 			);
 		});
 
@@ -367,6 +371,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // push
 				factory,
 				mock(), // eventBus
+				mock(), // scheduleTriggerJobRegistrar
 			);
 		});
 
@@ -804,6 +809,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
+				mock(), // scheduleTriggerJobRegistrar
 			);
 		});
 
@@ -888,6 +894,84 @@ describe('ActiveWorkflowManager', () => {
 				workflowsConfig.useWorkflowPublicationService = false;
 				addActiveWorkflows.mockRestore();
 			}
+		});
+	});
+
+	describe('addNonWebhookTriggers', () => {
+		// This legacy path can run with the durable scheduler intercepting schedule
+		// nodes (e.g. a workflow transfer with the publication flag on), so the
+		// rules its trigger contexts collect must be committed or discarded here
+		// just like on the publication path.
+		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
+		const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
+		const triggerNode = mock<INode>({ id: 'trigger-a' });
+
+		const makeManager = () =>
+			new ActiveWorkflowManager(
+				mockLogger(),
+				mock(),
+				activeWorkflowTriggers,
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+				instanceSettings,
+				mock(),
+				workflowsConfig,
+				mock(),
+				mock<TriggerExecutionContextFactory>(),
+				mock(),
+				scheduleTriggerJobRegistrar,
+			);
+
+		const makeWorkflow = () => {
+			const workflow = mock<Workflow>({ id: 'wf-1' });
+			workflow.getTriggerNodes.mockReturnValue([triggerNode]);
+			workflow.getPollNodes.mockReturnValue([]);
+			return workflow;
+		};
+
+		const registrationContext = () => ({
+			activationMode: 'update' as WorkflowActivateMode,
+			executionMode: 'trigger' as WorkflowExecuteMode,
+			additionalData: mock<IWorkflowExecuteAdditionalData>(),
+			resolveWorkflowData: async () => mock<IWorkflowBase>(),
+		});
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		test('commits collected durable schedules after in-memory registration, then discards', async () => {
+			const workflow = makeWorkflow();
+
+			await makeManager().addNonWebhookTriggers(
+				mock<WorkflowEntity>({ id: 'wf-1' }),
+				workflow,
+				registrationContext(),
+			);
+
+			expect(scheduleTriggerJobRegistrar.commit).toHaveBeenCalledWith('wf-1', 'trigger-a');
+			expect(scheduleTriggerJobRegistrar.discard).toHaveBeenCalledWith('wf-1', 'trigger-a');
+		});
+
+		test('discards without committing when in-memory registration fails', async () => {
+			const workflow = makeWorkflow();
+			activeWorkflowTriggers.addTriggers.mockRejectedValue(new Error('activation failed'));
+
+			await expect(
+				makeManager().addNonWebhookTriggers(
+					mock<WorkflowEntity>({ id: 'wf-1' }),
+					workflow,
+					registrationContext(),
+				),
+			).rejects.toThrow('activation failed');
+
+			expect(scheduleTriggerJobRegistrar.commit).not.toHaveBeenCalled();
+			expect(scheduleTriggerJobRegistrar.discard).toHaveBeenCalledWith('wf-1', 'trigger-a');
 		});
 	});
 });

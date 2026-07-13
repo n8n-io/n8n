@@ -47,6 +47,7 @@ import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -84,6 +85,7 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly eventBus: MessageEventBus,
+		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -1010,16 +1012,38 @@ export class ActiveWorkflowManager {
 			return false;
 		}
 
-		await this.activeWorkflowTriggers.addTriggers(
-			workflow.id,
-			workflow,
-			nodeIdsToAdd,
-			additionalData,
-			executionMode,
-			activationMode,
-			getTriggerFunctions,
-			getPollFunctions,
-		);
+		// The durable Schedule Trigger wiring targets the publication activation
+		// path only (NonWebhookTriggerRegistrar).
+		// This legacy manager is slated for removal.
+		// But a few flows still reactivate through here with the publication flag on:
+		// - workflow/folder transfer (workflow.service.ee.ts)
+		// - credential-resolver cleanup
+		//
+		// And with N8N_SCHEDULER_ENABLED the trigger context then hands schedule nodes
+		// the durable collector on this path too.
+		// Persist or drop what it collected, exactly like the publication path does,
+		// or the rules leak uncommitted and the node's durable jobs are never reconciled.
+		//
+		// Delete this along with the manager, or once those flows go through the publication outbox.
+		try {
+			await this.activeWorkflowTriggers.addTriggers(
+				workflow.id,
+				workflow,
+				nodeIdsToAdd,
+				additionalData,
+				executionMode,
+				activationMode,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+			for (const nodeId of nodeIdsToAdd) {
+				await this.scheduleTriggerJobRegistrar.commit(workflow.id, nodeId);
+			}
+		} finally {
+			for (const nodeId of nodeIdsToAdd) {
+				this.scheduleTriggerJobRegistrar.discard(workflow.id, nodeId);
+			}
+		}
 
 		return true;
 	}
