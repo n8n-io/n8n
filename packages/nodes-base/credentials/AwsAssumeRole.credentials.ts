@@ -4,9 +4,10 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-import { type AwsAssumeRoleCredentialsType, type AWSRegion } from './common/aws/types';
+import { type AWSRegion } from './common/aws/regions';
+import { type AwsAssumeRoleCredentialsType } from './common/aws/types';
 import { awsCustomEndpoints, awsRegionProperty } from './common/aws/descriptions';
 import {
 	assumeRole,
@@ -142,7 +143,7 @@ export class AwsAssumeRole implements ICredentialType {
 			finalCredentials = { ...credentials, ...securityHeaders };
 		} catch (error) {
 			console.error('Failed to assume role:', error);
-			throw new ApplicationError(
+			throw new UserError(
 				`Failed to assume role: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			);
 		}
@@ -156,7 +157,7 @@ export class AwsAssumeRole implements ICredentialType {
 			region,
 		);
 
-		return signOptions(requestOptions, signOpts, securityHeaders, url, method);
+		return await signOptions(requestOptions, signOpts, securityHeaders, url, method);
 	}
 
 	test = awsCredentialsTest;

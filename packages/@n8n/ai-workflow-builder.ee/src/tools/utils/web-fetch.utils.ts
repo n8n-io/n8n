@@ -1,4 +1,5 @@
 import { HumanMessage, type BaseMessage } from '@langchain/core/messages';
+// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- axios is the only client exposing manual per-hop redirect control + streaming the cross-host SSRF approval guard needs. To migrate: move this package off undici v6, then route via the factory's getDispatcher() + undici.request({ maxRedirections: 0 }) (see fetchUrl doc)
 import axios, { type AxiosRequestConfig } from 'axios';
 import type { Readable } from 'node:stream';
 
@@ -130,6 +131,22 @@ async function readStreamWithCap(stream: Readable, maxBytes: number): Promise<st
  * - a secure DNS lookup that validates the resolved IP at connect time (every hop),
  * - a `beforeRedirect` hook that validates direct-IP redirect targets and halts
  *   auto-follow on a cross-host redirect so the caller can run domain approval.
+ *
+ * Why axios here, and not `@n8n/backend-network`'s transport factory: this call
+ * needs manual redirect control (read `Location` on each hop to run the cross-host
+ * HITL approval) together with response streaming, and axios on Node's `http.Agent`
+ * is the only client that exposes both today.
+ *
+ * Prerequisites to migrate this onto the factory:
+ *   1. Move this package off undici v6 (it pins `catalog:undici-v6`). The factory's
+ *      `getDispatcher()` returns a v7 `Dispatcher`, and the v6/v7 dispatch-handler
+ *      protocols are not interoperable. This is gated on the langchain providers
+ *      dropping their undici v6 pin (CAT-3377 Phase 5).
+ *   2. Then route via `getDispatcher()` + `undici.request(url, { dispatcher,
+ *      maxRedirections: 0 })` for the manual redirect loop. `asCustomFetch()` is not
+ *      usable: WHATWG `fetch` with `redirect: 'manual'` returns an opaque-redirect
+ *      response with no readable `Location`, which breaks the cross-host approval.
+ *      `undici.request`'s Node `Readable` body keeps `readStreamWithCap` unchanged.
  */
 export async function fetchUrl(
 	url: string,

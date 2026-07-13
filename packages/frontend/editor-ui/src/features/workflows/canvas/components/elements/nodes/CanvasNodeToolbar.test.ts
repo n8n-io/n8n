@@ -15,17 +15,13 @@ import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
-vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
-	injectCanvasRenderData: vi.fn(() => ({
-		value: {
-			nodeInputsByNodeId: new Map(),
-			nodeOutputsByNodeId: new Map(),
-			pinnedDataByNodeName: {},
-			executionIssuesByNodeName: new Map(),
-		},
-	})),
-}));
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({ value: actual.createEmptyCanvasRenderData() })),
+	};
+});
 
 const renderComponent = createComponentRenderer(CanvasNodeToolbar);
 
@@ -108,6 +104,27 @@ describe('CanvasNodeToolbar', () => {
 		});
 
 		expect(queryByTestId('execute-node-button')).not.toBeInTheDocument();
+	});
+
+	it('should render execute and disable node buttons for the agent render type', () => {
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						data: {
+							render: {
+								type: CanvasNodeRenderType.Agent,
+								options: { agentId: { __rl: true, mode: 'list', value: 'agent-1' } },
+							},
+						},
+					}),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(getByTestId('execute-node-button')).toBeInTheDocument();
+		expect(getByTestId('disable-node-button')).toBeInTheDocument();
 	});
 
 	it('should emit "run" when execute node button is clicked', async () => {
@@ -324,6 +341,75 @@ describe('CanvasNodeToolbar', () => {
 			});
 
 			expect(queryByTestId('add-to-ai-button')).not.toBeInTheDocument();
+		});
+	});
+
+	// ADO-5556: All icon-only node hover actions (except "Add to n8n AI") lack an
+	// explanatory tooltip. They only carry a native `title`/`aria-label`, so no
+	// styled tooltip appears on hover to label the control.
+	describe('hover action tooltips (ADO-5556)', () => {
+		it('should show a tooltip labelling the execute step action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('execute-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Execute step'));
+		});
+
+		it('should show a tooltip labelling the deactivate action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('disable-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Deactivate'));
+		});
+
+		it('should show a tooltip labelling the delete action on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('delete-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Delete'));
+		});
+
+		it('should show a tooltip labelling the more actions button on hover', async () => {
+			const { getByTestId } = renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+
+			await hoverTooltipTrigger(getByTestId('overflow-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('More actions'));
 		});
 	});
 

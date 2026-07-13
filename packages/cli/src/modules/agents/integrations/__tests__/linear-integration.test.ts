@@ -1,25 +1,32 @@
+import type { Mock, Mocked, MockedFunction } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatIntegrationContext } from '../agent-chat-integration';
 import { LinearIntegration } from '../platforms/linear-integration';
 
-jest.mock('../esm-loader', () => ({
-	loadLinearAdapter: jest.fn(),
+vi.mock('../esm-loader', () => ({
+	loadLinearAdapter: vi.fn(),
 }));
 
 import { loadLinearAdapter } from '../esm-loader';
 
-const mockedLoadLinearAdapter = loadLinearAdapter as jest.MockedFunction<typeof loadLinearAdapter>;
+const mockedLoadLinearAdapter = loadLinearAdapter as MockedFunction<typeof loadLinearAdapter>;
 
 describe('LinearIntegration', () => {
 	const logger = mock<Logger>();
 	let integration: LinearIntegration;
-	let fetchSpy: jest.SpyInstance;
-	const createLinearAdapter = jest.fn();
+	let outboundHttp: Mocked<OutboundHttp>;
+	let requestMock: Mock;
+	const createLinearAdapter = vi.fn();
 
 	beforeEach(() => {
-		integration = new LinearIntegration(logger);
+		const httpClient = mock<HttpRequestClient>();
+		requestMock = httpClient.request as Mock;
+		outboundHttp = mock<OutboundHttp>();
+		outboundHttp.requests.mockReturnValue(httpClient);
+		integration = new LinearIntegration(logger, outboundHttp);
 		createLinearAdapter.mockReset();
 		createLinearAdapter.mockReturnValue({ marker: 'adapter' });
 		mockedLoadLinearAdapter.mockReset();
@@ -27,14 +34,10 @@ describe('LinearIntegration', () => {
 			createLinearAdapter,
 		} as unknown as Awaited<ReturnType<typeof loadLinearAdapter>>);
 
-		fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
-			ok: true,
-			json: async () => ({ data: { viewer: { displayName: 'AgentName' } } }),
-		} as Response);
-	});
-
-	afterEach(() => {
-		fetchSpy.mockRestore();
+		requestMock.mockResolvedValue({
+			statusCode: 200,
+			body: { data: { viewer: { displayName: 'AgentName' } } },
+		});
 	});
 
 	const ctx = (credential: Record<string, unknown>): AgentChatIntegrationContext => ({
@@ -95,7 +98,9 @@ describe('LinearIntegration', () => {
 			webhookSecret: 'sec',
 			userName: 'AgentName',
 		});
-		expect(fetchSpy.mock.calls[0][1]).toMatchObject({
+		expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(requestMock.mock.calls[0][0]).toMatchObject({
+			url: 'https://api.linear.app/graphql',
 			headers: { Authorization: 'Bearer oauth_token' },
 		});
 	});
@@ -118,7 +123,7 @@ describe('LinearIntegration', () => {
 	});
 
 	it('omits userName when the viewer lookup fails', async () => {
-		fetchSpy.mockResolvedValue({ ok: false } as Response);
+		requestMock.mockResolvedValue({ statusCode: 401, body: {} });
 
 		await integration.createAdapter(
 			ctx({

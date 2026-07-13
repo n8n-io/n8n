@@ -3,7 +3,7 @@
 import { select } from '@inquirer/prompts';
 import * as fs from 'node:fs/promises';
 
-import { isOriginAllowed, parseConfig } from './config';
+import { isOriginAllowed, parseConfig, resolvePermissionConfirmation } from './config';
 import { cliConfirmResourceAccess, sanitizeForTerminal } from './confirm-resource-cli';
 import { GatewayAuthError, GatewayClient } from './gateway-client';
 import { GatewaySession } from './gateway-session';
@@ -13,6 +13,7 @@ import {
 	printBanner,
 	printConnected,
 	printInvalidToken,
+	printModuleDiagnostics,
 	printModuleStatus,
 	printToolList,
 } from './logger';
@@ -117,6 +118,8 @@ Global options:
   --log-level <level>            Log level: silent, error, warn, info, debug (default: info)
   --allowed-origins <patterns>   Comma-separated allowed origin patterns
                                  (default: https://*.app.n8n.cloud)
+                                 When connecting to a non-cloud instance, resource
+                                 confirmations are always prompted in this terminal.
   --non-interactive              Skip all prompts (deny per default)
   --auto-confirm                 Auto-confirm all prompts (no readline)
   -h, --help                     Show this help message
@@ -133,6 +136,11 @@ Permissions (deny | ask | allow):
 
 Computer use:
   --computer-shell-timeout <ms>      Shell command timeout (default: 30000)
+  --dangerously-disable-shell-sandbox
+                                     Run shell commands WITHOUT the OS sandbox.
+                                     Insecure — only use in a trusted, isolated
+                                     environment. Without a sandbox the shell
+                                     tool is disabled by default.
 
 Browser:
   --no-browser                       Disable browser tools
@@ -173,6 +181,16 @@ async function main(
 		process.exit(1);
 	}
 
+	config.permissionConfirmation = resolvePermissionConfirmation(
+		config.permissionConfirmation,
+		origin,
+	);
+	logger.info(
+		config.permissionConfirmation === 'client'
+			? 'Resource confirmations will be prompted in this terminal'
+			: 'Resource confirmations will be prompted in the n8n UI',
+	);
+
 	await SettingsStore.ensureInitialized(config);
 
 	const settingsStore = await SettingsStore.create();
@@ -199,13 +217,6 @@ async function main(
 		logger.error('Directory does not exist', { dir });
 		process.exit(1);
 	}
-
-	// printModuleStatus expects a GatewayConfig shape — derive one from the session.
-	printModuleStatus({
-		...parsed.config,
-		permissions: session.getAllPermissions(),
-		filesystem: { dir: session.dir },
-	});
 
 	const client = new GatewayClient({
 		url,
@@ -238,6 +249,15 @@ async function main(
 	}
 
 	printConnected(url);
+	printModuleStatus(
+		{
+			...parsed.config,
+			permissions: session.getAllPermissions(),
+			filesystem: { dir: session.dir },
+		},
+		client.toolCategories,
+	);
+	printModuleDiagnostics(client.disabledModules);
 	printToolList(client.tools);
 }
 

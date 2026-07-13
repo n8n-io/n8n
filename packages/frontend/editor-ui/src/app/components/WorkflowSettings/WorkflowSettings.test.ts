@@ -34,13 +34,14 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => toast,
 }));
 
+// The modal is mounted globally, so it can be opened from views whose route has no
+// `workflowId` param (e.g. the AI artifact view). The whole suite runs under that
+// condition: the workflow id must always come from the document store, never the route.
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),
 	useRoute: () =>
 		reactive({
-			params: {
-				workflowId: '1',
-			},
+			params: {},
 			query: {},
 		}),
 	RouterLink: {
@@ -239,7 +240,11 @@ describe('WorkflowSettingsVue', () => {
 		beforeEach(() => {
 			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];
 			settingsStore.settings.enterprise.otelCustomSpanAttributes = true;
-			settingsStore.moduleSettings = { otel: { enabled: true } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
 		});
 
 		it('should show custom span attribute settings when OTel custom span attributes are enabled', async () => {
@@ -250,8 +255,12 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-custom-telemetry-tags')).toBeVisible();
 		});
 
-		it('should hide custom span attribute settings when OTel is disabled', async () => {
-			settingsStore.moduleSettings = { otel: { enabled: false } };
+		it('should hide custom telemetry tag settings when OTel is disabled', async () => {
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: false,
+				},
+			};
 			const { queryByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 
 			await flushPromises();
@@ -276,7 +285,7 @@ describe('WorkflowSettingsVue', () => {
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				expect.any(String),
+				'1',
 				expect.objectContaining({
 					settings: expect.objectContaining({
 						customTelemetryTags: [{ key: 'env', value: 'production' }],

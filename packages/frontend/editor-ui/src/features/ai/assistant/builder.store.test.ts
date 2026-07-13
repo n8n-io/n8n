@@ -120,16 +120,11 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let getNodeTypeSpy: Mock;
 let getCredentialsByTypeSpy: Mock;
 
-const apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
+// `restoreMocks` restores spies before each test, so these are (re)established
+// in beforeEach rather than once at module scope.
+let apiSpy: MockInstance;
 
 const track = vi.fn();
-const spy = vi.spyOn(telemetryModule, 'useTelemetry');
-spy.mockImplementation(
-	() =>
-		({
-			track,
-		}) as unknown as Telemetry,
-);
 
 const currentRouteName = ENABLED_VIEWS[0];
 vi.mock('vue-router', () => ({
@@ -143,6 +138,20 @@ vi.mock('vue-router', () => ({
 	useRouter: vi.fn(),
 	RouterLink: vi.fn(),
 }));
+
+// The builder store derives the current workflow id from the route via
+// useRouteWorkflowId(). Back it by a holder wired to the workflows store in
+// beforeEach, so existing tests keep driving the id through setWorkflowId().
+const { workflowIdHolder } = vi.hoisted(() => ({
+	workflowIdHolder: { current: (): string => '' },
+}));
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => workflowIdHolder.current()),
+		useRouteWorkflowId: () => computed(() => workflowIdHolder.current()),
+	};
+});
 
 describe('AI Builder store', () => {
 	beforeEach(() => {
@@ -164,9 +173,17 @@ describe('AI Builder store', () => {
 		posthogStore.init();
 		track.mockReset();
 
+		apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
+		vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
+			() => ({ track }) as unknown as Telemetry,
+		);
+
 		workflowsStore = mockedStore(useWorkflowsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		credentialsStore = mockedStore(useCredentialsStore);
+
+		// Route the mocked useRouteWorkflowId() at this test's workflows store.
+		workflowIdHolder.current = () => workflowsStore.workflowId;
 
 		workflowsStore.setWorkflowId('test-workflow-id');
 		workflowDocumentStore = useWorkflowDocumentStore(
@@ -1290,10 +1307,11 @@ describe('AI Builder store', () => {
 	});
 
 	describe('fetchBuilderCredits', () => {
-		const mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
+		// `restoreMocks` restores this spy before each test, so re-create it here.
+		let mockGetBuilderCredits: MockInstance;
 
 		beforeEach(() => {
-			mockGetBuilderCredits.mockClear();
+			mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
 		});
 
 		it('should fetch and update credits when AI builder is enabled', async () => {
@@ -3373,6 +3391,103 @@ describe('AI Builder store', () => {
 				versionId: 'version-1',
 				createdAt: '2024-01-01T00:00:00Z',
 			});
+		});
+
+		it('should force-save the post-modification version so a stale checksum cannot loop autosave', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.setWorkflowId('test-workflow-123');
+			workflowsStore.isNewWorkflow = false;
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
+			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
+
+			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds)
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				})
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+			saveCurrentWorkflowMock.mockClear();
+
+			await builderStore.sendChatMessage({ text: 'Build a workflow' });
+
+			if (capturedOnMessageCallback) {
+				capturedOnMessageCallback({
+					messages: [
+						{
+							type: 'workflow-updated',
+							role: 'assistant',
+							codeSnippet: '{"nodes":[],"connections":{}}',
+						},
+					],
+					sessionId: 'test-session',
+				});
+			}
+
+			if (capturedDoneCallback) {
+				capturedDoneCallback();
+			}
+
+			await vi.waitFor(() => {
+				expect(saveCurrentWorkflowMock).toHaveBeenCalledWith({}, false, true);
+			});
+		});
+
+		it('should reconcile the stale checksum on the error path without appending a version card', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.setWorkflowId('test-workflow-123');
+			workflowsStore.isNewWorkflow = false;
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
+			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
+
+			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds)
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				})
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+			saveCurrentWorkflowMock.mockClear();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, _onDone, onError) => {
+				onMessage({
+					messages: [
+						{
+							type: 'workflow-updated',
+							role: 'assistant',
+							codeSnippet: '{"nodes":[],"connections":{}}',
+						},
+					],
+					sessionId: 'test-session',
+				});
+				onError(new Error('stream failed'));
+			});
+
+			await builderStore.sendChatMessage({ text: 'Build a workflow' });
+
+			await vi.waitFor(() => {
+				expect(saveCurrentWorkflowMock).toHaveBeenCalledWith({}, false, true);
+			});
+
+			expect(builderStore.chatMessages.some((m) => m.type === 'custom')).toBe(false);
 		});
 
 		it('should not add revertVersion to user message after streaming when workflow was not modified', async () => {

@@ -1,13 +1,24 @@
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 
-const { buildAgentTreeFromEvents, findAgentNodeInTree } =
-	require('../../../../../@n8n/instance-ai/src/utils/agent-tree') as {
+// `@n8n/instance-ai` source util imported dynamically (no built entry for this
+// deep subpath); loaded in `beforeAll` to avoid top-level `await`.
+let buildAgentTreeFromEvents: (events: InstanceAiEvent[]) => InstanceAiAgentNode;
+let findAgentNodeInTree: (
+	tree: InstanceAiAgentNode,
+	agentId: string,
+) => InstanceAiAgentNode | undefined;
+
+beforeAll(async () => {
+	({ buildAgentTreeFromEvents, findAgentNodeInTree } = (await import(
+		'../../../../../@n8n/instance-ai/src/utils/agent-tree'
+	)) as {
 		buildAgentTreeFromEvents: (events: InstanceAiEvent[]) => InstanceAiAgentNode;
 		findAgentNodeInTree: (
 			tree: InstanceAiAgentNode,
 			agentId: string,
 		) => InstanceAiAgentNode | undefined;
-	};
+	});
+});
 
 describe('buildAgentTreeFromEvents', () => {
 	it('should build a tree from run-start + text-delta + run-finish', () => {
@@ -320,7 +331,7 @@ describe('buildAgentTreeFromEvents', () => {
 		expect(tree.status).toBe('error');
 	});
 
-	it('should apply correct renderHint for delegate tool', () => {
+	it('should apply default renderHint for removed delegate tool', () => {
 		const events: InstanceAiEvent[] = [
 			{
 				type: 'run-start',
@@ -350,7 +361,7 @@ describe('buildAgentTreeFromEvents', () => {
 
 		const tree = buildAgentTreeFromEvents(events);
 
-		expect(tree.toolCalls[0].renderHint).toBe('delegate');
+		expect(tree.toolCalls[0].renderHint).toBe('default');
 		expect(tree.toolCalls[1].renderHint).toBe('builder');
 	});
 

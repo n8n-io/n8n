@@ -4,7 +4,7 @@ import type { MemorySaver } from '@langchain/langgraph';
 import { GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { ApplicationError, OperationalError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 import type { Mock, MockedClass, MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -200,7 +200,7 @@ describe('WorkflowBuilderAgent', () => {
 			await expect(async () => {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
-			}).rejects.toThrow(ApplicationError);
+			}).rejects.toThrow(UserError);
 		});
 
 		it('should handle 401 expired token error from LangChain MODEL_AUTHENTICATION', async () => {
@@ -220,11 +220,11 @@ describe('WorkflowBuilderAgent', () => {
 			await expect(async () => {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
-			}).rejects.toThrow(ApplicationError);
+			}).rejects.toThrow(UserError);
 		});
 
 		it('should not treat generic 401 errors as expired token errors', async () => {
-			// A generic 401 without lc_error_code should be rethrown as-is, not converted to ApplicationError
+			// A generic 401 without lc_error_code should be rethrown as-is, not converted to UserError
 			const generic401Error = Object.assign(new Error('Unauthorized'), { status: 401 });
 
 			mockCreateStreamProcessor.mockImplementation(() => {

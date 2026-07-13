@@ -3,6 +3,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { JwtService } from '@/services/jwt.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -60,7 +61,82 @@ describe('GET /rest/consent/details', () => {
 		expect(response.body.data).toEqual({
 			clientName: 'Test OAuth Client',
 			clientId: 'test-client-id',
+			redirectUri: 'https://example.com/callback',
 		});
+	});
+
+	test('should include the resource name when the session resource resolves', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'resource-client-id',
+			name: 'Test OAuth Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		const resourceUrl = 'https://n8n.example.com/mcp/named-workflow';
+		Container.get(ProtectedResourceRegistry).register({
+			id: 'test-named-resource',
+			displayName: 'My Named Workflow',
+			getResourceUrl: () => resourceUrl,
+			getAudiences: () => [resourceUrl],
+			authorize: async () => true,
+			scopes: [],
+		});
+
+		const sessionToken = createSessionToken({
+			clientId: client.id,
+			redirectUri: 'https://example.com/callback',
+			codeChallenge: 'test-challenge',
+			state: 'test-state',
+			resource: resourceUrl,
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/consent/details')
+			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual({
+			clientName: 'Test OAuth Client',
+			clientId: 'resource-client-id',
+			resourceName: 'My Named Workflow',
+			redirectUri: 'https://example.com/callback',
+		});
+	});
+
+	test('should return 422 and clear the session when the resource cannot be resolved', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'unresolvable-client-id',
+			name: 'Test OAuth Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		const sessionToken = createSessionToken({
+			clientId: client.id,
+			redirectUri: 'https://example.com/callback',
+			codeChallenge: 'test-challenge',
+			state: 'test-state',
+			resource: 'https://n8n.example.com/mcp/does-not-exist',
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/consent/details')
+			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toEqual({
+			status: 'error',
+			message: 'Authorization target is no longer available',
+		});
+
+		const setCookieHeader = response.headers['set-cookie'];
+		expect(setCookieHeader).toBeDefined();
+		expect(setCookieHeader[0]).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970/);
 	});
 
 	test('should return 400 when session cookie is missing', async () => {

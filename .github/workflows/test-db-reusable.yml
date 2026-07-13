@@ -24,6 +24,7 @@ jobs:
             runner: blacksmith-4vcpu-ubuntu-2204
             test-cmd: pnpm test:sqlite
             migration-cmd: pnpm test:sqlite:migrations
+            schema-check-cmd: pnpm --filter=@n8n/db schema:check:sqlite
             collectCoverage: 'false'
           - name: Postgres 16
             # 4vcpu is enough since persistent-worker + template-DB make PG16
@@ -33,6 +34,7 @@ jobs:
             runner: blacksmith-4vcpu-ubuntu-2204
             test-cmd: pnpm test:postgres:integration:tc
             migration-cmd: pnpm test:postgres:migrations:tc
+            schema-check-cmd: pnpm --filter=@n8n/db schema:check:postgres
             TEST_IMAGE_POSTGRES: 'postgres:16'
             collectCoverage: 'true'
     env:
@@ -57,6 +59,12 @@ jobs:
         if: matrix.migration-cmd != ''
         working-directory: packages/cli
         run: ${{ matrix.migration-cmd }}
+
+      # Regenerates the schema docs for this leg's database (sqlite temp file /
+      # postgres testcontainer) and fails if they differ from what's committed.
+      # tbls runs as a Docker image in CI.
+      - name: Verify schema docs are up to date
+        run: ${{ matrix.schema-check-cmd }}
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'

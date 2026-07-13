@@ -25,6 +25,7 @@ vi.mock('@vue-flow/core', () => ({
 	useVueFlow: () => ({
 		getSelectedNodes: selectedNodesRef,
 		removeSelectedNodes: removeSelectedNodesMock,
+		viewport: { value: { x: 0, y: 0, zoom: 1 } },
 	}),
 }));
 
@@ -92,6 +93,28 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
+	describe('double-click to toggle collapse', () => {
+		it('emits toggle when the group body is double-clicked', async () => {
+			const wrapper = render();
+			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-header'));
+			expect(wrapper.emitted().toggle).toEqual([['g1']]);
+		});
+
+		it('does not emit toggle when the title is double-clicked', async () => {
+			const wrapper = render();
+			const titleArea = wrapper.getByTestId('canvas-node-group-title');
+			const titleEdit = titleArea.querySelector('.nodrag') as HTMLElement;
+			await fireEvent.dblClick(titleEdit);
+			expect(wrapper.emitted().toggle).toBeUndefined();
+		});
+
+		it('does not emit toggle when the ungroup button is double-clicked', async () => {
+			const wrapper = render();
+			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-ungroup'));
+			expect(wrapper.emitted().toggle).toBeUndefined();
+		});
+	});
+
 	describe('height invariant; nodrag on interactive children', () => {
 		it('has the fixed header height when collapsed', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
@@ -133,6 +156,78 @@ describe('CanvasNodeGroupTitleBar', () => {
 		it('hides the frame when collapsed', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
 			expect(wrapper.queryByTestId('canvas-node-group-frame')).toBeNull();
+		});
+	});
+
+	describe('execution-status classes', () => {
+		it('applies no status class when executionStatus is undefined (idle)', () => {
+			const wrapper = render({ data: makeData({ executionStatus: undefined }) });
+			const root = wrapper.getByTestId('canvas-node-group');
+			// No status icon and no .success / .error / .running class semantics.
+			expect(wrapper.queryByTestId('canvas-node-group-status-success')).toBeNull();
+			expect(wrapper.queryByTestId('canvas-node-group-status-error')).toBeNull();
+			// status classes are CSS module hashed; we can only check via test ids.
+			expect(root).toBeTruthy();
+		});
+
+		it('shows success icon when executionStatus is success', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'success' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-success')).toBeTruthy();
+		});
+
+		it('shows error icon when executionStatus is error', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'error' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-error')).toBeTruthy();
+		});
+
+		it('shows warning icon when executionStatus is warning (a member node is dirty)', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'warning' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-warning')).toBeTruthy();
+		});
+
+		it('shows the validation issues triangle when executionStatus is issues', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'issues' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-issues')).toBeTruthy();
+			// Issues must not render the execution-error mark.
+			expect(wrapper.queryByTestId('canvas-node-group-status-error')).toBeNull();
+		});
+
+		it('hides the status mark when the group is expanded (member nodes show their own)', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'success', isCollapsed: false }),
+			});
+			expect(wrapper.queryByTestId('canvas-node-group-status-success')).toBeNull();
+		});
+
+		it('hides the validation issues triangle when the group is expanded', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'issues', isCollapsed: false }),
+			});
+			expect(wrapper.queryByTestId('canvas-node-group-status-issues')).toBeNull();
+		});
+
+		it('applies a hashed `running` class when executionStatus is running', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'running' }),
+			});
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /running/i.test(c))).toBe(true);
+		});
+
+		it('applies a hashed `waiting` class when executionStatus is waiting', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'waiting' }),
+			});
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /waiting/i.test(c))).toBe(true);
 		});
 	});
 

@@ -67,7 +67,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	// Per-editor host overrides (already ANDed with the instance-wide store
 	// flags) — e.g. the Instance AI artifact preview supersedes the AI
 	// capabilities of its embedded editor, which must hide the AI actions.
-	const { aiAssistant, aiBuilder } = useEditorContext();
+	const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
 
 	const workflowPermissions = computed(
 		() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
@@ -141,9 +141,15 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 		return true;
 	};
 
+	const isAiSubNode = (node: INodeUi): boolean => {
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		return NodeHelpers.isSubNodeType(nodeType);
+	};
+
 	return computed(() => {
 		const nodes = targetNodes.value;
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
+		const canExtract = nodes.some(isExecutable) && !nodes.every(isAiSubNode);
 
 		const i18nOptions = {
 			adjustToNumber: nodes.length,
@@ -182,6 +188,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 		const aiActions: Item[] = [
 			!onlyStickies &&
 				(aiAssistant.value || aiBuilder.value) &&
+				!instanceAi.value &&
 				focusedNodesStore.isFeatureEnabled && {
 					id: 'focus_ai_on_selected',
 					divided: true,
@@ -253,7 +260,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
 				...layoutActions,
-				...extractionActions,
+				...(canExtract ? extractionActions : []),
 				...aiActions,
 				...selectionActions,
 				{

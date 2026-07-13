@@ -25,7 +25,7 @@ test.use({
 
 test.describe(
 	'Canvas Interactions Benchmark',
-	{ annotation: [{ type: 'owner', description: 'Canvas' }] },
+	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
 		for (const tier of TIERS) {
 			test(`interactions ${tier}-tier @tier:${tier}`, async ({ n8n, api }, testInfo) => {
@@ -49,6 +49,7 @@ test.describe(
 				// tracking mixin on boot.
 				await enableRenderTracking(n8n.page);
 
+				// janitor-disable-next-line no-raw-editor-navigation -- benchmark navigates raw and measures load via waitForCanvasReady below
 				await n8n.page.goto(`/workflow/${workflowId}`);
 				await waitForCanvasReady(n8n.page, flowNodes, stickyNotes);
 				expect(await isRenderTrackingActive(n8n.page)).toBe(true);

@@ -6,7 +6,7 @@ import promClient from 'prom-client';
 import { EventService } from '@/events/event.service';
 
 import type { PrometheusMetricsCollector } from './base';
-import { DURATION_BUCKETS_SECONDS } from './constant';
+import { DURATION_BUCKETS_SECONDS, SIZE_BUCKETS_BYTES } from './constant';
 
 /**
  * Tracks execution data read/write counts, durations, and unreadable bundle counts.
@@ -43,7 +43,7 @@ export class PrometheusExecutionDataMetricsService implements PrometheusMetricsC
 			labelNames: ['mode'],
 		});
 
-		for (const mode of ['db', 'fs'] as const) {
+		for (const mode of ['db', 'fs', 's3', 'az'] as const) {
 			for (const result of ['success', 'failure'] as const) {
 				readsTotal.inc({ mode, result }, 0);
 				writesTotal.inc({ mode, result }, 0);
@@ -65,6 +65,13 @@ export class PrometheusExecutionDataMetricsService implements PrometheusMetricsC
 			buckets: DURATION_BUCKETS_SECONDS,
 		});
 
+		const writeSizeHistogram = new promClient.Histogram({
+			name: `${this.config.prefix}execution_data_write_size_bytes`,
+			help: 'Logical byte size of the JSON execution data bundle written (excludes binary data).',
+			labelNames: ['mode'],
+			buckets: SIZE_BUCKETS_BYTES,
+		});
+
 		const storageModeGauge = new promClient.Gauge({
 			name: `${this.config.prefix}execution_data_storage_mode`,
 			help: 'Configured execution data storage mode (1 for the active mode, 0 otherwise).',
@@ -72,6 +79,8 @@ export class PrometheusExecutionDataMetricsService implements PrometheusMetricsC
 		});
 		storageModeGauge.set({ mode: 'db' }, 0);
 		storageModeGauge.set({ mode: 'fs' }, 0);
+		storageModeGauge.set({ mode: 's3' }, 0);
+		storageModeGauge.set({ mode: 'az' }, 0);
 		storageModeGauge.set({ mode: this.storageConfig.modeTag }, 1);
 
 		this.eventService.on(
@@ -87,10 +96,11 @@ export class PrometheusExecutionDataMetricsService implements PrometheusMetricsC
 			},
 		);
 
-		this.eventService.on('execution-data-write', ({ mode, durationMs, success }) => {
+		this.eventService.on('execution-data-write', ({ mode, durationMs, success, jsonSizeBytes }) => {
 			writesTotal.inc({ mode, result: success ? 'success' : 'failure' }, 1);
 			if (success) {
 				writeDurationHistogram.observe({ mode }, durationMs / 1000);
+				writeSizeHistogram.observe({ mode }, jsonSizeBytes);
 			}
 		});
 	}

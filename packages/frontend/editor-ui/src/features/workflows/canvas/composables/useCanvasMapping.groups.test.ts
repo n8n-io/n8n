@@ -1,21 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type { CanvasConnection } from '../canvas.types';
+import type { CanvasConnection, NodeExecutionSnapshot } from '../canvas.types';
 import {
+	aggregateGroupExecution,
 	buildCollapsedGroupByNodeId,
+	computeGroupFrameRects,
 	computeNodesRectFromStore,
 	mapGroupsToVueFlowNodes,
 	remapCollapsedGroupConnections,
+	titleBarFromNodesRect,
 } from './useCanvasMapping.groups';
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_PADDING_X,
+	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { createNodeExecutionSnapshot } from '../__tests__/utils';
 
 const snapToGrid = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 
@@ -47,6 +52,71 @@ function nodeStore(...nodes: INodeUi[]) {
 	const map = new Map(nodes.map((n) => [n.id, n]));
 	return (id: string) => map.get(id);
 }
+
+function snapshotGetter(byId: Record<string, Partial<NodeExecutionSnapshot>> = {}) {
+	return (id: string): NodeExecutionSnapshot => createNodeExecutionSnapshot(byId[id]);
+}
+
+describe('computeGroupFrameRects', () => {
+	// Coordinates intentionally off the grid so an accidental snap() would surface.
+	const nodesRect = { x: 317, y: 213, width: 396, height: 120 };
+
+	it('anchors both rects at the same unsnapped top-left, offset by padding and header', () => {
+		const { collapsed, expanded } = computeGroupFrameRects(nodesRect);
+		const x = nodesRect.x - GROUP_PADDING_X;
+		const y = nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT;
+
+		expect(collapsed).toMatchObject({ x, y });
+		expect(expanded).toMatchObject({ x, y });
+	});
+
+	it('sizes the collapsed rect as a fixed-size chip', () => {
+		const { collapsed } = computeGroupFrameRects(nodesRect);
+		expect(collapsed.width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
+		expect(collapsed.height).toBe(GROUP_HEADER_HEIGHT);
+	});
+
+	it('sizes the expanded rect to span the cluster plus padding', () => {
+		const { expanded } = computeGroupFrameRects(nodesRect);
+		expect(expanded.width).toBe(nodesRect.width + 2 * GROUP_PADDING_X);
+		expect(expanded.height).toBe(
+			GROUP_HEADER_HEIGHT + nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
+		);
+	});
+
+	it('floors the expanded width at the collapsed chip width for a tight cluster', () => {
+		const { expanded } = computeGroupFrameRects({ ...nodesRect, width: 10 });
+		expect(expanded.width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
+	});
+
+	it('exposes an expanded height that, minus the header, equals the padded cluster height', () => {
+		const { expanded } = computeGroupFrameRects(nodesRect);
+		expect(expanded.height - GROUP_HEADER_HEIGHT).toBe(
+			nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
+		);
+	});
+});
+
+describe('titleBarFromNodesRect', () => {
+	// Off-grid so snapping is observable.
+	const nodesRect = { x: 317, y: 213, width: 396, height: 120 };
+
+	it('snaps the position to the grid while computeGroupFrameRects stays unsnapped', () => {
+		const { expanded } = computeGroupFrameRects(nodesRect);
+		const titleBar = titleBarFromNodesRect(nodesRect, false);
+
+		expect(titleBar.position).toEqual({ x: snapToGrid(expanded.x), y: snapToGrid(expanded.y) });
+		// The raw rect is not grid-aligned, so snapping must have moved it.
+		expect(titleBar.position.x).not.toBe(expanded.x);
+	});
+
+	it('uses the chip width when collapsed and the expanded width otherwise', () => {
+		expect(titleBarFromNodesRect(nodesRect, true).width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
+		expect(titleBarFromNodesRect(nodesRect, false).width).toBe(
+			nodesRect.width + 2 * GROUP_PADDING_X,
+		);
+	});
+});
 
 describe('computeNodesRectFromStore', () => {
 	// Same defaults used by the design system canvas grid (16 × 6).
@@ -105,6 +175,119 @@ describe('computeNodesRectFromStore', () => {
 	});
 });
 
+describe('aggregateGroupExecution', () => {
+	function statusOf(nodeIds: string[], byId: Record<string, Partial<NodeExecutionSnapshot>> = {}) {
+		return aggregateGroupExecution(nodeIds, snapshotGetter(byId));
+	}
+
+	it('returns running when any node is running', () => {
+		expect(statusOf(['a', 'b'], { a: { running: true } })).toBe('running');
+	});
+
+	it('returns running when any node is waitingForNext', () => {
+		expect(statusOf(['a'], { a: { waitingForNext: true } })).toBe('running');
+	});
+
+	it('returns error when any node has an execution error', () => {
+		expect(statusOf(['a', 'b'], { b: { hasExecutionError: true } })).toBe('error');
+	});
+
+	it('returns issues (not error) when a node has only validation errors and never ran', () => {
+		expect(statusOf(['a', 'b'], { b: { hasValidationError: true } })).toBe('issues');
+	});
+
+	it('execution error beats validation issues', () => {
+		expect(
+			statusOf(['a', 'b'], {
+				a: { hasExecutionError: true },
+				b: { hasValidationError: true },
+			}),
+		).toBe('error');
+	});
+
+	it('validation issues beat warning (dirty) and success', () => {
+		expect(
+			statusOf(['a', 'b'], {
+				a: { hasValidationError: true },
+				b: { status: 'success', dirty: true },
+			}),
+		).toBe('issues');
+	});
+
+	it('ignores canceled / new for the success-success rollup (treated as idle, mirroring single-node)', () => {
+		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'canceled' } })).toBe(
+			'success',
+		);
+		expect(
+			statusOf(['a', 'b'], { a: { status: 'canceled' }, b: { status: 'new' } }),
+		).toBeUndefined();
+	});
+
+	it('returns success when all nodes are success', () => {
+		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'success' } })).toBe(
+			'success',
+		);
+	});
+
+	it('returns success when one node is success and others never ran (unknown — e.g. untaken conditional branch)', () => {
+		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'unknown' } })).toBe(
+			'success',
+		);
+	});
+
+	it('returns undefined (idle) when all nodes are unknown — workflow has never executed', () => {
+		expect(
+			statusOf(['a', 'b'], { a: { status: 'unknown' }, b: { status: 'unknown' } }),
+		).toBeUndefined();
+	});
+
+	it('returns undefined when no node status is set', () => {
+		expect(statusOf(['a', 'b'])).toBeUndefined();
+	});
+
+	it('returns waiting when any node has a waiting reason (form/webhook/etc.)', () => {
+		expect(statusOf(['a', 'b'], { a: { waiting: 'waiting for webhook' } })).toBe('waiting');
+	});
+
+	it('returns waiting when any node has executionStatus waiting', () => {
+		expect(statusOf(['a'], { a: { status: 'waiting' } })).toBe('waiting');
+	});
+
+	it('running beats error', () => {
+		expect(statusOf(['a', 'b'], { a: { running: true }, b: { hasExecutionError: true } })).toBe(
+			'running',
+		);
+	});
+
+	it('error beats success', () => {
+		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { hasExecutionError: true } })).toBe(
+			'error',
+		);
+	});
+
+	it('returns warning when any node is dirty (parameters changed since its last run)', () => {
+		expect(
+			statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'success', dirty: true } }),
+		).toBe('warning');
+	});
+
+	it('error beats warning, warning beats success — mirrors single-node CSS rule order', () => {
+		expect(
+			statusOf(['a', 'b'], {
+				a: { hasExecutionError: true },
+				b: { status: 'success', dirty: true },
+			}),
+		).toBe('error');
+		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { dirty: true } })).toBe('warning');
+	});
+
+	it('waiting beats running — mirrors single-node CSS rule order', () => {
+		expect(statusOf(['a', 'b'], { a: { running: true }, b: { waiting: 'waiting for form' } })).toBe(
+			'waiting',
+		);
+	});
+});
+
 describe('mapGroupsToVueFlowNodes', () => {
 	const group: IWorkflowGroup = { id: 'g1', name: 'G', nodeIds: ['a', 'b'] };
 
@@ -115,6 +298,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => isCollapsed,
 			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 	}
 
@@ -158,12 +342,14 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => true,
 			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		const expanded = mapGroupsToVueFlowNodes({
 			allGroups: [group],
 			getNodeById: getById,
 			isGroupCollapsed: () => false,
 			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		expect(collapsed[0].width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 		expect(expanded[0].width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
@@ -187,6 +373,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => true,
 			readOnly: true,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		expect(out[0].selectable).toBe(true);
 		expect(out[0].draggable).toBe(false);
@@ -199,6 +386,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => true,
 			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		expect(out).toHaveLength(0);
 	});
@@ -210,6 +398,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => true,
 			readOnly: true,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		expect(out[0].draggable).toBe(false);
 	});
@@ -221,9 +410,33 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => false,
 			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		expect(Math.abs(out[0].position.x % GRID_SIZE)).toBe(0);
 		expect(Math.abs(out[0].position.y % GRID_SIZE)).toBe(0);
+	});
+
+	it('applies visual offsets without changing nodesRect from store positions', () => {
+		const getById = nodeStore(makeNode('a', 100, 200));
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['a'] }],
+			getNodeById: getById,
+			getGroupVisualOffset: () => ({ x: 50, y: 80 }),
+			isGroupCollapsed: () => false,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+
+		expect(out[0].position).toEqual({
+			x: snapToGrid(100 - GROUP_PADDING_X) + 50,
+			y: snapToGrid(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT) + 80,
+		});
+		expect(out[0].data?.nodesRect).toEqual({
+			x: 100,
+			y: 200,
+			width: 96,
+			height: 96,
+		});
 	});
 });
 

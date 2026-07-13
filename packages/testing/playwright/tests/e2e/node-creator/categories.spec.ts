@@ -23,20 +23,12 @@ test.skip(
 			await expect(n8n.canvas.nodeCreator.getCategoryItem('Actions')).toBeVisible();
 			await expect(n8n.canvas.nodeCreator.getCategoryItem('Triggers')).toBeVisible();
 
-			await expect(
-				n8n.canvas.nodeCreator.getCategoryItem('Triggers').locator('..'),
-			).toHaveAttribute('data-category-collapsed', 'false');
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Triggers', false);
 
-			await expect(n8n.canvas.nodeCreator.getCategoryItem('Actions').locator('..')).toHaveAttribute(
-				'data-category-collapsed',
-				'true',
-			);
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Actions', true);
 
 			await n8n.canvas.nodeCreator.selectCategoryItem('Actions');
-			await expect(n8n.canvas.nodeCreator.getCategoryItem('Actions').locator('..')).toHaveAttribute(
-				'data-category-collapsed',
-				'false',
-			);
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Actions', false);
 		});
 
 		test('should have "Triggers" section collapsed when opening actions view from Regular root view', async ({
@@ -48,25 +40,15 @@ test.skip(
 			await n8n.canvas.nodeCreator.searchFor('n8n');
 			await n8n.canvas.nodeCreator.getNodeItems().filter({ hasText: 'n8n' }).first().click();
 
-			await expect(n8n.canvas.nodeCreator.getCategoryItem('Actions').locator('..')).toHaveAttribute(
-				'data-category-collapsed',
-				'false',
-			);
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Actions', false);
 
 			await n8n.canvas.nodeCreator.selectCategoryItem('Actions');
-			await expect(n8n.canvas.nodeCreator.getCategoryItem('Actions').locator('..')).toHaveAttribute(
-				'data-category-collapsed',
-				'true',
-			);
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Actions', true);
 
-			await expect(
-				n8n.canvas.nodeCreator.getCategoryItem('Triggers').locator('..'),
-			).toHaveAttribute('data-category-collapsed', 'true');
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Triggers', true);
 
 			await n8n.canvas.nodeCreator.selectCategoryItem('Triggers');
-			await expect(
-				n8n.canvas.nodeCreator.getCategoryItem('Triggers').locator('..'),
-			).toHaveAttribute('data-category-collapsed', 'false');
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Triggers', false);
 		});
 
 		test('should show callout and two suggested nodes if node has no trigger actions', async ({

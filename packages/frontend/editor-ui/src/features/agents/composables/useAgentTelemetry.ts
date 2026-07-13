@@ -12,8 +12,10 @@ export type AgentConfigPart =
 	| 'tools'
 	| 'skills'
 	| 'triggers'
+	| 'subAgents'
 	| 'name'
-	| 'description';
+	| 'description'
+	| 'vectorStores';
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();
@@ -191,6 +193,23 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackImportedSkill(params: {
+		agentId: string;
+		source: 'skill_file' | 'folder';
+		status: 'success' | 'error';
+		referenceCount?: number;
+		error?: string;
+	}) {
+		safeTrack('User imported agent skill', {
+			agent_id: params.agentId,
+			source: params.source,
+			status: params.status,
+			reference_count: params.referenceCount ?? 0,
+			...(params.error ? { error: params.error } : {}),
+			...common(),
+		});
+	}
+
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
@@ -205,5 +224,6 @@ export function useAgentTelemetry() {
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
+		trackImportedSkill,
 	};
 }

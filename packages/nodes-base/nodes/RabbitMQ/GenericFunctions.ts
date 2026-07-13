@@ -1,6 +1,7 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import * as amqplib from 'amqplib';
 import type {
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IDataObject,
 	IExecuteFunctions,
@@ -9,8 +10,6 @@ import type {
 	ITriggerFunctions,
 } from 'n8n-workflow';
 import { jsonParse, sleep } from 'n8n-workflow';
-
-import { formatPrivateKey } from '@utils/utilities';
 
 import type { ExchangeType, Options, RabbitMQCredentials, TriggerOptions } from './types';
 
@@ -28,13 +27,12 @@ export async function rabbitmqConnect(
 	if (credentials.ssl) {
 		credentialData.protocol = 'amqps';
 
-		optsData.ca =
-			credentials.ca === '' ? undefined : [Buffer.from(formatPrivateKey(credentials.ca))];
+		optsData.ca = credentials.ca === '' ? undefined : [Buffer.from(formatPemBlock(credentials.ca))];
 		if (credentials.passwordless) {
 			optsData.cert =
-				credentials.cert === '' ? undefined : Buffer.from(formatPrivateKey(credentials.cert));
+				credentials.cert === '' ? undefined : Buffer.from(formatPemBlock(credentials.cert));
 			optsData.key =
-				credentials.key === '' ? undefined : Buffer.from(formatPrivateKey(credentials.key));
+				credentials.key === '' ? undefined : Buffer.from(formatPemBlock(credentials.key));
 			optsData.passphrase = credentials.passphrase === '' ? undefined : credentials.passphrase;
 			optsData.credentials = amqplib.credentials.external();
 		}

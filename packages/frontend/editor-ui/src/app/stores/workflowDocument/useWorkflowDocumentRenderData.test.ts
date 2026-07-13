@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { computed, effectScope } from 'vue';
+import { computed, effectScope, ref } from 'vue';
 import { setActivePinia, createPinia } from 'pinia';
 import type { INode } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
@@ -16,6 +16,11 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/executionData.store';
+import {
+	CanvasNodeDirtiness,
+	type CanvasNodeDefaultRender,
+	type CanvasNodeDirtinessType,
+} from '@/features/workflows/canvas/canvas.types';
 import { useWorkflowDocumentRenderData } from './useWorkflowDocumentRenderData';
 
 const TEST_TRIGGER_NODE_TYPE = 'n8n-nodes-base.testTrigger';
@@ -24,13 +29,21 @@ const TEST_TRIGGER_NODE_TYPE = 'n8n-nodes-base.testTrigger';
 // stores that aren't needed to exercise renderData's wiring. The actual
 // workflowDocument / workflowExecutionState stores stay real so reconciliation
 // off `onNodesChange` is genuinely tested.
+// Both consts below are only dereferenced when the mocked composables are
+// *called* (inside tests, after this module's body has initialized), so the
+// references are safe under vi.mock hoisting.
+const dirtinessByNameOverride = ref<Record<string, CanvasNodeDirtinessType | undefined>>({});
+const isConfigNodeSpy = vi.fn((..._args: unknown[]) => false);
+
 vi.mock('@/app/composables/useNodeDirtiness', () => ({
-	useNodeDirtiness: vi.fn(() => ({ dirtinessByName: computed(() => ({})) })),
+	useNodeDirtiness: vi.fn(() => ({
+		dirtinessByName: computed(() => dirtinessByNameOverride.value),
+	})),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
-		isConfigNode: () => false,
+		isConfigNode: isConfigNodeSpy,
 		isConfigurableNode: () => false,
 		isTriggerNode: (type: string) => type === 'n8n-nodes-base.testTrigger',
 		getNodeType: (type: string) =>
@@ -205,6 +218,39 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 
 		const render = renderData.renderTypeByNodeId.get('s')?.value;
 		expect(render?.type).toBe('n8n-nodes-base.stickyNote');
+	});
+
+	it('returns an agent render type threading the agentId for v2 AI Agent nodes', () => {
+		const agentId = { __rl: true, mode: 'list', value: 'agent-1', cachedResultName: 'My Agent' };
+		const { docId } = setupWorkflow('wf-fusion-agent', [
+			{
+				id: 'ag',
+				name: 'Agent',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 2,
+				parameters: { agentId },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('ag')?.value;
+		expect(render?.type).toBe('n8n-nodes-base.messageAnAgent');
+		expect(render && 'options' in render ? render.options : undefined).toEqual({ agentId });
+	});
+
+	it('uses the default render type for v1 AI Agent nodes (legacy picker)', () => {
+		const { docId } = setupWorkflow('wf-fusion-agent-v1', [
+			{
+				id: 'ag1',
+				name: 'Agent v1',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 1,
+				parameters: { agentId: { __rl: true, mode: 'list', value: 'agent-1' } },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.renderTypeByNodeId.get('ag1')?.value?.type).toBe('default');
 	});
 
 	it('assigns z-index entries only for sticky notes via additionalPropertiesByNodeId', () => {
@@ -489,5 +535,58 @@ describe('useWorkflowDocumentRenderData — lifecycle', () => {
 
 		doc.unpinNodeData('Alpha');
 		expect(hasPinnedData.value).toBe(false);
+	});
+});
+
+describe('useWorkflowDocumentRenderData — per-node dirtiness gating', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		dirtinessByNameOverride.value = {};
+	});
+
+	it('propagates a node dirtiness change into its render type options', () => {
+		const { docId } = setupWorkflow('wf-dirtiness-propagate', [{ id: 'a', name: 'Alpha' }]);
+		const { renderData } = createRenderData(docId);
+		const renderA = () => renderData.renderTypeByNodeId.get('a')?.value as CanvasNodeDefaultRender;
+
+		expect(renderA().options.dirtiness).toBeUndefined();
+
+		dirtinessByNameOverride.value = { Alpha: CanvasNodeDirtiness.PARAMETERS_UPDATED };
+		expect(renderA().options.dirtiness).toBe(CanvasNodeDirtiness.PARAMETERS_UPDATED);
+
+		dirtinessByNameOverride.value = {};
+		expect(renderA().options.dirtiness).toBeUndefined();
+	});
+
+	it('does not re-evaluate render types of nodes whose dirtiness is unchanged', () => {
+		const { docId } = setupWorkflow('wf-dirtiness-isolation', [
+			{ id: 'a', name: 'Alpha' },
+			{ id: 'b', name: 'Beta' },
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const initialA = renderData.renderTypeByNodeId.get('a')?.value;
+		const initialB = renderData.renderTypeByNodeId.get('b')?.value;
+		// `isConfigNode` runs once per default-render-type evaluation with the
+		// node as its second argument, so calls attribute evaluations per node.
+		const betaEvaluations = () =>
+			isConfigNodeSpy.mock.calls.filter((call) => (call[1] as INodeUi).id === 'b').length;
+		const betaEvaluationsBefore = betaEvaluations();
+
+		dirtinessByNameOverride.value = { Alpha: CanvasNodeDirtiness.PARAMETERS_UPDATED };
+
+		// Alpha's dirtiness changed: its entry re-evaluates to a new value.
+		const updatedA = renderData.renderTypeByNodeId.get('a')?.value;
+		expect(updatedA).not.toBe(initialA);
+		expect((updatedA as CanvasNodeDefaultRender).options.dirtiness).toBe(
+			CanvasNodeDirtiness.PARAMETERS_UPDATED,
+		);
+
+		// Beta's dirtiness is unchanged: identity is kept AND — the actual
+		// regression guard, since the render entry's isEqual gate alone would
+		// preserve identity even after a wasted re-evaluation — its compute
+		// body never re-ran.
+		expect(renderData.renderTypeByNodeId.get('b')?.value).toBe(initialB);
+		expect(betaEvaluations()).toBe(betaEvaluationsBefore);
 	});
 });

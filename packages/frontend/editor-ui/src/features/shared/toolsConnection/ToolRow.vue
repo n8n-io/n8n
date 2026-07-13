@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nIconButton, N8nNodeIcon, N8nText } from '@n8n/design-system';
+import { computed, inject } from 'vue';
+import { N8nButton, N8nIcon, N8nNodeIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { ToolConnectionItem } from './types';
+import ToolCredentialPicker from './ToolCredentialPicker.vue';
+import { TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, type ToolConnectionItem } from './types';
 import { resolveToolItemIcon } from './toolItemIcon';
 
 const props = defineProps<{
@@ -12,12 +13,30 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
+	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
+	'credential-dropdown-open': [item: ToolConnectionItem];
+	'first-credential-connect': [item: ToolConnectionItem];
+	'new-credential-connect': [item: ToolConnectionItem];
 }>();
 
 const i18n = useI18n();
+const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+
+const shouldShowCredentialPicker = computed(() => {
+	if (props.item.isConnected) {
+		return true;
+	}
+
+	return Boolean(
+		props.item.credentials?.some(
+			({ authType }) => (credentialAdapter?.getCredentialsByType(authType).length ?? 0) > 0,
+		),
+	);
+});
 
 const placeholderIcon = computed(() => {
 	switch (props.item.kind) {
+		case 'service':
 		case 'mcp-server':
 			return 'plug';
 		case 'workflow':
@@ -40,10 +59,9 @@ function handleRowClick() {
 
 function handleConnect() {
 	emit('connect', props.item);
-}
-
-function handleOpenDetail() {
-	emit('open-detail', props.item);
+	if (props.item.credentials?.length) {
+		emit('first-credential-connect', props.item);
+	}
 }
 </script>
 
@@ -94,20 +112,19 @@ function handleOpenDetail() {
 		</button>
 
 		<div :class="$style.action">
-			<template v-if="item.isConnected">
-				<div :class="$style.connectedPill" data-test-id="tools-connection-row-connected">
-					<span :class="$style.statusDot" aria-hidden="true" />
-					<span>{{ i18n.baseText('tools.connection.action.connected') }}</span>
-				</div>
-				<N8nIconButton
-					icon="settings"
-					variant="ghost"
-					size="small"
-					:aria-label="i18n.baseText('tools.connection.action.configure')"
-					data-test-id="tools-connection-row-configure"
-					@click="handleOpenDetail"
-				/>
-			</template>
+			<ToolCredentialPicker
+				v-if="shouldShowCredentialPicker"
+				:item="item"
+				:credentials="item.credentials ?? []"
+				connect-variant="outline"
+				@select-credential="
+					(toolItem, authType, credentialId) =>
+						emit('select-credential', toolItem, authType, credentialId)
+				"
+				@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+				@first-credential-connect="emit('first-credential-connect', $event)"
+				@new-credential-connect="emit('new-credential-connect', $event)"
+			/>
 			<template v-else>
 				<N8nButton
 					:label="i18n.baseText('tools.connection.action.connect')"
@@ -127,9 +144,9 @@ function handleOpenDetail() {
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: 100%;
-	padding: var(--spacing--xs) var(--spacing--3xs);
+	padding: var(--spacing--2xs) var(--spacing--xs) var(--spacing--2xs) var(--spacing--2xs);
 	min-height: 58px;
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--2xs);
 	transition: background-color 120ms ease;
 
 	&:hover {
@@ -216,23 +233,5 @@ function handleOpenDetail() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
-
-.connectedPill {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	padding: 0 var(--spacing--3xs);
-	white-space: nowrap;
-}
-
-.statusDot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background: var(--color--success);
-	flex-shrink: 0;
 }
 </style>

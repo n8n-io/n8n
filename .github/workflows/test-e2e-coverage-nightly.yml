@@ -97,7 +97,9 @@ jobs:
           - name: Unit Coverage (CLI integration + Postgres)
             artifact: integration-coverage
             test-command: pnpm test:postgres:integration:tc
-            artifact-path: packages/cli/coverage/lcov.info
+            # Glob (not the single file) so the artifact keeps its packages/<pkg>/
+            # path, which aggregate-coverage.mjs uses to qualify SF: keys.
+            artifact-path: packages/**/coverage/lcov.info
             working-directory: packages/cli
             pre-pull-containers: true
     env:

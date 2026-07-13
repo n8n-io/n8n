@@ -4,23 +4,32 @@ import type { NotificationHandle } from 'element-plus';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 
-import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	useSelectionValidation,
 	type GroupValidationResult,
 } from '@/app/composables/useSelectionValidation';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useToast } from '@/app/composables/useToast';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useHistoryStore } from '@/app/stores/history.store';
+import { RemoveNodeGroupCommand } from '@/app/models/history';
+import { useCanvasNodeGroupTelemetry } from './useCanvasNodeGroupTelemetry';
 
 type ConnectionChangeAction = 'add' | 'remove';
 type InvalidGroupValidationResult = Extract<GroupValidationResult, { valid: false }>;
 type InvalidAffectedGroup = { group: IWorkflowGroup; result: InvalidGroupValidationResult };
+
+export type NodeGroupAutoExtend = { group: IWorkflowGroup; candidateId: string };
+
+export type NodeGroupConnectionGuardResult =
+	| { outcome: 'proceed' }
+	| { outcome: 'auto-extend'; autoExtend: NodeGroupAutoExtend }
+	| { outcome: 'abort' };
+
 type ExtractableErrorCode = NonNullable<
 	Extract<
 		InvalidGroupValidationResult,
@@ -32,12 +41,6 @@ const BLOCKED_TITLE_KEY: Record<ConnectionChangeAction, BaseTextKey> = {
 	add: 'canvas.nodeGroup.connectionAddBlocked.title',
 	remove: 'canvas.nodeGroup.connectionRemoveBlocked.title',
 };
-
-const MESSAGE_KEY_BY_REASON: Partial<Record<InvalidGroupValidationResult['reason'], BaseTextKey>> =
-	{
-		'multiple-input-branches': 'canvas.nodeGroup.connectionChangeBlocked.multipleInputBranches',
-		'multiple-output-branches': 'canvas.nodeGroup.connectionChangeBlocked.multipleOutputBranches',
-	};
 
 const MESSAGE_KEY_BY_ERROR_CODE: Record<ExtractableErrorCode, BaseTextKey> = {
 	'Multiple Input Nodes': 'canvas.nodeGroup.connectionChangeBlocked.multipleInputNodes',
@@ -53,16 +56,14 @@ const FALLBACK_MESSAGE_KEY: BaseTextKey = 'canvas.nodeGroup.connectionChangeBloc
 
 export function useCanvasNodeGroupOperationGuards() {
 	const workflowsStore = useWorkflowsStore();
-	const posthogStore = usePostHog();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
-	const isCanvasNodeGroupingEnabled = computed(() =>
-		posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
-	);
 
+	const historyStore = useHistoryStore();
 	const i18n = useI18n();
 	const toast = useToast();
+	const groupTelemetry = useCanvasNodeGroupTelemetry();
 	const { isSelectionGroupable } = useSelectionValidation();
 
 	function applyAddConnection(
@@ -171,8 +172,7 @@ export function useCanvasNodeGroupOperationGuards() {
 				? MESSAGE_KEY_BY_ERROR_CODE[result.errors[0].errorCode]
 				: undefined;
 
-		const key: BaseTextKey =
-			errorCodeKey ?? MESSAGE_KEY_BY_REASON[result.reason] ?? FALLBACK_MESSAGE_KEY;
+		const key: BaseTextKey = errorCodeKey ?? FALLBACK_MESSAGE_KEY;
 		return i18n.baseText(key, { interpolate: groupInterpolation });
 	}
 
@@ -190,7 +190,10 @@ export function useCanvasNodeGroupOperationGuards() {
 				onClick: (event: MouseEvent) => {
 					event.preventDefault();
 					event.stopPropagation();
+					const snapshot = { ...group, nodeIds: [...group.nodeIds] };
 					workflowDocumentStore.value.deleteGroup(group.id);
+					historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(snapshot, Date.now()));
+					groupTelemetry.trackUngrouped(group, 'update-blocked-toast');
 					notification?.close();
 				},
 			},
@@ -267,27 +270,10 @@ export function useCanvasNodeGroupOperationGuards() {
 		});
 	}
 
-	function tryAutoExtendInvalidGroup({
-		invalidAffectedGroup,
-		endpointIds,
-		connectionsBySourceNode,
-	}: {
-		invalidAffectedGroup: InvalidAffectedGroup;
-		endpointIds: string[];
-		connectionsBySourceNode: IConnections;
-	}): boolean {
-		const candidateId = getAutoExtendCandidate({
-			failingGroup: invalidAffectedGroup.group,
-			endpointIds,
-			connectionsBySourceNode,
-		});
-
-		if (candidateId === undefined) return false;
-
-		workflowDocumentStore.value.addNodesToGroup(invalidAffectedGroup.group.id, [candidateId]);
-		showAutoExtendedToast(invalidAffectedGroup.group, candidateId);
-
-		return true;
+	// Adds the node to the group and notifies the user
+	function applyNodeGroupAutoExtend({ group, candidateId }: NodeGroupAutoExtend) {
+		workflowDocumentStore.value.addNodesToGroup(group.id, [candidateId]);
+		showAutoExtendedToast(group, candidateId);
 	}
 
 	function isConnectionReplacementAllowedForNodeGroups({
@@ -304,11 +290,9 @@ export function useCanvasNodeGroupOperationGuards() {
 		connectionsBySourceNode: IConnections;
 		allowAutoExtend?: boolean;
 		blockedTitleKey?: BaseTextKey;
-	}): boolean {
-		if (!isCanvasNodeGroupingEnabled.value) return true;
-
+	}): NodeGroupConnectionGuardResult {
 		const affectedGroups = getAffectedNodeGroups(nodeIds);
-		if (affectedGroups.length === 0) return true;
+		if (affectedGroups.length === 0) return { outcome: 'proceed' };
 
 		const candidateConnections = applyConnectionChangesToCandidate({
 			connectionsBySourceNode,
@@ -317,43 +301,46 @@ export function useCanvasNodeGroupOperationGuards() {
 		});
 
 		const invalidAffectedGroup = findInvalidGroup(affectedGroups, candidateConnections);
-		if (!invalidAffectedGroup) return true;
+		if (!invalidAffectedGroup) return { outcome: 'proceed' };
 
-		if (
-			allowAutoExtend &&
-			tryAutoExtendInvalidGroup({
-				invalidAffectedGroup,
+		if (allowAutoExtend) {
+			const candidateId = getAutoExtendCandidate({
+				failingGroup: invalidAffectedGroup.group,
 				endpointIds: nodeIds,
 				connectionsBySourceNode: candidateConnections,
-			})
-		) {
-			return true;
+			});
+			if (candidateId !== undefined) {
+				return {
+					outcome: 'auto-extend',
+					autoExtend: { group: invalidAffectedGroup.group, candidateId },
+				};
+			}
 		}
 
 		showConnectionChangeBlockedToast(blockedTitleKey, invalidAffectedGroup);
 
-		return false;
+		return { outcome: 'abort' };
 	}
 
-	function isConnectionChangeAllowedForNodeGroups({
+	function isConnectionRemovalAllowedForNodeGroups({
 		nodeIds,
 		connection,
 		connectionsBySourceNode,
-		action,
 	}: {
 		nodeIds: string[];
 		connection: [IConnection, IConnection];
 		connectionsBySourceNode: IConnections;
-		action: ConnectionChangeAction;
 	}): boolean {
-		return isConnectionReplacementAllowedForNodeGroups({
-			nodeIds,
-			connectionsToRemove: action === 'remove' ? [connection] : [],
-			connectionsToAdd: action === 'add' ? [connection] : [],
-			connectionsBySourceNode,
-			allowAutoExtend: action === 'add',
-			blockedTitleKey: BLOCKED_TITLE_KEY[action],
-		});
+		return (
+			isConnectionReplacementAllowedForNodeGroups({
+				nodeIds,
+				connectionsToRemove: [connection],
+				connectionsToAdd: [],
+				connectionsBySourceNode,
+				allowAutoExtend: false,
+				blockedTitleKey: BLOCKED_TITLE_KEY.remove,
+			}).outcome === 'proceed'
+		);
 	}
 
 	function isNodeReplacementAllowedForNodeGroups({
@@ -371,8 +358,6 @@ export function useCanvasNodeGroupOperationGuards() {
 		connectionsToAdd: Array<[IConnection, IConnection]>;
 		connectionsBySourceNode: IConnections;
 	}): boolean {
-		if (!isCanvasNodeGroupingEnabled.value) return true;
-
 		const previousGroup = workflowDocumentStore.value.getGroupForNode(previousNodeId);
 		if (!previousGroup) return true;
 
@@ -416,8 +401,9 @@ export function useCanvasNodeGroupOperationGuards() {
 	}
 
 	return {
-		isConnectionChangeAllowedForNodeGroups,
+		isConnectionRemovalAllowedForNodeGroups,
 		isConnectionReplacementAllowedForNodeGroups,
 		isNodeReplacementAllowedForNodeGroups,
+		applyNodeGroupAutoExtend,
 	};
 }

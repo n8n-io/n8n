@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/codemirror-lang",
+  "runs": {
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T08:05:38.559Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            433,
+            445,
+            452
+          ],
+          "min": 433,
+          "median": 445,
+          "mean": 443
+        },
+        "build": {
+          "runsMs": [
+            462,
+            446,
+            430
+          ],
+          "min": 430,
+          "median": 446,
+          "mean": 446
+        }
+      }
+    },
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T08:03:30.003Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            733,
+            699,
+            693
+          ],
+          "min": 693,
+          "median": 699,
+          "mean": 708
+        },
+        "build": {
+          "runsMs": [
+            650,
+            651,
+            646
+          ],
+          "min": 646,
+          "median": 650,
+          "mean": 649
+        }
+      }
+    }
+  }
+}

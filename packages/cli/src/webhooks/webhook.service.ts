@@ -3,9 +3,9 @@ import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { HookContext, WebhookContext } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
-	ensureError,
-	Node,
+	isNodeClassInstance,
 	NodeHelpers,
 	UnexpectedError,
 	WebhookPathTakenError,
@@ -50,6 +50,18 @@ export class WebhookService {
 	}
 
 	private async findCached(method: Method, path: string) {
+		const staticWebhook = await this.findCachedStaticWebhook(method, path);
+
+		if (staticWebhook) return staticWebhook;
+
+		return await this.findDynamicWebhook(path, method);
+	}
+
+	/**
+	 * Cached lookup for a webhook with zero dynamic path segments. Returns the
+	 * cached entity if present, otherwise queries the database and caches a hit.
+	 */
+	private async findCachedStaticWebhook(method: Method, path: string) {
 		const cacheKey = `webhook:${method}-${path}`;
 
 		let cachedStaticWebhook;
@@ -64,7 +76,7 @@ export class WebhookService {
 
 		if (cachedStaticWebhook) return this.webhookRepository.create(cachedStaticWebhook);
 
-		const dbStaticWebhook = await this.findStaticWebhook(method, path);
+		const dbStaticWebhook = await this.findStaticWebhookInDb(method, path);
 
 		if (dbStaticWebhook) {
 			void this.cacheService.set(cacheKey, dbStaticWebhook).catch((error) => {
@@ -72,17 +84,25 @@ export class WebhookService {
 					error: ensureError(error).message,
 				});
 			});
-			return dbStaticWebhook;
 		}
 
-		return await this.findDynamicWebhook(path, method);
+		return dbStaticWebhook;
 	}
 
 	/**
 	 * Find a matching webhook with zero dynamic path segments, e.g. `<uuid>` or `user/profile`.
 	 */
-	private async findStaticWebhook(method: Method, path: string) {
+	private async findStaticWebhookInDb(method: Method, path: string) {
 		return await this.webhookRepository.findOneBy({ webhookPath: path, method });
+	}
+
+	/**
+	 * Find a static webhook (no dynamic path segments) by method and path, using the
+	 * cache. Unlike {@link findWebhook}, this never falls back to a dynamic-webhook DB
+	 * probe, so it is cheaper for callers that only handle static paths.
+	 */
+	async findStaticWebhook(method: Method, path: string) {
+		return await this.findCachedStaticWebhook(method, path);
 	}
 
 	/**
@@ -170,6 +190,11 @@ export class WebhookService {
 		return this.webhookRepository.create(data);
 	}
 
+	/** The webhooks currently registered (stored locally) for a workflow. */
+	async getRegisteredWebhooks(workflowId: string) {
+		return await this.webhookRepository.findBy({ workflowId });
+	}
+
 	async deleteWorkflowWebhooks(workflowId: string) {
 		const webhooks = await this.webhookRepository.findBy({ workflowId });
 
@@ -225,7 +250,7 @@ export class WebhookService {
 	}
 
 	/**
-	 * Returns all the webhooks which should be created for the give node
+	 * Returns all the webhooks which should be created for the given node.
 	 */
 	getNodeWebhooks(
 		workflow: Workflow,
@@ -267,7 +292,7 @@ export class WebhookService {
 				continue;
 			}
 
-			nodeWebhookPath = nodeWebhookPath.toString();
+			nodeWebhookPath = nodeWebhookPath.toString().trim();
 
 			if (nodeWebhookPath.startsWith('/')) {
 				nodeWebhookPath = nodeWebhookPath.slice(1);
@@ -502,7 +527,7 @@ export class WebhookService {
 		);
 
 		try {
-			return nodeType instanceof Node
+			return isNodeClassInstance(nodeType)
 				? await nodeType.webhook(context)
 				: await nodeType.webhook.call(context);
 		} finally {

@@ -5,18 +5,22 @@ import { useAnnotationTagsStore } from '@/features/shared/tags/tags.store';
 import type { TestRunRecord } from './evaluation.api';
 import { mockedStore } from '@/__tests__/utils';
 
-const { getTestRuns, getTestRun, startTestRun, deleteTestRun } = vi.hoisted(() => ({
-	getTestRuns: vi.fn(),
-	getTestRun: vi.fn(),
-	startTestRun: vi.fn(),
-	deleteTestRun: vi.fn(),
-}));
+const { getTestRuns, getTestRun, startTestRun, deleteTestRun, listEvaluationConfigs } = vi.hoisted(
+	() => ({
+		getTestRuns: vi.fn(),
+		getTestRun: vi.fn(),
+		startTestRun: vi.fn(),
+		deleteTestRun: vi.fn(),
+		listEvaluationConfigs: vi.fn(),
+	}),
+);
 
 vi.mock('./evaluation.api', () => ({
 	getTestRuns,
 	getTestRun,
 	startTestRun,
 	deleteTestRun,
+	listEvaluationConfigs,
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -52,6 +56,7 @@ describe('evaluation.store.ee', () => {
 		getTestRun.mockResolvedValue(TEST_RUN);
 		startTestRun.mockResolvedValue({ success: true, testRunId: 'run1' });
 		deleteTestRun.mockResolvedValue({ success: true });
+		listEvaluationConfigs.mockResolvedValue([]);
 	});
 
 	test('Initialization', () => {
@@ -95,6 +100,30 @@ describe('evaluation.store.ee', () => {
 				concurrency: 5,
 			});
 			expect(result).toEqual({ success: true, testRunId: 'run1' });
+		});
+
+		test('Starting Test Run with config options', async () => {
+			const result = await store.startTestRun('1', {
+				evaluationConfigId: 'config-1',
+				compileFromConfig: true,
+			});
+
+			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1', {
+				evaluationConfigId: 'config-1',
+				compileFromConfig: true,
+			});
+			expect(result).toEqual({ success: true, testRunId: 'run1' });
+		});
+
+		test('fetchEvaluationConfigs stores configs by workflowId', async () => {
+			const mockConfig = { id: 'config-1', name: 'Test Config' };
+			listEvaluationConfigs.mockResolvedValue([mockConfig]);
+
+			const result = await store.fetchEvaluationConfigs('1');
+
+			expect(listEvaluationConfigs).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1');
+			expect(store.evaluationConfigsByWorkflowId['1']).toEqual([mockConfig]);
+			expect(result).toEqual([mockConfig]);
 		});
 
 		test('Deleting Test Run', async () => {

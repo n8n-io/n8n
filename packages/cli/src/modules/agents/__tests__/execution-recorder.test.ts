@@ -1,5 +1,6 @@
-import { ExecutionRecorder } from '../execution-recorder';
 import type { BuiltTool, StreamChunk } from '@n8n/agents';
+
+import { ExecutionRecorder } from '../execution-recorder';
 import { buildToolRegistry } from '../tool-registry';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
@@ -13,12 +14,12 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 describe('ExecutionRecorder', () => {
 	describe('per-tool execution timing', () => {
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('records distinct per-tool end times from tool-execution-end for concurrent tools', () => {
-			jest.useFakeTimers();
-			jest.setSystemTime(1_000);
+			vi.useFakeTimers();
+			vi.setSystemTime(1_000);
 			const recorder = new ExecutionRecorder();
 
 			// Two concurrent tool calls emitted together by the model.
@@ -56,7 +57,7 @@ describe('ExecutionRecorder', () => {
 			});
 
 			// The batched tool-results arrive together, after the slowest finished.
-			jest.setSystemTime(3_001);
+			vi.setSystemTime(3_001);
 			recorder.record(makeToolResultChunk('a', 'ra', 'tc-1'));
 			recorder.record(makeToolResultChunk('b', 'rb', 'tc-2'));
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
@@ -72,12 +73,12 @@ describe('ExecutionRecorder', () => {
 		});
 
 		it('falls back to the tool-result time when tool-execution-end is absent', () => {
-			jest.useFakeTimers();
-			jest.setSystemTime(1_000);
+			vi.useFakeTimers();
+			vi.setSystemTime(1_000);
 			const recorder = new ExecutionRecorder();
 
 			recorder.record(makeToolCallChunk('a', {}, 'tc-1'));
-			jest.setSystemTime(2_000);
+			vi.setSystemTime(2_000);
 			recorder.record(makeToolResultChunk('a', 'ra', 'tc-1'));
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 
@@ -174,50 +175,8 @@ describe('ExecutionRecorder', () => {
 		});
 	});
 
-	describe('backward compat', () => {
-		it('still populates flat toolCalls array', () => {
-			const recorder = new ExecutionRecorder();
-
-			recorder.record(makeToolCallChunk('my_tool', { x: 1 }));
-			recorder.record(makeToolResultChunk('my_tool', { y: 2 }));
-			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
-
-			const record = recorder.getMessageRecord();
-
-			expect(record.toolCalls).toHaveLength(1);
-			expect(record.toolCalls[0]).toEqual({
-				name: 'my_tool',
-				input: { x: 1 },
-				output: { y: 2 },
-			});
-		});
-
-		it('pairs same-name flat tool calls by toolCallId when results arrive out of order', () => {
-			const recorder = new ExecutionRecorder();
-
-			recorder.record(makeToolCallChunk('search_knowledge', { file: 'first.md' }, 'call-1'));
-			recorder.record(makeToolCallChunk('search_knowledge', { file: 'second.md' }, 'call-2'));
-			recorder.record(makeToolResultChunk('search_knowledge', { fileName: 'second.md' }, 'call-2'));
-			recorder.record(makeToolResultChunk('search_knowledge', { fileName: 'first.md' }, 'call-1'));
-			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
-
-			const record = recorder.getMessageRecord();
-
-			expect(record.toolCalls).toEqual([
-				{
-					name: 'search_knowledge',
-					input: { file: 'first.md' },
-					output: { fileName: 'first.md' },
-				},
-				{
-					name: 'search_knowledge',
-					input: { file: 'second.md' },
-					output: { fileName: 'second.md' },
-				},
-			]);
-		});
-
-		it('still concatenates assistantResponse from all text deltas', () => {
+	describe('message record', () => {
+		it('concatenates assistantResponse from all text deltas', () => {
 			const recorder = new ExecutionRecorder();
 
 			recorder.record({ type: 'text-delta', id: 't1', delta: 'Hello ' });
@@ -232,7 +191,7 @@ describe('ExecutionRecorder', () => {
 	});
 
 	describe('secret scrubbing', () => {
-		it('sanitizes tool inputs and outputs in flat records and timeline entries', () => {
+		it('sanitizes tool inputs and outputs in timeline entries', () => {
 			const recorder = new ExecutionRecorder();
 
 			recorder.record(
@@ -252,18 +211,6 @@ describe('ExecutionRecorder', () => {
 			const record = recorder.getMessageRecord();
 			const timelineEntry = record.timeline.find((e) => e.type === 'tool-call');
 
-			expect(record.toolCalls[0]).toEqual({
-				name: 'lookup',
-				input: {
-					query: 'project status',
-					password: '[REDACTED]',
-					nested: { apiKey: '[REDACTED]' },
-				},
-				output: {
-					result: '[REDACTED]',
-					authorization: '[REDACTED]',
-				},
-			});
 			expect(timelineEntry).toMatchObject({
 				input: {
 					query: 'project status',
@@ -290,8 +237,9 @@ describe('ExecutionRecorder', () => {
 			});
 
 			const record = recorder.getMessageRecord();
+			const timelineEntry = record.timeline.find((e) => e.type === 'tool-call');
 
-			expect(record.toolCalls[0].output).toEqual({ error: '[REDACTED]' });
+			expect(timelineEntry).toMatchObject({ output: { error: '[REDACTED]' } });
 		});
 	});
 });
@@ -569,12 +517,6 @@ describe('ExecutionRecorder — workflow-tool timeline tags', () => {
 		expect(tc?.workflowName).toBe('Run WF');
 		expect(tc?.workflowExecutionId).toBe('e-99');
 		expect(tc?.success).toBe(true);
-		expect(record.toolCalls).toHaveLength(1);
-		expect(record.toolCalls[0]).toEqual({
-			name: 'run-wf',
-			input: undefined,
-			output: { executionId: 'e-99', status: 'success' },
-		});
 	});
 
 	it('leaves workflowExecutionId undefined when the output is an error with no executionId', () => {
@@ -683,6 +625,38 @@ describe('ExecutionRecorder — tool-result error normalization', () => {
 		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
 		expect(tc.success).toBe(true);
 		expect(tc.output).toEqual({ status: 'ok', data: [1, 2, 3] });
+	});
+
+	it('preserves object-shaped stream errors in the message record', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({
+			type: 'error',
+			error: {
+				message: 'Node tool validation failed',
+				code: 'NODE_TOOL_VALIDATION',
+				details: { nodeType: 'n8n-nodes-base.httpRequestTool' },
+			},
+		} as never);
+		rec.record({ type: 'finish', finishReason: 'error' } as StreamChunk);
+
+		const record = rec.getMessageRecord();
+
+		expect(record.error).toContain('Node tool validation failed');
+		expect(record.error).toContain('NODE_TOOL_VALIDATION');
+		expect(record.error).toContain('n8n-nodes-base.httpRequestTool');
+	});
+
+	it('scrubs secrets from Error-shaped stream errors', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({
+			type: 'error',
+			error: new Error('Request failed with apiKey=super-secret-token'),
+		} as never);
+		rec.record({ type: 'finish', finishReason: 'error' } as StreamChunk);
+
+		const record = rec.getMessageRecord();
+
+		expect(record.error).toBe('Request failed with [REDACTED]');
 	});
 });
 

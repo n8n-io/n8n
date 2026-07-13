@@ -7,7 +7,6 @@ import {
 	type CredentialsEntity,
 	type SharedCredentials,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	NodeConnectionTypes,
@@ -15,19 +14,25 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@/node-types';
 
 import {
 	AGENT_PROVIDER_NODE_WHITELIST,
+	AGENT_TOOL_NODE_DENYLIST,
 	EphemeralNodeExecutor,
 	isAgentProviderNode,
 	isUsableAsAgentTool,
 } from '../ephemeral-node-executor';
 
-const mockGetBase = jest.fn();
+// vitest-mock-extended's recursive DeepPartial narrows nested objects (e.g. `defaults`),
+// so a full INodeTypeDescription isn't assignable to the partial. Cast through this helper.
+const mockNodeType = (overrides: object = {}) => mock<INodeType>(overrides as never);
 
-jest.mock('@/workflow-execute-additional-data', () => ({
+const mockGetBase = vi.fn();
+
+vi.mock('@/workflow-execute-additional-data', () => ({
 	getBase: (...args: unknown[]) => mockGetBase(...args),
 }));
 
@@ -86,6 +91,11 @@ describe('EphemeralNodeExecutor', () => {
 	const credentialsRepository = mockInstance(CredentialsRepository);
 	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
 	const logger = mockInstance(Logger);
+	// Node execution constructs `SSHClientsManager` via DI, whose constructor does
+	// `logger.scoped(...)` and registers a `process.on('exit')` shutdown handler. Without a real
+	// return here, `scoped()` is undefined and the handler throws at worker teardown — an uncaught
+	// exception that fails the run even though every test passes.
+	logger.scoped.mockReturnValue(logger);
 
 	const executor = new EphemeralNodeExecutor(
 		nodeTypes,
@@ -108,7 +118,7 @@ describe('EphemeralNodeExecutor', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockGetBase.mockResolvedValue({});
 	});
 
@@ -120,7 +130,7 @@ describe('EphemeralNodeExecutor', () => {
 				outputs: ['main'],
 			};
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({ description: nonToolDescription }),
+				mockNodeType({ description: nonToolDescription }),
 			);
 
 			const result = await executor.executeInline({
@@ -139,7 +149,7 @@ describe('EphemeralNodeExecutor', () => {
 
 		it('returns a structured error when the node is a trigger', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({ description: { ...toolDescription, group: ['trigger'] } }),
+				mockNodeType({ description: { ...toolDescription, group: ['trigger'] } }),
 			);
 
 			const result = await executor.executeInline({
@@ -161,7 +171,7 @@ describe('EphemeralNodeExecutor', () => {
 				outputs: ['main'],
 			};
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({ description: providerDescription }),
+				mockNodeType({ description: providerDescription }),
 			);
 
 			const result = await executor.executeInline({
@@ -175,10 +185,66 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result.error).not.toMatch(/not usable as a tool/);
 		});
 
+		it.each([...AGENT_TOOL_NODE_DENYLIST])(
+			'rejects the denylisted node type "%s" even when it looks like a usable tool',
+			async (nodeType) => {
+				nodeTypes.getByNameAndVersion.mockReturnValue(
+					mockNodeType({ description: toolDescription }),
+				);
+
+				const result = await executor.executeInline({
+					nodeType,
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					inputData: [],
+					projectId: 'p-1',
+				});
+
+				expect(result.status).toBe('error');
+				expect(result.error).toContain('not permitted for agent tool execution');
+				// The denylist check must run before the node-types lookup for the
+				// base type, otherwise resolveToolNodeType's `*Tool` remapping in
+				// the caller could dodge it via a type that doesn't exist yet.
+				expect(nodeTypes.getByNameAndVersion).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each([...AGENT_TOOL_NODE_DENYLIST])(
+			'rejects the `*Tool`-suffixed variant of the denylisted node type "%s"',
+			async (nodeType) => {
+				const result = await executor.executeInline({
+					nodeType: `${nodeType}Tool`,
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					inputData: [],
+					projectId: 'p-1',
+				});
+
+				expect(result.status).toBe('error');
+				expect(result.error).toContain('not permitted for agent tool execution');
+			},
+		);
+
+		it('still executes a normal tool node that is not on the denylist', async () => {
+			const execute = vi.fn().mockResolvedValue([[{ json: { ok: true } }]]);
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
+		});
+
 		it('returns a structured error when the operation is on the blacklist (sendAndWait)', async () => {
-			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({ description: toolDescription }),
-			);
+			nodeTypes.getByNameAndVersion.mockReturnValue(mockNodeType({ description: toolDescription }));
 
 			const result = await executor.executeInline({
 				nodeType: 'n8n-nodes-base.slack',
@@ -196,11 +262,11 @@ describe('EphemeralNodeExecutor', () => {
 	describe('resolveInlineCredentials (via executeInline)', () => {
 		function mockToolNodeWithSupplyData() {
 			// Short-circuit past the execute path — we only want to assert credential resolution.
-			const supplyData = jest.fn().mockResolvedValue({
-				response: { invoke: jest.fn().mockResolvedValue('ok') },
+			const supplyData = vi.fn().mockResolvedValue({
+				response: { invoke: vi.fn().mockResolvedValue('ok') },
 			});
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({
+				mockNodeType({
 					description: toolDescription,
 					supplyData,
 				}),
@@ -261,10 +327,10 @@ describe('EphemeralNodeExecutor', () => {
 	describe('verifyCredentialDetailsForProject (via executeInline)', () => {
 		function mockToolNodeWithSupplyData() {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({
+				mockNodeType({
 					description: toolDescription,
-					supplyData: jest.fn().mockResolvedValue({
-						response: { invoke: jest.fn().mockResolvedValue('ok') },
+					supplyData: vi.fn().mockResolvedValue({
+						response: { invoke: vi.fn().mockResolvedValue('ok') },
 					}),
 				}),
 			);
@@ -329,11 +395,11 @@ describe('EphemeralNodeExecutor', () => {
 
 	describe('executeInline routing', () => {
 		it('invokes the LangChain tool when the node implements supplyData', async () => {
-			const invoke = jest.fn().mockResolvedValue('wiki-result');
+			const invoke = vi.fn().mockResolvedValue('wiki-result');
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({
+				mockNodeType({
 					description: toolDescription,
-					supplyData: jest.fn().mockResolvedValue({ response: { invoke } }),
+					supplyData: vi.fn().mockResolvedValue({ response: { invoke } }),
 				}),
 			);
 
@@ -353,11 +419,11 @@ describe('EphemeralNodeExecutor', () => {
 		});
 
 		it('returns an error result when the supplyData tool invocation throws', async () => {
-			const invoke = jest.fn().mockRejectedValue(new Error('upstream 500'));
+			const invoke = vi.fn().mockRejectedValue(new Error('upstream 500'));
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({
+				mockNodeType({
 					description: toolDescription,
-					supplyData: jest.fn().mockResolvedValue({ response: { invoke } }),
+					supplyData: vi.fn().mockResolvedValue({ response: { invoke } }),
 				}),
 			);
 
@@ -375,9 +441,9 @@ describe('EphemeralNodeExecutor', () => {
 
 		it('returns an error result when the node does not expose a valid LangChain tool', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({
+				mockNodeType({
 					description: toolDescription,
-					supplyData: jest.fn().mockResolvedValue({ response: undefined }),
+					supplyData: vi.fn().mockResolvedValue({ response: undefined }),
 				}),
 			);
 
@@ -394,7 +460,7 @@ describe('EphemeralNodeExecutor', () => {
 		});
 
 		it('returns an error result when a direct-execute node has no execute method', async () => {
-			// Plain object (not mock<>) — jest-mock-extended auto-proxies *every*
+			// Plain object (not mock<>) — vitest-mock-extended auto-proxies *every*
 			// property access as a callable, which would make the supplyData
 			// routing check match and send us down the wrong path.
 			nodeTypes.getByNameAndVersion.mockReturnValue({
@@ -423,9 +489,9 @@ describe('EphemeralNodeExecutor', () => {
 				mock<StructuredToolkit['tools'][number]>({ name: 'read-doc' }),
 			]);
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({
+				mockNodeType({
 					description: toolDescription,
-					supplyData: jest.fn().mockResolvedValue({ response: toolkit }),
+					supplyData: vi.fn().mockResolvedValue({ response: toolkit }),
 				}),
 			);
 
@@ -444,11 +510,11 @@ describe('EphemeralNodeExecutor', () => {
 
 	describe('executeInline → executeNodeDirectly (nodes without supplyData)', () => {
 		// Use plain objects so `typeof nodeType.supplyData === 'function'`
-		// reliably returns false — jest-mock-extended auto-proxies every
+		// reliably returns false — vitest-mock-extended auto-proxies every
 		// property as callable, which would route us to the supplyData path.
 
 		it('runs nodeType.execute and returns its first output batch on success', async () => {
-			const execute = jest.fn().mockResolvedValue([[{ json: { ok: true, count: 3 } }]]);
+			const execute = vi.fn().mockResolvedValue([[{ json: { ok: true, count: 3 } }]]);
 			nodeTypes.getByNameAndVersion.mockReturnValue({
 				description: toolDescription,
 				execute,
@@ -467,7 +533,7 @@ describe('EphemeralNodeExecutor', () => {
 		});
 
 		it('returns an error result when nodeType.execute throws', async () => {
-			const execute = jest.fn().mockRejectedValue(new Error('upstream 500'));
+			const execute = vi.fn().mockRejectedValue(new Error('upstream 500'));
 			nodeTypes.getByNameAndVersion.mockReturnValue({
 				description: toolDescription,
 				execute,
@@ -489,7 +555,7 @@ describe('EphemeralNodeExecutor', () => {
 			// Downstream consumers expect NodeExecutionData[] — resolving with
 			// `null` or a truthy-but-not-array value must not leak through as
 			// `status: 'success'`.
-			const execute = jest.fn().mockResolvedValue(null);
+			const execute = vi.fn().mockResolvedValue(null);
 			nodeTypes.getByNameAndVersion.mockReturnValue({
 				description: toolDescription,
 				execute,
@@ -508,7 +574,7 @@ describe('EphemeralNodeExecutor', () => {
 		});
 
 		it('returns an error when execute resolves with an empty output array', async () => {
-			const execute = jest.fn().mockResolvedValue([]);
+			const execute = vi.fn().mockResolvedValue([]);
 			nodeTypes.getByNameAndVersion.mockReturnValue({
 				description: toolDescription,
 				execute,
@@ -531,10 +597,10 @@ describe('EphemeralNodeExecutor', () => {
 		it('returns the schema a structured tool exposes', async () => {
 			const schema = { type: 'object', properties: { query: { type: 'string' } } };
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({
+				mockNodeType({
 					description: toolDescription,
-					supplyData: jest.fn().mockResolvedValue({
-						response: { invoke: jest.fn(), schema },
+					supplyData: vi.fn().mockResolvedValue({
+						response: { invoke: vi.fn(), schema },
 					}),
 				}),
 			);
@@ -556,9 +622,9 @@ describe('EphemeralNodeExecutor', () => {
 				func: async (input) => input,
 			});
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({
+				mockNodeType({
 					description: toolDescription,
-					supplyData: jest.fn().mockResolvedValue({
+					supplyData: vi.fn().mockResolvedValue({
 						response: dynamicTool,
 					}),
 				}),
@@ -582,9 +648,9 @@ describe('EphemeralNodeExecutor', () => {
 				mock<StructuredToolkit['tools'][number]>({ name: 'list-docs' }),
 			]);
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({
+				mockNodeType({
 					description: toolDescription,
-					supplyData: jest.fn().mockResolvedValue({ response: toolkit }),
+					supplyData: vi.fn().mockResolvedValue({ response: toolkit }),
 				}),
 			);
 
@@ -600,9 +666,9 @@ describe('EphemeralNodeExecutor', () => {
 
 		it('swallows introspection errors and returns null (keeps tool registration robust)', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mock<INodeType>({
+				mockNodeType({
 					description: toolDescription,
-					supplyData: jest.fn().mockRejectedValue(new Error('MCP server unreachable')),
+					supplyData: vi.fn().mockRejectedValue(new Error('MCP server unreachable')),
 				}),
 			);
 

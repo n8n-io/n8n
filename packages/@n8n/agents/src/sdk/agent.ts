@@ -8,8 +8,18 @@ import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
-import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/agent-runtime';
-import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
+import type { VectorStore } from './vector-store';
+import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
+import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
+import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
+import type { FetchFn } from '../runtime/model/model-factory';
+import { mergeProviderOptions } from '../runtime/model/prompt-cache';
+import { AgentEventBus } from '../runtime/state/event-bus';
+import { RunStateManager } from '../runtime/state/run-state';
+import {
+	LOAD_TOOL_TOOL_NAME,
+	SEARCH_TOOLS_TOOL_NAME,
+} from '../runtime/tools/deferred-tool-manager';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
@@ -17,17 +27,15 @@ import {
 	failedDelegatedChildSuspendOutput,
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
+	isDelegateSubAgentTool,
 	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRequest,
 	type DelegateSubAgentToolOutput,
 	type InlineSubAgentProviderToolsResolver,
 	type SubAgentTaskDifficulty,
-} from '../runtime/delegate-sub-agent-tool';
-import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
-import { AgentEventBus } from '../runtime/event-bus';
-import { RunStateManager } from '../runtime/run-state';
-import { isSdkOwnedBuiltInTool } from '../runtime/sdk-owned-tool';
-import { WRITE_TODOS_TOOL_NAME } from '../runtime/write-todos-tool';
+} from '../runtime/tools/delegate-sub-agent-tool';
+import { isSdkOwnedBuiltInTool } from '../runtime/tools/sdk-owned-tool';
+import { WRITE_TODOS_TOOL_NAME } from '../runtime/tools/write-todos-tool';
 import {
 	appendSkillCatalogToInstructions,
 	createRuntimeSkillSource,
@@ -51,6 +59,7 @@ import type {
 	MemoryConfig,
 	ModelConfig,
 	Provider,
+	PromptCachingConfig,
 	RunOptions,
 	StreamResult,
 	ThinkingConfig,
@@ -108,6 +117,8 @@ export interface AgentSnapshot {
 	hasEpisodicMemory: boolean;
 	/** The thinking config if set, otherwise null. */
 	thinking: ThinkingConfig | null;
+	/** The prompt caching config if set via `.promptCaching()`, otherwise null. */
+	promptCaching: PromptCachingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
 	toolCallConcurrency: number | null;
 }
@@ -131,6 +142,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private modelConfig?: ModelConfig;
 
+	private modelFetchValue?: FetchFn;
+
 	private instructionProviderOpts?: ProviderOptions;
 
 	private instructionsText?: string;
@@ -149,6 +162,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private memoryConfig?: MemoryConfig;
 
+	private onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+
 	// TODO: Guardrails are accepted by the builder API for forward
 	// compatibility but not yet wired to the runtime.
 	private inputGuardrails: BuiltGuardrail[] = [];
@@ -162,6 +177,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private checkpointStore?: 'memory' | CheckpointStore;
 
 	private thinkingConfig?: ThinkingConfig;
+
+	private promptCachingConfig?: PromptCachingConfig;
 
 	private concurrencyValue?: number;
 
@@ -216,6 +233,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	/**
+	 * Provide a proxy-aware `fetch` for the agent's model calls. When unset, model
+	 * construction falls back to the ambient HTTP_PROXY resolver.
+	 */
+	modelFetch(fetch: FetchFn): this {
+		this.modelFetchValue = fetch;
+		return this;
+	}
+
 	/** Set the system instructions for the agent. Required before building. */
 	instructions(text: string, options?: { providerOptions?: ProviderOptions }): this {
 		this.instructionsText = text;
@@ -232,6 +258,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 		this.tools.push(...builtTools);
 		return this;
+	}
+
+	/** Attach a vector store as a search tool. Accepts a VectorStore builder. */
+	vectorStore(
+		store: VectorStore,
+		options?: { name?: string; description?: string; filterableKeys?: Record<string, string> },
+	): this {
+		return this.tool(store.asTool(options));
 	}
 
 	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
@@ -306,6 +340,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					'See the Memory class documentation for all options.',
 			);
 		}
+		return this;
+	}
+
+	/** Observe observational-memory background task lifecycle (observer/reflector). */
+	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this {
+		this.onMemoryTaskEvent = observer;
 		return this;
 	}
 
@@ -402,6 +442,26 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	thinking<P extends Provider>(_provider: P, config?: ThinkingConfigFor<P>): this {
 		this.thinkingConfig = config ?? {};
+		return this;
+	}
+
+	/**
+	 * Enable prompt caching with defaults tuned for agent workloads. Anthropic
+	 * models get a `1h` instruction-level cache breakpoint; OpenAI models get
+	 * `24h` retention plus an auto-generated, per-agent-version `promptCacheKey`.
+	 * Pass `{ anthropic: false }` / `{ openai: false }` to disable per provider,
+	 * or override individual fields (e.g. `{ anthropic: { ttl: '5m' } }`).
+	 *
+	 * @example
+	 * ```typescript
+	 * new Agent('assistant')
+	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .promptCaching()
+	 *   .instructions(LONG_SYSTEM_PROMPT);
+	 * ```
+	 */
+	promptCaching(config?: PromptCachingConfig): this {
+		this.promptCachingConfig = config ?? { enabled: true };
 		return this;
 	}
 
@@ -567,6 +627,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
 			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
+			promptCaching: this.promptCachingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 		};
 	}
@@ -669,6 +730,26 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 	}
 
+	/**
+	 * Durable-log RFC (resilience phase): re-drive a run from a `running`-status
+	 * step checkpoint after a process crash. There is no pending tool call to
+	 * settle — the loop re-enters at the next model call. See
+	 * AgentRuntime.crashResume for `contextNotes` semantics.
+	 */
+	async crashResume(
+		options: { runId: string; contextNotes?: string[] } & ExecutionOptions,
+	): Promise<StreamResult> {
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config, options.runId);
+		try {
+			const result = await active.runtime.crashResume(options);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
+	}
+
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	approve(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 	async approve(
@@ -697,7 +778,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options?: RunOptions & ExecutionOptions,
 	): (RunOptions & ExecutionOptions) | undefined {
 		if (!this.defaultExecutionOptions) return options;
-		return { ...this.defaultExecutionOptions, ...options };
+		const merged = { ...this.defaultExecutionOptions, ...options };
+		const providerOptions = mergeProviderOptions(
+			this.defaultExecutionOptions.providerOptions,
+			options?.providerOptions,
+		);
+		return providerOptions ? { ...merged, providerOptions } : merged;
 	}
 
 	/**
@@ -927,6 +1013,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return {
 			name: this.name,
 			model: modelConfig,
+			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
 			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
@@ -940,11 +1027,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
+			promptCaching: this.promptCachingConfig,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 			modelCost,
 			runState,
+			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
 		};
 	}
 
@@ -1034,6 +1123,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				toolSearch: deferredTools.length > 0 ? options.toolSearch : undefined,
 				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
+				promptCaching: this.promptCachingConfig,
 				checkpointStorage: this.checkpointStore,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
@@ -1079,7 +1169,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private assertReservedSdkBuiltInToolName(tool: BuiltTool): void {
 		if (!SDK_RESERVED_BUILTIN_TOOL_NAMES.has(tool.name)) return;
-		if (isSdkOwnedBuiltInTool(tool)) return;
+		if (isDelegateSubAgentTool(tool)) {
+			if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) return;
+		} else if (isSdkOwnedBuiltInTool(tool)) {
+			return;
+		}
 
 		throw new Error(`Tool name "${tool.name}" is reserved for SDK built-in tools`);
 	}
@@ -1150,7 +1244,7 @@ export function filterInlineSubAgentTools<T extends { readonly name: string }>(
 	hostBlockedTools?: string[],
 ): T[] {
 	const blocked = buildInlineSubAgentBlockedToolNames(hostBlockedTools);
-	return tools.filter((tool) => !blocked.has(tool.name));
+	return tools.filter((tool) => !blocked.has(tool.name) && !isDelegateSubAgentTool(tool));
 }
 
 function findDuplicateToolNames(tools: BuiltTool[]): string[] {

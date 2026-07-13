@@ -1,4 +1,4 @@
-import { isRecord } from '@mcp-apps/utils/guards';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { WorkflowPreviewData, WorkflowResult } from './types';
 

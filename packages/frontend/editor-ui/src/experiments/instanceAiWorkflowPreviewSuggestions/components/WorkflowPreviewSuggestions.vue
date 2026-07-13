@@ -5,7 +5,7 @@ import { onUnmounted, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { type WorkflowPreviewSuggestion } from '../suggestions';
 
-const PREVIEW_HOVER_DELAY_MS = 300;
+const PREVIEW_HOVER_DELAY_MS = 30;
 
 const props = defineProps<{
 	suggestions: readonly WorkflowPreviewSuggestion[];

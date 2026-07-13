@@ -35,10 +35,6 @@ async function handleCopy() {
 <style lang="scss" module>
 .wrapper {
 	position: relative;
-	max-height: 300px;
-	overflow-y: auto;
-	background: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
 }
 
 .copyBtn {
@@ -55,7 +51,7 @@ async function handleCopy() {
 
 .code {
 	font-family: monospace;
-	font-size: var(--font-size--3xs);
+	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--xl);
 	white-space: pre-wrap;
 	word-break: break-word;

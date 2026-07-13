@@ -6,13 +6,16 @@ import { Time } from '@n8n/constants';
 import { UserRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { MoreThanOrEqual } from '@n8n/typeorm';
-import { ensureError, UnexpectedError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { UnexpectedError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { AccessToken } from './database/entities/oauth-access-token.entity';
 import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import type { ProtectedResource } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 
 import { JwtService } from '@/services/jwt.service';
@@ -20,7 +23,6 @@ import type {
 	OAuthTokenVerifier,
 	UserWithContext,
 } from '@/services/oauth-token-verifier-proxy.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 /**
  * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.
@@ -167,10 +169,19 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	}
 
 	async verifyAccessToken(token: string, expectedAudience?: string): Promise<AuthInfo> {
+		return await this.verifyTokenWithAudiences(
+			token,
+			await this.getAllowedAudiences(expectedAudience),
+		);
+	}
+
+	private async verifyTokenWithAudiences(
+		token: string,
+		allowedAudiences: string[],
+	): Promise<AuthInfo> {
 		let decoded: unknown;
 
 		try {
-			const allowedAudiences = this.getAllowedAudiences(expectedAudience);
 			decoded = this.verifyJwtWithAllowedAudiences(token, allowedAudiences);
 		} catch (error) {
 			throw new JWTVerificationError();
@@ -202,7 +213,19 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 	async verifyOAuthAccessToken(token: string, expectedAudience?: string): Promise<UserWithContext> {
 		try {
-			const authInfo = await this.verifyAccessToken(token, expectedAudience);
+			const resource = await this.getResourceByAudience(expectedAudience);
+
+			// Fail closed: a token bearing a resource-scoped audience whose resource
+			// can't be resolved (deleted, or a transient resolver failure the registry
+			// swallows to `undefined`) must NOT bypass the authorize gate below.
+			if (expectedAudience && !resource) {
+				return { user: null, context: { reason: 'insufficient_scope', auth_type: 'oauth' } };
+			}
+
+			const authInfo = await this.verifyTokenWithAudiences(
+				token,
+				this.audiencesForResource(resource, expectedAudience),
+			);
 
 			const userId =
 				authInfo.extra && typeof authInfo.extra === 'object'
@@ -219,6 +242,14 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 			if (!user) {
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
+			}
+
+			if (resource && !(await resource.authorize(user))) {
+				this.logger.warn('OAuth token denied: user lacks execute access', {
+					userId: user.id,
+					expectedAudience,
+				});
+				return { user: null, context: { reason: 'insufficient_scope', auth_type: 'oauth' } };
 			}
 
 			return { user, authType: 'oauth' };
@@ -280,9 +311,23 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	 * Resource-specific legacy audiences (e.g. the instance MCP server's
 	 * pre-RFC-8707 `mcp-server-api`) stay scoped to their own resource this way.
 	 */
-	private getAllowedAudiences(expectedAudience?: string): string[] {
+	private async getAllowedAudiences(expectedAudience?: string): Promise<string[]> {
+		const resource = expectedAudience
+			? await this.resourceRegistry.getByResourceUrl(expectedAudience)
+			: undefined;
+		return this.audiencesForResource(resource, expectedAudience);
+	}
+
+	/**
+	 * Derive the `aud` values accepted for a (possibly pre-resolved) resource.
+	 * Single source of the audience-derivation rule shared by `getAllowedAudiences`
+	 * and the resolve-once path in `verifyOAuthAccessToken`.
+	 */
+	private audiencesForResource(
+		resource: ProtectedResource | undefined,
+		expectedAudience?: string,
+	): string[] {
 		if (expectedAudience) {
-			const resource = this.resourceRegistry.getByResourceUrl(expectedAudience);
 			return resource ? resource.getAudiences() : [expectedAudience];
 		}
 
@@ -290,6 +335,15 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		// targets (MCP SDK generic verification), so accept any registered
 		// resource's audiences. Resource gates must pass `expectedAudience`.
 		return this.resourceRegistry.getAllAudiences();
+	}
+
+	private async getResourceByAudience(
+		expectedAudience?: string,
+	): Promise<ProtectedResource | undefined> {
+		if (!expectedAudience) {
+			return this.resourceRegistry.getDefaultResource();
+		}
+		return await this.resourceRegistry.getByResourceUrl(expectedAudience);
 	}
 
 	// TODO: drop legacy audiences and the per-audience fallback once all legacy

@@ -1,4 +1,5 @@
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
+import { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionBase } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -112,12 +113,18 @@ const executionHandlers: ExecutionHandlers = {
 			}
 
 			const { id } = req.params;
-			const { includeData = false } = req.query;
+			const { includeData = false, ignoreDataSizeLimit = false } = req.query;
+
+			// `ignoreDataSizeLimit` opts out of the display-size guard (0 = no limit) to return
+			// full data even when oversized, at the caller's own memory risk.
+			const maxDataSizeBytes = ignoreDataSizeLimit
+				? 0
+				: Container.get(ExecutionsConfig).maxDisplaySize;
 
 			// look for the execution on the workflow the user owns
 			const execution = await Container.get(
 				ExecutionPersistence,
-			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, includeData);
+			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, includeData, maxDataSizeBytes);
 
 			if (!execution) {
 				throw new NotFoundError('Not Found');
@@ -154,6 +161,7 @@ const executionHandlers: ExecutionHandlers = {
 				limit = 100,
 				status = undefined,
 				includeData = false,
+				ignoreDataSizeLimit = false,
 				workflowId = undefined,
 				projectId,
 			} = req.query;
@@ -166,26 +174,32 @@ const executionHandlers: ExecutionHandlers = {
 				return res.status(200).json({ data: [], nextCursor: null });
 			}
 
-			// get running executions so we exclude them from the result
+			// Collect genuinely running executions to exclude from the default listing.
+			// The active executions list also retains `waiting` executions (persisted and
+			// resumable); filter by status so waiting executions are still listed.
 			const runningExecutionsIds = Container.get(ActiveExecutions)
 				.getActiveExecutions()
+				.filter(({ status }) => status === 'running')
 				.map(({ id }) => id);
 
-			const filters: Parameters<typeof ExecutionRepository.prototype.getExecutionsForPublicApi>[0] =
-				{
-					status,
-					limit,
-					lastId,
-					includeData,
-					workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
+			const filters: Parameters<
+				typeof ExecutionPersistence.prototype.getExecutionsForPublicApi
+			>[0] = {
+				status,
+				limit,
+				lastId,
+				includeData,
+				workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
 
-					// for backward compatibility `running` executions are always excluded
-					// unless the user explicitly filters by `running` status
-					excludedExecutionsIds: status !== 'running' ? runningExecutionsIds : undefined,
-				};
+				// for backward compatibility `running` executions are always excluded
+				// unless the user explicitly filters by `running` status
+				excludedExecutionsIds: status !== 'running' ? runningExecutionsIds : undefined,
+			};
 
-			const executions =
-				await Container.get(ExecutionRepository).getExecutionsForPublicApi(filters);
+			const executions = await Container.get(ExecutionPersistence).getExecutionsForPublicApi(
+				filters,
+				ignoreDataSizeLimit ? 0 : Container.get(ExecutionsConfig).maxDisplaySize,
+			);
 
 			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 

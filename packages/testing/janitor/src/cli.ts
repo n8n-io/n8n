@@ -8,7 +8,7 @@
  *   janitor impact                         # Show impact of changes
  *   janitor tcr                            # TCR workflow
  *   janitor affected-packages              # List workspace packages affected by changed files
- *   janitor scope                          # Compute per-package jest/vitest scope list
+ *   janitor scope                          # Compute per-package vitest scope list
  *   janitor --help                         # Show help
  *
  * The `affected-packages` and `scope` subcommands are workspace-wide utilities
@@ -610,10 +610,14 @@ function readChangedFiles(options: CliOptions): string[] | null {
 	const env = process.env.CHANGED_FILES;
 	if (flag === undefined && env === undefined) return null;
 	const raw = flag ?? env ?? '';
-	return raw
+	const files = raw
 		.split(/[\n,]+/)
 		.map((s) => s.trim())
 		.filter((s) => s.length > 0);
+	// An empty value is "no signal", not "nothing changed". ci-filter emits an
+	// empty list on huge change sets (too large to pass through env/argv); a [] return
+	// would SKIP every package — a false green — so collapse it to null (run full).
+	return files.length > 0 ? files : null;
 }
 
 function runAffectedPackages(options: CliOptions): void {
@@ -625,35 +629,22 @@ function runAffectedPackages(options: CliOptions): void {
 }
 
 function runTestScopedCmd(options: CliOptions): void {
-	if (!options.runner) {
-		console.error('Error: --runner=jest|vitest is required');
-		process.exit(1);
-	}
 	const packageDir = options.packageDir ?? process.cwd();
 	const changedFiles = readChangedFiles(options);
 	const exitCode = runTestScoped({
-		runner: options.runner,
 		packageDir,
 		rootDir: findWorkspaceRoot(process.cwd()),
 		changedFiles,
 		passthroughArgs: options.passthroughArgs,
-		jestVariant: options.jestVariant,
 	});
 	process.exit(exitCode);
 }
 
 function runScope(options: CliOptions): void {
-	if (!options.runner) {
-		console.error('Error: --runner=jest|vitest is required');
-		process.exit(1);
-	}
-
 	const result = computeScope({
-		runner: options.runner,
 		packageDir: options.packageDir ?? process.cwd(),
 		changedFiles: readChangedFiles(options),
 		rootDir: findWorkspaceRoot(process.cwd()),
-		jestVariant: options.jestVariant,
 	});
 	console.log(formatScope(result));
 }

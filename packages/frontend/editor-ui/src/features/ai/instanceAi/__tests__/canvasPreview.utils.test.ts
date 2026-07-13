@@ -6,6 +6,7 @@ import {
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getLatestWorkflowUpdateResult,
+	getLatestAgentArtifactResult,
 	getExecutionResultsByWorkflow,
 	isAgentEditingWorkflow,
 } from '../canvasPreview.utils';
@@ -235,7 +236,7 @@ describe('getLatestBuilderTarget', () => {
 		const credSetup = makeAgentNode({
 			agentId: 'agent-cred-1',
 			role: 'credential-setup',
-			kind: 'delegate',
+			kind: 'builder',
 			status: 'active',
 			targetResource: { type: 'credential', id: 'cred-1' },
 		});
@@ -277,6 +278,34 @@ describe('getLatestBuilderTarget', () => {
 		});
 		const parent = makeAgentNode({ children: [intermediate] });
 		expect(getLatestBuilderTarget(parent)?.workflowId).toBe('wf-nested');
+	});
+});
+
+describe('getLatestAgentArtifactResult', () => {
+	test('uses parent agent target for nested agent mutations', () => {
+		const nestedAgentBuilder = makeAgentNode({
+			agentId: 'nested-builder',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-nested-build',
+					toolName: 'agent_builder',
+					args: { action: 'build_agent' },
+					result: { ok: true, configHash: 'hash-1' },
+				}),
+			],
+		});
+		const parentAgentBuilder = makeAgentNode({
+			agentId: 'agent-builder',
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			children: [nestedAgentBuilder],
+		});
+
+		expect(getLatestAgentArtifactResult(parentAgentBuilder)).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-nested-build',
+			kind: 'mutated',
+		});
 	});
 });
 
@@ -626,6 +655,20 @@ describe('getExecutionResultsByWorkflow', () => {
 		expect(results.get('wf-1')).toEqual({ executionId: 'exec-1', status: 'success' });
 	});
 
+	test('extracts successful verify-built-workflow result', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'verify-built-workflow',
+					args: { workflowId: 'wf-1' },
+					result: { executionId: 'exec-1', status: 'success' },
+				}),
+			],
+		});
+		const results = getExecutionResultsByWorkflow(node);
+		expect(results.get('wf-1')).toEqual({ executionId: 'exec-1', status: 'success' });
+	});
+
 	test('extracts error run-workflow result', () => {
 		const node = makeAgentNode({
 			toolCalls: [
@@ -860,6 +903,32 @@ describe('getLatestWorkflowUpdateResult', () => {
 });
 
 describe('isAgentEditingWorkflow', () => {
+	test('locks while an active agent run has already built the workflow', () => {
+		const node = makeAgentNode({
+			status: 'active',
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-workflow',
+					result: { success: true, workflowId: 'wf-1' },
+				}),
+			],
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+	});
+
+	test('does not lock for a completed agent run that built the workflow', () => {
+		const node = makeAgentNode({
+			status: 'completed',
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-workflow',
+					result: { success: true, workflowId: 'wf-1' },
+				}),
+			],
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+	});
+
 	test('locks while a workflow-builder sub-agent is active on the workflow', () => {
 		const node = makeAgentNode({
 			role: 'workflow-builder',
@@ -887,18 +956,33 @@ describe('isAgentEditingWorkflow', () => {
 		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
 	});
 
-	test('locks while a build/setup tool call is in flight on the workflow', () => {
+	test('locks while a build/setup/verification tool call is in flight on the workflow', () => {
 		for (const toolName of [
 			'build-workflow',
 			'build-workflow-with-agent',
 			'apply-workflow-credentials',
 			'setup-workflow',
+			'verify-built-workflow',
 		]) {
 			const node = makeAgentNode({
 				toolCalls: [makeToolCall({ toolName, isLoading: true, args: { workflowId: 'wf-1' } })],
 			});
 			expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
 		}
+	});
+
+	test('locks while an agent workflow execution is in flight on the workflow', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'executions',
+					isLoading: true,
+					args: { action: 'run', workflowId: 'wf-1' },
+				}),
+			],
+		});
+
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
 	});
 
 	test('locks while a workflows update / restore-version / setup is in flight on the workflow', () => {

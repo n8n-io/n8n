@@ -47,6 +47,12 @@ export async function githubApiRequest(
 
 			const baseUrl = credentials.server || 'https://api.github.com';
 			options.uri = `${baseUrl}${endpoint}`;
+		} else if (authenticationMethod === 'githubAppApi') {
+			const credentials = await this.getCredentials('githubAppApi');
+			credentialType = 'githubAppApi';
+
+			const baseUrl = credentials.server || 'https://api.github.com';
+			options.uri = `${baseUrl}${endpoint}`;
 		} else {
 			const credentials = await this.getCredentials('githubOAuth2Api');
 			credentialType = 'githubOAuth2Api';

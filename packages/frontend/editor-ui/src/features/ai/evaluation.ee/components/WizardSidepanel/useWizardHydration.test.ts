@@ -371,6 +371,47 @@ describe('useWizardHydration', () => {
 		expect(store.expectedValues).toEqual({ expectedAnswer: 'world' });
 	});
 
+	it('hydrates expected values for every dataset row, indexed by position', async () => {
+		mocks.listEvaluationConfigs.mockResolvedValue([
+			makeConfig({
+				metrics: [
+					{
+						id: 'm',
+						name: 'correctness',
+						type: 'llm_judge',
+						config: {
+							preset: 'correctness',
+							provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							credentialId: 'c',
+							model: 'm',
+							outputType: 'numeric',
+							inputs: { actualAnswer: '=', expectedAnswer: '=' },
+						},
+					},
+				],
+			}),
+		]);
+		mocks.getDataTableRowsApi.mockResolvedValue({
+			count: 2,
+			data: [
+				{ id: 1, createdAt: 't', updatedAt: 't', query: 'q1', expectedAnswer: 'a1' },
+				{ id: 2, createdAt: 't', updatedAt: 't', query: 'q2', expectedAnswer: 'a2' },
+			],
+		});
+
+		const store = useEvaluationsWizardSidepanelStore();
+		const { hydrate } = useWizardHydration();
+		await hydrate();
+
+		// First row still seeds the Step-2 form.
+		expect(store.expectedValues).toEqual({ expectedAnswer: 'a1' });
+		// Every row's expected values are kept, in dataset order, for the results pane.
+		expect(store.datasetExpectedByRow).toEqual([
+			{ expectedAnswer: 'a1' },
+			{ expectedAnswer: 'a2' },
+		]);
+	});
+
 	it('does nothing when there is no existing config', async () => {
 		mocks.listEvaluationConfigs.mockResolvedValue([]);
 

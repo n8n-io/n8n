@@ -5,10 +5,15 @@ import type {
 	InstanceAiToolCallState,
 	TaskList,
 } from '@n8n/api-types';
-import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
+import {
+	extractArtifacts,
+	isStreamingTimelineEntry,
+	isVisibleTimelineEntry,
+	HIDDEN_TOOLS,
+	type ArtifactInfo,
+} from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
@@ -16,16 +21,20 @@ import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
-import DelegateCard from './DelegateCard.vue';
-import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
+import ReasoningBlock from './ReasoningBlock.vue';
 import TaskChecklist from './TaskChecklist.vue';
-import ToolCallStep from './ToolCallStep.vue';
+import TimelineTextSegment from './TimelineTextSegment.vue';
+import ToolResultJson from './ToolResultJson.vue';
+import ToolResultRenderer from './ToolResultRenderer.vue';
+import { N8nAiActivityStep as ToolCallStep } from '@n8n/design-system';
+import { useToolLabel } from '../toolLabels';
 
 const i18n = useI18n();
 const thread = useThread();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
+const { getToolLabel } = useToolLabel();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -92,10 +101,6 @@ const props = withDefaults(
 
 const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
 
-defineSlots<{
-	'after-tool-call'?: (props: { toolCall: InstanceAiToolCallState }) => unknown;
-}>();
-
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
 const toolCallsById = computed(() => {
 	const map: Record<string, InstanceAiToolCallState> = {};
@@ -156,6 +161,17 @@ const childrenById = computed(() => {
 	}
 	return map;
 });
+
+/**
+ * Whether any entry renders visible output. Segments made up entirely of
+ * hidden tool calls (e.g. builder calls represented by artifact cards) skip
+ * the wrapper div — an empty flex item would still add gap spacing.
+ */
+const hasVisibleEntries = computed(() =>
+	timelineEntries.value.some((entry) =>
+		isVisibleTimelineEntry(entry, toolCallsById.value, childrenById.value),
+	),
+);
 
 function handlePlanApprove(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
@@ -239,17 +255,23 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 </script>
 
 <template>
-	<div :class="$style.timeline">
+	<div v-if="hasVisibleEntries" :class="$style.timeline">
 		<template v-for="(entry, idx) in timelineEntries" :key="idx">
-			<!-- Text segment -->
-			<N8nText
+			<!-- Text segment (leaf keeps the per-token content read out of this render) -->
+			<TimelineTextSegment
 				v-if="entry.type === 'text'"
-				size="large"
+				:entry="entry"
 				:compact="props.compact"
+				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 				:class="$style.timelineItem"
-			>
-				<InstanceAiMarkdown :content="entry.content" />
-			</N8nText>
+			/>
+
+			<!-- Reasoning segment — one collapsible block per reasoning stage -->
+			<ReasoningBlock
+				v-else-if="entry.type === 'reasoning'"
+				:entry="entry"
+				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
+			/>
 
 			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
 			<template
@@ -262,13 +284,6 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				<TaskChecklist
 					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
 					:tasks="props.agentNode.tasks"
-				/>
-				<DelegateCard
-					v-else-if="toolCallsById[entry.toolCallId].renderHint === 'delegate'"
-					:args="toolCallsById[entry.toolCallId].args"
-					:result="toolCallsById[entry.toolCallId].result"
-					:is-loading="toolCallsById[entry.toolCallId].isLoading"
-					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
 				/>
 				<!-- Hidden tool calls (builder/data-table/eval-setup handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
@@ -302,8 +317,27 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 						toolCallsById[entry.toolCallId].isLoading
 					"
 				/>
-				<ToolCallStep v-else :tool-call="toolCallsById[entry.toolCallId]" :show-connector="true">
-					<slot name="after-tool-call" :tool-call="toolCallsById[entry.toolCallId]" />
+				<ToolCallStep
+					v-else
+					:label="
+						getToolLabel(
+							toolCallsById[entry.toolCallId].toolName,
+							toolCallsById[entry.toolCallId].args,
+						)
+					"
+					:loading="toolCallsById[entry.toolCallId].isLoading"
+					:error="toolCallsById[entry.toolCallId].error"
+				>
+					<ToolResultJson
+						v-if="toolCallsById[entry.toolCallId].args"
+						:value="toolCallsById[entry.toolCallId].args"
+					/>
+					<ToolResultRenderer
+						v-if="toolCallsById[entry.toolCallId].result !== undefined"
+						:result="toolCallsById[entry.toolCallId].result"
+						:tool-name="toolCallsById[entry.toolCallId].toolName"
+						:tool-args="toolCallsById[entry.toolCallId].args"
+					/>
 				</ToolCallStep>
 			</template>
 
@@ -340,9 +374,11 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 
 <style lang="scss" module>
 .timeline {
+	/** Keep in sync with the nested activity rail overshoot in N8nAiActivityStep. */
+	--n8n--ai-activity-step-gap: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--n8n--ai-activity-step-gap);
 }
 
 .timelineItem {

@@ -1,10 +1,14 @@
 <script lang="ts" setup>
 import { onMounted, onUnmounted, provide, ref, watch } from 'vue';
-import { onBeforeRouteLeave, RouterView, useRoute } from 'vue-router';
+import { onBeforeRouteLeave, RouterView, useRoute, useRouter } from 'vue-router';
 import { N8nResizeWrapper } from '@n8n/design-system';
-import { useSessionStorage } from '@vueuse/core';
+import { useEventListener, useSessionStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
@@ -16,6 +20,11 @@ const settingsStore = useInstanceAiSettingsStore();
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const route = useRoute();
+const router = useRouter();
+const uiStore = useUIStore();
+const rootStore = useRootStore();
+const telemetry = useTelemetry();
+const { isCtrlKeyPressed } = useDeviceSupport();
 
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
@@ -55,10 +64,33 @@ onBeforeRouteLeave((to) => {
 	}
 });
 
+useEventListener(document, 'keydown', (event: KeyboardEvent) => {
+	if (
+		event.key.toLowerCase() === 'o' &&
+		isCtrlKeyPressed(event) &&
+		event.shiftKey &&
+		!uiStore.isAnyModalOpen
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+		void router.push({ name: INSTANCE_AI_VIEW, force: true });
+	}
+});
+
 // --- Page-level lifecycle ---
 // These run once when the user enters the InstanceAi feature. Route changes
 // (empty ↔ thread) don't remount the layout, so the listeners persist.
 onMounted(() => {
+	// In-app navigations expose the previous route via history state; direct
+	// visits (bookmark, external link) fall back to the document referrer.
+	const previousRoute = router.options.history.state.back;
+	const sourceUrl = typeof previousRoute === 'string' ? previousRoute : document.referrer || null;
+
+	telemetry.track('User viewed AI assistant', {
+		instance_id: rootStore.instanceId,
+		source_url: sourceUrl,
+	});
+
 	void store.loadThreads();
 	void store.fetchCredits();
 	store.startCreditsPushListener();
@@ -72,9 +104,14 @@ onMounted(() => {
 		.then(async () => await settingsStore.ensurePreferencesLoaded())
 		.catch(() => {})
 		.then(() => {
-			if (settingsStore.isLocalGatewayDisabled) return;
+			const browserUseEnabled = settingsStore.isBrowserUseEnabledByAdmin;
+			const computerUseEnabled = !settingsStore.isLocalGatewayDisabledByAdmin;
+			if (!browserUseEnabled && !computerUseEnabled) return;
 			settingsStore.startGatewayPushListener();
-			void settingsStore.fetchGatewayStatus();
+			if (browserUseEnabled) void settingsStore.fetchBrowserStatus();
+			if (computerUseEnabled && !settingsStore.isLocalGatewayDisabled) {
+				void settingsStore.fetchGatewayStatus();
+			}
 		});
 });
 
@@ -83,16 +120,21 @@ watch(
 	() => settingsStore.isLocalGatewayDisabled,
 	(disabled) => {
 		if (disabled) {
-			settingsStore.stopGatewayPushListener();
+			if (
+				settingsStore.isLocalGatewayDisabledByAdmin &&
+				!settingsStore.isBrowserUseEnabledByAdmin
+			) {
+				settingsStore.stopGatewayPushListener();
+			}
 		} else {
 			settingsStore.startGatewayPushListener();
 			void settingsStore.fetchGatewayStatus();
+			void settingsStore.fetchBrowserStatus();
 		}
 	},
 );
 
 onUnmounted(() => {
-	store.disposeRuntimes();
 	store.stopCreditsPushListener();
 	settingsStore.stopGatewayPushListener();
 });
@@ -117,7 +159,7 @@ onUnmounted(() => {
 			</N8nResizeWrapper>
 		</Transition>
 
-		<!-- Inner route — Empty for `/instance-ai`, Thread for `/instance-ai/:threadId` -->
+		<!-- Inner route — Empty for `/assistant`, Thread for `/assistant/:threadId` -->
 		<RouterView v-slot="{ Component }">
 			<component :is="Component" :key="String(route.params.threadId ?? 'empty')" />
 		</RouterView>

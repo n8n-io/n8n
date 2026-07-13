@@ -9,7 +9,9 @@ export type AuthFailureReason =
 	| 'token_not_found_in_db'
 	| 'user_not_found'
 	| 'user_id_not_in_auth_info'
-	| 'unknown_error';
+	| 'unknown_error'
+	| 'verifier_not_registered'
+	| 'insufficient_scope';
 
 export type Mcpauth_type = 'oauth' | 'api_key' | 'unknown';
 
@@ -61,7 +63,7 @@ export class OAuthTokenVerifierProxy implements OAuthTokenVerifier {
 			return {
 				user: null,
 				context: {
-					reason: 'unknown_error',
+					reason: 'verifier_not_registered',
 					auth_type: 'oauth',
 					error_details: 'No OAuth token verifier is registered on this instance',
 				},

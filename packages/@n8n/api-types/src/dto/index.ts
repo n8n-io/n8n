@@ -39,6 +39,8 @@ export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
+export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
+
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
 export { EmbedLoginQueryDto } from './auth/embed-login-query.dto';
@@ -178,6 +180,11 @@ export {
 	type RoleProjectMember,
 	type RoleProjectMembersResponse,
 } from './roles/role-project-members-response.dto';
+export {
+	RoleMembersResponseDto,
+	type RoleMember,
+	type RoleMembersResponse,
+} from './roles/role-members-response.dto';
 
 export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
@@ -208,11 +215,11 @@ export {
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
-export { ExportWorkflowsRequestDto } from './packages/export-workflows-request.dto';
 export {
 	ImportPackageRequestDto,
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
+export { ExportPackageRequestDto } from './packages/export-package-request.dto';
 
 export * from './evaluations';
 
@@ -233,6 +240,10 @@ export {
 	SecuritySettingsDto,
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
+export {
+	UpdateSecurityPolicyDto,
+	type SecurityPolicyResponse,
+} from './security-settings/security-policy.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
@@ -260,3 +271,8 @@ export {
 	type EncryptionKeysSortOption,
 } from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
+
+export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
+export { TestOtelConnectionDto } from './otel/test-otel-connection.dto';
+
+export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';

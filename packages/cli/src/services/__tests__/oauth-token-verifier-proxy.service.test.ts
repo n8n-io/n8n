@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { OAuthTokenVerifier } from '../oauth-token-verifier-proxy.service';
 import { OAuthTokenVerifierProxy } from '../oauth-token-verifier-proxy.service';
@@ -11,7 +11,7 @@ describe('OAuthTokenVerifierProxy', () => {
 		const result = await proxy.verifyOAuthAccessToken('some-token', 'https://n8n.example.com');
 
 		expect(result.user).toBeNull();
-		expect(result.context).toMatchObject({ reason: 'unknown_error', auth_type: 'oauth' });
+		expect(result.context).toMatchObject({ reason: 'verifier_not_registered', auth_type: 'oauth' });
 	});
 
 	it('should delegate to the registered provider', async () => {

@@ -7,7 +7,10 @@ import {
 } from 'n8n-workflow';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	injectWorkflowExecutionStateStore,
+	type useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEvaluationsWizardSidepanelStore } from '../wizardSidepanel.store';
 import { stringifyValue } from '../evaluation.utils';
@@ -18,7 +21,9 @@ export type SliceInputs = {
 	hasExecution: boolean;
 };
 
-type ExecutionLike = NonNullable<ReturnType<typeof useWorkflowsStore>['lastSuccessfulExecution']>;
+type ExecutionLike = NonNullable<
+	ReturnType<typeof useWorkflowExecutionStateStore>['lastSuccessfulExecution']
+>;
 
 export type UseSliceInputsOptions = {
 	fallbackExecution?: MaybeRefOrGetter<ExecutionLike | null | undefined>;
@@ -28,7 +33,7 @@ export type UseSliceInputsOptions = {
 // non-evaluation execution. Uses graph-based parent lookup rather than
 // `task.source` — langchain AI nodes have an unreliable source array.
 export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<SliceInputs> {
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const wizardStore = useEvaluationsWizardSidepanelStore();
@@ -43,8 +48,8 @@ export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<Sli
 			withFallback(result, allNodes, connections, probeNode);
 
 		const exec = pickUserExecution([
-			workflowsStore.workflowExecutionData,
-			workflowsStore.lastSuccessfulExecution,
+			workflowExecutionStateStore.value.activeExecution,
+			workflowExecutionStateStore.value.lastSuccessfulExecution,
 			toValue(options?.fallbackExecution),
 		]);
 		const runData = exec?.data?.resultData?.runData;

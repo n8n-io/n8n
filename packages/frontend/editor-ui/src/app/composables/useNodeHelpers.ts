@@ -5,7 +5,7 @@ import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 import {
 	NodeHelpers,
 	NodeConnectionTypes,
-	MANUAL_TRIGGER_NODE_TYPES,
+	classifyTriggerIdentity,
 	nodeIssuesToString,
 } from 'n8n-workflow';
 import type {
@@ -40,7 +40,6 @@ import { isString } from '@/app/utils/typeGuards';
 import { isObject } from '@/app/utils/objectUtils';
 import { getNodeSubtitle, hasProxyAuth } from '@/app/utils/nodeTypesUtils';
 import { assignNodeId } from '@/app/utils/nodes/nodeTransforms';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useI18n } from '@n8n/i18n';
@@ -50,7 +49,8 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -66,12 +66,12 @@ export function useNodeHelpers() {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+	const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 
 	const isInsertingNodes = ref(false);
 	const credentialsUpdated = ref(false);
@@ -242,7 +242,7 @@ export function useNodeHelpers() {
 	// Set the status on all the nodes which produced an error so that it can be
 	// displayed in the node-view
 	function hasNodeExecutionIssues(node: INodeUi): boolean {
-		const workflowResultData = workflowsStore.getWorkflowRunData;
+		const workflowResultData = workflowExecutionStateStore.value.activeExecutionRunData;
 
 		if (!workflowResultData?.hasOwnProperty(node.name)) {
 			return false;
@@ -415,20 +415,46 @@ export function useNodeHelpers() {
 		return null;
 	}
 
-	function workflowHasIncompatibleTrigger(): boolean {
-		const triggers = workflowDocumentStore.value.workflowTriggerNodes;
-		return triggers.some(
-			(trigger) => !trigger.disabled && !MANUAL_TRIGGER_NODE_TYPES.includes(trigger.type),
+	// Returns the trigger that blocks end-user credentials — a trigger to name in
+	// the incompatibility issue — or null when the workflow is compatible. Private
+	// (self-connected) credentials resolve via the system resolver, which keys on
+	// the n8n user identity. Mirror the backend publish check: the workflow is
+	// compatible as long as at least one enabled trigger establishes that identity,
+	// so a single compatible trigger clears the issue even if others can't.
+	function getBlockingTrigger(): INodeUi | null {
+		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
+			(trigger) => !trigger.disabled,
 		);
+		if (triggers.length === 0) return null;
+
+		const hasCompatibleTrigger = triggers.some(
+			(trigger) => classifyTriggerIdentity(trigger.type, trigger.parameters).providesN8nIdentity,
+		);
+		if (hasCompatibleTrigger) return null;
+
+		// No trigger establishes the identity — return an incompatible one to name
+		// in the issue.
+		return (
+			triggers.find(
+				(trigger) => !classifyTriggerIdentity(trigger.type, trigger.parameters).providesN8nIdentity,
+			) ?? null
+		);
+	}
+
+	function getTriggerDisplayName(trigger: INodeUi): string {
+		const displayName =
+			nodeTypesStore.getNodeType(trigger.type, trigger.typeVersion)?.displayName ?? trigger.name;
+		// Drop a trailing "Trigger" so the sentence doesn't read "the Schedule Trigger trigger".
+		return displayName.replace(/\s*trigger$/i, '').trim() || displayName;
 	}
 
 	function collectPrivateCredentialIssues(
 		node: INodeUi,
 		foundIssues: INodeIssueObjectProperty,
 	): void {
-		if (!isDynamicCredentialsEnabled.value) return;
+		if (!isPrivateCredentialsEnabled.value) return;
 
-		const incompatibleTrigger = workflowHasIncompatibleTrigger();
+		const blockingTrigger = getBlockingTrigger();
 
 		for (const [credTypeName, details] of Object.entries(node.credentials ?? {})) {
 			if (foundIssues[credTypeName]?.length) continue;
@@ -437,12 +463,14 @@ export function useNodeHelpers() {
 			const credential = credentialsStore.getCredentialById(details.id);
 			if (!credential?.isResolvable) continue;
 
-			// An unconnected private credential is a missing setup step, not a hard
-			// error — it's surfaced as a warning via the credential callout/banner in
-			// the UI rather than a node issue, so we don't add it here.
-			if (credential.connectedByMe && incompatibleTrigger) {
+			// Mirror the backend publish check: trigger incompatibility blocks publish
+			// regardless of who connected the credential, so warn on it here too. A
+			// merely-not-yet-connected credential is surfaced via the callout/banner.
+			if (blockingTrigger) {
 				foundIssues[credTypeName] = [
-					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger'),
+					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger', {
+						interpolate: { triggerName: getTriggerDisplayName(blockingTrigger) },
+					}),
 				];
 			}
 		}
@@ -653,7 +681,8 @@ export function useNodeHelpers() {
 	}
 
 	function getAllNodeTaskData(nodeName: string, execution?: IRunExecutionData) {
-		const runData = execution?.resultData.runData ?? workflowsStore.getWorkflowRunData;
+		const runData =
+			execution?.resultData.runData ?? workflowExecutionStateStore.value.activeExecutionRunData;
 
 		return runData?.[nodeName] ?? null;
 	}
@@ -769,11 +798,11 @@ export function useNodeHelpers() {
 			telemetry.track('User set node enabled status', {
 				node_type: node.type,
 				is_enabled: node.disabled,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 			});
 
 			workflowDocumentStore.value.updateNodeProperties(updateInformation);
-			workflowsStore.clearNodeExecutionData(node.name);
+			workflowExecutionStateStore.value.clearActiveNodeExecutionData(node.name);
 			updateNodeParameterIssues(node);
 			updateNodeCredentialIssues(node);
 			updateNodesInputIssues();

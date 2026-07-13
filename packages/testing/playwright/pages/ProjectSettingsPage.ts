@@ -62,9 +62,34 @@ export class ProjectSettingsPage extends BasePage {
 		return this.page.getByTestId('project-members-table');
 	}
 
+	getMemberRows(): Locator {
+		return this.getMembersTable().locator('tbody tr');
+	}
+
+	getMembersTableHeader(name: string): Locator {
+		return this.getMembersTable().getByText(name);
+	}
+
+	getMemberRoleDropdownForRow(row: Locator): Locator {
+		return row.getByTestId('project-member-role-dropdown');
+	}
+
+	getMemberRoleTextForRow(row: Locator, role: string): Locator {
+		return row.getByText(role);
+	}
+
 	async expectTableHasMemberCount(expectedCount: number) {
-		const rows = this.getMembersTable().locator('tbody tr');
-		await expect(rows).toHaveCount(expectedCount);
+		await expect(this.getMemberRows()).toHaveCount(expectedCount);
+	}
+
+	getDangerZoneTitle(): Locator {
+		return this.page.getByText('Danger zone');
+	}
+
+	getDangerZoneDescription(): Locator {
+		return this.page.getByText(
+			'When deleting a project, you can also choose to move all workflows and credentials to another project.',
+		);
 	}
 
 	getTitle() {
@@ -101,6 +126,10 @@ export class ProjectSettingsPage extends BasePage {
 	// Icon picker methods
 	getIconPickerButton() {
 		return this.page.getByTestId('icon-picker-button');
+	}
+
+	getIconPickerIcon() {
+		return this.getIconPickerButton().locator('svg');
 	}
 
 	async clickIconPickerButton() {

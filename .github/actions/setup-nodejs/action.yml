@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 24.15.0 by default for reproducible builds.'
+    description: 'Node.js version to use. Pinned to 24.16.0 by default for reproducible builds.'
     required: false
-    default: '24.15.0'
+    default: '24.16.0'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -17,7 +17,7 @@ inputs:
   build-command:
     description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
     required: false
-    default: 'pnpm build:unchecked'
+    default: 'pnpm build'
   install-command:
     description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
     required: false
@@ -174,6 +174,7 @@ runs:
         INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
         PNPM_DIAG_DIR: ${{ runner.temp }}/pnpm-diagnostics
         SAFE_CHAIN_LOGGING: verbose
+        GITHUB_TOKEN: ${{ github.token }}
       run: |
         # Stable, artifact-name-safe id for the upload step (written first so it
         # exists even if the install dies immediately).
@@ -237,7 +238,21 @@ runs:
         if-no-files-found: ignore
         retention-days: 7
 
+    # When setup-nodejs is nested inside another setup-nodejs invocation
+    # (e.g. load-n8n-docker's rebuild fallback → build-n8n-docker), a turbo
+    # cache server is already running and its TURBO_API env is already
+    # exported, so the nested builds can just use it. Starting a second
+    # server overwrites TURBOGHA_PORT, which both post-runs then read: the
+    # first post shuts the second server down, and the other post fails the
+    # job with a bare `fetch failed` — and the first server's caches are
+    # never saved.
+    - name: Check for running Turborepo cache server
+      id: turbo-server
+      shell: bash
+      run: echo "running=${TURBOGHA_PORT:+true}" >> "$GITHUB_OUTPUT"
+
     - name: Configure Turborepo Cache
+      if: steps.turbo-server.outputs.running != 'true'
       uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
       with:
         server-port: 0

@@ -29,9 +29,14 @@ function main() {
 		.filter((commit) => commit.trim().length > 0);
 	const actionableCommitList = filterActionableCommits(commitList);
 
+	// `force` lets a dispatch create the PR even without actionable commits,
+	// but never when there are literally no commits between versions.
+	const force = process.env.FORCE === 'true';
+	const shouldCreatePr = commitList.length > 0 && (actionableCommitList.length > 0 || force);
+
 	const output = {
 		release_candidate_branch: releaseCandidateBranch,
-		should_update: actionableCommitList.length > 0 ? 'true' : 'false',
+		should_create_pr: shouldCreatePr ? 'true' : 'false',
 	};
 
 	console.log(output);

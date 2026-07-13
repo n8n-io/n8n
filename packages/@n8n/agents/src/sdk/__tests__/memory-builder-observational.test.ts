@@ -1,5 +1,5 @@
-import type { AgentRuntimeConfig } from '../../runtime/agent-runtime';
-import { InMemoryMemory } from '../../runtime/memory-store';
+import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
+import { InMemoryMemory } from '../../runtime/memory/memory-store';
 import type { BuiltMemory, MemoryConfig } from '../../types';
 import { Agent } from '../agent';
 import {

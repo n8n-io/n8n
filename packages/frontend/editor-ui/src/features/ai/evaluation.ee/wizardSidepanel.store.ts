@@ -40,6 +40,11 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 		const endNodeName = ref<string>('');
 		const inputs = ref<Record<string, string>>({});
 		const expectedValues = ref<Record<string, string>>({});
+		// Expected-output values for every dataset row, indexed by position (which
+		// matches a test case's 0-based `runIndex`). `expectedValues` above only
+		// holds the first row for the Step-2 form; the results pane reads this so
+		// each case shows its own row instead of repeating the first.
+		const datasetExpectedByRow = ref<Array<Record<string, string>>>([]);
 		const customChecks = ref<CustomCheck[]>([]);
 		const isCustomCheckModalOpen = ref(false);
 		// Pinned at dispatch — fetchTestRuns returns ALL of a workflow's runs,
@@ -63,6 +68,7 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			endNodeName.value = '';
 			inputs.value = {};
 			expectedValues.value = {};
+			datasetExpectedByRow.value = [];
 			customChecks.value = [];
 			isCustomCheckModalOpen.value = false;
 			activeRunId.value = null;
@@ -197,6 +203,7 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			endNodeName,
 			inputs,
 			expectedValues,
+			datasetExpectedByRow,
 			customChecks,
 			isCustomCheckModalOpen,
 			activeRunId,

@@ -20,10 +20,14 @@ tags:
     description: Operations about users
   - name: Audit
     description: Operations about security audit
+  - name: SecurityPolicy
+    description: Operations about the instance security policy settings
   - name: Execution
     description: Operations about executions
   - name: Workflow
     description: Operations about workflows
+  - name: Evaluation
+    description: Operations about evaluation test runs
   - name: Credential
     description: Operations about credentials
   - name: Tags
@@ -45,11 +49,13 @@ tags:
   - name: Folders
     description: Operations about folders
   - name: N8nPackage
-    description: Beta — operations about n8n packages. Disabled by default; enable with `N8N_PUBLIC_API_PACKAGES_ENABLED=true`.
+    description: Beta — breaking changes may still occur without major version bump.
 
 paths:
   /audit:
     $ref: './handlers/audit/spec/paths/audit.yml'
+  /settings/security-policy:
+    $ref: './handlers/security-policy/spec/paths/security-policy.yml'
   /credentials:
     $ref: './handlers/credentials/spec/paths/credentials.yml'
   /credentials/{id}:
@@ -94,6 +100,12 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
   /workflows/{id}/tags:
     $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
+  /workflows/{id}/test-runs:
+    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
+  /workflows/{id}/test-runs/{runId}:
+    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.yml'
+  /workflows/{id}/test-runs/{runId}/test-cases:
+    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.test-cases.yml'
   /users:
     $ref: './handlers/users/spec/paths/users.yml'
   /users/{id}:
@@ -116,6 +128,8 @@ paths:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.update.yml'
   /data-tables/{dataTableId}/rows/upsert:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.upsert.yml'
+  /data-tables/{dataTableId}/rows/clear:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.clear.yml'
   /data-tables/{dataTableId}/rows/delete:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml'
   /data-tables/{dataTableId}/columns:

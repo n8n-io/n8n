@@ -1,36 +1,36 @@
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ITriggerFunctions } from 'n8n-workflow';
 
 import { AmqpTrigger } from './AmqpTrigger.node';
 
 let eventHandlers: Record<string, (...args: unknown[]) => void> = {};
-const mockAddCredit = jest.fn();
-const mockClose = jest.fn();
-const mockOpenReceiver = jest.fn();
-const mockEmitExecutionError = jest.fn();
+const mockAddCredit = vi.fn();
+const mockClose = vi.fn();
+const mockOpenReceiver = vi.fn();
+const mockEmitExecutionError = vi.fn();
 
 const mockConnection = {
 	open_receiver: mockOpenReceiver,
 	close: mockClose,
 };
 
-jest.mock('rhea', () => ({
-	create_container: jest.fn(() => ({
+vi.mock('rhea', () => ({
+	create_container: vi.fn(() => ({
 		on: (event: string, handler: (...args: unknown[]) => void) => {
 			eventHandlers[event] = handler;
 		},
-		removeAllListeners: jest.fn((event: string) => {
+		removeAllListeners: vi.fn((event: string) => {
 			delete eventHandlers[event];
 		}),
-		connect: jest.fn(() => mockConnection),
+		connect: vi.fn(() => mockConnection),
 	})),
 }));
 
 describe('AMQP Trigger Node', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		eventHandlers = {};
 		mockEmitExecutionError.mockClear();
 	});
@@ -94,7 +94,7 @@ describe('AMQP Trigger Node', () => {
 	});
 
 	it('should reject in manual mode after 15s with no message', async () => {
-		const timeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+		const timeoutSpy = vi.spyOn(global, 'setTimeout').mockImplementation((fn) => {
 			fn(); // fire immediately
 			return 1 as unknown as NodeJS.Timeout;
 		});
@@ -131,8 +131,8 @@ describe('AMQP Trigger Node', () => {
 
 	it('should call saveFailedExecution when handleMessage throws an error in trigger mode', async () => {
 		const trigger = new AmqpTrigger();
-		const emit = jest.fn();
-		const saveFailedExecution = jest.fn();
+		const emit = vi.fn();
+		const saveFailedExecution = vi.fn();
 
 		const triggerFunctions = mockDeep<ITriggerFunctions>();
 		Object.assign(triggerFunctions, { emit, saveFailedExecution });
@@ -160,7 +160,7 @@ describe('AMQP Trigger Node', () => {
 		eventHandlers['message']({
 			message: { body: 'invalid json {', message_id: 1 },
 			receiver: {
-				has_credit: jest.fn().mockReturnValue(true),
+				has_credit: vi.fn().mockReturnValue(true),
 			},
 		});
 
@@ -171,7 +171,7 @@ describe('AMQP Trigger Node', () => {
 
 	it('should handle errors in manual mode and reject the promise', async () => {
 		const trigger = new AmqpTrigger();
-		const emit = jest.fn();
+		const emit = vi.fn();
 
 		const triggerFunctions = mockDeep<ITriggerFunctions>();
 		Object.assign(triggerFunctions, { emit });
@@ -271,7 +271,7 @@ describe('AMQP Trigger Node', () => {
 		eventHandlers['message']({
 			message,
 			receiver: {
-				has_credit: jest.fn().mockReturnValue(true),
+				has_credit: vi.fn().mockReturnValue(true),
 			},
 		});
 
@@ -279,7 +279,7 @@ describe('AMQP Trigger Node', () => {
 	});
 
 	it('should add credit when receiver has no credit', async () => {
-		const addCreditSpy = jest.fn();
+		const addCreditSpy = vi.fn();
 		await testTriggerNode(AmqpTrigger, {
 			mode: 'trigger',
 			node: {
@@ -291,18 +291,18 @@ describe('AMQP Trigger Node', () => {
 			credential: { hostname: 'localhost', port: 5672 },
 		});
 
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		const message = { body: 'hello', message_id: 1 };
 		eventHandlers['message']({
 			message,
 			receiver: {
-				has_credit: jest.fn().mockReturnValue(false),
+				has_credit: vi.fn().mockReturnValue(false),
 				add_credit: addCreditSpy,
 			},
 		});
 
-		jest.advanceTimersByTime(10);
-		jest.useRealTimers();
+		vi.advanceTimersByTime(10);
+		vi.useRealTimers();
 
 		expect(addCreditSpy).toHaveBeenCalledWith(100);
 	});
