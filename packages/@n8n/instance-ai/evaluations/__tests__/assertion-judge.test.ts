@@ -77,8 +77,9 @@ describe('runAssertionJudge', () => {
 	it('rejects a fractional index and retries instead of accepting it as a verdict', async () => {
 		const generate: GenerateMock = vi
 			.fn<GenerateFn>()
-			// Attempt 1: a fractional index never maps onto a numbered assertion — the schema
-			// must reject it so the attempt is retried rather than silently yielding no verdict.
+			// Attempt 1: a fractional index never maps onto a numbered assertion — the range
+			// guard's integer check drops it so the attempt is retried rather than silently
+			// yielding no verdict.
 			.mockResolvedValueOnce({
 				structuredOutput: { results: [{ index: 0.5, pass: true, reason: 'bogus' }] },
 			})

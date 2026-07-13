@@ -12,9 +12,11 @@ import type { BuildExpectationResult } from '../types';
 export const expectationResultSchema = z.object({
 	results: z.array(
 		z.object({
-			// Must be an integer: a fractional index would parse but never map onto a
-			// numbered assertion, silently yielding "no verdict" instead of retrying.
-			index: z.number().int(),
+			// Kept as a plain number on purpose: adding zod constraints (.int() etc.) to a
+			// schema handed to the SDK's structured output has broken it wholesale before,
+			// making every verdict come back empty. The integer check lives in the range
+			// guard below instead, where a bad index just drops out and triggers a retry.
+			index: z.number(),
 			pass: z.boolean(),
 			reason: z.string(),
 		}),
@@ -78,8 +80,10 @@ export async function judgeExpectations(
 		const byIndex = new Map<number, { pass: boolean; reason: string }>();
 		if (parsed.success) {
 			for (const entry of parsed.data.results) {
-				// Schema validated index/pass/reason types; only the range needs checking.
-				if (entry.index >= 0 && entry.index < assertions.length) {
+				// Schema validated the types; the index must still be an in-range integer.
+				// A fractional index leaves byIndex short, so the attempt retries instead of
+				// silently returning "no verdict" for real expectations.
+				if (Number.isInteger(entry.index) && entry.index >= 0 && entry.index < assertions.length) {
 					byIndex.set(entry.index, { pass: entry.pass, reason: entry.reason });
 				}
 			}
