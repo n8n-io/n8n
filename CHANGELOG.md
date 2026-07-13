@@ -1,3 +1,13 @@
+## [2.29.11](https://github.com/n8n-io/n8n/compare/n8n@2.29.10...n8n@2.29.11) (2026-07-13)
+
+
+### Bug Fixes
+
+* **core:** Decouple executions visibility from the sharing license feature ([#33987](https://github.com/n8n-io/n8n/issues/33987)) ([78c0d6a](https://github.com/n8n-io/n8n/commit/78c0d6a0baede150e71ee643a875d9e7ed1cefe6))
+* **core:** Settle webhook execution promise on early errors ([#33997](https://github.com/n8n-io/n8n/issues/33997)) ([b69b48d](https://github.com/n8n-io/n8n/commit/b69b48d281e856b0105ba18b45658748482d3b9b))
+* **Notion Node:** Restore ASCII simplified property keys on earlier node versions ([#34004](https://github.com/n8n-io/n8n/issues/34004)) ([40aa331](https://github.com/n8n-io/n8n/commit/40aa3316dd75f92856e6a2f52df4907f55719cb2))
+
+
 ## [2.29.10](https://github.com/n8n-io/n8n/compare/n8n@2.29.9...n8n@2.29.10) (2026-07-10)
 
 
