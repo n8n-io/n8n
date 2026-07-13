@@ -2,7 +2,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { IBinaryData, IExecuteSingleFunctions } from 'n8n-workflow';
 
-import { downloadFilePostReceive, escapeFilterValue } from '../../helpers/utils';
+import { downloadFilePostReceive, escapeFilterValue } from '../../v1/helpers/utils';
 
 describe('Microsoft SharePoint Node', () => {
 	let executeSingleFunctions: MockProxy<IExecuteSingleFunctions>;
