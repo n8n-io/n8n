@@ -609,10 +609,24 @@ describe('PATCH /credentials/:id — switching to end-user is role-restricted', 
 			.expect(403);
 	});
 
-	test('project editor can switch an end-user credential back to fixed', async () => {
+	test('project editor cannot switch an end-user credential back to fixed', async () => {
 		const resolvableCred = await saveResolvableCredential();
 		await testServer
 			.authAgentFor(memberB)
+			.patch(`/credentials/${resolvableCred.id}`)
+			.send({
+				name: resolvableCred.name,
+				type: resolvableCred.type,
+				data: {},
+				isResolvable: false,
+			})
+			.expect(403);
+	});
+
+	test('project admin can switch an end-user credential back to fixed', async () => {
+		const resolvableCred = await saveResolvableCredential();
+		await testServer
+			.authAgentFor(memberA)
 			.patch(`/credentials/${resolvableCred.id}`)
 			.send({
 				name: resolvableCred.name,
@@ -685,5 +699,22 @@ describe('PUT /credentials/:id/transfer — end-user credentials are role-restri
 			.put(`/credentials/${staticCred.id}/transfer`)
 			.send({ destinationProjectId: teamProject.id })
 			.expect(200);
+	});
+});
+
+describe('DELETE /credentials/:id — end-user credentials are role-restricted', () => {
+	test('project editor cannot delete an end-user credential', async () => {
+		const resolvableCred = await saveResolvableCredential();
+		await testServer.authAgentFor(memberB).delete(`/credentials/${resolvableCred.id}`).expect(403);
+	});
+
+	test('project editor can still delete a fixed credential', async () => {
+		const staticCred = await saveStaticCredential();
+		await testServer.authAgentFor(memberB).delete(`/credentials/${staticCred.id}`).expect(200);
+	});
+
+	test('project admin can delete an end-user credential', async () => {
+		const resolvableCred = await saveResolvableCredential();
+		await testServer.authAgentFor(memberA).delete(`/credentials/${resolvableCred.id}`).expect(200);
 	});
 });

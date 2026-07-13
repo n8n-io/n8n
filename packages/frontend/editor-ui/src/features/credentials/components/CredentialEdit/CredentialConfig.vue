@@ -249,11 +249,9 @@ const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
 
-// Switching to end-user requires the createEndUser permission; an already
-// end-user credential keeps the selector so it can be switched back to fixed.
-const canSelectEndUserType = computed(
-	() => !!props.credentialPermissions.createEndUser || !!props.isResolvable,
-);
+// Switching a credential's type in either direction requires the createEndUser
+// permission — the change affects every user's own connection, not just the caller's.
+const canSelectEndUserType = computed(() => !!props.credentialPermissions.createEndUser);
 
 // Connecting an existing private credential only needs the `connect` capability
 // (no edit rights); shared/static credentials store the token on the shared
