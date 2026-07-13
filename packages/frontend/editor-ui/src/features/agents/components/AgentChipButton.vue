@@ -77,6 +77,7 @@ const emit = defineEmits<{
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
 .chip {
 	display: inline-flex;
 	align-items: center;
@@ -89,6 +90,10 @@ const emit = defineEmits<{
 	box-shadow: var(--shadow--xs);
 	font-family: inherit;
 	cursor: pointer;
+
+	&:focus-visible {
+		@include focus.focus-ring-with-border;
+	}
 }
 
 .default:not(:disabled):hover {

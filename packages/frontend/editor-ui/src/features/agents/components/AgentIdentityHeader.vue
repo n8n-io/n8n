@@ -144,9 +144,16 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 		opacity: 0.7;
 	}
 
+	&:focus-visible {
+		outline: none;
+	}
+
+	&:focus-visible::before,
 	&[aria-expanded='true']::before {
 		background-color: var(--focus--border-color);
 	}
+
+	&:focus-visible::after,
 	&[aria-expanded='true']::after {
 		inset: 2px;
 	}
