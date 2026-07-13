@@ -995,8 +995,7 @@ export class AgentExecutionOrchestratorService {
 	 * The strict schema rejects capabilities inline agents don't support
 	 * (skills, memory, sub-agents, custom tools, the options block), so
 	 * saved-agent-only features can't sneak in through raw JSON. See
-	 * `InlineAgentJsonConfigSchema` for the authoritative allowlist (MCP
-	 * servers are deliberately allowed).
+	 * `InlineAgentJsonConfigSchema` for the authoritative allowlist.
 	 */
 	private async validateInlineAgentConfig(payload: InlineAgentPayload): Promise<AgentJsonConfig> {
 		const parsed = RunnableInlineAgentConfigSchema.safeParse({
