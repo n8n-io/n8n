@@ -60,6 +60,14 @@ describe('instanceRoleScopes config', () => {
 		expect(INSTANCE_SCOPE_GROUP_LIST.map((g) => g.resource)).toEqual(INSTANCE_RESOURCE_ORDER);
 	});
 
+	it('gives every permission option a tooltip description key', () => {
+		for (const group of INSTANCE_SCOPE_GROUP_LIST) {
+			for (const option of group.options) {
+				expect(option.descriptionKey).toBeTruthy();
+			}
+		}
+	});
+
 	describe('relationship rules', () => {
 		it('apiKey "Manage own" is a strict subset of "Manage all"', () => {
 			const own = INSTANCE_SCOPE_GROUPS.apiKey['Manage own'];

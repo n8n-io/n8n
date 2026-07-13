@@ -45,6 +45,18 @@ function impliedTooltip(option: InstanceScopeOption, groupOptions: InstanceScope
 	});
 }
 
+/**
+ * Tooltip shown for a permission option. When the option is implied by another
+ * (e.g. "Manage own" under a checked "Manage all") the "Included in …" note
+ * takes precedence; otherwise it explains what the permission grants.
+ */
+function optionTooltip(option: InstanceScopeOption, groupOptions: InstanceScopeOption[]): string {
+	if (isOptionImplied(option, groupOptions, props.modelValue)) {
+		return impliedTooltip(option, groupOptions);
+	}
+	return option.descriptionKey ? i18n.baseText(option.descriptionKey) : '';
+}
+
 function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption[]) {
 	if (props.readonly) return;
 	if (isOptionImplied(option, groupOptions, props.modelValue)) return;
@@ -64,9 +76,11 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 					<N8nTooltip
 						v-for="option in group.options"
 						:key="option.key"
-						:content="impliedTooltip(option, group.options)"
-						:disabled="!isOptionImplied(option, group.options, modelValue)"
-						placement="top"
+						:content="optionTooltip(option, group.options)"
+						:disabled="!optionTooltip(option, group.options)"
+						placement="right"
+						:enterable="false"
+						:show-after="250"
 					>
 						<N8nCheckbox
 							:data-test-id="optionTestId(group.resource, option)"

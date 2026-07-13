@@ -59,6 +59,29 @@ export const INSTANCE_OPTION_LABEL_OVERRIDES: Partial<
 	role: { Manage: 'instanceRoles.option.manageAllRoles' },
 };
 
+/**
+ * i18n key for the tooltip that explains what each permission option grants.
+ * Option meaning differs per resource (a "Manage" toggle grants different things
+ * under Members vs Tags), so descriptions are keyed by resource *and* option.
+ */
+export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
+	Record<InstanceResource, Record<string, BaseTextKey>>
+> = {
+	settings: { Manage: 'instanceRoles.description.settings.manage' },
+	user: { Manage: 'instanceRoles.description.user.manage' },
+	role: {
+		'Manage project roles': 'instanceRoles.description.role.manageProjectRoles',
+		Manage: 'instanceRoles.description.role.manage',
+	},
+	apiKey: {
+		'Manage own': 'instanceRoles.description.apiKey.manageOwn',
+		'Manage all': 'instanceRoles.description.apiKey.manageAll',
+	},
+	tag: { Manage: 'instanceRoles.description.tag.manage' },
+	project: { Create: 'instanceRoles.description.project.create' },
+	insights: { View: 'instanceRoles.description.insights.view' },
+};
+
 /** Display order of options within a resource group. */
 export const INSTANCE_OPTION_ORDER: string[] = [
 	'View',
@@ -73,6 +96,8 @@ export type InstanceScopeOption = {
 	/** The option's config key, e.g. "View" or "Manage own". */
 	key: string;
 	labelKey: BaseTextKey;
+	/** i18n key for the tooltip explaining what the option grants, if any. */
+	descriptionKey?: BaseTextKey;
 	scopes: Scope[];
 };
 
@@ -101,6 +126,7 @@ export const INSTANCE_SCOPE_GROUP_LIST: InstanceScopeGroup[] = INSTANCE_RESOURCE
 				key,
 				labelKey:
 					INSTANCE_OPTION_LABEL_OVERRIDES[resource]?.[key] ?? INSTANCE_OPTION_LABEL_KEYS[key],
+				descriptionKey: INSTANCE_OPTION_DESCRIPTION_KEYS[resource]?.[key],
 				scopes: [...optionMap[key]],
 			}));
 		return { resource, labelKey: INSTANCE_RESOURCE_LABEL_KEYS[resource], options };
