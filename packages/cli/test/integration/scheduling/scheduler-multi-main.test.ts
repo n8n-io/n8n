@@ -165,12 +165,13 @@ describe('scheduler across two mains over one database', () => {
 		expect(done.claimedBy).toBe('main-b');
 	}, 15_000);
 
-	it('dead-letters a claim stranded on its last attempt instead of reclaiming it', async () => {
+	it('salvages a never-dispatched claim stranded on its last attempt rather than losing the run', async () => {
 		const job = await createJob({ maxAttempts: 3 });
 		const past = new Date(Date.now() - 60_000);
-		// main-a claimed this occurrence for its final attempt, then died: the
-		// lease is expired with no attempts left, so the reaper fails it
-		// terminally instead of retrying.
+		// main-a claimed this occurrence for its final attempt, then died before
+		// dispatching it (no `startedAt`). No attempts remain, so the reaper can't
+		// retry it; under at-least-once it gives the occurrence one final salvage run
+		// so it isn't silently lost, then resolves the row terminally.
 		const doomed = await taskRepo.save(
 			taskRepo.create({
 				jobId: job.id,
@@ -189,17 +190,53 @@ describe('scheduler across two mains over one database', () => {
 
 		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 1 });
 
+		// The salvage ran the occurrence exactly once, on the reaping main.
+		expect(executedA).toHaveLength(0);
+		expect(executedB.map((t) => t.id)).toEqual([doomed.id]);
+
 		const done = await taskRepo.findOneByOrFail({ id: doomed.id });
-		expect(done.status).toBe('failed');
 		expect(done.attempts).toBe(3);
+		// The row is resolved terminally. It reads `failed` even though the salvage
+		// ran it; giving a salvaged run a truer status is left to the misfire-policy work.
+		expect(done.status).toBe('failed');
 		expect(done.errorMessage).toMatch(/lease expired/i);
 
-		// Terminal: a further reap sweep has nothing left to do, and the dead task
-		// is never claimed or fired by either main.
+		// Terminal: a further sweep has nothing to do, and neither main re-claims it.
 		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 0 });
 		expect(await mainA.execute()).toEqual([]);
 		expect(await mainB.execute()).toEqual([]);
+	}, 15_000);
+
+	it('completes a dispatched claim stranded on its last attempt without re-running it', async () => {
+		const job = await createJob({ maxAttempts: 3 });
+		const past = new Date(Date.now() - 60_000);
+		// main-a dispatched this occurrence (its `startedAt` is set) then died before
+		// recording the outcome. Its effect already happened, so the reaper must not
+		// re-run it nor blame it: it completes the row as succeeded.
+		const dispatched = await taskRepo.save(
+			taskRepo.create({
+				jobId: job.id,
+				taskType: TASK_TYPE,
+				payload: {},
+				scheduledFor: past,
+				runAt: past,
+				status: 'running',
+				claimedBy: 'main-a',
+				leaseExpiresAt: new Date(Date.now() - 1000),
+				leaseEpoch: 1,
+				startedAt: past,
+				attempts: 2,
+				maxAttempts: 3,
+			}),
+		);
+
+		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 1 });
+
+		// Not re-run: the effect already happened.
 		expect(executedA).toHaveLength(0);
 		expect(executedB).toHaveLength(0);
+
+		const done = await taskRepo.findOneByOrFail({ id: dispatched.id });
+		expect(done.status).toBe('succeeded');
 	}, 15_000);
 });
