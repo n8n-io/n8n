@@ -318,6 +318,37 @@ const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
 
+// Authoritative publication status when the publication service is on; otherwise
+// undefined and we fall back to the legacy activeVersionId-based indicator.
+const cardPublicationState = computed<'published' | 'partial' | 'failed' | null>(() => {
+	const status = props.data.publicationStatus;
+	if (status === 'partial' || status === 'failed') return status;
+	if (status === 'published' || isWorkflowPublished.value) return 'published';
+	return null;
+});
+
+const publicationIndicatorLabel = computed(() => {
+	switch (cardPublicationState.value) {
+		case 'partial':
+			return locale.baseText('workflows.publicationStatus.partial');
+		case 'failed':
+			return locale.baseText('workflows.publicationStatus.failed');
+		default:
+			return locale.baseText('workflows.published');
+	}
+});
+
+const publicationIndicatorTooltip = computed(() => {
+	switch (cardPublicationState.value) {
+		case 'partial':
+			return locale.baseText('workflows.publicationStatus.partial.tooltip');
+		case 'failed':
+			return locale.baseText('workflows.publicationStatus.failed.tooltip');
+		default:
+			return '';
+	}
+});
+
 const hasDynamicCredentials = computed(() => {
 	return isPrivateCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
@@ -712,14 +743,25 @@ const tags = computed(
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
 				<div
-					v-else-if="isWorkflowPublished"
+					v-else-if="cardPublicationState"
 					:class="$style.publishIndicator"
 					data-test-id="workflow-card-publish-indicator"
 				>
-					<span :class="$style.publishIndicatorDot" />
-					<N8nText size="small" color="text-base">{{
-						locale.baseText('workflows.published')
-					}}</N8nText>
+					<N8nTooltip placement="top" :disabled="cardPublicationState === 'published'">
+						<template #content>{{ publicationIndicatorTooltip }}</template>
+						<div :class="$style.publishIndicatorInner">
+							<span
+								:class="[
+									$style.publishIndicatorDot,
+									{
+										[$style.publishIndicatorDotPartial]: cardPublicationState === 'partial',
+										[$style.publishIndicatorDotFailed]: cardPublicationState === 'failed',
+									},
+								]"
+							/>
+							<N8nText size="small" color="text-base">{{ publicationIndicatorLabel }}</N8nText>
+						</div>
+					</N8nTooltip>
 				</div>
 				<WorkflowCardMcpToggle
 					v-if="props.isWorkflowCardMcpToggleEnabled"
@@ -839,11 +881,25 @@ const tags = computed(
 	}
 }
 
+.publishIndicatorInner {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
 .publishIndicatorDot {
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
 	border-radius: 50%;
 	background-color: var(--color--mint-600);
+}
+
+.publishIndicatorDotPartial {
+	background-color: var(--color--warning);
+}
+
+.publishIndicatorDotFailed {
+	background-color: var(--color--red-600);
 }
 
 @include mixins.breakpoint('sm-and-down') {
