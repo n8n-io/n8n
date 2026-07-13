@@ -1,7 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns */
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
 vi.mock('@n8n/i18n', () => ({
