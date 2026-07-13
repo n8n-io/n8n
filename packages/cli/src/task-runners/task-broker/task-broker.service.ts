@@ -563,6 +563,7 @@ export class TaskBroker {
 			await acceptPromise;
 		} catch (e) {
 			request.acceptInProgress = false;
+			this.settleTasks();
 			if (e instanceof TaskRejectError) {
 				this.logger.info(`Task (${taskId}) rejected by Runner with reason "${e.reason}"`);
 				return;

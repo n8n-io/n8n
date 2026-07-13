@@ -19,6 +19,30 @@ describe('TaskBrokerWsServer', () => {
 
 			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseNormal);
 		});
+
+		it('should close and delete if connectionToRemove matches active connection', async () => {
+			const server = new TaskBrokerWsServer(mock(), mock(), mock(), mock(), mock(), globalConfig);
+			const ws = mock<WebSocket>();
+			server.runnerConnections.set('test-runner', ws);
+
+			await server.removeConnection('test-runner', 'unknown', WsStatusCodes.CloseNormal, ws);
+
+			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseNormal);
+			expect(server.runnerConnections.has('test-runner')).toBe(false);
+		});
+
+		it('should not close or delete if connectionToRemove does not match active connection', async () => {
+			const server = new TaskBrokerWsServer(mock(), mock(), mock(), mock(), mock(), globalConfig);
+			const wsActive = mock<WebSocket>();
+			const wsOld = mock<WebSocket>();
+			server.runnerConnections.set('test-runner', wsActive);
+
+			await server.removeConnection('test-runner', 'unknown', WsStatusCodes.CloseNormal, wsOld);
+
+			expect(wsOld.close).not.toHaveBeenCalled();
+			expect(wsActive.close).not.toHaveBeenCalled();
+			expect(server.runnerConnections.get('test-runner')).toBe(wsActive);
+		});
 	});
 
 	describe('heartbeat timer', () => {
@@ -85,6 +109,41 @@ describe('TaskBrokerWsServer', () => {
 			await Promise.resolve();
 
 			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
+
+			await server.stop();
+			vi.useRealTimers();
+		});
+
+		it('should continue checking remaining connections even if one fails the heartbeat check', async () => {
+			vi.useFakeTimers();
+			const server = new TaskBrokerWsServer(
+				mock(),
+				mock(),
+				mock(),
+				mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval: 30 }),
+				mock(),
+				globalConfig,
+			);
+
+			const ws1 = mock<WebSocket>();
+			ws1.isAlive = false;
+			const ws2 = mock<WebSocket>();
+			ws2.isAlive = true;
+
+			server.runnerConnections.set('runner1', ws1);
+			server.runnerConnections.set('runner2', ws2);
+
+			server.start();
+
+			vi.advanceTimersByTime(30 * Time.seconds.toMilliseconds);
+
+			await Promise.resolve();
+
+			// ws1 should be closed due to failed heartbeat
+			expect(ws1.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
+			// ws2 should be pinged and set to isAlive = false
+			expect(ws2.ping).toHaveBeenCalled();
+			expect(ws2.isAlive).toBe(false);
 
 			await server.stop();
 			vi.useRealTimers();

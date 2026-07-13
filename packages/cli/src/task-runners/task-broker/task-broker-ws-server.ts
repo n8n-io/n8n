@@ -61,9 +61,10 @@ export class TaskBrokerWsServer {
 						runnerId,
 						'failed-heartbeat-check',
 						WsStatusCodes.CloseProtocolError,
+						connection,
 					);
 					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
-					return;
+					continue;
 				}
 				connection.isAlive = false;
 				connection.ping();
@@ -146,7 +147,7 @@ export class TaskBrokerWsServer {
 		connection.once('close', async () => {
 			connection.off('pong', heartbeat);
 			connection.off('message', onMessage);
-			await this.removeConnection(id);
+			await this.removeConnection(id, 'unknown', WsStatusCodes.CloseNormal, connection);
 		});
 
 		connection.on('message', onMessage);
@@ -159,9 +160,13 @@ export class TaskBrokerWsServer {
 		id: TaskRunner['id'],
 		reason: DisconnectReason = 'unknown',
 		code: WsStatusCode = WsStatusCodes.CloseNormal,
+		connectionToRemove?: WebSocket,
 	) {
 		const connection = this.runnerConnections.get(id);
 		if (connection) {
+			if (connectionToRemove && connection !== connectionToRemove) {
+				return;
+			}
 			const disconnectError = await this.disconnectAnalyzer.toDisconnectError({
 				runnerId: id,
 				reason,

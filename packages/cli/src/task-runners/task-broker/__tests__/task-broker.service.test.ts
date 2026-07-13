@@ -1161,5 +1161,43 @@ describe('TaskBroker', () => {
 			handleTimeoutSpy.mockRestore();
 			vi.useRealTimers();
 		});
+
+		it('should re-settle tasks if offer accept fails due to accept timeout', async () => {
+			vi.useFakeTimers();
+			const settleTasksSpy = vi.spyOn(taskBroker, 'settleTasks');
+
+			// Register a runner
+			const runnerId = 'runner1';
+			const runner = mock<TaskRunner>({ id: runnerId });
+			const messageCallback = vi.fn();
+			taskBroker.registerRunner(runner, messageCallback);
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId,
+				taskType: 'taskType1',
+				validFor: 1000,
+				validUntil: createValidUntil(1000),
+			};
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+			};
+
+			taskBroker.setPendingTaskOffers([offer]);
+			taskBroker.setPendingTaskRequests([request]);
+
+			taskBroker.settleTasks();
+
+			// Advance timers by 2 seconds to trigger the TaskRunnerAcceptTimeoutError and resolve async microtasks
+			await vi.advanceTimersByTimeAsync(2000);
+
+			// settleTasks is called first for settling, then in the catch block on failure
+			expect(settleTasksSpy).toHaveBeenCalledTimes(2);
+			settleTasksSpy.mockRestore();
+			vi.useRealTimers();
+		});
 	});
 });
