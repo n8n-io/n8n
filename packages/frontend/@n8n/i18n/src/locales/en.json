@@ -2726,6 +2726,8 @@
 	"projectRoles.credential:update.tooltip": "Edit credential details including secret",
 	"projectRoles.credential:create": "Create",
 	"projectRoles.credential:create.tooltip": "Create new credentials",
+	"projectRoles.credential:createEndUser": "Create end-user",
+	"projectRoles.credential:createEndUser.tooltip": "Create end-user credentials, where each user connects their own account",
 	"projectRoles.credential:share": "Share",
 	"projectRoles.credential:share.tooltip": "Share credentials with other projects or users",
 	"projectRoles.credential:unshare": "Unshare",
