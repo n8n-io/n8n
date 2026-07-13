@@ -18,6 +18,7 @@ import type { ReaperOptions, ReaperTaskStore } from './reaper';
 import { DEFAULT_RETENTION_OPTIONS, prune } from './retention';
 import type { RetentionOptions, RetentionStore } from './retention';
 import type { Scheduler, SchedulerPasses } from './scheduler';
+import type { ClaimedTask } from './types';
 import { SCHEDULER_ATTRIBUTES } from '../observability/attributes';
 import { createExecutorTracing, withHandoffTracing } from '../observability/executor-tracing';
 import { traceCreatedTasks } from '../observability/materializer-tracing';
@@ -298,6 +299,17 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		(tasks) => ({ [SCHEDULER_ATTRIBUTES.claimedCount]: tasks.length }),
 	);
 
+	// Salvage a pre-dispatch occurrence the reaper is giving up on: run its handler
+	// once through the same registry the executor dispatches through, so the effect
+	// still happens rather than being lost. A missing handler (e.g. deregistered by a
+	// rolling restart) leaves nothing to salvage. The reaper resolves the row
+	// terminally right after, so the dispatch marker is moot here: `onDispatch` no-ops.
+	const salvageDispatch = async (task: ClaimedTask) => {
+		const handler = registry.resolve(task.taskType);
+		if (handler === undefined) return;
+		await handler.execute(task, () => {});
+	};
+
 	const runReap = tracePass(
 		tracer,
 		{ name: 'Scheduler reap', op: 'scheduler.reap' },
@@ -321,7 +333,22 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 							...task,
 						});
 					},
+					onSalvageError: (taskId, error) => {
+						emit(
+							'error',
+							'Scheduler could not salvage a pre-dispatch occurrence it dead-lettered',
+							{ taskId, error: described(error) },
+						);
+					},
+					onCompletedAfterDispatch: ({ taskId }) => {
+						emit(
+							'warn',
+							'Scheduler completed a task whose lease lapsed after dispatch; its effect had already happened',
+							{ taskId },
+						);
+					},
 				},
+				salvageDispatch,
 				signal,
 			);
 			recordMetric(() => metrics.recordReaped(result.reclaimed, result.deadLettered));

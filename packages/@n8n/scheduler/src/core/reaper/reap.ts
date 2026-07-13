@@ -1,4 +1,5 @@
 import { backoff } from '../executor/backoff';
+import type { ClaimedTask } from '../types';
 
 /** Recorded on a task the reaper recovers, so the failure has a cause. */
 const LEASE_EXPIRED_MESSAGE = 'Lease expired before completion';
@@ -18,15 +19,22 @@ export interface ExpiredLeaseRef {
 }
 
 /**
- * One expired-lease row the sweep decides on: only the fields the loop reads. The
- * storage layer's full task row has these and more, so it fits without adapting.
+ * One expired-lease row the sweep decides on. It carries the full claimed-task
+ * shape so a pre-dispatch row can be salvaged (dispatched) before being given up
+ * on, plus `startedAt`: the effect-boundary marker. `null` means the owner died
+ * before dispatch, so the occurrence's effect never happened. The storage layer's
+ * full task row has these and more, so it fits without adapting.
  */
-export interface ExpiredLeaseRow {
-	id: string;
-	attempts: number;
-	maxAttempts: number;
-	leaseEpoch: number;
+export interface ExpiredLeaseRow extends ClaimedTask {
+	startedAt: Date | null;
 }
+
+/**
+ * Salvage a pre-dispatch occurrence the reaper is about to give up on: run its
+ * handler once so the effect still happens, rather than losing it. Wired by the
+ * host to the same handler registry the executor dispatches through.
+ */
+export type SalvageDispatch = (task: ClaimedTask) => Promise<void>;
 
 /**
  * The store operations a sweep needs, defined here as the reaper's own surface so
@@ -37,6 +45,11 @@ export interface ReaperTaskStore {
 	findExpiredLeases(limit: number): Promise<ExpiredLeaseRow[]>;
 	reclaimExpired(ref: ExpiredLeaseRef, backoffMs: number, errorMessage: string): Promise<number>;
 	deadLetterExpired(ref: ExpiredLeaseRef, errorMessage: string): Promise<number>;
+	/**
+	 * Terminally complete a post-dispatch expired lease as `succeeded`: its effect
+	 * already happened, so it must not be recorded failed nor dispatched again.
+	 */
+	completeExpired(ref: ExpiredLeaseRef): Promise<number>;
 }
 
 /** Knobs of one reaper sweep. */
@@ -55,6 +68,13 @@ export interface ReaperHooks {
 	onRowError?: (taskId: string, error: unknown) => void;
 	/** Notified when a task is failed terminally: the lease of its last attempt expired. */
 	onDeadLetter?: (task: { taskId: string; attempts: number; maxAttempts: number }) => void;
+	/** Notified when the last-chance salvage dispatch of a pre-dispatch occurrence threw. */
+	onSalvageError?: (taskId: string, error: unknown) => void;
+	/**
+	 * Notified when a post-dispatch task's lease lapsed on its last attempt and it was
+	 * completed as succeeded (its effect had already happened) instead of failed.
+	 */
+	onCompletedAfterDispatch?: (task: { taskId: string }) => void;
 }
 
 /**
@@ -86,6 +106,7 @@ export async function reap(
 	store: ReaperTaskStore,
 	options: ReaperOptions = DEFAULT_REAPER_OPTIONS,
 	hooks: ReaperHooks = {},
+	dispatch?: SalvageDispatch,
 	signal?: AbortSignal,
 ): Promise<ReapResult> {
 	const expired = await store.findExpiredLeases(options.batchSize);
@@ -105,33 +126,62 @@ export async function reap(
 			// The expired lease means the in-flight attempt is lost, so count it now,
 			// same as a handler failure would.
 			const nextAttempts = task.attempts + 1;
+			const ref = { id: task.id, claimedEpoch: task.leaseEpoch };
 			if (nextAttempts >= task.maxAttempts) {
-				const affected = await store.deadLetterExpired(
-					{ id: task.id, claimedEpoch: task.leaseEpoch },
-					LEASE_EXPIRED_MESSAGE,
-				);
-				deadLettered += affected;
-				// Only an update that actually won the row is a dead-letter; a lost
-				// race means another actor decided the row and there is nothing to report.
-				if (affected > 0) {
-					try {
-						// Stryker disable next-line OptionalChaining: the enclosing catch
-						// already swallows a call on an undefined hook, same as `?.` skipping it.
-						hooks.onDeadLetter?.({
-							taskId: task.id,
-							attempts: nextAttempts,
-							maxAttempts: task.maxAttempts,
-						});
-					} catch {
-						// A host-supplied reporter must not break the sweep it observes.
+				// Last attempt: the row is terminally resolved either way, so it counts as
+				// dead-lettered. The effect boundary decides how. If the owner died after
+				// dispatch (`startedAt` set), the effect already happened: complete it as
+				// succeeded rather than record a failure for work that was done, and never
+				// dispatch it again. If it died before dispatch, the effect never happened:
+				// salvage it with one final dispatch, then dead-letter it as failed.
+				if (task.startedAt !== null) {
+					const affected = await store.completeExpired(ref);
+					deadLettered += affected;
+					if (affected > 0) {
+						try {
+							// Stryker disable next-line OptionalChaining: the enclosing catch
+							// already swallows a call on an undefined hook, same as `?.` skipping it.
+							hooks.onCompletedAfterDispatch?.({ taskId: task.id });
+						} catch {
+							// A host-supplied reporter must not break the sweep it observes.
+						}
+					}
+				} else {
+					const affected = await store.deadLetterExpired(ref, LEASE_EXPIRED_MESSAGE);
+					deadLettered += affected;
+					// Only an update that actually won the row is a dead-letter; a lost
+					// race means another actor decided the row and there is nothing to report.
+					if (affected > 0) {
+						// Salvage the lost occurrence with one final dispatch. Gated on
+						// winning the row above, so concurrent reapers never double-fire.
+						if (dispatch !== undefined) {
+							try {
+								await dispatch(task);
+							} catch (error) {
+								try {
+									// Stryker disable next-line OptionalChaining: the enclosing catch
+									// already swallows a call on an undefined hook, same as `?.` skipping it.
+									hooks.onSalvageError?.(task.id, error);
+								} catch {
+									// A host-supplied reporter must not break the sweep it observes.
+								}
+							}
+						}
+						try {
+							// Stryker disable next-line OptionalChaining: the enclosing catch
+							// already swallows a call on an undefined hook, same as `?.` skipping it.
+							hooks.onDeadLetter?.({
+								taskId: task.id,
+								attempts: nextAttempts,
+								maxAttempts: task.maxAttempts,
+							});
+						} catch {
+							// A host-supplied reporter must not break the sweep it observes.
+						}
 					}
 				}
 			} else {
-				reclaimed += await store.reclaimExpired(
-					{ id: task.id, claimedEpoch: task.leaseEpoch },
-					backoff(nextAttempts),
-					LEASE_EXPIRED_MESSAGE,
-				);
+				reclaimed += await store.reclaimExpired(ref, backoff(nextAttempts), LEASE_EXPIRED_MESSAGE);
 			}
 		} catch (error) {
 			try {
