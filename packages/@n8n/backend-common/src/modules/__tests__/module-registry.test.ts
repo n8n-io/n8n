@@ -1,10 +1,15 @@
 import type { ModuleInterface, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs';
+import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import type { LicenseState } from '../../license-state';
+import type { Logger } from '../../logging/logger';
+import { MissingModuleError } from '../errors/missing-module.error';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
 import { ModuleRegistry } from '../module-registry';
+import type { ModuleName } from '../modules.config';
 
 beforeEach(() => {
 	vi.resetAllMocks();
@@ -125,6 +130,133 @@ describe('loadModules', () => {
 		await moduleRegistry.loadModules([]);
 
 		expect(moduleRegistry.entities).toEqual([]);
+	});
+
+	describe('module path selection', () => {
+		let tempRoot: string;
+		let modulesDir: string;
+		let originalProcessArgv1: string | undefined;
+		let createdGlobalKeys: string[];
+
+		const createTestModuleName = (suffix: string) =>
+			`module-registry-test-${suffix}-${Math.random().toString(36).slice(2)}` as ModuleName;
+
+		const registerGlobalKey = (key: string) => {
+			createdGlobalKeys.push(key);
+			return key;
+		};
+
+		const writeModuleFile = (directoryName: string, moduleName: string, contents: string) => {
+			const moduleDir = path.join(modulesDir, directoryName);
+			mkdirSync(moduleDir, { recursive: true });
+			writeFileSync(path.join(moduleDir, `${moduleName}.module.ts`), `${contents}\nexport {};\n`);
+		};
+
+		const createModuleRegistry = (logger: Logger = mock<Logger>()) => {
+			const moduleMetadata = mock<ModuleMetadata>({
+				getClasses: vi.fn().mockReturnValue([]),
+			});
+
+			return new ModuleRegistry(moduleMetadata, mock(), logger, mock());
+		};
+
+		beforeEach(() => {
+			tempRoot = mkdtempSync(path.join('D:\\AI', 'module-registry-'));
+			modulesDir = path.join(tempRoot, 'dist', 'modules');
+			createdGlobalKeys = [];
+
+			mkdirSync(modulesDir, { recursive: true });
+			mkdirSync(path.join(tempRoot, 'bin'), { recursive: true });
+
+			originalProcessArgv1 = process.argv[1];
+			process.argv[1] = path.join(tempRoot, 'bin', 'n8n');
+		});
+
+		afterEach(() => {
+			process.argv[1] = originalProcessArgv1 ?? '';
+			rmSync(tempRoot, { recursive: true, force: true });
+
+			for (const key of createdGlobalKeys) {
+				Reflect.deleteProperty(globalThis, key);
+			}
+		});
+
+		it('should skip module gracefully when neither CE nor EE directory exists and log debug message', async () => {
+			const moduleName = createTestModuleName('missing');
+			const logger = mock<Logger>();
+			const moduleRegistry = createModuleRegistry(logger);
+
+			await expect(moduleRegistry.loadModules([moduleName])).resolves.not.toThrow();
+
+			expect(logger.debug).toHaveBeenCalledWith(`Module "${moduleName}" not found, skipping`);
+		});
+
+		it('should keep the CE selection error and avoid EE fallback when the CE directory exists', async () => {
+			const moduleName = createTestModuleName('ce-error');
+			const ceLoadedKey = registerGlobalKey(`${moduleName}-ce-loaded`);
+			const eeLoadedKey = registerGlobalKey(`${moduleName}-ee-loaded`);
+			const ceErrorMessage = `${moduleName} ce import failed`;
+			const moduleRegistry = createModuleRegistry();
+
+			writeModuleFile(
+				moduleName,
+				moduleName,
+				`Reflect.set(globalThis, ${JSON.stringify(ceLoadedKey)}, true);\nthrow new Error(${JSON.stringify(ceErrorMessage)});`,
+			);
+			writeModuleFile(
+				`${moduleName}.ee`,
+				moduleName,
+				`Reflect.set(globalThis, ${JSON.stringify(eeLoadedKey)}, true);`,
+			);
+
+			const loadPromise = moduleRegistry.loadModules([moduleName]);
+
+			await expect(loadPromise).rejects.toBeInstanceOf(MissingModuleError);
+			await expect(loadPromise).rejects.toMatchObject({
+				message: expect.stringContaining(ceErrorMessage),
+			});
+			expect(Reflect.get(globalThis, ceLoadedKey)).toBe(true);
+			expect(Reflect.get(globalThis, eeLoadedKey)).toBeUndefined();
+		});
+
+		it('should select the EE path when only the EE directory exists', async () => {
+			const moduleName = createTestModuleName('ee-only');
+			const eeLoadedKey = registerGlobalKey(`${moduleName}-ee-loaded`);
+			const moduleRegistry = createModuleRegistry();
+
+			writeModuleFile(
+				`${moduleName}.ee`,
+				moduleName,
+				`Reflect.set(globalThis, ${JSON.stringify(eeLoadedKey)}, true);`,
+			);
+
+			await expect(moduleRegistry.loadModules([moduleName])).resolves.not.toThrow();
+
+			expect(Reflect.get(globalThis, eeLoadedKey)).toBe(true);
+		});
+
+		it('should prefer the CE path when both CE and EE directories exist', async () => {
+			const moduleName = createTestModuleName('ce-priority');
+			const ceLoadedKey = registerGlobalKey(`${moduleName}-ce-loaded`);
+			const eeLoadedKey = registerGlobalKey(`${moduleName}-ee-loaded`);
+			const moduleRegistry = createModuleRegistry();
+
+			writeModuleFile(
+				moduleName,
+				moduleName,
+				`Reflect.set(globalThis, ${JSON.stringify(ceLoadedKey)}, true);`,
+			);
+			writeModuleFile(
+				`${moduleName}.ee`,
+				moduleName,
+				`Reflect.set(globalThis, ${JSON.stringify(eeLoadedKey)}, true);`,
+			);
+
+			await expect(moduleRegistry.loadModules([moduleName])).resolves.not.toThrow();
+
+			expect(Reflect.get(globalThis, ceLoadedKey)).toBe(true);
+			expect(Reflect.get(globalThis, eeLoadedKey)).toBeUndefined();
+		});
 	});
 });
 
