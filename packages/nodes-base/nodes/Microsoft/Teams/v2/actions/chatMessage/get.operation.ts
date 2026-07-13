@@ -3,7 +3,7 @@ import { type INodeProperties, type IExecuteFunctions, NodeOperationError } from
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { chatRLC } from '../../descriptions';
-import { microsoftApiRequest, SP_HIDE } from '../../transport';
+import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChatUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [
@@ -47,7 +47,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		return await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/v1.0/chats/${chatId}/messages/${messageId}`,
+			buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/messages/', { id: messageId }]),
 		);
 	} catch (error) {
 		throw new NodeOperationError(

@@ -350,11 +350,12 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(result).toBe('/teams/team123/channels');
 		});
 
-		it('should return the correct resource path for newChannel event with teamId missing', async () => {
+		it('should reject a missing teamId for the newChannel event', async () => {
 			setParams({ watchAllTeams: false, teamId: undefined });
 
-			const result = await getResourcePath.call(mockHookFunctions, 'newChannel');
-			expect(result).toBe('/teams/undefined/channels');
+			await expect(getResourcePath.call(mockHookFunctions, 'newChannel')).rejects.toThrow(
+				'A required ID is empty',
+			);
 		});
 
 		it('should return the correct resource path for newChannelMessage event with a specific team and channel', async () => {
@@ -376,11 +377,12 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(result).toBe('/teams/team123/members');
 		});
 
-		it('should return the correct resource path for newTeamMember event with teamId missing', async () => {
+		it('should reject a missing teamId for the newTeamMember event', async () => {
 			setParams({ watchAllTeams: false, teamId: undefined });
 
-			const result = await getResourcePath.call(mockHookFunctions, 'newTeamMember');
-			expect(result).toBe('/teams/undefined/members');
+			await expect(getResourcePath.call(mockHookFunctions, 'newTeamMember')).rejects.toThrow(
+				'A required ID is empty',
+			);
 		});
 
 		it('should return the correct resource path for newTeamMember event with watchAllTeams', async () => {

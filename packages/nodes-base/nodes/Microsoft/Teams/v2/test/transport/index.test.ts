@@ -529,7 +529,7 @@ describe('Microsoft Teams Transport', () => {
 		});
 
 		it.each(['a/b', 'a\\b', 'a?b', 'a#b', 'x/../../groups/abc', 'abc?$expand=foo'])(
-			'rejects path-escape / query-injection ids (%s)',
+			'rejects ids containing separators or query characters (%s)',
 			(id) => {
 				expect(() => validateTeamsId(id, mockNode)).toThrow();
 			},
@@ -553,7 +553,7 @@ describe('Microsoft Teams Transport', () => {
 	});
 
 	describe('buildTeamsPath', () => {
-		it('passes ids verbatim under OAuth2 (no validate, no encode)', () => {
+		it('validates and interpolates a valid id RAW under OAuth2 (no encoding)', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
 
 			const path = buildTeamsPath.call(mockExecuteFunctions, [
@@ -594,53 +594,72 @@ describe('Microsoft Teams Transport', () => {
 		});
 
 		// A node expression like `={{ 123 }}` resolves to a non-string at runtime; the
-		// call sites' `as string` is compile-time only. The SP path must coerce before
-		// `.trim()` or it throws a raw `TypeError` (regression guard).
-		it('coerces a non-string id under SP without throwing', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+		// call sites' `as string` is compile-time only — ids must be coerced before
+		// trimming or the build throws a raw `TypeError` (regression guard).
+		it.each(['microsoftTeamsOAuth2Api', SERVICE_PRINCIPAL_AUTH])(
+			'coerces a non-string id under %s without throwing',
+			(credential) => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue(credential);
 
-			const path = buildTeamsPath.call(mockExecuteFunctions, [
-				'/v1.0/planner/tasks/',
-				{ id: 123 as unknown as string },
-			]);
+				const path = buildTeamsPath.call(mockExecuteFunctions, [
+					'/v1.0/planner/tasks/',
+					{ id: 123 as unknown as string },
+				]);
 
-			expect(path).toBe('/v1.0/planner/tasks/123');
+				expect(path).toBe('/v1.0/planner/tasks/123');
+			},
+		);
+
+		it.each(['microsoftTeamsOAuth2Api', SERVICE_PRINCIPAL_AUTH])(
+			'trims surrounding whitespace from a valid id under %s',
+			(credential) => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue(credential);
+
+				const path = buildTeamsPath.call(mockExecuteFunctions, [
+					'/v1.0/teams/',
+					{ id: '  19:abc@thread.tacv2  ' },
+					'/channels',
+				]);
+
+				expect(path).toBe('/v1.0/teams/19:abc@thread.tacv2/channels');
+			},
+		);
+
+		const malformedIds = ['x/../../groups/abc', 'abc?$expand=foo', 'a\\b', 'a#frag'];
+		it.each(
+			['microsoftTeamsOAuth2Api', SERVICE_PRINCIPAL_AUTH].flatMap((credential) =>
+				malformedIds.map((id) => [credential, id]),
+			),
+		)('rejects an id containing separators under %s (%s)', (credential, malformedId) => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(credential);
+
+			expect(() =>
+				buildTeamsPath.call(mockExecuteFunctions, [
+					'/v1.0/teams/',
+					{ id: malformedId },
+					'/channels',
+				]),
+			).toThrow('The ID is not valid');
 		});
 
-		it('stringifies a non-string id under OAuth2 (join coercion, no throw)', () => {
-			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
-
-			const path = buildTeamsPath.call(mockExecuteFunctions, [
-				'/v1.0/planner/tasks/',
-				{ id: 123 as unknown as string },
-			]);
-
-			expect(path).toBe('/v1.0/planner/tasks/123');
-		});
-
-		it.each(['x/../../groups/abc', 'abc?$expand=foo', 'a\\b', 'a#frag'])(
-			'throws on a crafted separator/injection id (%s) under the Service Principal credential',
-			(craftedId) => {
-				mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+		it.each(['microsoftTeamsOAuth2Api', SERVICE_PRINCIPAL_AUTH])(
+			'rejects an empty id under %s',
+			(credential) => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue(credential);
 
 				expect(() =>
-					buildTeamsPath.call(mockExecuteFunctions, [
-						'/v1.0/teams/',
-						{ id: craftedId },
-						'/channels',
-					]),
-				).toThrow();
+					buildTeamsPath.call(mockExecuteFunctions, ['/v1.0/teams/', { id: '' }, '/channels']),
+				).toThrow('A required ID is empty');
 			},
 		);
 	});
 
-	describe('OAuth2 back-compat lock (byte-for-byte unchanged)', () => {
+	describe('OAuth2 back-compat lock (valid ids byte-for-byte unchanged)', () => {
 		it('composes the legacy raw uri for a colon-bearing channelId', async () => {
 			// Default OAuth2 selected. A realistic colon-bearing channel id flows through
-			// buildTeamsPath verbatim — no throw, no encoding — proving OAuth2 URL shapes
-			// are unchanged. SP composes the SAME raw shape for this valid id (see the
-			// buildTeamsPath SP test); the two paths differ only in that SP rejects the
-			// separator/query-injection vectors.
+			// buildTeamsPath unmodified — validated but never encoded — proving OAuth2
+			// URL shapes for valid ids are unchanged. SP composes the SAME raw shape for
+			// this valid id (see the buildTeamsPath SP test).
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 			mockRequestOAuth2.mockResolvedValue({ data: 'test' });
 			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
@@ -777,9 +796,9 @@ describe('Microsoft Teams Transport', () => {
 		});
 
 		// MAJOR B hard gate: every SP-reachable listSearch method that interpolates an id
-		// must reject a crafted traversal id via buildTeamsPath, before any request.
-		describe('SP id-injection gate (enumerated)', () => {
-			const craftedId = 'x/../../groups/abc';
+		// must reject a malformed id via buildTeamsPath, before any request.
+		describe('SP id validation gate (enumerated)', () => {
+			const malformedId = 'x/../../groups/abc';
 
 			beforeEach(() => {
 				mockLoadOptions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
@@ -789,29 +808,29 @@ describe('Microsoft Teams Transport', () => {
 				});
 			});
 
-			it('getChannels rejects a crafted teamId', async () => {
-				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(craftedId);
+			it('getChannels rejects a malformed teamId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
 
 				await expect(getChannels.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
 				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 			});
 
-			it('getPlans rejects a crafted groupId', async () => {
-				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(craftedId);
+			it('getPlans rejects a malformed groupId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
 
 				await expect(getPlans.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
 				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 			});
 
-			it('getBuckets rejects a crafted (unvalidated) planId', async () => {
-				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(craftedId);
+			it('getBuckets rejects a malformed planId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
 
 				await expect(getBuckets.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
 				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 			});
 
-			it('getMembers rejects a crafted groupId', async () => {
-				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(craftedId);
+			it('getMembers rejects a malformed groupId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
 
 				await expect(getMembers.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
 				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();

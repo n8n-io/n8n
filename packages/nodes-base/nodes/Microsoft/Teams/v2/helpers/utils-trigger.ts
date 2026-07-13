@@ -29,8 +29,8 @@ export async function fetchAllChannels(
 	this: IHookFunctions,
 	teamId: string,
 ): Promise<ChannelResponse[]> {
-	// Route through buildTeamsPath so `teamId` is validated under SP (non-bypassable
-	// defense-in-depth — watch-all is also guarded in getResourcePath); verbatim under OAuth2.
+	// Route through buildTeamsPath so `teamId` is validated before interpolation
+	// (watch-all is also guarded in getResourcePath).
 	const { value: channels } = (await microsoftApiRequest.call(
 		this,
 		'GET',
@@ -99,12 +99,12 @@ export async function getResourcePath(
 	this: IHookFunctions,
 	event: string,
 ): Promise<string | string[]> {
-	// App-only Graph has no signed-in user. On the SP-reachable branches the
-	// path-interpolated ids are validated + interpolated via buildTeamsPath. A By-URL
-	// channel id arrives percent-encoded, so newChannelMessage decodes it first (parity
-	// with the OAuth2 path) so validation runs on the decoded value. Watch-all is disabled
-	// under SP (UI-hidden + the runtime guards below, since fetchAllTeams/fetchAllChannels
-	// fan out an org-wide-token request). The OAuth2 branches are byte-for-byte unchanged.
+	// Path-interpolated ids are validated + interpolated via buildTeamsPath under
+	// both credential types. A By-URL channel/chat id arrives percent-encoded, so it
+	// is decoded first (guarded helper) so validation runs on the decoded value.
+	// App-only Graph has no signed-in user: chat events and watch-all are disabled
+	// under SP (UI-hidden + the runtime guards below, since fetchAllTeams/
+	// fetchAllChannels fan out an org-wide-token request).
 	const isServicePrincipal = getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
 
 	switch (event) {
@@ -122,7 +122,11 @@ export async function getResourcePath(
 				return '/me/chats/getAllMessages';
 			} else {
 				const chatId = this.getNodeParameter('chatId', undefined, { extractValue: true }) as string;
-				return `/chats/${decodeURIComponent(chatId)}/messages`;
+				return buildTeamsPath.call(this, [
+					'/chats/',
+					{ id: decodeSelectedId.call(this, chatId) },
+					'/messages',
+				]);
 			}
 		}
 
@@ -139,10 +143,7 @@ export async function getResourcePath(
 				return teams.map((team) => `/teams/${team.id}/channels`);
 			} else {
 				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
-				if (isServicePrincipal) {
-					return buildTeamsPath.call(this, ['/teams/', { id: teamId }, '/channels']);
-				}
-				return `/teams/${teamId}/channels`;
+				return buildTeamsPath.call(this, ['/teams/', { id: teamId }, '/channels']);
 			}
 		}
 
@@ -176,20 +177,13 @@ export async function getResourcePath(
 					const channelId = this.getNodeParameter('channelId', undefined, {
 						extractValue: true,
 					}) as string;
-					if (isServicePrincipal) {
-						// `channelId` is percent-encoded when selected By URL; decode it first (via the
-						// guarded helper, so a malformed `%` yields a NodeOperationError not a raw
-						// URIError) so validation runs on the decoded value and the subscription resource
-						// carries the raw channel id Graph matches against (parity with the OAuth2 path).
-						return buildTeamsPath.call(this, [
-							'/teams/',
-							{ id: teamId },
-							'/channels/',
-							{ id: decodeChannelId.call(this, channelId) },
-							'/messages',
-						]);
-					}
-					return `/teams/${teamId}/channels/${decodeURIComponent(channelId)}/messages`;
+					return buildTeamsPath.call(this, [
+						'/teams/',
+						{ id: teamId },
+						'/channels/',
+						{ id: decodeSelectedId.call(this, channelId) },
+						'/messages',
+					]);
 				}
 			}
 		}
@@ -207,10 +201,7 @@ export async function getResourcePath(
 				return teams.map((team) => `/teams/${team.id}/members`);
 			} else {
 				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
-				if (isServicePrincipal) {
-					return buildTeamsPath.call(this, ['/teams/', { id: teamId }, '/members']);
-				}
-				return `/teams/${teamId}/members`;
+				return buildTeamsPath.call(this, ['/teams/', { id: teamId }, '/members']);
 			}
 		}
 
@@ -257,18 +248,16 @@ function throwWatchAllUnsupported(this: IHookFunctions): never {
 }
 
 /**
- * Decodes a By-URL channel id (percent-encoded, e.g. `19%3A...%40thread.tacv2`) before it is
- * validated and interpolated under SP. A malformed `%` sequence makes `decodeURIComponent` throw a
- * raw `URIError`; convert it to a static `NodeOperationError` so the SP path never surfaces a raw
- * decode error (the OAuth2 path keeps its pre-existing unguarded decode).
+ * Decodes a By-URL id (percent-encoded, e.g. `19%3A...%40thread.tacv2`) before it is
+ * validated and interpolated. A malformed `%` sequence makes `decodeURIComponent`
+ * throw a raw `URIError`; convert it to a static `NodeOperationError`.
  */
-function decodeChannelId(this: IHookFunctions, channelId: string): string {
+function decodeSelectedId(this: IHookFunctions, id: string): string {
 	try {
-		return decodeURIComponent(channelId);
+		return decodeURIComponent(id);
 	} catch {
 		throw new NodeOperationError(this.getNode(), 'The ID is not valid', {
-			description:
-				'The channel ID could not be decoded. Re-select the channel from the list or by URL.',
+			description: 'The ID could not be decoded. Re-select it from the list or by URL.',
 		});
 	}
 }

@@ -4,7 +4,7 @@ import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { chatRLC } from '../../descriptions';
-import { microsoftApiRequestAllItems, SP_HIDE } from '../../transport';
+import { buildTeamsPath, microsoftApiRequestAllItems, SP_HIDE } from '../../transport';
 import { throwIfChatUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [chatRLC, ...returnAllOrLimit];
@@ -37,7 +37,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			this,
 			'value',
 			'GET',
-			`/v1.0/chats/${chatId}/messages`,
+			buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/messages']),
 		);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
@@ -45,7 +45,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			this,
 			'value',
 			'GET',
-			`/v1.0/chats/${chatId}/messages`,
+			buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/messages']),
 			{},
 		);
 		return responseData.splice(0, limit);
