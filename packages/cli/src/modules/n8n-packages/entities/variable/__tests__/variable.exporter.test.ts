@@ -1,9 +1,8 @@
-import type { Project, User, Variables } from '@n8n/db';
+import type { Project, SharedWorkflow, SharedWorkflowRepository, User, Variables } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
@@ -34,35 +33,35 @@ function req(workflowId: string, variableName: string): WorkflowVariableRequirem
 
 function makeExporter() {
 	const variablesService = mock<VariablesService>();
-	const ownershipService = mock<OwnershipService>();
+	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const projectService = mock<ProjectService>();
 	const exporter = new VariableExporter(
 		variablesService,
-		ownershipService,
+		sharedWorkflowRepository,
 		projectService,
 		new VariableSerializer(),
 	);
-	return { exporter, variablesService, ownershipService, projectService };
+	return { exporter, variablesService, sharedWorkflowRepository, projectService };
 }
 
 /**
  * Wires the project lookups the exporter performs: which project each workflow
- * belongs to, which of those projects the caller may list variables for, and
- * the caller's personal project (always treated as visible).
+ * belongs to (via the batched owner lookup), which of those projects the caller
+ * may list variables for, and the caller's personal project (always visible).
  */
 function wireProjects(
-	deps: Pick<ReturnType<typeof makeExporter>, 'ownershipService' | 'projectService'>,
+	deps: Pick<ReturnType<typeof makeExporter>, 'sharedWorkflowRepository' | 'projectService'>,
 	opts: {
 		workflowProjects: Array<[workflowId: string, projectId: string]>;
 		listableProjectIds?: string[];
 		personalProjectId?: string | null;
 	},
 ) {
-	const projectByWorkflow = new Map(opts.workflowProjects);
-	deps.ownershipService.getWorkflowProjectCached.mockImplementation(async (workflowId: string) => {
-		await Promise.resolve();
-		return { id: projectByWorkflow.get(workflowId) } as Project;
-	});
+	deps.sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue(
+		opts.workflowProjects.map(([workflowId, projectId]) =>
+			mock<SharedWorkflow>({ workflowId, project: { id: projectId } as Project }),
+		),
+	);
 	deps.projectService.getProjectIdsWithScope.mockResolvedValue(opts.listableProjectIds ?? []);
 	deps.projectService.getPersonalProject.mockResolvedValue(
 		opts.personalProjectId ? ({ id: opts.personalProjectId } as Project) : null,
@@ -72,7 +71,7 @@ function wireProjects(
 describe('VariableExporter', () => {
 	describe('empty input', () => {
 		it('returns an empty result and touches no service when given no requirements', async () => {
-			const { exporter, variablesService, ownershipService } = makeExporter();
+			const { exporter, variablesService, sharedWorkflowRepository } = makeExporter();
 			const writer = new CapturingWriter();
 
 			const result = await exporter.export({
@@ -87,7 +86,7 @@ describe('VariableExporter', () => {
 			expect(writer.directories).toEqual([]);
 
 			expect(variablesService.getAllCached).not.toHaveBeenCalled();
-			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+			expect(sharedWorkflowRepository.findByWorkflowIds).not.toHaveBeenCalled();
 		});
 	});
 
