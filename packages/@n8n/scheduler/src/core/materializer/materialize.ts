@@ -3,7 +3,13 @@ import { Time } from '@n8n/constants';
 import type { ScheduledJob } from '../types';
 import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
-import type { DueJobs, NewOccurrence, PlannedJob, RunInTransaction } from './transaction';
+import type {
+	DueJobs,
+	NewOccurrence,
+	PlannedJob,
+	RecordedOccurrence,
+	RunInTransaction,
+} from './transaction';
 
 export type { MaterializerOptions } from './options';
 
@@ -12,6 +18,12 @@ export interface MaterializerSummary {
 	claimedJobs: number;
 	/** How many occurrences were newly recorded (duplicates already present don't count). */
 	occurrences: number;
+	/**
+	 * The newly recorded rows' identity, for per-row tracing at the callsite.
+	 * Only as complete as the storage layer's `recordOccurrences` allows (e.g.
+	 * empty on SQLite); `occurrences` is the accurate count regardless.
+	 */
+	created: RecordedOccurrence[];
 	/** How many claimed jobs could not be planned and were deferred (see {@link OnJobPlanError}). */
 	deferredJobs: number;
 }
@@ -64,16 +76,25 @@ export interface MaterializerHooks {
  *
  * Persistence sits behind the {@link RunInTransaction} it is given, so this is only
  * the algorithm and a fake runner is enough to test it.
+ *
+ * Cancellation (`signal`, aborted when the driving loop times the pass out or
+ * shuts down) is all-or-nothing, because the pass is one transaction: at each
+ * checkpoint after an await, an observed abort throws, the transaction rolls
+ * back, and the pass leaves no trace — the claim is undone and the same jobs
+ * are simply due again for the next (or another instance's) pass.
  */
 export async function materialize(
 	runInTransaction: RunInTransaction,
 	options: MaterializerOptions = DEFAULT_MATERIALIZER_OPTIONS,
 	hooks: MaterializerHooks = {},
+	signal?: AbortSignal,
 ): Promise<MaterializerSummary> {
+	signal?.throwIfAborted();
 	return await runInTransaction<MaterializerSummary>(async (tx) => {
 		const claimed = await tx.claimDueJobs(options.batchSize);
+		signal?.throwIfAborted();
 		if (claimed === undefined) {
-			return { claimedJobs: 0, occurrences: 0, deferredJobs: 0 };
+			return { claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 };
 		}
 		const { occurrencesPlanned, numberOfJobsDeferred } = planOrDeferJobs(
 			claimed,
@@ -81,10 +102,11 @@ export async function materialize(
 			hooks.onPlanError,
 		);
 		const rows = toNewOccurrences(occurrencesPlanned);
-		const occurrences = await tx.recordOccurrences(rows);
-		if (occurrences < rows.length) {
+		const { recorded, created } = await tx.recordOccurrences(rows);
+		signal?.throwIfAborted();
+		if (recorded < rows.length) {
 			try {
-				hooks.onSkippedDuplicates?.({ planned: rows.length, recorded: occurrences });
+				hooks.onSkippedDuplicates?.({ planned: rows.length, recorded });
 			} catch {
 				// A broken reporter must not roll back the pass.
 			}
@@ -93,7 +115,8 @@ export async function materialize(
 
 		return {
 			claimedJobs: claimed.jobs.length,
-			occurrences,
+			occurrences: recorded,
+			created,
 			deferredJobs: numberOfJobsDeferred,
 		};
 	});

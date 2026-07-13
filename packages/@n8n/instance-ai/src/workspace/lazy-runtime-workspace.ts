@@ -19,6 +19,15 @@ import {
 
 export type RuntimeWorkspaceResolver = () => Promise<Workspace | undefined>;
 
+/** Workspace tools exposed to Instance AI agents — read/write/replace/execute only. */
+export const INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST = new Set([
+	'workspace_read_file',
+	'workspace_write_file',
+	'workspace_str_replace_file',
+	'workspace_batch_str_replace_file',
+	'workspace_execute_command',
+]);
+
 export interface LazyRuntimeWorkspaceOptions {
 	ensureWorkspace: RuntimeWorkspaceResolver;
 	id?: string;
@@ -47,12 +56,18 @@ export function createLazyRuntimeWorkspace({
 }: LazyRuntimeWorkspaceOptions): Workspace {
 	const resolver = new LazyRuntimeWorkspaceResolver(ensureWorkspace);
 
-	return new Workspace({
+	const workspace = new Workspace({
 		id,
 		name,
 		filesystem: new LazyRuntimeFilesystem(resolver, filesystemInstructions),
 		sandbox: new LazyRuntimeSandbox(resolver, sandboxInstructions),
 	});
+
+	const baseGetTools = workspace.getTools.bind(workspace);
+	workspace.getTools = () =>
+		baseGetTools().filter((tool) => INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST.has(tool.name));
+
+	return workspace;
 }
 
 class LazyRuntimeWorkspaceResolver {

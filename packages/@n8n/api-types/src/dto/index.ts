@@ -240,6 +240,10 @@ export {
 	SecuritySettingsDto,
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
+export {
+	UpdateSecurityPolicyDto,
+	type SecurityPolicyResponse,
+} from './security-settings/security-policy.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
@@ -270,3 +274,5 @@ export type { EncryptionKeyResponseDto } from './encryption/encryption-key-respo
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelConnectionDto } from './otel/test-otel-connection.dto';
+
+export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';

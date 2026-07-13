@@ -102,9 +102,12 @@ export const instanceAiEventTypeSchema = z.enum([
 	'agent-completed',
 	'text-delta',
 	'reasoning-delta',
+	'text-block',
+	'reasoning-block',
 	'tool-call',
 	'tool-result',
 	'tool-error',
+	'tool-interrupted',
 	'confirmation-request',
 	'tasks-update',
 	'filesystem-request',
@@ -114,11 +117,29 @@ export const instanceAiEventTypeSchema = z.enum([
 ]);
 export type InstanceAiEventType = z.infer<typeof instanceAiEventTypeSchema>;
 
+/**
+ * Live-only event types under the durable log (`N8N_INSTANCE_AI_DURABLE_LOG`):
+ * never persisted, their SSE frames carry no `id:` line, and the browser's
+ * replay cursor never points at them. Deltas are transport, not state: a
+ * completed segment replays as a coalesced block fact instead. One list,
+ * shared by the writer (what to persist) and the frontend (which frames to
+ * dedup by id), so the two sides cannot drift.
+ */
+export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType> = new Set([
+	'text-delta',
+	'reasoning-delta',
+	'status',
+	'filesystem-request',
+]);
+
 // ---------------------------------------------------------------------------
 // Run status
 // ---------------------------------------------------------------------------
 
-export const instanceAiRunStatusSchema = z.enum(['completed', 'cancelled', 'error']);
+// 'interrupted' (durable-log RFC, resilience phase): appended by the
+// interrupted-run sweep for a run whose process died mid-flight — the fold
+// renders every in-flight item as terminated, no walk-and-mutate.
+export const instanceAiRunStatusSchema = z.enum(['completed', 'cancelled', 'error', 'interrupted']);
 export type InstanceAiRunStatus = z.infer<typeof instanceAiRunStatusSchema>;
 
 // ---------------------------------------------------------------------------
@@ -190,9 +211,10 @@ export const runFinishPayloadSchema = z.object({
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
-	type: z.enum(['workflow', 'data-table', 'credential', 'other']),
+	type: z.enum(['workflow', 'data-table', 'credential', 'agent', 'other']),
 	id: z.string().optional(),
 	name: z.string().optional(),
+	projectId: z.string().optional(),
 });
 export type InstanceAiTargetResource = z.infer<typeof agentSpawnedTargetResourceSchema>;
 
@@ -402,6 +424,12 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 // ---------------------------------------------------------------------------
 
+export const channelConfigSchema = z.object({
+	integrationType: z.string(),
+	agentId: z.string(),
+});
+export type InstanceAiChannelConfig = z.infer<typeof channelConfigSchema>;
+
 export const confirmationInputTypeSchema = z.enum([
 	'approval',
 	'text',
@@ -476,6 +504,11 @@ export const confirmationRequestPayloadSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
+	channelConfig: channelConfigSchema
+		.optional()
+		.describe(
+			'When present, renders agent chat-channel setup UI for this integration type and agent',
+		),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -508,6 +541,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.setupRequests)) return true;
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
+	if (payload.channelConfig) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -693,9 +727,27 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: reasoningDeltaPayloadSchema,
 	}),
+	// Coalesced full text/reasoning of one streamed segment, produced by the
+	// durable event log (deltas are live-only and never persisted). On replay the
+	// reducer REPLACES the segment's streamed deltas, so a client that reconnects
+	// mid-block cannot see partial text twice.
+	z.object({ type: z.literal('text-block'), ...eventBase, payload: textDeltaPayloadSchema }),
+	z.object({
+		type: z.literal('reasoning-block'),
+		...eventBase,
+		payload: reasoningDeltaPayloadSchema,
+	}),
 	z.object({ type: z.literal('tool-call'), ...eventBase, payload: toolCallPayloadSchema }),
 	z.object({ type: z.literal('tool-result'), ...eventBase, payload: toolResultPayloadSchema }),
 	z.object({ type: z.literal('tool-error'), ...eventBase, payload: toolErrorPayloadSchema }),
+	// Durable-log RFC (resilience phase): appended by the interrupted-run sweep
+	// for a tool call that was in flight when the process died. Same payload
+	// shape as tool-error; the effect is unverified, never re-executed blindly.
+	z.object({
+		type: z.literal('tool-interrupted'),
+		...eventBase,
+		payload: toolErrorPayloadSchema,
+	}),
 	z.object({
 		type: z.literal('confirmation-request'),
 		...eventBase,
@@ -869,6 +921,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	channelConfig?: InstanceAiChannelConfig;
 	expired?: boolean;
 }
 
@@ -945,7 +998,7 @@ export interface InstanceAiAgentNode {
 }
 
 /** Semantic cause of a cancelled run, mapped from the backend's run-finish reason. */
-export type InstanceAiCancellationReason = 'user' | 'timeout' | 'shutdown';
+export type InstanceAiCancellationReason = 'user' | 'timeout' | 'shutdown' | 'interrupted';
 
 export interface InstanceAiMessage {
 	id: string;

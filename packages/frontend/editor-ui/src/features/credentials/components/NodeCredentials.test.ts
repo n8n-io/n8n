@@ -555,6 +555,31 @@ describe('NodeCredentials', () => {
 				type: 'openAiApi',
 			});
 		});
+
+		it("emits 'Node credential assigned' with source user and kind own on manual selection", async () => {
+			const openAiNodeWithCred: INodeUi = {
+				...openAiNodeNoCreds,
+				credentials: { openAiApi: { id: 'c8vqdPpPClh4TgIO', name: 'OpenAi account' } },
+			};
+			ndvStore.activeNode = openAiNodeWithCred;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			renderComponent({ props: { node: openAiNodeWithCred } }, { merge: true });
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.getByText('OpenAi account 2'));
+
+			expect(trackMock).toHaveBeenCalledWith('Node credential assigned', {
+				credential_type: 'openAiApi',
+				node_type: openAiNodeWithCred.type,
+				workflow_id: expect.any(String),
+				credential_kind: 'own',
+				source: 'user',
+			});
+		});
 	});
 
 	describe('resolvable credentials', () => {
@@ -1752,9 +1777,21 @@ describe('NodeCredentials', () => {
 					mode: 'n8n_connect',
 					workflow_id: expect.any(String),
 				});
+				expect(trackMock).toHaveBeenCalledWith('Node credential assigned', {
+					credential_type: 'googlePalmApi',
+					node_type: googleAiNode.type,
+					workflow_id: expect.any(String),
+					credential_kind: 'n8n_connect',
+					source: 'user',
+				});
 			});
 
 			it('should track telemetry with mode "own" when toggled OFF by user', async () => {
+				// A stored credential exists, so toggling off restores it (BYOK) rather
+				// than clearing the slot.
+				credentialsStore.state.credentials = {
+					'palm-1': createCredential({ id: 'palm-1', name: 'My Palm', type: 'googlePalmApi' }),
+				};
 				const nodeWithGateway: INodeUi = {
 					...googleAiNode,
 					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
@@ -1774,6 +1811,33 @@ describe('NodeCredentials', () => {
 					mode: 'own',
 					workflow_id: expect.any(String),
 				});
+				expect(trackMock).toHaveBeenCalledWith('Node credential assigned', {
+					credential_type: 'googlePalmApi',
+					node_type: googleAiNode.type,
+					workflow_id: expect.any(String),
+					credential_kind: 'own',
+					source: 'user',
+				});
+			});
+
+			it('does not track "Node credential assigned" when toggling off clears the slot', async () => {
+				// No stored credential to restore → the slot is deleted, so no BYOK
+				// assignment should be recorded (only the toggle event fires).
+				credentialsStore.state.credentials = {};
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({
+					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewaySelector: toggleOffStub } },
+				});
+
+				await userEvent.click(screen.getByTestId('ai-gateway-toggle-off'));
+
+				expect(trackMock).not.toHaveBeenCalledWith('Node credential assigned', expect.anything());
 			});
 
 			it('should not track telemetry when toggled ON automatically on mount', () => {
@@ -1789,6 +1853,22 @@ describe('NodeCredentials', () => {
 					'User toggled n8n connect credential',
 					expect.anything(),
 				);
+				expect(trackMock).not.toHaveBeenCalledWith('Node credential assigned', expect.anything());
+			});
+
+			it('does not emit "Node credential assigned" in standalone mode (backend attributes it)', async () => {
+				ndvStore.activeNode = googleAiNode;
+
+				renderComponent({
+					props: { node: googleAiNode, overrideCredType: 'googlePalmApi', standalone: true },
+					global: { stubs: { AiGatewaySelector: toggleOnStub } },
+				});
+
+				await userEvent.click(screen.getByTestId('ai-gateway-toggle-on'));
+
+				// The Instance AI setup card hosts NodeCredentials in standalone mode;
+				// the confirmed selection is counted server-side as source: 'instance-ai-*'.
+				expect(trackMock).not.toHaveBeenCalledWith('Node credential assigned', expect.anything());
 			});
 		});
 
@@ -1913,6 +1993,32 @@ describe('NodeCredentials', () => {
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
 			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
+		});
+
+		it('disables the Connect button in readonly (execution view) mode', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: false },
+			};
+			renderComponent({
+				props: { node: notionNode, overrideCredType: 'openAiApi', readonly: true },
+			});
+
+			expect(screen.getByTestId('node-credential-private-connect')).toBeDisabled();
+		});
+
+		it('disables the Connected actions dropdown in readonly (execution view) mode', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: true },
+			};
+			renderComponent({
+				props: { node: notionNode, overrideCredType: 'openAiApi', readonly: true },
+			});
+
+			const dropdown = screen.getByTestId('node-credential-private-connected-actions');
+			await userEvent.click(dropdown);
+
+			// The connected/disconnect actions menu must not open while readonly
+			expect(screen.queryByText('Disconnect')).not.toBeInTheDocument();
 		});
 
 		it('clicking the Connect button runs the OAuth flow without opening the edit modal', async () => {

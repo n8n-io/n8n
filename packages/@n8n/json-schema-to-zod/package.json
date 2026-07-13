@@ -60,8 +60,8 @@
     "type": "git",
     "url": "https://github.com/n8n-io/n8n"
   },
-  "dependencies": {
-    "zod": "^3.25.76"
+  "peerDependencies": {
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
@@ -69,6 +69,7 @@
     "zod": "catalog:",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   }

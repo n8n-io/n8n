@@ -12,6 +12,7 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_TASK_MODAL_KEY,
 	AGENT_SUB_AGENTS_MODAL_KEY,
+	AGENT_VECTOR_STORES_MODAL_KEY,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
@@ -100,6 +101,19 @@ export const AgentsModule: FrontendModuleDescription = {
 				open: false,
 				data: {
 					agents: [],
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_VECTOR_STORES_MODAL_KEY,
+			component: async () => await import('./components/AgentVectorStoresModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					projectId: '',
+					agentId: '',
+					existingNames: [],
 					onConfirm: () => {},
 				},
 			},
