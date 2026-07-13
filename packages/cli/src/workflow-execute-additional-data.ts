@@ -5,7 +5,8 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import type { FindOptionsRelations } from '@n8n/typeorm';
+import { ExecutionRepository, WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import type { ServiceIdentifier } from '@n8n/di';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
@@ -110,8 +111,7 @@ export function getRunData(
 }
 
 /**
- * Fetches workflow from database or returns provided code.
- * Shared helper for getDraftWorkflowData and getPublishedWorkflowData.
+ * Clean up fetchWorkflowData to query with object-based relations
  */
 async function fetchWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
@@ -125,10 +125,10 @@ async function fetchWorkflowData(
 	}
 
 	if (workflowInfo.id !== undefined) {
-		const baseRelations = ['activeVersion'];
-		const relations = Container.get(GlobalConfig).tags.disabled
-			? [...baseRelations]
-			: [...baseRelations, 'tags'];
+		const relations: FindOptionsRelations<WorkflowEntity> = {
+			activeVersion: true,
+			...(!Container.get(GlobalConfig).tags.disabled ? { tags: true } : {}),
+		};
 
 		const workflowFromDb = await Container.get(WorkflowRepository).get(
 			{ id: workflowInfo.id },

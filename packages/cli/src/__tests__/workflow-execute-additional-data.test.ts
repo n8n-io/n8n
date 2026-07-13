@@ -706,7 +706,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(result.connections).toEqual(activeVersionConnections);
 			expect(workflowRepository.get).toHaveBeenCalledWith(
 				{ id: 'workflow-123' },
-				{ relations: ['activeVersion', 'tags'] },
+				{ relations: { activeVersion: true, tags: true } },
 			);
 		});
 
@@ -762,7 +762,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(workflowRepository.get).toHaveBeenCalledWith(
 				{ id: 'workflow-123' },
-				{ relations: ['activeVersion'] },
+				{ relations: { activeVersion: true } },
 			);
 
 			globalConfig.tags.disabled = false;
