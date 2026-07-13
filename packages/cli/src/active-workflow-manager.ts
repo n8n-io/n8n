@@ -994,7 +994,21 @@ export class ActiveWorkflowManager {
 		// for workflows without durable rows. Leader stepdown/shutdown must NOT
 		// reach this: they tear down in-memory state via
 		// removeAllNonWebhookTriggerWorkflows.
-		await this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId);
+		//
+		// Guarded so a deprovision failure cannot abort deactivation: the in-memory
+		// triggers are already gone above, and this call is idempotent, so a later
+		// (re)activation cycle retries it. In the pubsub path an unhandled throw
+		// here would also skip the workflowDeactivated broadcast, leaving the UI
+		// showing a torn-down workflow as active. Report and continue, mirroring
+		// how clearWebhooks failures are handled.
+		try {
+			await this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId);
+		} catch (error) {
+			this.errorReporter.error(error);
+			this.logger.error(
+				`Could not remove durable schedule jobs of workflow "${workflowId}" because of error: "${error.message}"`,
+			);
+		}
 
 		if (wasRemoved) {
 			this.logger.debug(`Removed non-webhook triggers for workflow "${workflowId}"`, {
