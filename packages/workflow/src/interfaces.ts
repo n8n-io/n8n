@@ -2910,6 +2910,8 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$evaluation?: { runId: string };
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
+	/** Runtime credential-alias proxy, namespaced by collection scope. */
+	$credentialAliases?: { workflow: Record<string, ICredentialAlias> };
 	$pageCount?: number;
 	$tool?: { name: string; parameters: string };
 	/** @deprecated */
@@ -3540,6 +3542,17 @@ export namespace WorkflowSettings {
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
 
+/**
+ * Denormalized entry in a workflow's credential alias map (see `credentialAliases`).
+ * Declared as a `type` (not `interface`) so it stays assignable to `JsonValue` when the
+ * settings map is diffed/serialized — interfaces lack the implicit index signature.
+ */
+export type ICredentialAlias = {
+	id: string;
+	type: string;
+	name?: string;
+};
+
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
 	errorWorkflow?: 'DEFAULT' | string;
@@ -3558,6 +3571,8 @@ export interface IWorkflowSettings {
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	customTelemetryTags?: ICustomTelemetryTag[];
+	/** Workflow-scoped alias → credential map for runtime credential selection. */
+	credentialAliases?: Record<string, ICredentialAlias>;
 }
 
 export interface WorkflowFEMeta {

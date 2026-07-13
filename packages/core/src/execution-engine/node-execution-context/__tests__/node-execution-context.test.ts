@@ -335,6 +335,70 @@ describe('NodeExecutionContext', () => {
 
 			await expect(ctx['_getCredentials']('someCred')).resolves.toEqual({ token: 'ok' });
 		});
+
+		describe('with an alias expression in the credential id', () => {
+			const aliasMap = { slack_dev: { id: 'cred123', type: 'slackApi', name: 'Slack (dev)' } };
+
+			function makeContext(slotType: string, credentialAliases = { credentialAliases: aliasMap }) {
+				const httpNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+				httpNode.credentials = {
+					[slotType]: { id: '={{ $credentialAliases.workflow.slack_dev.id }}', name: 'expression' },
+				};
+				const getDecrypted = vi.fn().mockResolvedValue({ token: 'ok' });
+				const ctx = new TestContext(
+					workflow,
+					httpNode,
+					mock<IWorkflowExecuteAdditionalData>({
+						credentialsHelper: {
+							getDecrypted,
+							getCredentialsProperties: vi.fn(),
+							isCredentialUsableByNode: vi.fn().mockReturnValue(true),
+						},
+						webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+						formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+						workflowSettings: credentialAliases,
+					}),
+					mode,
+				);
+				return { ctx, getDecrypted };
+			}
+
+			it('resolves the expression to the declared credential id and decrypts it', async () => {
+				expression.getParameterValue.mockReturnValue('cred123');
+				const { ctx, getDecrypted } = makeContext('slackApi');
+
+				await expect(ctx['_getCredentials']('slackApi')).resolves.toEqual({ token: 'ok' });
+				expect(getDecrypted).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({ id: 'cred123' }),
+					'slackApi',
+					mode,
+					undefined,
+					false,
+					undefined,
+				);
+			});
+
+			it('rejects when the resolved id is outside the closed alias set', async () => {
+				expression.getParameterValue.mockReturnValue('cred999');
+				const { ctx, getDecrypted } = makeContext('slackApi');
+
+				await expect(ctx['_getCredentials']('slackApi')).rejects.toThrow(
+					/is not declared in this workflow's credential aliases/,
+				);
+				expect(getDecrypted).not.toHaveBeenCalled();
+			});
+
+			it('rejects when the alias credential type does not match the slot type', async () => {
+				expression.getParameterValue.mockReturnValue('cred123');
+				const { ctx, getDecrypted } = makeContext('postgresDb');
+
+				await expect(ctx['_getCredentials']('postgresDb')).rejects.toThrow(
+					/points to a credential of type "slackApi", but this node requires "postgresDb"/,
+				);
+				expect(getDecrypted).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('prepareOutputData', () => {

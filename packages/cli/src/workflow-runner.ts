@@ -243,7 +243,11 @@ export class WorkflowRunner {
 		const { id: workflowId, nodes } = data.workflowData;
 
 		try {
-			await this.credentialsPermissionChecker.check(workflowId, nodes);
+			await this.credentialsPermissionChecker.check(
+				workflowId,
+				nodes,
+				data.workflowData.settings?.credentialAliases,
+			);
 		} catch (error) {
 			await this.failExecution(data, executionId, error, responsePromise);
 			return executionId;

@@ -182,4 +182,42 @@ describe('getAdditionalKeys', () => {
 		const allData = customData?.getAll() ?? {};
 		expect(Object.keys(allData)).toHaveLength(10);
 	});
+
+	describe('$credentialAliases', () => {
+		const aliasEntry = { id: 'cred123', type: 'slackApi', name: 'Slack (dev)' };
+		const dataWithAliases = {
+			...additionalData,
+			workflowSettings: { credentialAliases: { slack_dev: aliasEntry } },
+		};
+
+		it('should resolve a declared alias in the workflow scope', () => {
+			const result = getAdditionalKeys(dataWithAliases, 'manual', null);
+
+			expect(result.$credentialAliases?.workflow.slack_dev).toEqual(aliasEntry);
+		});
+
+		it('should throw for an undeclared alias', () => {
+			const result = getAdditionalKeys(dataWithAliases, 'manual', null);
+
+			expect(() => result.$credentialAliases?.workflow.typo).toThrow(
+				"Unknown credential alias 'typo' (workflow scope)",
+			);
+		});
+
+		it('should throw for any alias when the map is empty', () => {
+			const dataWithoutAliases = { ...additionalData, workflowSettings: {} };
+			const result = getAdditionalKeys(dataWithoutAliases, 'manual', null);
+
+			expect(() => result.$credentialAliases?.workflow.slack_dev).toThrow(
+				"Unknown credential alias 'slack_dev' (workflow scope)",
+			);
+		});
+
+		it('should not throw on serialization-probe properties', () => {
+			const result = getAdditionalKeys(dataWithAliases, 'manual', null);
+
+			expect(() => JSON.stringify(result.$credentialAliases?.workflow)).not.toThrow();
+			expect((result.$credentialAliases?.workflow as Record<string, unknown>).then).toBeUndefined();
+		});
+	});
 });

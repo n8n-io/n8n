@@ -397,6 +397,9 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 			// AI Gateway managed credentials have no real DB record — skip, handled at execution time
 			if (nodeCredentials.__aiGatewayManaged) continue;
 
+			// Expression-valued credential ids resolve at runtime via the alias map — leave untouched.
+			if (typeof nodeCredentials.id === 'string' && nodeCredentials.id.startsWith('=')) continue;
+
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
 				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;

@@ -28,6 +28,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type {
+	ICredentialAlias,
 	ICustomTelemetryTag,
 	WorkflowSettings,
 	WorkflowSettingsBinaryMode,
@@ -60,6 +61,7 @@ import RedactionMembersModal from '@/app/components/RedactionMembersModal.vue';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
@@ -102,6 +104,7 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
+const credentialsStore = useCredentialsStore();
 const isLoading = ref(true);
 const hasCustomTelemetryTagErrors = ref(false);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
@@ -199,6 +202,61 @@ const helpTexts = computed(() => ({
 	redactProductionData: i18n.baseText('workflowSettings.helpTexts.redactProductionData'),
 	redactManualData: i18n.baseText('workflowSettings.helpTexts.redactManualData'),
 }));
+
+// Credential aliases: workflow-scoped alias → credential map for runtime selection.
+// Edited as rows (a Record can't hold in-progress/duplicate keys); synced back on change.
+type CredentialAliasRow = { alias: string; id: string; type: string; name?: string };
+const credentialAliasRows = ref<CredentialAliasRow[]>([]);
+const ALIAS_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+const aliasCredentialOptions = computed(() =>
+	credentialsStore.allCredentials.map((credential) => ({
+		id: credential.id,
+		label: `${credential.name} (${credential.type})`,
+	})),
+);
+
+function aliasRowError(index: number): string | undefined {
+	const { alias } = credentialAliasRows.value[index];
+	if (!alias) return undefined;
+	if (!ALIAS_NAME_PATTERN.test(alias))
+		return i18n.baseText('workflowSettings.credentialAliases.invalidName');
+	const isDuplicate = credentialAliasRows.value.some(
+		(row, i) => i !== index && row.alias === alias,
+	);
+	if (isDuplicate) return i18n.baseText('workflowSettings.credentialAliases.duplicateName');
+	return undefined;
+}
+
+function addCredentialAliasRow() {
+	credentialAliasRows.value.push({ alias: '', id: '', type: '' });
+}
+
+function removeCredentialAliasRow(index: number) {
+	credentialAliasRows.value.splice(index, 1);
+}
+
+function onAliasCredentialSelected(index: number, credentialId: string) {
+	const credential = credentialsStore.getCredentialById(credentialId);
+	const row = credentialAliasRows.value[index];
+	row.id = credentialId;
+	row.type = credential?.type ?? '';
+	row.name = credential?.name;
+}
+
+// Only valid, complete rows reach the persisted map; saveSettings serializes it for free.
+watch(
+	credentialAliasRows,
+	(rows) => {
+		const map: Record<string, ICredentialAlias> = {};
+		rows.forEach((row, index) => {
+			if (!row.alias || !row.id || aliasRowError(index)) return;
+			map[row.alias] = { id: row.id, type: row.type, name: row.name };
+		});
+		workflowSettings.value.credentialAliases = map;
+	},
+	{ deep: true },
+);
 
 const defaultValues = ref({
 	timezone: 'America/New_York',
@@ -931,6 +989,9 @@ onMounted(async () => {
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
 	workflowSettings.value = workflowSettingsData;
+	credentialAliasRows.value = Object.entries(workflowSettingsData.credentialAliases ?? {}).map(
+		([alias, entry]) => ({ alias, ...entry }),
+	);
 	// Capture the stored redaction policy before the floor-coercion watch can mutate it,
 	// so save can preserve the user's own value for floor-locked channels. (ENT-35)
 	originalRedactionPolicy.value = workflowSettingsData.redactionPolicy;
@@ -1138,6 +1199,76 @@ onBeforeUnmount(() => {
 								data-test-id="workflow-settings-credential-resolver-edit"
 								@click="handleEditResolver"
 							/>
+						</div>
+					</ElCol>
+				</ElRow>
+				<ElRow data-test-id="credential-aliases">
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.credentialAliases') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-text="i18n.baseText('workflowSettings.helpTexts.credentialAliases')"></div>
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
+						<div :class="$style['credential-aliases-container']">
+							<div
+								v-for="(row, index) in credentialAliasRows"
+								:key="index"
+								:class="$style['credential-alias-row']"
+								data-test-id="workflow-settings-credential-alias-row"
+							>
+								<div :class="$style['credential-alias-fields']">
+									<N8nInput
+										v-model="row.alias"
+										:placeholder="
+											i18n.baseText('workflowSettings.credentialAliases.namePlaceholder')
+										"
+										:disabled="readOnlyEnv || !workflowPermissions.update"
+										data-test-id="workflow-settings-credential-alias-name"
+									/>
+									<N8nSelect
+										:model-value="row.id || undefined"
+										filterable
+										:placeholder="
+											i18n.baseText('workflowSettings.credentialAliases.credentialPlaceholder')
+										"
+										:disabled="readOnlyEnv || !workflowPermissions.update"
+										:limit-popper-width="true"
+										data-test-id="workflow-settings-credential-alias-credential"
+										@update:model-value="(value: string) => onAliasCredentialSelected(index, value)"
+									>
+										<N8nOption
+											v-for="option in aliasCredentialOptions"
+											:key="option.id"
+											:label="option.label"
+											:value="option.id"
+										/>
+									</N8nSelect>
+									<N8nIconButton
+										variant="ghost"
+										icon="trash-2"
+										size="small"
+										:disabled="readOnlyEnv || !workflowPermissions.update"
+										data-test-id="workflow-settings-credential-alias-remove"
+										@click="removeCredentialAliasRow(index)"
+									/>
+								</div>
+								<N8nText v-if="aliasRowError(index)" color="danger" size="small">
+									{{ aliasRowError(index) }}
+								</N8nText>
+							</div>
+							<N8nButton
+								type="tertiary"
+								icon="plus"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								data-test-id="workflow-settings-credential-alias-add"
+								@click="addCredentialAliasRow"
+							>
+								{{ i18n.baseText('workflowSettings.credentialAliases.addRow') }}
+							</N8nButton>
 						</div>
 					</ElCol>
 				</ElRow>
@@ -1811,6 +1942,25 @@ onBeforeUnmount(() => {
 .dataRedactionHint {
 	display: block;
 	padding: var(--spacing--5xs) 0 var(--spacing--2xs) var(--spacing--5xs);
+}
+
+.credential-aliases-container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	width: 100%;
+}
+
+.credential-alias-row {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.credential-alias-fields {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .setting-name {

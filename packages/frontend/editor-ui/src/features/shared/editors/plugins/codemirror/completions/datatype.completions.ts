@@ -67,6 +67,7 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 /**
@@ -97,6 +98,8 @@ export async function datatypeCompletions(
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
 		options = variablesOptions();
+	} else if (base === '$credentialAliases' || base === '$credentialAliases.workflow') {
+		options = credentialAliasesOptions(base, workflowDocumentId);
 	} else if (/\$secrets\./.test(base) && isCredential) {
 		options = secretOptions(base).map(stripExcessParens(context));
 	} else if (base === '$secrets' && isCredential) {
@@ -833,6 +836,35 @@ export const variablesOptions = () => {
 		}),
 		sections: VARIABLE_SECTIONS,
 	});
+};
+
+export const credentialAliasesOptions = (base: string, workflowDocumentId: WorkflowDocumentId) => {
+	if (base === '$credentialAliases') {
+		return [
+			createCompletionOption({
+				name: 'workflow',
+				doc: {
+					name: 'workflow',
+					returnType: 'Object',
+					description: i18n.baseText('codeNodeEditor.completer.$credentialAliases.workflow'),
+				},
+			}),
+		];
+	}
+
+	const aliases = useWorkflowDocumentStore(workflowDocumentId).settings?.credentialAliases ?? {};
+	return Object.entries(aliases).map(([alias, entry]) =>
+		createCompletionOption({
+			name: alias,
+			doc: {
+				name: alias,
+				returnType: 'Object',
+				description: i18n.baseText('codeNodeEditor.completer.$credentialAliases.alias', {
+					interpolate: { type: entry.type },
+				}),
+			},
+		}),
+	);
 };
 
 export const responseOptions = () => {

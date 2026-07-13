@@ -2,7 +2,7 @@ import type { Project } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { INode } from 'n8n-workflow';
+import type { ICredentialAlias, INode } from 'n8n-workflow';
 import { displayParameter, UserError } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
@@ -44,7 +44,11 @@ export class CredentialsPermissionChecker {
 	/**
 	 * Check if a workflow has the ability to execute based on the projects it's apart of.
 	 */
-	async check(workflowId: string, nodes: INode[]) {
+	async check(
+		workflowId: string,
+		nodes: INode[],
+		credentialAliases: Record<string, ICredentialAlias> = {},
+	) {
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
 		const homeProjectOwner = await this.ownershipService.getPersonalProjectOwnerCached(
 			homeProject.id,
@@ -61,7 +65,10 @@ export class CredentialsPermissionChecker {
 		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 
-		const workflowCredIds = Object.keys(credIdsToNodes);
+		// Closed world: alias-map credentials are selectable at runtime, so the whole
+		// declared set must be vetted up front — even aliases this run might not touch.
+		const aliasCredIds = Object.values(credentialAliases).map((entry) => entry.id);
+		const workflowCredIds = [...new Set([...Object.keys(credIdsToNodes), ...aliasCredIds])];
 
 		if (workflowCredIds.length === 0) return;
 
@@ -74,7 +81,8 @@ export class CredentialsPermissionChecker {
 
 		for (const credentialsId of workflowCredIds) {
 			if (!accessibleSet.has(credentialsId)) {
-				const nodeToFlag = credIdsToNodes[credentialsId][0];
+				// Alias-map ids aren't tied to a node; attribute to the first node as a fallback.
+				const nodeToFlag = credIdsToNodes[credentialsId]?.[0] ?? nodes[0];
 				throw new InaccessibleCredentialError(nodeToFlag, homeProject);
 			}
 		}
@@ -104,6 +112,9 @@ export class CredentialsPermissionChecker {
 			const activeCredTypes = this.getActiveCredentialTypes(node);
 
 			for (const [credType, cred] of Object.entries(node.credentials)) {
+				// Expression-valued ids resolve at runtime; the alias map is vetted separately.
+				if (typeof cred.id === 'string' && cred.id.startsWith('=')) continue;
+
 				if (!cred.id) {
 					// AI Gateway managed credentials have no real DB id — skip permission check
 					if (cred.__aiGatewayManaged === true) continue;

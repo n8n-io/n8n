@@ -48,6 +48,7 @@ import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
+import ExpressionParameterInput from '@/features/ndv/parameters/components/ExpressionParameterInput.vue';
 
 import {
 	N8nButton,
@@ -56,6 +57,7 @@ import {
 	N8nInputLabel,
 	N8nLink,
 	N8nOption,
+	N8nRadioButtons,
 	N8nSelect,
 	N8nText,
 	N8nTooltip,
@@ -699,8 +701,47 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 	if (!props.standalone) void aiGateway.saveAfterToggle();
 }
 
+// Credential slots holding an `=`-prefixed expression are resolved (and validated)
+// at runtime via the workflow alias map, so design-time issue computation doesn't apply.
+const expressionModeSlots = ref(new Set<string>());
+
+function isCredentialExpression(credentialType: string): boolean {
+	const id = selected.value[credentialType]?.id;
+	return (
+		(typeof id === 'string' && id.startsWith('=')) || expressionModeSlots.value.has(credentialType)
+	);
+}
+
+function getCredentialExpression(credentialType: string): string {
+	// ExpressionParameterInput's model-value is the expression body WITHOUT the leading
+	// `=`; it re-adds the `=` in the value it emits. Strip it here to avoid stacking `=`.
+	const id = selected.value[credentialType]?.id;
+	return typeof id === 'string' && id.startsWith('=') ? id.slice(1) : '';
+}
+
+function setCredentialMode(credentialType: string, mode: string) {
+	if (mode === 'expression') {
+		expressionModeSlots.value.add(credentialType);
+	} else {
+		expressionModeSlots.value.delete(credentialType);
+		clearSelectedCredential(credentialType);
+	}
+}
+
+function onCredentialExpressionChanged(credentialType: string, value: string) {
+	const credentials = {
+		...(props.node.credentials ?? {}),
+		[credentialType]: { id: value, name: 'expression' },
+	};
+	emit('credentialSelected', { name: props.node.name, properties: { credentials } });
+}
+
 function getIssues(credentialTypeName: string): string[] {
 	const node = props.node;
+
+	if (isCredentialExpression(credentialTypeName)) {
+		return [];
+	}
 
 	if (node.issues?.credentials === undefined) {
 		return [];
@@ -942,7 +983,26 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					]"
 					data-test-id="node-credentials-select"
 				>
-					<div :class="$style.selectContainer">
+					<N8nRadioButtons
+						:model-value="isCredentialExpression(type.name) ? 'expression' : 'fixed'"
+						size="small"
+						:class="$style.credentialModeToggle"
+						:options="[
+							{ label: i18n.baseText('nodeCredentials.mode.fixed'), value: 'fixed' },
+							{ label: i18n.baseText('nodeCredentials.mode.expression'), value: 'expression' },
+						]"
+						data-test-id="node-credentials-mode-toggle"
+						@update:model-value="(value: string) => setCredentialMode(type.name, value)"
+					/>
+					<ExpressionParameterInput
+						v-if="isCredentialExpression(type.name)"
+						:model-value="getCredentialExpression(type.name)"
+						:path="`credentials.${type.name}.id`"
+						:rows="1"
+						data-test-id="node-credentials-expression-input"
+						@update:model-value="(value: string) => onCredentialExpressionChanged(type.name, value)"
+					/>
+					<div v-else :class="$style.selectContainer">
 						<N8nSelect
 							ref="selectRefs"
 							:model-value="getSelectedId(type)"
@@ -1112,6 +1172,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .selectContainer {
 	position: relative;
 	flex: 1;
+}
+
+.credentialModeToggle {
+	margin-right: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 
 /* Merge the select visually with the private connection row below it.

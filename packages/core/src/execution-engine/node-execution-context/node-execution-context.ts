@@ -437,25 +437,15 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			} as ICredentialsExpressionResolveValues;
 		}
 
-		const nodeCredentials = node.credentials
-			? node.credentials[type]
-			: ({} as INodeCredentialsDetails);
-
-		// TODO: solve using credentials via expression
-		// if (name.charAt(0) === '=') {
-		// 	// If the credential name is an expression resolve it
-		// 	const additionalKeys = getAdditionalKeys(additionalData, mode);
-		// 	name = workflow.expression.getParameterValue(
-		// 		name,
-		// 		runExecutionData || null,
-		// 		runIndex || 0,
-		// 		itemIndex || 0,
-		// 		node.name,
-		// 		connectionInputData || [],
-		// 		mode,
-		// 		additionalKeys,
-		// 	) as string;
-		// }
+		// A credential id may be an `=`-prefixed expression that selects a credential at
+		// runtime through the workflow's alias map. `resolveNodeCredentials` resolves and
+		// validates it against the closed alias set before it reaches `getDecrypted`.
+		const nodeCredentials = this.resolveNodeCredentials(
+			node.credentials ? node.credentials[type] : ({} as INodeCredentialsDetails),
+			type,
+			itemIndex,
+			connectionInputData,
+		);
 
 		additionalData.executionContext = this.getExecutionContext();
 		const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
@@ -469,6 +459,67 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		);
 
 		return decryptedDataObject as T;
+	}
+
+	/**
+	 * Resolves an `=`-prefixed credential id expression through the workflow's alias map,
+	 * enforcing the closed-world contract: the result must be a credential declared in the
+	 * map, and its type must match the slot. Non-expression credentials pass through as-is.
+	 */
+	private resolveNodeCredentials(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		itemIndex?: number,
+		connectionInputData?: INodeExecutionData[],
+	): INodeCredentialsDetails {
+		if (typeof nodeCredentials.id !== 'string' || !nodeCredentials.id.startsWith('=')) {
+			return nodeCredentials;
+		}
+
+		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
+		const credentialAliases = additionalData.workflowSettings?.credentialAliases ?? {};
+
+		const resolvedId = workflow.expression.getParameterValue(
+			nodeCredentials.id,
+			runExecutionData ?? null,
+			runIndex ?? 0,
+			itemIndex ?? 0,
+			node.name,
+			connectionInputData ?? [],
+			mode,
+			this.additionalKeys,
+		);
+
+		if (typeof resolvedId !== 'string') {
+			throw new NodeOperationError(
+				node,
+				'Credential alias expression did not resolve to a credential id',
+				{ level: 'warning' },
+			);
+		}
+
+		// Closed world: the resolved id must be one the workflow explicitly declared.
+		const aliasMatch = Object.entries(credentialAliases).find(
+			([, entry]) => entry.id === resolvedId,
+		);
+		if (!aliasMatch) {
+			throw new NodeOperationError(
+				node,
+				`Resolved credential id "${resolvedId}" is not declared in this workflow's credential aliases`,
+				{ level: 'warning' },
+			);
+		}
+
+		const [aliasName, aliasEntry] = aliasMatch;
+		if (aliasEntry.type !== type) {
+			throw new NodeOperationError(
+				node,
+				`Alias '${aliasName}' points to a credential of type "${aliasEntry.type}", but this node requires "${type}"`,
+				{ level: 'warning' },
+			);
+		}
+
+		return { ...nodeCredentials, id: resolvedId };
 	}
 
 	@Memoized

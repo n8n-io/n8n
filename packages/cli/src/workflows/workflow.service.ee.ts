@@ -267,10 +267,12 @@ export class EnterpriseWorkflowService {
 
 			const allUsedCredentials = Object.values(node.credentials);
 
-			const allUsedCredentialIds = allUsedCredentials.map((nodeCred) => nodeCred.id?.toString());
-			return allUsedCredentialIds.some(
-				(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
-			);
+			const allUsedCredentialIds = allUsedCredentials
+				.map((nodeCred) => nodeCred.id?.toString())
+				// Expression-valued ids resolve at runtime via the alias map — not a static
+				// credential reference, so they can't be "inaccessible" here.
+				.filter((nodeCredId): nodeCredId is string => !!nodeCredId && !nodeCredId.startsWith('='));
+			return allUsedCredentialIds.some((nodeCredId) => !userCredIds.includes(nodeCredId));
 		});
 	}
 

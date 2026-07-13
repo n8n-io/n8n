@@ -1,14 +1,41 @@
 import type {
+	ICredentialAlias,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { ExpressionError } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 
 import { createExecutionCustomData } from './custom-data';
 import { getSecretsProxy } from './get-secrets-proxy';
+
+/** JS internals the expression engine probes on any object; must not throw. */
+const CREDENTIAL_ALIAS_PASSTHROUGH = new Set(['then', 'toJSON', 'constructor']);
+
+/**
+ * Wraps the workflow's alias map so a reference to an undeclared alias throws a
+ * loud, node-attributed error instead of yielding `undefined` (the `$vars` wart).
+ */
+function getCredentialAliasesProxy(
+	aliases: Record<string, ICredentialAlias>,
+): IWorkflowDataProxyAdditionalKeys['$credentialAliases'] {
+	const workflow = new Proxy(aliases, {
+		get(target, prop, receiver) {
+			if (
+				typeof prop === 'string' &&
+				!(prop in target) &&
+				!CREDENTIAL_ALIAS_PASSTHROUGH.has(prop)
+			) {
+				throw new ExpressionError(`Unknown credential alias '${prop}' (workflow scope)`);
+			}
+			return Reflect.get(target, prop, receiver) as ICredentialAlias | undefined;
+		},
+	});
+	return { workflow };
+}
 
 function appendResumeToken(url: string, token: string): string {
 	const urlObj = new URL(url);
@@ -48,6 +75,9 @@ export function getAdditionalKeys(
 			: undefined,
 		$vars: additionalData.variables,
 		$secrets: options.isCredential ? getSecretsProxy(additionalData) : undefined,
+		$credentialAliases: getCredentialAliasesProxy(
+			additionalData.workflowSettings?.credentialAliases ?? {},
+		),
 
 		// deprecated
 		$executionId: executionId,

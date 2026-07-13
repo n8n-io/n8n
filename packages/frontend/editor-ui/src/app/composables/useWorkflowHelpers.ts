@@ -109,6 +109,10 @@ export async function resolveParameter<T = IDataObject>(
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: envVars,
+		// Mirror the runtime proxy for the editor preview. Plain object (no throw-on-miss)
+		// so live typing of an alias doesn't error on every keystroke; the backend enforces
+		// the closed-world contract at execution time.
+		$credentialAliases: { workflow: workflowDocumentStore.settings?.credentialAliases ?? {} },
 		$tool: isHitlToolType(activeNode?.type)
 			? {
 					name: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,

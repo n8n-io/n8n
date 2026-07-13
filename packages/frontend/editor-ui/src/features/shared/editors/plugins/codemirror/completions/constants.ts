@@ -223,6 +223,15 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		}),
 	},
 	{
+		label: '$credentialAliases',
+		section: METADATA_SECTION,
+		info: createInfoBoxRenderer({
+			name: '$credentialAliases',
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$credentialAliases'),
+		}),
+	},
+	{
 		label: '$workflow',
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
