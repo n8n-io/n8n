@@ -50,7 +50,7 @@ export function buildHitlCallbackReference(
 ): string {
 	const hmac = computeHmac(executionId, decision, secret);
 	const reference = `${HITL_CALLBACK_PREFIX}${executionId}|${decision}|${hmac}`;
-	if (reference.length >= 64) {
+	if (reference.length > 64) {
 		throw new UnexpectedError(
 			`HITL callback reference exceeds the 64-byte platform limit (${reference.length} bytes) for execution "${executionId}"`,
 		);

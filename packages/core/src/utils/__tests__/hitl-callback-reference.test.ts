@@ -31,6 +31,15 @@ describe('buildHitlCallbackReference / parseHitlCallbackReference', () => {
 		expect(() => buildHitlCallbackReference(hugeExecutionId, 'a', SECRET)).toThrow();
 	});
 
+	test('allows a reference that is exactly 64 bytes, the platform maximum', () => {
+		// prefix (7) + executionId (22) + 2 pipes + decision (1) + hmac (32) = 64
+		const executionId = '1'.repeat(22);
+		const reference = buildHitlCallbackReference(executionId, 'a', SECRET);
+
+		expect(reference.length).toBe(64);
+		expect(() => buildHitlCallbackReference(executionId, 'a', SECRET)).not.toThrow();
+	});
+
 	test('returns null for a payload without the versioned prefix', () => {
 		expect(parseHitlCallbackReference('not-a-hitl-reference')).toBeNull();
 	});
