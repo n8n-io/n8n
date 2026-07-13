@@ -11,6 +11,6 @@
 	"datasets": ["agents"],
 	"processExpectations": [
 		"The agent answers the data-table question via the data-table tools (or states there are none), without loading the intent-recognition skill.",
-		"The agent does not start any build path — no workflow-builder or agent-builder skill loads and no build tools — in response to the question."
+		"The agent does not start any build path — no workflow-builder skill load, no `build-agent` call, and no other build tools — in response to the question."
 	]
 }
