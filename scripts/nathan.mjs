@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline/promises';
+import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 
 const WEBHOOK = 'https://internal.users.n8n.cloud/webhook/85070485-140c-46e8-9b4b-d161bf7ee1ac';
@@ -43,6 +44,10 @@ const DEFAULT_SLACK_CHANNEL_URL = 'https://n8nio.slack.com/archives/C0BGVHZ0SCW'
 // "keep waiting", not "done". Everything else is a terminal reply.
 const isAck = (text = '') =>
 	text.startsWith('🚀 Deploying') || text.startsWith('🐳 Building a `docker run` command');
+
+// Nathan's known error replies — a terminal reply matching these means the
+// command failed and we must exit non-zero (callers/agents rely on that).
+const isError = (text = '') => /^(?:Error:|Unknown command|Deploy failed)/.test(text);
 
 // Pull human-readable text out of a Slack message payload (text + any block text).
 function extractText(payload) {
@@ -77,6 +82,11 @@ if (process.argv.includes('--selftest')) {
 	ok(isAck('🐳 Building a `docker run` command for image *x*'), 'docker ack');
 	ok(!isAck('✅ Deployment complete'), 'success not ack');
 	ok(!isAck('Error: unknown option'), 'error not ack');
+	ok(isError('Error: unknown option'), 'error reply');
+	ok(isError('Deploy failed: boom'), 'deploy failed');
+	ok(isError('Unknown command `x`'), 'unknown command');
+	ok(!isError('✅ Instance is up'), 'success not error');
+	ok(!isError('*Nathan — deployment bot*'), 'help not error');
 	ok(extractText({ text: 'hi' }) === 'hi', 'text');
 	ok(extractText({ blocks: [{ text: { text: 'blk' } }] }) === 'blk', 'block text');
 	ok(predictDeployUrl('deploy master test-foo') === `https://test-foo.${STAGING_DOMAIN}`, 'predict explicit name');
@@ -97,6 +107,15 @@ function saveToken(t) {
 	fs.writeFileSync(tokenFile, `${t}\n`, { mode: 0o600 });
 }
 
+// Non-interactive setup (agents/scripts): `nathan set-token <token>`.
+if (process.argv[2] === 'set-token') {
+	const t = (process.argv[3] || '').trim();
+	if (!t) { console.error('Usage: pnpm nathan set-token <token>'); process.exit(1); }
+	saveToken(t);
+	console.error(`Saved token to ${tokenFile}.`);
+	process.exit(0);
+}
+
 let token = readSavedToken();
 if (!token) {
 	console.error(`\nNo Nathan token found. Get one here:\n  ${TOKEN_FORM_URL}\n  → log in with your n8n account and copy the token from the response.\n`);
@@ -106,7 +125,7 @@ if (!token) {
 		rl.close();
 		if (token) { saveToken(token); console.error(`\nSaved to ${tokenFile} — future runs will reuse it.\n`); }
 	} else {
-		console.error(`Then save it to ${tokenFile} and re-run.`);
+		console.error('Then save it with:  pnpm nathan set-token <token>');
 	}
 }
 if (!token) process.exit(1);
@@ -122,17 +141,27 @@ if (isLocal) {
 }
 
 // --- local sink for Nathan's callbacks ---------------------------------------
+// The tunnel is public, so only accept callbacks on an unguessable path and cap
+// the body — the URL is an unauthenticated completion channel otherwise.
+const CALLBACK_PATH = `/cb/${randomUUID()}`;
+const MAX_BODY = 1_000_000; // Nathan's replies are small Slack messages
 let done, doneReason, settled = false;
 const finished = new Promise((r) => (done = r));
 const finish = (reason) => { if (settled) return; settled = true; doneReason = reason; done(); };
 let idleTimer;
 const server = http.createServer((req, res) => {
-	// Nathan always POSTs its replies; a GET is our own reachability probe (or
-	// noise) — ack it without treating it as a callback.
+	// A GET is our own reachability probe (or noise) — ack it, don't process it.
 	if (req.method !== 'POST') { res.writeHead(200).end('ok'); return; }
-	let raw = '';
-	req.on('data', (c) => (raw += c));
+	// Reject anything not on the secret path before reading its body.
+	if (req.url !== CALLBACK_PATH) { res.writeHead(403).end('forbidden'); return; }
+	let raw = '', tooBig = false;
+	req.on('data', (c) => {
+		if (tooBig) return;
+		raw += c;
+		if (raw.length > MAX_BODY) { tooBig = true; res.writeHead(413).end('payload too large'); req.destroy(); }
+	});
 	req.on('end', () => {
+		if (tooBig) return;
 		res.writeHead(200).end('ok');
 		let payload;
 		try { payload = JSON.parse(raw); } catch { payload = raw; }
@@ -145,15 +174,20 @@ const server = http.createServer((req, res) => {
 			if (isLocal) { console.error(`Bundle is being posted to ${slackTarget}.`); finish('local'); }
 			return; // otherwise work is starting; wait (overall timeout backstops)
 		}
-		idleTimer = setTimeout(() => finish('idle'), IDLE_MS);
+		// A known error reply must fail the run; anything else is a success.
+		idleTimer = setTimeout(() => finish(isError(body) ? 'error' : 'idle'), IDLE_MS);
 	});
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const port = server.address().port;
 
 // --- public tunnel via npx localtunnel ---------------------------------------
+// Pin an exact, vetted version — an unpinned `npx localtunnel` would run whatever
+// the registry currently serves, as the user, with read access to the token file.
+// To update: bump this version deliberately after reviewing the release.
+const LOCALTUNNEL_VERSION = '2.0.2';
 function startTunnel() {
-	const proc = spawn('npx', ['-y', 'localtunnel', '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
+	const proc = spawn('npx', ['-y', `localtunnel@${LOCALTUNNEL_VERSION}`, '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
 	const urlRe = /https:\/\/[^\s]+\.loca\.lt/;
 	return new Promise((resolve, reject) => {
 		const t = setTimeout(() => reject(new Error('tunnel did not start in time')), TUNNEL_START_MS);
@@ -204,7 +238,7 @@ try {
 			token,
 			text,
 			command: '/nathan',
-			response_url: tunnel.url,
+			response_url: tunnel.url + CALLBACK_PATH,
 			user_id: user,
 			user_name: user,
 			channel_id: process.env.NATHAN_SLACK_CHANNEL || DEFAULT_SLACK_CHANNEL,
@@ -249,6 +283,7 @@ clearTimeout(overall);
 
 if (doneReason === 'timeout') console.error('\n⏱  Timed out waiting for the final reply — the deploy may still be running (check Slack / Grafana).');
 if (doneReason === 'interrupted') console.error('\nStopped. The command may still be running on Nathan.');
+if (doneReason === 'error') console.error('\n✖ Nathan reported an error (see the reply above).');
 await cleanup(['idle', 'up', 'local'].includes(doneReason) ? 0 : 1);
 
 function cleanup(code) {

@@ -13,18 +13,20 @@ the same commands from the repo via `pnpm nathan`.
 ## Prerequisites
 
 - **No tunnel setup needed.** Nathan replies asynchronously through a short-lived
-  public tunnel that the script opens for you (`npx localtunnel`). A `deploy` with
-  an explicit `test-<name>` also polls the instance URL directly, so it still
-  reports success even if the tunnel drops.
-- **A token in `~/.n8n/nathan-token`.** Check with `test -s ~/.n8n/nathan-token || echo missing`.
-  If missing, **ask the user for one** — point them at the form
+  public tunnel that the script opens for you (`npx localtunnel`). A `deploy` to a
+  **new** `test-<name>` also polls that instance URL directly, so it still reports
+  success even if the tunnel drops. (Redeploying a name that's *already up* skips
+  the poll — it can't tell the old instance from the new — so it falls back to the
+  tunnel; prefer a fresh name when you need the reliable report.)
+- **A token in `~/.n8n/nathan-token`.** If a command reports no token, **ask the
+  user for one** — point them at the form
   (`https://internal.users.n8n.cloud/form/d6d34a2f-4899-4ee8-afc8-f8c41a8a243d`),
   where they log in with their n8n account and copy the token from the response —
-  then write it for them (don't rely on the script's interactive paste prompt; it
-  needs a real terminal):
+  then save it for them (the script's interactive paste prompt needs a real
+  terminal, so as an agent use the subcommand):
 
   ```bash
-  mkdir -p ~/.n8n && printf '%s\n' '<PASTED_TOKEN>' > ~/.n8n/nathan-token && chmod 600 ~/.n8n/nathan-token
+  pnpm nathan set-token '<PASTED_TOKEN>'
   ```
 
 ## Offer a test instance
