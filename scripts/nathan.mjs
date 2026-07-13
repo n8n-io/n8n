@@ -104,8 +104,8 @@ if (!token) process.exit(1);
 const text = process.argv.slice(2).join(' ').trim() || 'help';
 if (text.startsWith('local')) {
 	console.error('⚠️  `local` delivers its run-n8n.sh + .env (with the license cert) as Slack file');
-	console.error('    attachments, not to this callback — set NATHAN_SLACK_CHANNEL=<slack channel id>');
-	console.error('    to receive them in Slack, or run `/nathan local` in Slack directly.\n');
+	console.error('    attachments, not to this callback — they post to the default Slack channel');
+	console.error('    (override with NATHAN_SLACK_CHANNEL=<slack channel id>), or run it in Slack.\n');
 }
 
 // --- local sink for Nathan's callbacks ---------------------------------------
@@ -177,7 +177,7 @@ const res = await fetch(WEBHOOK, {
 		response_url: tunnel.url,
 		user_id: user,
 		user_name: user,
-		channel_id: process.env.NATHAN_SLACK_CHANNEL || 'cli',
+		channel_id: process.env.NATHAN_SLACK_CHANNEL || 'C0BGVHZ0SCW',
 		trigger_id: String(Date.now()),
 	}),
 });
