@@ -39,11 +39,6 @@ export class N8nPackageParser {
 		}
 	}
 
-	/**
-	 * Reads a scope's workflows — both scope-root and folder-nested — attaching each to its package
-	 * folder (via {@link deriveParentFolderId}). `basePrefix` selects the scope: `''` for a workflow
-	 * package's root, `projects/<slug>/` for a project's contents.
-	 */
 	async getWorkflows(reader: PackageReader, basePrefix = ''): Promise<PreparedWorkflow[]> {
 		const manifest = await this.getManifest(reader);
 		const folderTargetToId = new Map((manifest.folders ?? []).map((f) => [f.target, f.id]));
@@ -56,7 +51,6 @@ export class N8nPackageParser {
 		return workflows;
 	}
 
-	/** Reads a scope's folder shells (whole subtree). `basePrefix` selects the scope (see {@link getWorkflows}). */
 	async getFolders(reader: PackageReader, basePrefix = ''): Promise<PreparedFolder[]> {
 		const manifest = await this.getManifest(reader);
 

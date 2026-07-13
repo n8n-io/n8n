@@ -89,8 +89,6 @@ export class WorkflowImporter {
 				});
 			}
 
-			// Each workflow targets its own package folder (nested import); loose workflows fall back to
-			// the request's target folder. Runs for any workflow resolving to a folder, incl. root-scope imports.
 			const targetFolderId = workflow.parentFolderId ?? context.folderId;
 			if (targetFolderId && existing) {
 				const existingParentFolderId = existing.parentFolder?.id ?? null;
