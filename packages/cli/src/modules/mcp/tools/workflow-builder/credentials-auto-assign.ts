@@ -13,7 +13,6 @@ import {
 	type AiGatewayEligibilityReason,
 } from './ai-gateway-eligibility';
 import { MCP_CREDENTIALS_AUTOASSIGN_EVENT } from '../../mcp.constants';
-import type { McpCredentialsAutoassignEventPayload } from '../../mcp.types';
 
 /** Display name written into AI Gateway-managed credential sentinels. User-facing brand. */
 const AI_GATEWAY_CREDENTIAL_NAME = 'n8n Connect';
@@ -27,7 +26,7 @@ export interface CredentialAssignment {
 
 export type SlotSource = 'user' | 'aiGateway' | 'none';
 
-export type ReasonNotAiGateway = AiGatewayEligibilityReason | 'userPreferred' | 'notAvailable';
+export type ReasonNotAiGateway = AiGatewayEligibilityReason | 'notAvailable';
 
 export interface SlotOutcome {
 	nodeName: string;
@@ -43,6 +42,21 @@ export interface AutoAssignResult {
 	skippedHttpNodes: string[];
 	outcomes: SlotOutcome[];
 }
+
+/**
+ * Telemetry payload for the `MCP credentials autoassign` event. Reuses `SlotSource`
+ * and `ReasonNotAiGateway` so the tracked values stay aligned with the slot outcomes.
+ */
+export type McpCredentialsAutoassignEventPayload = {
+	user_id: string;
+	tool_name: 'create_workflow_from_code' | 'update_workflow';
+	node_type: string;
+	credential_type: string;
+	source: SlotSource;
+	had_user_credential: boolean;
+	ai_gateway_available: boolean;
+	reason_not_ai_gateway?: ReasonNotAiGateway;
+};
 
 const HTTP_NODE_TYPES = new Set([
 	'n8n-nodes-base.httpRequest',

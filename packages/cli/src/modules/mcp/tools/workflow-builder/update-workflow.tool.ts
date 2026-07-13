@@ -10,7 +10,11 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
-import { autoPopulateNodeCredentials, trackAutoassignOutcomes } from './credentials-auto-assign';
+import {
+	autoPopulateNodeCredentials,
+	trackAutoassignOutcomes,
+	type SlotOutcome,
+} from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import {
@@ -668,6 +672,7 @@ export const createUpdateWorkflowTool = (
 				source?: 'user' | 'aiGateway';
 			}> = [];
 			let skippedHttpNodes: string[] = [];
+			let autoAssignOutcomes: SlotOutcome[] = [];
 
 			if (result.addedNodeNames.length > 0) {
 				const addedNodeSet = new Set(result.addedNodeNames);
@@ -683,15 +688,7 @@ export const createUpdateWorkflowTool = (
 				);
 				credentialAssignments = autoAssign.assignments;
 				skippedHttpNodes = autoAssign.skippedHttpNodes;
-				const nodeTypesByName = new Map(addedNodes.map((n) => [n.name, n.type]));
-				trackAutoassignOutcomes(
-					telemetry,
-					user.id,
-					'update_workflow',
-					autoAssign.outcomes,
-					nodeTypesByName,
-					workflowId,
-				);
+				autoAssignOutcomes = autoAssign.outcomes;
 			}
 
 			const { ParseValidateHandler } = await import('@n8n/ai-workflow-builder');
@@ -742,6 +739,18 @@ export const createUpdateWorkflowTool = (
 				versionDescription: versionMetadata.description,
 				...(tagIds !== undefined ? { tagIds } : {}),
 			});
+
+			if (autoAssignOutcomes.length > 0) {
+				const nodeTypesByName = new Map(updatedWorkflow.nodes.map((n) => [n.name, n.type]));
+				trackAutoassignOutcomes(
+					telemetry,
+					user.id,
+					'update_workflow',
+					autoAssignOutcomes,
+					nodeTypesByName,
+					workflowId,
+				);
+			}
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 

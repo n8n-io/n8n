@@ -1040,6 +1040,65 @@ describe('update-workflow MCP tool', () => {
 			).not.toThrow();
 		});
 
+		test('tracks auto-assign outcomes with the persisted workflow id after update', async () => {
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [],
+				skippedHttpNodes: [],
+				outcomes: [
+					{
+						nodeName: 'C',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+						hadUserCredential: false,
+						aiGatewayAvailable: true,
+					},
+				],
+			});
+
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.slack', typeVersion: 1 } },
+				],
+			});
+
+			expect(mockTrackAutoassignOutcomes).toHaveBeenCalledTimes(1);
+			const trackArgs = mockTrackAutoassignOutcomes.mock.calls[0];
+			expect(trackArgs[2]).toBe('update_workflow');
+			expect(trackArgs[5]).toBe('wf-1');
+			// Tracking runs only after the update persists.
+			expect(updateMock.mock.invocationCallOrder[0]).toBeLessThan(
+				mockTrackAutoassignOutcomes.mock.invocationCallOrder[0],
+			);
+		});
+
+		test('does not track auto-assign outcomes when the update fails to persist', async () => {
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [],
+				skippedHttpNodes: [],
+				outcomes: [
+					{
+						nodeName: 'C',
+						credentialType: 'openAiApi',
+						source: 'aiGateway',
+						hadUserCredential: false,
+						aiGatewayAvailable: true,
+					},
+				],
+			});
+			updateMock.mockRejectedValueOnce(new Error('update failed'));
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'addNode', node: { name: 'C', type: 'n8n-nodes-base.slack', typeVersion: 1 } },
+				],
+			});
+
+			expect(result.isError).toBe(true);
+			expect(mockTrackAutoassignOutcomes).not.toHaveBeenCalled();
+		});
+
 		test('reports skipped HTTP nodes in the note', async () => {
 			mockAutoPopulateNodeCredentials.mockResolvedValue({
 				assignments: [],
