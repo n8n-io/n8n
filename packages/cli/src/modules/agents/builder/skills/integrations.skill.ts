@@ -6,10 +6,15 @@ export function integrationsSkill(): RuntimeSkill {
 		name: 'Agent Builder Integrations',
 		description:
 			'Use when deciding whether Slack, Linear, Telegram, or another external platform should be a target-agent chat integration/trigger versus a node tool, and when adding or changing chat integrations; not for built-in Build chat or Preview chat behavior.',
-		recommendedTools: ['list_integration_types', 'ask_credential', 'read_config', 'patch_config'],
+		recommendedTools: [
+			'list_integration_types',
+			'configure_channel',
+			'read_config',
+			'patch_config',
+		],
 		allowedTools: [
 			'list_integration_types',
-			'ask_credential',
+			'configure_channel',
 			'read_config',
 			'patch_config',
 			'write_config',
@@ -59,13 +64,16 @@ The \`integrations\` array controls how the target agent is triggered.
 - Call \`list_integration_types\` first.
 - Read the returned \`capabilities\`, \`useIntegrationWhen\`, and
   \`useNodeToolWhen\` fields before deciding to add an integration.
-- Pick one returned \`credentialTypes\` entry and pass it to \`ask_credential\`.
-- Persist only \`type\` and \`credentialId\`; never invent credential IDs or names.
+- Pick one returned \`type\` and pass it to \`configure_channel\` as
+  \`integrationType\`. ALWAYS use \`configure_channel\` for chat-channel
+  credentials — never \`ask_credential\` or a raw config write. The setup UI it
+  shows creates and persists the credential/connection itself; do not follow up
+  with \`patch_config\`/\`write_config\` to write the credential.
 - Preserve existing chat integrations unless the user asked to remove them.
 
 ## Gotchas
 
-- Chat integration credential types must come from \`list_integration_types\`.
+- Chat integration types must come from \`list_integration_types\`.
 - Do not add a Linear integration just because the agent needs Linear issue
   CRUD. Use Linear node tools unless Linear itself is the chat/trigger context.
 - For recurring or scheduled runs, create a task (\`create_task\`), not an
@@ -73,7 +81,8 @@ The \`integrations\` array controls how the target agent is triggered.
 
 ## Verify
 
-- Connected chat integrations use a credential id returned by \`ask_credential\`.
+- Connected chat integrations were set up through \`configure_channel\`, not
+  \`ask_credential\` or a manual config write.
 - The chosen integration matches \`useIntegrationWhen\`; otherwise use node or
   workflow tools.
 - The final \`integrations\` array keeps unrelated integrations intact.`,

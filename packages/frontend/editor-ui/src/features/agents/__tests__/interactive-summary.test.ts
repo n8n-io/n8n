@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
+	ASK_QUESTIONS_TOOL_NAME,
+	CONFIGURE_CHANNEL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 } from '@n8n/api-types';
 import {
@@ -18,34 +18,34 @@ describe('summariseInteractiveOutput', () => {
 	});
 
 	it('returns undefined when output is missing', () => {
-		expect(summariseInteractiveOutput(ASK_QUESTION_TOOL_NAME, undefined)).toBeUndefined();
+		expect(summariseInteractiveOutput(ASK_QUESTIONS_TOOL_NAME, undefined)).toBeUndefined();
 	});
 
 	it.each([null, 'oops', 42, true, ['x']])(
 		'returns undefined for non-object output (%p)',
 		(value) => {
 			expect(summariseInteractiveOutput(ASK_CREDENTIAL_TOOL_NAME, value)).toBeUndefined();
-			expect(summariseInteractiveOutput(ASK_LLM_TOOL_NAME, value)).toBeUndefined();
-			expect(summariseInteractiveOutput(ASK_QUESTION_TOOL_NAME, value)).toBeUndefined();
+			expect(summariseInteractiveOutput(ASK_QUESTIONS_TOOL_NAME, value)).toBeUndefined();
 		},
 	);
 
-	it('joins ask_question option labels when input + output present', () => {
-		const input = {
-			question: 'Where to post?',
-			options: [
-				{ label: 'Slack', value: 'slack' },
-				{ label: 'Discord', value: 'discord' },
+	it('joins ask_questions answer labels when output is present', () => {
+		const output = {
+			answered: true,
+			answers: [
+				{ questionId: 'q1', selectedOptions: ['Slack', 'Discord'] },
+				{ questionId: 'q2', selectedOptions: [], skipped: true },
 			],
 		};
-		const output = { values: ['slack', 'discord'] };
-		expect(summariseInteractiveOutput(ASK_QUESTION_TOOL_NAME, output, input)).toBe(
-			'Slack, Discord',
-		);
+		expect(summariseInteractiveOutput(ASK_QUESTIONS_TOOL_NAME, output)).toBe('Slack, Discord');
 	});
 
-	it('falls back to raw values when ask_question input is missing', () => {
-		expect(summariseInteractiveOutput(ASK_QUESTION_TOOL_NAME, { values: ['slack'] })).toBe('slack');
+	it('returns undefined when every ask_questions answer was skipped', () => {
+		const output = {
+			answered: false,
+			answers: [{ questionId: 'q1', selectedOptions: [], skipped: true }],
+		};
+		expect(summariseInteractiveOutput(ASK_QUESTIONS_TOOL_NAME, output)).toBeUndefined();
 	});
 
 	it('renders ask_credential credential name', () => {
@@ -61,15 +61,20 @@ describe('summariseInteractiveOutput', () => {
 		expect(summariseInteractiveOutput(ASK_CREDENTIAL_TOOL_NAME, { skipped: true })).toBe('Skipped');
 	});
 
-	it('renders ask_llm provider/model + credential', () => {
+	it('renders the optimistic resume shape as Selected before the real output arrives', () => {
 		expect(
-			summariseInteractiveOutput(ASK_LLM_TOOL_NAME, {
-				provider: 'anthropic',
-				model: 'claude-sonnet-4-6',
-				credentialId: 'c1',
-				credentialName: 'My Anthropic',
-			}),
-		).toBe('anthropic/claude-sonnet-4-6 · My Anthropic');
+			summariseToolCall(ASK_CREDENTIAL_TOOL_NAME, { credentials: { slackApi: 'cred-1' } }),
+		).toBe('Selected');
+		expect(summariseToolCall(ASK_CREDENTIAL_TOOL_NAME, { credentials: {} })).toBeUndefined();
+	});
+
+	it('renders configure_channel connected/skipped', () => {
+		expect(summariseInteractiveOutput(CONFIGURE_CHANNEL_TOOL_NAME, { connected: true })).toBe(
+			'Connected',
+		);
+		expect(summariseInteractiveOutput(CONFIGURE_CHANNEL_TOOL_NAME, { connected: false })).toBe(
+			'Skipped',
+		);
 	});
 });
 

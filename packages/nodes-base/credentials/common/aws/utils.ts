@@ -176,30 +176,131 @@ export const awsCredentialsTest: ICredentialTestRequest = {
 };
 
 /**
+ * PrivateLink (VPC interface endpoint) hostnames shift the service and region
+ * one label to the right compared to public endpoints, e.g.
+ * `vpce-0abc123[-az].bedrock-runtime.us-east-1.vpce.amazonaws.com`. The optional
+ * `.cn` suffix covers the China regions, whose endpoints use `vpce.amazonaws.com.cn`.
+ *
+ * Only the endpoint-specific hostname (which starts with the `vpce-` id label) is
+ * matched. S3's bucket/access-point/control interface endpoints prefix another
+ * label before the id (e.g. `bucket.vpce-0abc123.s3.us-east-1.vpce.amazonaws.com`)
+ * and are intentionally not covered here.
+ *
+ * @see {@link https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html AWS PrivateLink}
+ */
+const VPCE_HOSTNAME_PATTERN = /^vpce-[^.]+\.([^.]+)\.([^.]+)\.vpce\.amazonaws\.com(?:\.cn)?$/;
+
+function isSupportedAwsRegion(region: string): region is AWSRegion {
+	return SUPPORTED_AWS_REGIONS.has(region);
+}
+
+/**
+ * Matches genuine AWS endpoint hosts (public and China partitions). Custom
+ * hostnames (API Gateway custom domains, proxies, S3-compatible stores) don't
+ * match, so labels mis-parsed as a region from them must not fail the request.
+ */
+function isAwsEndpointHostname(hostname: string): boolean {
+	return /\.amazonaws\.com(\.cn)?$/i.test(hostname);
+}
+
+/**
  * Ensures the region value belongs to the supported AWS regions list before it
  * is interpolated into request URLs or signing options. Anything outside the
  * known set is rejected with a controlled error.
  */
 export function assertSupportedAwsRegion(region: unknown): asserts region is AWSRegion {
-	if (typeof region !== 'string' || !SUPPORTED_AWS_REGIONS.has(region)) {
+	if (typeof region !== 'string' || !isSupportedAwsRegion(region)) {
 		throw new UserError('Unsupported AWS region');
 	}
 }
 
 /**
+ * Validates a user-supplied Bedrock endpoint override and returns the resolved URL.
+ * Substitutes the `{region}` placeholder after the region itself is validated, and
+ * requires an `http:`/`https:` scheme. The value is credential-holder-configured and
+ * treated as trusted; no host allow-listing / SSRF check is applied on this path.
+ *
+ * @throws {UserError} When the region is unsupported, the URL is malformed, or the scheme is not http/https.
+ */
+export function validateBedrockEndpointOverride(override: string, region: AWSRegion): string {
+	assertSupportedAwsRegion(region);
+	const resolved = override.replace(/\{region\}/g, region);
+	let url: URL;
+	try {
+		url = new URL(resolved);
+	} catch {
+		// Don't echo the raw value; it may contain URL userinfo (user:pass@host).
+		throw new UserError('Bedrock endpoint is not a valid URL');
+	}
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+		throw new UserError('Bedrock endpoint must use the http or https scheme');
+	}
+	// Strip a trailing slash only: on the SDK client's `endpoint` it would serialize
+	// operation paths as `//model/...`. Everything else the user configured is preserved.
+	return url.toString().replace(/\/$/, '');
+}
+
+/**
  * Parses an AWS service URL to extract the service name and region.
- * Some AWS services are global and don't have a region.
+ * Some AWS services are global and don't have a region. Recognizes both
+ * public endpoints (`<service>.<region>.amazonaws.com`) and PrivateLink
+ * endpoints (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`).
+ *
+ * The returned region is not validated against the supported region list;
+ * callers must check it (e.g. with {@link assertSupportedAwsRegion}) before
+ * using it for signing.
  *
  * @param url - The AWS service URL to parse
  * @returns Object containing the service name and region (null for global services)
  *
  * @see {@link https://docs.aws.amazon.com/general/latest/gr/rande.html#global-endpoints AWS Global Endpoints}
  */
-export function parseAwsUrl(url: URL): { region: AWSRegion | null; service: string } {
+export function parseAwsUrl(url: URL): { region: string | null; service: string } {
 	const hostname = url.hostname;
+	const vpceMatch = hostname.match(VPCE_HOSTNAME_PATTERN);
+	if (vpceMatch) {
+		const [, service, region] = vpceMatch;
+		return { service, region };
+	}
 	// Handle both .amazonaws.com and .amazonaws.com.cn domains
 	const [service, region] = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
-	return { service, region };
+	return { service, region: region ?? null };
+}
+
+/**
+ * Derives the signing service and region from a request URL, without
+ * regressing a caller-supplied value.
+ *
+ * - `service` is only taken from the URL when the caller didn't already
+ *   supply one (e.g. via qs.service). This lets callers force a signing
+ *   service that URL parsing can't reliably infer, without regressing
+ *   callers that rely on the URL as the source of truth (the common case:
+ *   no qs.service is set).
+ * - `region` is only taken from the URL when it's a recognized AWS region. On
+ *   an AWS endpoint host, an unrecognized label (a malformed/mistyped host, or
+ *   an odd endpoint shape the parser mis-split) throws a UserError, so the
+ *   request fails fast with a clear message instead of signing with a bad
+ *   region. On a custom (non-AWS) host, the second DNS label is usually not a
+ *   region at all, so the credential region is kept instead.
+ */
+function resolveServiceAndRegion(
+	url: URL,
+	service: string,
+	region: AWSRegion,
+): { service: string; region: AWSRegion } {
+	const parsed = parseAwsUrl(url);
+	const resolvedService = service || parsed.service;
+	let resolvedRegion = region;
+	if (parsed.region) {
+		if (isSupportedAwsRegion(parsed.region)) {
+			resolvedRegion = parsed.region;
+		} else if (isAwsEndpointHostname(url.hostname)) {
+			throw new UserError(
+				`Unsupported AWS region "${parsed.region}" parsed from endpoint host ${url.hostname}`,
+			);
+		}
+	}
+	return { service: resolvedService, region: resolvedRegion };
 }
 
 /**
@@ -255,11 +356,7 @@ export function awsGetSignInOptionsAndUpdateRequest(
 			// a nested `query` key, so merge the whole object to sign and send them.
 			query = requestWithUri.qs as IDataObject;
 		}
-		const parsed = parseAwsUrl(endpoint);
-		service = parsed.service;
-		if (parsed.region) {
-			region = parsed.region;
-		}
+		({ service, region } = resolveServiceAndRegion(endpoint, service, region));
 	} else {
 		if (!requestOptions.baseURL && !requestOptions.url) {
 			let endpointString: string;
@@ -285,10 +382,18 @@ export function awsGetSignInOptionsAndUpdateRequest(
 		} else {
 			// If no endpoint is set, we try to decompose the path and use the default endpoint
 			const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path}`);
-			const parsed = parseAwsUrl(customUrl);
-			service = parsed.service;
-			if (parsed.region) {
-				region = parsed.region;
+			({ service, region } = resolveServiceAndRegion(customUrl, service, region));
+			// Swap only the host: signing service and region stay derived from the default
+			// host above, so a custom endpoint can never change how the request is signed.
+			if (service === 'bedrock' && credentials.bedrockEndpoint) {
+				const override = new URL(
+					validateBedrockEndpointOverride(credentials.bedrockEndpoint, region),
+				);
+				customUrl.protocol = override.protocol;
+				customUrl.host = override.host;
+				if (override.pathname !== '/') {
+					customUrl.pathname = override.pathname.replace(/\/+$/, '') + customUrl.pathname;
+				}
 			}
 			if (service === 'sts') {
 				try {

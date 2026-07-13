@@ -128,6 +128,7 @@ export type ExportPackageEventCounts = {
 	workflows: number;
 	folders: number;
 	credentials: number;
+	dataTables: number;
 };
 
 export interface ImportedWorkflowSummary {
@@ -147,6 +148,13 @@ export interface ImportedFolderSummary {
 	name: string;
 	parentFolderId: string | null;
 	status: 'created' | 'skipped';
+}
+
+export interface ImportedProjectSummary {
+	sourceProjectId: string;
+	localId: string;
+	name: string;
+	status: 'created' | 'updated';
 }
 
 /**
@@ -226,6 +234,7 @@ export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
 	folders: ImportedFolderSummary[];
+	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
 }
