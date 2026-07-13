@@ -1,3 +1,5 @@
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-core';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -13,12 +15,23 @@ interface TelegramWebhookInfo {
 }
 
 function isLoopbackHost(hostname: string): boolean {
-	return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+	// A URL's hostname getter always brackets an IPv6 address, so the loopback
+	// form here is "[::1]", not "::1".
+	return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 }
 
-function isSameOrigin(url: string, origin: string): boolean {
+/**
+ * Whether `url` looks like a live Telegram Trigger webhook on this instance: same
+ * origin, and routed through the live-webhook path family, not just any endpoint
+ * that happens to share the origin (e.g. our own fixed HITL endpoint under a
+ * different mount, or something unrelated entirely).
+ */
+function isLikelyTriggerWebhook(url: string, origin: string): boolean {
 	try {
-		return new URL(url).origin === origin;
+		const parsed = new URL(url);
+		if (parsed.origin !== origin) return false;
+		const liveWebhookSegment = `/${Container.get(GlobalConfig).endpoints.webhook}/`;
+		return parsed.pathname.startsWith(liveWebhookSegment);
 	} catch {
 		return false;
 	}
@@ -121,7 +134,7 @@ export async function prepareChatApproval(context: IExecuteFunctions): Promise<b
 		return true;
 	}
 
-	if (isSameOrigin(currentUrl, origin)) {
+	if (isLikelyTriggerWebhook(currentUrl, origin)) {
 		if (allowedUpdates.length === 0 || allowedUpdates.includes('callback_query')) {
 			// A Telegram Trigger on this instance owns the webhook and forwards HITL
 			// callbacks to us; see TelegramTrigger.node.ts.

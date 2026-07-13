@@ -90,6 +90,24 @@ describe('prepareChatApproval', () => {
 		expect(genericFunctions.apiRequest).not.toHaveBeenCalled();
 	});
 
+	it('falls back to link buttons and warns for an IPv6 loopback instance', async () => {
+		// A URL's hostname getter brackets IPv6 addresses ("[::1]", not "::1"),
+		// so this must be recognized as loopback too.
+		const context = makeContext();
+		context.getNodeParameter.mockImplementation((name: unknown) =>
+			name === 'responseType' ? 'approval' : true,
+		);
+		context.getSignedResumeUrl.mockReturnValue(
+			'https://[::1]/webhook-waiting/42/node-1?approved=true&signature=abc',
+		);
+
+		const effective = await prepareChatApproval(context);
+
+		expect(effective).toBe(false);
+		expect(context.logger.warn).toHaveBeenCalled();
+		expect(genericFunctions.apiRequest).not.toHaveBeenCalled();
+	});
+
 	it('registers the fixed endpoint when the bot webhook is free', async () => {
 		const context = makeContext();
 		context.getNodeParameter.mockImplementation((name: unknown) =>
@@ -180,6 +198,22 @@ describe('prepareChatApproval', () => {
 		await expect(prepareChatApproval(context)).rejects.toThrow(
 			/someone-elses-system\.example\.com/,
 		);
+	});
+
+	it('throws an actionable error for a same-origin webhook that is not a Trigger path', async () => {
+		// Same origin alone isn't proof of a forwarding Telegram Trigger: this could be
+		// any other endpoint on this instance (our own fixed HITL endpoint, some other
+		// node's webhook, etc), not a live-webhook path.
+		const context = makeContext();
+		context.getNodeParameter.mockImplementation((name: unknown) =>
+			name === 'responseType' ? 'approval' : true,
+		);
+		mockWebhookInfo({
+			url: 'https://mybot.example.com/some-other-nodes-webhook',
+			allowed_updates: ['callback_query'],
+		});
+
+		await expect(prepareChatApproval(context)).rejects.toThrow(/some-other-nodes-webhook/);
 	});
 
 	it('falls back to link buttons and warns when getWebhookInfo fails', async () => {
