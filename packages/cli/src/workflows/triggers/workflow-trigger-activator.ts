@@ -110,10 +110,11 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
-	 * Maps each trigger node to how it executes: `poll`/`trigger` register in
-	 * memory, `webhook` persists to `webhook_entity`. A node with several
-	 * mechanisms gets its in-memory kind. Used by reconciliation to tell which
-	 * triggers should be in the in-memory registry.
+	 * Maps each node to where it lives once activated, decided by which functions
+	 * its node type implements: nodes with a `poll` or `trigger` function register
+	 * `in-memory`, nodes with only a `webhook` function are `persisted` rows in
+	 * `webhook_entity`. Used by reconciliation to tell which triggers should be in
+	 * the in-memory registry.
 	 */
 	getTriggerKinds(nodes: INode[]): Map<INode['id'], WorkflowPublicationTriggerKind> {
 		const workflow = new Workflow({
@@ -125,14 +126,13 @@ export class WorkflowTriggerActivator {
 			nodeTypes: this.nodeTypes,
 		});
 
-		const pollNodeIds = new Set(workflow.getPollNodes().map((node) => node.id));
-		const triggerNodeIds = new Set(workflow.getTriggerNodes().map((node) => node.id));
+		const inMemoryNodeIds = new Set(
+			[...workflow.getPollNodes(), ...workflow.getTriggerNodes()].map((node) => node.id),
+		);
 
 		const kinds = new Map<INode['id'], WorkflowPublicationTriggerKind>();
 		for (const node of nodes) {
-			if (pollNodeIds.has(node.id)) kinds.set(node.id, 'poll');
-			else if (triggerNodeIds.has(node.id)) kinds.set(node.id, 'trigger');
-			else kinds.set(node.id, 'webhook');
+			kinds.set(node.id, inMemoryNodeIds.has(node.id) ? 'in-memory' : 'persisted');
 		}
 
 		return kinds;

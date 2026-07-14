@@ -112,9 +112,9 @@ describe('WorkflowPublicationApplier', () => {
 		workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures: [] });
 		workflowTriggerActivator.deactivate.mockResolvedValue(undefined);
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
-		// The test nodes are scheduleTrigger nodes, so default every node to 'trigger'.
+		// The test nodes are scheduleTrigger nodes, so default every node to 'in-memory'.
 		workflowTriggerActivator.getTriggerKinds.mockImplementation(
-			(nodes) => new Map(nodes.map((node) => [node.id, 'trigger'])),
+			(nodes) => new Map(nodes.map((node) => [node.id, 'in-memory'])),
 		);
 	});
 
@@ -219,7 +219,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
 			],
 		});
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
@@ -240,8 +240,8 @@ describe('WorkflowPublicationApplier', () => {
 		setTriggerSets([], [hook, poll]);
 		workflowTriggerActivator.getTriggerKinds.mockReturnValue(
 			new Map([
-				['hook', 'webhook'],
-				['poll', 'poll'],
+				['hook', 'persisted'],
+				['poll', 'in-memory'],
 			]),
 		);
 		workflowTriggerActivator.activate.mockResolvedValue({
@@ -254,8 +254,8 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'hook', nodeName: 'hook', status: 'activated', triggerKind: 'webhook' },
-				{ nodeId: 'poll', nodeName: 'poll', status: 'activated', triggerKind: 'poll' },
+				{ nodeId: 'hook', nodeName: 'hook', status: 'activated', triggerKind: 'persisted' },
+				{ nodeId: 'poll', nodeName: 'poll', status: 'activated', triggerKind: 'in-memory' },
 			],
 		});
 	});
@@ -268,8 +268,8 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
-				{ nodeId: 'b', nodeName: 'b', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+				{ nodeId: 'b', nodeName: 'b', status: 'activated', triggerKind: 'in-memory' },
 			],
 		});
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
@@ -298,7 +298,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
 			],
 		});
 		expect(workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds).toHaveBeenCalledWith(
@@ -323,7 +323,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
 			],
 		});
 		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
@@ -347,7 +347,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
 			],
 		});
 		expect(workflowTriggerActivator.getNodesWithUnregisteredWebhooks).toHaveBeenCalledWith(
@@ -372,8 +372,8 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
-				{ nodeId: 'b', nodeName: 'b', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+				{ nodeId: 'b', nodeName: 'b', status: 'activated', triggerKind: 'in-memory' },
 			],
 		});
 		expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
@@ -391,7 +391,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
 			],
 		});
 		expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
@@ -435,7 +435,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
 			],
 		});
 		expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
@@ -496,12 +496,12 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'partial',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
 				{
 					nodeId: 'b',
 					nodeName: 'b',
 					status: 'failed',
-					triggerKind: 'trigger',
+					triggerKind: 'in-memory',
 					errorMessage: 'third-party unavailable',
 				},
 			],
@@ -527,12 +527,12 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'partial',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
 				{
 					nodeId: 'b',
 					nodeName: 'b',
 					status: 'failed',
-					triggerKind: 'trigger',
+					triggerKind: 'in-memory',
 					errorMessage: error.message,
 				},
 			],
@@ -562,7 +562,7 @@ describe('WorkflowPublicationApplier', () => {
 					nodeId: 'b',
 					nodeName: 'b',
 					status: 'failed',
-					triggerKind: 'trigger',
+					triggerKind: 'in-memory',
 					errorMessage: error.message,
 				},
 			],
@@ -596,14 +596,14 @@ describe('WorkflowPublicationApplier', () => {
 					nodeId: 'b',
 					nodeName: 'b',
 					status: 'failed',
-					triggerKind: 'trigger',
+					triggerKind: 'in-memory',
 					errorMessage: deterministic.message,
 				},
 				{
 					nodeId: 'c',
 					nodeName: 'c',
 					status: 'failed',
-					triggerKind: 'trigger',
+					triggerKind: 'in-memory',
 					errorMessage: 'third-party unavailable',
 				},
 			],
@@ -625,12 +625,12 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'partial',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
 				{
 					nodeId: 'b',
 					nodeName: 'b',
 					status: 'failed',
-					triggerKind: 'trigger',
+					triggerKind: 'in-memory',
 					errorMessage: error.message,
 				},
 			],
@@ -650,7 +650,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'trigger' },
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
 			],
 		});
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();

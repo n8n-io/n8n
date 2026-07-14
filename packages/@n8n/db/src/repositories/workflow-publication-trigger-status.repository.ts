@@ -46,16 +46,16 @@ export class WorkflowPublicationTriggerStatusRepository extends Repository<Workf
 
 	/**
 	 * Returns every trigger that should currently be registered in memory: the
-	 * activated, non-webhook (poll/trigger) triggers of active workflows. The
-	 * join on `activeVersionId` drops stale rows left by an interrupted
-	 * unpublish, which would otherwise read as missing forever.
+	 * activated, in-memory triggers of active workflows. The join on
+	 * `activeVersionId` drops stale rows left by an interrupted unpublish, which
+	 * would otherwise read as missing forever.
 	 */
 	async findActivatedInMemoryTriggers(): Promise<InMemoryTriggerRef[]> {
 		return await this.createQueryBuilder('ts')
 			.innerJoin('ts.workflow', 'workflow', 'workflow.activeVersionId IS NOT NULL')
 			.select(['ts.workflowId AS "workflowId"', 'ts.nodeId AS "nodeId"'])
 			.where('ts.status = :status', { status: 'activated' })
-			.andWhere('ts.triggerKind != :webhook', { webhook: 'webhook' })
+			.andWhere('ts.triggerKind = :kind', { kind: 'in-memory' })
 			.getRawMany<InMemoryTriggerRef>();
 	}
 }

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_publication_trigger_status" ("workflowId" varchar(36) NOT NULL, "nodeId" varchar(36) NOT NULL, "versionId" varchar(36) NOT NULL, "status" varchar(20) NOT NULL, "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "triggerKind" varchar(20) NOT NULL, CONSTRAINT "CHK_workflow_publication_trigger_status_status" CHECK (("status" IN ('activated', 'failed'))), CONSTRAINT "CHK_workflow_publication_trigger_status_triggerKind" CHECK ("triggerKind" IN ('webhook', 'poll', 'trigger')), CONSTRAINT "FK_ef1994db9d0ac1b6a5c89b5f729" FOREIGN KEY ("versionId") REFERENCES "workflow_history" ("versionId") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_b7b496d8d1a21158c65f475cd88" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("workflowId", "nodeId"))
+CREATE TABLE "workflow_publication_trigger_status" ("workflowId" varchar(36) NOT NULL, "nodeId" varchar(36) NOT NULL, "versionId" varchar(36) NOT NULL, "status" varchar(20) NOT NULL, "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "triggerKind" varchar(20) NOT NULL, CONSTRAINT "CHK_workflow_publication_trigger_status_status" CHECK (("status" IN ('activated', 'failed'))), CONSTRAINT "CHK_workflow_publication_trigger_status_triggerKind" CHECK ("triggerKind" IN ('in-memory', 'persisted')), CONSTRAINT "FK_ef1994db9d0ac1b6a5c89b5f729" FOREIGN KEY ("versionId") REFERENCES "workflow_history" ("versionId") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_b7b496d8d1a21158c65f475cd88" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("workflowId", "nodeId"))
 ```
 
 </details>
@@ -29,7 +29,7 @@ CREATE TABLE "workflow_publication_trigger_status" ("workflowId" varchar(36) NOT
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK (("status" IN ('activated', 'failed'))) |
-| - | CHECK | CHECK ("triggerKind" IN ('webhook', 'poll', 'trigger')) |
+| - | CHECK | CHECK ("triggerKind" IN ('in-memory', 'persisted')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | nodeId | PRIMARY KEY | PRIMARY KEY (nodeId) |

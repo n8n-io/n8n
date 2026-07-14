@@ -144,7 +144,7 @@ describe('WorkflowTriggerActivator', () => {
 	});
 
 	describe('getTriggerKinds', () => {
-		test('classifies nodes by execution mechanism, poll/trigger taking precedence over webhook', () => {
+		test('classifies poll/trigger nodes as in-memory and webhook-only nodes as persisted', () => {
 			const activator = buildActivator();
 
 			const kinds = activator.getTriggerKinds([
@@ -155,13 +155,13 @@ describe('WorkflowTriggerActivator', () => {
 				node('tw', 'trigger-webhook'),
 			]);
 
-			expect(kinds.get('p')).toBe('poll');
-			expect(kinds.get('t')).toBe('trigger');
-			expect(kinds.get('w')).toBe('webhook');
-			// Hybrid nodes register in memory, so the in-memory kind must win:
-			// classifying them 'webhook' would hide them from reconciliation.
-			expect(kinds.get('pw')).toBe('poll');
-			expect(kinds.get('tw')).toBe('trigger');
+			expect(kinds.get('p')).toBe('in-memory');
+			expect(kinds.get('t')).toBe('in-memory');
+			expect(kinds.get('w')).toBe('persisted');
+			// Hybrid nodes register in memory, so in-memory must win: classifying
+			// them 'persisted' would hide them from reconciliation.
+			expect(kinds.get('pw')).toBe('in-memory');
+			expect(kinds.get('tw')).toBe('in-memory');
 			expect(kinds.size).toBe(5);
 		});
 	});

@@ -50,14 +50,14 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 				versionId: 'v1',
 				status: 'activated',
 				errorMessage: null,
-				triggerKind: 'poll',
+				triggerKind: 'in-memory',
 			},
 			{
 				nodeId: 'n2',
 				versionId: 'v1',
 				status: 'failed',
 				errorMessage: 'boom',
-				triggerKind: 'poll',
+				triggerKind: 'in-memory',
 			},
 		]);
 		expect(await repo.findByWorkflowId(workflow.id)).toHaveLength(2);
@@ -68,7 +68,7 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 				versionId: 'v2',
 				status: 'activated',
 				errorMessage: null,
-				triggerKind: 'poll',
+				triggerKind: 'in-memory',
 			},
 		]);
 		const rows = await repo.findByWorkflowId(workflow.id);
@@ -83,7 +83,7 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 				versionId: 'v1',
 				status: 'activated',
 				errorMessage: null,
-				triggerKind: 'poll',
+				triggerKind: 'in-memory',
 			},
 		]);
 		await repo.replaceForWorkflow(workflow.id, []);
@@ -99,14 +99,14 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 				versionId: 'v-wf-cascade',
 				status: 'activated',
 				errorMessage: null,
-				triggerKind: 'poll',
+				triggerKind: 'in-memory',
 			},
 			{
 				nodeId: 'n2',
 				versionId: 'v-wf-cascade',
 				status: 'failed',
 				errorMessage: 'boom',
-				triggerKind: 'poll',
+				triggerKind: 'in-memory',
 			},
 		]);
 		expect(await repo.findByWorkflowId(ownWorkflow.id)).toHaveLength(2);
@@ -125,7 +125,7 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 				versionId: 'v-version-cascade',
 				status: 'activated',
 				errorMessage: null,
-				triggerKind: 'poll',
+				triggerKind: 'in-memory',
 			},
 		]);
 		expect(await repo.findByWorkflowId(ownWorkflow.id)).toHaveLength(1);
@@ -182,35 +182,35 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 	});
 
 	describe('findActivatedInMemoryTriggers', () => {
-		it('returns activated non-webhook triggers, excluding webhook and failed rows', async () => {
+		it('returns activated in-memory triggers, excluding persisted and failed rows', async () => {
 			await repo.replaceForWorkflow(workflow.id, [
 				{
 					nodeId: 'poll1',
 					versionId: 'v1',
 					status: 'activated',
 					errorMessage: null,
-					triggerKind: 'poll',
+					triggerKind: 'in-memory',
 				},
 				{
 					nodeId: 'trig1',
 					versionId: 'v1',
 					status: 'activated',
 					errorMessage: null,
-					triggerKind: 'trigger',
+					triggerKind: 'in-memory',
 				},
 				{
 					nodeId: 'hook1',
 					versionId: 'v1',
 					status: 'activated',
 					errorMessage: null,
-					triggerKind: 'webhook',
+					triggerKind: 'persisted',
 				},
 				{
 					nodeId: 'poll2',
 					versionId: 'v1',
 					status: 'failed',
 					errorMessage: 'boom',
-					triggerKind: 'poll',
+					triggerKind: 'in-memory',
 				},
 			]);
 
@@ -236,7 +236,7 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 					versionId: 'v1',
 					status: 'activated',
 					errorMessage: null,
-					triggerKind: 'poll',
+					triggerKind: 'in-memory',
 				},
 			]);
 			await repo.replaceForWorkflow(otherWorkflow.id, [
@@ -245,7 +245,7 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 					versionId: 'v-other',
 					status: 'activated',
 					errorMessage: null,
-					triggerKind: 'trigger',
+					triggerKind: 'in-memory',
 				},
 			]);
 
@@ -271,7 +271,7 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 					versionId: 'v-stale',
 					status: 'activated',
 					errorMessage: null,
-					triggerKind: 'poll',
+					triggerKind: 'in-memory',
 				},
 			]);
 

@@ -242,9 +242,9 @@ export class WorkflowPublicationApplier {
 		const failureByNodeId = new Map(outcome.failures.map((f) => [f.nodeId, f]));
 		return desiredTriggerNodes.map((node): TriggerPublicationStatus => {
 			// Every desired node is classified by `getTriggerKinds`; the fallback only
-			// guards an unexpected miss, and 'webhook' is the safe one (the reconciler
+			// guards an unexpected miss, and 'persisted' is the safe one (the reconciler
 			// ignores it) since a stray in-memory guess would re-enqueue forever.
-			const triggerKind = triggerKinds.get(node.id) ?? 'webhook';
+			const triggerKind = triggerKinds.get(node.id) ?? 'persisted';
 			const failure = failureByNodeId.get(node.id);
 			return failure
 				? {

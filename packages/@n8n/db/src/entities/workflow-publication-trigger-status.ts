@@ -7,12 +7,13 @@ import type { WorkflowHistory } from './workflow-history';
 export type WorkflowPublicationTriggerStatusType = 'activated' | 'failed';
 
 /**
- * Trigger execution mechanism. Webhook triggers live in the `webhook_entity`
- * table; poll and trigger nodes are held in memory on the owning instance. The
- * distinction lets reconciliation diff the in-memory triggers (`!= 'webhook'`)
- * against what is actually registered.
+ * Where a trigger lives once activated: nodes whose type implements a `poll`
+ * or `trigger` function are registered `in-memory` on the owning instance,
+ * nodes with only a `webhook` function are `persisted` rows in
+ * `webhook_entity`. Reconciliation diffs the `in-memory` ones against the
+ * registry.
  */
-export type WorkflowPublicationTriggerKind = 'webhook' | 'poll' | 'trigger';
+export type WorkflowPublicationTriggerKind = 'in-memory' | 'persisted';
 
 /**
  * Per-trigger outcome of the most recent version-advancing publication for a
