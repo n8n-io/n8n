@@ -698,9 +698,9 @@ describe('agent-run-reducer', () => {
 				type: 'error',
 				runId: 'run-1',
 				agentId: 'root',
-				// Cast: an unknown code (older/newer service) has no dedicated UI state,
+				// An unknown code (older/newer service) has no dedicated UI state,
 				// so the transcript must still show the raw error.
-				payload: { content: 'boom', code: 'not_a_real_code' as 'quota_exhausted' },
+				payload: { content: 'boom', code: 'not_a_real_code' },
 			});
 
 			expect(state.agentsById['root'].textContent).toContain('boom');

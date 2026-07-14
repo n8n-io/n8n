@@ -19,7 +19,7 @@
  * parse yields a state whose index and tree no longer share objects.
  */
 
-import { getRenderHint, INSTANCE_AI_ERROR_CODES, isSafeObjectKey } from './instance-ai.schema';
+import { getRenderHint, isKnownInstanceAiErrorCode, isSafeObjectKey } from './instance-ai.schema';
 import type {
 	InstanceAiEvent,
 	InstanceAiAgentNode,
@@ -384,7 +384,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			// A recognized error code is rendered by a dedicated UI state from the error
 			// payload, so don't also inline the raw text. An unknown code (older/newer
 			// service) has no such state — fall through and show the raw error.
-			if (event.payload.code && INSTANCE_AI_ERROR_CODES.includes(event.payload.code)) break;
+			if (isKnownInstanceAiErrorCode(event.payload.code)) break;
 			const errorText = '\n\n*Error: ' + event.payload.content + '*';
 			const agent = ensureAgent(state, event.agentId) ?? state.agentsById[state.rootAgentId];
 			if (agent) {

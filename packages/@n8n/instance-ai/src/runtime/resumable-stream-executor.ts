@@ -394,10 +394,13 @@ async function consumeStreamPass(args: {
 
 		if (isErrorChunk(chunk)) {
 			hasError = true;
-			error = chunk.error;
 			// A quota error was already surfaced this run — swallow later error
-			// chunks (usage was still observed above) to avoid a confusing second callout.
+			// chunks (usage was still observed above) to avoid a confusing second
+			// callout. Do this before overwriting `error` so `result.error` stays the
+			// quota error the user saw, rather than the swallowed follow-on — otherwise
+			// telemetry would log a failure the user was never shown.
 			if (quotaErrorPublished) continue;
+			error = chunk.error;
 			if (isQuotaExhaustedError(chunk.error)) quotaErrorPublished = true;
 		}
 

@@ -189,7 +189,7 @@ describe('executeResumableStream', () => {
 		});
 		const followOn = new Error('No output generated. Check the stream for errors.');
 
-		await executeResumableStream({
+		const result = await executeResumableStream({
 			agent: {},
 			stream: {
 				runId: 'agent-run-1',
@@ -212,6 +212,9 @@ describe('executeResumableStream', () => {
 
 		expect(errorEvents).toHaveLength(1);
 		expect(errorEvents[0].payload).toMatchObject({ code: 'quota_exhausted' });
+		// The swallowed follow-on chunk must not overwrite result.error, or telemetry
+		// would log the generic "No output generated" while the user saw the quota error.
+		expect(result.error).toBe(quotaError);
 	});
 
 	it('captures terminal usage on an aborted run so cancelled runs are billed', async () => {
