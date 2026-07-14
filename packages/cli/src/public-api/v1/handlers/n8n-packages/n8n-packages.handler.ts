@@ -26,7 +26,12 @@ const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export';
 type ExportPackageRequest = AuthenticatedRequest<
 	{},
 	{},
-	{ workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] }
+	{
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
+		workflowsRequirementMissingPolicy?: 'fail' | 'reference-only' | 'include-in-package';
+	}
 >;
 
 type ImportPackageRequest = PackageRequest.Import & {
@@ -100,10 +105,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				if (!payload.success) {
 					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
 				}
-
-				console.log({
-					data: payload.data,
-				});
 
 				workflowIds = payload.data.workflowIds ?? [];
 				folderIds = payload.data.folderIds ?? [];

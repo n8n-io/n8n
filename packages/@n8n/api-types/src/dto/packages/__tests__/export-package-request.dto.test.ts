@@ -85,4 +85,36 @@ describe('ExportPackageRequestDto', () => {
 			expect(ExportPackageRequestDto.safeParse(request).success).toBe(false);
 		});
 	});
+
+	describe('workflowsRequirementMissingPolicy', () => {
+		it.each(['fail', 'reference-only', 'include-in-package'])(
+			'accepts %s',
+			(workflowsRequirementMissingPolicy) => {
+				const result = ExportPackageRequestDto.safeParse({
+					workflowIds: ['wf-1'],
+					workflowsRequirementMissingPolicy,
+				});
+
+				expect(result.success).toBe(true);
+			},
+		);
+
+		it('defaults to fail', () => {
+			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1'] });
+
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.workflowsRequirementMissingPolicy).toBe('fail');
+			}
+		});
+
+		it('rejects unknown values', () => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				workflowsRequirementMissingPolicy: 'skip',
+			});
+
+			expect(result.success).toBe(false);
+		});
+	});
 });

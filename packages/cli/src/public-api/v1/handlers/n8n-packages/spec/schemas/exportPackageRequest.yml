@@ -40,6 +40,7 @@ properties:
       - reference-only
       - include-in-package
     description: >-
-      What to do when a dependency workflow (sub-workflow) is not explicitely included in the package target.
+      What to do when a dependency workflow (sub-workflow) is not explicitly
+      included in the package target.
     example: fail
     default: fail

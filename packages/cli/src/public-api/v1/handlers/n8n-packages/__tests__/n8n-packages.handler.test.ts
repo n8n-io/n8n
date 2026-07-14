@@ -44,7 +44,12 @@ describe('n8n-packages handler', () => {
 	let mockEventService: Mocked<EventService>;
 
 	function makeRequest(
-		body: { workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] },
+		body: {
+			workflowIds?: string[];
+			folderIds?: string[];
+			projectIds?: string[];
+			workflowsRequirementMissingPolicy?: string;
+		},
 		apiKeyScopes?: string[],
 	) {
 		return {
@@ -293,6 +298,33 @@ describe('n8n-packages handler', () => {
 				'attachment; filename="export.n8np"',
 			);
 			expect(mockEventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('accepts a workflows requirement missing policy without changing the export request', async () => {
+			const stream = new PassThrough();
+			mockService.exportPackage.mockResolvedValue(stream);
+			const res = makeResponse();
+
+			const resultPromise = run(
+				makeRequest(
+					{
+						workflowIds: ['wf-1'],
+						workflowsRequirementMissingPolicy: 'reference-only',
+					},
+					['workflow:export'],
+				),
+				res,
+			);
+			stream.end(Buffer.from('package-bytes'));
+			const caught = await resultPromise;
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				user: { id: 'user-1' },
+				workflowIds: ['wf-1'],
+				folderIds: [],
+				projectIds: [],
+			});
 		});
 
 		it('streams the export for a valid project request', async () => {
