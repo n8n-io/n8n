@@ -414,6 +414,9 @@ export class InstanceAiController {
 			});
 			try {
 				const missed = await this.eventLog.getEventsAfter(threadId, cursor);
+				// The client may have disconnected during the read: stop before
+				// writing to the dead response or arming the keep-alive below.
+				if (closed) return;
 				let lastReplayedSeq = cursor;
 				for (const stored of missed) {
 					deliver(stored);
@@ -423,11 +426,9 @@ export class InstanceAiController {
 				// group renders fully even when the bus cache was evicted, the process
 				// restarted, or this main never buffered the thread (sibling main).
 				for (const [groupId, group] of liveGroups) {
-					writeRunSyncFrame(
-						groupId,
-						group,
-						await this.eventLog.getEventsForRuns(threadId, group.runIds),
-					);
+					const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
+					if (closed) return;
+					writeRunSyncFrame(groupId, group, runEvents);
 				}
 				for (const stored of arrivedDuringReplay) {
 					if (stored.id === undefined || stored.id > lastReplayedSeq) deliver(stored);

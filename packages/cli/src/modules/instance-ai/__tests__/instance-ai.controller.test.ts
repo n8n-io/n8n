@@ -1849,4 +1849,61 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		expect(unsubscribers).toHaveLength(2);
 		expect(unsubscribers[1]).toHaveBeenCalledTimes(1);
 	});
+
+	it('stops the bootstrap when the client disconnects during a durable read', async () => {
+		memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		memoryService.getLatestRunSnapshot.mockResolvedValue(undefined);
+		instanceAiService.getThreadStatus.mockReturnValue({
+			hasActiveRun: true,
+			isSuspended: false,
+			backgroundTasks: [],
+		} as never);
+		instanceAiService.getMessageGroupId.mockReturnValue('group-1');
+		instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+
+		eventBus.subscribe.mockReturnValue(vi.fn());
+
+		const onceHandlers = new Map<string, () => void>();
+		const sseReq = mock<AuthenticatedRequest>({
+			user: { id: USER_ID },
+			headers: {},
+			once: vi.fn(((eventName: string, handler: () => void) => {
+				onceHandlers.set(eventName, handler);
+			}) as never),
+		});
+		const sseRes = mock<Response & { flush?: () => void }>({
+			setHeader: vi.fn(),
+			flushHeaders: vi.fn(),
+			write: vi.fn(),
+			end: vi.fn(),
+			flush: vi.fn(),
+		});
+
+		eventLog.getEventsAfter.mockImplementation(async () => {
+			// The browser goes away while the replay read is in flight. Without a
+			// post-await check, the frames below would be written to a dead
+			// response and the keep-alive interval would be created after cleanup
+			// already ran, leaking it for good.
+			onceHandlers.get('close')!();
+			return [
+				{
+					id: 6,
+					event: {
+						type: 'tool-call',
+						runId: 'run-1',
+						agentId: 'a1',
+						payload: { toolCallId: 'tc', toolName: 't', args: {} },
+					},
+				},
+			] as never;
+		});
+
+		await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: 5 } as never);
+
+		const frames = (sseRes.write as Mock).mock.calls.map(([frame]) => String(frame));
+		expect(frames.some((f) => f.includes('tool-call'))).toBe(false);
+		expect(frames.some((f) => f.startsWith('event: run-sync'))).toBe(false);
+		expect(eventLog.getEventsForRuns).not.toHaveBeenCalled();
+		expect(durableLogMetrics.recordReplay).not.toHaveBeenCalled();
+	});
 });
