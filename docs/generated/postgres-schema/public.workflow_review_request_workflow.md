@@ -25,8 +25,6 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_review_request_workflow_workflow_id | CREATE INDEX "IDX_workflow_review_request_workflow_workflow_id" ON public.workflow_review_request_workflow USING btree ("workflowId") |
-| IDX_workflow_review_request_workflow_workflow_version | CREATE INDEX "IDX_workflow_review_request_workflow_workflow_version" ON public.workflow_review_request_workflow USING btree ("workflowId", "workflowVersionId") WHERE ("workflowVersionId" IS NOT NULL) |
 | PK_be3bf4facb054cf2b2b116b3b9c | CREATE UNIQUE INDEX "PK_be3bf4facb054cf2b2b116b3b9c" ON public.workflow_review_request_workflow USING btree (id) |
 | UQ_workflow_review_request_workflow_request_workflow | CREATE UNIQUE INDEX "UQ_workflow_review_request_workflow_request_workflow" ON public.workflow_review_request_workflow USING btree ("workflowReviewRequestId", "workflowId") |
 

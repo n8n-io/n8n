@@ -1,4 +1,4 @@
-import { Column, Entity, Index, Unique } from '@n8n/typeorm';
+import { Column, Entity, Unique } from '@n8n/typeorm';
 
 import { WithStringId } from './abstract-entity';
 
@@ -7,14 +7,6 @@ import { WithStringId } from './abstract-entity';
 	'workflowReviewRequestId',
 	'workflowId',
 ])
-@Index(
-	'IDX_workflow_review_request_workflow_workflow_version',
-	['workflowId', 'workflowVersionId'],
-	{
-		where: '"workflowVersionId" IS NOT NULL',
-	},
-)
-@Index('IDX_workflow_review_request_workflow_workflow_id', ['workflowId'])
 export class WorkflowReviewRequestWorkflow extends WithStringId {
 	@Column({ type: 'varchar', length: 36 })
 	workflowReviewRequestId: string;
