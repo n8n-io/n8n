@@ -1,0 +1,63 @@
+packages/frontend/editor-ui/src/Interface.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 13,649
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/modals.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 1
+packages/frontend/editor-ui/src/app/components/DynamicModalLoader.vue
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 4
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/modals.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 1
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 9
+packages/frontend/editor-ui/tsconfig.json
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 11,24
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 1
+packages/frontend/editor-ui/src/features/settings/otel/module.descriptor.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 1
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 3
+packages/frontend/@n8n/frontend-module-sdk/README.md
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 1-16
+packages/frontend/editor-ui/src/features/core/dataTable/module.descriptor.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 2
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 2
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 106
+packages/frontend/editor-ui/package.json
+  s_6d27884ffc85e2::t_76d8403ac8a506 51
+packages/frontend/editor-ui/src/features/ai/mcpAccess/module.descriptor.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 2
+packages/frontend/editor-ui/vite.config.mts
+  s_6d27884ffc85e2::t_5379927d65b976 55-56
+packages/frontend/editor-ui/src/app/components/DynamicModalLoader.test.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 5-6,10
+packages/frontend/editor-ui/src/features/execution/insights/module.descriptor.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 2
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 1-36
+packages/frontend/editor-ui/src/app/utils/modules/tabUtils.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 1
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 2
+packages/frontend/editor-ui/src/features/ai/chatHub/module.descriptor.ts
+  s_6d27884ffc85e2::t_b1ea67dc1f7922 1
+pnpm-lock.yaml
+  s_6d27884ffc85e2::t_015abc46288591 5049,5051,5053,5057,5059,5073-5075,5086,5088,5090,5094,5096,5101-5103,5110-5130,5458-5460
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "5b92b825ad7a9c943b79fecab681bc888f30ee3c",
+  "prompts": {},
+  "sessions": {
+    "s_6d27884ffc85e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3099e6f-2780-48af-99a8-15d2fd947bf2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

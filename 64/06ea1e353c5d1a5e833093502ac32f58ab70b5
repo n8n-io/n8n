@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.ts
+  s_9fa10492ef2960::t_9228e41ecc09a9 106-107,119-126
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedSummary.vue
+  s_9fa10492ef2960::t_769ebe9f1909cf 86
+packages/cli/src/modules/agents/agents.service.ts
+  s_9fa10492ef2960::t_b5d9f1a58df204 144
+  s_9fa10492ef2960::t_4dd4142234dce9 119-120
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_9fa10492ef2960::t_c286a0c8a4f45b 229-236
+  s_9fa10492ef2960::t_2cbe11b19198c2 267
+  s_9fa10492ef2960::t_7e5a26c66d9b68 287
+packages/frontend/editor-ui/src/features/agents/utils/inlineAgent.ts
+  s_9fa10492ef2960::t_1b6fb3931fb74c 47,62
+packages/@n8n/api-types/src/agents/types.ts
+  s_9fa10492ef2960::t_df720f76391373 172-176,190-194
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.test.ts
+  s_9fa10492ef2960::t_f82b00ef0d3258 43-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6406ea1e353c5d1a5e833093502ac32f58ab70b5",
+  "prompts": {},
+  "sessions": {
+    "s_9fa10492ef2960": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c366ff8-c020-4541-a1e3-899d51d5e3ae",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

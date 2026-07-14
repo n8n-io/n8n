@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_78d96f7c8d922e::t_ca002264bb8e5f 212
+  s_78d96f7c8d922e::t_ab06357b6f9a18 154
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_78d96f7c8d922e::t_8eab5ce76b54cf 126
+  s_78d96f7c8d922e::t_8a139f940be665 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "a627efe3a3954168de793b4342c49d35428b4722",
+  "prompts": {},
+  "sessions": {
+    "s_78d96f7c8d922e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6542cf9a-f188-442b-84bc-fa44188df322",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

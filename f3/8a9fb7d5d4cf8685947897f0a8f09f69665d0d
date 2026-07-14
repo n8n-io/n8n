@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.vue
+  s_78d96f7c8d922e::t_48ab971ae4e1a2 12
+  s_78d96f7c8d922e::t_7c182d8d51c037 63
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_78d96f7c8d922e::t_3a6d9ff618d33f 260-316
+  s_78d96f7c8d922e::t_3556b085246fbd 12
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_78d96f7c8d922e::t_83f8eba494dce7 238-281
+  s_78d96f7c8d922e::t_18b03e3e57189e 282-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "f38a9fb7d5d4cf8685947897f0a8f09f69665d0d",
+  "prompts": {},
+  "sessions": {
+    "s_78d96f7c8d922e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6542cf9a-f188-442b-84bc-fa44188df322",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

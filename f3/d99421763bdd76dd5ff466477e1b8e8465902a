@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_6615a7cad0865b::t_85893a1d10055c 110-112,114-115,117-121
+  s_6615a7cad0865b::t_4fe64ec6e5d72b 18
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  s_6615a7cad0865b::t_84756b4ec162e1 22-26
+  s_6615a7cad0865b::t_23351e5cdeb694 268-270,274,276-278
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_6615a7cad0865b::t_832cae503bcaea 85-89
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.test.ts
+  s_6615a7cad0865b::t_8ef0581953edfc 278
+  s_6615a7cad0865b::t_4ad535d906d58d 242,246,248-253,270-277,279-281
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_6615a7cad0865b::t_1d2ca0bdcbe3fa 9
+  s_6615a7cad0865b::t_db1d9dea7af76a 118-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f3d99421763bdd76dd5ff466477e1b8e8465902a",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6615a7cad0865b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88080833-95f0-4af6-befe-780e1a12767c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
