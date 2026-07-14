@@ -178,6 +178,19 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
+	 * Delete all jobs of one task type owned by a workflow; their tasks cascade away.
+	 * @returns how many jobs were deleted (0 when the driver can't report it).
+	 */
+	async deleteByWorkflowTaskType(
+		manager: EntityManager,
+		workflowId: string,
+		taskType: string,
+	): Promise<number> {
+		const result = await manager.delete(ScheduledJob, { workflowId, taskType });
+		return result.affected ?? 0;
+	}
+
+	/**
 	 * Advance many jobs' clocks, a statement per chunk.
 	 * Callers pass distinct ids (a batch of claimed jobs).
 	 */
