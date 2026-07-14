@@ -119,7 +119,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 8 |  | BASE TABLE |
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
-| [public.workflow_review_request](public.workflow_review_request.md) | 13 |  | BASE TABLE |
+| [public.workflow_review_request](public.workflow_review_request.md) | 12 |  | BASE TABLE |
 | [public.workflow_review_request_authors](public.workflow_review_request_authors.md) | 3 |  | BASE TABLE |
 | [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) | 3 |  | BASE TABLE |
 | [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) | 4 |  | BASE TABLE |
@@ -1404,7 +1404,6 @@ erDiagram
   varchar_50_ decision
   text description
   varchar_36_ id
-  timestamp_3__with_time_zone lastStatusChangeAt
   varchar_36_ projectId FK
   varchar_16_ state
   varchar_512_ title

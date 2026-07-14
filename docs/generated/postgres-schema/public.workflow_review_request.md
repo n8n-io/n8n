@@ -11,7 +11,6 @@
 | decision | varchar(50) | 'pending'::character varying | false |  |  | Latest review outcome while the request is open |
 | description | text |  | true |  |  |  |
 | id | varchar(36) |  | false | [public.workflow_review_request_authors](public.workflow_review_request_authors.md) [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) |  |  |
-| lastStatusChangeAt | timestamp(3) with time zone |  | true |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | state | varchar(16) | 'open'::character varying | false |  |  | Review lifecycle: open reviews accept actions; closed reviews are done |
 | title | varchar(512) |  | false |  |  |  |
@@ -64,7 +63,6 @@ erDiagram
   varchar_50_ decision
   text description
   varchar_36_ id
-  timestamp_3__with_time_zone lastStatusChangeAt
   varchar_36_ projectId FK
   varchar_16_ state
   varchar_512_ title
