@@ -64,11 +64,11 @@ export class DurableScheduler implements Scheduler {
 						failedRetentionSeconds: config.failedRetentionSeconds,
 					},
 					lifecycle: {
-						materializerIntervalSeconds: config.sweepIntervalSeconds,
+						materializerIntervalSeconds: config.materializationIntervalSeconds,
 						executorIntervalSeconds: config.executorIntervalSeconds,
 						reaperIntervalSeconds: config.reaperIntervalSeconds,
 						retentionIntervalSeconds: config.retentionIntervalSeconds,
-						materializerTimeoutSeconds: config.sweepTimeoutSeconds,
+						materializerTimeoutSeconds: config.materializationTimeoutSeconds,
 						executorTimeoutSeconds: config.executorTimeoutSeconds,
 						reaperTimeoutSeconds: config.reaperTimeoutSeconds,
 						retentionTimeoutSeconds: config.retentionTimeoutSeconds,

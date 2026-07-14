@@ -352,8 +352,8 @@ A few things that are not obvious from the code but save a lot of confusion.
   provisioning does).
 
 - **Each background pass runs on its own timer, with jitter.** The four passes are
-  independent and slightly randomised, so several servers do not all sweep in
-  lockstep, and one slow pass does not stall the others.
+  independent and slightly randomised, so several servers do not all run their
+  passes in lockstep, and one slow pass does not stall the others.
 
 ## Future ideas
 
