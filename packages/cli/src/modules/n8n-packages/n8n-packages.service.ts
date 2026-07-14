@@ -1,4 +1,3 @@
-import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { Readable } from 'node:stream';
@@ -6,6 +5,8 @@ import type { Readable } from 'node:stream';
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { User } from '@n8n/db';
 import { N8nPackageParser } from './engine/n8n-package-parser';
 import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
@@ -47,6 +48,7 @@ export class N8nPackagesService {
 		private readonly projectPackageImporter: ProjectPackageImporter,
 		private readonly workflowPackageImporter: WorkflowPackageImporter,
 		private readonly eventService: EventService,
+		private readonly workflowFinder: WorkflowFinderService,
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
@@ -104,15 +106,9 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
-		const workflowEntitiesInPackage = [
-			...(workflowExportResult?.workflowEntities ?? []),
-			...(folderExportResult?.workflowEntities ?? []),
-			...(projectExportResult?.workflowEntities ?? []),
-		];
-
-		this.assertStaticSubWorkflowsIncluded(
-			workflowEntitiesInPackage,
+		await this.assertStaticSubWorkflowsIncluded(
 			new Set(allWorkflowsInPackage.map(({ id }) => id)),
+			request.user,
 		);
 
 		const credentialExportResult = await this.credentialExporter.export({
@@ -190,13 +186,23 @@ export class N8nPackagesService {
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
 	}
 
-	private assertStaticSubWorkflowsIncluded(
-		workflows: WorkflowEntity[],
-		exportedWorkflowIds: Set<string>,
-	) {
+	/**
+	 * OPTIMIZE: potentially accept the allInPackageWorkflows as an argument instead of a Set.
+	 * This way ther is slightly less work for the caller. Since this is a private method, it's not a big deal.
+	 */
+	private async assertStaticSubWorkflowsIncluded(exportedWorkflowIds: Set<string>, user: User) {
 		const missingSubWorkflowIds = new Set<string>();
 
-		for (const workflow of workflows) {
+		for (const workflowId of exportedWorkflowIds) {
+			const workflow = await this.workflowFinder.findWorkflowForUser(workflowId, user, [
+				'workflow:export',
+			]);
+
+			if (!workflow) {
+				missingSubWorkflowIds.add(workflowId);
+				continue;
+			}
+
 			for (const reference of extractSubWorkflowRequirements(workflow)) {
 				if (!exportedWorkflowIds.has(reference.sourceWorkflowId)) {
 					missingSubWorkflowIds.add(reference.sourceWorkflowId);
