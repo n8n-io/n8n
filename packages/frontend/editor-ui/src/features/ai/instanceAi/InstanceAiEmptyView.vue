@@ -669,7 +669,8 @@ function handleShelfSuggestionInsert(payload: {
 	gap: var(--spacing--lg);
 	padding: var(--spacing--lg);
 	padding-top: 20vh;
-	overflow: hidden;
+	overflow-y: auto;
+	overflow-x: hidden;
 }
 
 .centeredInput {
