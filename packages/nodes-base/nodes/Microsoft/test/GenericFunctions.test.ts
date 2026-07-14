@@ -165,6 +165,15 @@ describe('Microsoft shared validateUserTargetId', () => {
 });
 
 describe('Microsoft shared stampItemIndexOnError', () => {
+	it('stamps context.itemIndex on a NodeError that lacks one, preserving other context keys', () => {
+		const error = new NodeOperationError(node, 'boom');
+		error.context.foo = 'bar';
+
+		expect(stampItemIndexOnError(error, 3)).toBe(error);
+		expect(error.context.itemIndex).toBe(3);
+		expect(error.context.foo).toBe('bar');
+	});
+
 	it('does not overwrite an already-set context.itemIndex', () => {
 		const error = new NodeOperationError(node, 'boom', { itemIndex: 5 });
 

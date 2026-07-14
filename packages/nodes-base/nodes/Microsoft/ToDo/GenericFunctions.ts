@@ -67,7 +67,7 @@ export function getServicePrincipalResourceRoot(rawId: string, node: INode): str
  */
 export function resolveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	itemIndex = 0,
+	itemIndex: number,
 ): string | undefined {
 	if (getToDoCredentialType.call(this) !== 'microsoftEntraServicePrincipalApi') {
 		return undefined;
@@ -80,19 +80,19 @@ export function resolveScopeRoot(
 	return getServicePrincipalResourceRoot(id, this.getNode());
 }
 
-// `itemIndex` is REQUIRED so the compiler enforces the per-item contract: execute
-// call sites pass the loop index; loadOptions call sites pass a literal 0, where
-// `getNodeParameter`'s 2nd arg is a fallback, not an index.
+// `itemIndex` is REQUIRED (and placed before the defaulted params so call sites
+// need no positional padding): execute call sites pass the loop index; loadOptions
+// call sites pass a literal 0, where `getNodeParameter`'s 2nd arg is a fallback,
+// not an index.
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
+	itemIndex: number,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri: string | undefined,
-	_headers: IDataObject = {},
+	uri?: string,
 	option: IDataObject = { json: true },
-	itemIndex: number,
 ) {
 	const credentialType = getToDoCredentialType.call(this);
 	const isServicePrincipal = credentialType === 'microsoftEntraServicePrincipalApi';
@@ -150,9 +150,9 @@ export async function microsoftApiRequestAllItems(
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
+	itemIndex: number,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	itemIndex: number,
 ) {
 	const returnData: IDataObject[] = [];
 
@@ -165,12 +165,10 @@ export async function microsoftApiRequestAllItems(
 			this,
 			method,
 			endpoint,
+			itemIndex,
 			body,
 			query,
 			uri,
-			undefined,
-			undefined,
-			itemIndex,
 		);
 		uri = responseData['@odata.nextLink'];
 		if (uri?.includes('$top')) {
