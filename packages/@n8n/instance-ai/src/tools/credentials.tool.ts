@@ -87,7 +87,7 @@ export const setupHintField = z
 			.max(10)
 			.optional()
 			.describe(
-				"Only for services documented to answer 401/403 to a plain authenticated GET even when the credential is valid (e.g. auth scoped to POST): list those codes so the auth probe doesn't misread them as rejection. Omit for normal services — codes other than 401/403 never fail the probe.",
+				'Almost always omit. Only when the provider is documented to answer 401 or 403 to a valid authenticated GET (e.g. auth scoped to POST), list that code (401/403 only) so the auth probe does not misread it as rejection. Never list success codes — anything outside 401/403 can never fail the probe.',
 			),
 	})
 	.describe(
