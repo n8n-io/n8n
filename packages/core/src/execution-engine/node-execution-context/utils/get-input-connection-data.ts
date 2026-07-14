@@ -156,20 +156,6 @@ function containsBinaryData(nodeExecutionResult?: NodeOutput): boolean {
 	return nodeExecutionResult.some((outputBranch) => outputBranch.some((item) => item.binary));
 }
 
-function containsDataThatIsUsefulToTheAgent(nodeExecutionResult?: NodeOutput): boolean {
-	if (isEngineRequest(nodeExecutionResult)) {
-		return false;
-	}
-
-	if (nodeExecutionResult === undefined || nodeExecutionResult === null) {
-		return false;
-	}
-
-	return nodeExecutionResult.some((outputBranch) =>
-		outputBranch.some((item) => Object.keys(item.json).length > 0),
-	);
-}
-
 /**
  * Filters out non-json items and reports if the result contained mixed
  * responses (e.g. json and binary).
@@ -179,7 +165,7 @@ function mapResult(result?: NodeOutput) {
 		| string
 		| Array<IDataObject | GenericValue | GenericValue[] | IDataObject[]>
 		| undefined;
-	let nodeHasMixedJsonAndBinaryData = false;
+	const nodeHasMixedJsonAndBinaryData = false;
 	let sendMessage: ChatNodeMessageWithButtons | string | undefined = undefined;
 	let binary: INodeExecutionData['binary'] | undefined = undefined;
 

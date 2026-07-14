@@ -606,7 +606,9 @@ describe('makeHandleToolInvocation', () => {
 	it('should handle binary data and forward it in the output data', async () => {
 		const mockContext = mock<IExecuteFunctions>();
 		contextFactory.mockReturnValue(mockContext);
-		const mockResult = [[{ json: {}, binary: { file: 'data' } } as any]];
+		const mockResult = [
+			[{ json: {}, binary: { file: 'data' } }],
+		] as unknown as INodeExecutionData[][];
 		execute.mockResolvedValueOnce(mockResult);
 
 		const handleToolInvocation = makeHandleToolInvocation(
