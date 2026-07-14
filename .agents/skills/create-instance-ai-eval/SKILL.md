@@ -365,11 +365,6 @@ red is harness-caused (per "A red is signal", above):
     `outcomeExpectations`, not its runtime effect in a scenario.
   - A less-common API (e.g. Gemini's top-level `candidates`) can omit its envelope
     the same way.
-  - **OpenAI image generation** — the image mock returns a URL-style response
-    (`data[0].url`) instead of the base64 payload (`data[0].b64_json`) the node is
-    configured to read, so an OpenAI image node crashes with "first argument must
-    be of type string … Received undefined". Carry correctness in
-    `outcomeExpectations`.
   - **Google Drive resumable upload** — the initiate-upload mock omits the
     `Location` header carrying the session URL, so a Drive file-upload node fails
     with a 400. Any build that uploads a generated image/file to Drive can red on
