@@ -325,6 +325,30 @@ describe('Executor.fire', () => {
 		expect(order).toEqual(['markDispatched', 'rescheduleTask']);
 	});
 
+	it('completes rather than dead-letters a last attempt whose handler threw after dispatch', async () => {
+		const { store, registry, hooks, executor } = setup();
+		const handler: TaskHandler = {
+			execute: vi.fn(async (_task: ClaimedTask, onDispatch: () => void) => {
+				onDispatch();
+				await Promise.resolve();
+				throw new Error('post-dispatch failure');
+			}),
+		};
+		store.beginDispatch.mockResolvedValue(1);
+		store.markDispatched.mockResolvedValue(1);
+		store.completeTask.mockResolvedValue(1);
+		registry.resolve.mockReturnValue(handler);
+
+		// Last attempt (the shipped default): the effect already happened, so the task
+		// must not be recorded failed for work that was done.
+		const result = await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 1 }));
+
+		expect(result).toEqual({ outcome: 'completed' });
+		expect(store.completeTask).toHaveBeenCalledTimes(1);
+		expect(store.failTaskTerminal).not.toHaveBeenCalled();
+		expect(hooks.onFire).toHaveBeenCalledWith('workflow:schedule-trigger', 'success');
+	});
+
 	it('threads the claimed lease epoch through the terminal calls for fencing', async () => {
 		const { store, registry, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockResolvedValue(undefined) };

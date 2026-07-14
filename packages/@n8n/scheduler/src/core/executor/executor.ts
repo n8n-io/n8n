@@ -267,6 +267,19 @@ export class Executor {
 			const errorMessage = ensureError(error).message;
 			const nextAttempts = task.attempts + 1;
 			if (nextAttempts >= task.maxAttempts) {
+				// If the handler had already handed off its effect (onDispatch ran, so
+				// `dispatchMark` is set) before throwing, the occurrence's work is done.
+				// On this last attempt, recording it failed would blame the scheduler for
+				// work that happened; complete it as succeeded instead, mirroring the
+				// reaper's post-dispatch branch. Only pre-dispatch failures are dead-lettered.
+				if (dispatchMark !== undefined) {
+					const rowsAffected = await this.store.completeTask(claim);
+					if (rowsAffected > 0) {
+						this.hooks.onFire?.(task.taskType, 'success');
+						return { outcome: 'completed' };
+					}
+					return { outcome: 'skipped-not-owned', errorMessage };
+				}
 				// A terminal write resolves 0 (it does not reject) when the row was
 				// reclaimed by the reaper after a lease overrun. The result is then no
 				// longer ours to record: report the fire as skipped, not as a state
