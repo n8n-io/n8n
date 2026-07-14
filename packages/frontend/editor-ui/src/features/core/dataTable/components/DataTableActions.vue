@@ -63,7 +63,7 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 		{
 			label: i18n.baseText('dataTable.download.csv'),
 			value: DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV,
-			disabled: false,
+			disabled: !dataTableStore.projectPermissions.dataTable.readRow,
 		},
 		{
 			label: favoritesStore.isFavorite(props.dataTable.id, 'dataTable')
