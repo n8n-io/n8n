@@ -5,7 +5,7 @@ import type { PluginContext } from '../types';
 // Helper to create a mock node instance
 function createMockNode(
 	type: string,
-	config: { parameters?: Record<string, unknown> } = {},
+	config: { parameters?: Record<string, unknown>; credentials?: Record<string, unknown> } = {},
 ): NodeInstance<string, string, unknown> {
 	return {
 		type,
@@ -13,6 +13,7 @@ function createMockNode(
 		version: '1',
 		config: {
 			parameters: config.parameters ?? {},
+			...(config.credentials ? { credentials: config.credentials } : {}),
 		},
 	} as NodeInstance<string, string, unknown>;
 }
@@ -324,6 +325,69 @@ describe('httpRequestValidator', () => {
 			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
 
 			expect(issues).toHaveLength(0);
+		});
+	});
+
+	describe('validateNode - plain generic auth', () => {
+		const bearerParams = {
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpBearerAuth',
+		};
+
+		it('warns when a plain generic auth type is used with a new credential', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: bearerParams,
+				credentials: { httpBearerAuth: { __newCredential: true, name: 'Replicate API' } },
+			});
+			const issues = httpRequestValidator.validateNode!(
+				node,
+				createGraphNode(node),
+				createMockPluginContext(),
+			);
+			expect(issues).toContainEqual(
+				expect.objectContaining({ code: 'PLAIN_GENERIC_AUTH', severity: 'warning' }),
+			);
+		});
+
+		it('warns when no credential is attached at all', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', { parameters: bearerParams });
+			const issues = httpRequestValidator.validateNode!(
+				node,
+				createGraphNode(node),
+				createMockPluginContext(),
+			);
+			expect(issues.map((issue) => issue.code)).toContain('PLAIN_GENERIC_AUTH');
+		});
+
+		it('stays silent when the credential already exists', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: bearerParams,
+				credentials: {
+					httpBearerAuth: { __newCredential: true, name: 'Replicate API', id: 'cred-1' },
+				},
+			});
+			const issues = httpRequestValidator.validateNode!(
+				node,
+				createGraphNode(node),
+				createMockPluginContext(),
+			);
+			expect(issues.map((issue) => issue.code)).not.toContain('PLAIN_GENERIC_AUTH');
+		});
+
+		it('stays silent for Templated Custom Auth itself', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpTemplatedCustomAuth',
+				},
+				credentials: { httpTemplatedCustomAuth: { __newCredential: true, name: 'Replicate API' } },
+			});
+			const issues = httpRequestValidator.validateNode!(
+				node,
+				createGraphNode(node),
+				createMockPluginContext(),
+			);
+			expect(issues.map((issue) => issue.code)).not.toContain('PLAIN_GENERIC_AUTH');
 		});
 	});
 });

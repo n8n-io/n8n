@@ -2219,6 +2219,17 @@ export function generatePropertyLine(
 	optional: boolean,
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
+	// Steer generic-auth selection at the moment the model reads this type: a
+	// bare union invites httpBearerAuth for any provider documenting
+	// `Authorization: Bearer <token>`.
+	if (prop.type === 'credentialsSelect' && prop.name === 'genericAuthType' && !prop.description) {
+		prop = {
+			...prop,
+			description:
+				'For NEW credentials prefer \'httpTemplatedCustomAuth\' whenever the auth fits header/query/body values — `Authorization: Bearer <token>` becomes the template {"headers":{"Authorization":"Bearer {{api_key}}"}}; do NOT use httpBearerAuth for it. Plain generic types are only for reusing an existing credential or for what a template cannot express (basic, digest, OAuth).',
+		};
+	}
+
 	const tsType = mapPropertyType(prop, discriminatorContext);
 	if (!tsType) {
 		return ''; // Skip this property

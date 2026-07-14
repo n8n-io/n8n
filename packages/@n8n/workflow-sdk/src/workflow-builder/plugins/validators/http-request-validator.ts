@@ -12,6 +12,23 @@ import {
 } from '../../validation-helpers';
 import type { ValidatorPlugin, ValidationIssue, PluginContext } from '../types';
 
+const TEMPLATABLE_PLAIN_AUTH_TYPES = new Set([
+	'httpBearerAuth',
+	'httpHeaderAuth',
+	'httpQueryAuth',
+	'httpCustomAuth',
+]);
+
+/** `newCredential('name')` sentinel without an id — a credential that does not exist yet. */
+function isNewCredentialSentinel(value: unknown): boolean {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'__newCredential' in value &&
+		!(value as { id?: string }).id
+	);
+}
+
 const XML_PAYLOAD_START_PATTERN =
 	/^\s*(?:=\s*)?(?:\{\{\s*)?['"`]?\s*(?:<\?xml|<soap:?|<s:envelope|<env:envelope)/i;
 const XML_PAYLOAD_REFERENCE_PATTERN = /\b(?:soap|xml)[\w-]*(?:body|payload|envelope|request)\b/i;
@@ -78,6 +95,29 @@ export const httpRequestValidator: ValidatorPlugin = {
 						parameterPath: `headerParameters.parameters[${header.name}]`,
 					});
 				}
+			}
+		}
+
+		// New plain generic credentials are steered to Templated Custom Auth: a
+		// provider documenting `Authorization: Bearer <token>` reliably lures the
+		// model into httpBearerAuth, and setup rejects that for new credentials.
+		const genericAuthType = params.genericAuthType;
+		if (
+			params.authentication === 'genericCredentialType' &&
+			typeof genericAuthType === 'string' &&
+			TEMPLATABLE_PLAIN_AUTH_TYPES.has(genericAuthType)
+		) {
+			const credentials = (node.config as { credentials?: Record<string, unknown> } | undefined)
+				?.credentials;
+			const credential = credentials?.[genericAuthType];
+			if (credential === undefined || isNewCredentialSentinel(credential)) {
+				issues.push({
+					code: 'PLAIN_GENERIC_AUTH',
+					message: `'${node.name}' creates a new ${genericAuthType} credential. Set genericAuthType to 'httpTemplatedCustomAuth' instead — \`Authorization: Bearer <token>\` becomes the template {"headers":{"Authorization":"Bearer {{api_key}}"}} — or credential setup will reject it. Plain generic types are only for reusing an existing credential.`,
+					severity: 'warning',
+					nodeName: node.name,
+					parameterPath: 'genericAuthType',
+				});
 			}
 		}
 

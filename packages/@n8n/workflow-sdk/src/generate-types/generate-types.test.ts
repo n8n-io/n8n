@@ -2578,6 +2578,18 @@ describe('generate-types', () => {
 			expect(result).toContain('Expression<string>');
 		});
 
+		it('should emit steering JSDoc for genericAuthType', () => {
+			const prop: NodeProperty = {
+				name: 'genericAuthType',
+				displayName: 'Generic Auth Type',
+				type: 'credentialsSelect',
+				default: '',
+			};
+			const line = generateTypes.generatePropertyLine(prop, true);
+			expect(line).toContain('httpTemplatedCustomAuth');
+			expect(line).toContain('do NOT use httpBearerAuth');
+		});
+
 		it('should NOT skip credentialsSelect properties in type generation', () => {
 			// Mock HTTP Request node with credentialsSelect fields
 			const nodeWithCredentialsSelect: NodeTypeDescription = {
