@@ -1,8 +1,8 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { MicrosoftExcelSharePoint } from '../MicrosoftExcelSharePoint.node';
 import { MicrosoftExcel } from '../../Excel/MicrosoftExcel.node';
+import { MicrosoftExcelSharePoint } from '../MicrosoftExcelSharePoint.node';
 
 describe('MicrosoftExcelSharePoint (hidden shell)', () => {
 	const node = new MicrosoftExcelSharePoint();
