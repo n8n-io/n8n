@@ -126,6 +126,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					workflowIds,
 					folderIds,
 					projectIds,
+					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
 				});
 
 				return await streamPackageExport(res, stream);

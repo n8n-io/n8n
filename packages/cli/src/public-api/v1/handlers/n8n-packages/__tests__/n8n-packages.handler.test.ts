@@ -291,6 +291,7 @@ describe('n8n-packages handler', () => {
 				workflowIds: ['wf-1', 'wf-2'],
 				folderIds: [],
 				projectIds: [],
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 			expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/gzip');
 			expect(res.setHeader).toHaveBeenCalledWith(
@@ -300,7 +301,7 @@ describe('n8n-packages handler', () => {
 			expect(mockEventService.emit).not.toHaveBeenCalled();
 		});
 
-		it('accepts a missing workflow dependency policy without changing the export request', async () => {
+		it('forwards a non-default missing workflow dependency policy', async () => {
 			const stream = new PassThrough();
 			mockService.exportPackage.mockResolvedValue(stream);
 			const res = makeResponse();
@@ -324,6 +325,7 @@ describe('n8n-packages handler', () => {
 				workflowIds: ['wf-1'],
 				folderIds: [],
 				projectIds: [],
+				missingWorkflowDependencyPolicy: 'reference-only',
 			});
 		});
 
@@ -345,6 +347,7 @@ describe('n8n-packages handler', () => {
 				workflowIds: [],
 				folderIds: [],
 				projectIds: ['project-1'],
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 		});
 
@@ -363,6 +366,7 @@ describe('n8n-packages handler', () => {
 				workflowIds: [],
 				folderIds: ['fld-1'],
 				projectIds: [],
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 		});
 	});
