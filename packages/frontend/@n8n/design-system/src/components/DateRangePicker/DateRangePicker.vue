@@ -69,7 +69,13 @@ defineSlots<{
 	footer?: { close: () => void };
 }>();
 
-const closePopover = () => emit('update:open', false);
+const closePopover = () => {
+	if (rekaRoot.value) {
+		rekaRoot.value.open.value = false;
+	} else {
+		emit('update:open', false);
+	}
+};
 
 const forwarded = useForwardPropsEmits(props, emit);
 const activeCalendarField = ref<'start' | 'end'>('end');
@@ -92,9 +98,22 @@ provide(N8N_DATE_RANGE_PICKER_CONTEXT, {
 
 watch(
 	() => rekaRoot.value?.open.value,
-	(isOpen) => {
+	(isOpen, wasOpen) => {
 		const rootContext = rekaRoot.value;
-		if (!isOpen || !rootContext) return;
+		if (!rootContext) return;
+
+		if (!isOpen) {
+			// Only clear when the popover actually closes, not on initial mount.
+			if (wasOpen !== true) return;
+
+			// Defer so parents watching `open` can commit the draft before we reset it.
+			void nextTick(() => {
+				if (rekaRoot.value?.open.value) return;
+				rootContext.onDateChange({ start: undefined, end: undefined });
+				activeCalendarField.value = 'start';
+			});
+			return;
+		}
 
 		if (!isEmptyDateRange(rootContext.modelValue.value)) return;
 
@@ -175,6 +194,10 @@ function applySelection(selectedDate: DateValue) {
 
 	rootContext.onDateChange(selection.range);
 	activeCalendarField.value = selection.nextActiveField;
+	// reka's modelValue watcher (flush: pre) resets placeholder → start; restore after it runs.
+	void nextTick(() => {
+		rootContext.onPlaceholderChange(selectedDate.copy());
+	});
 }
 
 function handleCalendarPointerDownCapture(event: PointerEvent) {
@@ -511,7 +534,7 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 .CalendarCellTrigger[data-today]:not([data-selection-start='true']):not(
 		[data-selection-end='true']
 	):not([data-selected='true']) {
-	background-color: var(--background--brand);
+	background-color: var(--color--danger);
 	color: var(--color--neutral-white);
 	border-radius: var(--radius--full);
 	box-shadow: none;

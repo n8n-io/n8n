@@ -1,6 +1,7 @@
 import { CalendarDateTime, getLocalTimeZone, today } from '@internationalized/date';
 import userEvent from '@testing-library/user-event';
 import { render } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
 import DateRangePicker from './DateRangePicker.vue';
 
@@ -89,6 +90,38 @@ describe('N8nDateRangePicker', () => {
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(targetDay)).toBe(0);
 		expect(lastUpdate?.end?.compare(todayDate)).toBe(0);
+	});
+
+	it('stays on the selected month when choosing an end date in another month', async () => {
+		const { container, emitted } = render(DateRangePicker);
+		const popover = await openCalendarPopover(container);
+
+		const todayDate = today(getLocalTimeZone());
+		const nextMonth = todayDate.add({ months: 1 });
+		const targetDay = nextMonth.set({ day: 15 });
+
+		await userEvent.click(popover.querySelector('[aria-label="Next page"]') as HTMLElement);
+
+		const targetCell = popover.querySelector(
+			`[data-value="${targetDay.toString()}"]`,
+		) as HTMLElement;
+		expect(targetCell).toBeTruthy();
+
+		await userEvent.click(targetCell);
+
+		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
+		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
+		expect(lastUpdate?.end?.compare(targetDay)).toBe(0);
+
+		await nextTick();
+
+		// Calendar should remain on the month of the selected end date (not jump back to start).
+		const selectedEndCell = popover.querySelector(
+			`[data-value="${targetDay.toString()}"]`,
+		) as HTMLElement;
+		expect(selectedEndCell).toBeTruthy();
+		expect(selectedEndCell.hasAttribute('data-focused')).toBe(true);
+		expect(selectedEndCell.getAttribute('data-selection-end')).toBe('true');
 	});
 
 	it('does not mark the placeholder day as selected after month navigation', async () => {
@@ -247,6 +280,22 @@ describe('N8nDateRangePicker', () => {
 			[true], //opened
 			[false], // closed by button interaction
 		]);
+	});
+
+	it('should clear the selected range when the popover closes', async () => {
+		const { container, emitted, getByRole } = render(DateRangePicker);
+		await openCalendarPopover(container);
+
+		const todayRange = emitted('update:modelValue')?.at(-1)?.[0];
+		expect(todayRange?.start).toBeTruthy();
+		expect(todayRange?.end).toBeTruthy();
+
+		await userEvent.click(getByRole('button', { name: 'Apply' }));
+		await nextTick();
+
+		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
+		expect(lastUpdate?.start).toBeUndefined();
+		expect(lastUpdate?.end).toBeUndefined();
 	});
 
 	it('should clear the selected range when clicking the clear button', async () => {

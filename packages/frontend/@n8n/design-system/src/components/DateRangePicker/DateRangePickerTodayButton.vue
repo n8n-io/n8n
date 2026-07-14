@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { injectDateRangePickerRootContext } from 'reka-ui';
+import { nextTick } from 'vue';
 
 import N8nButton from '../N8nButton';
 import { useDateRangePickerContext } from './dateRangePicker.context';
@@ -35,6 +36,10 @@ function goToToday() {
 
 	rootContext.onDateChange(selection.range);
 	activeField.value = selection.nextActiveField;
+	// reka's modelValue watcher (flush: pre) resets placeholder → start; restore after it runs.
+	void nextTick(() => {
+		rootContext.onPlaceholderChange(todayDate.copy());
+	});
 }
 </script>
 
