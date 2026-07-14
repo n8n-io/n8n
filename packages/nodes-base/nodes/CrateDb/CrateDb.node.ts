@@ -7,6 +7,8 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
+import { getDateAsStringTypeParsers } from '@utils/postgres';
+
 import {
 	generateReturning,
 	getItemCopy,
@@ -15,13 +17,12 @@ import {
 	pgQueryV2,
 	pgUpdate,
 } from '../Postgres/v1/genericFunctions';
-import { getDateAsStringTypeParsers } from '../Postgres/transport';
 
 export class CrateDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'CrateDB',
 		name: 'crateDb',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+
 		icon: 'file:cratedb.png',
 		group: ['input'],
 		version: [1, 1.1],

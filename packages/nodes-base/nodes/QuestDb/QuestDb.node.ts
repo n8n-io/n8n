@@ -7,14 +7,15 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
+import { getDateAsStringTypeParsers } from '@utils/postgres';
+
 import { pgInsert, pgQueryV2 } from '../Postgres/v1/genericFunctions';
-import { getDateAsStringTypeParsers } from '../Postgres/transport';
 
 export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'QuestDB',
 		name: 'questDb',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+
 		icon: 'file:questdb.png',
 		group: ['input'],
 		version: [1, 1.1],

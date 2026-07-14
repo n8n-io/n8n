@@ -7,8 +7,9 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
+import { getDateAsStringTypeParsers } from '@utils/postgres';
+
 import { pgInsert, pgQueryV2, pgUpdate } from '../Postgres/v1/genericFunctions';
-import { getDateAsStringTypeParsers } from '../Postgres/transport';
 
 export class TimescaleDb implements INodeType {
 	description: INodeTypeDescription = {
