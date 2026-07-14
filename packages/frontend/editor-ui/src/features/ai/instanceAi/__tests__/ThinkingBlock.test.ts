@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
@@ -203,7 +203,7 @@ describe('ThinkingBlock', () => {
 		expect(getByTestId('thinking-block-header')).toHaveTextContent('Waiting for your input');
 	});
 
-	it('should show the latest tool call on a subline while it is the tail entry', () => {
+	it('should show the latest tool call on the subline while it is the tail entry', () => {
 		const tc = makeToolCall({ toolCallId: 'tc-1', toolName: 'search-nodes', isLoading: true });
 		const { getByTestId } = renderComponent({
 			props: {
@@ -213,23 +213,61 @@ describe('ThinkingBlock', () => {
 			},
 		});
 
-		expect(getByTestId('thinking-block-tool-line')).toBeInTheDocument();
+		expect(getByTestId('thinking-block-subline')).toBeInTheDocument();
+		expect(getByTestId('thinking-block-subline')).not.toHaveTextContent('Thinking');
 	});
 
-	it('should hide the tool subline once further trace content streams', () => {
+	it('should show "Thinking" on the subline when no tool call is the tail', () => {
+		// Covers the reasoning-only phases (run start, between tool calls) —
+		// the block must always carry a live signal while active.
 		const tc = makeToolCall({ toolCallId: 'tc-1' });
-		const { queryByTestId } = renderComponent({
+		const noTools = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('Figuring out the trigger. Hmm.')],
+				active: true,
+			},
+		});
+		expect(noTools.getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
+		noTools.unmount();
+
+		const toolThenReasoning = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
 				entries: [toolEntry('tc-1'), reasoning('Got the results. Next step.')],
 				active: true,
 			},
 		});
-
-		expect(queryByTestId('thinking-block-tool-line')).not.toBeInTheDocument();
+		expect(toolThenReasoning.getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
 	});
 
-	it('should hide the tool subline when the block settles or pauses for input', () => {
+	it('should reset the subline timer after an HITL pause', async () => {
+		vi.useFakeTimers();
+		try {
+			const { getByTestId, rerender } = renderComponent({
+				props: {
+					agentNode: makeAgentNode({ status: 'active' }),
+					entries: [reasoning('Figuring out the trigger. Hmm.')],
+					active: true,
+				},
+			});
+
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(getByTestId('thinking-block-subline')).toHaveTextContent('5s');
+
+			// Waiting for the user isn't thinking time — resume restarts at zero.
+			await rerender({ awaitingInput: true });
+			await rerender({ awaitingInput: false });
+			await vi.advanceTimersByTimeAsync(1000);
+
+			expect(getByTestId('thinking-block-subline')).toHaveTextContent('1s');
+			expect(getByTestId('thinking-block-subline')).not.toHaveTextContent('6s');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('should hide the subline when the block settles or pauses for input', () => {
 		const tc = makeToolCall({ toolCallId: 'tc-1' });
 		const settled = renderComponent({
 			props: {
@@ -238,7 +276,7 @@ describe('ThinkingBlock', () => {
 				active: false,
 			},
 		});
-		expect(settled.queryByTestId('thinking-block-tool-line')).not.toBeInTheDocument();
+		expect(settled.queryByTestId('thinking-block-subline')).not.toBeInTheDocument();
 		settled.unmount();
 
 		const paused = renderComponent({
@@ -249,7 +287,7 @@ describe('ThinkingBlock', () => {
 				awaitingInput: true,
 			},
 		});
-		expect(paused.queryByTestId('thinking-block-tool-line')).not.toBeInTheDocument();
+		expect(paused.queryByTestId('thinking-block-subline')).not.toBeInTheDocument();
 	});
 
 	it('should collapse a user-expanded block and settle the title when streaming ends', async () => {

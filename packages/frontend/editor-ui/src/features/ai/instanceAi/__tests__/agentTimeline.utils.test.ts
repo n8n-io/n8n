@@ -516,6 +516,15 @@ describe('buildTimelineBlocks', () => {
 		expect(tailText[0].type === 'thinking' && tailText[0].active).toBe(true);
 	});
 
+	test('trailing text past the narration cap settles the thinking block', () => {
+		// Answer-length text is a committed answer — a block still "thinking"
+		// behind a streaming answer reads as lag.
+		const longAnswer = 'A'.repeat(240) + '.';
+		const blocks = blocksOf([reasoning('r1'), text(longAnswer, 'r2')], [], 'active');
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+		expect(blocks[0].type === 'thinking' && blocks[0].active).toBe(false);
+	});
+
 	test('real user-facing interruptions settle the thinking block immediately', () => {
 		const answeredQuestions = makeToolCall({
 			toolCallId: 'tc-q',

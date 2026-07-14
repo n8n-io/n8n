@@ -179,7 +179,9 @@ export function buildTimelineBlocks(
 	// as only (tentative) text follows it — tail text may still fold back into
 	// the block if same-response trace content arrives, so settling the block
 	// early would flicker "Thought for Xs" → "Thinking". Real interruptions
-	// (cards, questions, child agents) settle it immediately.
+	// (cards, questions, child agents) settle it immediately, and so does text
+	// that outgrew the narration cap: it is a committed answer, so keeping the
+	// block behind it "thinking" reads as lag.
 	if (agentStatus === 'active') {
 		for (let i = blocks.length - 1; i >= 0; i--) {
 			const block = blocks[i];
@@ -188,6 +190,7 @@ export function buildTimelineBlocks(
 				break;
 			}
 			if (block.type !== 'text') break;
+			if (block.entry.content.length > TAIL_NARRATION_MAX_LENGTH) break;
 		}
 	}
 

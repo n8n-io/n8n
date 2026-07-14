@@ -11,8 +11,9 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 import { firstSentence, isStreamingTimelineEntry } from '../agentTimeline.utils';
+import { isThinkingDotEnabled } from '../constants';
 import { useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ReasoningBlock from './ReasoningBlock.vue';
@@ -45,6 +46,9 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const { getToolLabel } = useToolLabel();
+
+/** Pulsing-dot variant of the live indicator, for design comparison. */
+const showActivityDot = isThinkingDotEnabled();
 
 /** Manual toggle override; null = follow the default (collapsed). */
 const userToggled = ref<boolean | null>(null);
@@ -84,6 +88,67 @@ const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
 	return toolCallsById.value[last.toolCallId];
 });
 
+// Block-level elapsed: a single monotonic counter for the counting phase,
+// shown on the subline. Deliberately NOT per tool call — parallel or
+// back-to-back calls would reset it on every handoff. An HITL pause resets
+// it to zero (waiting for the user isn't thinking time); settling freezes it
+// so the done title can report the time the user actually watched, which
+// tool-call timestamps undercount for reasoning-heavy blocks.
+const nowMs = ref(Date.now());
+const activeSinceMs = ref<number | null>(null);
+const settledElapsedSec = ref(0);
+let ticker: ReturnType<typeof setInterval> | null = null;
+
+const blockElapsedSec = computed(() => {
+	const live =
+		activeSinceMs.value === null
+			? 0
+			: Math.max(0, Math.floor((nowMs.value - activeSinceMs.value) / 1000));
+	return settledElapsedSec.value + live;
+});
+
+const isCounting = computed(() => props.active && !props.awaitingInput);
+
+watch(
+	isCounting,
+	(counting) => {
+		if (counting) {
+			nowMs.value = Date.now();
+			activeSinceMs.value = Date.now();
+			ticker ??= setInterval(() => {
+				nowMs.value = Date.now();
+			}, 1000);
+		} else {
+			// Settling keeps the observed total for the done title; an HITL
+			// pause discards it — the timer restarts at zero on resume.
+			settledElapsedSec.value = props.awaitingInput ? 0 : blockElapsedSec.value;
+			activeSinceMs.value = null;
+			if (ticker) {
+				clearInterval(ticker);
+				ticker = null;
+			}
+		}
+	},
+	{ immediate: true },
+);
+
+onUnmounted(() => {
+	if (ticker) clearInterval(ticker);
+});
+
+/** Subline text: the running tool call's label, or a plain "Thinking" while
+ *  the model reasons between calls — the block always carries a live signal. */
+const sublineLabel = computed<{ key: string; text: string }>(() => {
+	const tc = tailToolCall.value;
+	if (tc) return { key: tc.toolCallId, text: getToolLabel(tc.toolName, tc.args) };
+	return { key: 'thinking', text: i18n.baseText('instanceAi.thinking.active') };
+});
+
+const sublineElapsed = computed<string | undefined>(() => {
+	const sec = blockElapsedSec.value;
+	return sec >= 1 ? formatDuration(sec) : undefined;
+});
+
 /** Total duration from the block's tool-call timestamps, if available. */
 const durationSec = computed<number | undefined>(() => {
 	let start: number | undefined;
@@ -114,7 +179,14 @@ function formatDuration(totalSec: number): string {
  */
 const title = computed<{ key: string; text: string }>(() => {
 	if (!props.active) {
-		const duration = durationSec.value;
+		// Prefer whichever is larger: the tool-call span (survives reloads) or
+		// the elapsed time this client actually observed (covers reasoning
+		// before/after tool calls — "watched it think for 8s, says 1s" reads
+		// as a bug).
+		const observed = settledElapsedSec.value >= 1 ? settledElapsedSec.value : undefined;
+		const span = durationSec.value;
+		const duration =
+			span === undefined ? observed : observed === undefined ? span : Math.max(span, observed);
 		const text =
 			duration === undefined
 				? i18n.baseText('instanceAi.thinking.doneFallback')
@@ -166,16 +238,21 @@ const title = computed<{ key: string; text: string }>(() => {
 				<N8nAiActivityStepChevron :open="expanded" />
 			</button>
 		</CollapsibleTrigger>
-		<Transition name="thinking-title" mode="out-in">
-			<div
-				v-if="!expanded && tailToolCall"
-				:key="tailToolCall.toolCallId"
-				:class="$style.subline"
-				data-test-id="thinking-block-tool-line"
-			>
-				{{ getToolLabel(tailToolCall.toolName, tailToolCall.args) }}
-			</div>
-		</Transition>
+		<div
+			v-if="props.active && !props.awaitingInput && !expanded"
+			:class="$style.subline"
+			data-test-id="thinking-block-subline"
+		>
+			<span v-if="showActivityDot" :class="$style.dot" />
+			<Transition name="thinking-title" mode="out-in">
+				<span :key="sublineLabel.key" :class="$style.sublineLabel">
+					{{ sublineLabel.text }}
+				</span>
+			</Transition>
+			<span v-if="sublineElapsed" :class="$style.sublineElapsed">
+				&middot; {{ sublineElapsed }}
+			</span>
+		</div>
 		<N8nAnimatedCollapsibleContent>
 			<div :class="$style.content">
 				<template v-for="(entry, idx) in props.entries" :key="idx">
@@ -270,14 +347,39 @@ const title = computed<{ key: string; text: string }>(() => {
 	--animation--shimmer--foreground: var(--text-color--subtler);
 	@include motion.shimmer;
 
-	margin-left: var(--spacing--sm);
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--4xs);
 	max-width: 90%;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
 	color: var(--text-color--subtler);
+}
+
+.sublineLabel {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.sublineElapsed {
+	flex-shrink: 0;
+	font-variant-numeric: tabular-nums;
+}
+
+.dot {
+	--animation--opacity-pulse--duration: 1.5s;
+	--animation--opacity-pulse--opacity-end: 0.3;
+
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--color--primary);
+	flex-shrink: 0;
+	align-self: center;
+	margin-right: var(--spacing--4xs);
+	@include motion.opacity-pulse;
 }
 
 /* Indented rail, like sub-agent sections */

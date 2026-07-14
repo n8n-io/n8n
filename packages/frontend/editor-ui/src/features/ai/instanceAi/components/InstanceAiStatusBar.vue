@@ -5,10 +5,14 @@ import type { InstanceAiMessage } from '@n8n/api-types';
 import { useThread } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 import { collectActiveBuilderAgents, isActiveBuilderAgent } from '../builderAgents';
+import { isThinkingDotEnabled } from '../constants';
 
 const thread = useThread();
 const i18n = useI18n();
 const { getToolLabel } = useToolLabel();
+
+/** Pulsing-dot variant of the live indicator, for design comparison. */
+const showActivityDot = isThinkingDotEnabled();
 
 const elapsed = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -56,13 +60,35 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 
 const activity = computed(() => deriveActivity(thread.messages));
 
+/**
+ * True while the streaming orchestrator is rendering an active thinking
+ * block — its streamed status line (and tool subline) already shows the live
+ * activity, so the bar would say the same thing twice. The bar still covers
+ * the moments the block can't: run start before any trace exists, and
+ * background builders working after the orchestrator finished (root no
+ * longer active).
+ */
+function hasActiveThinkingTrace(messages: InstanceAiMessage[]): boolean {
+	// ANY streaming message counts — follow-up chains and mid-run replay can
+	// briefly append a stub streaming message after the one that renders the
+	// active block, and checking only the last would re-show the bar next to it.
+	return messages.some((m) => {
+		if (m.role !== 'assistant' || !m.isStreaming) return false;
+		const root = m.agentTree;
+		if (!root || root.status !== 'active') return false;
+		return root.timeline.some((entry) => entry.type === 'reasoning' || entry.type === 'tool-call');
+	});
+}
+
 // Stay visible while the orchestrator streams, and also while a builder runs in
 // the background after the orchestrator run has ended (isStreaming === false).
 // Hidden while a confirmation is pending — the thinking-block header reads
-// "Waiting for your input" then, and the pending card itself is the prompt.
+// "Waiting for your input" then, and the pending card itself is the prompt —
+// and while an active thinking block is the live activity surface.
 const isVisible = computed(
 	() =>
 		!thread.isAwaitingConfirmation &&
+		!hasActiveThinkingTrace(thread.messages) &&
 		(thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0),
 );
 
@@ -100,11 +126,11 @@ onUnmounted(() => {
 <template>
 	<Transition name="status-bar">
 		<div v-if="isVisible && activity" :class="$style.bar" data-test-id="instance-ai-status-bar">
-			<span :class="$style.dot" />
+			<span v-if="showActivityDot" :class="$style.dot" />
 			<span :class="$style.label">{{ activity.label }}</span>
-			<span v-if="activity.detail" :class="$style.separator">&middot;</span>
-			<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
-			<span :class="$style.separator">&middot;</span>
+			<span v-if="activity.detail">&middot;</span>
+			<span v-if="activity.detail">{{ activity.detail }}</span>
+			<span>&middot;</span>
 			<span :class="$style.elapsed">{{ formattedElapsed }}</span>
 		</div>
 	</Transition>
@@ -113,43 +139,46 @@ onUnmounted(() => {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
 
+/* Styled to match the thinking block's subline — the bar hands off to it
+ * once trace content arrives, so the two must read as the same element. */
 .bar {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
+	align-items: baseline;
+	gap: var(--spacing--4xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs) 0;
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
+	color: var(--text-color--subtler);
 	pointer-events: none;
+}
+
+.label {
+	--animation--shimmer--duration: 1.5s;
+	--animation--shimmer--background: color-mix(
+		in srgb,
+		var(--text-color--subtler) 30%,
+		var(--background--subtle) 70%
+	);
+	--animation--shimmer--foreground: var(--text-color--subtler);
+	@include motion.shimmer;
+}
+
+.elapsed {
+	font-variant-numeric: tabular-nums;
 }
 
 .dot {
 	--animation--opacity-pulse--duration: 1.5s;
+	--animation--opacity-pulse--opacity-end: 0.3;
 
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
 	background: var(--color--primary);
-	@include motion.opacity-pulse;
 	flex-shrink: 0;
-}
-
-.label {
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
-}
-
-.separator {
-	color: var(--color--text--tint-1);
-}
-
-.detail {
-	color: var(--color--text--tint-1);
-}
-
-.elapsed {
-	font-variant-numeric: tabular-nums;
-	color: var(--color--text--tint-1);
+	align-self: center;
+	margin-right: var(--spacing--4xs);
+	@include motion.opacity-pulse;
 }
 </style>
 

@@ -7,3 +7,18 @@ export const BROWSER_USE_CONNECTION_TYPE = 'browser-use';
 export const COMPUTER_USE_CONNECTION_TYPE = 'computer-use';
 export type BrowserUseConnectionType = typeof BROWSER_USE_CONNECTION_TYPE;
 export type ComputerUseConnectionType = typeof COMPUTER_USE_CONNECTION_TYPE;
+
+/**
+ * localStorage flag for the pulsing-dot variant of the live thinking
+ * indicators (status bar + thinking-block subline). Design comparison only:
+ * `localStorage.setItem('N8N_INSTANCE_AI_THINKING_DOT', 'true')` + reload.
+ */
+export const THINKING_DOT_STORAGE_KEY = 'N8N_INSTANCE_AI_THINKING_DOT';
+
+export function isThinkingDotEnabled(): boolean {
+	try {
+		return localStorage.getItem(THINKING_DOT_STORAGE_KEY) === 'true';
+	} catch {
+		return false;
+	}
+}
