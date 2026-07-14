@@ -75,12 +75,29 @@ describe('InlineAgentJsonConfigSchema', () => {
 	);
 
 	it.each([
-		['skills', { skills: [{ type: 'skill', id: 'triage' }] }],
 		['memory', { memory: { enabled: true, storage: 'n8n' } }],
 		['subAgents', { subAgents: [{ id: 'a' }] }],
 		['config options block', { config: { webSearch: { enabled: true } } }],
 	])('rejects saved-agent-only keys (%s) via strict parsing', (_key, extra) => {
 		expect(InlineAgentJsonConfigSchema.safeParse({ ...baseConfig, ...extra }).success).toBe(false);
+	});
+
+	it('accepts skill refs and rejects duplicate ids', () => {
+		expect(
+			InlineAgentJsonConfigSchema.safeParse({
+				...baseConfig,
+				skills: [{ type: 'skill', id: 'triage' }],
+			}).success,
+		).toBe(true);
+		expect(
+			InlineAgentJsonConfigSchema.safeParse({
+				...baseConfig,
+				skills: [
+					{ type: 'skill', id: 'triage' },
+					{ type: 'skill', id: 'triage' },
+				],
+			}).success,
+		).toBe(false);
 	});
 
 	it('enforces name bounds (1..128)', () => {
@@ -103,6 +120,12 @@ describe('InlineAgentJsonConfigSchema', () => {
 	});
 });
 
+const validSkillBody = {
+	name: 'Triage',
+	description: 'Triage incoming requests',
+	instructions: 'Categorize the request and route it.',
+};
+
 describe('RunnableInlineAgentConfigSchema', () => {
 	it('accepts a runnable config', () => {
 		expect(RunnableInlineAgentConfigSchema.safeParse({ config: baseConfig }).success).toBe(true);
@@ -115,6 +138,20 @@ describe('RunnableInlineAgentConfigSchema', () => {
 	])('rejects an unrunnable draft (%s)', (_case, config) => {
 		expect(RunnableInlineAgentConfigSchema.safeParse({ config }).success).toBe(false);
 	});
+
+	it('enforces skill ref/body integrity like the draft schema', () => {
+		expect(
+			RunnableInlineAgentConfigSchema.safeParse({
+				config: { ...baseConfig, skills: [{ type: 'skill', id: 'triage' }] },
+			}).success,
+		).toBe(false);
+		expect(
+			RunnableInlineAgentConfigSchema.safeParse({
+				config: { ...baseConfig, skills: [{ type: 'skill', id: 'triage' }] },
+				skills: { triage: validSkillBody },
+			}).success,
+		).toBe(true);
+	});
 });
 
 describe('InlineAgentConfigSchema', () => {
@@ -122,4 +159,63 @@ describe('InlineAgentConfigSchema', () => {
 		const result = InlineAgentConfigSchema.safeParse({ config: baseConfig, extra: true });
 		expect(result.success).toBe(false);
 	});
+
+	it('accepts skill refs with matching bodies, including allowedTools and references', () => {
+		const result = InlineAgentConfigSchema.safeParse({
+			config: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_abc' }] },
+			skills: {
+				skill_abc: {
+					...validSkillBody,
+					allowedTools: ['lookup_orders'],
+					references: [{ path: 'references/guide.md', content: '# Guide' }],
+				},
+			},
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a ref without a body, with a pathed message', () => {
+		const result = InlineAgentConfigSchema.safeParse({
+			config: { ...baseConfig, skills: [{ type: 'skill', id: 'missing' }] },
+		});
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const issue = result.error.issues[0];
+			expect(issue.path).toEqual(['config', 'skills', 0, 'id']);
+			expect(issue.message).toContain('has no body');
+		}
+	});
+
+	it('tolerates an orphan body (no ref) — pruned by the editor, ignored by the runtime', () => {
+		const result = InlineAgentConfigSchema.safeParse({
+			config: baseConfig,
+			skills: { orphan: validSkillBody },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		['missing instructions', { name: 'Triage', description: 'Triage requests' }],
+		['unknown body key', { ...validSkillBody, extra: true }],
+		['oversize instructions', { ...validSkillBody, instructions: 'x'.repeat(65_537) }],
+	])('rejects an invalid skill body (%s)', (_case, body) => {
+		const result = InlineAgentConfigSchema.safeParse({
+			config: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_abc' }] },
+			skills: { skill_abc: body },
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it.each([['__proto__'], ['constructor'], ['prototype'], ['bad key!']])(
+		'rejects an illegal skill record key (%s)',
+		(key) => {
+			const result = InlineAgentConfigSchema.safeParse({
+				config: baseConfig,
+				// fromEntries defines own properties, so `__proto__` stays a data key
+				// (an object literal would set the prototype instead).
+				skills: Object.fromEntries([[key, validSkillBody]]),
+			});
+			expect(result.success).toBe(false);
+		},
+	);
 });
