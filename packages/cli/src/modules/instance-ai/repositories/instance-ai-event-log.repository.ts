@@ -6,6 +6,12 @@ import { jsonParse } from 'n8n-workflow';
 
 import { InstanceAiEventLogEntry } from '../entities/instance-ai-event-log-entry.entity';
 
+/** A run that has a `run-start` fact but no terminal `run-finish` in the log. */
+export interface UnfinishedRun {
+	threadId: string;
+	runId: string;
+}
+
 @Service()
 export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogEntry> {
 	constructor(dataSource: DataSource) {
@@ -89,5 +95,42 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 			createdAt: r.createdAt,
 			event: jsonParse<InstanceAiEvent>(r.payload),
 		}));
+	}
+
+	/** Timestamp of the run's most recent durable fact (sweep liveness proxy). */
+	async lastFactAt(threadId: string, runId: string): Promise<Date | null> {
+		const row = await this.createQueryBuilder('e')
+			.select('MAX(e.createdAt)', 'max')
+			.where('e.threadId = :threadId', { threadId })
+			.andWhere('e.runId = :runId', { runId })
+			.getRawOne<{ max: string | Date | null }>();
+		if (!row?.max) return null;
+		return row.max instanceof Date ? row.max : new Date(row.max);
+	}
+
+	/**
+	 * Interrupted-run sweep source: runs whose log has a `run-start` but no
+	 * `run-finish`. Pure log query — liveness (is a main still driving it?) is
+	 * the caller's concern.
+	 */
+	async findUnfinishedRuns(): Promise<UnfinishedRun[]> {
+		const rows = await this.createQueryBuilder('e')
+			.select('e.threadId', 'threadId')
+			.addSelect('e.runId', 'runId')
+			.where("e.type = 'run-start'")
+			.andWhere(
+				(qb) =>
+					'NOT EXISTS ' +
+					qb
+						.subQuery()
+						.select('1')
+						.from(InstanceAiEventLogEntry, 'f')
+						.where('f.threadId = e.threadId')
+						.andWhere('f.runId = e.runId')
+						.andWhere("f.type = 'run-finish'")
+						.getQuery(),
+			)
+			.getRawMany<UnfinishedRun>();
+		return rows;
 	}
 }
