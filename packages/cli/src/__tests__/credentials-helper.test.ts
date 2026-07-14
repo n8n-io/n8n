@@ -1887,32 +1887,47 @@ describe('CredentialsHelper', () => {
 				// Resolver has already turned the expression into a static number —
 				// the in-memory shape that the hook actually sees.
 				dynamicId: 12345,
-				// The user-entered expression, as it lives in the DB. The fix
-				// guarantees this is what stays in the DB after the run.
-				originalDynamicId: expressionText,
 				accessToken: '',
 			};
 
-			const result = await credentialsHelper.preAuthentication(
-				helpers,
-				inputCredentials,
-				'spreadingPreAuthCredential',
-				spreadingNode,
-				false,
-			);
+			// Mock getCredentials to return a credential entity with the original
+			// expression string in the DB
+			const mockCredentialEntity = {
+				getData: vi.fn().mockResolvedValue({
+					dynamicId: expressionText,
+					accessToken: '',
+				}),
+			};
+			const getCredentialsSpy = vi
+				.spyOn(credentialsHelper, 'getCredentials')
+				.mockResolvedValue(mockCredentialEntity as any);
 
-			// The in-memory return must include the new token so the request
-			// can proceed.
-			expect(result).toMatchObject({ accessToken: 'NEW_TOKEN' });
+			try {
+				const result = await credentialsHelper.preAuthentication(
+					helpers,
+					inputCredentials,
+					'spreadingPreAuthCredential',
+					spreadingNode,
+					false,
+				);
 
-			// Only one persistence call, and it must NOT carry `dynamicId`
-			// (which had a non-empty value in the input — the expression
-			// is already resolved to 12345 in memory, and we must not write
-			// that back over the original expression).
-			expect(updateSpy).toHaveBeenCalledTimes(1);
-			const persisted = updateSpy.mock.calls[0][2];
-			expect(persisted).not.toHaveProperty('dynamicId');
-			expect(persisted).toEqual({ accessToken: 'NEW_TOKEN' });
+				// The in-memory return must include the new token so the request
+				// can proceed.
+				expect(result).toMatchObject({ accessToken: 'NEW_TOKEN' });
+
+				// Only one persistence call
+				expect(updateSpy).toHaveBeenCalledTimes(1);
+				const persisted = updateSpy.mock.calls[0][2];
+
+				// The persisted data must include the original expression string
+				// (not the resolved value 12345) and the new token
+				expect(persisted).toEqual({
+					dynamicId: expressionText,
+					accessToken: 'NEW_TOKEN',
+				});
+			} finally {
+				getCredentialsSpy.mockRestore();
+			}
 		});
 	});
 });

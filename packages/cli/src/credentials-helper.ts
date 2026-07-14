@@ -199,31 +199,39 @@ export class CredentialsHelper extends ICredentialsHelper {
 					}
 
 					if (node.credentials) {
-						// Only persist the keys the hook actually changed: keys that were not
-						// present in the input credentials, or that were empty/undefined. This
-						// prevents resolved {{ ... }} expressions (which have a non-empty string
-						// value in the input) from being written back over the original
-						// expression text. Keys that were already populated in the input —
-						// including expressions — are left intact on disk.
-						const dataToPersist: ICredentialDataDecryptedObject = {};
+						// Build the data to persist by merging the hook's output with the
+						// current credential data. We only include keys from the output that
+						// are either:
+						// 1. The expirable property (always persist token refreshes)
+						// 2. Keys that were not in the input, or were empty/undefined
+						// This prevents resolved {{ ... }} expressions from being written
+						// back over the original expression text, while ensuring token
+						// refreshes are persisted.
+						const currentCredentials = await this.getCredentials(
+							node.credentials[credentialType.name],
+							credentialType.name,
+						);
+						const currentData = await currentCredentials.getData();
+						const dataToPersist: ICredentialDataDecryptedObject = { ...currentData };
+
 						for (const [key, value] of Object.entries(output)) {
-							if (
+							const shouldPersist =
+								key === expirableProperty.name ||
 								!(key in credentials) ||
 								credentials[key] === '' ||
 								credentials[key] === undefined ||
-								credentials[key] === null
-							) {
+								credentials[key] === null;
+
+							if (shouldPersist) {
 								dataToPersist[key] = value;
 							}
 						}
 
-						if (Object.keys(dataToPersist).length > 0) {
-							await this.updateCredentials(
-								node.credentials[credentialType.name],
-								credentialType.name,
-								dataToPersist,
-							);
-						}
+						await this.updateCredentials(
+							node.credentials[credentialType.name],
+							credentialType.name,
+							dataToPersist,
+						);
 						return Object.assign(credentials, output);
 					}
 				}
