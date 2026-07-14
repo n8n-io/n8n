@@ -55,6 +55,9 @@ export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi' | 'instanceAi'
  * surface results in their own UI — e.g. the Instance AI preview — set them.
  * `expandGroups` overrides canvas group expansion without touching the editor's
  * persisted view state.
+ * `executionButtonType` selects the canvas execute button treatment —
+ * `'secondary'` demotes it from the primary CTA (e.g. in the Instance AI
+ * artifact, where the conversation is the primary surface).
  * Provided by editor hosts that supersede capabilities.
  */
 export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
@@ -62,6 +65,7 @@ export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
 	expandGroups?: GroupExpansionMode;
 	executionSuccessToasts?: boolean;
 	executionErrorToasts?: boolean;
+	executionButtonType?: 'primary' | 'secondary';
 };
 export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
 	Symbol('EditorEnabledFeatures');

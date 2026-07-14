@@ -7,6 +7,8 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../../credential/credential.types';
+import { DataTableRequirementsExtractor } from '../../data-table/data-table-requirements.extractor';
+import type { WorkflowDataTableRequirement } from '../../data-table/data-table.types';
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
@@ -31,14 +33,19 @@ function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	} as unknown as WorkflowEntity;
 }
 
-function makeExporter(returned: WorkflowEntity[], extractor?: CredentialRequirementsExtractor) {
+function makeExporter(
+	returned: WorkflowEntity[],
+	credentialExtractor?: CredentialRequirementsExtractor,
+	dataTableExtractor?: DataTableRequirementsExtractor,
+) {
 	const finder = mock<WorkflowFinderService>();
 	finder.findWorkflowsByIdsForUser.mockResolvedValue(returned);
 	finder.findExistingWorkflowIds.mockResolvedValue(new Set());
 	const exporter = new WorkflowExporter(
 		finder,
 		new WorkflowSerializer(),
-		extractor ?? new CredentialRequirementsExtractor(),
+		credentialExtractor ?? new CredentialRequirementsExtractor(),
+		dataTableExtractor ?? new DataTableRequirementsExtractor(),
 	);
 	return { exporter, finder };
 }
@@ -235,6 +242,29 @@ describe('WorkflowExporter', () => {
 				credentialName: 'wf-b',
 				credentialType: 'httpHeaderAuth',
 			},
+		]);
+	});
+
+	it('runs the data-table extractor on each workflow and concatenates the results into requirements.dataTables', async () => {
+		const a = makeWorkflow({ id: 'wf-a' });
+		const b = makeWorkflow({ id: 'wf-b' });
+		const extractor = mock<DataTableRequirementsExtractor>();
+		extractor.extract.mockImplementation((workflow) => [
+			{ workflowId: workflow.id, dataTableId: `dt-from-${workflow.id}` },
+		]);
+		const { exporter } = makeExporter([a, b], undefined, extractor);
+		const writer = new CapturingWriter();
+
+		const { requirements } = await exporter.export({
+			user,
+			workflowIds: [a.id, b.id],
+			writer,
+		});
+
+		expect(extractor.extract).toHaveBeenCalledTimes(2);
+		expect(requirements.dataTables).toEqual<WorkflowDataTableRequirement[]>([
+			{ workflowId: 'wf-a', dataTableId: 'dt-from-wf-a' },
+			{ workflowId: 'wf-b', dataTableId: 'dt-from-wf-b' },
 		]);
 	});
 });

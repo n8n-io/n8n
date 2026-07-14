@@ -169,6 +169,12 @@
 		"POST /source-control/pull": {
 			"status": "gap"
 		},
+		"GET /settings/security-policy": {
+			"status": "gap"
+		},
+		"PUT /settings/security-policy": {
+			"status": "gap"
+		},
 		"POST /variables": {
 			"status": "gap"
 		},

@@ -1,5 +1,29 @@
 import { getDateTimeSection, getSystemPrompt } from '../system-prompt';
 
+const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
+
+async function getSystemPromptWithEnabledModules(
+	enabledModules: string | undefined,
+): Promise<string> {
+	vi.resetModules();
+	if (enabledModules === undefined) {
+		delete process.env.N8N_ENABLED_MODULES;
+	} else {
+		process.env.N8N_ENABLED_MODULES = enabledModules;
+	}
+
+	const { getSystemPrompt: getSystemPromptFresh } = await import('../system-prompt.js');
+	return getSystemPromptFresh({});
+}
+
+afterEach(() => {
+	if (ORIGINAL_ENABLED_MODULES === undefined) {
+		delete process.env.N8N_ENABLED_MODULES;
+	} else {
+		process.env.N8N_ENABLED_MODULES = ORIGINAL_ENABLED_MODULES;
+	}
+});
+
 describe('getDateTimeSection', () => {
 	afterEach(() => vi.useRealTimers());
 
@@ -202,13 +226,18 @@ describe('getSystemPrompt', () => {
 			expect(prompt).not.toContain('build-workflow-with-agent');
 		});
 
-		it('forbids the agent_builder tool during workflow building', () => {
-			const prompt = getSystemPrompt({});
+		it('forbids the build-agent tool during workflow building when the agents module is enabled', async () => {
+			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
 
-			expect(prompt).toContain('do not call `agent_builder` at all');
-			expect(prompt).toContain(
-				'do not route around that by creating a custom tool through `agent_builder`',
-			);
+			expect(prompt).toContain('do not call `build-agent` at all');
+			expect(prompt).toContain('do not route around that by delegating to `build-agent`');
+		});
+
+		it('omits the build-agent fence and intent gate when the agents module is disabled', async () => {
+			const prompt = await getSystemPromptWithEnabledModules(undefined);
+
+			expect(prompt).not.toContain('build-agent');
+			expect(prompt).not.toContain('Intent gate');
 		});
 
 		it('routes standalone data-table work through the data-table-manager skill', () => {

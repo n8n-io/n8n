@@ -8,7 +8,10 @@ const CORRUPT_ENTRY = Symbol('corruptEntry');
 
 const MAX_READ_CONCURRENCY = 50;
 
-/** Stores JSON entries as blobs using pluggable backends. */
+/**
+ * Stores JSON entries as blobs using pluggable backends.
+ * The `version` key is reserved for the schema version: writes reject payloads that contain it.
+ */
 export class JsonStore<Ref, Payload extends object> {
 	private readonly byteStores = new Map<StorageLocation, ByteStore>();
 
@@ -28,6 +31,9 @@ export class JsonStore<Ref, Payload extends object> {
 
 	async write(ref: Ref, payload: Payload, loc: StorageLocation) {
 		const store = this.getByteStore(loc);
+		if ('version' in payload) {
+			throw new UnexpectedError('Payload must not contain the reserved `version` key.');
+		}
 		try {
 			const body = Buffer.from(
 				jsonStringify({ ...payload, version: this.options.version }),

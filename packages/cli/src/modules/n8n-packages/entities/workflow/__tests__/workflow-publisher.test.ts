@@ -13,7 +13,7 @@ import { WorkflowPublisher } from '../workflow-publisher';
 import { WorkflowPublishingPolicy } from '../workflow-publishing-policy.types';
 
 // The publish/unpublish matrix is covered end-to-end by
-// `import-pipeline.integration.test.ts`. These unit tests cover the permission
+// `import-package.integration.test.ts`. These unit tests cover the permission
 // gate and the publish-failure fallback the integration suite can't reach (it
 // always runs as an authorized owner against publishable workflows).
 describe('WorkflowPublisher', () => {

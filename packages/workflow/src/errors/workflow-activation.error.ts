@@ -24,8 +24,17 @@ export class WorkflowActivationError extends ExecutionBaseError {
 		let error = cause as Error;
 		if (cause instanceof ExecutionBaseError) {
 			error = new Error(cause.message);
-			error.constructor = cause.constructor;
-			error.name = cause.name;
+			// Defined, not assigned: a fresh `Error` has no own `constructor`/`name`, so
+			// assignment throws when `Error.prototype` is frozen (task runner secure mode)
+			Object.defineProperties(error, {
+				constructor: {
+					value: cause.constructor,
+					writable: true,
+					enumerable: true,
+					configurable: true,
+				},
+				name: { value: cause.name, writable: true, enumerable: true, configurable: true },
+			});
 			error.stack = cause.stack;
 		}
 		super(message, { cause: error });

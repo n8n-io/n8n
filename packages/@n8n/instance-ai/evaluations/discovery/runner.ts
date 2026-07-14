@@ -14,7 +14,7 @@
 // the loop so an erroring tool can't drive API spend.
 // ---------------------------------------------------------------------------
 
-import { Memory, type RuntimeSkillSource } from '@n8n/agents';
+import { Memory } from '@n8n/agents';
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -39,7 +39,6 @@ import type {
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
-import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { asResumable } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
@@ -240,24 +239,6 @@ function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 }
 
-/**
- * Mirror the CLI's agents-module gating (instance-ai.service.ts): production
- * filters the `agent-builder` skill from the runtime catalog when the agents
- * module is inactive. The package-level filter in `runtime-skills.ts` only
- * covers `intent-recognition`, so without this the eval catalog would always
- * include `agent-builder` and misrepresent the module-off production shape.
- */
-function applyAgentsModuleGating(source: RuntimeSkillSource): RuntimeSkillSource {
-	if (isAgentFeatureEnabled()) return source;
-	return {
-		...source,
-		registry: {
-			...source.registry,
-			skills: source.registry.skills.filter((skill) => skill.id !== 'agent-builder'),
-		},
-	};
-}
-
 interface StubOrchestrationContextOptions {
 	context: InstanceAiContext;
 	modelId: ModelConfig;
@@ -293,7 +274,7 @@ function createStubOrchestrationContext(
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
 		domainTools,
-		runtimeSkills: applyAgentsModuleGating(loadInstanceAiRuntimeSkillSource()),
+		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
 		// Discovery evals assert first-dispatch intent only. Production starts a

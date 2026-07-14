@@ -117,6 +117,12 @@ describe('TelemetryEventRelay', () => {
 		database: {
 			type: 'sqlite',
 		},
+		instanceAi: {
+			sandboxEnabled: false,
+			sandboxProvider: 'n8n-sandbox',
+			braveSearchApiKey: '',
+			searxngUrl: '',
+		},
 		instanceSettingsLoader: getDefaultInstanceSettingsLoaderConfig(),
 	});
 	const binaryDataConfig = mock<BinaryDataConfig>({
@@ -2275,6 +2281,7 @@ describe('TelemetryEventRelay', () => {
 					workflows: 3,
 					folders: 1,
 					credentials: 2,
+					dataTables: 1,
 				},
 			};
 
@@ -2285,6 +2292,7 @@ describe('TelemetryEventRelay', () => {
 				workflow_count: 3,
 				folder_count: 1,
 				credential_count: 2,
+				data_table_count: 1,
 			});
 		});
 
@@ -2730,6 +2738,44 @@ describe('TelemetryEventRelay', () => {
 					}),
 				}),
 			);
+		});
+
+		it('should track instance AI sandbox and search configuration on `server-started` event', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			Object.assign(globalConfig.instanceAi, {
+				sandboxEnabled: true,
+				sandboxProvider: 'daytona',
+				braveSearchApiKey: 'some-api-key',
+				searxngUrl: '',
+			});
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			const startupEvent = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Instance started',
+			);
+			expect(startupEvent).toBeDefined();
+			expect(startupEvent?.[1]).toEqual(
+				expect.objectContaining({
+					instance_ai: {
+						sandbox_enabled: true,
+						sandbox_provider: 'daytona',
+						search_brave_set: true,
+						search_searxng_set: false,
+					},
+				}),
+			);
+			// Key values must never leave the instance — only set/unset booleans
+			expect(JSON.stringify(startupEvent?.[1])).not.toContain('some-api-key');
+
+			Object.assign(globalConfig.instanceAi, {
+				sandboxEnabled: false,
+				sandboxProvider: 'n8n-sandbox',
+				braveSearchApiKey: '',
+				searxngUrl: '',
+			});
 		});
 
 		it('should track on `session-started` event', () => {

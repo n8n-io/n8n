@@ -8,6 +8,7 @@ import {
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getLatestAgentArtifactResult,
+	getLatestAgentBuilderTarget,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
@@ -258,6 +259,36 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestBuilderTarget.value.workflowId;
+			isPreviewOpen.value = true;
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Auto-open canvas when an agent-builder sub-agent spawns ---
+	// Mirrors the workflow-builder spawn-open above. The builder node id is
+	// stable per target agent (`agent-builder:<id>`), so this opens once per
+	// target per thread — later spawns for the same agent intentionally don't
+	// re-yank the view. Doesn't bump agentRefreshKey — the artifact-result
+	// watch below owns refreshes.
+
+	const latestAgentBuilderTarget = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const target = getLatestAgentBuilderTarget(msg.agentTree);
+				if (target) return target;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestAgentBuilderTarget.value?.agentId,
+		(agentId) => {
+			if (!agentId || !latestAgentBuilderTarget.value) return;
+			if (thread.isHydratingThread) return;
+
+			activeTabId.value = latestAgentBuilderTarget.value.targetAgentId;
 			isPreviewOpen.value = true;
 		},
 		{ flush: 'sync' },

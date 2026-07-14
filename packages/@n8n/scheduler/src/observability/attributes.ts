@@ -23,6 +23,27 @@ export const SCHEDULER_ATTRIBUTES = {
 	deferredJobs: 'n8n.scheduler.deferred_jobs',
 	retentionDeleted: 'n8n.scheduler.retention_deleted',
 	retentionDrained: 'n8n.scheduler.retention_drained',
+	provisionInserted: 'n8n.scheduler.provision_inserted',
+	provisionRedefined: 'n8n.scheduler.provision_redefined',
+	provisionUnchanged: 'n8n.scheduler.provision_unchanged',
+	provisionRemoved: 'n8n.scheduler.provision_removed',
+	deprovisionRemoved: 'n8n.scheduler.deprovision_removed',
+	jobName: 'n8n.scheduler.job_name',
+	jobAction: 'n8n.scheduler.job_action',
+} as const;
+
+/**
+ * Values of the {@link SCHEDULER_ATTRIBUTES.jobAction} attribute on a per-job
+ * provision span: what one provision did to that job, so a trace tells a fresh
+ * insert apart from a rewrite apart from a deletion. Unchanged jobs get no span.
+ */
+export const SCHEDULER_PROVISION_ACTION = {
+	/** The job did not exist and was inserted. */
+	inserted: 'inserted',
+	/** The job existed with a different definition and was rewritten in place. */
+	redefined: 'redefined',
+	/** The job was no longer desired and was deleted. */
+	removed: 'removed',
 } as const;
 
 /**
