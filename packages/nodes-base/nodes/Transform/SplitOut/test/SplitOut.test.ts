@@ -15,6 +15,7 @@ describe('SplitOut', () => {
 			{
 				json: {
 					data: [{ id: 1 }, { id: 2 }],
+					metadata: [{ name: 'first' }, { name: 'second' }],
 				},
 			},
 		]);
@@ -29,19 +30,31 @@ describe('SplitOut', () => {
 	};
 
 	it('should split a field provided as a string', async () => {
-		await expect(execute('data')).resolves.toEqual([
+		await expect(execute('data, metadata')).resolves.toEqual([
 			[
-				{ json: { id: 1 }, pairedItem: { item: 0 } },
-				{ json: { id: 2 }, pairedItem: { item: 0 } },
+				{
+					json: { data: { id: 1 }, metadata: { name: 'first' } },
+					pairedItem: { item: 0 },
+				},
+				{
+					json: { data: { id: 2 }, metadata: { name: 'second' } },
+					pairedItem: { item: 0 },
+				},
 			],
 		]);
 	});
 
 	it('should split fields provided as an array', async () => {
-		await expect(execute(['data'])).resolves.toEqual([
+		await expect(execute(['data', 'metadata'])).resolves.toEqual([
 			[
-				{ json: { id: 1 }, pairedItem: { item: 0 } },
-				{ json: { id: 2 }, pairedItem: { item: 0 } },
+				{
+					json: { data: { id: 1 }, metadata: { name: 'first' } },
+					pairedItem: { item: 0 },
+				},
+				{
+					json: { data: { id: 2 }, metadata: { name: 'second' } },
+					pairedItem: { item: 0 },
+				},
 			],
 		]);
 	});
