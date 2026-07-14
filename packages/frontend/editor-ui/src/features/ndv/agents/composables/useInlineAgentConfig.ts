@@ -45,7 +45,11 @@ function pickInlineConfigKeys<T extends Partial<AgentJsonConfig>>(source: T): T 
 	return picked as T;
 }
 
-/** The `inlineAgent` parameter value, before the backend narrows the config. */
+/**
+ * The parameter value as the editor writes it: `config` keeps the broad
+ * `AgentJsonConfig` type the shared panels emit; execution-time validation
+ * against `InlineAgentConfigSchema` is what narrows it to the inline subset.
+ */
 interface InlineAgentParameterValue {
 	config: AgentJsonConfig;
 	skills?: Record<string, AgentSkill>;
