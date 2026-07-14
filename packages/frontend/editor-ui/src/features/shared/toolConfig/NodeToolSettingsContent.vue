@@ -420,6 +420,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						:project-id="credentialProjectId"
 						:hide-issues="false"
 						:hide-ask-assistant="props.hideAskAssistant"
+						:skip-credentials-fetch="true"
 						@credential-selected="handleChangeCredential"
 						@value-changed="handleChangeParameter"
 					/>
