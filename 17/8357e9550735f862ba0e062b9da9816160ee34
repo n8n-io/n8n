@@ -1,0 +1,57 @@
+packages/workflow/src/interfaces.ts
+  s_9e2d31a67edd19::t_51f8dc1a1868df 1649-1650
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_9e2d31a67edd19::t_5d4d98916ce679 73-83
+  s_9e2d31a67edd19::t_663d4f54a08fee 67-71
+  s_9e2d31a67edd19::t_1420cdaeaacb12 1-66,72,84-93,95-255,259-383
+  s_9e2d31a67edd19::t_cdd8c20a16eee2 94
+  h_7555c3ee6524cf 256-258
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourceLocatorModes.ts
+  s_9e2d31a67edd19::t_5767d790406d94 1-61
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_9e2d31a67edd19::t_8b8f36a2ad5343 95
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_9e2d31a67edd19::t_b64b7b6ec324de 66
+  s_9e2d31a67edd19::t_d9779f3fd2e2ed 89-95,99-100
+  s_9e2d31a67edd19::t_91e050cd938882 133
+  s_9e2d31a67edd19::t_764172cb7ea5a6 1-65,67-88,96-98,101-132,134-187
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_9e2d31a67edd19::t_bb304f55f4f5b3 44
+  s_9e2d31a67edd19::t_712bd15ba4bfa9 1498-1513
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputFull.vue
+  s_9e2d31a67edd19::t_5d8ffef6852ffc 124-127
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9e2d31a67edd19::t_12201d46b2c8f8 5325-5327
+packages/workflow/src/node-helpers.ts
+  s_9e2d31a67edd19::t_3a179001bfdde1 1414-1416
+  s_9e2d31a67edd19::t_fed5e833e4ddc8 1498-1500
+packages/workflow/test/node-helpers.test.ts
+  s_9e2d31a67edd19::t_52baf2f17d2120 4397-4442
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_9e2d31a67edd19::t_e67c383b7c0471 36-37
+  s_9e2d31a67edd19::t_57a51be2b1c412 18-21
+  s_9e2d31a67edd19::t_4f9bceb411c47f 1-17,22-35,38-116
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.utils.ts
+  ai_agent 343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "178357e9550735f862ba0e062b9da9816160ee34",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9e2d31a67edd19": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e8c6b2a4-44ca-4045-83a2-6b241d171ea0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

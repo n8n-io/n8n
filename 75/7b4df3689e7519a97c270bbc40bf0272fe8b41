@@ -1,0 +1,23 @@
+packages/workflow/src/interfaces.ts
+  s_7b00f24a2c361f::t_7a271e8be14386 880
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_7b00f24a2c361f::t_3a51b883465eec 867-868,871,877-879
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/ssrf-integration.test.ts
+  s_7b00f24a2c361f::t_1a1dfcd8800122 173,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "757b4df3689e7519a97c270bbc40bf0272fe8b41",
+  "prompts": {},
+  "sessions": {
+    "s_7b00f24a2c361f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd528b76-9b06-411f-bab0-e52ce73257e9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

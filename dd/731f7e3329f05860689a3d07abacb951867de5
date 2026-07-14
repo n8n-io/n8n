@@ -1,0 +1,24 @@
+packages/testing/playwright/tests/e2e/workflows/editor/canvas/node-groups.spec.ts
+  s_f3fa0a12c2caf5::t_0cbc93f8d45893 249
+  s_f3fa0a12c2caf5::t_72840653126cf9 40
+packages/workflow/src/node-grouping-validation.ts
+  s_f3fa0a12c2caf5::t_fb765488d8f2a2 60,62,66,73
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards.ts
+  s_f3fa0a12c2caf5::t_7ac9c73f2f33ff 168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd731f7e3329f05860689a3d07abacb951867de5",
+  "prompts": {},
+  "sessions": {
+    "s_f3fa0a12c2caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "241cc734-1828-4482-8e67-ca84d13edb75",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

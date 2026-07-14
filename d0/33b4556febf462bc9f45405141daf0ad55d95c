@@ -1,0 +1,26 @@
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/ssrf-integration.test.ts
+  s_7b00f24a2c361f::t_e7eba52242cab6 155-163
+  s_7b00f24a2c361f::t_688c1bb8b8ad0a 151-154,164-182
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts
+  s_7b00f24a2c361f::t_cfbb47535a736a 89
+packages/workflow/src/interfaces.ts
+  s_7b00f24a2c361f::t_9d6bbbcfcfa7d3 943-948
+  s_7b00f24a2c361f::t_1f4c0d90ee1f3c 11
+  s_7b00f24a2c361f::t_f3932d7698f215 874-885
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "d033b4556febf462bc9f45405141daf0ad55d95c",
+  "prompts": {},
+  "sessions": {
+    "s_7b00f24a2c361f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd528b76-9b06-411f-bab0-e52ce73257e9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

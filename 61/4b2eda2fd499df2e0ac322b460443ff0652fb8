@@ -1,0 +1,33 @@
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-smoke.spec.ts
+  s_ada89a76285e54::t_d19a2dd24180dc 1
+  ai_agent 63-66
+  s_ada89a76285e54::t_ea1284758316b0 85
+  s_ada89a76285e54::t_f31bc44e5361b4 2-62,67-74,80-84,87-91,94,99-112,114,117,119-125,128,131-134,136-143,146,149-153,155,157-160
+  s_ada89a76285e54::t_751d704d68e16a 75-79,86
+packages/testing/playwright/pages/InstanceAiPage.ts
+  s_ada89a76285e54::t_94a83207df4569 74-77
+  s_ada89a76285e54::t_2ea38ed2645c62 1,5-12,83-85,88-89,94,98,102,106
+packages/testing/playwright/tests/infrastructure/benchmarks-local/instance-ai/cancel-abort.spec.ts
+  s_ada89a76285e54::t_a68085036e6f7f 43
+packages/testing/playwright/tests/e2e/instance-ai/README.md
+  s_ada89a76285e54::t_73006706f5de8b 1,3-5,7,9-13,15,17-20,28-32,34,36-38
+  s_ada89a76285e54::t_f71fc74509389c 22-26
+packages/testing/playwright/utils/benchmark/instance-ai-driver.ts
+  s_ada89a76285e54::t_3ef78ea12e5cdc 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "614b2eda2fd499df2e0ac322b460443ff0652fb8",
+  "prompts": {},
+  "sessions": {
+    "s_ada89a76285e54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "559ea97f-ae60-4dd2-b195-bff0516ef7ef",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

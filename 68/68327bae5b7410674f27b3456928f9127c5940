@@ -1,0 +1,19 @@
+packages/@n8n/db/src/migrations/common/1784000000029-CreateAgentChatSubscriptions.ts
+  s_c825abfe85bf1d::t_c7360ec2549a7b 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "6868327bae5b7410674f27b3456928f9127c5940",
+  "prompts": {},
+  "sessions": {
+    "s_c825abfe85bf1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eec6c08f-742d-4147-9277-7c7bab7ef2ad",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
