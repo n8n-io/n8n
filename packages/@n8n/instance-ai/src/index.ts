@@ -246,6 +246,11 @@ export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInsta
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
 export const createLazyWorkspaceRuntimeSkillSource: typeof MaterializeRuntimeSkillsMod.createLazyWorkspaceRuntimeSkillSource =
 	lazyFunction(() => loadMaterializeRuntimeSkills().createLazyWorkspaceRuntimeSkillSource);
+export {
+	CONFIG_EVALS_SKILL_ID,
+	disabledInstanceAiSkillIds,
+	type InstanceAiSkillFlags,
+} from './skills/skill-gates';
 export declare const SANDBOX_RUNTIME_SKILLS_DIR: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILLS_DIR;
 export declare const SANDBOX_RUNTIME_SKILL_REGISTRY_FILE: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE;
 export declare const RUNTIME_SKILL_MANIFEST_FILE: typeof MaterializeRuntimeSkillsMod.RUNTIME_SKILL_MANIFEST_FILE;
@@ -622,9 +627,14 @@ export type {
 	WebSearchResponse,
 	InstanceAiWebResearchService,
 	InstanceAiWorkspaceService,
+	InstanceAiWorkflowTemplateService,
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
+	InstanceAiBuilderDelegate,
+	BuilderDelegateSession,
+	BuilderTurnStream,
+	SessionWorkflowRef,
 } from './types';
 export type {
 	OrchestratorRunHandoffReason,

@@ -235,6 +235,12 @@ export class CredentialsController {
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
 		const isTogglingToStatic = body.isResolvable === false && credential.isResolvable === true;
 
+		if (isTogglingToPrivate || isTogglingToStatic) {
+			const owningProject =
+				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			await this.credentialsService.ensureCanManageEndUserCredential(req.user, owningProject?.id);
+		}
+
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
 			req.user,
 			req.body,

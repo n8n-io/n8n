@@ -27,6 +27,7 @@ import {
 } from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
 import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
+import { ContextMenuGroupViewKey } from '@/features/shared/contextMenu/composables/contextMenuGroupView';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
@@ -191,6 +192,11 @@ const mappedNodes = computed(() => [
 ]);
 
 provide(NodeGroupViewKey, nodeGroupView);
+// Collapse state for the context menu's expand/collapse item enablement —
+// the menu lives in the shared layer and can't reach this canvas' view state.
+provide(ContextMenuGroupViewKey, {
+	isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+});
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {

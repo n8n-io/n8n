@@ -126,8 +126,12 @@ export class WorkflowExecutionService {
 		workflowData.active = false;
 		workflowData.activeVersionId = null;
 
-		// TODO: Will be fixed on the FE side with CAT-1808
-		if ('triggerToStartFrom' in payload) {
+		// The UI can send runData alongside triggerToStartFrom, but a trigger
+		// means a full run, so stale runData must not demote it to a partial
+		// execution. ManualRunDto already strips it for endpoint traffic; this
+		// keeps the same precedence for direct callers.
+		// TODO: Remove once the FE stops sending it (CAT-1808)
+		if ('triggerToStartFrom' in payload && payload.triggerToStartFrom !== undefined) {
 			Reflect.deleteProperty(payload, 'runData');
 		}
 
@@ -593,7 +597,9 @@ export class WorkflowExecutionService {
 function isPartialExecution(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.PartialManualExecutionToDestinationPayload {
-	return 'destinationNode' in payload && 'runData' in payload;
+	return (
+		'runData' in payload && payload.runData !== undefined && payload.destinationNode !== undefined
+	);
 }
 
 /**
@@ -605,22 +611,26 @@ function isPartialExecution(
 function isFullExecutionFromKnownTrigger(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.FullManualExecutionFromKnownTriggerPayload {
-	return 'triggerToStartFrom' in payload;
+	return 'triggerToStartFrom' in payload && payload.triggerToStartFrom !== undefined;
 }
 
 /**
  * Type guard to check if payload is a FullManualExecutionFromUnknownTriggerPayload.
  *
- * An unknown trigger payload has neither `triggerToStartFrom` nor `runData`.
+ * An unknown trigger payload has a `destinationNode` to work back from,
+ * but neither `triggerToStartFrom` nor `runData`.
  * The trigger will need to be determined.
  */
 function isFullExecutionFromUnknownTrigger(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload {
-	if ('triggerToStartFrom' in payload) {
+	if ('triggerToStartFrom' in payload && payload.triggerToStartFrom !== undefined) {
 		return false;
 	}
-	return !('runData' in payload);
+	if ('runData' in payload && payload.runData !== undefined) {
+		return false;
+	}
+	return payload.destinationNode !== undefined;
 }
 
 function triggerHasNoPinnedData(

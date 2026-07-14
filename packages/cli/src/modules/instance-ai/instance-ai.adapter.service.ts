@@ -9,6 +9,8 @@ import type {
 	InstanceAiNodeService,
 	InstanceAiDataTableService,
 	InstanceAiWebResearchService,
+	InstanceAiWorkspaceService,
+	InstanceAiWorkflowTemplateService,
 	FetchedPage,
 	DataTableSummary,
 	DataTableColumnInfo,
@@ -30,7 +32,6 @@ import type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
-	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
@@ -49,7 +50,11 @@ import {
 	WorkflowSaveConflictError,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { upsertEvaluationConfigSchema } from '@n8n/api-types';
+import {
+	CONFIG_EVALUATIONS_FLAG,
+	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	upsertEvaluationConfigSchema,
+} from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES, Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
@@ -57,6 +62,7 @@ import { nanoid } from 'nanoid';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { WorkflowTemplatesService } from './workflow-templates.service';
 import {
 	buildInstanceAiRunPinDataPlan,
 	pruneUnreachedVerificationPinData,
@@ -75,7 +81,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -118,8 +124,11 @@ import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.servi
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
+import { PostHogClient } from '@/posthog';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
+import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -253,6 +262,7 @@ export class InstanceAiAdapterService {
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly workflowTemplatesService: WorkflowTemplatesService,
 		private readonly nodeCatalogService?: NodeCatalogService,
 		// Optional: absent only in package/test contexts constructed without DI.
 		// DI (by type, not position) always provides it in a running instance.
@@ -275,18 +285,29 @@ export class InstanceAiAdapterService {
 			/** Eval-only: restrict the credential `list()` view to these IDs. */
 			credentialIdAllowlist?: string[];
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
-			 *  assistant can create one via the create_agent tool. */
+			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
+			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
+			 *  eval-config service/tool not wired. */
+			configEvalsEnabled?: boolean;
 		},
 	): InstanceAiContext {
-		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist, agentId } =
-			options ?? {};
+		const {
+			searchProxyConfig,
+			pushRef,
+			threadId,
+			projectId,
+			credentialIdAllowlist,
+			agentId,
+			configEvalsEnabled,
+		} = options ?? {};
 
 		// Record gateway availability once per context. Fire-and-forget: the
 		// underlying config is cached process-wide (1h TTL) so this rarely hits
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
 
+		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
 		return {
 			userId: user.id,
 			projectId,
@@ -295,7 +316,7 @@ export class InstanceAiAdapterService {
 			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
-			...(this.evaluationConfigService
+			...(configEvalsEnabled && this.evaluationConfigService
 				? {
 						evaluationConfigService: this.createEvaluationConfigAdapter(
 							this.evaluationConfigService,
@@ -306,12 +327,41 @@ export class InstanceAiAdapterService {
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
+			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			allowSendingParameterValues: this.allowSendingParameterValues,
-			...(agentId && projectId ? { agentBuilderTarget: { agentId, projectId } } : {}),
+			...(builderDelegateAdapter && agentId && projectId
+				? { agentBuilderTarget: { agentId, projectId } }
+				: {}),
+			...(builderDelegateAdapter && projectId
+				? {
+						builderDelegate: builderDelegateAdapter.createDelegate(
+							user,
+							projectId,
+							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+						),
+					}
+				: {}),
 		};
+	}
+
+	/**
+	 * Resolve the builder-delegate adapter only when the `agents` module is
+	 * active. The adapter class is statically imported (so its `@Service` is
+	 * always registered), so the module-enabled check is what gates
+	 * agent-building. Returns null when the module is off, so `builderDelegate`
+	 * (and the build-agent sub-agent tool it powers) is simply absent from the
+	 * context.
+	 */
+	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		try {
+			return Container.get(InstanceAiBuilderDelegateAdapterService);
+		} catch {
+			return null;
+		}
 	}
 
 	/**
@@ -333,6 +383,14 @@ export class InstanceAiAdapterService {
 		} catch {
 			return null;
 		}
+	}
+
+	/** Per-user gate for config-based evals: on when the config-evaluations
+	 *  experiment is on the enabled variant, so we never create evals the user
+	 *  can't run. Fails closed: `getFeatureFlags` returns `{}` on a PostHog outage. */
+	async isConfigEvalsEnabled(user: User): Promise<boolean> {
+		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
 	}
 
 	private buildAiGatewayNodeMeta(
@@ -361,6 +419,15 @@ export class InstanceAiAdapterService {
 			});
 		}
 		return this.templatesService;
+	}
+
+	private createWorkflowTemplateAdapter(): InstanceAiWorkflowTemplateService {
+		const workflowTemplatesService = this.workflowTemplatesService;
+		return {
+			async getTemplate(templateId: string) {
+				return await workflowTemplatesService.getTemplate(templateId);
+			},
+		};
 	}
 
 	private buildLicenseHints(): string[] {

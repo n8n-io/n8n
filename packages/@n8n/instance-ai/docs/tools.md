@@ -673,6 +673,43 @@ sandbox) to consult these before planning or building non-trivial workflows.
 
 ---
 
+## Agent Builder Tool
+
+### `build-agent` *(orchestration tool — requires the `agents` backend module)*
+
+Delegates agent building to the agents-module builder chat
+(`AgentsBuilderService`) running as an embedded, **non-interactive** sub-agent:
+one conversational turn per call. Registered in `createOrchestrationTools`
+only when the host provides `builderDelegate` (agents module active). The
+builder's own prompt and tools drive the build, but its interactive tools
+(`ask_questions`, `ask_credential`, `ask_embedding_credential`,
+`configure_channel`) are excluded from this session — the builder cannot
+suspend mid-turn and must complete every call, reporting any open questions as
+plain text at the end of its reply (`builderReply`). Builder session state is
+keyed to instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and
+never appears in the agents-module builder UI.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
+| `name` | string | no | Name for a NEW agent (first call only) |
+| `agentId` | string | no | Existing agent id to edit (first call only) |
+| `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
+
+**Returns**: `{ ok: true, builderReply, configUpdated }` on success, or
+`{ ok: false, error }`.
+
+**Relaying open questions:** since the builder cannot ask the user directly,
+any decision it needs (missing credential, channel setup, ambiguous model
+choice) comes back as text at the end of `builderReply`. The calling assistant
+is responsible for surfacing those questions to the user (via its own
+question tool/card if available) and sending the answers back through another
+`build-agent` call.
+
+**Targeting:** the first call must pass `name` (new agent) or `agentId`
+(existing agent); the binding is then persisted to thread metadata so
+follow-up calls keep editing the same agent without repeating `name`/`agentId`.
+
 ## Other Domain Tools
 
 | Tool | Description |

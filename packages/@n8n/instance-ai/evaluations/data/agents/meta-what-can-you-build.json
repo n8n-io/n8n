@@ -10,7 +10,7 @@
 	"tags": ["intent-resolution", "meta", "over-trigger-guard"],
 	"datasets": ["agents"],
 	"processExpectations": [
-		"The agent answers the question directly by describing the kinds of automations it can build, and does not create a workflow or an n8n Agent (via the agent-builder path) or start any build activity.",
-		"The agent does not load the workflow-builder or agent-builder skills and does not call any build tools in response to the question."
+		"The agent answers the question directly by describing the kinds of automations it can build, and does not create a workflow or an n8n Agent (via the `build-agent` tool) or start any build activity.",
+		"The agent does not load the workflow-builder skill and does not call `build-agent` or any other build tools in response to the question."
 	]
 }
