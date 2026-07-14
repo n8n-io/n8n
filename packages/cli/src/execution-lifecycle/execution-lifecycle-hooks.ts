@@ -652,11 +652,7 @@ function hookFunctionsSave(
  */
 function hookFunctionsSaveWorker(
 	hooks: ExecutionLifecycleHooks,
-<<<<<<< HEAD
-	{ pushRef, retryOf }: HooksSetupParameters,
-=======
-	{ pushRef, retryOf, saveSettings, source }: HooksSetupParameters,
->>>>>>> 9842c2c2 (fix(core): Count AI assistant workflow test runs as manual executions in statistics (#34145))
+	{ pushRef, retryOf, source }: HooksSetupParameters,
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
