@@ -5,6 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { formatOdooDateFields, getModelSchema } from '../../helpers/utils';
 import { odooApiRequest } from '../../transport';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -46,12 +47,13 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
+	const model = this.getNodeParameter('customResource', 0, undefined, {
+		extractValue: true,
+	}) as string;
+	const schema = await getModelSchema(this, model);
+
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const model = this.getNodeParameter('customResource', i, undefined, {
-				extractValue: true,
-			}) as string;
-
 			const mappingMode = this.getNodeParameter('fieldsToSend.mappingMode', i) as string;
 
 			let fields: IDataObject;
@@ -60,6 +62,8 @@ export async function execute(
 			} else {
 				fields = this.getNodeParameter('fieldsToSend.value', i, {}) as IDataObject;
 			}
+
+			fields = formatOdooDateFields(fields, schema);
 
 			const result = (await odooApiRequest.call(this, model, 'create', {
 				vals_list: [fields],
