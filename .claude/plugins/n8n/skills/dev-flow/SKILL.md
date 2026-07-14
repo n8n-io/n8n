@@ -36,7 +36,7 @@ agents; fall back to the generic equivalents only if one isn't available:**
 | Review: architecture | `n8n:autodev-architecture-reviewer` | `architecture-auditor` |
 | Review: security | `n8n:autodev-security-reviewer` | `security-auditor` |
 | Review: best practices & patterns | `n8n:autodev-conventions-reviewer` | `code-reviewer` + `n8n:conventions` |
-| Review: testing | `n8n:autodev-test-reviewer` | `expert-test-developer` + `/check-tests` |
+| Review: testing | `n8n:autodev-test-reviewer` | `expert-test-developer` |
 | Review: frontend/Vue (only if diff touches frontend) | `n8n:autodev-vue-reviewer` | `expert-vue3-developer` + `n8n:design-system` |
 
 Confirm availability at runtime (the Agent tool lists available agent types) and use the fallback
@@ -224,9 +224,8 @@ skip it rather than dispatch a no-op reviewer:
    `n8n:conventions` skill)
 4. **Testing** — identify high-value tests that are missing, and review existing/changed tests for
    whether they actually assert behavior. (`n8n:autodev-test-reviewer`; fallback
-   `expert-test-developer`. `/check-tests` is a good starting scan; for logic-heavy files,
-   `n8n:mutant-score` to measure mutation coverage and `n8n:mutant-fix` to add tests that kill
-   surviving mutants.)
+   `expert-test-developer`. For logic-heavy files, `n8n:mutant-score` to measure mutation
+   coverage and `n8n:mutant-fix` to add tests that kill surviving mutants.)
 5. **Frontend / Vue** *(only when the diff touches frontend)* — Vue 3 + Pinia reactivity, design-system
    and i18n conventions, a11y, component health. (`n8n:autodev-vue-reviewer`; fallback
    `expert-vue3-developer` + the `n8n:design-system` skill)
