@@ -226,6 +226,34 @@ describe('useResourceRegistry', () => {
 		});
 	});
 
+	describe('producedArtifacts — message attachments', () => {
+		test('registers agent attachment from a user message', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'agent-1',
+							name: 'Support Agent',
+							projectId: 'proj-1',
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Agent',
+				projectId: 'proj-1',
+			});
+		});
+	});
+
 	describe('producedArtifacts — targetResource registration', () => {
 		test('registers a builder sub-agent targetResource as a produced workflow', async () => {
 			const { messages, producedArtifacts } = setup();

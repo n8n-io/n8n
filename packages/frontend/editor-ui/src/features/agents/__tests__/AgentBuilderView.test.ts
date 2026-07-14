@@ -1,7 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, computed } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type {
@@ -266,6 +266,16 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 	}),
 }));
 
+const instanceAiAvailableRef = ref(true);
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
+	useInstanceAiAvailable: () => computed(() => instanceAiAvailableRef.value),
+}));
+
+const startInstanceAiThread = vi.fn();
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
+	useInstanceAiHandoff: () => ({ startThread: startInstanceAiThread }),
+}));
+
 const baseTextFn = (key: string) => {
 	const map: Record<string, string> = {
 		'agents.builder.preview.button': 'Preview',
@@ -456,6 +466,11 @@ const commonStubs = {
 			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot /><slot name="icon" /></button>',
 		emits: ['click'],
 	},
+	N8nAssistantIcon: { template: '<i data-testid="stub-assistant-icon" />', props: ['size'] },
+	N8nTooltip: {
+		template: '<span data-testid="stub-tooltip"><slot /></span>',
+		props: ['placement', 'content'],
+	},
 	N8nIcon: {
 		template: '<i v-bind="$attrs" :data-icon="icon"></i>',
 		props: ['icon', 'size', 'spin'],
@@ -516,6 +531,8 @@ describe('AgentBuilderView — preview routing', () => {
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
+		instanceAiAvailableRef.value = true;
+		startInstanceAiThread.mockReset();
 	});
 
 	it('renders the manual editor without an agents-page build chat', async () => {
@@ -864,6 +881,8 @@ describe('AgentBuilderView — three-column shell', () => {
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
+		instanceAiAvailableRef.value = true;
+		startInstanceAiThread.mockReset();
 	});
 
 	it('renders only the manual editor without build chat controls', async () => {
@@ -895,6 +914,45 @@ describe('AgentBuilderView — three-column shell', () => {
 	it('renders the new top header above the three columns', async () => {
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="stub-agent-builder-header"]').exists()).toBe(true);
+	});
+
+	it('renders the floating Instance AI button in builder mode', async () => {
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
+	});
+
+	it('hides the floating Instance AI button in artifact mode', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+	});
+
+	it('hides the floating Instance AI button when Instance AI is unavailable', async () => {
+		instanceAiAvailableRef.value = false;
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+	});
+
+	it('starts an Instance AI thread with the agent attached on click', async () => {
+		const wrapper = await renderView();
+		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+		await flushPromises();
+
+		expect(startInstanceAiThread).toHaveBeenCalledWith('p1', '', [
+			{
+				type: 'agent',
+				id: 'a1',
+				name: 'Agent One',
+				projectId: 'p1',
+			},
+		]);
 	});
 
 	it('renders artifact mode with the editor and without the build chat', async () => {

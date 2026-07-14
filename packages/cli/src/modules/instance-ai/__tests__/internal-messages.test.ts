@@ -1,6 +1,6 @@
 import {
 	cleanStoredUserMessage,
-	extractEditorContextWorkflowAttachments,
+	extractEditorContextResourceAttachments,
 	withCurrentDateTime,
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
@@ -98,22 +98,37 @@ describe('cleanStoredUserMessage', () => {
 	});
 });
 
-describe('extractEditorContextWorkflowAttachments', () => {
+describe('extractEditorContextResourceAttachments', () => {
 	it('reconstructs workflow attachments from the marker', () => {
 		const stored = editorContextMarker([
 			{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
 		]);
-		expect(extractEditorContextWorkflowAttachments(stored)).toEqual([
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
 			{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
 		]);
 	});
 
+	it('reconstructs agent attachments from the marker', () => {
+		const stored = `<editor-context>\n[{"type":"agent","id":"agent-1","name":"Support Agent","projectId":"proj-1"}]\n\nThe user opened this conversation from the agent editor.\n</editor-context>`;
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+		]);
+	});
+
+	it('reconstructs mixed workflow and agent attachments from the marker', () => {
+		const stored = `<editor-context>\n[{"type":"workflow","id":"wf-1","name":"My workflow"},{"type":"agent","id":"agent-1","name":"Support Agent","projectId":"proj-1"}]\n\nprose\n</editor-context>`;
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'workflow', id: 'wf-1', name: 'My workflow' },
+			{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+		]);
+	});
+
 	it('returns an empty array for a message without an editor-context block', () => {
-		expect(extractEditorContextWorkflowAttachments('Just a normal message')).toEqual([]);
+		expect(extractEditorContextResourceAttachments('Just a normal message')).toEqual([]);
 	});
 
 	it('returns an empty array when the marker JSON is invalid', () => {
 		const stored = '<editor-context>\nnot json\n\nprose\n</editor-context>';
-		expect(extractEditorContextWorkflowAttachments(stored)).toEqual([]);
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([]);
 	});
 });

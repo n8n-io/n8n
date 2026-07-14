@@ -5,7 +5,9 @@ import {
 	buildProxyHeaders,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
+	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
+	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
@@ -176,25 +178,31 @@ function getErrorMessage(error: unknown): string {
 }
 
 /**
- * Renders a message's workflow attachments (e.g. a workflow + execution handed
- * off from the editor) as a context block telling the agent what the user is
- * looking at. Informative only: the agent should greet the user and ask how it
+ * Renders a message's resource attachments (e.g. a workflow + execution, or an
+ * agent, handed off from the editor) as a context block telling the agent what
+ * the user is looking at. Informative only: the agent should greet the user and ask how it
  * can help rather than inspecting the resources up front. The ids stay in the
  * block so they're available once the user actually asks for something.
  * Returns an empty string when there are none.
  */
-function buildContextResourcesBlock(workflowAttachments: InstanceAiWorkflowAttachment[]): string {
-	if (workflowAttachments.length === 0) return '';
-	const lines = workflowAttachments.map((attachment) => {
+function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttachment[]): string {
+	if (contextAttachments.length === 0) return '';
+	const lines = contextAttachments.map((attachment) => {
 		const name = attachment.name ? ` "${attachment.name}"` : '';
+		if (attachment.type === 'agent') {
+			return `- Agent${name} (id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
+		}
 		// Only mention the execution when one was actually handed off.
 		const execution = attachment.executionId
 			? `, currently viewing its execution \`${attachment.executionId}\``
 			: '';
 		return `- Workflow${name} (id: \`${attachment.id}\`)${execution}.`;
 	});
+	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
+		? 'The user opened this conversation from the agent editor, where they are looking at:'
+		: 'The user opened this conversation from the workflow editor, where they are looking at:';
 	const prose = [
-		'The user opened this conversation from the workflow editor, where they are looking at:',
+		header,
 		...lines,
 		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
 	].join('\n');
@@ -202,7 +210,7 @@ function buildContextResourcesBlock(workflowAttachments: InstanceAiWorkflowAttac
 	// (cleanStoredUserMessage) and the parser can reconstruct the attachments on
 	// reload from the leading JSON line — keeping the resource durable without
 	// persisting it as visible text.
-	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(workflowAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
+	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(contextAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
 }
 
 function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
@@ -2897,6 +2905,13 @@ export class InstanceAiService {
 		const workflowAttachments = (attachments ?? []).filter(
 			(attachment): attachment is InstanceAiWorkflowAttachment => attachment.type === 'workflow',
 		);
+		const agentAttachments = (attachments ?? []).filter(
+			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
+		);
+		const contextAttachments: InstanceAiResourceAttachment[] = [
+			...workflowAttachments,
+			...agentAttachments,
+		];
 
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
@@ -3093,7 +3108,7 @@ export class InstanceAiService {
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
 			if (thread && !thread.title) {
-				const handoffTitle = workflowAttachments.find((attachment) => attachment.name)?.name;
+				const handoffTitle = contextAttachments.find((attachment) => attachment.name)?.name;
 				await patchThread(memory, {
 					threadId,
 					update: ({ metadata }) =>
@@ -3117,7 +3132,7 @@ export class InstanceAiService {
 			}
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-			const contextResourcesBlock = buildContextResourcesBlock(workflowAttachments);
+			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
 			const handoffContextBlock = buildHandoffContextBlock(handoffContext);
 
 			let nonStructuredAttachments: InstanceAiFileAttachment[] = [];

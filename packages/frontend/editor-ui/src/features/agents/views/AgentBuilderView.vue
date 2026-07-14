@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
-import { N8nIcon, type DropdownMenuItemProps } from '@n8n/design-system';
+import {
+	N8nAssistantIcon,
+	N8nButton,
+	N8nIcon,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -65,6 +70,8 @@ import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.v
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
+import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 
 const props = withDefaults(
 	defineProps<{
@@ -87,6 +94,8 @@ const locale = useI18n();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const { startThread: startInstanceAiThread } = useInstanceAiHandoff();
+const instanceAiAvailable = useInstanceAiAvailable();
 const sessionsStore = useAgentSessionsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
@@ -622,6 +631,26 @@ async function flushAutosave() {
 	await Promise.all([configAutosave.flushAutosave(), skillAutosave.flushAutosave()]);
 }
 
+/** Hand the current agent off to a new Instance AI thread (mirrors the canvas hand-off). */
+async function onOpenInstanceAi() {
+	// Flush pending edits first so the assistant sees the latest config.
+	await flushAutosave();
+	telemetry.track('Instance AI opened from editor', {
+		source: 'agent_builder_page',
+		agent_id: agentId.value,
+		workflow_id: null,
+		execution_id: null,
+	});
+	await startInstanceAiThread(projectId.value, '', [
+		{
+			type: 'agent',
+			id: agentId.value,
+			name: agent.value?.name,
+			projectId: projectId.value,
+		},
+	]);
+}
+
 function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 	return {
 		...config,
@@ -1153,6 +1182,27 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 				[$style.previewBuilder]: isPreviewMode,
 			}"
 		>
+			<div
+				v-if="!isPreviewMode && !isArtifactMode && instanceAiAvailable"
+				:class="$style.aiButtonWrapper"
+			>
+				<N8nButton
+					variant="subtle"
+					icon-only
+					size="large"
+					:disabled="!agent"
+					:aria-label="locale.baseText('aiAssistant.tooltip')"
+					:class="$style.aiButtonIcon"
+					data-testid="agent-builder-instance-ai-btn"
+					@click="onOpenInstanceAi"
+				>
+					<template #default>
+						<div>
+							<N8nAssistantIcon size="large" />
+						</div>
+					</template>
+				</N8nButton>
+			</div>
 			<div v-if="showBuilderLoading" :class="$style.loading">
 				<N8nIcon icon="spinner" spin />
 			</div>
@@ -1260,5 +1310,26 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 .editorColumn {
 	flex: 1 1 auto;
 	min-width: 35rem;
+}
+
+.aiButtonWrapper {
+	position: absolute;
+	top: 0;
+	right: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
+	z-index: 1;
+}
+
+.aiButtonIcon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+
+	svg {
+		display: block;
+	}
 }
 </style>
