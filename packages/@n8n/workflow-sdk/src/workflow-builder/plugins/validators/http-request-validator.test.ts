@@ -339,7 +339,7 @@ describe('httpRequestValidator', () => {
 				parameters: bearerParams,
 				credentials: { httpBearerAuth: { __newCredential: true, name: 'Replicate API' } },
 			});
-			const issues = httpRequestValidator.validateNode!(
+			const issues = httpRequestValidator.validateNode(
 				node,
 				createGraphNode(node),
 				createMockPluginContext(),
@@ -351,7 +351,7 @@ describe('httpRequestValidator', () => {
 
 		it('warns when no credential is attached at all', () => {
 			const node = createMockNode('n8n-nodes-base.httpRequest', { parameters: bearerParams });
-			const issues = httpRequestValidator.validateNode!(
+			const issues = httpRequestValidator.validateNode(
 				node,
 				createGraphNode(node),
 				createMockPluginContext(),
@@ -366,7 +366,7 @@ describe('httpRequestValidator', () => {
 					httpBearerAuth: { __newCredential: true, name: 'Replicate API', id: 'cred-1' },
 				},
 			});
-			const issues = httpRequestValidator.validateNode!(
+			const issues = httpRequestValidator.validateNode(
 				node,
 				createGraphNode(node),
 				createMockPluginContext(),
@@ -382,7 +382,7 @@ describe('httpRequestValidator', () => {
 				},
 				credentials: { httpTemplatedCustomAuth: { __newCredential: true, name: 'Replicate API' } },
 			});
-			const issues = httpRequestValidator.validateNode!(
+			const issues = httpRequestValidator.validateNode(
 				node,
 				createGraphNode(node),
 				createMockPluginContext(),
