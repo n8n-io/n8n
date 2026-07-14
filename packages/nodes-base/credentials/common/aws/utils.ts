@@ -70,7 +70,7 @@ function getAwsSigningService(service: string): string {
 	// (`s3-control`) endpoints — bare or with a bucket/access-point qualifier
 	// prefix. aws4 derived this by inspecting the host; smithy does not, so we
 	// normalize it here.
-	if (/(^|\.)s3(-accesspoint|-control)?$/.test(baseService)) {
+	if (/(^|\.)s3(-accesspoint|-control|-accelerate)?$/.test(baseService)) {
 		return 's3';
 	}
 	switch (baseService) {
@@ -259,19 +259,22 @@ export const AWS_REGION_SHAPE_PATTERN = /^[a-z]{2,4}(-[a-z]+)+-\d+$/;
 
 /**
  * Parses an AWS service URL to extract the service name and region.
- * Some AWS services are global and don't have a region. Recognizes both
- * public endpoints (`<service>.<region>.amazonaws.com`, including dual-stack
- * and FIPS variants) and PrivateLink endpoints
- * (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`), which return their
+ * Some AWS services are global and don't have a region. PrivateLink
+ * endpoints (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`) return their
  * positional service and region labels verbatim.
  *
- * On all other hostnames (public AWS endpoints and custom hosts) the region
- * is the rightmost region-shaped label, or null when no label matches. The
- * service is the label left of the region (skipping a `dualstack` qualifier)
- * when qualifier labels such as a bucket name or API id precede it, otherwise
- * the first label. The region is not validated against the supported region
- * list; callers must check it (e.g. with {@link assertSupportedAwsRegion})
- * before using it for signing.
+ * On all other hostnames (public AWS endpoints, including dual-stack and
+ * FIPS variants, and custom hosts) the region is the rightmost region-shaped
+ * label, or null when no label matches. The service is the label right of
+ * the region when the region is second-to-last on an AWS host (region-middle
+ * and legacy region-first shapes: `<domain>.<region>.es`, `<region>.queue`);
+ * otherwise the label left of the region (skipping a `dualstack` qualifier)
+ * when qualifier labels such as a bucket name or API id precede it;
+ * otherwise a trailing legacy region-less S3 service label (`<bucket>.s3`,
+ * `<bucket>.s3-accelerate[.dualstack]`); otherwise the first label. The
+ * region is not validated against the supported region list; callers must
+ * check it (e.g. with {@link assertSupportedAwsRegion}) before using it for
+ * signing.
  *
  * @param url - The AWS service URL to parse
  * @returns Object containing the service name and region (null for global services)
@@ -300,17 +303,29 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
 	}
 	const region = regionIdx === -1 ? null : labels[regionIdx];
 	let service = labels[0];
-	if (regionIdx >= 2) {
+	if (regionIdx !== -1 && regionIdx === labels.length - 2 && isAwsEndpointHostname(hostname)) {
+		// On AWS hosts the region is otherwise always the last label before the domain
+		// suffix, so a second-to-last region marks the region-middle and region-first
+		// shapes (`<domain>.<region>.es.amazonaws.com`, `<region>.queue.amazonaws.com`),
+		// which put the service right of the region.
+		service = labels[regionIdx + 1];
+	} else if (regionIdx >= 2) {
 		// AWS hostnames place the service label immediately left of the region
 		// (qualifiers like bucket/API-id/access-point names sit further left);
 		// dual-stack endpoints interpose a 'dualstack' qualifier — skip it.
 		let serviceIdx = regionIdx - 1;
 		if (labels[serviceIdx] === 'dualstack') serviceIdx--;
 		service = labels[serviceIdx];
-	} else if (regionIdx === 0 && labels.length > 1) {
-		// Legacy region-first shape (`<region>.queue.amazonaws.com`): the only
-		// service candidate is the label right of the region.
-		service = labels[1];
+	} else if (regionIdx === -1 && labels.length > 1) {
+		// Legacy region-less S3 hosts (`<bucket>.s3.amazonaws.com`,
+		// `<bucket>.s3-accelerate[.dualstack].amazonaws.com`) put the service last.
+		// The family is closed, so only adopt a trailing label that belongs to it —
+		// a host with a typo'd (non-region-shaped) region keeps its first-label service.
+		let serviceIdx = labels.length - 1;
+		if (labels[serviceIdx] === 'dualstack' && serviceIdx > 0) serviceIdx--;
+		if (labels[serviceIdx] === 's3' || labels[serviceIdx] === 's3-accelerate') {
+			service = labels[serviceIdx];
+		}
 	}
 	return { service, region };
 }
@@ -328,9 +343,9 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
  *   an AWS endpoint host, an unrecognized label (a malformed/mistyped host, or
  *   an odd endpoint shape the parser mis-split) throws a UserError, so the
  *   request fails fast with a clear message instead of signing with a bad
- *   region. On a custom (non-AWS) host, a region-shaped label is not
- *   authoritative (proxies and S3-compatible stores use their own region
- *   names), so the credential region is kept instead.
+ *   region. On a custom (non-AWS) host, an unrecognized region-shaped label
+ *   is not authoritative (proxies and S3-compatible stores use their own
+ *   region names), so the credential region is kept instead.
  */
 function resolveServiceAndRegion(
 	url: URL,

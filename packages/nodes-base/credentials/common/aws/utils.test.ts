@@ -696,6 +696,11 @@ describe('parseAwsUrl', () => {
 		expect(parseAwsUrl(url)).toEqual({ service: 'queue', region: 'us-east-2' });
 	});
 
+	it('parses a region-middle OpenSearch domain hostname (service right of the region)', () => {
+		const url = new URL('https://search-mydomain-abc123.us-east-1.es.amazonaws.com/_search');
+		expect(parseAwsUrl(url)).toEqual({ service: 'es', region: 'us-east-1' });
+	});
+
 	it('parses an S3 access-point hostname', () => {
 		const url = new URL('https://myap-123456789012.s3-accesspoint.us-west-2.amazonaws.com/');
 		expect(parseAwsUrl(url)).toEqual({ service: 's3-accesspoint', region: 'us-west-2' });
@@ -731,7 +736,7 @@ describe('parseAwsUrl', () => {
 		expect(parseAwsUrl(url)).toEqual({ service: 'dualstack', region: 'us-east-1' });
 	});
 
-	it('lets a supported bucket label not shadow an unsupported label in the region slot', () => {
+	it('does not let a supported bucket label shadow an unsupported region label in the region slot', () => {
 		const url = new URL('https://us-east-1.s3.eu-central-9.amazonaws.com/key');
 		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'eu-central-9' });
 	});
@@ -774,6 +779,21 @@ describe('parseAwsUrl', () => {
 	it('does not shape-match the region-less legacy SQS queue host', () => {
 		const url = new URL('https://queue.amazonaws.com/123456789012/my-queue');
 		expect(parseAwsUrl(url)).toEqual({ service: 'queue', region: null });
+	});
+
+	it('parses a legacy region-less virtual-hosted S3 hostname', () => {
+		const url = new URL('https://mybucket.s3.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: null });
+	});
+
+	it('parses a legacy region-less S3 transfer-acceleration hostname', () => {
+		const url = new URL('https://mybucket.s3-accelerate.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3-accelerate', region: null });
+	});
+
+	it('parses a legacy region-less S3 accelerate dual-stack hostname', () => {
+		const url = new URL('https://mybucket.s3-accelerate.dualstack.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3-accelerate', region: null });
 	});
 
 	it('returns a null region for a custom host without region-shaped labels', () => {
@@ -1215,6 +1235,80 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
 				{
 					uri: 'https://123456789012.s3-control.us-east-1.amazonaws.com/',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+		});
+
+		it('signs a legacy region-less virtual-hosted S3 host as s3 with the credential region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://mybucket.s3.amazonaws.com/key', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('signs an S3 transfer-acceleration host under the s3 service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://mybucket.s3-accelerate.amazonaws.com/key', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+		});
+
+		it('signs a region-less legacy SQS global host as sqs with the credential region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://queue.amazonaws.com/123456789012/my-queue', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('sqs');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('signs a region-middle OpenSearch domain host with the es service and its region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://search-mydomain-abc123.us-west-2.es.amazonaws.com/_search',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('es');
+			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('signs an S3 Control FIPS host under the s3 service name (strip composes with the family)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://123456789012.s3-control-fips.us-east-1.amazonaws.com/',
 					headers: {},
 				} as any,
 				baseCredentials,
