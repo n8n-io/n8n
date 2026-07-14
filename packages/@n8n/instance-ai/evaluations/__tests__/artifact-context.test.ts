@@ -1,8 +1,7 @@
-import type { InstanceAiMessage } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 import { vi } from 'vitest';
 
-import { agentNode, assistantMessage, dataTableConfig } from './fixtures';
+import { dataTableConfig } from './fixtures';
 import type {
 	DataTableColumnsResponse,
 	DataTableRowsResponse,
@@ -10,6 +9,7 @@ import type {
 } from '../clients/n8n-client';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import type { EvalLogger } from '../harness/logger';
+import type { ArtifactRef } from '../types';
 
 const silentLogger: EvalLogger = {
 	info: () => {},
@@ -25,7 +25,7 @@ describe('resolveArtifactContext', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders "(no … produced)" fallbacks for both types when nothing is discovered', async () => {
+	it('renders "(no … produced)" fallbacks for both types when no refs were captured', async () => {
 		const client = {
 			getPersonalProjectId: vi.fn(),
 			getAgentConfig: vi.fn(),
@@ -33,7 +33,11 @@ describe('resolveArtifactContext', () => {
 			getWorkflowEvaluationConfigs: vi.fn(),
 		} as unknown as N8nClient;
 
-		const context = await resolveArtifactContext({ messages: [], client, logger: silentLogger });
+		const context = await resolveArtifactContext({
+			artifactRefs: [],
+			client,
+			logger: silentLogger,
+		});
 
 		expect(context).toBe(
 			'## Agent\n\n(no agent produced)\n\n## Config-eval\n\n(no config-eval produced)',
@@ -41,10 +45,8 @@ describe('resolveArtifactContext', () => {
 		expect(client.getPersonalProjectId).not.toHaveBeenCalled();
 	});
 
-	it('fetches and renders a discovered agent artifact into the Agent section', async () => {
-		const messages: InstanceAiMessage[] = [
-			assistantMessage(agentNode({ targetResource: { type: 'agent', id: 'agent-x' } })),
-		];
+	it('fetches and renders a discovered agent ref into the Agent section', async () => {
+		const artifactRefs: ArtifactRef[] = [{ type: 'agent', id: 'agent-x' }];
 		const getPersonalProjectId: Mock = vi.fn().mockResolvedValue('project-1');
 		const getAgentConfig: Mock = vi.fn().mockResolvedValue({ name: 'My Agent' });
 		const getAgentSkills: Mock = vi.fn().mockResolvedValue({});
@@ -55,7 +57,7 @@ describe('resolveArtifactContext', () => {
 			getWorkflowEvaluationConfigs: vi.fn().mockResolvedValue([]),
 		} as unknown as N8nClient;
 
-		const context = await resolveArtifactContext({ messages, client, logger: silentLogger });
+		const context = await resolveArtifactContext({ artifactRefs, client, logger: silentLogger });
 
 		expect(getAgentConfig).toHaveBeenCalledWith('project-1', 'agent-x');
 		expect(getAgentSkills).toHaveBeenCalledWith('project-1', 'agent-x');
@@ -65,12 +67,10 @@ describe('resolveArtifactContext', () => {
 		expect(context).toContain('## Config-eval\n\n(no config-eval produced)');
 	});
 
-	it('fetches and renders a discovered config-eval artifact against its data_table dataset', async () => {
+	it('fetches and renders a discovered config-eval ref against its data_table dataset', async () => {
 		const workflowId = 'wf-1';
 		const dataTableId = 'dt-1';
-		const messages: InstanceAiMessage[] = [
-			assistantMessage(agentNode({ targetResource: { type: 'config-eval', id: workflowId } })),
-		];
+		const artifactRefs: ArtifactRef[] = [{ type: 'config-eval', id: workflowId }];
 		const columns: DataTableColumnsResponse = [
 			{
 				id: 'col-1',
@@ -102,7 +102,7 @@ describe('resolveArtifactContext', () => {
 			getDataTableRows: vi.fn().mockResolvedValue(rows),
 		} as unknown as N8nClient;
 
-		const context = await resolveArtifactContext({ messages, client, logger: silentLogger });
+		const context = await resolveArtifactContext({ artifactRefs, client, logger: silentLogger });
 
 		expect(context).toContain('## Config-eval\n\n## Evaluation configs');
 		expect(context).toContain('input');
@@ -113,9 +113,7 @@ describe('resolveArtifactContext', () => {
 	});
 
 	it('surfaces a fetch failure inline instead of the fallback, and does not throw', async () => {
-		const messages: InstanceAiMessage[] = [
-			assistantMessage(agentNode({ targetResource: { type: 'agent', id: 'agent-x' } })),
-		];
+		const artifactRefs: ArtifactRef[] = [{ type: 'agent', id: 'agent-x' }];
 		const client = {
 			getPersonalProjectId: vi.fn().mockRejectedValue(new Error('network down')),
 			getAgentConfig: vi.fn(),
@@ -123,7 +121,7 @@ describe('resolveArtifactContext', () => {
 			getWorkflowEvaluationConfigs: vi.fn().mockResolvedValue([]),
 		} as unknown as N8nClient;
 
-		const context = await resolveArtifactContext({ messages, client, logger: silentLogger });
+		const context = await resolveArtifactContext({ artifactRefs, client, logger: silentLogger });
 
 		expect(context).toContain(
 			'## Agent\n\n(agent produced but could not be rendered: network down)',

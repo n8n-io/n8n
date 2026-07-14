@@ -7,6 +7,8 @@ import { isRecord } from '@n8n/utils/is-record';
 import { DATA_TABLES_TOOL_ID, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
+	ArtifactRef,
+	ArtifactType,
 	CapturedEvent,
 	CapturedToolCall,
 	ConversationMetrics,
@@ -35,6 +37,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 	const workflowIds: string[] = [];
 	const executionIds: string[] = [];
 	const dataTableIds: string[] = [];
+	const artifactRefsByKey = new Map<string, ArtifactRef>();
 	const textChunks: string[] = [];
 	const toolCalls: CapturedToolCall[] = [];
 	const agentActivities: AgentActivity[] = [];
@@ -147,6 +150,11 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				if (tools.length > 0) {
 					activity.reasoning = `Tools: ${tools.join(', ')}`;
 				}
+
+				// A spawned agent's targetResource is the only signal for non-workflow
+				// artifacts (agent, config-eval). `targetResource` is emitted on agent-spawned
+				// only, so this is equivalent to walking every agent-tree node's targetResource.
+				collectArtifactRef(getRecord(payload, 'targetResource'), artifactRefsByKey);
 				break;
 			}
 
@@ -200,10 +208,30 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 		workflowIds: dedupe(workflowIds),
 		executionIds: dedupe(executionIds),
 		dataTableIds: dedupe(dataTableIds),
+		artifactRefs: [...artifactRefsByKey.values()],
 		finalText: textChunks.join(''),
 		toolCalls,
 		agentActivities,
 	};
+}
+
+/** Artifact types discovered via `targetResource` (workflow has its own discovery path). */
+const ARTIFACT_REF_TYPES = new Set<string>(['agent', 'config-eval']);
+
+function isArtifactRefType(type: string): type is ArtifactType {
+	return ARTIFACT_REF_TYPES.has(type);
+}
+
+/** Collect a non-workflow artifact ref from an `agent-spawned` targetResource, deduped by type+id. */
+function collectArtifactRef(
+	targetResource: Record<string, unknown> | undefined,
+	out: Map<string, ArtifactRef>,
+): void {
+	if (!targetResource) return;
+	const type = getString(targetResource, 'type');
+	const id = getString(targetResource, 'id');
+	if (!type || !id || !isArtifactRefType(type)) return;
+	out.set(`${type}:${id}`, { type, id });
 }
 
 // ---------------------------------------------------------------------------

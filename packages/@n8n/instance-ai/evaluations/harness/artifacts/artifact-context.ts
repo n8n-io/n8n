@@ -10,10 +10,9 @@
 // judge or scoring path.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiMessage } from '@n8n/api-types';
-
 import { ARTIFACT_HANDLERS } from './registry';
 import type { N8nClient } from '../../clients/n8n-client';
+import type { ArtifactRef } from '../../types';
 import type { EvalLogger } from '../logger';
 
 /** Section heading per non-workflow artifact type. */
@@ -27,11 +26,11 @@ const SECTION_TITLES: Record<string, string> = {
  * Returns `undefined` when there are no non-workflow handlers to render (nothing to add).
  */
 export async function resolveArtifactContext(args: {
-	messages: InstanceAiMessage[];
+	artifactRefs: ArtifactRef[];
 	client: N8nClient;
 	logger: EvalLogger;
 }): Promise<string | undefined> {
-	const { messages, client, logger } = args;
+	const { artifactRefs, client, logger } = args;
 	const sections: string[] = [];
 
 	for (const handler of ARTIFACT_HANDLERS) {
@@ -39,7 +38,7 @@ export async function resolveArtifactContext(args: {
 		if (handler.type === 'workflow') continue;
 
 		const title = SECTION_TITLES[handler.type] ?? handler.type;
-		const refs = handler.discover({ messages });
+		const refs = handler.discover({ artifactRefs });
 		if (refs.length === 0) {
 			sections.push(`## ${title}\n\n(no ${handler.type} produced)`);
 			continue;

@@ -145,6 +145,9 @@ export interface EventOutcome {
 	workflowIds: string[];
 	executionIds: string[];
 	dataTableIds: string[];
+	/** Non-workflow artifact references (agent, config-eval) captured from the
+	 *  `agent-spawned` stream's `targetResource` — the only signal the assistant emits. */
+	artifactRefs: ArtifactRef[];
 	finalText: string;
 	toolCalls: CapturedToolCall[];
 	agentActivities: AgentActivity[];
@@ -163,6 +166,14 @@ export interface BuildTrace {
 /** Artifact kinds an eval case can expect a build to produce. */
 export const ARTIFACT_TYPES = ['workflow', 'agent', 'config-eval'] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
+
+/** A discovered-but-not-yet-fetched artifact reference. Lives here (not in
+ *  harness/artifacts/types) so `outcome/` can produce it without importing back
+ *  into `harness/` — that direction is a cycle (harness already imports outcome/). */
+export interface ArtifactRef {
+	type: ArtifactType;
+	id: string;
+}
 
 export interface ExecutionScenario {
 	name: string;

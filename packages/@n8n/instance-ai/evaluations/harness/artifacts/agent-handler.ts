@@ -8,19 +8,15 @@ import { sanitizeAgentJsonConfig } from '@n8n/api-types';
 
 import { renderAgentArtifact } from './render-agent';
 import type { AgentArtifact, ArtifactHandler } from './types';
-import { collectArtifactRefIds } from '../../outcome/collect-refs';
 
 export const agentHandler: ArtifactHandler<AgentArtifact> = {
 	type: 'agent',
 	runsExecutionScenarios: false,
 	discover(ctx) {
-		// Discovery keys off `targetResource.type === 'agent'` only. The build_agent tool
-		// result is `{ ok, config, configHash, updatedAt, versionId }` and carries no agent
-		// id, so there is no tool-result signal to read.
-		return collectArtifactRefIds(ctx.messages, { targetType: 'agent' }).map((id) => ({
-			type: 'agent',
-			id,
-		}));
+		// The only signal is `targetResource.type === 'agent'`, captured from the SSE
+		// `agent-spawned` stream. The build_agent tool result is
+		// `{ ok, config, configHash, updatedAt, versionId }` and carries no agent id.
+		return ctx.artifactRefs.filter((ref) => ref.type === 'agent');
 	},
 	async fetch(ref, client) {
 		// Agent routes are project-scoped; the harness builds in the user's personal project.

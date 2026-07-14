@@ -21,21 +21,18 @@ import type {
 	DataTableRowsResponse,
 	N8nClient,
 } from '../../clients/n8n-client';
-import type { ArtifactType } from '../../types';
+import type { ArtifactRef, ArtifactType } from '../../types';
 
-/** A discovered-but-not-yet-fetched artifact reference. */
-export interface ArtifactRef {
-	type: ArtifactType;
-	id: string;
-}
+export type { ArtifactRef };
 
 /**
- * Signals available to a handler's discover(). Extend additively as new
- * artifact types need more signals (all current discovery reads from message
- * agentTrees).
+ * Signals available to a handler's discover(). Non-workflow handlers read the
+ * `artifactRefs` captured from the SSE stream; the workflow handler still reads
+ * `messages` for its richer (tool-result + targetResource) discovery.
  */
 export interface DiscoverContext {
-	messages: InstanceAiMessage[];
+	artifactRefs: ArtifactRef[];
+	messages?: InstanceAiMessage[];
 }
 
 /**

@@ -17,6 +17,7 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.workflowIds).toEqual([]);
 		expect(result.executionIds).toEqual([]);
 		expect(result.dataTableIds).toEqual([]);
+		expect(result.artifactRefs).toEqual([]);
 		expect(result.finalText).toBe('');
 		expect(result.toolCalls).toEqual([]);
 		expect(result.agentActivities).toEqual([]);
@@ -334,6 +335,47 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.agentActivities).toHaveLength(1);
 		expect(result.agentActivities[0].role).toBe('builder');
 		expect(result.agentActivities[0].status).toBe('completed');
+	});
+
+	it('captures agent / config-eval artifact refs from agent-spawned targetResource, deduped', () => {
+		const spawn = (agentId: string, targetResource: Record<string, unknown>): CapturedEvent => ({
+			timestamp: 1000,
+			type: 'agent-spawned',
+			data: {
+				type: 'agent-spawned',
+				agentId,
+				payload: { agentId, role: 'builder', parentId: 'root', targetResource },
+			},
+		});
+		const events: CapturedEvent[] = [
+			spawn('a1', { type: 'agent', id: 'agent-1' }),
+			spawn('a2', { type: 'config-eval', id: 'wf-1' }),
+			// A workflow targetResource is discovered via its own path, not here.
+			spawn('a3', { type: 'workflow', id: 'wf-2' }),
+			// Duplicate agent ref collapses.
+			spawn('a4', { type: 'agent', id: 'agent-1' }),
+			// No id → skipped.
+			spawn('a5', { type: 'agent' }),
+		];
+
+		const result = extractOutcomeFromEvents(events);
+
+		expect(result.artifactRefs).toEqual([
+			{ type: 'agent', id: 'agent-1' },
+			{ type: 'config-eval', id: 'wf-1' },
+		]);
+	});
+
+	it('returns no artifact refs when agents carry no targetResource', () => {
+		const events: CapturedEvent[] = [
+			{
+				timestamp: 1000,
+				type: 'agent-spawned',
+				data: { type: 'agent-spawned', agentId: 'a1', payload: { agentId: 'a1', role: 'builder' } },
+			},
+		];
+
+		expect(extractOutcomeFromEvents(events).artifactRefs).toEqual([]);
 	});
 
 	it('deduplicates resource IDs', () => {

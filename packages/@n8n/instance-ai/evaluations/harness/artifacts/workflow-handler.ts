@@ -15,7 +15,8 @@ export const workflowHandler: ArtifactHandler<WorkflowResponse> = {
 	type: 'workflow',
 	runsExecutionScenarios: true,
 	discover(ctx) {
-		return extractWorkflowIdsFromMessages(ctx.messages).map((id) => ({
+		// Workflow keeps its richer message-based discovery (tool results + targetResource).
+		return extractWorkflowIdsFromMessages(ctx.messages ?? []).map((id) => ({
 			type: 'workflow',
 			id,
 		}));

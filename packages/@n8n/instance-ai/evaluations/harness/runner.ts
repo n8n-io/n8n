@@ -57,6 +57,7 @@ import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import { requiresWorkflowOutput } from '../summary';
 import type {
+	ArtifactRef,
 	BuildTrace,
 	ChecklistItem,
 	ChecklistResult,
@@ -318,25 +319,23 @@ export async function runWorkflowTestCase(
 			isPrebuilt,
 			logger,
 		});
-	// Discover + render non-workflow artifacts (agent, config-eval) into judge context, so
-	// outcome expectations can assert their existence/absence/content. Independent of whether
-	// a workflow was built — those artifacts save outside the workflow path. Only needed when
-	// there are expectations to judge. Re-fetches thread messages (buildWorkflow reads them
-	// internally but doesn't expose them); artifacts are discovered from the agent-tree.
+	// Render non-workflow artifacts (agent, config-eval) into judge context, so outcome
+	// expectations can assert their existence/absence/content. Independent of whether a
+	// workflow was built — those artifacts save outside the workflow path. Discovery uses the
+	// refs captured from the SSE stream during the build (no thread-message re-fetch); only
+	// needed when there are expectations to judge.
 	const artifactContextPromise: Promise<string | undefined> =
-		expectationsToJudge.length > 0 && build.threadId
-			? client
-					.getThreadMessages(build.threadId)
-					.then(
-						async (threadMessages) =>
-							await resolveArtifactContext({ messages: threadMessages.messages, client, logger }),
-					)
-					.catch((error: unknown) => {
-						logger.warn(
-							`  Artifact context resolution failed: ${error instanceof Error ? error.message : String(error)}`,
-						);
-						return undefined;
-					})
+		expectationsToJudge.length > 0
+			? resolveArtifactContext({
+					artifactRefs: build.artifactRefs ?? [],
+					client,
+					logger,
+				}).catch((error: unknown) => {
+					logger.warn(
+						`  Artifact context resolution failed: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return undefined;
+				})
 			: Promise.resolve<string | undefined>(undefined);
 
 	const expectationsPromise: Promise<BuildExpectationResult[]> =
@@ -515,6 +514,9 @@ export interface BuildResult {
 	/** IDs to pass to cleanupBuild() */
 	createdWorkflowIds: string[];
 	createdDataTableIds: string[];
+	/** Non-workflow artifact refs (agent, config-eval) captured from the SSE stream,
+	 *  fed to the build-expectations judge context. Empty/undefined for prebuilt runs. */
+	artifactRefs?: ArtifactRef[];
 	/** Per-turn deterministic counters extracted from the captured event stream. */
 	conversationMetrics?: ConversationMetrics;
 	/** Captured SSE events from the build run. */
@@ -789,6 +791,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				buildTrace,
 				createdWorkflowIds: restoredWorkflowIds,
 				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+				artifactRefs: eventOutcome.artifactRefs,
 				conversationMetrics,
 				events,
 				threadId,
@@ -822,6 +825,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			buildTrace,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
 			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+			artifactRefs: eventOutcome.artifactRefs,
 			conversationMetrics,
 			events,
 			threadId,

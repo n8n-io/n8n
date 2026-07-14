@@ -1,13 +1,14 @@
-import type { EvaluationConfigDto, InstanceAiMessage } from '@n8n/api-types';
+import type { EvaluationConfigDto } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
-import { agentNode, assistantMessage, dataTableConfig } from './fixtures';
+import { dataTableConfig } from './fixtures';
 import type {
 	DataTableColumnsResponse,
 	DataTableRowsResponse,
 	N8nClient,
 } from '../clients/n8n-client';
 import { configEvalHandler } from '../harness/artifacts/config-eval-handler';
+import type { ArtifactRef } from '../types';
 
 function googleSheetsConfig(workflowId: string): EvaluationConfigDto {
 	return {
@@ -41,29 +42,15 @@ describe('configEvalHandler', () => {
 		expect(configEvalHandler.runsExecutionScenarios).toBe(false);
 	});
 
-	it('discover() carries the owning workflow id from targetResource and ignores tool-call results', () => {
-		const messages: InstanceAiMessage[] = [
-			assistantMessage(
-				agentNode({
-					targetResource: { type: 'config-eval', id: 'wf-from-target-resource' },
-					// The real eval-setup-with-agent result carries no workflow id, so a tool call
-					// must not contribute an id — only targetResource does.
-					toolCalls: [
-						{
-							toolCallId: 'tc-1',
-							toolName: 'eval-setup-with-agent',
-							args: {},
-							result: { result: 'done', taskId: 'task-1' },
-							isLoading: false,
-						},
-					],
-				}),
-			),
+	it('discover() selects config-eval refs (owning workflow id) captured from the SSE stream', () => {
+		const artifactRefs: ArtifactRef[] = [
+			{ type: 'config-eval', id: 'wf-1' },
+			{ type: 'agent', id: 'agent-1' },
 		];
 
-		const refs = configEvalHandler.discover({ messages });
+		const refs = configEvalHandler.discover({ artifactRefs });
 
-		expect(refs).toEqual([{ type: 'config-eval', id: 'wf-from-target-resource' }]);
+		expect(refs).toEqual([{ type: 'config-eval', id: 'wf-1' }]);
 	});
 
 	it('fetch() follows the data_table dataset ref to columns + rows', async () => {

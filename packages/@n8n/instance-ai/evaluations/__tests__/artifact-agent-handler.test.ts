@@ -1,9 +1,9 @@
-import type { AgentJsonConfig, AgentSkill, InstanceAiMessage } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
-import { agentNode, assistantMessage } from './fixtures';
 import type { N8nClient } from '../clients/n8n-client';
 import { agentHandler } from '../harness/artifacts/agent-handler';
+import type { ArtifactRef } from '../types';
 
 describe('agentHandler', () => {
 	it('declares its type and static execution mode', () => {
@@ -11,29 +11,19 @@ describe('agentHandler', () => {
 		expect(agentHandler.runsExecutionScenarios).toBe(false);
 	});
 
-	it('discover() finds ids from targetResource and ignores tool-call results (no id signal there)', () => {
-		const messages: InstanceAiMessage[] = [
-			assistantMessage(
-				agentNode({
-					targetResource: { type: 'agent', id: 'agent-from-target-resource' },
-					// The real build_agent result carries no agent id, so a tool call must not
-					// contribute an id — only targetResource does.
-					toolCalls: [
-						{
-							toolCallId: 'tc-1',
-							toolName: 'build_agent',
-							args: {},
-							result: { ok: true, config: {}, configHash: 'h', versionId: 'v1' },
-							isLoading: false,
-						},
-					],
-				}),
-			),
+	it('discover() selects the agent refs captured from the SSE stream and ignores other types', () => {
+		const artifactRefs: ArtifactRef[] = [
+			{ type: 'agent', id: 'agent-1' },
+			{ type: 'config-eval', id: 'wf-1' },
+			{ type: 'agent', id: 'agent-2' },
 		];
 
-		const refs = agentHandler.discover({ messages });
+		const refs = agentHandler.discover({ artifactRefs });
 
-		expect(refs).toEqual([{ type: 'agent', id: 'agent-from-target-resource' }]);
+		expect(refs).toEqual([
+			{ type: 'agent', id: 'agent-1' },
+			{ type: 'agent', id: 'agent-2' },
+		]);
 	});
 
 	it('fetch() resolves the personal project, fetches config + skills, and sanitizes the config', async () => {
