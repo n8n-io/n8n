@@ -439,9 +439,11 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
 	});
 
-	it('prefers the log-derived tree over a rich stored snapshot', async () => {
-		// The defining rule of fold-on-read: when the log has renderable rows,
-		// stored snapshot trees are not read at all — not even renderable ones.
+	it('ignores the stored snapshot once the thread has log rows', async () => {
+		// There is no source competition — the flag picks the source. But
+		// snapshot rows keep being written while the flag is on (they are the
+		// flag-off/rollback path until Gate B), so a flag-on read always sees
+		// both; the tree must come from the log, never the stored row.
 		mockDbSnapshotStorage.getAll.mockResolvedValue([
 			{
 				tree: makeTree({ textContent: 'From the snapshot' }),
