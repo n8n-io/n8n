@@ -852,10 +852,31 @@ export const instanceAiWorkflowAttachmentSchema = z.object({
 });
 export type InstanceAiWorkflowAttachment = z.infer<typeof instanceAiWorkflowAttachmentSchema>;
 
+/**
+ * An agent reference the agents page hands off to a message. Carries no bytes —
+ * the agent resolves it with its tools and the FE shows it as an artifact tab.
+ */
+export const instanceAiAgentAttachmentSchema = z.object({
+	type: z.literal('agent'),
+	id: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	/** Project that owns the agent — required so the FE artifact preview can render. */
+	projectId: z.string().min(1).max(64),
+});
+export type InstanceAiAgentAttachment = z.infer<typeof instanceAiAgentAttachmentSchema>;
+
+/** A resource reference attachable to a message (as opposed to a binary file). */
+export const instanceAiResourceAttachmentSchema = z.discriminatedUnion('type', [
+	instanceAiWorkflowAttachmentSchema,
+	instanceAiAgentAttachmentSchema,
+]);
+export type InstanceAiResourceAttachment = z.infer<typeof instanceAiResourceAttachmentSchema>;
+
 /** Anything attachable to a message: a binary file or a resource reference. */
 export const instanceAiAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiFileAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
+	instanceAiAgentAttachmentSchema,
 ]);
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
