@@ -228,6 +228,11 @@ export {
 	type WorkflowPublicationStatus,
 } from './schemas/workflow-publication-status.schema';
 
+export {
+	WorkflowReviewRequiredStatusSchema,
+	type WorkflowReviewRequiredStatus,
+} from './schemas/workflow-review-required-status.schema';
+
 export type { UsageState } from './schemas/usage.schema';
 
 export type {

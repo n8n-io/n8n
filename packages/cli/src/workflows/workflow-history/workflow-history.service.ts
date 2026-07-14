@@ -19,6 +19,10 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
+import {
+	formatWorkflowHistoryAuthorName,
+	formatWorkflowHistoryAuthorNameViaMcp,
+} from './workflow-history-authors.util';
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 
@@ -188,8 +192,12 @@ export class WorkflowHistoryService {
 			);
 		}
 
-		const name = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
-		const authors = source === 'n8n-mcp' ? `${name} (via MCP)` : name;
+		const authors =
+			typeof user === 'string'
+				? user
+				: source === 'n8n-mcp'
+					? formatWorkflowHistoryAuthorNameViaMcp(user)
+					: formatWorkflowHistoryAuthorName(user);
 
 		const repository = transactionManager
 			? transactionManager.getRepository(WorkflowHistory)

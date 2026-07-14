@@ -1,3 +1,4 @@
+import type { WorkflowReviewRequiredStatus } from '@n8n/api-types';
 import type {
 	IWorkflowSettings,
 	IConnections,
@@ -6,6 +7,8 @@ import type {
 	IWorkflowGroup,
 } from 'n8n-workflow';
 
+import type { IRestApiContext } from '../types';
+import { makeRestApiRequest } from '../utils';
 import type { ITag } from './tags';
 
 export interface WorkflowMetadata {
@@ -54,4 +57,28 @@ export interface WorkflowDataUpdate {
 
 export interface WorkflowDataCreate extends WorkflowDataUpdate {
 	projectId?: string;
+}
+
+export async function fetchWorkflowReviewRequiredStatus(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<WorkflowReviewRequiredStatus> {
+	return await makeRestApiRequest<WorkflowReviewRequiredStatus>(
+		context,
+		'GET',
+		`/workflows/${encodeURIComponent(workflowId)}/review-required`,
+	);
+}
+
+export async function updateWorkflowReviewRequired(
+	context: IRestApiContext,
+	workflowId: string,
+	reviewRequired: boolean,
+): Promise<WorkflowReviewRequiredStatus> {
+	return await makeRestApiRequest<WorkflowReviewRequiredStatus>(
+		context,
+		'PATCH',
+		`/workflows/${encodeURIComponent(workflowId)}/review-required`,
+		{ reviewRequired },
+	);
 }

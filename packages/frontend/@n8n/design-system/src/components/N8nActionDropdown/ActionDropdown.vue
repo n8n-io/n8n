@@ -177,6 +177,9 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 					/>
 				</span>
 			</template>
+			<template v-if="$slots.footer" #footer>
+				<slot name="footer" />
+			</template>
 		</N8nDropdownMenu>
 	</div>
 </template>

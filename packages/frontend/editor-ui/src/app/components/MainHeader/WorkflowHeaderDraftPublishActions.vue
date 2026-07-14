@@ -50,6 +50,8 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowPublicationStatusSync } from '@/app/composables/useWorkflowPublicationStatusSync';
+import { useWorkflowReviewsEnabled } from '@/features/workflow-reviews/composables/useWorkflowReviewsEnabled';
+import WorkflowReviewRequiredToggle from '@/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -82,6 +84,8 @@ const toast = useToast();
 const saveStore = useWorkflowSaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 const workflowActivate = useWorkflowActivate();
+const { isWorkflowReviewsEnabled: isWorkflowReviewRequiredToggleVisible } =
+	useWorkflowReviewsEnabled();
 
 const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],
@@ -677,6 +681,9 @@ defineExpose({
 					:items="versionMenuActions"
 					placement="bottom-end"
 					data-test-id="version-menu"
+					:extra-popper-class="
+						isWorkflowReviewRequiredToggleVisible ? $style.versionMenu : undefined
+					"
 					@select="onDropdownMenuSelect"
 				>
 					<template #activator>
@@ -688,6 +695,9 @@ defineExpose({
 							:aria-label="i18n.baseText('node.moreActions')"
 							data-test-id="version-menu-button"
 						/>
+					</template>
+					<template v-if="isWorkflowReviewRequiredToggleVisible && !isNewWorkflow" #footer>
+						<WorkflowReviewRequiredToggle :workflow-id="id" />
 					</template>
 				</N8nActionDropdown>
 			</div>
@@ -784,6 +794,10 @@ defineExpose({
 
 .indicatorPartial {
 	background-color: var(--color--warning);
+}
+
+.versionMenu {
+	--n8n--dropdown-menu-width: 13rem;
 }
 
 .flex {

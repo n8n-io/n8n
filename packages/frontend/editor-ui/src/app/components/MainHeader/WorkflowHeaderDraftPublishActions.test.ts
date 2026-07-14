@@ -3,6 +3,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createMockEnterpriseSettings, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -63,6 +64,11 @@ vi.mock('@/app/composables/useToast', () => ({
 
 vi.mock('@/app/composables/useWorkflowPublicationStatusSync', () => ({
 	useWorkflowPublicationStatusSync: vi.fn().mockReturnValue({ refetch: vi.fn() }),
+}));
+
+const checkEnvFeatureFlag = vi.fn().mockReturnValue(false);
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag: () => ({ check: { value: checkEnvFeatureFlag } }),
 }));
 
 const initialState = {
@@ -903,6 +909,136 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByText('Webhook')).toBeInTheDocument();
 			// Error message should NOT be present in the tooltip
 			expect(queryByText('Auth failed')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Workflow review required toggle', () => {
+		let settingsStore: MockedStore<typeof useSettingsStore>;
+
+		const reviewRequiredToggleStub = {
+			template: '<div data-test-id="workflow-review-required-toggle-stub"></div>',
+		};
+
+		const renderWithReviewToggleStub = (options: Parameters<typeof renderComponent>[0] = {}) =>
+			renderComponent({
+				...options,
+				global: {
+					...options?.global,
+					stubs: {
+						...options?.global?.stubs,
+						WorkflowReviewRequiredToggle: reviewRequiredToggleStub,
+					},
+				},
+			});
+
+		const enableAllWorkflowReviewGates = () => {
+			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.WorkflowReviews]: true,
+			});
+			settingsStore.$patch((state) => {
+				state.settings = {
+					...state.settings,
+					workflowReviews: { enabled: true },
+				};
+			});
+			checkEnvFeatureFlag.mockReturnValue(true);
+		};
+
+		const openVersionMenu = async (
+			getByTestId: ReturnType<typeof renderComponent>['getByTestId'],
+		) => {
+			await userEvent.click(getByTestId('version-menu-button'));
+		};
+
+		beforeEach(() => {
+			settingsStore = mockedStore(useSettingsStore);
+			checkEnvFeatureFlag.mockReset();
+			checkEnvFeatureFlag.mockReturnValue(false);
+			setupEnabledPublishButton();
+		});
+
+		it('renders when license, env flag, and instance master switch are enabled', async () => {
+			enableAllWorkflowReviewGates();
+
+			const { getByTestId, queryByTestId } = renderWithReviewToggleStub();
+
+			expect(queryByTestId('workflow-review-required-toggle-stub')).not.toBeInTheDocument();
+
+			await openVersionMenu(getByTestId);
+
+			expect(screen.getByTestId('workflow-review-required-toggle-stub')).toBeInTheDocument();
+		});
+
+		it('does not render when workflow reviews license is off', async () => {
+			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.WorkflowReviews]: false,
+			});
+			settingsStore.$patch((state) => {
+				state.settings = {
+					...state.settings,
+					workflowReviews: { enabled: true },
+				};
+			});
+			checkEnvFeatureFlag.mockReturnValue(true);
+
+			const { getByTestId, queryByTestId } = renderWithReviewToggleStub();
+			await openVersionMenu(getByTestId);
+
+			expect(queryByTestId('workflow-review-required-toggle-stub')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('workflow-review-required-toggle-stub')).not.toBeInTheDocument();
+		});
+
+		it('does not render when env feature flag is off', async () => {
+			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.WorkflowReviews]: true,
+			});
+			settingsStore.$patch((state) => {
+				state.settings = {
+					...state.settings,
+					workflowReviews: { enabled: true },
+				};
+			});
+			checkEnvFeatureFlag.mockReturnValue(false);
+
+			const { getByTestId, queryByTestId } = renderWithReviewToggleStub();
+			await openVersionMenu(getByTestId);
+
+			expect(queryByTestId('workflow-review-required-toggle-stub')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('workflow-review-required-toggle-stub')).not.toBeInTheDocument();
+		});
+
+		it('does not render when instance master switch is off', async () => {
+			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.WorkflowReviews]: true,
+			});
+			settingsStore.$patch((state) => {
+				state.settings = {
+					...state.settings,
+					workflowReviews: { enabled: false },
+				};
+			});
+			checkEnvFeatureFlag.mockReturnValue(true);
+
+			const { getByTestId, queryByTestId } = renderWithReviewToggleStub();
+			await openVersionMenu(getByTestId);
+
+			expect(queryByTestId('workflow-review-required-toggle-stub')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('workflow-review-required-toggle-stub')).not.toBeInTheDocument();
+		});
+
+		it('does not render for new workflows even when all gates are enabled', async () => {
+			enableAllWorkflowReviewGates();
+
+			const { getByTestId, queryByTestId } = renderWithReviewToggleStub({
+				props: {
+					...defaultWorkflowProps,
+					isNewWorkflow: true,
+				},
+			});
+			await openVersionMenu(getByTestId);
+
+			expect(queryByTestId('workflow-review-required-toggle-stub')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('workflow-review-required-toggle-stub')).not.toBeInTheDocument();
 		});
 	});
 });

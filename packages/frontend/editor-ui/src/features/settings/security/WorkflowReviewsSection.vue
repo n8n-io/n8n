@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { useToast } from '@/app/composables/useToast';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const props = defineProps<{
 	initialEnabled: boolean;
@@ -14,6 +15,7 @@ const props = defineProps<{
 
 const $style = useCssModule();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 
@@ -40,6 +42,7 @@ async function persist(value: boolean): Promise<void> {
 		await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, {
 			workflowReviews: { enabled: value },
 		});
+		settingsStore.settings.workflowReviews = { enabled: value };
 		showToast({
 			type: 'success',
 			title: i18n.baseText(

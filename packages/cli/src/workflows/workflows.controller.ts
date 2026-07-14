@@ -8,7 +8,9 @@ import {
 	ManualRunDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	UpdateWorkflowReviewRequiredDto,
 	type WorkflowPublicationStatus,
+	type WorkflowReviewRequiredStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfBlockedIpError, SsrfProtectionService } from '@n8n/backend-network';
@@ -64,6 +66,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { WorkflowReviewSettingsService } from '@/services/workflow-review-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 
@@ -92,6 +95,7 @@ export class WorkflowsController {
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
+		private readonly workflowReviewSettingsService: WorkflowReviewSettingsService,
 	) {}
 
 	@Post('/')
@@ -692,6 +696,33 @@ export class WorkflowsController {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
 		}
 		return await this.workflowPublicationStatusService.getStatus(workflowId);
+	}
+
+	@Get('/:workflowId/review-required')
+	@Licensed('feat:workflowReviews')
+	@ProjectScope('workflow:read')
+	async getReviewRequired(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowReviewRequiredStatus> {
+		return await this.workflowReviewSettingsService.getStatus(req.user, workflowId);
+	}
+
+	@Patch('/:workflowId/review-required')
+	@Licensed('feat:workflowReviews')
+	@ProjectScope('workflow:update')
+	async updateReviewRequired(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Body body: UpdateWorkflowReviewRequiredDto,
+	): Promise<WorkflowReviewRequiredStatus> {
+		return await this.workflowReviewSettingsService.setReviewRequired(
+			req.user,
+			workflowId,
+			body.reviewRequired,
+		);
 	}
 
 	@Post('/with-node-types')

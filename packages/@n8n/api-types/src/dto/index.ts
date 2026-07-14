@@ -248,6 +248,7 @@ export {
 	SecuritySettingsDto,
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
+export { UpdateWorkflowReviewRequiredDto } from './workflow-reviews/update-workflow-review-required.dto';
 export {
 	UpdateSecurityPolicyDto,
 	type SecurityPolicyResponse,
