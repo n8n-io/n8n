@@ -210,6 +210,13 @@ uniform environment failures are excluded do the three categories below apply:
   This is the only real "noise". Confirm it with `--iterations N` before calling
   it flaky, then de-tier and note it; deletion is the last resort.
 
+**Annotate every kept red in the case `description` with a scannable prefix** so a
+future reader tells the two apart at a glance. Use `Harness note: …` for a
+harness-caused red (name the limitation and why the build is still correct), and
+`Capability-gap finding: current build reds because <X> — a real builder bug
+(flips to a regression guard once fixed)` for a real gap. Consistent prefixes keep
+the corpus greppable and stop harness reds from being misread as product bugs.
+
 The one move to never make is **working around a red by weakening what the case
 checks** — deleting a failing scenario, loosening an assertion until a wrong
 build would pass, or quietly converting to build-only. That makes the suite look
@@ -313,7 +320,14 @@ nodes get LLM-generated pin data). So:
   byte-exact — don't assert exact values off them), and *writes/inserts* aren't
   pinned (they hit the real per-thread table, recreated schema-only with **no
   rows**), so read-after-write within one run isn't faithful — the read reflects
-  `dataSetup`, not what the run just wrote.
+  `dataSetup`, not what the run just wrote. A third caveat: only Data Table
+  *reads* are seedable this way — **dedup / change-detection built on workflow
+  static data** (`removeItemsSeenInPreviousExecutions`, `$getWorkflowStaticData`)
+  is **not** seedable, because static data starts empty every run, so such a
+  scenario reds vacuously (it sees everything as "new"). To get a seedable
+  change-detection scenario, steer the build toward a Data Table; otherwise
+  accept the static-data red as a harness limit and carry the logic in
+  `outcomeExpectations`. Note the agent may *choose* static-data dedup on its own.
 - Don't assert exact counts that depend on mock generation ("exactly 7 posts").
   Say "fewer than the original 10".
 
@@ -351,6 +365,15 @@ red is harness-caused (per "A red is signal", above):
     `outcomeExpectations`, not its runtime effect in a scenario.
   - A less-common API (e.g. Gemini's top-level `candidates`) can omit its envelope
     the same way.
+  - **OpenAI image generation** — the image mock returns a URL-style response
+    (`data[0].url`) instead of the base64 payload (`data[0].b64_json`) the node is
+    configured to read, so an OpenAI image node crashes with "first argument must
+    be of type string … Received undefined". Carry correctness in
+    `outcomeExpectations`.
+  - **Google Drive resumable upload** — the initiate-upload mock omits the
+    `Location` header carrying the session URL, so a Drive file-upload node fails
+    with a 400. Any build that uploads a generated image/file to Drive can red on
+    this.
 - **Agent-tool nodes can't be executed standalone.** An AI-Agent *tool* node
   (`toolHttpRequest` and other `supplyData`-only LangChain nodes with no `execute`
   method) only runs when the agent invokes it; the harness executing it directly
@@ -358,6 +381,12 @@ red is harness-caused (per "A red is signal", above):
   red for chat-trigger / AI-agent build cases whose tool is an HTTP-request tool —
   the build is correct, so carry correctness in `outcomeExpectations` (agent wired
   to trigger + model + tool) and note the execution red as harness-caused.
+- **Poll/wait loops can't be fast-forwarded.** A workflow that submits an async
+  job then polls for completion (generate → poll status until ready → download)
+  can't advance the mocked status deterministically, and a `Wait` node runs in
+  real time, so the scenario reds with an execution timeout (`framework_issue`).
+  The build is correct — carry it in `outcomeExpectations` and note the red as
+  harness-caused.
 - **A build can time out and produce no scored result at all** — the run reports
   `BUILD FAILED: Run timed out` and zero graded expectations. Don't assume "spec
   too big": the more common cause is a **single-prompt case where the agent asks
@@ -366,10 +395,14 @@ red is harness-caused (per "A red is signal", above):
   — only confirmations auto-approve). Before treating a timeout as spec size,
   **classify it**: read the agent's final response in the report / trace (did it
   ask a question? flag an infeasibility? or genuinely churn through a huge
-  build?), and **re-run the case solo (`--concurrency 1`)** — concurrency makes a
-  stalled build hit the cap and masks the real reason, which a solo run surfaces
-  in seconds. Fix per cause: a clarifying-question stall → author multi-turn with
-  a director note that pre-answers it; a genuine infeasibility → it's an
+  build?), and **re-run the case solo (`--concurrency 1`)** — concurrency both
+  masks a stalled build (it hits the cap) *and* can time out a perfectly healthy
+  build purely by queueing it behind the per-instance build cap (default 4), so a
+  solo run either surfaces the real reason in seconds or simply passes outright.
+  Fix per cause: a solo run that now passes → it was **concurrency contention**,
+  not the case (split big batches across lanes — see
+  [`running-evals.md`](running-evals.md)); a clarifying-question stall → author
+  multi-turn with a director note that pre-answers it; a genuine infeasibility → it's an
   infeasibility/honesty behaviour case (`processExpectations`), not a build case;
   a true oversized spec → the timeout is itself a finding, but note it so the
   zero isn't mistaken for a scored failure.
@@ -520,7 +553,11 @@ dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building 
 - **Env:** `LANGTRACER_URL` + `LANGTRACER_API_KEY` (an `lt_` bearer; one key works
   for MCP + REST) — put them in `.env.eval` and run under `dotenvx`.
 - **Options:** `--set-kind regression|capability_gap` (default `regression`, must
-  match the suite's kind), `--contains-user-data` (default is `synthetic`).
+  match the suite's kind), `--contains-user-data` (default is `synthetic`). A case
+  whose **build is correct** (outcome expectations green) but that carries a
+  **currently-red execution scenario** from a builder bug is still a `regression`
+  case — it guards the fix; reserve `capability_gap` for cases where the *build
+  itself* is wrong.
 - **Scenarios sync on update too:** `PATCH /cases/:id` reconciles
   `executionScenarios` by name (update in place, insert new, delete missing —
   lang-tracer #48), so scenario edits re-push like any other field. A lang-tracer

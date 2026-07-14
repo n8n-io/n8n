@@ -125,7 +125,15 @@ your case's pass/fail.
 
 The **build** is the slow step and is capped at **4 concurrent builds per
 instance**, so throughput scales with the number of instances, not just
-`--concurrency`. Two ways to fan out:
+`--concurrency`.
+
+**Watch for false timeouts under contention:** a batch larger than the cap can
+queue a *healthy* case behind that limit until it hits the per-iteration timeout
+and reports `BUILD FAILED: Run timed out` — a run-capacity artifact, not a case
+defect (a case that builds in ~3 min solo can "time out" at 900s in a crowded
+batch). Re-run the suspect solo (`--concurrency 1`) to confirm it builds in time,
+and for batches beyond ~a dozen cases fan out across lanes rather than just
+raising `--concurrency` on one instance. Two ways to fan out:
 
 - **`scripts/run-eval-lanes.sh`** spins up N lanes as **docker containers**,
   seeds a user on each, and runs the eval with the base-URLs wired together.
