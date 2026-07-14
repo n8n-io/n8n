@@ -387,6 +387,12 @@ function getInputClass(isEmpty: boolean): string {
 	background: transparent;
 	outline: none;
 
+	@supports (field-sizing: content) {
+		flex: 1 0 auto;
+		field-sizing: content;
+		width: auto;
+	}
+
 	&::placeholder {
 		color: var(--input--placeholder--color);
 	}

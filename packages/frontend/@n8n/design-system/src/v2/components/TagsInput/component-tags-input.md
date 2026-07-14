@@ -28,6 +28,8 @@ Freeform tag entry field. Users type values and create tags via delimiter (defau
 
 Cap height with `--tags-input--max-height` on a parent (or the field). The chrome stays fixed; tags scroll inside.
 
+The draft input grows with typed text (`field-sizing: content`) so it wraps to the next row when it no longer fits beside existing tags, instead of clipping in the leftover space.
+
 
 **Events**
 
