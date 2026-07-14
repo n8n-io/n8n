@@ -359,4 +359,19 @@ describe('DurableJobProvisioner', () => {
 			expect(result).toEqual({ removed: 5 });
 		});
 	});
+
+	describe('deprovisionWorkflowInTransaction', () => {
+		it("deletes the workflow scope through the caller's manager, opening no transaction of its own", async () => {
+			const callerManager = mock<EntityManager>();
+
+			await provisioner.deprovisionWorkflowInTransaction(callerManager, 'wf', 'schedule-trigger');
+
+			expect(jobs.deleteByWorkflowTaskType).toHaveBeenCalledWith(
+				callerManager,
+				'wf',
+				'schedule-trigger',
+			);
+			expect(dataSource.transaction).not.toHaveBeenCalled();
+		});
+	});
 });

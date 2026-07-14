@@ -47,6 +47,7 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -91,6 +92,7 @@ export class WorkflowService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
+		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 	) {}
 
 	async getMany(
@@ -1478,6 +1480,13 @@ export class WorkflowService {
 			);
 
 			await this.outboxRepository.enqueue(workflowId, deactivatedVersionId, trx);
+
+			// Delete the workflow's durable Schedule Trigger jobs here, in the same
+			// transaction and on this request-handling main. The leader's outbox
+			// handler still tears down the in-memory triggers, but durable jobs are DB
+			// state: routing their removal through the leader risks a lost hand-off
+			// leaving them firing a workflow now marked inactive.
+			await this.scheduleTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without

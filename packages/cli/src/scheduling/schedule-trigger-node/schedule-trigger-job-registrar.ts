@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Schedule } from '@n8n/scheduler';
 import { computeFirstRunAt, scheduleFingerprint, validateSchedule } from '@n8n/scheduler';
@@ -318,6 +319,26 @@ export class ScheduleTriggerJobRegistrar {
 	 */
 	async removeWorkflow(workflowId: string): Promise<void> {
 		await this.jobProvisioner.deprovisionWorkflow(workflowId, SCHEDULE_TRIGGER_TASK_TYPE);
+	}
+
+	/**
+	 * Delete the workflow's durable jobs within a caller-owned transaction, so a
+	 * publication deactivation removes them atomically with its `active = false`
+	 * write, on the main handling the request. Durable rows are DB state; their
+	 * removal must not depend on a leader hand-off landing, or a lost one leaves
+	 * jobs firing a workflow already marked inactive. Keyed by workflow and
+	 * idempotent like {@link removeWorkflow}, so the leader's later per-node
+	 * teardown finds nothing left to do.
+	 *
+	 * @param manager The transaction the caller's deactivation writes run in.
+	 * @param workflowId The deactivating workflow whose durable jobs to delete.
+	 */
+	async removeWorkflowInTransaction(manager: EntityManager, workflowId: string): Promise<void> {
+		await this.jobProvisioner.deprovisionWorkflowInTransaction(
+			manager,
+			workflowId,
+			SCHEDULE_TRIGGER_TASK_TYPE,
+		);
 	}
 }
 

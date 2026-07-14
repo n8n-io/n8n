@@ -1,4 +1,4 @@
-import type { NewScheduledJob, ScheduledJob } from '@n8n/db';
+import type { EntityManager, NewScheduledJob, ScheduledJob } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createJobProvisioner } from '@n8n/scheduler';
@@ -99,6 +99,21 @@ export class DurableJobProvisioner {
 	 */
 	async deprovisionWorkflow(workflowId: string, taskType: string): Promise<{ removed: number }> {
 		return await this.provisioner.deprovision({ workflowId, taskType });
+	}
+
+	/**
+	 * Delete all of a workflow's jobs of one task type within a caller-owned
+	 * transaction; their queued tasks cascade away. Lets a deactivation commit the
+	 * durable-job removal atomically with its own `active = false` write, on the
+	 * main handling the request, instead of routing through the leader. A single
+	 * DELETE, so it skips the provisioner's transaction port.
+	 */
+	async deprovisionWorkflowInTransaction(
+		manager: EntityManager,
+		workflowId: string,
+		taskType: string,
+	): Promise<void> {
+		await this.jobs.deleteByWorkflowTaskType(manager, workflowId, taskType);
 	}
 
 	private provisionTransaction({
