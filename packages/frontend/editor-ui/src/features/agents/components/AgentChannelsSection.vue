@@ -17,8 +17,14 @@ const props = withDefaults(
 		agentId: string;
 		isPublished: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
+		simpleChannelSetup?: boolean;
 	}>(),
-	{ connectedTriggers: () => [], disabled: false, validationIssues: () => [] },
+	{
+		connectedTriggers: () => [],
+		disabled: false,
+		validationIssues: () => [],
+		simpleChannelSetup: false,
+	},
 );
 
 const emit = defineEmits<{
@@ -184,7 +190,12 @@ const remainingChannelOptionLabels = computed(() => {
 				</div>
 			</button>
 
-			<button :class="$style.channelCard" :disabled="props.disabled" @click="openChannelModal">
+			<button
+				:class="$style.channelCard"
+				:disabled="props.disabled"
+				data-testid="agent-channels-add-channel"
+				@click="openChannelModal"
+			>
 				<N8nIcon icon="plus" size="xlarge" color="text-light" />
 				<div :class="$style.channelCardText">
 					<N8nText step="sm" bold>{{ i18n.baseText('agents.builder.triggers.add') }}</N8nText>
@@ -201,6 +212,7 @@ const remainingChannelOptionLabels = computed(() => {
 			:project-id="projectId"
 			:connected-channels="connectedTriggers"
 			:is-published="isPublished"
+			:simple-setup="simpleChannelSetup"
 			@channel-connected="handleChannelConnected"
 			@channel-disconnected="handleChannelDisconnected"
 			@agent-changed="emit('agent-changed')"
