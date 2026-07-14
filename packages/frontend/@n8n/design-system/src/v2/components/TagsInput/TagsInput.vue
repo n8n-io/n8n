@@ -132,7 +132,7 @@ function moveDuplicateToEnd(value: TagsInputValue): boolean {
 		return false;
 	}
 
-	emit('update:modelValue', [...tags.slice(0, index), ...tags.slice(index + 1), tags[index]!]);
+	emit('update:modelValue', [...tags.slice(0, index), ...tags.slice(index + 1), tags[index]]);
 	return true;
 }
 
