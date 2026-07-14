@@ -251,17 +251,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 			</div>
 
 			<div :class="$style.content" data-test-id="canvas-node-group-header">
-				<N8nIconButton
-					class="nodrag"
-					:class="$style.toggle"
-					variant="ghost"
-					size="large"
-					:icon="isCollapsed ? 'chevrons-up-down' : 'chevrons-down-up'"
-					:aria-label="toggleLabel"
-					:aria-expanded="!isCollapsed"
-					data-test-id="canvas-node-group-toggle"
-					@click.stop="onToggleClick"
-				/>
 				<div :class="$style.title" data-test-id="canvas-node-group-title">
 					<N8nTooltip
 						:content="group.name"
@@ -290,20 +279,32 @@ function onWrapperPointerDown(event: PointerEvent) {
 						</div>
 					</N8nTooltip>
 				</div>
-				<div
-					v-if="isCollapsed && markStatus"
-					:class="$style.statusIcons"
-					:data-test-id="`canvas-node-group-status-${markStatus}`"
-				>
-					<CanvasNodeStatusMark :status="markStatus" />
-				</div>
-				<div
-					v-else-if="isCollapsed && executionStatus === 'issues'"
-					:class="[$style.statusIcons, $style.issues]"
-					data-test-id="canvas-node-group-status-issues"
-				>
-					<N8nIcon icon="node-validation-error" size="large" />
-				</div>
+				<N8nIconButton
+					class="nodrag"
+					:class="$style.toggle"
+					variant="ghost"
+					size="large"
+					:icon="isCollapsed ? 'chevron-down' : 'chevron-up'"
+					:aria-label="toggleLabel"
+					:aria-expanded="!isCollapsed"
+					data-test-id="canvas-node-group-toggle"
+					@click.stop="onToggleClick"
+				/>
+			</div>
+
+			<div
+				v-if="isCollapsed && markStatus"
+				:class="$style.statusIcons"
+				:data-test-id="`canvas-node-group-status-${markStatus}`"
+			>
+				<CanvasNodeStatusMark :status="markStatus" />
+			</div>
+			<div
+				v-else-if="isCollapsed && executionStatus === 'issues'"
+				:class="[$style.statusIcons, $style.issues]"
+				data-test-id="canvas-node-group-status-issues"
+			>
+				<N8nIcon icon="node-validation-error" size="large" />
 			</div>
 		</div>
 
@@ -401,8 +402,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 /*  Don't render the aria-expanded toggle as "pressed" while inactive */
-.toggle[aria-expanded='true']:not(:hover):not(:active) {
+.toggle[aria-expanded='true']:not(:active) {
 	background-color: transparent;
+}
+
+/* Hovering anywhere on the header highlights the toggle */
+.titleBar:hover .toggle:not(:active) {
+	background-color: var(--button--color--background-hover);
 }
 
 .title {
@@ -440,11 +446,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 	white-space: nowrap;
 }
 
+// Overlay the bottom-right corner, matching node status icons (CanvasNodeDefault)
 .statusIcons {
+	position: absolute;
+	bottom: var(--spacing--3xs);
+	right: var(--spacing--3xs);
 	display: flex;
 	align-items: center;
-	margin-left: var(--spacing--xs);
-	flex-shrink: 0;
 }
 
 // Validation issues mirror the single node: red triangle, no status border.

@@ -71,7 +71,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 	}
 
 	describe('chevron caption and icon by state', () => {
-		it('renders chevrons-up-down with Expand label when collapsed', () => {
+		it('renders chevron-down with Expand label when collapsed', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
 			const toggle = wrapper.getByTestId('canvas-node-group-toggle');
 			expect(toggle.getAttribute('aria-label')).toBe('Expand');
@@ -79,7 +79,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(toggle.querySelector('svg')).toBeTruthy();
 		});
 
-		it('renders chevrons-down-up with Collapse label when expanded', () => {
+		it('renders chevron-up with Collapse label when expanded', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			const toggle = wrapper.getByTestId('canvas-node-group-toggle');
 			expect(toggle.getAttribute('aria-label')).toBe('Collapse');
