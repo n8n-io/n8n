@@ -233,9 +233,12 @@ export class N8nClient {
 	 * List captured LLM debug runs for a thread.
 	 * GET /rest/instance-ai/debug/threads/:threadId/runs
 	 */
-	async listThreadDebugRuns(threadId: string): Promise<InstanceAiThreadDebugRunsResponse> {
+	async listThreadDebugRuns(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiThreadDebugRunsResponse> {
 		return this.unwrapRestData<InstanceAiThreadDebugRunsResponse>(
-			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`),
+			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`, { timeoutMs }),
 		);
 	}
 
@@ -243,9 +246,9 @@ export class N8nClient {
 	 * Fetch full LLM step debug for a single run.
 	 * GET /rest/instance-ai/debug/runs/:runId
 	 */
-	async getRunDebug(runId: string): Promise<InstanceAiRunDebugResponse> {
+	async getRunDebug(runId: string, timeoutMs?: number): Promise<InstanceAiRunDebugResponse> {
 		return this.unwrapRestData<InstanceAiRunDebugResponse>(
-			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`),
+			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`, { timeoutMs }),
 		);
 	}
 
