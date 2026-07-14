@@ -229,4 +229,24 @@ describe('WorkflowLayout', () => {
 		expect(getByTestId('loading-view')).toBeInTheDocument();
 		expect(queryByText('Workflow Content')).not.toBeInTheDocument();
 	});
+
+	it('should render RouterView on the onboarding route even when the document store is null', async () => {
+		// The onboarding route renders a redirect-only view whose onMounted performs the
+		// redirect and never provides a document store. The store gate must not block it,
+		// or the redirect never fires and the page deadlocks on LoadingView.
+		const { useWorkflowInitialization } = await import(
+			'@/app/composables/useWorkflowInitialization'
+		);
+		const state = useWorkflowInitialization();
+		state.currentWorkflowDocumentStore.value = null;
+		vi.mocked(useWorkflowInitialization).mockReturnValueOnce({
+			...state,
+			isOnboardingRoute: computed(() => true),
+		});
+
+		const { queryByTestId, getByText } = renderComponent();
+
+		expect(queryByTestId('loading-view')).not.toBeInTheDocument();
+		expect(getByText('Workflow Content')).toBeInTheDocument();
+	});
 });
