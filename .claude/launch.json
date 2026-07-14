@@ -1,0 +1,17 @@
+{
+	"version": "0.0.1",
+	"configurations": [
+		{
+			"name": "n8n-backend",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["--filter", "n8n", "start"],
+			"port": 5678
+		},
+		{
+			"name": "n8n-editor-ui",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["--filter", "n8n-editor-ui", "dev"],
+			"port": 8080
+		}
+	]
+}

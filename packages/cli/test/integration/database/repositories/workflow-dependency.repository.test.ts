@@ -1,5 +1,5 @@
 import { testDb, createWorkflow } from '@n8n/backend-test-utils';
-import { WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
+import { WorkflowDependencyRepository, WorkflowDependencies, INDEX_VERSION_ID } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 describe('WorkflowDependencyRepository', () => {
@@ -60,7 +60,7 @@ describe('WorkflowDependencyRepository', () => {
 				dependencyType: 'credentialId',
 				dependencyKey: 'cred-123',
 				dependencyInfo: { name: 'Test Credential' },
-				indexVersionId: 1,
+				indexVersionId: INDEX_VERSION_ID,
 			});
 			expect(savedDependencies[1]).toMatchObject({
 				workflowId: workflow.id,
@@ -68,7 +68,7 @@ describe('WorkflowDependencyRepository', () => {
 				dependencyType: 'nodeType',
 				dependencyKey: 'n8n-nodes-base.httpRequest',
 				dependencyInfo: null,
-				indexVersionId: 1,
+				indexVersionId: INDEX_VERSION_ID,
 			});
 		});
 
@@ -164,6 +164,51 @@ describe('WorkflowDependencyRepository', () => {
 			expect(savedDependencies).toHaveLength(1);
 			expect(savedDependencies[0].dependencyKey).toBe('cred-new');
 			expect(savedDependencies[0].workflowVersionId).toBe(2);
+		});
+
+		it('should replace same-version dependencies written by an older extraction logic version', async () => {
+			//
+			// ARRANGE
+			//
+			// Empty nodes so no auto-added dependencies
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+
+			// Existing rows for the same workflow version, but stamped by an older indexer
+			await workflowDependencyRepository.insert({
+				workflowId: workflow.id,
+				workflowVersionId: 1,
+				publishedVersionId: null,
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-old',
+				dependencyInfo: null,
+				indexVersionId: INDEX_VERSION_ID - 1,
+			});
+
+			const sameVersionDeps = new WorkflowDependencies(workflow.id, 1);
+			sameVersionDeps.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-new',
+				dependencyInfo: null,
+			});
+
+			//
+			// ACT
+			//
+			const result = await workflowDependencyRepository.updateDependenciesForWorkflow(
+				workflow.id,
+				sameVersionDeps,
+			);
+
+			//
+			// ASSERT
+			//
+			expect(result).toBe(true);
+			const savedDependencies = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id },
+			});
+			expect(savedDependencies).toHaveLength(1);
+			expect(savedDependencies[0].dependencyKey).toBe('cred-new');
+			expect(savedDependencies[0].indexVersionId).toBe(INDEX_VERSION_ID);
 		});
 
 		it('should prevent races between concurrent updates', async () => {

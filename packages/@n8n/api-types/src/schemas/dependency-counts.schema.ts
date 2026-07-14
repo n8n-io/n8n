@@ -1,4 +1,6 @@
 export interface DependencyTypeCounts {
+	aiToolWorkflowCall: number;
+	aiToolWorkflowParent: number;
 	credentialId: number;
 	dataTableId: number;
 	errorWorkflow: number;

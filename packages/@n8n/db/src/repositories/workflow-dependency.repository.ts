@@ -4,7 +4,16 @@ import { DataSource, EntityManager, IsNull, LessThan, Repository, Not } from '@n
 
 import { WorkflowDependency } from '../entities';
 
-const INDEX_VERSION_ID = 1;
+/**
+ * Version of the dependency extraction logic. Bump this whenever the indexer
+ * starts extracting new dependency types (or changes what it extracts), so the
+ * startup backfill reprocesses every workflow once: rows stamped with an older
+ * version are treated as stale by `findWorkflowsNeedingIndexing` /
+ * `findWorkflowsNeedingPublishedVersionIndexing` and get rewritten.
+ *
+ * v2: added `aiToolWorkflowCall` extraction.
+ */
+export const INDEX_VERSION_ID = 2;
 
 /**
  * Helper class to collect workflow dependencies before writing them to the database.
@@ -64,17 +73,27 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		dependencies: WorkflowDependencies,
 		tx: EntityManager,
 	): Promise<boolean> {
-		const deleteResult = await tx.delete(WorkflowDependency, {
+		// NOTE: the publishedVersionId condition relies on the fact that we only want to track the
+		// latest published version or draft dependencies. If we're updating published dependencies,
+		// checking for Not Null works because we don't actually care about the specific previous
+		// published version id.
+		const publishedVersionId = dependencies.publishedVersionId ? Not(IsNull()) : IsNull();
+		const outdatedDelete = await tx.delete(WorkflowDependency, {
 			workflowId,
 			workflowVersionId: LessThan(dependencies.workflowVersionId),
-			// NOTE: this relies on the fact that we only want to track the latest published version or draft dependencies.
-			// If we're updating published dependencies, checking for Not Null works because we don't actually
-			// care about the specific previous published version id.
-			publishedVersionId: dependencies.publishedVersionId ? Not(IsNull()) : IsNull(),
+			publishedVersionId,
 		});
+		// Rows written by an older extraction logic version are stale even when the
+		// workflow version hasn't changed.
+		const staleIndexDelete = await tx.delete(WorkflowDependency, {
+			workflowId,
+			indexVersionId: LessThan(INDEX_VERSION_ID),
+			publishedVersionId,
+		});
+		const deletedCount = (outdatedDelete.affected ?? 0) + (staleIndexDelete.affected ?? 0);
 
 		// If we deleted something, the incoming version is newer - proceed with insert
-		if (deleteResult.affected && deleteResult.affected > 0) {
+		if (deletedCount > 0) {
 			// NOTE: we cast to any[] because TypeORM doesn't like the JSON column.
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			await tx.insert(WorkflowDependency, dependencies.dependencies as any[]);

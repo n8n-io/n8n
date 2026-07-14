@@ -8,6 +8,7 @@ import { hasRole } from '@/app/utils/rbac/checks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 const WorkflowsView = async () => await import('@/app/views/WorkflowsView.vue');
+const ProjectCanvas = async () => await import('@/features/projects/canvas/ProjectCanvas.vue');
 const CredentialsView = async () =>
 	await import('@/features/credentials/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('./views/ProjectSettings.vue');
@@ -26,7 +27,7 @@ const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
 const commonChildRoutes: RouteRecordRaw[] = [
 	{
 		path: 'workflows',
-		component: WorkflowsView,
+		component: ProjectCanvas,
 		meta: {
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {
@@ -57,7 +58,7 @@ const commonChildRoutes: RouteRecordRaw[] = [
 	},
 	{
 		path: 'folders/:folderId?/workflows',
-		component: WorkflowsView,
+		component: ProjectCanvas,
 		meta: {
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {

@@ -5,7 +5,13 @@ import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository 
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { DATA_TABLE_NODE_TYPES, INode, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+import {
+	DATA_TABLE_NODE_TYPES,
+	INode,
+	IWorkflowBase,
+	IWorkflowSettings,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+} from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
@@ -220,6 +226,7 @@ export class WorkflowIndexService {
 					this.addCredentialDependencies(node, dependencyUpdates);
 					this.addDataTableDependencies(node, dependencyUpdates);
 					this.addWorkflowCallDependencies(node, dependencyUpdates);
+					this.addAiToolWorkflowDependencies(node, dependencyUpdates);
 					this.addWebhookPathDependencies(node, dependencyUpdates);
 				});
 
@@ -316,6 +323,24 @@ export class WorkflowIndexService {
 		}
 		dependencyUpdates.add({
 			dependencyType: 'workflowCall',
+			dependencyKey: calledWorkflowId,
+			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
+		});
+	}
+
+	private addAiToolWorkflowDependencies(
+		node: INode,
+		dependencyUpdates: WorkflowDependencies,
+	): void {
+		if (node.type !== WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE) {
+			return;
+		}
+		const calledWorkflowId: string | undefined = this.getCalledWorkflowIdFrom(node);
+		if (!calledWorkflowId) {
+			return;
+		}
+		dependencyUpdates.add({
+			dependencyType: 'aiToolWorkflowCall',
 			dependencyKey: calledWorkflowId,
 			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
 		});

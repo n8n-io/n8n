@@ -55,6 +55,14 @@ const showSearch = computed(
 const searchTerm = ref('');
 
 const typeConfig: Record<DependencyType, { icon: IconName; labelKey: BaseTextKey }> = {
+	aiToolWorkflowCall: {
+		icon: 'log-in',
+		labelKey: 'workflows.dependencies.type.aiToolWorkflowCall' as BaseTextKey,
+	},
+	aiToolWorkflowParent: {
+		icon: 'log-in',
+		labelKey: 'workflows.dependencies.type.aiToolWorkflowParent' as BaseTextKey,
+	},
 	credentialId: {
 		icon: 'key-round',
 		labelKey: 'workflows.dependencies.type.credentials' as BaseTextKey,
@@ -86,6 +94,8 @@ const displayOrder: DependencyType[] = [
 	'dataTableId',
 	'workflowCall',
 	'workflowParent',
+	'aiToolWorkflowCall',
+	'aiToolWorkflowParent',
 	'errorWorkflow',
 	'errorWorkflowParent',
 ];
@@ -98,6 +108,8 @@ const menuItems = computed(() => {
 	const filtered = query ? deps.filter((dep) => dep.name.toLowerCase().includes(query)) : deps;
 
 	const groups: Record<DependencyType, ResolvedDependency[]> = {
+		aiToolWorkflowCall: [],
+		aiToolWorkflowParent: [],
 		credentialId: [],
 		dataTableId: [],
 		errorWorkflow: [],

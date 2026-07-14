@@ -1,4 +1,6 @@
 export type DependencyType =
+	| 'aiToolWorkflowCall'
+	| 'aiToolWorkflowParent'
 	| 'credentialId'
 	| 'dataTableId'
 	| 'errorWorkflow'

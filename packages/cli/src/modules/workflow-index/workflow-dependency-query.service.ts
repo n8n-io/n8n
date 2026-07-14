@@ -13,7 +13,7 @@ import {
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
+import { In, IsNull, Not } from '@n8n/typeorm';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -21,6 +21,8 @@ import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 interface RawDepMaps {
+	aiToolMap: Map<string, Set<string>>;
+	aiToolParentMap: Map<string, Set<string>>;
 	credMap: Map<string, Set<string>>;
 	dtMap: Map<string, Set<string>>;
 	subMap: Map<string, Set<string>>;
@@ -49,8 +51,9 @@ export class WorkflowDependencyQueryService {
 		resourceIds: string[],
 		resourceType: DependencyResourceType,
 		user: User,
+		draft?: boolean,
 	): Promise<DependencyCountsBatchResponse> {
-		const loaded = await this.loadDepsForResources(resourceIds, resourceType, user);
+		const loaded = await this.loadDepsForResources(resourceIds, resourceType, user, draft);
 		if (!loaded) return {};
 
 		const { accessibleInputIds, maps } = loaded;
@@ -58,6 +61,8 @@ export class WorkflowDependencyQueryService {
 		const result: DependencyCountsBatchResponse = {};
 		for (const id of accessibleInputIds) {
 			result[id] = {
+				aiToolWorkflowCall: maps.aiToolMap.get(id)?.size ?? 0,
+				aiToolWorkflowParent: maps.aiToolParentMap.get(id)?.size ?? 0,
 				credentialId: maps.credMap.get(id)?.size ?? 0,
 				dataTableId: maps.dtMap.get(id)?.size ?? 0,
 				errorWorkflow: maps.errorWfMap.get(id)?.size ?? 0,
@@ -74,8 +79,9 @@ export class WorkflowDependencyQueryService {
 		resourceIds: string[],
 		resourceType: DependencyResourceType,
 		user: User,
+		draft?: boolean,
 	): Promise<DependenciesBatchResponse> {
-		const loaded = await this.loadDepsForResources(resourceIds, resourceType, user);
+		const loaded = await this.loadDepsForResources(resourceIds, resourceType, user, draft);
 		if (!loaded) return {};
 
 		const { accessibleInputIds, maps } = loaded;
@@ -152,17 +158,36 @@ export class WorkflowDependencyQueryService {
 		resourceIds: string[],
 		resourceType: DependencyResourceType,
 		user: User,
+		draft?: boolean,
 	): Promise<{ accessibleInputIds: string[]; maps: RawDepMaps } | null> {
 		const accessibleInputIds = await this.filterByAccess(resourceIds, resourceType, user);
 		if (accessibleInputIds.length === 0) return null;
+
+		// undefined = show both draft and published; true = draft only; false = published only
+		const publishedVersionFilter =
+			draft === true
+				? { publishedVersionId: IsNull() }
+				: draft === false
+					? { publishedVersionId: Not(IsNull()) }
+					: {};
 
 		const rawDeps = await this.dependencyRepository.find({
 			where: [
 				{
 					workflowId: In(accessibleInputIds),
-					dependencyType: In(['credentialId', 'dataTableId', 'errorWorkflow', 'workflowCall']),
+					dependencyType: In([
+						'aiToolWorkflowCall',
+						'credentialId',
+						'dataTableId',
+						'errorWorkflow',
+						'workflowCall',
+					]),
+					...publishedVersionFilter,
 				},
-				{ dependencyKey: In(accessibleInputIds) },
+				{
+					dependencyKey: In(accessibleInputIds),
+					...publishedVersionFilter,
+				},
 			],
 			select: ['workflowId', 'dependencyType', 'dependencyKey'],
 		});
@@ -175,6 +200,8 @@ export class WorkflowDependencyQueryService {
 	private buildDepMaps(
 		rawDeps: Array<{ workflowId: string; dependencyType: string; dependencyKey: string }>,
 	): RawDepMaps {
+		const aiToolMap = new Map<string, Set<string>>();
+		const aiToolParentMap = new Map<string, Set<string>>();
 		const credMap = new Map<string, Set<string>>();
 		const dtMap = new Map<string, Set<string>>();
 		const subMap = new Map<string, Set<string>>();
@@ -188,6 +215,11 @@ export class WorkflowDependencyQueryService {
 		for (const dep of rawDeps) {
 			allWfIds.add(dep.workflowId);
 			switch (dep.dependencyType) {
+				case 'aiToolWorkflowCall':
+					addToSet(aiToolMap, dep.workflowId, dep.dependencyKey);
+					addToSet(aiToolParentMap, dep.dependencyKey, dep.workflowId);
+					allWfIds.add(dep.dependencyKey);
+					break;
 				case 'credentialId':
 					addToSet(credMap, dep.workflowId, dep.dependencyKey);
 					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
@@ -212,6 +244,8 @@ export class WorkflowDependencyQueryService {
 		}
 
 		return {
+			aiToolMap,
+			aiToolParentMap,
 			credMap,
 			dtMap,
 			subMap,
@@ -272,10 +306,22 @@ export class WorkflowDependencyQueryService {
 				'workflowCall',
 			);
 			resolve(
+				maps.aiToolMap.get(resourceId),
+				accessMaps.wfNames,
+				existing.existingWfIds,
+				'aiToolWorkflowCall',
+			);
+			resolve(
 				maps.parentMap.get(resourceId),
 				accessMaps.wfNames,
 				existing.existingWfIds,
 				'workflowParent',
+			);
+			resolve(
+				maps.aiToolParentMap.get(resourceId),
+				accessMaps.wfNames,
+				existing.existingWfIds,
+				'aiToolWorkflowParent',
 			);
 			resolve(
 				maps.errorWfMap.get(resourceId),

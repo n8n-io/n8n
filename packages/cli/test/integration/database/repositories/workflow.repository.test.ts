@@ -8,7 +8,12 @@ import {
 	getWorkflowById,
 	setActiveVersion,
 } from '@n8n/backend-test-utils';
-import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
+import {
+	WorkflowRepository,
+	WorkflowDependencyRepository,
+	WorkflowDependencies,
+	INDEX_VERSION_ID,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
@@ -482,6 +487,36 @@ describe('WorkflowRepository', () => {
 			expect(workflowIds).toContain(workflow1.id);
 			expect(workflowIds).toContain(workflow2.id);
 			expect(workflowIds).not.toContain(workflow3.id);
+		});
+
+		it('should return workflows indexed with an older extraction logic version', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+
+			// Workflow with an up-to-date workflow version but rows stamped by an older indexer
+			const workflow = await createWorkflow({ versionCounter: 5, nodes: [] });
+			await workflowDependencyRepository.insert({
+				workflowId: workflow.id,
+				workflowVersionId: 5,
+				publishedVersionId: null,
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-123',
+				dependencyInfo: null,
+				indexVersionId: INDEX_VERSION_ID - 1,
+			});
+
+			//
+			// ACT
+			//
+			const workflowsNeedingIndexing = await workflowRepository.findWorkflowsNeedingIndexing();
+
+			//
+			// ASSERT
+			//
+			expect(workflowsNeedingIndexing.map((w) => w.id)).toContain(workflow.id);
 		});
 
 		it('should respect the batch size limit', async () => {

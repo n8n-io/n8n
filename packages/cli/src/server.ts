@@ -69,6 +69,7 @@ import '@/evaluation.ee/insights/eval-insights.controller.ee';
 import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
 import '@/modules/workflow-index/workflow-dependency.controller';
+import '@/modules/project-dependency-graph/project-dependency-graph.controller';
 import '@/webhooks/test-webhooks.controller';
 import '@/webhooks/webhooks.controller';
 

@@ -15,6 +15,7 @@ import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { FolderRepository } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
+import { INDEX_VERSION_ID } from './workflow-dependency.repository';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
@@ -1529,8 +1530,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	/**
-	 * Find workflows that need draft indexing - either unindexed (no draft entries in workflow_dependency)
-	 * or outdated (versionCounter > workflowVersionId in workflow_dependency for drafts).
+	 * Find workflows that need draft indexing - either unindexed (no draft entries in workflow_dependency),
+	 * outdated (versionCounter > workflowVersionId in workflow_dependency for drafts), or indexed with an
+	 * older extraction logic version (indexVersionId < INDEX_VERSION_ID).
 	 *
 	 * NOTE: we use a simple batch limit instead of proper pagination because we use this
 	 * method to retrieve workflows and then index them immediately - so they won't be returned
@@ -1541,6 +1543,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const qb = this.createQueryBuilder('workflow');
 		const workflowIdAlias = 'workflowId';
 		const maxVersionIdAlias = 'maxVersionId';
+		const minIndexVersionAlias = 'minIndexVersionId';
 		const depAlias = 'dep';
 
 		// Only select columns needed for indexing to avoid loading large unused
@@ -1558,6 +1561,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 					subQuery
 						.select('wd.workflowId', workflowIdAlias)
 						.addSelect('MAX(wd.workflowVersionId)', maxVersionIdAlias)
+						.addSelect('MIN(wd.indexVersionId)', minIndexVersionAlias)
 						.from(WorkflowDependency, 'wd')
 						// Only consider draft dependencies (publishedVersionId IS NULL)
 						.where('wd.publishedVersionId IS NULL')
@@ -1571,9 +1575,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		// Include workflows that are either:
 		// 1. Unindexed (no draft dependency entries exist)
 		// 2. Outdated (workflow version is newer than indexed version)
-		qb.where(`${qb.escape(depAlias)}.${qb.escape(workflowIdAlias)} IS NULL`).orWhere(
-			`workflow.versionCounter > ${qb.escape(depAlias)}.${qb.escape(maxVersionIdAlias)}`,
-		);
+		// 3. Indexed by an older extraction logic version
+		qb.where(`${qb.escape(depAlias)}.${qb.escape(workflowIdAlias)} IS NULL`)
+			.orWhere(`workflow.versionCounter > ${qb.escape(depAlias)}.${qb.escape(maxVersionIdAlias)}`)
+			.orWhere(`${qb.escape(depAlias)}.${qb.escape(minIndexVersionAlias)} < :currentIndexVersion`, {
+				currentIndexVersion: INDEX_VERSION_ID,
+			});
 		if (batchSize) {
 			qb.limit(batchSize);
 		}
@@ -1602,7 +1609,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		// (from activeVersion), not the draft nodes.
 		qb.select(['workflow.id', 'workflow.versionCounter', 'workflow.activeVersionId']);
 
-		// Left join to find matching published version dependencies
+		// Left join to find matching published version dependencies. Rows written by an
+		// older extraction logic version are ignored, so those workflows get reindexed.
 		qb.leftJoin(
 			(subQuery) => {
 				return subQuery
@@ -1610,12 +1618,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 					.addSelect('wd.publishedVersionId', publishedVersionIdAlias)
 					.from(WorkflowDependency, 'wd')
 					.where('wd.publishedVersionId IS NOT NULL')
+					.andWhere('wd.indexVersionId >= :currentIndexVersion')
 					.groupBy('wd.workflowId')
 					.addGroupBy('wd.publishedVersionId');
 			},
 			depAlias,
 			`workflow.id = ${qb.escape(depAlias)}.${qb.escape('workflowId')} AND workflow.activeVersionId = ${qb.escape(depAlias)}.${qb.escape(publishedVersionIdAlias)}`,
 		);
+		qb.setParameter('currentIndexVersion', INDEX_VERSION_ID);
 
 		// Only include active workflows with no matching published version dependency
 		qb.where('workflow.activeVersionId IS NOT NULL').andWhere(

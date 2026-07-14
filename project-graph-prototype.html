@@ -1,0 +1,1184 @@
+<meta charset="utf-8">
+<title>n8n Workflow Relations — Prototype</title>
+<style>
+  :root {
+    --canvas: #f7f6f2;
+    --grid-dot: #d9d5cb;
+    --surface: #ffffff;
+    --surface-2: #fbfaf7;
+    --border: #e2ded4;
+    --border-strong: #c9c4b8;
+    --ink: #34302a;
+    --ink-2: #7a746a;
+    --ink-3: #a39d91;
+    --accent: #ea4b71;          /* n8n rose */
+    --accent-soft: #fdeef2;
+    --tool: #7e5bef;            /* violet — "used as tool" */
+    --tool-soft: #f1ecfd;
+    --edge: #a8a294;
+    --edge-strong: #6e685c;
+    --teal: #0fa3a3;
+    --teal-soft: #e4f5f5;
+    --amber: #d98324;
+    --amber-soft: #fbf0e0;
+    --good: #3fa35c;
+    --shadow: 0 1px 2px rgba(52,48,42,.06), 0 4px 14px rgba(52,48,42,.07);
+    --shadow-lift: 0 2px 4px rgba(52,48,42,.08), 0 10px 28px rgba(52,48,42,.12);
+    --folder-fill: rgba(52,48,42,.028);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --canvas: #222120;
+      --grid-dot: #37352f;
+      --surface: #2d2c29;
+      --surface-2: #333230;
+      --border: #403e38;
+      --border-strong: #57544b;
+      --ink: #ece9e1;
+      --ink-2: #a29c90;
+      --ink-3: #746f65;
+      --accent: #f06a8a;
+      --accent-soft: #43272e;
+      --tool: #9d82f5;
+      --tool-soft: #322b4a;
+      --edge: #6b6659;
+      --edge-strong: #b0aa9b;
+      --teal: #35b8b8;
+      --teal-soft: #1e3736;
+      --amber: #e39a45;
+      --amber-soft: #3d2f1c;
+      --good: #57bd74;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.35);
+      --shadow-lift: 0 2px 4px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.5);
+      --folder-fill: rgba(236,233,225,.03);
+    }
+  }
+  :root[data-theme="light"] {
+    --canvas: #f7f6f2; --grid-dot: #d9d5cb; --surface: #ffffff; --surface-2: #fbfaf7;
+    --border: #e2ded4; --border-strong: #c9c4b8; --ink: #34302a; --ink-2: #7a746a; --ink-3: #a39d91;
+    --accent: #ea4b71; --accent-soft: #fdeef2; --tool: #7e5bef; --tool-soft: #f1ecfd;
+    --edge: #a8a294; --edge-strong: #6e685c; --teal: #0fa3a3; --teal-soft: #e4f5f5;
+    --amber: #d98324; --amber-soft: #fbf0e0; --good: #3fa35c;
+    --shadow: 0 1px 2px rgba(52,48,42,.06), 0 4px 14px rgba(52,48,42,.07);
+    --shadow-lift: 0 2px 4px rgba(52,48,42,.08), 0 10px 28px rgba(52,48,42,.12);
+    --folder-fill: rgba(52,48,42,.028);
+  }
+  :root[data-theme="dark"] {
+    --canvas: #222120; --grid-dot: #37352f; --surface: #2d2c29; --surface-2: #333230;
+    --border: #403e38; --border-strong: #57544b; --ink: #ece9e1; --ink-2: #a29c90; --ink-3: #746f65;
+    --accent: #f06a8a; --accent-soft: #43272e; --tool: #9d82f5; --tool-soft: #322b4a;
+    --edge: #6b6659; --edge-strong: #b0aa9b; --teal: #35b8b8; --teal-soft: #1e3736;
+    --amber: #e39a45; --amber-soft: #3d2f1c; --good: #57bd74;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.35);
+    --shadow-lift: 0 2px 4px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.5);
+    --folder-fill: rgba(236,233,225,.03);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--canvas);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #viewport {
+    position: fixed; inset: 0;
+    cursor: grab;
+    touch-action: none;
+    overflow: hidden;
+    background-color: var(--canvas);
+    background-image: radial-gradient(circle, var(--grid-dot) 1.1px, transparent 1.1px);
+  }
+  #viewport.panning { cursor: grabbing; }
+  #world { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+  #world > svg.edges { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: visible; }
+  #containers, #nodes { position: absolute; top: 0; left: 0; }
+
+  /* ---------- nodes ---------- */
+  .node {
+    position: absolute; top: 0; left: 0;
+    width: 216px; height: 80px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 12px;
+    cursor: default;
+    user-select: none; -webkit-user-select: none;
+    transition: box-shadow .15s ease, border-color .15s ease;
+  }
+  .node:hover { box-shadow: var(--shadow-lift); border-color: var(--border-strong); }
+  .node:not(.folder) { cursor: grab; }
+  .node.lifting {
+    cursor: grabbing; z-index: 5;
+    box-shadow: var(--shadow-lift);
+    opacity: .93;
+    transition: none;
+  }
+  .node.folder.drop-hot {
+    border-style: solid; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-lift);
+  }
+  .container.drop-hot {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .node .tile {
+    flex: none; width: 38px; height: 38px; border-radius: 9px;
+    display: grid; place-items: center;
+  }
+  .node .tile svg { width: 19px; height: 19px; }
+  .node .meta { min-width: 0; flex: 1; }
+  .node .name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node .sub { font-size: 11px; color: var(--ink-2); display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+  .node .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); flex: none; }
+  .node .dot.active { background: var(--good); }
+
+  .node.folder { cursor: pointer; background: var(--surface-2); border-style: dashed; border-color: var(--border-strong); }
+  .node.folder:hover { border-color: var(--ink-3); }
+  .node.folder .tile { background: var(--amber-soft); color: var(--amber); }
+  .node.folder .chev { flex: none; color: var(--ink-3); transition: transform .15s ease, color .15s ease; }
+  .node.folder:hover .chev { color: var(--ink-2); transform: scale(1.15); }
+  .node.folder .count-pill {
+    position: absolute; top: -9px; right: -9px;
+    background: var(--amber); color: #fff;
+    font-size: 10px; font-weight: 700; letter-spacing: .02em;
+    padding: 2px 7px; border-radius: 99px;
+    box-shadow: var(--shadow);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* semantic icon tiles */
+  .tile.t-accent { background: var(--accent-soft); color: var(--accent); }
+  .tile.t-teal   { background: var(--teal-soft);   color: var(--teal); }
+  .tile.t-grey   { background: var(--surface-2);   color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--border); }
+  .tile.t-tool   { background: var(--tool-soft);   color: var(--tool); }
+  .tile.t-amber  { background: var(--amber-soft);  color: var(--amber); }
+
+  /* ---------- expanded folder container ---------- */
+  .container {
+    position: absolute; top: 0; left: 0;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 14px;
+    background: var(--folder-fill);
+    animation: fadein .2s ease;
+  }
+  @keyframes fadein { from { opacity: 0; } }
+  .container .chead {
+    position: absolute; top: 0; left: 0; right: 0; height: 34px;
+    display: flex; align-items: center; gap: 7px;
+    padding: 0 10px 0 12px;
+    cursor: pointer;
+    color: var(--ink-2);
+    user-select: none; -webkit-user-select: none;
+  }
+  .container .chead:hover { color: var(--ink); }
+  .container .chead svg { width: 14px; height: 14px; flex: none; color: var(--amber); }
+  .container .chead .fname {
+    font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .container .chead .fcount { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .container .chead .collapse {
+    margin-left: auto; flex: none;
+    width: 22px; height: 22px; border-radius: 6px;
+    display: grid; place-items: center;
+    color: var(--ink-3);
+  }
+  .container .chead:hover .collapse { color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1px var(--border); }
+
+  /* ---------- edges ---------- */
+  .edge-path { fill: none; stroke: var(--edge); stroke-width: 1.8; transition: opacity .15s ease; }
+  .edge-path.tool { stroke: var(--tool); stroke-dasharray: 5 4; }
+  .edge-hit { fill: none; stroke: transparent; stroke-width: 14; cursor: pointer; }
+  .edge-group.hl .edge-path { stroke: var(--edge-strong); stroke-width: 2.4; }
+  .edge-group.hl .edge-path.tool { stroke: var(--tool); }
+  .edge-group.dim { opacity: .18; }
+
+  /* ---------- chrome ---------- */
+  .chrome { position: fixed; z-index: 10; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+  }
+  #crumb { top: 16px; left: 16px; display: flex; align-items: center; gap: 10px; padding: 9px 14px 9px 10px; }
+  #crumb .logo {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: var(--accent); color: #fff;
+    display: grid; place-items: center; flex: none;
+  }
+  #crumb .logo svg { width: 15px; height: 15px; }
+  #crumb .path { display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
+  #crumb .org { color: var(--ink-3); font-size: 12px; }
+  #crumb .sep { color: var(--ink-3); font-size: 12px; }
+  #crumb .proj { font-weight: 700; font-size: 13.5px; }
+  #crumb .stats { font-size: 11px; color: var(--ink-2); border-left: 1px solid var(--border); padding-left: 10px; margin-left: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  #legend { top: 16px; right: 16px; padding: 11px 14px; display: flex; flex-direction: column; gap: 9px; }
+  #legend .lrow { display: flex; align-items: center; gap: 9px; font-size: 11.5px; color: var(--ink-2); }
+  #legend svg { width: 44px; height: 12px; flex: none; }
+  #legend .lrow b { color: var(--ink); font-weight: 600; }
+
+  #zoomrail { bottom: 16px; left: 16px; display: flex; flex-direction: column; overflow: hidden; }
+  #zoomrail button {
+    all: unset; width: 36px; height: 34px;
+    display: grid; place-items: center;
+    color: var(--ink-2); cursor: pointer;
+    font-size: 16px;
+  }
+  #zoomrail button:hover { background: var(--surface-2); color: var(--ink); }
+  #zoomrail button + button { border-top: 1px solid var(--border); }
+  #zoomrail button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  #zoomrail svg { width: 15px; height: 15px; }
+
+  #hint {
+    bottom: 16px; left: 50%; transform: translateX(-50%);
+    padding: 7px 14px; font-size: 11.5px; color: var(--ink-2);
+    border-radius: 99px; white-space: nowrap;
+  }
+  #hint kbd {
+    font: 600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 5px; color: var(--ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+  @media (max-width: 720px) {
+    #legend, #hint { display: none; }
+  }
+</style>
+
+<div id="viewport">
+  <div id="world">
+    <div id="containers"></div>
+    <svg class="edges" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+          <path d="M0.5,1 L8.5,5 L0.5,9" fill="none" stroke="context-stroke" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+      <g id="edgelayer"></g>
+    </svg>
+    <div id="nodes"></div>
+  </div>
+</div>
+
+<div class="chrome card" id="crumb">
+  <div class="logo" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="5" cy="12" r="2.4"/><circle cx="14" cy="7" r="2.4"/><circle cx="19" cy="17" r="2.4"/><path d="M7.2 11l4.6-2.6M15.6 8.8l2.3 6"/></svg>
+  </div>
+  <div class="path">
+    <span class="org" id="orgname"></span><span class="sep">/</span><span class="proj" id="projname"></span>
+  </div>
+  <div class="stats" id="stats"></div>
+</div>
+
+<div class="chrome card" id="legend">
+  <div class="lrow">
+    <svg viewBox="0 0 44 12"><path d="M1,6 H36" stroke="var(--edge)" stroke-width="1.8" fill="none"/><path d="M35,2.2 L41.5,6 L35,9.8" stroke="var(--edge)" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span><b>Triggered by</b> — source calls target</span>
+  </div>
+  <div class="lrow">
+    <svg viewBox="0 0 44 12"><path d="M1,6 H36" stroke="var(--tool)" stroke-width="1.8" stroke-dasharray="5 4" fill="none"/><path d="M35,2.2 L41.5,6 L35,9.8" stroke="var(--tool)" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span><b>Used as tool</b> — by an AI agent</span>
+  </div>
+  <div class="lrow">
+    <svg viewBox="0 0 44 12"><rect x="10" y="1" width="24" height="10" rx="3.5" fill="none" stroke="var(--amber)" stroke-width="1.4" stroke-dasharray="3 2.4"/></svg>
+    <span><b>Folder</b> — click to expand</span>
+  </div>
+</div>
+
+<div class="chrome card" id="zoomrail">
+  <button id="zin" title="Zoom in" aria-label="Zoom in">+</button>
+  <button id="zout" title="Zoom out" aria-label="Zoom out">−</button>
+  <button id="zfit" title="Fit view" aria-label="Fit view">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/></svg>
+  </button>
+</div>
+
+<div class="chrome card" id="hint">
+  Scroll to pan &nbsp;·&nbsp; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + scroll to zoom &nbsp;·&nbsp; click folders to expand &nbsp;·&nbsp; drag workflows into folders</div>
+
+<script>
+'use strict';
+/* ============================== data ============================== */
+/* Injected from the live n8n instance (Darwin project, 2026-07-14).
+   Relations extracted from each workflow's Execute Workflow / Tool Workflow nodes.
+   Folder placement is name-matched (the MCP API does not expose folder membership). */
+const DATA = {
+  org: 'n8n', project: 'Darwin',
+  folders: [
+    { id: 'DGDrpBN4GlZAhItH', name: 'Builder',  parent: null },
+    { id: 'KqdzSEOfTCHcgG23', name: 'Evals',    parent: null },
+    { id: 'mskpbl4sjs5rO7kf', name: 'Forum',    parent: null },
+    { id: 'WLzTXdMZzD7g2bEl', name: 'Gong',     parent: null },
+    { id: 'b5H3v5NRiiKybicI', name: 'Format',   parent: null },
+    { id: '0PQUnRiE6z5040tU', name: 'Triggers', parent: null },
+    { id: '2yjeucykoVTz7gXS', name: 'Sessions', parent: null },
+    { id: 'uQKoJepZkigHYWgt', name: 'Loaders',  parent: null },
+    { id: 'sGVNaw0rJXCXfWt3', name: 'Reddit',   parent: 'uQKoJepZkigHYWgt' },
+  ],
+  workflows: [
+    // project root
+    { id: 'OPqsOp7eXr5MmWwA', name: 'Darwin',                folder: null, trigger: 'Sub-workflow', active: true },
+    { id: 'SAruSFZhhD4bTvAR', name: 'Memory Sanitizer',      folder: null, trigger: 'Sub-workflow', active: true },
+    { id: 'd7TqMzT3y64UylUV', name: 'OST',                   folder: null, trigger: 'Webhook',      active: true },
+    { id: 'BXJpChAETIzeguEI', name: 'ApprovalFlow',          folder: null, trigger: 'Webhook',      active: true },
+    { id: 'bleFZ5cQwEgq5WOp', name: 'RetrieveEmails',        folder: null, trigger: 'Sub-workflow', active: true },
+    { id: 'FRkQiA3qhtVDmqie', name: 'RetrieveEmails from Pidgeonhead UUIDs', folder: null, trigger: 'Sub-workflow', active: false },
+    { id: 'Wt6M96FHu0RZW6bP', name: 'PersonaClassification', folder: null, trigger: 'Sub-workflow', active: true },
+    { id: 'sLuFYZl7YDUmYhh0', name: 'OpportunityAnalysis',   folder: null, trigger: 'Sub-workflow', active: true },
+    { id: 'y0Bv85vivzNWtP3P', name: 'JobAnalysis',           folder: null, trigger: 'Sub-workflow', active: true },
+    { id: 'uIXinYZlPPQzsNxR', name: 'JobVectors',            folder: null, trigger: 'Sub-workflow', active: true },
+    { id: '7vsJM0SJXlsSDyJf', name: 'OpportunityAnalysis [Sim persona classification]', folder: null, trigger: 'Sub-workflow', active: false },
+    { id: '0jbBjGmtVuTVrHxa', name: 'Darwin — Highlights',   folder: null, trigger: 'Webhook',      active: true },
+    // Builder
+    { id: '4bBYvra6UJm2jEqs', name: 'Builder',       folder: 'DGDrpBN4GlZAhItH', trigger: 'Chat',         active: true },
+    { id: '9l5O6jJFvLyi1hy6', name: 'Project Index', folder: 'DGDrpBN4GlZAhItH', trigger: 'Sub-workflow', active: true },
+    { id: 'hBSf1YJntTN77fVk', name: 'Basic Form',    folder: 'DGDrpBN4GlZAhItH', trigger: 'Form',         active: false },
+    // Evals
+    { id: 'pxZTmRwx2vLVw9pV', name: 'SaveEvalCase',        folder: 'KqdzSEOfTCHcgG23', trigger: 'Sub-workflow', active: true },
+    { id: 'G6xuwk4Q6NtTSFbg', name: 'EvalResultsNotifier', folder: 'KqdzSEOfTCHcgG23', trigger: 'Sub-workflow', active: true },
+    { id: 'DH0iz0GdmwXwseSb', name: 'ReadEvalResults',     folder: 'KqdzSEOfTCHcgG23', trigger: 'Sub-workflow', active: true },
+    { id: 'ghqpQXTUb7317z3b', name: 'TriggerEvals',        folder: 'KqdzSEOfTCHcgG23', trigger: 'Sub-workflow', active: true },
+    { id: 'TBO1PTwuVEzGxRoF', name: 'Darwin Eval Case',    folder: 'KqdzSEOfTCHcgG23', trigger: 'Sub-workflow', active: true },
+    { id: 'FCrmBQctGkgLJ6rw', name: 'Darwin Evals Runner', folder: 'KqdzSEOfTCHcgG23', trigger: 'Webhook',      active: true },
+    { id: 'vsAARQP3aBxfr2y5', name: 'ConfigEvals',         folder: 'KqdzSEOfTCHcgG23', trigger: 'None',         active: false },
+    { id: 'RS44GmgCaT2lQ1E7', name: 'Evals',               folder: 'KqdzSEOfTCHcgG23', trigger: 'Sub-workflow', active: false },
+    { id: 'vvWCVzuQnwFLi7mL', name: 'PersonaEval Case',    folder: 'KqdzSEOfTCHcgG23', trigger: 'Sub-workflow', active: true },
+    { id: 'ixMHgJBHPYRPjL4c', name: 'PersonaEval Runner',  folder: 'KqdzSEOfTCHcgG23', trigger: 'Manual',       active: false },
+    // Forum
+    { id: 'BP8nZeIOn0Iyn7Sw', name: 'forum_search',        folder: 'mskpbl4sjs5rO7kf', trigger: 'Sub-workflow', active: false },
+    { id: 'okOPWnQhsLIQn3pl', name: 'forum_thread',        folder: 'mskpbl4sjs5rO7kf', trigger: 'Sub-workflow', active: false },
+    { id: '61DPPqszPw31rBSt', name: 'ForumBackfill',       folder: 'mskpbl4sjs5rO7kf', trigger: 'Schedule',     active: false },
+    { id: 'IMYVEDm2EnheVhd6', name: 'ForumOneShotBackfill', folder: 'mskpbl4sjs5rO7kf', trigger: 'Manual',      active: false },
+    // Gong
+    { id: 'S3VyO2dJSXdcypWk', name: 'GongLoader',                   folder: 'WLzTXdMZzD7g2bEl', trigger: 'Sub-workflow', active: false },
+    { id: 'eMwIt2o1qXg5XncX', name: 'GongReembed',                  folder: 'WLzTXdMZzD7g2bEl', trigger: 'Manual', active: false },
+    { id: 'xsZkJsBVPndQET3O', name: 'Fetch Gong Calls from BigQuery', folder: 'WLzTXdMZzD7g2bEl', trigger: 'Manual', active: false },
+    // Format
+    { id: 'o8BBACXNl7tOMCJp', name: 'SlackFormat',  folder: 'b5H3v5NRiiKybicI', trigger: 'Sub-workflow', active: true },
+    { id: 'DzFvg8ylAwiLdYeu', name: 'NotionFormat', folder: 'b5H3v5NRiiKybicI', trigger: 'Sub-workflow', active: false },
+    // Triggers
+    { id: 'v1hFTXg5oJZmjV9J', name: 'Slack',              folder: '0PQUnRiE6z5040tU', trigger: 'Slack',        active: true },
+    { id: 'WGXoRQVoUUuIigb5', name: 'TestSlack',          folder: '0PQUnRiE6z5040tU', trigger: 'Slack',        active: true },
+    { id: 'nrCahz2I7P7MDNrR', name: 'Error',              folder: '0PQUnRiE6z5040tU', trigger: 'Error',        active: true },
+    { id: 'mlXiF3uII4Snx2Ia', name: 'MCP',                folder: '0PQUnRiE6z5040tU', trigger: 'MCP',          active: false },
+    { id: '28ISNyTdAO6qEF9K', name: 'Darwin — MCP Entry', folder: '0PQUnRiE6z5040tU', trigger: 'Sub-workflow', active: false },
+    // Sessions
+    { id: '82tfr2yt6jcWM3X7', name: 'SessionAnalysis',            folder: '2yjeucykoVTz7gXS', trigger: 'Sub-workflow', active: true },
+    { id: 'C5AFr-Pd7cyq8u7IYg1ya', name: 'SessionVectors',        folder: '2yjeucykoVTz7gXS', trigger: 'Sub-workflow', active: true },
+    { id: 'xFjJNPubMeCFrds8', name: 'SessionVectorSearch',        folder: '2yjeucykoVTz7gXS', trigger: 'Sub-workflow', active: true },
+    { id: 'car2eAl9ISXci9UM', name: 'SessionLogger',              folder: '2yjeucykoVTz7gXS', trigger: 'Sub-workflow', active: true },
+    { id: 'iuOeNMTJUQbSIZFD', name: 'Backfill Session Recorders', folder: '2yjeucykoVTz7gXS', trigger: 'Manual', active: false },
+    { id: 'qzRxw9gcbtBxi8Vy', name: 'EvidenceBackfill',           folder: '2yjeucykoVTz7gXS', trigger: 'Sub-workflow', active: false },
+    { id: 'w0nNDqkfbKD8lSbO', name: 'GetTranscript',              folder: '2yjeucykoVTz7gXS', trigger: 'Sub-workflow', active: true },
+    // Loaders
+    { id: 'OpuagVQI2Vabiy3v', name: 'GDriveToSupabase', folder: 'uQKoJepZkigHYWgt', trigger: 'Schedule',     active: true },
+    { id: 'ysS52t9588Zv218B', name: 'CommunityLoader',  folder: 'uQKoJepZkigHYWgt', trigger: 'Chat',         active: true },
+    { id: 'eFFly3BztmCdqgFH', name: 'SlackLoader',      folder: 'uQKoJepZkigHYWgt', trigger: 'Sub-workflow', active: false },
+    { id: 'cRlY7BYtklnSQHGQ', name: 'PlainLoader',      folder: 'uQKoJepZkigHYWgt', trigger: 'Schedule',     active: false },
+    // Loaders / Reddit
+    { id: 'w2ueRTvrBYfQQ0eq', name: 'RedditLoader',           folder: 'sGVNaw0rJXCXfWt3', trigger: 'Schedule', active: false },
+    { id: 'dCXfbd3JvcaHNhzF', name: 'RedditBackfill',         folder: 'sGVNaw0rJXCXfWt3', trigger: 'Schedule', active: false },
+    { id: 'xkczt1bqAX5uaJbC', name: 'RedditBackfill-v3',      folder: 'sGVNaw0rJXCXfWt3', trigger: 'Schedule', active: false },
+    { id: 'FwG55hK4jXYAMsI2', name: 'Reddit Comment Fetcher', folder: 'sGVNaw0rJXCXfWt3', trigger: 'Schedule', active: false },
+  ],
+  relations: [
+    // Darwin agent → its tool workflows
+    { s: 'OPqsOp7eXr5MmWwA', t: 'xFjJNPubMeCFrds8', type: 'tool' },
+    { s: 'OPqsOp7eXr5MmWwA', t: 'w0nNDqkfbKD8lSbO', type: 'tool' },
+    { s: 'OPqsOp7eXr5MmWwA', t: 'BP8nZeIOn0Iyn7Sw', type: 'tool' },
+    { s: 'OPqsOp7eXr5MmWwA', t: 'okOPWnQhsLIQn3pl', type: 'tool' },
+    { s: 'OPqsOp7eXr5MmWwA', t: '4bBYvra6UJm2jEqs', type: 'tool' },
+    { s: 'OPqsOp7eXr5MmWwA', t: '9l5O6jJFvLyi1hy6', type: 'tool' },
+    { s: 'OPqsOp7eXr5MmWwA', t: 'bleFZ5cQwEgq5WOp', type: 'tool' },
+    { s: 'OPqsOp7eXr5MmWwA', t: 'pxZTmRwx2vLVw9pV', type: 'tool' },
+    { s: 'OPqsOp7eXr5MmWwA', t: 'DH0iz0GdmwXwseSb', type: 'tool' },
+    { s: 'OPqsOp7eXr5MmWwA', t: 'ghqpQXTUb7317z3b', type: 'tool' },
+    { s: 'OPqsOp7eXr5MmWwA', t: 'SAruSFZhhD4bTvAR', type: 'trigger' },
+    // entry points
+    { s: 'v1hFTXg5oJZmjV9J', t: 'OPqsOp7eXr5MmWwA', type: 'trigger' },
+    { s: 'v1hFTXg5oJZmjV9J', t: 'o8BBACXNl7tOMCJp', type: 'trigger' },
+    { s: 'v1hFTXg5oJZmjV9J', t: '4bBYvra6UJm2jEqs', type: 'trigger' },
+    { s: 'nrCahz2I7P7MDNrR', t: '4bBYvra6UJm2jEqs', type: 'trigger' },
+    { s: 'mlXiF3uII4Snx2Ia', t: '28ISNyTdAO6qEF9K', type: 'tool' },
+    { s: '28ISNyTdAO6qEF9K', t: 'car2eAl9ISXci9UM', type: 'trigger' },
+    { s: '28ISNyTdAO6qEF9K', t: 'OPqsOp7eXr5MmWwA', type: 'trigger' },
+    { s: 'd7TqMzT3y64UylUV', t: 'OPqsOp7eXr5MmWwA', type: 'trigger' },
+    { s: '4bBYvra6UJm2jEqs', t: 'SAruSFZhhD4bTvAR', type: 'trigger' },
+    { s: 'BXJpChAETIzeguEI', t: 'w0nNDqkfbKD8lSbO', type: 'trigger' },
+    // evals pipeline
+    { s: 'ghqpQXTUb7317z3b', t: 'TBO1PTwuVEzGxRoF', type: 'trigger' },
+    { s: 'ghqpQXTUb7317z3b', t: 'G6xuwk4Q6NtTSFbg', type: 'trigger' },
+    { s: 'FCrmBQctGkgLJ6rw', t: 'TBO1PTwuVEzGxRoF', type: 'trigger' },
+    { s: 'TBO1PTwuVEzGxRoF', t: 'OPqsOp7eXr5MmWwA', type: 'trigger' },
+    { s: 'RS44GmgCaT2lQ1E7', t: 'OPqsOp7eXr5MmWwA', type: 'trigger' },
+    { s: 'RS44GmgCaT2lQ1E7', t: 'o8BBACXNl7tOMCJp', type: 'trigger' },
+    { s: 'ixMHgJBHPYRPjL4c', t: 'vvWCVzuQnwFLi7mL', type: 'trigger' },
+    { s: 'vvWCVzuQnwFLi7mL', t: 'Wt6M96FHu0RZW6bP', type: 'trigger' },
+    // session ingestion pipeline
+    { s: 'OpuagVQI2Vabiy3v', t: '82tfr2yt6jcWM3X7', type: 'trigger' },
+    { s: 'OpuagVQI2Vabiy3v', t: 'C5AFr-Pd7cyq8u7IYg1ya', type: 'trigger' },
+    { s: 'OpuagVQI2Vabiy3v', t: 'y0Bv85vivzNWtP3P', type: 'trigger' },
+    { s: 'OpuagVQI2Vabiy3v', t: 'sLuFYZl7YDUmYhh0', type: 'trigger' },
+    { s: 'sLuFYZl7YDUmYhh0', t: 'y0Bv85vivzNWtP3P', type: 'trigger' },
+    { s: '7vsJM0SJXlsSDyJf', t: 'y0Bv85vivzNWtP3P', type: 'trigger' },
+    { s: 'y0Bv85vivzNWtP3P', t: 'uIXinYZlPPQzsNxR', type: 'trigger' },
+    { s: 'FRkQiA3qhtVDmqie', t: 'bleFZ5cQwEgq5WOp', type: 'trigger' },
+  ],
+};
+
+const ICONS = {
+  webhook:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 L6 13 H12 L11 22 L18 11 H12 Z"/></svg>',
+  chat:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H4l2.3-2.9A8 8 0 1 1 21 12z"/><circle cx="9" cy="12" r=".5" fill="currentColor"/><circle cx="13" cy="12" r=".5" fill="currentColor"/><circle cx="17" cy="12" r=".5" fill="currentColor"/></svg>',
+  schedule: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
+  sub:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M10 7h4a3 3 0 0 1 3 3v4"/></svg>',
+  tool:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4.5 4.5 0 0 0-6 5.6L3 17.6 V21 h3.4 l5.7-5.7 a4.5 4.5 0 0 0 5.6-6 L14.6 12.4 l-3-3z"/></svg>',
+  slack:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 4v7M14 4v7M10 13v7M14 13v7M4 10h7M4 14h7M13 10h7M13 14h7" transform="scale(.82) translate(2.6 2.6)"/></svg>',
+  error:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L22 20 H2 Z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>',
+  form:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+  mcp:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V3M15 7V3M7 7h10v5a5 5 0 0 1-10 0zM12 17v4"/></svg>',
+  manual:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l13 8-13 8z"/></svg>',
+  eval:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>',
+  folder:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2.2 2.5H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  chevR:    '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  chevIn:   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4l-5 5 5 5M3 9h11a7 7 0 0 1 0 14" transform="translate(2 -1) scale(.85)"/></svg>'
+};
+
+/* trigger label → { icon, tile tint } */
+const TRIGGER_META = {
+  'Chat':         { icon: 'chat',     cls: 'accent' },
+  'Webhook':      { icon: 'webhook',  cls: 'accent' },
+  'Schedule':     { icon: 'schedule', cls: 'teal' },
+  'Slack':        { icon: 'slack',    cls: 'accent' },
+  'Error':        { icon: 'error',    cls: 'amber' },
+  'Form':         { icon: 'form',     cls: 'teal' },
+  'MCP':          { icon: 'mcp',      cls: 'tool' },
+  'Sub-workflow': { icon: 'sub',      cls: 'grey' },
+  'Eval':         { icon: 'eval',     cls: 'teal' },
+  'Manual':       { icon: 'manual',   cls: 'grey' },
+  'None':         { icon: 'manual',   cls: 'grey' },
+};
+
+const folders = DATA.folders;
+const workflows = DATA.workflows;
+const relations = DATA.relations;
+
+const wfById = Object.fromEntries(workflows.map(w => [w.id, w]));
+const folderById = Object.fromEntries(folders.map(f => [f.id, f]));
+const isToolTarget = Object.fromEntries(relations.filter(r => r.type === 'tool').map(r => [r.t, true]));
+
+/* entities directly inside a folder (null = project root) */
+function childEntities(fid) {
+  return [
+    ...folders.filter(f => (f.parent ?? null) === fid).map(f => ({ id: f.id, folder: true })),
+    ...workflows.filter(w => (w.folder ?? null) === fid).map(w => ({ id: w.id, folder: false })),
+  ];
+}
+function descendantWorkflowCount(fid) {
+  let n = workflows.filter(w => w.folder === fid).length;
+  for (const f of folders.filter(f => f.parent === fid)) n += descendantWorkflowCount(f.id);
+  return n;
+}
+function parentOf(id) {
+  return folderById[id] ? (folderById[id].parent ?? null) : (wfById[id].folder ?? null);
+}
+
+/* ============================== state ============================== */
+const NODE = { w: 216, h: 80 };
+const C_PAD = 18, C_HEAD = 40, C_GAPX = 64, C_GAPY = 28, C_WRAP = 4;
+const COL_GAP = 170, ROW_GAP = 84;
+
+const state = {
+  pan: { x: 0, y: 0 },
+  scale: 1,
+  expanded: new Set(),
+  pos: {},   // world coords (top-left); folder pos = collapsed node anchor
+};
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============================== model ============================== */
+/* the entity actually shown on canvas for a workflow: itself, or its
+   outermost collapsed ancestor folder */
+function endpointOf(wfId) {
+  const chain = [];
+  let cur = wfById[wfId].folder ?? null;
+  while (cur) { chain.push(cur); cur = folderById[cur].parent ?? null; }
+  for (let i = chain.length - 1; i >= 0; i--) {
+    if (!state.expanded.has(chain[i])) return chain[i];
+  }
+  return wfId;
+}
+function isEntityVisible(id) {
+  let cur = parentOf(id);
+  while (cur) {
+    if (!state.expanded.has(cur)) return false;
+    cur = folderById[cur].parent ?? null;
+  }
+  return true;
+}
+
+/* rects — `t` variants use tween targets so layout math sees where things will settle */
+function posOf(id) { return state.pos[id]; }
+function targetPos(id) {
+  const a = anims.find(a => a.id === id);
+  return a ? a.to : state.pos[id];
+}
+function rectWith(id, getPos) {
+  if (folderById[id] && state.expanded.has(id)) return containerRectWith(id, getPos);
+  const p = getPos(id);
+  return { x: p.x, y: p.y, w: NODE.w, h: NODE.h };
+}
+let liftedId = null; // workflow being dragged toward a folder — containers ignore it
+function containerRectWith(fid, getPos) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const c of childEntities(fid)) {
+    if (c.id === liftedId) continue;
+    const r = rectWith(c.id, getPos);
+    x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y);
+    x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+  }
+  if (x0 === Infinity) { const p = getPos(fid); return { x: p.x, y: p.y, w: NODE.w, h: NODE.h }; }
+  return { x: x0 - C_PAD, y: y0 - C_HEAD, w: (x1 - x0) + C_PAD * 2, h: (y1 - y0) + C_HEAD + C_PAD };
+}
+const rectOf = id => rectWith(id, posOf);
+const rectOfT = id => rectWith(id, targetPos);
+const containerRect = fid => containerRectWith(fid, posOf);
+
+/* visible edges: endpoints resolved to what's on canvas, deduped */
+function visibleEdges() {
+  const groups = new Map();
+  for (const r of relations) {
+    const s = endpointOf(r.s), t = endpointOf(r.t);
+    if (s === t) continue;
+    const key = s + '→' + t + ':' + r.type;
+    if (!groups.has(key)) groups.set(key, { key, s, t, type: r.type, count: 0 });
+    groups.get(key).count++;
+  }
+  return [...groups.values()];
+}
+
+/* ============================== auto-layout ============================== */
+function autoLayout() {
+  const units = childEntities(null).map(e => e.id);
+  const edges = visibleEdges();
+  const hasEdge = {};
+  for (const e of edges) { hasEdge[e.s] = true; hasEdge[e.t] = true; }
+  const connected = units.filter(id => hasEdge[id]);
+  const isolated = units.filter(id => !hasEdge[id]);
+
+  // columns: longest path over trigger edges
+  const tAdj = {}, tIn = {};
+  for (const e of edges.filter(e => e.type === 'trigger')) {
+    (tAdj[e.s] ??= []).push(e.t);
+    tIn[e.t] = (tIn[e.t] || 0) + 1;
+  }
+  const col = {};
+  let frontier = connected.filter(id => !tIn[id]);
+  frontier.forEach(id => col[id] = 0);
+  let guard = 0;
+  while (frontier.length && guard++ < 60) {
+    const next = [];
+    for (const id of frontier) {
+      for (const t of (tAdj[id] || [])) {
+        const c = (col[id] ?? 0) + 1;
+        if ((col[t] ?? -1) < c) { col[t] = c; next.push(t); }
+      }
+    }
+    frontier = next;
+  }
+  // tool targets with no trigger column sit in their caller's column (they hang below)
+  for (const e of edges.filter(e => e.type === 'tool')) {
+    if (col[e.t] == null) col[e.t] = col[e.s] ?? 0;
+  }
+  for (const id of connected) if (col[id] == null) col[id] = 0;
+
+  // rows: per column, order by barycenter of already-placed neighbours
+  const preds = {};
+  for (const e of edges) (preds[e.t] ??= []).push(e.s);
+  const maxCol = Math.max(0, ...connected.map(id => col[id]));
+  const y = {};
+  let bottomOfConnected = 0;
+  for (let c = 0; c <= maxCol; c++) {
+    const inCol = connected.filter(id => col[id] === c);
+    inCol.sort((a, b) => {
+      const bary = id => {
+        const ps = (preds[id] || []).filter(p => y[p] != null);
+        return ps.length ? ps.reduce((s, p) => s + y[p], 0) / ps.length : 1e9;
+      };
+      return bary(a) - bary(b);
+    });
+    let cursor = 0;
+    for (const id of inCol) {
+      const ps = (preds[id] || []).filter(p => y[p] != null);
+      const want = ps.length ? ps.reduce((s, p) => s + y[p], 0) / ps.length : cursor;
+      y[id] = Math.max(cursor, want);
+      cursor = y[id] + NODE.h + ROW_GAP;
+    }
+    bottomOfConnected = Math.max(bottomOfConnected, cursor);
+  }
+  for (const id of connected) {
+    state.pos[id] = { x: 60 + col[id] * (NODE.w + COL_GAP), y: 60 + y[id] };
+  }
+
+  // isolated units: grid below the connected graph
+  const gridTop = 60 + bottomOfConnected + 120;
+  isolated.forEach((id, i) => {
+    state.pos[id] = {
+      x: 60 + (i % 5) * (NODE.w + 60),
+      y: gridTop + Math.floor(i / 5) * (NODE.h + 48),
+    };
+  });
+}
+
+/* ============================== dom refs ============================== */
+const viewport = document.getElementById('viewport');
+const world = document.getElementById('world');
+const nodesEl = document.getElementById('nodes');
+const containersEl = document.getElementById('containers');
+const edgeLayer = document.getElementById('edgelayer');
+
+let nodeEls = {};       // id -> element (workflow nodes + collapsed folder nodes)
+let containerEls = {};  // folderId -> element
+let edgeEls = [];
+
+/* ============================== structure render ============================== */
+function folderDepth(fid) {
+  let d = 0, cur = folderById[fid].parent;
+  while (cur) { d++; cur = folderById[cur].parent; }
+  return d;
+}
+
+function renderStructure() {
+  nodesEl.innerHTML = ''; containersEl.innerHTML = ''; edgeLayer.innerHTML = '';
+  nodeEls = {}; containerEls = {}; edgeEls = [];
+
+  // expanded folder containers (parents painted first so children sit on top)
+  const expandedVisible = folders.filter(f => state.expanded.has(f.id) && isEntityVisible(f.id));
+  expandedVisible.sort((a, b) => folderDepth(a.id) - folderDepth(b.id));
+  for (const f of expandedVisible) {
+    const el = document.createElement('div');
+    el.className = 'container';
+    el.dataset.folder = f.id;
+    el.innerHTML =
+      `<div class="chead" data-collapse="${f.id}" title="Collapse folder">
+         ${ICONS.folder}
+         <span class="fname">${f.name}</span>
+         <span class="fcount">· ${descendantWorkflowCount(f.id)} workflows</span>
+         <span class="collapse">${ICONS.chevIn}</span>
+       </div>`;
+    containersEl.appendChild(el);
+    containerEls[f.id] = el;
+  }
+
+  // collapsed folder nodes
+  for (const f of folders) {
+    if (state.expanded.has(f.id) || !isEntityVisible(f.id)) continue;
+    const n = descendantWorkflowCount(f.id);
+    const el = document.createElement('div');
+    el.className = 'node folder';
+    el.dataset.id = f.id;
+    el.title = 'Click to expand';
+    el.innerHTML =
+      `<div class="tile">${ICONS.folder}</div>
+       <div class="meta">
+         <div class="name">${f.name}</div>
+         <div class="sub">${n} workflow${n === 1 ? '' : 's'} inside</div>
+       </div>
+       <span class="chev">${ICONS.chevR}</span>
+       <span class="count-pill">${n}</span>`;
+    nodesEl.appendChild(el);
+    nodeEls[f.id] = el;
+  }
+
+  // workflow nodes
+  for (const w of workflows) {
+    if (!isEntityVisible(w.id)) continue;
+    const meta = isToolTarget[w.id]
+      ? { icon: 'tool', cls: 'tool' }
+      : (TRIGGER_META[w.trigger] || TRIGGER_META['None']);
+    const subLabel = isToolTarget[w.id] && w.trigger === 'Sub-workflow' ? 'Tool workflow' : w.trigger;
+    const el = document.createElement('div');
+    el.className = 'node';
+    el.dataset.id = w.id;
+    el.title = w.name;
+    el.innerHTML =
+      `<div class="tile t-${meta.cls}">${ICONS[meta.icon]}</div>
+       <div class="meta">
+         <div class="name">${w.name}</div>
+         <div class="sub"><span class="dot ${w.active ? 'active' : ''}"></span>${subLabel}</div>
+       </div>`;
+    nodesEl.appendChild(el);
+    nodeEls[w.id] = el;
+  }
+
+  // edges
+  const svgNS = 'http://www.w3.org/2000/svg';
+  for (const def of visibleEdges()) {
+    const group = document.createElementNS(svgNS, 'g');
+    group.setAttribute('class', 'edge-group');
+    group.dataset.s = def.s; group.dataset.t = def.t;
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('class', 'edge-path' + (def.type === 'tool' ? ' tool' : ''));
+    path.setAttribute('marker-end', 'url(#arr)');
+    const hit = document.createElementNS(svgNS, 'path');
+    hit.setAttribute('class', 'edge-hit');
+    group.appendChild(path); group.appendChild(hit);
+    edgeLayer.appendChild(group);
+    edgeEls.push({ def, group, path, hit });
+  }
+
+  updatePositions();
+  updateStats();
+}
+
+/* ============================== positional render ============================== */
+function updatePositions() {
+  world.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.scale})`;
+  viewport.style.backgroundSize = `${24 * state.scale}px ${24 * state.scale}px`;
+  viewport.style.backgroundPosition = `${state.pan.x}px ${state.pan.y}px`;
+
+  for (const [id, el] of Object.entries(nodeEls)) {
+    const p = state.pos[id];
+    el.style.transform = `translate(${p.x}px, ${p.y}px)`;
+  }
+  for (const [fid, el] of Object.entries(containerEls)) {
+    const r = containerRect(fid);
+    el.style.transform = `translate(${r.x}px, ${r.y}px)`;
+    el.style.width = r.w + 'px';
+    el.style.height = r.h + 'px';
+  }
+  for (const e of edgeEls) {
+    const rs = rectOf(e.def.s), rt = rectOf(e.def.t);
+    let p0, p1, c0, c1;
+    if (e.def.type === 'trigger') {
+      p0 = { x: rs.x + rs.w, y: rs.y + rs.h / 2 };
+      p1 = { x: rt.x,        y: rt.y + rt.h / 2 };
+      const o = Math.min(130, Math.max(46, Math.abs(p1.x - p0.x) * 0.45));
+      c0 = { x: p0.x + o, y: p0.y }; c1 = { x: p1.x - o, y: p1.y };
+    } else {
+      p0 = { x: rs.x + rs.w / 2, y: rs.y + rs.h };
+      p1 = { x: rt.x + rt.w / 2, y: rt.y };
+      const o = Math.min(120, Math.max(40, Math.abs(p1.y - p0.y) * 0.45));
+      c0 = { x: p0.x, y: p0.y + o }; c1 = { x: p1.x, y: p1.y - o };
+    }
+    const d = `M ${p0.x} ${p0.y} C ${c0.x} ${c0.y}, ${c1.x} ${c1.y}, ${p1.x} ${p1.y}`;
+    e.path.setAttribute('d', d);
+    e.hit.setAttribute('d', d);
+  }
+}
+
+function updateStats() {
+  document.getElementById('orgname').textContent = DATA.org;
+  document.getElementById('projname').textContent = DATA.project;
+  document.getElementById('stats').textContent =
+    `${workflows.length} workflows · ${folders.length} folders · ${relations.length} relations`;
+}
+
+/* ============================== animation ============================== */
+let anims = [], rafId = null;
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+
+function tweenPos(id, to, done) {
+  anims = anims.filter(a => a.id !== id); // replace any pending tween for this id
+  if (reduced) { state.pos[id] = { ...to }; updatePositions(); if (done) done(); return; }
+  const anim = { id, from: { ...state.pos[id] }, to: { ...to }, t0: performance.now(), dur: 260, done };
+  anims.push(anim);
+  if (!rafId) rafId = requestAnimationFrame(step);
+  // watchdog: rAF can be throttled to a standstill (background/embedded tabs);
+  // guarantee the tween lands and its callback fires regardless
+  setTimeout(() => {
+    if (!anims.includes(anim)) return;
+    anims = anims.filter(a => a !== anim);
+    state.pos[anim.id] = { ...anim.to };
+    updatePositions();
+    if (anim.done) anim.done();
+  }, anim.dur + 120);
+}
+function step(now) {
+  const finished = [];
+  anims = anims.filter(a => {
+    const t = Math.min(1, (now - a.t0) / a.dur), k = easeOut(t);
+    state.pos[a.id] = { x: a.from.x + (a.to.x - a.from.x) * k, y: a.from.y + (a.to.y - a.from.y) * k };
+    if (t >= 1) { finished.push(a); return false; }
+    return true;
+  });
+  updatePositions();
+  for (const a of finished) if (a.done) a.done();
+  rafId = anims.length ? requestAnimationFrame(step) : null;
+}
+
+/* move an entity and (for expanded folders) everything inside it */
+function moveUnit(id, dx, dy) {
+  if (folderById[id] && state.expanded.has(id)) {
+    state.pos[id] = { x: state.pos[id].x + dx, y: state.pos[id].y + dy };
+    for (const c of childEntities(id)) moveUnit(c.id, dx, dy);
+  } else {
+    const p = targetPos(id);
+    tweenPos(id, { x: p.x + dx, y: p.y + dy });
+  }
+}
+
+/* ============================== expand / collapse ============================== */
+function childSlots(fid) {
+  const anchor = state.pos[fid];
+  return childEntities(fid).map((c, i) => ({
+    id: c.id,
+    x: anchor.x + C_PAD + (i % C_WRAP) * (NODE.w + C_GAPX),
+    y: anchor.y + C_HEAD + C_PAD * 0.4 + Math.floor(i / C_WRAP) * (NODE.h + C_GAPY),
+  }));
+}
+
+function expandFolder(fid) {
+  const slots = childSlots(fid);
+  for (const s of slots) state.pos[s.id] = { x: state.pos[fid].x, y: state.pos[fid].y };
+  state.expanded.add(fid);
+  renderStructure();
+  for (const s of slots) tweenPos(s.id, { x: s.x, y: s.y });
+
+  const xs = slots.map(s => s.x), ys = slots.map(s => s.y);
+  const finalRect = {
+    x: Math.min(...xs) - C_PAD,
+    y: Math.min(...ys) - C_HEAD,
+    w: (Math.max(...xs) - Math.min(...xs)) + NODE.w + C_PAD * 2,
+    h: (Math.max(...ys) - Math.min(...ys)) + NODE.h + C_HEAD + C_PAD,
+  };
+  resolveAround(fid, finalRect);
+}
+
+function collapseFolder(fid) {
+  // collapse any expanded descendant folders instantly first
+  for (const f of folders) {
+    if (f.id !== fid && state.expanded.has(f.id)) {
+      let cur = f.parent;
+      while (cur) { if (cur === fid) { state.expanded.delete(f.id); break; } cur = folderById[cur].parent; }
+    }
+  }
+  renderStructure();
+  const kids = childEntities(fid);
+  const r = containerRect(fid);
+  state.pos[fid] = { x: r.x, y: r.y + (r.h - NODE.h) / 2 };
+  let pending = kids.length;
+  if (!pending) { state.expanded.delete(fid); renderStructure(); return; }
+  const finish = () => {
+    if (--pending > 0) return;
+    state.expanded.delete(fid);
+    renderStructure();
+  };
+  for (const k of kids) tweenPos(k.id, { ...state.pos[fid] }, finish);
+}
+
+function toggleFolder(fid) {
+  if (state.expanded.has(fid)) collapseFolder(fid); else expandFolder(fid);
+}
+
+/* ---- overlap resolution: push siblings clear at every ancestor level ---- */
+const CLEARANCE = 40;
+function overlaps(a, b, m) {
+  return a.x < b.x + b.w + m && b.x < a.x + a.w + m &&
+         a.y < b.y + b.h + m && b.y < a.y + a.h + m;
+}
+function resolveAround(fid, finalRect) {
+  let cur = fid, rect = finalRect;
+  while (true) {
+    const parent = folderById[cur] ? (folderById[cur].parent ?? null) : null;
+    resolveLevel(parent, cur, rect);
+    if (parent == null) break;
+    cur = parent;
+    rect = rectOfT(cur); // parent container after this level settled
+  }
+}
+/* minimal vector that moves rect `b` clear of rect `a` (plus clearance) */
+function separationVector(a, b) {
+  const options = [
+    { dx: (a.x + a.w + CLEARANCE) - b.x, dy: 0 },
+    { dx: -((b.x + b.w + CLEARANCE) - a.x), dy: 0 },
+    { dx: 0, dy: (a.y + a.h + CLEARANCE) - b.y },
+    { dx: 0, dy: -((b.y + b.h + CLEARANCE) - a.y) },
+  ];
+  let best = options[0];
+  for (const o of options) if (Math.abs(o.dx + o.dy) < Math.abs(best.dx + best.dy)) best = o;
+  return best;
+}
+function resolveLevel(parentId, fixedId, fixedRect) {
+  const fixed = { id: fixedId, rect: { ...fixedRect }, fixed: true };
+  const units = [];
+  for (const c of childEntities(parentId)) {
+    if (c.id === fixedId) continue;
+    units.push({ id: c.id, rect: { ...rectOfT(c.id) } });
+  }
+  for (let pass = 0; pass < 40; pass++) {
+    let moved = false;
+    // clear the expanded folder first — it never moves
+    for (const u of units) {
+      if (!overlaps(fixed.rect, u.rect, CLEARANCE)) continue;
+      const v = separationVector(fixed.rect, u.rect);
+      u.rect.x += v.dx; u.rect.y += v.dy;
+      moved = true;
+    }
+    // then separate movable units from each other, splitting the push
+    for (let i = 0; i < units.length; i++) {
+      for (let j = i + 1; j < units.length; j++) {
+        const a = units[i], b = units[j];
+        if (!overlaps(a.rect, b.rect, CLEARANCE)) continue;
+        const v = separationVector(a.rect, b.rect);
+        b.rect.x += v.dx / 2; b.rect.y += v.dy / 2;
+        a.rect.x -= v.dx / 2; a.rect.y -= v.dy / 2;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  // hard guarantee: nothing may sit under the expanded folder
+  for (const u of units) {
+    if (!overlaps(fixed.rect, u.rect, CLEARANCE)) continue;
+    const v = separationVector(fixed.rect, u.rect);
+    u.rect.x += v.dx; u.rect.y += v.dy;
+  }
+  for (const u of units) {
+    const cur = rectOfT(u.id);
+    const dx = u.rect.x - cur.x, dy = u.rect.y - cur.y;
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
+    moveUnit(u.id, dx, dy);
+  }
+}
+
+/* ============================== moving workflows between folders ============================== */
+function screenToWorld(cx, cy) {
+  return { x: (cx - state.pan.x) / state.scale, y: (cy - state.pan.y) / state.scale };
+}
+
+/* folder under the cursor: collapsed folder nodes win, then the deepest expanded container */
+function dropTargetAt(wx, wy) {
+  const inside = r => wx >= r.x && wx <= r.x + r.w && wy >= r.y && wy <= r.y + r.h;
+  for (const f of folders) {
+    if (!state.expanded.has(f.id) && isEntityVisible(f.id) && inside(rectOf(f.id))) return f.id;
+  }
+  let best = null, bestDepth = -1;
+  for (const f of folders) {
+    if (!state.expanded.has(f.id) || !isEntityVisible(f.id)) continue;
+    if (!inside(containerRect(f.id))) continue;
+    const d = folderDepth(f.id);
+    if (d > bestDepth) { best = f.id; bestDepth = d; }
+  }
+  return best;
+}
+
+function setDropHot(fid) {
+  for (const el of document.querySelectorAll('.drop-hot')) el.classList.remove('drop-hot');
+  if (fid) (nodeEls[fid] || containerEls[fid])?.classList.add('drop-hot');
+}
+
+/* re-pack an expanded folder's children into the grid, keeping its top-left corner put */
+function relayoutFolder(fid) {
+  if (!fid || !state.expanded.has(fid)) return;
+  if (!childEntities(fid).length) return;
+  const r = containerRectWith(fid, targetPos);
+  state.pos[fid] = { x: r.x, y: r.y - C_PAD * 0.4 };
+  const slots = childSlots(fid);
+  for (const s of slots) tweenPos(s.id, { x: s.x, y: s.y });
+  const xs = slots.map(s => s.x), ys = slots.map(s => s.y);
+  resolveAround(fid, {
+    x: Math.min(...xs) - C_PAD,
+    y: Math.min(...ys) - C_HEAD,
+    w: (Math.max(...xs) - Math.min(...xs)) + NODE.w + C_PAD * 2,
+    h: (Math.max(...ys) - Math.min(...ys)) + NODE.h + C_HEAD + C_PAD,
+  });
+}
+
+function moveWorkflowToFolder(wfId, targetFid) {
+  const wf = wfById[wfId];
+  const sourceFid = wf.folder ?? null;
+  if ((targetFid ?? null) === sourceFid) return;
+  wf.folder = targetFid;
+  const finish = () => {
+    renderStructure();
+    relayoutFolder(targetFid);
+    relayoutFolder(sourceFid);
+    // a folder emptied by the move collapses away
+    if (sourceFid && state.expanded.has(sourceFid) && !childEntities(sourceFid).length) {
+      state.expanded.delete(sourceFid);
+      renderStructure();
+    }
+  };
+  if (targetFid && !state.expanded.has(targetFid)) {
+    // swallow animation: glide into the collapsed folder node, then rebuild
+    const r = rectOf(targetFid);
+    tweenPos(wfId, { x: r.x + (r.w - NODE.w) / 2, y: r.y + (r.h - NODE.h) / 2 }, finish);
+  } else {
+    finish();
+  }
+}
+
+/* ============================== interaction ============================== */
+/* no free repositioning — background pans, folders toggle,
+   workflows can only be dragged into/out of folders */
+let press = null;
+
+function endLift(restore) {
+  if (press?.kind === 'wf' && press.lifted) {
+    press.el.classList.remove('lifting');
+    setDropHot(null);
+    liftedId = null;
+    if (restore) { state.pos[press.id] = { ...press.origPos }; updatePositions(); }
+  }
+}
+
+viewport.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  const nodeEl = e.target.closest('.node');
+  const headEl = e.target.closest('.chead');
+  if (nodeEl && folderById[nodeEl.dataset.id]) {
+    press = { kind: 'folder', id: nodeEl.dataset.id, startClient: { x: e.clientX, y: e.clientY }, moved: false };
+  } else if (nodeEl) {
+    const id = nodeEl.dataset.id;
+    press = { kind: 'wf', id, el: nodeEl, startClient: { x: e.clientX, y: e.clientY }, origPos: { ...state.pos[id] }, moved: false, lifted: false, raw: null, target: null };
+  } else if (headEl) {
+    press = { kind: 'folder', id: headEl.dataset.collapse, startClient: { x: e.clientX, y: e.clientY }, moved: false };
+  } else if (!e.target.closest('.chrome')) {
+    press = { kind: 'pan', startClient: { x: e.clientX, y: e.clientY }, startPan: { ...state.pan }, moved: false };
+    viewport.classList.add('panning');
+  } else return;
+  viewport.setPointerCapture(e.pointerId);
+});
+
+viewport.addEventListener('pointermove', e => {
+  if (!press) return;
+  if ((e.buttons & 1) === 0) { // button released without a pointerup reaching us — cancel
+    viewport.classList.remove('panning');
+    endLift(true);
+    press = null;
+    return;
+  }
+  const dx = e.clientX - press.startClient.x, dy = e.clientY - press.startClient.y;
+  if (Math.hypot(dx, dy) > 4) press.moved = true;
+  if (!press.moved) return;
+  if (press.kind === 'pan') {
+    state.pan = { x: press.startPan.x + dx, y: press.startPan.y + dy };
+    updatePositions();
+  } else if (press.kind === 'wf') {
+    if (!press.lifted) {
+      press.lifted = true;
+      press.el.classList.add('lifting');
+      liftedId = press.id;
+      anims = anims.filter(a => a.id !== press.id);
+    }
+    state.pos[press.id] = { x: press.origPos.x + dx / state.scale, y: press.origPos.y + dy / state.scale };
+    const w = screenToWorld(e.clientX, e.clientY);
+    press.raw = dropTargetAt(w.x, w.y);
+    press.target = press.raw === (wfById[press.id].folder ?? null) ? null : press.raw;
+    setDropHot(press.target);
+    updatePositions();
+  }
+});
+
+viewport.addEventListener('pointerup', () => {
+  if (!press) return;
+  viewport.classList.remove('panning');
+  if (press.kind === 'folder' && !press.moved) {
+    toggleFolder(press.id);
+  } else if (press.kind === 'wf' && press.lifted) {
+    const el = press.el, id = press.id;
+    el.classList.remove('lifting');
+    setDropHot(null);
+    liftedId = null;
+    const currentFolder = wfById[id].folder ?? null;
+    if (press.target) {
+      moveWorkflowToFolder(id, press.target);          // dropped on another folder
+    } else if (press.raw === null && currentFolder) {
+      moveWorkflowToFolder(id, null);                  // dragged out to the project root
+    } else {
+      tweenPos(id, press.origPos);                     // anywhere else — snap back
+    }
+  }
+  press = null;
+});
+viewport.addEventListener('pointercancel', () => {
+  viewport.classList.remove('panning');
+  endLift(true);
+  press = null;
+});
+
+/* wheel: plain = pan (trackpad friendly), ctrl/cmd = zoom at cursor */
+viewport.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey) {
+    zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.01));
+  } else {
+    state.pan.x -= e.deltaX;
+    state.pan.y -= e.deltaY;
+    updatePositions();
+  }
+}, { passive: false });
+
+function zoomAt(cx, cy, factor) {
+  const ns = Math.min(2.2, Math.max(0.15, state.scale * factor));
+  const wx = (cx - state.pan.x) / state.scale, wy = (cy - state.pan.y) / state.scale;
+  state.pan = { x: cx - wx * ns, y: cy - wy * ns };
+  state.scale = ns;
+  updatePositions();
+}
+
+document.getElementById('zin').onclick  = () => zoomAt(innerWidth / 2, innerHeight / 2, 1.25);
+document.getElementById('zout').onclick = () => zoomAt(innerWidth / 2, innerHeight / 2, 0.8);
+document.getElementById('zfit').onclick = fitView;
+
+function fitView() {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const c of childEntities(null)) {
+    const r = rectOfT(c.id);
+    x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y);
+    x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+  }
+  const pad = 70, topPad = 90;
+  let s = Math.min(1.4, Math.min(
+    (innerWidth - pad * 2) / (x1 - x0),
+    (innerHeight - topPad - pad) / (y1 - y0)
+  ));
+  if (!isFinite(s) || s <= 0) s = 0.8;
+  s = Math.max(0.12, s);
+  state.scale = s;
+  state.pan = {
+    x: (innerWidth - (x1 - x0) * s) / 2 - x0 * s,
+    y: topPad + (innerHeight - topPad - pad - (y1 - y0) * s) / 2 - y0 * s,
+  };
+  updatePositions();
+}
+
+/* hover: highlight connected edges, dim the rest */
+nodesEl.addEventListener('pointerover', e => {
+  const el = e.target.closest('.node');
+  if (!el || drag) return;
+  const id = el.dataset.id;
+  for (const eg of edgeEls) {
+    const hit = eg.def.s === id || eg.def.t === id;
+    eg.group.classList.toggle('hl', hit);
+    eg.group.classList.toggle('dim', !hit);
+  }
+});
+nodesEl.addEventListener('pointerout', e => {
+  if (e.target.closest('.node') && !nodesEl.contains(e.relatedTarget?.closest?.('.node') ?? null)) {
+    for (const eg of edgeEls) eg.group.classList.remove('hl', 'dim');
+  }
+});
+
+addEventListener('resize', updatePositions);
+
+/* ============================== boot ============================== */
+autoLayout();
+renderStructure();
+fitView();
+// the embedding surface can report a degenerate viewport during load — re-fit once settled
+let userMoved = false;
+viewport.addEventListener('pointerdown', () => { userMoved = true; }, { once: true });
+requestAnimationFrame(() => requestAnimationFrame(() => { if (!userMoved) fitView(); }));
+addEventListener('load', () => { if (!userMoved) fitView(); });
+</script>

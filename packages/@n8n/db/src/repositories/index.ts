@@ -73,6 +73,7 @@ export { WorkflowPublishHistoryRepository } from './workflow-publish-history.rep
 export {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,
+	INDEX_VERSION_ID,
 } from './workflow-dependency.repository';
 export { WebhookRepository } from './webhook.repository';
 export { UserRepository } from './user.repository';

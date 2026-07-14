@@ -152,6 +152,18 @@ export type {
 	ProjectRelation,
 } from './schemas/project.schema';
 
+export type {
+	GraphNodeType,
+	RelationshipType,
+	WorkflowTriggerType,
+	GraphNode,
+	GraphEdge,
+	ProjectGraphMember,
+	ProjectGraphVariable,
+	ProjectGraphStats,
+	ProjectDependencyGraph,
+} from './schemas/project-dependency-graph.schema';
+
 export {
 	isSourceControlledFileStatus,
 	type SourceControlledFileStatus,
