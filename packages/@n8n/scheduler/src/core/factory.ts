@@ -34,6 +34,13 @@ import { noopTracer, type Tracer } from '../observability/tracer';
 export type SchedulerEventLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /**
+ * A task firing this far past its scheduled time is reported once, per fire. Kept
+ * well above normal sub-second dispatch jitter so the warning flags a genuinely
+ * late fire (a blocked event loop, a skewed clock) rather than routine load.
+ */
+export const DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS = 30;
+
+/**
  * A lifecycle milestone, incident or notable outcome the scheduler reports,
  * already handled where it fired. The host only decides how to report it
  * (typically: route to its logger).
@@ -69,6 +76,13 @@ export interface SchedulerDeps {
 
 	/** Tuning for the start-time clock-skew check (only used when {@link now} is set). */
 	clockSkew?: Partial<ClockSkewOptions>;
+
+	/**
+	 * Warn through {@link onEvent} when a task fires at least this many seconds after
+	 * its scheduled time (a blocked event loop or a skewed clock). Defaults to
+	 * {@link DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS}.
+	 */
+	dispatchLagWarnThresholdSeconds?: number;
 
 	/** Cadences of the loops `start` runs, one per pass. */
 	lifecycle?: Partial<LifecycleOptions>;
@@ -124,6 +138,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	const retentionOptions = withDefaults(DEFAULT_RETENTION_OPTIONS, deps.retention);
 	const lifecycleOptions = withDefaults(DEFAULT_LIFECYCLE_OPTIONS, deps.lifecycle);
 	const clockSkewOptions = withDefaults(DEFAULT_CLOCK_SKEW_OPTIONS, deps.clockSkew);
+	const dispatchLagWarnThresholdSeconds =
+		deps.dispatchLagWarnThresholdSeconds ?? DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS;
 
 	if (!(lifecycleOptions.jitterRatio >= 0 && lifecycleOptions.jitterRatio < 1)) {
 		throw new InvalidLifecycleOptionsError(
@@ -224,11 +240,18 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					error: described(error),
 				});
 			},
-			onDispatch: (taskType, lagSeconds) =>
+			onDispatch: (taskType, lagSeconds) => {
 				recordMetric(() => {
 					metrics.recordDispatch(taskType);
 					metrics.observeDispatchLagSeconds(taskType, lagSeconds);
-				}),
+				});
+				if (lagSeconds >= dispatchLagWarnThresholdSeconds) {
+					emit('warn', 'Scheduler fired a task later than its scheduled time', {
+						taskType,
+						lagSeconds: Math.round(lagSeconds),
+					});
+				}
+			},
 			onFire: (taskType, result) =>
 				recordMetric(() => {
 					metrics.recordFireOutcome(taskType, result);

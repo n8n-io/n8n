@@ -1,5 +1,5 @@
 export type { Scheduler, SchedulerPasses } from './scheduler';
-export { createScheduler } from './factory';
+export { createScheduler, DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS } from './factory';
 export type {
 	SchedulerDeps,
 	SchedulerEvent,

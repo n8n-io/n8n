@@ -587,6 +587,53 @@ describe('createScheduler clock skew', () => {
 	});
 });
 
+describe('createScheduler late dispatch', () => {
+	it('warns when a task fires well past its scheduled time', async () => {
+		const { scheduler, taskStore, onEvent } = makeScheduler();
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		// A long-past runAt makes the dispatch lag far exceed the default threshold.
+		taskStore.claimDueTasks.mockResolvedValue([
+			claimedTask({ runAt: new Date('2020-01-01T00:00:00.000Z') }),
+		]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		// The fire is detached from the claim: wait for the timer to deliver it.
+		await vi.waitFor(() => {
+			expect(onEvent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'warn',
+					message: 'Scheduler fired a task later than its scheduled time',
+				}),
+			);
+		});
+	});
+
+	it('stays silent within the configured lag threshold', async () => {
+		// A threshold no real lag can reach: even a long-past runAt is not reported.
+		const { scheduler, taskStore, onEvent } = makeScheduler({
+			dispatchLagWarnThresholdSeconds: Number.MAX_SAFE_INTEGER,
+		});
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		taskStore.claimDueTasks.mockResolvedValue([
+			claimedTask({ runAt: new Date('2020-01-01T00:00:00.000Z') }),
+		]);
+		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.completeTask.mockResolvedValue(1);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => expect(taskStore.completeTask).toHaveBeenCalledTimes(1));
+		expect(onEvent).not.toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Scheduler fired a task later than its scheduled time',
+			}),
+		);
+	});
+});
+
 describe('createScheduler lifecycle config', () => {
 	it('rejects a jitter ratio that would allow a zero or negative delay', () => {
 		expect(() => makeScheduler({ lifecycle: { jitterRatio: 1 } })).toThrow(
