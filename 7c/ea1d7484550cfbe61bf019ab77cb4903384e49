@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_622e6646e7b730::t_69e3b5cf65488c 171-174
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.ts
+  s_622e6646e7b730::t_809109b2b972d5 12,129-130,135-137,141,155-157,181-182,184,189-193,211-215,628,669-670
+packages/nodes-base/nodes/Microsoft/OneDrive/descriptions/TargetDescription.ts
+  s_622e6646e7b730::t_b4b2d98e84f212 47-48,59,74-75,86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "7cea1d7484550cfbe61bf019ab77cb4903384e49",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
