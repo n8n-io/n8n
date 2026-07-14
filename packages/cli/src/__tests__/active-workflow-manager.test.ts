@@ -5,7 +5,7 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import type { UpdateResult } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { InstanceSettings } from 'n8n-core';
+import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	ActiveWorkflowTriggers,
 	PollTriggerExecutor,
@@ -854,6 +854,7 @@ describe('ActiveWorkflowManager', () => {
 		// called.
 		const hourly = '0 * * * *' as CronExpression;
 		const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
+		const errorReporter = mock<ErrorReporter>();
 		let realScheduledTaskManager: ScheduledTaskManager;
 		let realActiveWorkflowTriggers: ActiveWorkflowTriggers;
 
@@ -874,7 +875,7 @@ describe('ActiveWorkflowManager', () => {
 			);
 			activeWorkflowManager = new ActiveWorkflowManager(
 				mockLogger(),
-				mock(),
+				errorReporter,
 				realActiveWorkflowTriggers,
 				mock(),
 				nodeTypes,
@@ -943,6 +944,32 @@ describe('ActiveWorkflowManager', () => {
 			await activeWorkflowManager.removeNonWebhookTriggers('wf-retry');
 
 			expect(scheduleTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-retry');
+		});
+
+		it('should not let a durable deprovision failure abort deactivation', async () => {
+			// The in-memory triggers are torn down first and the deprovision is
+			// idempotent, so a failure here must be reported and swallowed rather than
+			// propagated: in the pubsub path an unhandled throw would skip the
+			// workflowDeactivated broadcast, stranding the workflow as active in the UI.
+			realScheduledTaskManager.register(
+				{
+					group: workflowGroup('wf-durable-fail'),
+					targetId: 'schedule-node',
+					timezone: 'GMT',
+					expression: hourly,
+				},
+				vi.fn(),
+			);
+			const deprovisionError = new Error('durable delete failed');
+			scheduleTriggerJobRegistrar.removeWorkflow.mockRejectedValueOnce(deprovisionError);
+
+			await expect(
+				activeWorkflowManager.removeNonWebhookTriggers('wf-durable-fail'),
+			).resolves.not.toThrow();
+
+			// In-memory cron was still stopped, and the failure was reported.
+			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-durable-fail'))).toBe(false);
+			expect(errorReporter.error).toHaveBeenCalledWith(deprovisionError);
 		});
 
 		it('should stop a stranded cron on leader stepdown / shutdown', async () => {

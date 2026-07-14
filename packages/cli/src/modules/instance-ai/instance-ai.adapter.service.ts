@@ -75,7 +75,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -120,7 +120,6 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
-import { InstanceAiAgentBuilderAdapterService } from '@/modules/agents/instance-ai-agent-builder.adapter';
 import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -288,7 +287,6 @@ export class InstanceAiAdapterService {
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
 
-		const agentBuilderAdapter = this.getAgentBuilderAdapter();
 		return {
 			userId: user.id,
 			projectId,
@@ -312,12 +310,7 @@ export class InstanceAiAdapterService {
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			allowSendingParameterValues: this.allowSendingParameterValues,
-			...(agentBuilderAdapter
-				? { agentBuilderService: agentBuilderAdapter.createAdapter(user, projectId) }
-				: {}),
-			...(agentBuilderAdapter && agentId && projectId
-				? { agentBuilderTarget: { agentId, projectId } }
-				: {}),
+			...(agentId && projectId ? { agentBuilderTarget: { agentId, projectId } } : {}),
 		};
 	}
 
@@ -337,22 +330,6 @@ export class InstanceAiAdapterService {
 		if (!this.license.isLicensed(LICENSE_FEATURES.AI_GATEWAY)) return null;
 		try {
 			return await this.aiGatewayService.getGatewayConfig();
-		} catch {
-			return null;
-		}
-	}
-
-	/**
-	 * Resolve the agent-builder adapter only when the `agents` module is active.
-	 * The adapter class is statically imported (so its `@Service` is always
-	 * registered), so the module-enabled check is what gates
-	 * agent-building. Returns null when the module is off, so the tools are simply
-	 * absent.
-	 */
-	private getAgentBuilderAdapter(): InstanceAiAgentBuilderAdapterService | null {
-		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
-		try {
-			return Container.get(InstanceAiAgentBuilderAdapterService);
 		} catch {
 			return null;
 		}
