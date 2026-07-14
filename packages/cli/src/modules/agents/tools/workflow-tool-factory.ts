@@ -33,6 +33,7 @@ import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { WorkflowRunner } from '@/workflow-runner';
 
+import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
 
 // ---------------------------------------------------------------------------
@@ -84,6 +85,8 @@ export interface WorkflowToolContext {
 	projectId: string;
 	/** Base URL for webhooks/forms (e.g. http://localhost:5678/) */
 	webhookBaseUrl?: string;
+	/** Eval-only additionalData decoration for the sub-execution — absent on every production path. */
+	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
 }
 
 // ---------------------------------------------------------------------------
@@ -299,6 +302,7 @@ export async function executeWorkflow(
 	inputData: Record<string, unknown>,
 	context: WorkflowToolContext,
 	allOutputs = false,
+	instrumentedToolName?: string,
 ): Promise<{
 	executionId: string;
 	status: string;
@@ -342,6 +346,16 @@ export async function executeWorkflow(
 			},
 		}),
 	};
+
+	// Eval runs decorate the sub-execution's additionalData (HTTP mock handler,
+	// mocked credentials helper). The closure does not survive queue
+	// serialization — eval callers refuse queue mode upfront.
+	const instrument = context.instrumentToolAdditionalData;
+	if (instrument && instrumentedToolName) {
+		runData.configureAdditionalData = (additionalData) => {
+			instrument(additionalData, { toolName: instrumentedToolName, toolKind: 'workflow' });
+		};
+	}
 
 	const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
 	let webhookResponse: IExecuteResponsePromiseData | undefined;
@@ -643,7 +657,15 @@ async function buildWorkflowTool(
 			}),
 		)
 		.handler(async (input: Record<string, unknown>) => {
-			return await executeWorkflow(workflow, triggerNode, triggerType, input, context, allOutputs);
+			return await executeWorkflow(
+				workflow,
+				triggerNode,
+				triggerType,
+				input,
+				context,
+				allOutputs,
+				toolName,
+			);
 		});
 
 	const built = builder.build();

@@ -1116,6 +1116,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
 				model: childModelConfig,
+				// Inherit the parent's injected transport — without it the child
+				// falls back to the ambient env-proxy fetch and bypasses the
+				// caller's guarded/instrumented transport.
+				...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
 				instructions:
 					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
 				tools: tools.length > 0 ? tools : undefined,

@@ -63,6 +63,7 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
+import type { EvalAgentExecutionService } from '../eval/agent-execution.service';
 import type { EvalExecutionService } from '../eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
@@ -123,6 +124,7 @@ describe('InstanceAiController', () => {
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		mock<EvalAgentExecutionService>(),
 		evalCredentialAllowlists,
 		evalThreadRestore,
 		eventBus,
@@ -1652,6 +1654,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		mock<EvalAgentExecutionService>(),
 		new EvalThreadCredentialAllowlistService(),
 		mock<EvalThreadRestoreService>(),
 		eventBus,

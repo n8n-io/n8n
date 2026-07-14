@@ -48,6 +48,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
+import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
@@ -164,6 +165,7 @@ export class AgentRuntimeReconstructionService {
 		credentialProvider: CredentialProvider,
 		integrationType?: string,
 		user?: User,
+		instrumentation?: AgentRuntimeInstrumentation,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		let config = agentEntity.schema;
 		if (!config) {
@@ -208,6 +210,7 @@ export class AgentRuntimeReconstructionService {
 			credentialIntegrations: agentEntity.integrations ?? [],
 			subAgentDelegation,
 			user,
+			instrumentation,
 		});
 	}
 
@@ -321,6 +324,7 @@ export class AgentRuntimeReconstructionService {
 		credentialIntegrations: AgentIntegrationConfig[];
 		subAgentDelegation: SubAgentDelegationConfig;
 		user?: User;
+		instrumentation?: AgentRuntimeInstrumentation;
 	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const {
 			config,
@@ -336,10 +340,11 @@ export class AgentRuntimeReconstructionService {
 			credentialIntegrations,
 			subAgentDelegation,
 			user,
+			instrumentation,
 		} = options;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
-		const toolResolver = this.makeToolResolver(projectId);
+		const toolResolver = this.makeToolResolver(projectId, instrumentation);
 		const resolvedTools: BuiltTool[] = [];
 
 		// Transport for LLM calls
@@ -372,7 +377,7 @@ export class AgentRuntimeReconstructionService {
 			buildMcpClient,
 			resolveManagedEmbeddingProviderOptions: async () =>
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
-			modelFetch: aiProxyFetch,
+			modelFetch: instrumentation?.modelFetch ?? aiProxyFetch,
 		});
 
 		await this.injectRuntimeDependencies({
@@ -464,7 +469,11 @@ export class AgentRuntimeReconstructionService {
 			},
 		};
 	}
-	private makeToolResolver(projectId: string): ToolResolver {
+	private makeToolResolver(
+		projectId: string,
+		instrumentation?: AgentRuntimeInstrumentation,
+	): ToolResolver {
+		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
 				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory');
@@ -474,6 +483,7 @@ export class AgentRuntimeReconstructionService {
 					activeExecutions: this.activeExecutions,
 					projectId,
 					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
+					instrumentToolAdditionalData,
 				});
 			}
 
@@ -482,6 +492,7 @@ export class AgentRuntimeReconstructionService {
 				return await resolveNodeTool(ref, {
 					executor: this.ephemeralNodeExecutor,
 					projectId,
+					instrumentToolAdditionalData,
 				});
 			}
 
