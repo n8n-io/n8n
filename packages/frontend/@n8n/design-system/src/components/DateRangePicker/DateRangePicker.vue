@@ -27,7 +27,7 @@ import N8nDateRangePickerField from './DateRangePickerField.vue';
 import { N8N_DATE_RANGE_PICKER_CONTEXT } from './dateRangePicker.context';
 import N8nDateRangePickerOpenHandler from './DateRangePickerOpenHandler.vue';
 import N8nDateRangePickerTodayButton from './DateRangePickerTodayButton.vue';
-import { formatMonthYearHeading, formatWeekdayTwoLetters } from './datePicker.utils';
+import { formatMonthYearHeading } from './datePicker.utils';
 import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
 
 const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
@@ -137,7 +137,7 @@ function markPageNavigation() {
 										:key="day"
 										:class="$style.CalendarHeadCell"
 									>
-										{{ formatWeekdayTwoLetters(day) }}
+										{{ day.slice(0, 2) }}
 									</DateRangePickerHeadCell>
 								</DateRangePickerGridRow>
 							</DateRangePickerGridHead>

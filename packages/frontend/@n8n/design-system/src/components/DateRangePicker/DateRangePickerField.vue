@@ -9,6 +9,7 @@ import {
 	formatDateValue,
 	formatTimeValue,
 	isDateValueInBounds,
+	mergeDatePreservingTime,
 	parseDateValue,
 	parseTimeValue,
 	toDateTimeValue,
@@ -143,16 +144,6 @@ function updateRange(start: DateValue | undefined, end: DateValue | undefined) {
 	rootContext.onDateChange({ start, end });
 }
 
-function withExistingTime(parsed: DateValue, existing: DateValue | undefined): DateValue {
-	if (!showTime.value) return parsed;
-
-	return toDateTimeValue(parsed, {
-		hour: existing && 'hour' in existing ? existing.hour : 0,
-		minute: existing && 'minute' in existing ? existing.minute : 0,
-		second: existing && 'second' in existing ? existing.second : 0,
-	});
-}
-
 function commitField(type: 'start' | 'end') {
 	const currentStart = rootContext.modelValue.value.start;
 	const currentEnd = rootContext.modelValue.value.end;
@@ -165,7 +156,9 @@ function commitField(type: 'start' | 'end') {
 		return;
 	}
 
-	const nextValue = withExistingTime(parsed, type === 'start' ? currentStart : currentEnd);
+	const nextValue = showTime.value
+		? mergeDatePreservingTime(parsed, type === 'start' ? currentStart : currentEnd)
+		: parsed;
 
 	if (!isValidDate(nextValue)) {
 		if (type === 'start') syncStartText();

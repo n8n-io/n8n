@@ -41,6 +41,44 @@ function getDateFormatOptions(includeTime: boolean): Intl.DateTimeFormatOptions 
 	};
 }
 
+function hasTimeComponent(value: DateValue | undefined): value is CalendarDateTime {
+	return value !== undefined && 'hour' in value;
+}
+
+function formatShortMonth(date: Date, locale: string): string {
+	return new Intl.DateTimeFormat(locale, { month: 'short' }).format(date).slice(0, 3);
+}
+
+function applyActiveFieldSelection(
+	activeField: 'start' | 'end',
+	selected: DateValue,
+	range: { start?: DateValue; end?: DateValue },
+): { start?: DateValue; end?: DateValue } {
+	if (activeField === 'start') {
+		const start = selected.copy();
+		const end = range.end?.copy();
+
+		if (end && start.compare(end) > 0) {
+			return { start: end.copy(), end: start.copy() };
+		}
+
+		return { start, end };
+	}
+
+	const end = selected.copy();
+	const start = range.start?.copy();
+
+	if (!start) {
+		return { start: end.copy(), end: undefined };
+	}
+
+	if (end.compare(start) < 0) {
+		return { start: end.copy(), end: start.copy() };
+	}
+
+	return { start, end };
+}
+
 export function formatDateValue(
 	value: DateValue | undefined,
 	options: DatePickerFormatOptions = {},
@@ -175,55 +213,6 @@ export function isEmptyDateRange(range?: { start?: DateValue; end?: DateValue } 
 	return !range?.start && !range?.end;
 }
 
-export function isSingleDayRange(range?: { start?: DateValue; end?: DateValue } | null) {
-	return !!range?.start && !!range?.end && range.start.compare(range.end) === 0;
-}
-
-export function extendRangeFromAnchor(
-	anchor: DateValue,
-	selected: DateValue,
-): { start: DateValue; end: DateValue } {
-	if (selected.compare(anchor) >= 0) {
-		return { start: anchor.copy(), end: selected.copy() };
-	}
-
-	return { start: selected.copy(), end: anchor.copy() };
-}
-
-export function applyActiveFieldSelection(
-	activeField: 'start' | 'end',
-	selected: DateValue,
-	range: { start?: DateValue; end?: DateValue },
-): { start?: DateValue; end?: DateValue } {
-	if (activeField === 'start') {
-		const start = selected.copy();
-		const end = range.end?.copy();
-
-		if (end && start.compare(end) > 0) {
-			return { start: end.copy(), end: start.copy() };
-		}
-
-		return { start, end };
-	}
-
-	const end = selected.copy();
-	const start = range.start?.copy();
-
-	if (!start) {
-		return { start: end.copy(), end: undefined };
-	}
-
-	if (end.compare(start) < 0) {
-		return { start: end.copy(), end: start.copy() };
-	}
-
-	return { start, end };
-}
-
-export function hasTimeComponent(value: DateValue | undefined): value is CalendarDateTime {
-	return value !== undefined && 'hour' in value;
-}
-
 export function formatTimeValue(value: DateValue | undefined): string {
 	if (!hasTimeComponent(value)) return '';
 
@@ -246,24 +235,13 @@ export function toDateTimeValue(
 	value: DateValue,
 	time: { hour?: number; minute?: number; second?: number } = {},
 ): CalendarDateTime {
-	if (hasTimeComponent(value)) {
-		return new CalendarDateTime(
-			value.year,
-			value.month,
-			value.day,
-			time.hour ?? value.hour,
-			time.minute ?? value.minute,
-			time.second ?? value.second,
-		);
-	}
-
 	return new CalendarDateTime(
 		value.year,
 		value.month,
 		value.day,
-		time.hour ?? 0,
-		time.minute ?? 0,
-		time.second ?? 0,
+		time.hour ?? (hasTimeComponent(value) ? value.hour : 0),
+		time.minute ?? (hasTimeComponent(value) ? value.minute : 0),
+		time.second ?? (hasTimeComponent(value) ? value.second : 0),
 	);
 }
 
@@ -277,10 +255,6 @@ export function mergeDatePreservingTime(selected: DateValue, existing?: DateValu
 		minute: hasTimeComponent(existing) ? existing.minute : 0,
 		second: hasTimeComponent(existing) ? existing.second : 0,
 	});
-}
-
-export function getNextActiveFieldAfterSelection(activeField: 'start' | 'end'): 'start' | 'end' {
-	return activeField === 'start' ? 'end' : 'start';
 }
 
 export function resolveDateSelection(options: {
@@ -309,7 +283,7 @@ export function resolveDateSelection(options: {
 
 	return {
 		range: applyActiveFieldSelection(activeField, withTime, range),
-		nextActiveField: getNextActiveFieldAfterSelection(activeField),
+		nextActiveField: activeField === 'start' ? 'end' : 'start',
 	};
 }
 
@@ -330,20 +304,12 @@ export function parseCalendarCellDate(element: Element): DateValue | undefined {
 	}
 }
 
-export function formatWeekdayTwoLetters(day: string): string {
-	return day.slice(0, 2);
-}
-
-export function formatMonthThreeLetters(date: Date, locale = 'en'): string {
-	return new Intl.DateTimeFormat(locale, { month: 'short' }).format(date).slice(0, 3);
-}
-
 export function formatMonthYearHeading(months: DateValue[] | undefined, locale = 'en'): string {
 	if (!months?.length) return '';
 
 	const monthYear = (value: DateValue) => {
 		const date = value.toDate(getLocalTimeZone());
-		return `${formatMonthThreeLetters(date, locale)} ${new Intl.DateTimeFormat(locale, { year: 'numeric' }).format(date)}`;
+		return `${formatShortMonth(date, locale)} ${new Intl.DateTimeFormat(locale, { year: 'numeric' }).format(date)}`;
 	};
 
 	if (months.length === 1) {
@@ -358,7 +324,7 @@ export function formatMonthYearHeading(months: DateValue[] | undefined, locale =
 	const endYear = new Intl.DateTimeFormat(locale, { year: 'numeric' }).format(endDate);
 
 	if (startYear === endYear) {
-		return `${formatMonthThreeLetters(startDate, locale)} - ${formatMonthThreeLetters(endDate, locale)} ${endYear}`;
+		return `${formatShortMonth(startDate, locale)} - ${formatShortMonth(endDate, locale)} ${endYear}`;
 	}
 
 	return `${monthYear(start)} - ${monthYear(end)}`;

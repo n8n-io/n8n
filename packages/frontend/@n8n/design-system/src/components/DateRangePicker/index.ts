@@ -5,8 +5,6 @@ export {
 	formatDateRangeValue,
 	formatDateValue,
 	formatTimeValue,
-	formatWeekdayTwoLetters,
-	isDateValueInBounds,
 	parseDateValue,
 	parseTimeValue,
 } from './datePicker.utils';
