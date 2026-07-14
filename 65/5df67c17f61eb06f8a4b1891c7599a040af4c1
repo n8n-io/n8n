@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.ts
+  s_7bc46e48f4fced::t_77878087098369 11,92
+packages/nodes-base/nodes/Microsoft/OneDrive/descriptions/TargetDescription.ts
+  s_7bc46e48f4fced::t_693723823ed114 59,86,95,101-117
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/app-only-ops.test.ts
+  s_7bc46e48f4fced::t_282c9552034a06 1-2,264-281
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.perItem.test.ts
+  s_7bc46e48f4fced::t_3bf42f0bd4c92e 8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "655df67c17f61eb06f8a4b1891c7599a040af4c1",
+  "prompts": {},
+  "sessions": {
+    "s_7bc46e48f4fced": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8517098b-1f2e-4a89-a9f3-f56cba5f1a32",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

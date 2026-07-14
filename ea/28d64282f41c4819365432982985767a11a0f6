@@ -1,0 +1,25 @@
+packages/cli/src/executions/execution-persistence.ts
+  s_c7b2cdf75802d2::t_6f62a14c3a1187 96,98-99,121-126
+  s_c7b2cdf75802d2::t_f872dd50ccb891 142-146,154,156,161-190,195,197-200
+  s_c7b2cdf75802d2::t_fbda4905cb3b1a 191-194,196
+  s_c7b2cdf75802d2::t_34b177dbc36064 155
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  s_c7b2cdf75802d2::t_e393e27a0900c0 380-381,388-456
+  s_c7b2cdf75802d2::t_7cec5c34031d04 382-387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea28d64282f41c4819365432982985767a11a0f6",
+  "prompts": {},
+  "sessions": {
+    "s_c7b2cdf75802d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bef1c6e-4ec2-4644-8a27-07aeb1566707",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

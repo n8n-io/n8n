@@ -1,0 +1,59 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/addTable.operation.ts
+  s_622e6646e7b730::t_691de7eb3052a7 10,98-100,115-118,136-137
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/append.operation.ts
+  s_622e6646e7b730::t_87241858dc7308 162,183-186,250-253,263,273
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/convertToRange.operation.ts
+  s_622e6646e7b730::t_643053944e8fb3 10,49-53,71-72
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/deleteTable.operation.ts
+  s_622e6646e7b730::t_79cff969b3e4f1 5,44-48,66-67
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/getColumns.operation.ts
+  s_622e6646e7b730::t_ebee80630706c3 10,133,143-145,171-172
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/getRows.operation.ts
+  s_622e6646e7b730::t_816d979b5a503a 10,151,162-164,179,229-230
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/lookup.operation.ts
+  s_622e6646e7b730::t_8891e71f19a9ae 12,99,111,161-162
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/addWorksheet.operation.ts
+  s_622e6646e7b730::t_28a4ea973ce6cf 10,67-70,80,90,117-118
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/deleteWorkbook.operation.ts
+  s_622e6646e7b730::t_c5084fc24c679a 6,33-42,83-84
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/getAll.operation.ts
+  s_622e6646e7b730::t_f36f68d6d7f8ac 11,104,114-116,145-146
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/append.operation.ts
+  s_622e6646e7b730::t_808625151b8d38 148,163-167,263-266
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/clear.operation.ts
+  s_622e6646e7b730::t_209b0aed26d4f8 5,92-95,104-107,126-127
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/deleteWorksheet.operation.ts
+  s_622e6646e7b730::t_d75502855af233 5,40-44,62-63
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/getAll.operation.ts
+  s_622e6646e7b730::t_191f5cfdc06f33 10,94,104-106,125-126
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/readRows.operation.ts
+  s_622e6646e7b730::t_2fae88523367de 10,163-165,174-176,209-210
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/update.operation.ts
+  s_622e6646e7b730::t_5ef4e08a96fb68 255,276-280,297-299,317-319,376-379
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/upsert.operation.ts
+  s_622e6646e7b730::t_9b27698d890c75 207,228-232,249-251,268-271,367-369,385-388
+packages/nodes-base/nodes/Microsoft/Excel/v2/descriptions/TargetDescription.ts
+  s_622e6646e7b730::t_8d4ea39f6fac37 48-49,73-74
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/listSearch.ts
+  s_622e6646e7b730::t_64d7c9f69a3fd9 11-13,45-46,58-60,109-111,147-150,167-169
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/loadOptions.ts
+  s_622e6646e7b730::t_9d0f399feac3d6 6-8,30-32,45-48,92-95
+packages/nodes-base/nodes/Microsoft/Excel/v2/transport/index.ts
+  s_622e6646e7b730::t_f5a0a481b8ecd2 89-92,110-113,120,122,134,136,169,181,190-199,217,226-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "9c3b1fac5fd09672ad959a526d6bdfe8c3a8f467",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,74 @@
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-conflict-policy.test.ts
+  ai_agent 1-11
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  ai_agent 7-8,153-242
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  ai_agent 18-19
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  ai_agent 8-9,15,17,34-36,145-147
+packages/cli/src/modules/n8n-packages/entities/folder/folder-import.types.ts
+  ai_agent 1-2,4-6,11-13,15-20,22-28,33-36
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  ai_agent 3-7,38-44,52-53,71,73-74,87-90,148-149,151-156,163-165,176-178,183-186,188,190,192-193,241
+packages/cli/src/services/project.service.ee.ts
+  ai_agent 781-785
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  ai_agent 15,35,57,78
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  ai_agent 131-144,155,260-289,337-339
+packages/cli/src/modules/n8n-packages/entities/folder/folder-importer.ts
+  ai_agent 1-20,27-38,41-98,100-151,154-186
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  ai_agent 221
+packages/@n8n/cli/src/commands/package/import.ts
+  ai_agent 38-42,79
+packages/@n8n/cli/src/client.ts
+  ai_agent 20
+packages/@n8n/cli/docs/commands/package.md
+  ai_agent 50
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  ai_agent 9-10,16,40,45,51-61,67,86-122
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  ai_agent 21-37
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  ai_agent 1-23
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  ai_agent 15,76
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  ai_agent 1,4,13,15,18-27,30-33,35,38,42,45-54,56-60,63,65,71,73-74,76-79,81-89,91-100,102-110,112-113,118,129-134,144-145,152,156,158-161,167-171,173-177,180,185,188,206-221
+packages/cli/src/services/folder.service.ts
+  ai_agent 10,41,49,61-66
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  ai_agent 89-126
+packages/cli/src/modules/n8n-packages/engine/__tests__/package-layout.test.ts
+  ai_agent 1-52
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  ai_agent 1-382
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_574de801a499a2::t_535e43ea8bef35 39,65,76,87,165,228,382,483,770,1008,1129,1403,2168
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_574de801a499a2::t_359f02dff06e42 31-47,49-51
+  s_574de801a499a2::t_be9950d11388e8 59
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  ai_agent 1-13,15-64
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  ai_agent 1-38
+packages/cli/src/modules/n8n-packages/entities/folder/folder-conflict-policy.ts
+  ai_agent 1-2,9-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8592e83dcf547c7f90fb1d91064de10675263d9d",
+  "prompts": {},
+  "sessions": {
+    "s_574de801a499a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce9e9826-ea55-4907-9c77-610e1d7f982f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

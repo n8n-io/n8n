@@ -1,0 +1,25 @@
+packages/cli/src/workflow-execute-additional-data.ts
+  s_fdacdf7f15777a::t_143129c0adcb10 384
+  h_7555c3ee6524cf 383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fd13df1b8214c8b2ec5435255ad2cb8cbdaeaffa",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fdacdf7f15777a": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1783426363990",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
