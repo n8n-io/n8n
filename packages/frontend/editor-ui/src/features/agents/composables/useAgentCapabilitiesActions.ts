@@ -62,12 +62,11 @@ export interface UseAgentCapabilitiesActionsDeps {
 	scheduleSkillSave: (payload: { skillId: string; skill: AgentSkill }) => void;
 	/**
 	 * Skill store for hosts whose bodies live outside an agent entity — inline
-	 * agents keep them in the node parameter. When provided, `bodies` replaces
-	 * `agent.value.skills` for lookups, and create/update persist through these
-	 * callbacks (each a single atomic parameter write covering body + ref)
-	 * instead of the REST + agent-mutation + `scheduleSkillSave` flow. Removal
-	 * stays on `scheduleConfigUpdate`: it only drops the ref, and the host's
-	 * write funnel prunes the orphaned body.
+	 * agents keep them in the node parameter. `bodies` is where the handlers
+	 * look up a ref's body, and create/update persist through these callbacks,
+	 * each covering body + ref in a single host-owned write. Removal stays on
+	 * `scheduleConfigUpdate`: it only drops the ref, and the host's write
+	 * funnel prunes the orphaned body.
 	 */
 	localSkills?: {
 		bodies: ComputedRef<Record<string, AgentSkill>>;
@@ -277,7 +276,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
 
 					if (localSkills) {
-						// Body + (unchanged) ref land in one host-owned parameter write.
 						localSkills.updateSkill(skillId, sanitizedSkill);
 						return;
 					}
@@ -373,8 +371,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 					if (localSkills) {
 						if (agentId.value !== targetAgentId) return;
-						// The host generates the id and writes body + ref in one
-						// parameter update; there is no entity to POST to.
+						// The host mints the skill id and writes body + ref together.
 						localSkills.createSkill(filterSkillAllowedTools(skill));
 						showMessage({
 							title: locale.baseText('agents.builder.skills.added'),
