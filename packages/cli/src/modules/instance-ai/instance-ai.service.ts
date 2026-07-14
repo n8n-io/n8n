@@ -819,6 +819,9 @@ export class InstanceAiService {
 			persistence: {
 				resourceId: user.id,
 				threadId,
+				// Host run id, persisted with checkpoints so the interrupted-run
+				// sweep can match a crashed run's checkpoint exactly.
+				hostRunId: runId,
 			},
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -844,7 +847,7 @@ export class InstanceAiService {
 			toolCallId,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
-			persistence: { resourceId: user.id, threadId },
+			persistence: { resourceId: user.id, threadId, hostRunId: runId },
 			// Must mirror buildOrchestratorAgentStreamOptions: without this request-level
 			// cache directive, resumed (HITL) turns send no cache_control, so Anthropic
 			// reprocesses the whole conversation uncached on every resume (~100K tokens).
