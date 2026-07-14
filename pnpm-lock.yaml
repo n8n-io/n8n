@@ -4782,6 +4782,9 @@ importers:
       '@vueuse/core':
         specifier: catalog:frontend
         version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -4807,6 +4810,9 @@ importers:
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 5.2.4(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
