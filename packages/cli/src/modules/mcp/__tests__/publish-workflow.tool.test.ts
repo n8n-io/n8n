@@ -68,12 +68,10 @@ describe('publish-workflow MCP tool', () => {
 					{} as Parameters<typeof tool.handler>[1],
 				);
 
-				expect(result.structuredContent).toMatchObject({
-					success: false,
-					workflowId: 'any-workflow',
-					activeVersionId: null,
-					error: expect.any(String),
-				});
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toBeUndefined();
+				const text = (result.content?.[0] as { text?: string })?.text ?? '';
+				expect(text).toEqual(expect.any(String));
 			});
 		});
 
@@ -98,10 +96,10 @@ describe('publish-workflow MCP tool', () => {
 					{} as Parameters<typeof tool.handler>[1],
 				);
 
-				expect(result.structuredContent).toMatchObject({
-					success: false,
-					error: expect.stringContaining('being edited by a user'),
-				});
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toBeUndefined();
+				const text = (result.content?.[0] as { text?: string })?.text ?? '';
+				expect(text).toContain('being edited by a user');
 				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 			});
 		});
@@ -268,12 +266,10 @@ describe('publish-workflow MCP tool', () => {
 					{} as Parameters<typeof tool.handler>[1],
 				);
 
-				expect(result.structuredContent).toMatchObject({
-					success: false,
-					workflowId: 'wf-1',
-					activeVersionId: null,
-					error: 'Version not found',
-				});
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toBeUndefined();
+				const text = (result.content?.[0] as { text?: string })?.text ?? '';
+				expect(text).toContain('Version not found');
 			});
 		});
 	});

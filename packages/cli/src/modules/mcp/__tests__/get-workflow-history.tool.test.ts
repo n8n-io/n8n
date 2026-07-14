@@ -105,13 +105,10 @@ describe('get-workflow-history MCP tool', () => {
 			);
 
 			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				success: false,
-				workflowId: 'wf-1',
-				versions: [],
-				count: 0,
-				error: "Workflow not found or you don't have permission to access it.",
-			});
+			expect(result.structuredContent).toBeUndefined();
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				"Workflow not found or you don't have permission to access it.",
+			);
 			expect(workflowHistoryService.getList).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User called mcp tool',

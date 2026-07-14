@@ -11,6 +11,7 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { connectionsSchema, nodeGroupSchema, nodeSchema } from './schemas';
+import { errorResult, successResult } from './tool-response';
 import { getMcpWorkflowVersion } from './workflow-history.utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -34,7 +35,6 @@ const outputSchema = {
 	nodes: z.array(nodeSchema).describe('The workflow nodes captured in this version'),
 	connections: connectionsSchema.describe('The node connections captured in this version'),
 	nodeGroups: z.array(nodeGroupSchema).describe('The node groups captured in this version'),
-	error: z.string().optional(),
 } satisfies z.ZodRawShape;
 
 type GetWorkflowVersionParams = { workflowId: string; versionId: string };
@@ -46,7 +46,7 @@ type GetWorkflowVersionResult = {
 	description: string | null;
 	createdAt: string;
 	updatedAt: string;
-	nodes: Array<Record<string, unknown>>;
+	nodes: Array<{ name: string; type: string; [key: string]: unknown }>;
 	connections: IConnections;
 	nodeGroups: IWorkflowGroup[];
 };
@@ -58,7 +58,6 @@ type GetWorkflowVersionOutput = Omit<
 	authors: string | null;
 	createdAt: string | null;
 	updatedAt: string | null;
-	error?: string;
 };
 
 /**
@@ -109,28 +108,10 @@ export const createGetWorkflowVersionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-			};
+			return successResult(outputSchema, output);
 		} catch (er) {
 			const error = ensureError(er);
 			const isAccessError = error instanceof WorkflowAccessError;
-
-			const output: GetWorkflowVersionOutput = {
-				success: false,
-				versionId,
-				workflowId,
-				authors: null,
-				name: null,
-				description: null,
-				createdAt: null,
-				updatedAt: null,
-				nodes: [],
-				connections: {},
-				nodeGroups: [],
-				error: error.message,
-			};
 
 			telemetryPayload.results = {
 				success: false,
@@ -139,11 +120,7 @@ export const createGetWorkflowVersionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(error.message);
 		}
 	},
 });

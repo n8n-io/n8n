@@ -7,6 +7,7 @@ import { MCP_GET_SDK_REFERENCE_TOOL } from './constants';
 import { getSdkReferenceContent, type SdkReferenceSection } from './sdk-reference-content';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { successResult } from '../tool-response';
 
 const VALID_SECTIONS: SdkReferenceSection[] = [
 	'patterns',
@@ -67,9 +68,6 @@ export const createGetWorkflowSdkReferenceTool = (
 		telemetryPayload.results = { success: true };
 		telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-		return {
-			content: [{ type: 'text', text: content }],
-			structuredContent: { reference: content },
-		};
+		return successResult(outputSchema, { reference: content }, { text: content });
 	},
 });

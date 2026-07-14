@@ -8,6 +8,7 @@ import type { Telemetry } from '@/telemetry';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
+import { errorResult, successResult } from './tool-response';
 
 const MAX_RESULTS = 200;
 
@@ -60,7 +61,6 @@ const outputSchema = {
 		)
 		.describe('List of credentials accessible to the current user'),
 	count: z.number().int().min(0).describe('Number of credentials returned'),
-	error: z.string().optional().describe('Error message when the tool failed'),
 } satisfies z.ZodRawShape;
 
 export type ListCredentialsParams = {
@@ -84,7 +84,6 @@ export type ListCredentialsItem = {
 export type ListCredentialsResult = {
 	data: ListCredentialsItem[];
 	count: number;
-	error?: string;
 };
 
 export const createListCredentialsTool = (
@@ -134,10 +133,7 @@ export const createListCredentialsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(payload) }],
-				structuredContent: payload,
-			};
+			return successResult(outputSchema, payload);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			telemetryPayload.results = {
@@ -146,16 +142,7 @@ export const createListCredentialsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output: ListCredentialsResult = {
-				data: [],
-				count: 0,
-				error: errorMessage,
-			};
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(errorMessage);
 		}
 	},
 });

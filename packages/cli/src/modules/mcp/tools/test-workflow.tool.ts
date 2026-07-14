@@ -8,7 +8,6 @@ import {
 	type INodeExecutionData,
 	type IWorkflowExecutionDataProcess,
 	createRunExecutionData,
-	jsonStringify,
 	isTriggerNode,
 } from 'n8n-workflow';
 import z from 'zod';
@@ -24,6 +23,7 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { waitForExecutionResult, WORKFLOW_EXECUTION_TIMEOUT_MS } from './execution-utils';
+import { errorResult, successResult } from './tool-response';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
@@ -111,22 +111,15 @@ export const createTestWorkflowTool = (
 			}
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
-				structuredContent: output,
-			};
+			return successResult(outputSchema, output);
 		} catch (er) {
 			const error = ensureError(er);
 			const isTimeout = error instanceof McpExecutionTimeoutError;
 			const isAccessError = error instanceof WorkflowAccessError;
 
-			const output: TestWorkflowOutput = {
-				executionId: isTimeout ? error.executionId : null,
-				status: 'error',
-				error: isTimeout
-					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS * Time.milliseconds.toSeconds} seconds`
-					: (error.message ?? `${error.constructor.name}: (no message)`),
-			};
+			const message = isTimeout
+				? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS * Time.milliseconds.toSeconds} seconds`
+				: (error.message ?? `${error.constructor.name}: (no message)`);
 
 			telemetryPayload.results = {
 				success: false,
@@ -135,10 +128,17 @@ export const createTestWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
-				structuredContent: output,
-			};
+			// A timeout is a domain outcome the outputSchema declares: return it
+			// structured so clients keep the executionId to inspect the execution.
+			if (isTimeout) {
+				return successResult(outputSchema, {
+					executionId: error.executionId,
+					status: 'error',
+					error: message,
+				});
+			}
+
+			return errorResult(message);
 		}
 	},
 });

@@ -210,12 +210,9 @@ describe('search-executions MCP tool', () => {
 		const result = await createTool().handler({} as never, {} as never);
 
 		expect(result.isError).toBe(true);
-		expect(result.structuredContent).toEqual({
-			data: [],
-			count: 0,
-			estimated: false,
-			error: 'DB connection lost',
-		});
+		expect(result.structuredContent).toBeUndefined();
+		const text = (result.content?.[0] as { text?: string })?.text ?? '';
+		expect(text).toContain('DB connection lost');
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'User called mcp tool',

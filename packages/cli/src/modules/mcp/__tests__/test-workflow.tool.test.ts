@@ -787,7 +787,10 @@ describe('test-workflow MCP tool', () => {
 				{} as any,
 			);
 
-			expect(result.structuredContent).toMatchObject({
+			// A timeout is a declared domain outcome: structured, keeping the
+			// executionId so clients can inspect the execution afterwards.
+			expect(result.isError).toBeUndefined();
+			expect(result.structuredContent).toEqual({
 				executionId: 'exec-timeout',
 				status: 'error',
 				error: expect.stringContaining('timed out'),
@@ -816,11 +819,10 @@ describe('test-workflow MCP tool', () => {
 				{} as any,
 			);
 
-			expect(result.structuredContent).toMatchObject({
-				executionId: null,
-				status: 'error',
-				error: expect.stringContaining("not found or you don't have permission"),
-			});
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toBeUndefined();
+			const text = (result.content?.[0] as { text?: string })?.text ?? '';
+			expect(text).toContain("not found or you don't have permission");
 		});
 	});
 

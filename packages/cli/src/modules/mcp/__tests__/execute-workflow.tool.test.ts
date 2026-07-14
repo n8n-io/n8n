@@ -639,7 +639,6 @@ describe('execute-workflow MCP tool', () => {
 					status: 'started',
 					executionId: 'exec-success',
 				});
-				expect(result.error).toBeUndefined();
 			});
 		});
 

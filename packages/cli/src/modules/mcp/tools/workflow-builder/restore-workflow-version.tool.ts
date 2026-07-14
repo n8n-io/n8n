@@ -11,6 +11,7 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import { WorkflowAccessError } from '../../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { errorResult, successResult } from '../tool-response';
 import { getMcpWorkflowVersion } from '../workflow-history.utils';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 import { buildRestoreVersionMetadata } from './version-metadata';
@@ -25,7 +26,6 @@ type RestoreWorkflowVersionOutput = {
 	workflowId: string;
 	restoredFromVersionId: string;
 	newVersionId: string | null;
-	error?: string;
 };
 
 const outputSchema = {
@@ -36,7 +36,6 @@ const outputSchema = {
 		.string()
 		.nullable()
 		.describe('The new current version ID created by the restore, if successful'),
-	error: z.string().optional(),
 } satisfies z.ZodRawShape;
 
 /**
@@ -127,21 +126,10 @@ export const createRestoreWorkflowVersionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-			};
+			return successResult(outputSchema, output);
 		} catch (er) {
 			const error = ensureError(er);
 			const isAccessError = error instanceof WorkflowAccessError;
-
-			const output: RestoreWorkflowVersionOutput = {
-				success: false,
-				workflowId,
-				restoredFromVersionId: versionId,
-				newVersionId: null,
-				error: error.message,
-			};
 
 			telemetryPayload.results = {
 				success: false,
@@ -150,11 +138,7 @@ export const createRestoreWorkflowVersionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(error.message);
 		}
 	},
 });

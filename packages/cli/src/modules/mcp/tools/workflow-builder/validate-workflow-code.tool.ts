@@ -6,8 +6,9 @@ import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { successResult } from '../tool-response';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
-import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+import { detectInvalidAiToolSource } from './connection-structure-check';
 import { CODE_BUILDER_VALIDATE_TOOL } from './constants';
 
 const inputSchema = {
@@ -85,14 +86,15 @@ export const createValidateWorkflowCodeTool = (
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
 
-			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
+			const invalidToolSourceError = detectInvalidAiToolSource(
 				result.workflow,
 				nodeTypes,
-				(errorMessage) => ({ valid: false, errors: [errorMessage] }),
 				telemetryPayload,
 				telemetry,
 			);
-			if (invalidToolSourceResponse) return invalidToolSourceResponse;
+			if (invalidToolSourceError) {
+				return successResult(outputSchema, { valid: false, errors: [invalidToolSourceError] });
+			}
 
 			telemetryPayload.results = {
 				success: true,
@@ -103,19 +105,11 @@ export const createValidateWorkflowCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const response: Record<string, unknown> = {
+			return successResult(outputSchema, {
 				valid: true,
 				nodeCount: result.workflow.nodes.length,
-			};
-
-			if (result.warnings.length > 0) {
-				response.warnings = result.warnings;
-			}
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
-				structuredContent: response,
-			};
+				...(result.warnings.length > 0 ? { warnings: result.warnings } : {}),
+			});
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -127,17 +121,13 @@ export const createValidateWorkflowCodeTool = (
 
 			const hint = getSdkReferenceHint(error);
 
-			const output = {
+			// Invalid code is a successful validation outcome, not a tool failure:
+			// the agent self-corrects from the structured `valid: false` + errors.
+			return successResult(outputSchema, {
 				valid: false,
 				errors: [errorMessage],
 				...(hint ? { hint } : {}),
-			};
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-				structuredContent: output,
-				isError: true,
-			};
+			});
 		}
 	},
 });

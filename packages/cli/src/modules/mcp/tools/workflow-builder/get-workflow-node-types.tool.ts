@@ -7,6 +7,7 @@ import type { Telemetry } from '@/telemetry';
 import { CODE_BUILDER_GET_NODE_TYPES_TOOL } from './constants';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { successResult } from '../tool-response';
 
 const nodeRequestSchema = z.object({
 	nodeId: z.string().describe('The node type ID (e.g. "n8n-nodes-base.gmail")'),
@@ -67,10 +68,7 @@ export const createGetWorkflowNodeTypesTool = (
 			telemetryPayload.results = { success: true, data: { nodeIdCount: nodeIds.length } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: result }],
-				structuredContent: { definitions: result },
-			};
+			return successResult(outputSchema, { definitions: result }, { text: result });
 		} catch (error) {
 			telemetryPayload.results = {
 				success: false,

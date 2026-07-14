@@ -88,14 +88,8 @@ describe('get-workflow-version MCP tool', () => {
 			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'missing' }, callContext);
 
 			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				success: false,
-				workflowId: 'wf-1',
-				versionId: 'missing',
-				nodes: [],
-				nodeGroups: [],
-			});
-			expect((result.structuredContent as { error: string }).error).toContain(
+			expect(result.structuredContent).toBeUndefined();
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
 				"Version 'missing' was not found for this workflow",
 			);
 		});
@@ -107,12 +101,10 @@ describe('get-workflow-version MCP tool', () => {
 			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
 
 			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				success: false,
-				workflowId: 'wf-1',
-				versionId: 'v1',
-				error: "Workflow not found or you don't have permission to access it.",
-			});
+			expect(result.structuredContent).toBeUndefined();
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				"Workflow not found or you don't have permission to access it.",
+			);
 			expect(workflowHistoryService.getVersion).not.toHaveBeenCalled();
 		});
 	});

@@ -157,7 +157,9 @@ describe('validate-workflow-code MCP tool', () => {
 			const response = parseResult(result);
 			expect(response.valid).toBe(false);
 			expect(response.errors).toEqual(['Syntax error at line 10']);
-			expect(result.isError).toBe(true);
+			// Invalid code is a successful validation outcome, not a tool failure:
+			// the structured `valid: false` result is the answer, so isError is unset.
+			expect(result.isError).toBeUndefined();
 		});
 
 		test('includes SDK reference hint only for parse errors', async () => {
@@ -247,7 +249,8 @@ describe('validate-workflow-code MCP tool', () => {
 			expect(response.valid).toBe(false);
 			expect(Array.isArray(response.errors)).toBe(true);
 			expect((response.errors as string[])[0]).toContain('@n8n/n8n-nodes-langchain.agentTool');
-			expect(result.isError).toBe(true);
+			// A detected invalid connection is a validation finding, not a failure.
+			expect(result.isError).toBeUndefined();
 		});
 
 		test('tracks telemetry on failure with error message', async () => {

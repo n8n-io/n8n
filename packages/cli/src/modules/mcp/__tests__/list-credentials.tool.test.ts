@@ -226,11 +226,9 @@ describe('list-credentials MCP tool', () => {
 			);
 
 			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				data: [],
-				count: 0,
-				error: 'DB exploded',
-			});
+			expect(result.structuredContent).toBeUndefined();
+			const text = (result.content?.[0] as { text?: string })?.text ?? '';
+			expect(text).toContain('DB exploded');
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User called mcp tool',
 				expect.objectContaining({

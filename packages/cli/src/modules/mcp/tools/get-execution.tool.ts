@@ -8,6 +8,7 @@ import z from 'zod';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { errorResult, successResult } from './tool-response';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -39,6 +40,7 @@ const inputSchema = z.object({
 		),
 });
 
+// Strict success schema; failures use errorResult and carry no structuredContent.
 const outputSchema = {
 	execution: z
 		.object({
@@ -48,18 +50,16 @@ const outputSchema = {
 			status: z.string(),
 			startedAt: z.string().nullable(),
 			stoppedAt: z.string().nullable(),
-			retryOf: z.string().nullable().optional(),
-			retrySuccessId: z.string().nullable().optional(),
-			waitTill: z.string().nullable().optional(),
+			retryOf: z.string().nullable(),
+			retrySuccessId: z.string().nullable(),
+			waitTill: z.string().nullable(),
 		})
 		.passthrough()
-		.nullable()
-		.describe('Execution metadata, or null if an error occurred'),
+		.describe('Execution metadata'),
 	data: z
 		.unknown()
 		.optional()
 		.describe('Execution result data (only present when includeData is true)'),
-	error: z.string().optional().describe('Error message if the request failed'),
 } satisfies z.ZodRawShape;
 
 export const createGetExecutionTool = (
@@ -161,10 +161,7 @@ export const createGetExecutionTool = (
 			// `executionData.contextData`) hang the call unless replaced here.
 			const safeOutput = replaceCircularReferences(output);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(safeOutput) }],
-				structuredContent: safeOutput,
-			};
+			return successResult(outputSchema, safeOutput);
 		} catch (er) {
 			const error = ensureError(er);
 			const isAccessError = error instanceof WorkflowAccessError;
@@ -182,11 +179,6 @@ export const createGetExecutionTool = (
 					error.cause instanceof Error ? error.cause.message : jsonStringify(error.cause);
 			}
 
-			const output = {
-				execution: null,
-				error: error.message ?? `${error.constructor.name}: (no message)`,
-			};
-
 			telemetryPayload.results = {
 				success: false,
 				error: errorInfo,
@@ -194,12 +186,7 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const safeOutput = replaceCircularReferences(output);
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(safeOutput) }],
-				structuredContent: safeOutput,
-			};
+			return errorResult(error.message ?? `${error.constructor.name}: (no message)`);
 		}
 	},
 });

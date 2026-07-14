@@ -80,10 +80,10 @@ describe('get-execution MCP tool', () => {
 					'workflow-1',
 				]);
 				// Must not leak whether the execution exists in another workflow
-				expect(result.structuredContent).toMatchObject({
-					execution: null,
-					error: "Execution 'missing-execution' not found for workflow 'workflow-1'",
-				});
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toBeUndefined();
+				const text = (result.content?.[0] as { text?: string })?.text ?? '';
+				expect(text).toContain("Execution 'missing-execution' not found for workflow 'workflow-1'");
 			});
 
 			test('returns metadata only by default (no includeData)', async () => {

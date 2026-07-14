@@ -236,13 +236,16 @@ describe('update-workflow MCP tool', () => {
 		// `structuredContent: { error }`, which failed validation against the
 		// declared outputSchema (the MCP SDK publishes it with
 		// additionalProperties: false and required success fields). Strict MCP
-		// clients then rejected the response with an opaque `-32602` schema
-		// mismatch that masked the real error. Both the error and success
-		// envelopes must validate against the published schema.
+		// clients rejected that with an opaque `-32602` that masked the real
+		// error. Errors now travel as text via errorResult (no structuredContent),
+		// and the success envelope must validate against the published schema.
 		const buildStrictOutputSchema = (tool: ReturnType<typeof createTool>) =>
 			z.object(tool.config.outputSchema as z.ZodRawShape).strict();
 
-		test('error-path structuredContent conforms to declared outputSchema', async () => {
+		const textOf = (result: { content?: Array<{ text?: string }> }) =>
+			result.content?.[0]?.text ?? '';
+
+		test('error path surfaces the real message as text and carries no structuredContent', async () => {
 			// A JSON Pointer path without a leading "/" passes input validation but
 			// fails at apply time — the exact repro from the ticket.
 			const tool = createTool();
@@ -259,17 +262,16 @@ describe('update-workflow MCP tool', () => {
 					],
 				},
 				tool,
-			)) as { isError?: boolean; structuredContent: unknown };
+			)) as { isError?: boolean; structuredContent?: unknown; content?: Array<{ text?: string }> };
 
-			// The real, previously-masked error is now surfaced...
+			// The real, previously-masked error is surfaced in text content...
 			expect(result.isError).toBe(true);
-			const structured = result.structuredContent as { error?: string };
-			expect(structured.error).toContain('Operation 0 failed');
-			expect(structured.error).toContain('is invalid or contains unsafe segments');
+			expect(textOf(result)).toContain('Operation 0 failed');
+			expect(textOf(result)).toContain('is invalid or contains unsafe segments');
 
-			// ...and the error envelope validates against the published schema,
-			// so strict clients no longer reject it with -32602.
-			expect(() => buildStrictOutputSchema(tool).parse(result.structuredContent)).not.toThrow();
+			// ...and no structuredContent is sent, so the SDK skips output
+			// validation and strict clients can never reject it with -32602.
+			expect(result.structuredContent).toBeUndefined();
 			expect(workflowService.update).not.toHaveBeenCalled();
 		});
 
@@ -438,9 +440,10 @@ describe('update-workflow MCP tool', () => {
 					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'missing-wf' } }],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("Error workflow 'missing-wf' was not found");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"Error workflow 'missing-wf' was not found",
+				);
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -469,9 +472,10 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain('has no published version');
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'has no published version',
+				);
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -535,9 +539,10 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain('no active Error Trigger node');
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'no active Error Trigger node',
+				);
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -615,9 +620,10 @@ describe('update-workflow MCP tool', () => {
 					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain('has no published version');
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'has no published version',
+				);
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -639,9 +645,8 @@ describe('update-workflow MCP tool', () => {
 					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain(
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
 					'cannot be called by this workflow because of its caller policy',
 				);
 				expect(workflowService.update).not.toHaveBeenCalled();
@@ -682,9 +687,10 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain('callerPolicy "workflowsFromAList" requires callerIds');
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'callerPolicy "workflowsFromAList" requires callerIds',
+				);
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -748,9 +754,10 @@ describe('update-workflow MCP tool', () => {
 					operations: [{ type: 'setWorkflowSettings', settings: { executionTimeout: 7200 } }],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("exceeds this instance's maximum of 3600s");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"exceeds this instance's maximum of 3600s",
+				);
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -771,9 +778,10 @@ describe('update-workflow MCP tool', () => {
 					operations: [{ type: 'setWorkflowSettings', settings: { executionTimeout: 0 } }],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain('Invalid operations');
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'Invalid operations',
+				);
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -802,9 +810,10 @@ describe('update-workflow MCP tool', () => {
 					operations: [{ type: 'setWorkflowSettings', settings: { timezone: 'UTC' } }],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain('requires publish permission');
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'requires publish permission',
+				);
 				expect(findWorkflowHeadMock).toHaveBeenCalledWith('wf-1', user, ['workflow:publish']);
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
@@ -893,9 +902,11 @@ describe('update-workflow MCP tool', () => {
 				],
 			});
 
-			const response = parseResult(result);
 			expect(result.isError).toBe(true);
-			expect(response.error).toContain('being edited by a user');
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				'being edited by a user',
+			);
+			expect(result.structuredContent).toBeUndefined();
 			expect(workflowService.update).not.toHaveBeenCalled();
 		});
 
@@ -905,10 +916,14 @@ describe('update-workflow MCP tool', () => {
 				operations: [{ type: 'updateNodeParameters', nodeName: 'Nope', parameters: { url: 'x' } }],
 			});
 
-			const response = parseResult(result);
 			expect(result.isError).toBe(true);
-			expect(response.error).toContain('Operation 0 failed');
-			expect(response.error).toContain("node 'Nope' not found");
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				'Operation 0 failed',
+			);
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				"node 'Nope' not found",
+			);
+			expect(result.structuredContent).toBeUndefined();
 			expect(workflowService.update).not.toHaveBeenCalled();
 		});
 
@@ -1052,9 +1067,11 @@ describe('update-workflow MCP tool', () => {
 				operations: [{ type: 'setWorkflowMetadata', name: 'x' }],
 			});
 
-			const response = parseResult(result);
 			expect(result.isError).toBe(true);
-			expect(response.error).toBe("Workflow not found or you don't have permission to access it.");
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				"Workflow not found or you don't have permission to access it.",
+			);
+			expect(result.structuredContent).toBeUndefined();
 		});
 
 		test('tracks telemetry on success with op metadata', async () => {
@@ -1263,10 +1280,11 @@ describe('update-workflow MCP tool', () => {
 
 				expect(result.isError).toBe(true);
 				expect(updateMock).not.toHaveBeenCalled();
-				const response = parseResult(result);
-				expect(response.error).toContain('Worker Agent');
-				expect(response.error).toContain('Manager Agent');
-				expect(response.error).toContain('@n8n/n8n-nodes-langchain.agentTool');
+				const text = (result.content?.[0] as { text?: string })?.text ?? '';
+				expect(text).toContain('Worker Agent');
+				expect(text).toContain('Manager Agent');
+				expect(text).toContain('@n8n/n8n-nodes-langchain.agentTool');
+				expect(result.structuredContent).toBeUndefined();
 			});
 		});
 
@@ -1335,10 +1353,14 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain('Operation 0 failed');
-				expect(response.error).toContain("credential 'cred-missing' not found");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'Operation 0 failed',
+				);
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"credential 'cred-missing' not found",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -1363,9 +1385,11 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("is type 'discordApi'");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"is type 'discordApi'",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -1390,9 +1414,11 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("does not accept credential 'slackApi'");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"does not accept credential 'slackApi'",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -1517,9 +1543,11 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("does not accept credential 'githubApi'");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"does not accept credential 'githubApi'",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -1640,9 +1668,11 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("does not accept credential 'githubApi'");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"does not accept credential 'githubApi'",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -1667,10 +1697,14 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("credential 'cred-other-project' is not usable");
-				expect(response.error).toContain("this workflow's project");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"credential 'cred-other-project' is not usable",
+				);
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"this workflow's project",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -1692,9 +1726,11 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("credential 'cred-other-project' is not usable");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"credential 'cred-other-project' is not usable",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -1716,9 +1752,11 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("credential 'cred-missing' not found");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"credential 'cred-missing' not found",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -1767,12 +1805,18 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain('Operation 0 failed');
-				expect(response.error).toContain("node 'DT'");
-				expect(response.error).toContain("data table with id 'missing' not found");
-				expect(response.error).toContain('create_data_table');
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'Operation 0 failed',
+				);
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain("node 'DT'");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"data table with id 'missing' not found",
+				);
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'create_data_table',
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -1787,9 +1831,11 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("data table with name 'orders' not found");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"data table with name 'orders' not found",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
@@ -1845,10 +1891,14 @@ describe('update-workflow MCP tool', () => {
 					],
 				});
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain('Operation 0 failed');
-				expect(response.error).toContain("data table with id 'newly-missing' not found");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'Operation 0 failed',
+				);
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"data table with id 'newly-missing' not found",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 

@@ -40,7 +40,9 @@ describe('delete_data_table_column MCP tool', () => {
 		);
 
 		expect(result.isError).toBe(true);
-		expect(result.structuredContent).toEqual({ success: false, message: 'Not found' });
+		expect(result.structuredContent).toBeUndefined();
+		const text = (result.content?.[0] as { text?: string })?.text ?? '';
+		expect(text).toContain('Not found');
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'User called mcp tool',

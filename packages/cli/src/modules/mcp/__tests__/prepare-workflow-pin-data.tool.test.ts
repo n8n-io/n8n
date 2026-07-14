@@ -857,9 +857,9 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 			const result = await tool.handler({ workflowId: 'missing' }, {} as any);
 
 			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				error: expect.stringContaining("not found or you don't have permission"),
-			});
+			expect(result.structuredContent).toBeUndefined();
+			const text = (result.content?.[0] as { text?: string })?.text ?? '';
+			expect(text).toContain("not found or you don't have permission");
 		});
 	});
 });

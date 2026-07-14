@@ -6,6 +6,7 @@ import type { Telemetry } from '@/telemetry';
 import { CODE_BUILDER_VALIDATE_NODE_TOOL } from './constants';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { errorResult, successResult } from '../tool-response';
 
 const nodeInputSchema = z.object({
 	name: z
@@ -63,12 +64,6 @@ const outputSchema = {
 			}),
 		)
 		.describe('Per-node validation results, in input order.'),
-	error: z
-		.string()
-		.optional()
-		.describe(
-			'Top-level error message when validation could not run at all (e.g. internal failure loading the schema). Omitted on success.',
-		),
 } satisfies z.ZodRawShape;
 
 /**
@@ -132,12 +127,7 @@ export const createValidateNodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const response = { valid, results };
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
-				structuredContent: response,
-			};
+			return successResult(outputSchema, { valid, results });
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -147,17 +137,7 @@ export const createValidateNodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = {
-				valid: false,
-				results: [],
-				error: errorMessage,
-			};
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(errorMessage);
 		}
 	},
 });

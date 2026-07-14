@@ -14,6 +14,7 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import { toTagSummary, workflowDetailsOutputSchema } from './schemas';
+import { successResult } from './tool-response';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -86,10 +87,7 @@ export const createWorkflowDetailsTool = (
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-				return {
-					content: [{ type: 'text', text: JSON.stringify(payload) }],
-					structuredContent: payload,
-				};
+				return successResult(outputSchema, payload);
 			} catch (error) {
 				// Track failed execution
 				telemetryPayload.results = {

@@ -218,8 +218,10 @@ describe('create-workflow-from-code MCP tool', () => {
 			const result = await callHandler({ code: 'const wf = ...', folderId: 'folder-1' });
 
 			expect(result.isError).toBe(true);
-			const response = parseResult(result);
-			expect(response.error).toBe('projectId is required when folderId is provided');
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				'projectId is required when folderId is provided',
+			);
+			expect(result.structuredContent).toBeUndefined();
 		});
 	});
 
@@ -393,10 +395,12 @@ describe('create-workflow-from-code MCP tool', () => {
 				projectId: 'missing-project-id',
 			});
 
-			const response = parseResult(result);
 			expect(result.isError).toBe(true);
-			expect(response.error).toContain('missing-project-id');
-			expect(response.error).toContain('search_projects');
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				'missing-project-id',
+			);
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain('search_projects');
+			expect(result.structuredContent).toBeUndefined();
 			expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
 		});
 
@@ -433,9 +437,11 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			const result = await callHandler({ code: 'const wf = ...' });
 
-			const response = parseResult(result);
 			expect(result.isError).toBe(true);
-			expect(response.error).toContain("don't have the permissions");
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				"don't have the permissions",
+			);
+			expect(result.structuredContent).toBeUndefined();
 		});
 
 		test('returns error when parse fails', async () => {
@@ -443,9 +449,11 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			const result = await callHandler({ code: 'bad code' });
 
-			const response = parseResult(result);
 			expect(result.isError).toBe(true);
-			expect(response.error).toBe('Invalid syntax at line 5');
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				'Invalid syntax at line 5',
+			);
+			expect(result.structuredContent).toBeUndefined();
 		});
 
 		test('includes SDK reference hint only for parse errors', async () => {
@@ -455,11 +463,12 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			const result = await callHandler({ code: 'bad code' });
 
-			const response = parseResult(result);
-			expect(response.hint).toContain('sdk_ref');
-			expect(response.hint).toContain('Workflow SDK reference');
-			expect(response.hint).toContain('validate_workflow_code until it returns valid=true');
-			expect(response.hint).toContain('create_workflow_from_code again');
+			const text = (result.content?.[0] as { text?: string })?.text ?? '';
+			expect(text).toContain('sdk_ref');
+			expect(text).toContain('Workflow SDK reference');
+			expect(text).toContain('validate_workflow_code until it returns valid=true');
+			expect(text).toContain('create_workflow_from_code again');
+			expect(result.structuredContent).toBeUndefined();
 		});
 
 		test('does not include SDK reference hint for non-parse errors', async () => {
@@ -467,8 +476,11 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			const result = await callHandler({ code: 'bad code' });
 
-			const response = parseResult(result);
-			expect(response.hint).toBeUndefined();
+			const text = (result.content?.[0] as { text?: string })?.text ?? '';
+			expect(text).toContain('Permission denied');
+			expect(text).not.toContain('sdk_ref');
+			expect(text).not.toContain('Workflow SDK reference');
+			expect(result.structuredContent).toBeUndefined();
 		});
 
 		test('tracks telemetry on success', async () => {
@@ -604,10 +616,14 @@ describe('create-workflow-from-code MCP tool', () => {
 
 				const result = await callHandler({ code: 'const wf = ...' });
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("data table with id 'missing' not found");
-				expect(response.error).toContain('create_data_table');
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"data table with id 'missing' not found",
+				);
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'create_data_table',
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
 			});
 
@@ -622,9 +638,11 @@ describe('create-workflow-from-code MCP tool', () => {
 
 				const result = await callHandler({ code: 'const wf = ...' });
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("data table with name 'missing-table' not found");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"data table with name 'missing-table' not found",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
 			});
 
@@ -736,11 +754,17 @@ describe('create-workflow-from-code MCP tool', () => {
 
 				const result = await callHandler({ code: 'const wf = ...' });
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain('Fetch PR Comments');
-				expect(response.error).toContain("credential '6CoUMkVOJRNsbmr2' is not usable");
-				expect(response.error).toContain("this workflow's project");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					'Fetch PR Comments',
+				);
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"credential '6CoUMkVOJRNsbmr2' is not usable",
+				);
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"this workflow's project",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
 			});
 
@@ -760,9 +784,11 @@ describe('create-workflow-from-code MCP tool', () => {
 
 				const result = await callHandler({ code: 'const wf = ...' });
 
-				const response = parseResult(result);
 				expect(result.isError).toBe(true);
-				expect(response.error).toContain("credential 'ghost' not found or not accessible");
+				expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+					"credential 'ghost' not found or not accessible",
+				);
+				expect(result.structuredContent).toBeUndefined();
 				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
 			});
 
@@ -821,10 +847,11 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			expect(result.isError).toBe(true);
 			expect(createWorkflowMock).not.toHaveBeenCalled();
-			const response = parseResult(result);
-			expect(response.error).toContain('Worker Agent');
-			expect(response.error).toContain('Manager Agent');
-			expect(response.error).toContain('@n8n/n8n-nodes-langchain.agentTool');
+			const text = (result.content?.[0] as { text?: string })?.text ?? '';
+			expect(text).toContain('Worker Agent');
+			expect(text).toContain('Manager Agent');
+			expect(text).toContain('@n8n/n8n-nodes-langchain.agentTool');
+			expect(result.structuredContent).toBeUndefined();
 		});
 
 		test('structuredContent conforms to declared outputSchema under strict validation', async () => {
@@ -843,47 +870,41 @@ describe('create-workflow-from-code MCP tool', () => {
 			};
 
 			const envelopeShape = tool.config.outputSchema as z.ZodRawShape;
-			// `autoAssignedCredentials` is optional in the schema, so unwrap the
-			// ZodOptional to reach the inner array before tightening its items.
-			const itemsField = (
-				envelopeShape.autoAssignedCredentials as z.ZodOptional<
-					z.ZodArray<z.ZodObject<z.ZodRawShape>>
-				>
-			).unwrap();
+			// Tighten the items of the (now required) autoAssignedCredentials array
+			// before validating, to also catch undeclared fields on the items.
+			const itemsField = envelopeShape.autoAssignedCredentials as z.ZodArray<
+				z.ZodObject<z.ZodRawShape>
+			>;
 			const strictSchema = z
 				.object({
 					...envelopeShape,
-					autoAssignedCredentials: z.array(itemsField.element.strict()).optional(),
+					autoAssignedCredentials: z.array(itemsField.element.strict()),
 				})
 				.strict();
 
 			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
 		});
 
-		test('error-path structuredContent conforms to declared outputSchema', async () => {
+		test('error path surfaces the real message as text and carries no structuredContent', async () => {
 			// Regression for ADO-5448 / GH #32503: a thrown handler error returned
 			// `structuredContent: { error }`, which violated the declared
 			// outputSchema (additionalProperties: false + required success fields)
-			// and made strict MCP clients reject the response with an opaque
-			// `-32602` schema mismatch that masked the real error.
+			// and made strict MCP clients reject with an opaque `-32602` that masked
+			// the real error. Errors now travel as text via errorResult — no
+			// structuredContent — so the SDK skips output validation entirely.
 			mockParseAndValidate.mockRejectedValue(new Error('boom: invalid SDK code'));
 
 			const tool = createTool();
 			const result = (await tool.handler({ code: 'const wf = ...' } as never, {} as never)) as {
 				isError?: boolean;
-				structuredContent: unknown;
+				structuredContent?: unknown;
+				content?: Array<{ text?: string }>;
 			};
 
-			// The real, previously-masked error is now surfaced...
 			expect(result.isError).toBe(true);
-			const structured = result.structuredContent as { error?: string };
-			expect(structured.error).toContain('boom: invalid SDK code');
+			expect(result.content?.[0]?.text).toContain('boom: invalid SDK code');
+			expect(result.structuredContent).toBeUndefined();
 			expect(createWorkflowMock).not.toHaveBeenCalled();
-
-			// ...and the error envelope validates against the published schema,
-			// so strict clients no longer reject it with -32602.
-			const strictSchema = z.object(tool.config.outputSchema as z.ZodRawShape).strict();
-			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
 		});
 	});
 });

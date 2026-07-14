@@ -16,6 +16,7 @@ import type { ListQuery } from '@/requests';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { createLimitSchema, tagSchema, toTagSummary } from './schemas';
+import { successResult } from './tool-response';
 
 const MAX_RESULTS = 200;
 
@@ -129,16 +130,7 @@ export const createSearchWorkflowsTool = (
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-				return {
-					structuredContent: payload,
-					// Keeping text content for compatibility with mcp clients that don's support structuredContent
-					content: [
-						{
-							type: 'text',
-							text: JSON.stringify(payload),
-						},
-					],
-				};
+				return successResult(outputSchema, payload);
 			} catch (error) {
 				// Track failed execution
 				telemetryPayload.results = {

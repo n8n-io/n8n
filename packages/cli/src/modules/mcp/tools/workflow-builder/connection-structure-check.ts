@@ -146,25 +146,20 @@ export function createNodeOutputsResolver(nodeTypes: NodeTypes): NodeOutputsReso
 }
 
 /**
- * Run the invalid-ai_tool-source check and, if any violations are found,
- * track a failure telemetry event and return an MCP error response. Returns
+ * Run the invalid-ai_tool-source check. When any violations are found, track a
+ * failure telemetry event and return the formatted error message; returns
  * `null` when the workflow is clean so the caller can continue normally.
  *
- * The caller controls the structured output shape via `buildOutput`, since
- * `validate_workflow_code` returns `{ valid: false, errors: [...] }` while
- * `create_workflow_from_code` returns `{ error }`.
+ * The caller decides how to surface the message: `create_workflow_from_code`
+ * and `update_workflow` treat it as a hard failure (`errorResult`), while
+ * `validate_workflow_code` reports it as a `{ valid: false, errors }` finding.
  */
-export function buildInvalidAiToolSourceErrorResponse<T extends Record<string, unknown>>(
+export function detectInvalidAiToolSource(
 	workflow: WorkflowForToolSourceCheck,
 	nodeTypes: NodeTypes,
-	buildOutput: (errorMessage: string) => T,
 	telemetryPayload: UserCalledMCPToolEventPayload,
 	telemetry: Telemetry,
-): {
-	content: Array<{ type: 'text'; text: string }>;
-	structuredContent: T;
-	isError: true;
-} | null {
+): string | null {
 	const violations = findInvalidAiToolSources(workflow, createNodeOutputsResolver(nodeTypes));
 	if (violations.length === 0) return null;
 
@@ -173,10 +168,5 @@ export function buildInvalidAiToolSourceErrorResponse<T extends Record<string, u
 	telemetryPayload.results = { success: false, error: errorMessage };
 	telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-	const output = buildOutput(errorMessage);
-	return {
-		content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-		structuredContent: output,
-		isError: true,
-	};
+	return errorMessage;
 }
