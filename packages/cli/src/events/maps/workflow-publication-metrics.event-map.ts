@@ -50,4 +50,11 @@ export type WorkflowPublicationMetricsEventMap = {
 		deletedCount: number;
 		durationMs: number;
 	};
+
+	'workflow-publication-reconciliation': {
+		result: PublicationOperationResult;
+		/** Workflows re-enqueued because their in-memory triggers were missing. */
+		deficientCount: number;
+		durationMs: number;
+	};
 };
