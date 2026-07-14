@@ -57,8 +57,23 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * `useAgentConfigAutosave`), so the seam is injected rather than the
 	 * builder's autosave being hard-wired here. Creating a *new* skill stays in
 	 * `onOpenAddSkillModal` via the shared `createAgentSkill` API call.
+	 * Unused when `localSkills` is provided.
 	 */
 	scheduleSkillSave: (payload: { skillId: string; skill: AgentSkill }) => void;
+	/**
+	 * Skill store for hosts whose bodies live outside an agent entity — inline
+	 * agents keep them in the node parameter. When provided, `bodies` replaces
+	 * `agent.value.skills` for lookups, and create/update persist through these
+	 * callbacks (each a single atomic parameter write covering body + ref)
+	 * instead of the REST + agent-mutation + `scheduleSkillSave` flow. Removal
+	 * stays on `scheduleConfigUpdate`: it only drops the ref, and the host's
+	 * write funnel prunes the orphaned body.
+	 */
+	localSkills?: {
+		bodies: ComputedRef<Record<string, AgentSkill>>;
+		createSkill: (skill: AgentSkill) => void;
+		updateSkill: (skillId: string, skill: AgentSkill) => void;
+	};
 	/**
 	 * Whether the host's agent can honor tool approvals. Inline agents pass
 	 * false: approval suspends the run for a human, and workflow executions
@@ -83,6 +98,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		connectedTriggers,
 		scheduleConfigUpdate,
 		scheduleSkillSave,
+		localSkills,
 		supportsToolApproval,
 		telemetry,
 	} = deps;
@@ -215,6 +231,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
 		const refs = localConfig.value?.skills ?? [];
+		const bodies = localSkills?.bodies.value ?? agent.value?.skills ?? {};
 		const seen = new Set<string>();
 		const out: Array<{ id: string; skill: AgentSkill }> = [];
 
@@ -223,7 +240,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			seen.add(skillRef.id);
 			out.push({
 				id: skillRef.id,
-				skill: agent.value?.skills?.[skillRef.id] ?? {
+				skill: bodies[skillRef.id] ?? {
 					name: skillRef.id,
 					description: '',
 					instructions: '',
@@ -256,8 +273,16 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				onRemove: (skillId: string) => onRemoveSkill(skillId),
 				onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
 					if (!skillId) return;
-					if (agentId.value !== targetAgentId || agent.value?.id !== targetAgentId) return;
+					if (agentId.value !== targetAgentId) return;
 					const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
+
+					if (localSkills) {
+						// Body + (unchanged) ref land in one host-owned parameter write.
+						localSkills.updateSkill(skillId, sanitizedSkill);
+						return;
+					}
+
+					if (agent.value?.id !== targetAgentId) return;
 					agent.value = {
 						...agent.value,
 						skills: {
@@ -346,6 +371,18 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				agentId: targetAgentId,
 				availableTools: configuredToolOptions(),
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
+					if (localSkills) {
+						if (agentId.value !== targetAgentId) return;
+						// The host generates the id and writes body + ref in one
+						// parameter update; there is no entity to POST to.
+						localSkills.createSkill(filterSkillAllowedTools(skill));
+						showMessage({
+							title: locale.baseText('agents.builder.skills.added'),
+							type: 'success',
+						});
+						return;
+					}
+
 					void (async () => {
 						const sanitizedSkill = filterSkillAllowedTools(skill);
 						let created: AgentSkill;
