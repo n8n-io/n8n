@@ -5,8 +5,8 @@ import { credentials } from '../credentials';
 
 // The target RLC accepts expressions, so it must be resolved per input item, INSIDE the
 // per-item try: item 0's bogus target ("not a user" fails the shape validators) must
-// produce a continueOnFail error item for item 0 only — before this fix the pre-loop
-// resolve aborted the whole run — while items 1 and 2 hit their own users' drives.
+// produce a continueOnFail error item for item 0 only (a pre-loop resolve would instead
+// abort the whole run) while items 1 and 2 hit their own users' drives.
 // Only the two valid users are mocked; consume-once + empty pendingMocks pin the exact
 // request set in both directions.
 describe('Test MicrosoftOneDrive, Service Principal file:get resolves the target per item and fails only the bad item under continueOnFail', () => {
