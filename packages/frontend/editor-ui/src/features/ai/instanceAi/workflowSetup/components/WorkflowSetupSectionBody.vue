@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, onScopeDispose, provide, ref, watch } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import InstanceAiCredentialForm from '../../components/InstanceAiCredentialForm.vue';
@@ -36,13 +37,6 @@ const nodeTypesStore = useNodeTypesStore();
 const aiGateway = useAiGateway();
 
 const credentialType = computed(() => props.section.credentialType);
-
-// The node's target URL (HTTP Request node) — gives "Help me get this" real
-// provider context. Undefined when it's an expression or absent.
-const providerUrl = computed(() => {
-	const url = props.section.node.parameters?.url;
-	return typeof url === 'string' ? url : undefined;
-});
 
 const selectedCredentialId = computed(() =>
 	credentialType.value
@@ -93,13 +87,13 @@ const shouldRenderSelector = computed(
 	() => hasUsableCredentials.value || supportsAiGatewayManaged.value,
 );
 
-const inlineForm = ref<{
-	mode: 'new' | 'edit';
-	credentialType: string;
-	credentialId?: string;
-	/** Opened from the selector (create/edit events) — offer a way back to it. */
-	showBack: boolean;
-} | null>(null);
+/** Guided Templated Custom Auth form for this section's recipe — the only
+ *  credential form rendered inline; everything else uses the credential modal. */
+const inlineForm = ref<{ showBack: boolean } | null>(null);
+
+const hasTemplatedHint = computed(
+	() => credentialType.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE && !!props.section.setupHint,
+);
 
 const targetNodeNames = computed(() =>
 	props.section.credentialTargetNodes.map((node) => node.name),
@@ -155,13 +149,14 @@ watch(
 // gate: saving a credential mid-submit makes the store report usable
 // credentials, which would otherwise swap this form for the (auto-selecting)
 // selector before the save/auth-probe completes — discarding a probe rejection.
-// The form opens when there's nothing to select and closes only via its own
-// saved/back events (or the section-change reset above, which runs first).
+// The form auto-opens only for a Templated Custom Auth recipe with nothing to
+// select, and closes only via its own saved/back events (or the section-change
+// reset above, which runs first).
 watch(
-	[() => props.section.id, credentialType, shouldRenderSelector],
-	([, type, selectorVisible]) => {
-		if (type && !selectorVisible && !inlineForm.value) {
-			inlineForm.value = { mode: 'new', credentialType: type, showBack: false };
+	[() => props.section.id, hasTemplatedHint, shouldRenderSelector],
+	([, templatedHint, selectorVisible]) => {
+		if (templatedHint && !selectorVisible && !inlineForm.value) {
+			inlineForm.value = { showBack: false };
 		}
 	},
 	{ immediate: true },
@@ -241,17 +236,8 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	ctx.setCredential(props.section, credId);
 }
 
-function openInlineCreate(type: string) {
-	inlineForm.value = { mode: 'new', credentialType: type, showBack: true };
-}
-
-function openInlineEdit(payload: { credentialType: string; credentialId: string }) {
-	inlineForm.value = {
-		mode: 'edit',
-		credentialType: payload.credentialType,
-		credentialId: payload.credentialId,
-		showBack: true,
-	};
+function openInlineCreate() {
+	inlineForm.value = { showBack: true };
 }
 
 function onInlineFormSaved(credentialId: string) {
@@ -275,30 +261,25 @@ function onParameterValueChanged(update: IUpdateInformation) {
 		/>
 
 		<InstanceAiCredentialForm
-			v-if="credentialType && inlineForm"
-			:key="`${inlineForm.mode}:${inlineForm.credentialType}:${inlineForm.credentialId ?? ''}`"
-			:credential-type="inlineForm.credentialType"
-			:mode="inlineForm.mode"
-			:credential-id="inlineForm.credentialId"
-			:setup-hint="inlineForm.credentialType === credentialType ? section.setupHint : undefined"
+			v-if="inlineForm && section.setupHint"
+			:key="section.id"
+			:setup-hint="section.setupHint"
 			:project-id="ctx.projectId.value"
-			:provider-url="providerUrl"
 			:show-back="inlineForm.showBack"
 			@saved="onInlineFormSaved"
 			@back="inlineForm = null"
 		/>
 		<NodeCredentials
-			v-else-if="credentialType && shouldRenderSelector"
+			v-else-if="credentialType"
 			:node="displayNode"
 			:override-cred-type="credentialType"
 			:project-id="ctx.projectId.value"
 			standalone
 			hide-issues
 			hide-ask-assistant
-			inline-credential-actions
+			:inline-credential-actions="hasTemplatedHint"
 			@credential-selected="onCredentialSelected"
 			@create-requested="openInlineCreate"
-			@edit-requested="openInlineEdit"
 		>
 			<template v-if="section.credentialTargetNodes.length > 1" #label-postfix>
 				<N8nTooltip placement="top">

@@ -223,7 +223,7 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getAllByTestId('credential-picker')).toHaveLength(1);
 		});
 
-		it('renders the inline credential form when no usable credentials exist', () => {
+		it('renders the setup button (modal path) for a plain type with no usable credentials', () => {
 			const credentialsStore = useCredentialsStore();
 			stubUsableCredentials(credentialsStore, () => []);
 
@@ -236,7 +236,37 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
+			expect(getByTestId('instance-ai-credential-setup-button')).toBeTruthy();
+			expect(queryByTestId('instance-ai-credential-form')).toBeNull();
+			expect(queryByTestId('credential-picker')).toBeNull();
+		});
+
+		it('renders the guided inline form for a Templated Custom Auth recipe', () => {
+			const credentialsStore = useCredentialsStore();
+			stubUsableCredentials(credentialsStore, () => []);
+
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'httpTemplatedCustomAuth',
+					reason: 'For calling the fal.ai API',
+					existingCredentials: [],
+					setupHint: {
+						template: { headers: { Authorization: 'Key {{api_key}}' } },
+						placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+						suggestedName: 'fal.ai API Key',
+					},
+				},
+			];
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
 			expect(getByTestId('instance-ai-credential-form')).toBeTruthy();
+			expect(queryByTestId('instance-ai-credential-setup-button')).toBeNull();
 			expect(queryByTestId('credential-picker')).toBeNull();
 		});
 
@@ -487,7 +517,7 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(queryByTestId('setup-choice-ai')).toBeNull();
 		});
 
-		it('tracks and opens the inline credential form on manual choice', async () => {
+		it('tracks and opens the credential modal on manual choice', async () => {
 			experiment.enabled = true;
 
 			const { getByTestId, queryByTestId } = renderCard(makeCredentialRequests(1));
@@ -495,7 +525,17 @@ describe('InstanceAiCredentialSetup', () => {
 
 			await userEvent.click(getByTestId('setup-choice-manual'));
 
-			expect(getByTestId('instance-ai-credential-form')).toBeTruthy();
+			expect(queryByTestId('instance-ai-credential-form')).toBeNull();
+			expect(useUIStore().openNewCredential).toHaveBeenCalledWith(
+				'type1',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{ closeOnSave: true },
+			);
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'Instance AI Browser Use User clicked credential setup option',
 				expect.objectContaining({ credential_type: 'type1', choice: 'manual' }),

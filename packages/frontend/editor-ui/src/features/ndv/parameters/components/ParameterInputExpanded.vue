@@ -33,9 +33,6 @@ type Props = {
 	documentationUrl?: string;
 	eventSource?: string;
 	label?: IParameterLabel;
-	showFocusPanel?: boolean;
-	/** Show a per-field "Help me get this" link (Instance AI credential setup). */
-	showFieldHelp?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -43,12 +40,9 @@ const props = withDefaults(defineProps<Props>(), {
 	nodeValues: () => ({}),
 	documentationUrl: undefined,
 	eventSource: undefined,
-	showFocusPanel: true,
-	showFieldHelp: false,
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
-	fieldHelp: [parameter: INodeProperties];
 }>();
 
 const focused = ref(false);
@@ -187,17 +181,6 @@ defineExpose({
 			:data-test-id="parameter.name"
 			:size="label.size"
 		>
-			<template v-if="showFieldHelp" #persistentOptions>
-				<N8nLink
-					theme="primary"
-					:underline="true"
-					size="small"
-					data-test-id="credential-field-help"
-					@click="emit('fieldHelp', parameter)"
-				>
-					{{ i18n.baseText('instanceAi.credential.helpMeGetThis') }}
-				</N8nLink>
-			</template>
 			<template #options>
 				<ParameterOptions
 					:parameter="parameter"
@@ -205,7 +188,6 @@ defineExpose({
 					:is-read-only="false"
 					:show-options="!isFixedCollectionType"
 					:show-expression-selector="!isFixedCollectionType"
-					:show-focus-panel="showFocusPanel"
 					:is-value-expression="isValueExpression"
 					@update:model-value="optionSelected"
 					@menu-expanded="onMenuExpanded"

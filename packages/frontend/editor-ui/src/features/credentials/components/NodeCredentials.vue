@@ -78,8 +78,9 @@ type Props = {
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
 	 *  Used by surfaces (e.g. agents) where the assistant flow isn't wired up. */
 	hideAskAssistant?: boolean;
-	/** Surface create/edit as events instead of opening the credential modal,
-	 *  so the host can render the credential form inline (used by Instance AI). */
+	/** Surface CREATE as an event instead of opening the credential modal, so
+	 *  the host can render a guided inline form (Instance AI Templated Custom
+	 *  Auth recipes). Editing always opens the credential modal. */
 	inlineCredentialActions?: boolean;
 };
 
@@ -98,7 +99,6 @@ const emit = defineEmits<{
 	valueChanged: [value: { name: string; value: string }];
 	blur: [source: string];
 	createRequested: [credentialType: string];
-	editRequested: [payload: { credentialType: string; credentialId: string }];
 }>();
 
 const telemetry = useTelemetry();
@@ -726,11 +726,6 @@ function getIssues(credentialTypeName: string): string[] {
 function editCredential(credentialType: string): void {
 	const credential = props.node.credentials?.[credentialType];
 	assert(credential?.id);
-
-	if (props.inlineCredentialActions) {
-		emit('editRequested', { credentialType, credentialId: credential.id });
-		return;
-	}
 
 	uiStore.openExistingCredential(credential.id, {
 		hideAskAssistant: hideAskAssistant.value,

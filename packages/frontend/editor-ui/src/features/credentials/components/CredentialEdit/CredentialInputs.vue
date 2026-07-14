@@ -16,12 +16,9 @@ type Props = {
 	credentialData: ICredentialDataDecryptedObject;
 	documentationUrl: string;
 	showValidationWarnings?: boolean;
-	showFocusPanel?: boolean;
-	/** Show a per-field "Help me get this" link (Instance AI credential setup). */
-	showFieldHelp?: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), { showFocusPanel: true, showFieldHelp: false });
+const props = defineProps<Props>();
 
 const { check: envFeatureFlag } = useEnvFeatureFlag();
 
@@ -37,7 +34,6 @@ const visibleProperties = computed(() =>
 
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
-	fieldHelp: [parameter: INodeProperties];
 }>();
 
 function valueChanged(parameterData: IUpdateInformation) {
@@ -69,12 +65,9 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:node-values="credentialDataValues"
 				:documentation-url="documentationUrl"
 				:show-validation-warnings="showValidationWarnings"
-				:show-focus-panel="showFocusPanel"
-				:show-field-help="showFieldHelp"
 				:label="{ size: 'medium' }"
 				event-source="credentials"
 				@update="valueChanged"
-				@field-help="emit('fieldHelp', $event)"
 			/>
 		</form>
 	</div>

@@ -10,7 +10,11 @@ import NodeCredentials from '@/features/credentials/components/NodeCredentials.v
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
+import {
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	type InstanceAiCredentialFlow,
+	type InstanceAiCredentialRequest,
+} from '@n8n/api-types';
 import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
@@ -67,13 +71,9 @@ const isDeferred = ref(false);
 
 const selections = ref<Record<string, string | null>>({});
 
-const inlineForm = ref<{
-	mode: 'new' | 'edit';
-	credentialType: string;
-	credentialId?: string;
-	/** Opened from the selector/choice (create/edit events) — offer a way back. */
-	showBack: boolean;
-} | null>(null);
+/** Guided Templated Custom Auth form for the current request's recipe —
+ *  the only credential form rendered inline; everything else uses the modal. */
+const inlineForm = ref<{ showBack: boolean } | null>(null);
 
 // ---------------------------------------------------------------------------
 // Auto-select from existing credentials
@@ -231,8 +231,8 @@ const hasExistingCredentials = computed(() => {
 	const credType = currentRequest.value.credentialType;
 	// Gate on the same source NodeCredentials builds its dropdown from. If the
 	// store has no usable credential of this type, NodeCredentials would render
-	// its empty-state "set up" button instead of a selector — so render the
-	// inline form directly rather than falling back to that button.
+	// its empty-state "set up" button instead of a selector — render this card's
+	// own fallback (guided form for a recipe, setup button otherwise) instead.
 	return (credentialsStore.getUsableCredentialByType(credType)?.length ?? 0) > 0;
 });
 
@@ -265,21 +265,41 @@ const setupChoiceOptions = computed<Array<ActionDropdownItem<CredentialSetupChoi
 	},
 ]);
 
-function openInlineCreate(credentialType: string) {
-	inlineForm.value = { mode: 'new', credentialType, showBack: true };
+const hasTemplatedHint = computed(
+	() =>
+		currentRequest.value?.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE &&
+		!!currentRequest.value?.setupHint,
+);
+
+function openNewCredentialModal() {
+	const req = currentRequest.value;
+	if (!req) return;
+	uiStore.openNewCredential(
+		req.credentialType,
+		false,
+		false,
+		props.projectId,
+		req.suggestedName,
+		undefined,
+		undefined,
+		{
+			closeOnSave: true,
+		},
+	);
 }
 
-function openInlineEdit(payload: { credentialType: string; credentialId: string }) {
-	inlineForm.value = {
-		mode: 'edit',
-		credentialType: payload.credentialType,
-		credentialId: payload.credentialId,
-		showBack: true,
-	};
+/** Create flow: guided inline form for a Templated Custom Auth recipe, the
+ *  regular credential modal for everything else. */
+function openCreateCredential() {
+	if (hasTemplatedHint.value) {
+		inlineForm.value = { showBack: true };
+		return;
+	}
+	openNewCredentialModal();
 }
 
 function onInlineFormSaved(credentialId: string) {
-	const credentialType = inlineForm.value?.credentialType ?? currentRequest.value?.credentialType;
+	const credentialType = currentRequest.value?.credentialType;
 	if (credentialType) selections.value[credentialType] = credentialId;
 	inlineForm.value = null;
 }
@@ -293,19 +313,14 @@ watch(currentStepIndex, () => {
 // credential gates: saving a credential mid-submit makes the store report
 // usable credentials, which would otherwise swap this form for the
 // (auto-selecting) selector before the save/auth-probe completes — discarding
-// a probe rejection. The form opens when there's nothing to select (and the
-// browser-use choice isn't shown) and closes only via its own saved/back
-// events or step navigation.
+// a probe rejection. The form auto-opens only for a Templated Custom Auth
+// recipe with nothing to select (and no browser-use choice), and closes only
+// via its own saved/back events or step navigation.
 watch(
-	[
-		currentStepIndex,
-		() => currentRequest.value?.credentialType,
-		hasExistingCredentials,
-		showSetupChoice,
-	],
-	([, credentialType, hasExisting, choiceShown]) => {
-		if (credentialType && !hasExisting && !choiceShown && !inlineForm.value) {
-			inlineForm.value = { mode: 'new', credentialType, showBack: false };
+	[currentStepIndex, hasTemplatedHint, hasExistingCredentials, showSetupChoice],
+	([, templatedHint, hasExisting, choiceShown]) => {
+		if (templatedHint && !hasExisting && !choiceShown && !inlineForm.value) {
+			inlineForm.value = { showBack: false };
 		}
 	},
 	{ immediate: true },
@@ -461,9 +476,7 @@ function onSetupChoiceSelected(choice: CredentialSetupChoice) {
 
 function handleSetupManually() {
 	trackSetupChoiceClicked('manual');
-	// The inline credential form replaced the credential modal on this card.
-	const credentialType = currentRequest.value?.credentialType;
-	if (credentialType) openInlineCreate(credentialType);
+	openCreateCredential();
 }
 
 async function submitAutoSetup(credentialType: string) {
@@ -535,17 +548,10 @@ async function handleSetupAutomatically() {
 
 					<div :class="$style.credentialContainer">
 						<InstanceAiCredentialForm
-							v-if="inlineForm"
-							:key="`${inlineForm.mode}:${inlineForm.credentialType}:${inlineForm.credentialId ?? ''}`"
-							:credential-type="inlineForm.credentialType"
-							:mode="inlineForm.mode"
-							:credential-id="inlineForm.credentialId"
+							v-if="inlineForm && currentRequest.setupHint"
+							:key="currentRequest.credentialType"
+							:setup-hint="currentRequest.setupHint"
 							:suggested-name="currentRequest.suggestedName"
-							:setup-hint="
-								inlineForm.credentialType === currentRequest.credentialType
-									? currentRequest.setupHint
-									: undefined
-							"
 							:project-id="projectId"
 							:show-back="inlineForm.showBack"
 							@saved="onInlineFormSaved"
@@ -560,10 +566,9 @@ async function handleSetupAutomatically() {
 							standalone
 							hide-issues
 							hide-ask-assistant
-							inline-credential-actions
+							:inline-credential-actions="hasTemplatedHint"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
-							@create-requested="openInlineCreate"
-							@edit-requested="openInlineEdit"
+							@create-requested="openCreateCredential"
 						/>
 						<N8nActionDropdown
 							v-else-if="showSetupChoice"
@@ -585,6 +590,12 @@ async function handleSetupAutomatically() {
 								</div>
 							</template>
 						</N8nActionDropdown>
+						<N8nButton
+							v-else
+							:label="i18n.baseText('instanceAi.credential.setupButton')"
+							data-test-id="instance-ai-credential-setup-button"
+							@click="openCreateCredential"
+						/>
 					</div>
 				</div>
 
