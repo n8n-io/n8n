@@ -142,8 +142,8 @@ catalogs:
       specifier: ^0.6.0
       version: 0.6.0
     '@n8n_io/ai-assistant-sdk':
-      specifier: 1.24.0
-      version: 1.24.0
+      specifier: 1.25.0
+      version: 1.25.0
     '@openrouter/ai-sdk-provider':
       specifier: ^2.8.0
       version: 2.9.0
@@ -1210,7 +1210,7 @@ importers:
         version: link:../workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.24.0
+        version: 1.25.0
       axios:
         specifier: 1.18.0
         version: 1.18.0(debug@4.4.3)
@@ -1307,7 +1307,7 @@ importers:
         version: link:../permissions
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.24.0
+        version: 1.25.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -3940,7 +3940,7 @@ importers:
         version: link:../@n8n/workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.24.0
+        version: 1.25.0
       '@n8n_io/license-sdk':
         specifier: 3.0.0
         version: 3.0.0
@@ -9640,8 +9640,8 @@ packages:
       sqlite3:
         optional: true
 
-  '@n8n_io/ai-assistant-sdk@1.24.0':
-    resolution: {integrity: sha512-4T34TFh51Kept8WkoCkvOiboOls9ErsQDSUjPF3bMsdazrVL83VhO9FlQW7dSyfo0bTSRKDN6NcaKN7SQ9s6Rg==}
+  '@n8n_io/ai-assistant-sdk@1.25.0':
+    resolution: {integrity: sha512-7V4dwVuHIkLdwd7Cx0k1miwr3KttC4rLQ+zVLftBMmSDx6n+0/W4a8BGhwrVHNx6uQwA1UGEWz+wSfO+gtBA4Q==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@3.0.0':
@@ -26569,7 +26569,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n_io/ai-assistant-sdk@1.24.0': {}
+  '@n8n_io/ai-assistant-sdk@1.25.0': {}
 
   '@n8n_io/license-sdk@3.0.0':
     dependencies:
