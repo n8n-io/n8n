@@ -6,7 +6,7 @@ import type {
 	CredentialProvider,
 	StreamChunk,
 } from '@n8n/agents';
-import type { AgentJsonConfig, AgentPersistedMessageDto } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentPersistedMessageDto, AgentSkill } from '@n8n/api-types';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	formatZodErrors,
@@ -636,12 +636,14 @@ export class AgentExecutionOrchestratorService {
 	/**
 	 * Compile an inline (node-embedded) agent definition in isolation. Mirrors
 	 * `compileIsolated`, but reconstructs from a raw config instead of an
-	 * entity: inline agents have no skill/custom-tool bodies and run under the
-	 * 'inline' runtime profile (no checkpoints, knowledge, integrations, or
-	 * sub-agent delegation).
+	 * entity: skill bodies come from the node parameter rather than an entity,
+	 * inline agents have no custom-tool bodies, and they run under the 'inline'
+	 * runtime profile (no checkpoints, knowledge, integrations, or sub-agent
+	 * delegation).
 	 */
 	private async compileIsolatedFromSource(
 		config: AgentJsonConfig,
+		skills: Record<string, AgentSkill>,
 		syntheticAgentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
@@ -657,7 +659,7 @@ export class AgentExecutionOrchestratorService {
 					credentialProvider,
 					toolDescriptors: {},
 					toolCodeByName: {},
-					skills: {},
+					skills,
 					runtimeProfile: 'inline',
 				});
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
@@ -909,7 +911,7 @@ export class AgentExecutionOrchestratorService {
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
 	): Promise<ExecuteAgentData> {
-		const config = await this.validateInlineAgentConfig(inlineAgent);
+		const { config, skills } = await this.validateInlineAgentConfig(inlineAgent);
 
 		// Session memory: when the caller supplied a session id, inline agents run
 		// with plain conversation-thread memory so that id continues the same
@@ -943,6 +945,7 @@ export class AgentExecutionOrchestratorService {
 		const extraTools = this.buildWorkflowExtraTools(workflowContext);
 		const compiled = await this.compileIsolatedFromSource(
 			runtimeConfig,
+			skills,
 			syntheticAgentId,
 			projectId,
 			credentialProvider,
@@ -990,15 +993,20 @@ export class AgentExecutionOrchestratorService {
 	}
 
 	/**
-	 * Validate the node-supplied inline definition into a runnable config.
-	 * The strict schema rejects capabilities inline agents don't support
-	 * (skills, memory, sub-agents, custom tools, the options block), so
-	 * saved-agent-only features can't sneak in through raw JSON. See
+	 * Validate the node-supplied inline definition into a runnable config plus
+	 * its skill bodies. The strict schema rejects capabilities inline agents
+	 * don't support (memory, sub-agents, custom tools, the options block), so
+	 * saved-agent-only features can't sneak in through raw JSON. Skills mirror
+	 * the entity shape: refs in `config.skills`, bodies in the sibling `skills`
+	 * record — a ref without a body fails here with a pathed error. See
 	 * `InlineAgentJsonConfigSchema` for the authoritative allowlist.
 	 */
-	private async validateInlineAgentConfig(payload: InlineAgentPayload): Promise<AgentJsonConfig> {
+	private async validateInlineAgentConfig(
+		payload: InlineAgentPayload,
+	): Promise<{ config: AgentJsonConfig; skills: Record<string, AgentSkill> }> {
 		const parsed = RunnableInlineAgentConfigSchema.safeParse({
 			config: sanitizeAgentJsonConfig(payload.config),
+			...(payload.skills !== undefined ? { skills: payload.skills } : {}),
 		});
 		if (!parsed.success) {
 			const details = formatZodErrors(parsed.error)
@@ -1020,7 +1028,7 @@ export class AgentExecutionOrchestratorService {
 			throw new UserError(`Invalid inline agent configuration: ${nodeError}`);
 		}
 
-		return config;
+		return { config, skills: parsed.data.skills ?? {} };
 	}
 }
 
