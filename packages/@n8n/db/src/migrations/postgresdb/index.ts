@@ -221,6 +221,7 @@ import { AddPartialIndexForGlobalCredentials1784000000044 } from '../common/1784
 import { AddRecurringCronScheduleKind1784000000045 } from '../common/1784000000045-AddRecurringCronScheduleKind';
 import { CreateInstanceAiEventsTable1784000000046 } from '../common/1784000000046-CreateInstanceAiEventsTable';
 import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/1784000000047-BackfillPreScopingOAuthGrantScopes';
+import { AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048 } from '../common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -447,4 +448,5 @@ export const postgresMigrations: Migration[] = [
 	AddRecurringCronScheduleKind1784000000045,
 	CreateInstanceAiEventsTable1784000000046,
 	BackfillPreScopingOAuthGrantScopes1784000000047,
+	AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048,
 ];

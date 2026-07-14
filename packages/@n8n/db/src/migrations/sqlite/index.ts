@@ -213,6 +213,7 @@ import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-Crea
 import { AddPartialIndexForGlobalCredentials1784000000044 } from '../common/1784000000044-AddPartialIndexForGlobalCredentials';
 import { CreateInstanceAiEventsTable1784000000046 } from '../common/1784000000046-CreateInstanceAiEventsTable';
 import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/1784000000047-BackfillPreScopingOAuthGrantScopes';
+import { AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048 } from '../common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -429,6 +430,7 @@ const sqliteMigrations: Migration[] = [
 	AddRecurringCronScheduleKind1784000000045,
 	CreateInstanceAiEventsTable1784000000046,
 	BackfillPreScopingOAuthGrantScopes1784000000047,
+	AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048,
 ];
 
 export { sqliteMigrations };
