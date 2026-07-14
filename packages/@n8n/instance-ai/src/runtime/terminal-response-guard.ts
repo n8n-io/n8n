@@ -62,7 +62,12 @@ function formatWorkSummaryCounts(workSummary?: WorkSummary): string {
 }
 
 function hasText(event: InstanceAiEvent): boolean {
-	return event.type === 'text-delta' && event.payload.text.trim().length > 0;
+	// The durable log stores coalesced text-block facts, never deltas, so
+	// flag-on guard reads must recognize both shapes of streamed text.
+	return (
+		(event.type === 'text-delta' || event.type === 'text-block') &&
+		event.payload.text.trim().length > 0
+	);
 }
 
 export class InstanceAiTerminalResponseGuard {
