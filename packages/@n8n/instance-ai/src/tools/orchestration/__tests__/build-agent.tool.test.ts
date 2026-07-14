@@ -13,7 +13,7 @@ import type {
 	OrchestrationContext,
 } from '../../../types';
 import type * as AgentTargetBindingModule from '../agent-target-binding';
-import { resolveAgentBuilderTarget, saveAgentBuilderTarget } from '../agent-target-binding';
+import { saveAgentBuilderTarget } from '../agent-target-binding';
 import { createBuildAgentTool } from '../build-agent.tool';
 
 vi.mock('../agent-target-binding', async () => {
