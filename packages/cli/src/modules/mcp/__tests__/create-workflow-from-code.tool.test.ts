@@ -85,7 +85,10 @@ type DataTableOpsMock = {
 };
 
 describe('create-workflow-from-code MCP tool', () => {
-	const user = Object.assign(new User(), { id: 'user-1' });
+	const user = Object.assign(new User(), {
+		id: 'user-1',
+		role: { slug: 'global:member', scopes: [] },
+	});
 	let workflowCreationService: WorkflowCreationService;
 	let createWorkflowMock: Mock;
 	let urlService: UrlService;
@@ -783,6 +786,42 @@ describe('create-workflow-from-code MCP tool', () => {
 
 				expect(result.isError).toBeUndefined();
 				expect(workflowCreationService.createWorkflow).toHaveBeenCalled();
+			});
+
+			test('skips the check for a privileged user building in their personal project', async () => {
+				const originalRole = user.role;
+				user.role = {
+					slug: 'global:owner',
+					scopes: [{ slug: 'credential:list' }],
+				} as typeof user.role;
+				try {
+					// The credential belongs to another project and is not reachable, so it
+					// would normally be rejected.
+					(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue(
+						[],
+					);
+					(credentialsService.getOne as jest.Mock).mockResolvedValue({
+						id: 'cross-project-cred',
+						name: 'GitHub account',
+						type: 'githubApi',
+					});
+
+					mockParseAndValidate.mockResolvedValue({
+						workflow: {
+							...mockWorkflowJson,
+							nodes: [httpNodeWithGithub('cross-project-cred')],
+						},
+					});
+
+					// projectId omitted, so it lands in the user's personal project where the
+					// runtime gate bypasses credential checks. The build must succeed.
+					const result = await callHandler({ code: 'const wf = ...' });
+
+					expect(result.isError).toBeUndefined();
+					expect(workflowCreationService.createWorkflow).toHaveBeenCalled();
+				} finally {
+					user.role = originalRole;
+				}
 			});
 		});
 

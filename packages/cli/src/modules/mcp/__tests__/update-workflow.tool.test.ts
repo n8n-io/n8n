@@ -1698,6 +1698,54 @@ describe('update-workflow MCP tool', () => {
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
+			test('skips the check for a privileged user editing their personal-project workflow', async () => {
+				const privilegedUser = userWithScopes(['credential:list']);
+				(sharedWorkflowRepository.getWorkflowOwningProject as jest.Mock).mockResolvedValue({
+					id: 'project-1',
+					type: 'personal',
+				});
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [makeNode({ id: 's', name: 'Slack', type: 'n8n-nodes-base.slack' })],
+						connections: {},
+					}),
+				);
+
+				const tool = createUpdateWorkflowTool(
+					privilegedUser,
+					workflowFinderService,
+					workflowService,
+					urlService,
+					telemetry,
+					nodeTypes,
+					credentialsService,
+					sharedWorkflowRepository,
+					collaborationService,
+					dataTableOps as never,
+					tagService,
+					globalConfig,
+				);
+
+				const result = await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [
+							{
+								type: 'setNodeCredential',
+								nodeName: 'Slack',
+								credentialKey: 'slackApi',
+								credentialId: 'cred-other-project',
+								credentialName: 'Other Project Slack',
+							},
+						],
+					},
+					tool,
+				);
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
 			test('rejects addNode with an unknown credential id', async () => {
 				const result = await callHandler({
 					workflowId: 'wf-1',
