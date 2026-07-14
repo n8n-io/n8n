@@ -1,13 +1,14 @@
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 
@@ -123,6 +124,7 @@ describe('workflow package import — with data tables', () => {
 			'SharedWorkflow',
 			'DataTable',
 			'DataTableColumn',
+			'Folder',
 			'ProjectRelation',
 			'Project',
 		]);
@@ -522,6 +524,91 @@ describe('workflow package import — with data tables', () => {
 				apiKeyScopes: ['workflow:import', 'dataTable:create'],
 			});
 
+			expect(await tablesInProject(project.id)).toHaveLength(1);
+		});
+	});
+
+	describe('folder packages', () => {
+		beforeEach(() => {
+			licenseMocker.enable('feat:folders');
+		});
+
+		/** Exports a folder holding one table-referencing workflow, then deletes the
+		 * source artifacts so their globally unique ids are free for the import. */
+		async function exportFolderPackage() {
+			const sourceProject = await createTeamProject('Folder Source', owner);
+			const folder = await createFolder(sourceProject, { name: 'to_production' });
+			const table = await dataTableService.createDataTable(sourceProject.id, {
+				name: 'Folder Trip',
+				columns: [{ name: 'email', type: 'string' }],
+			});
+			const workflow = await buildWorkflowReferencingDataTables({
+				name: 'Folder trip workflow',
+				project: sourceProject,
+				references: [{ dataTableId: table.id }],
+				parentFolder: folder,
+			});
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [],
+				folderIds: [folder.id],
+			});
+			const packageBuffer = await streamToBuffer(stream);
+
+			await workflowRepository.delete({ id: workflow.id });
+			await dataTableService.deleteDataTable(table.id, sourceProject.id);
+			await Container.get(FolderRepository).delete({ id: folder.id });
+
+			return { packageBuffer, folderId: folder.id, tableId: table.id };
+		}
+
+		it('round-trips a folder export: folder, workflow, and table land together', async () => {
+			const { packageBuffer, folderId, tableId } = await exportFolderPackage();
+
+			const result = await importPackage({ user: owner, projectId: project.id, packageBuffer });
+
+			expect(result.folders).toHaveLength(1);
+			const importedFolder = await Container.get(FolderRepository).findOne({
+				where: { id: folderId },
+				relations: { homeProject: true },
+			});
+			expect(importedFolder?.homeProject.id).toBe(project.id);
+
+			const importedWorkflow = await workflowRepository.findOne({
+				where: { name: 'Folder trip workflow' },
+				relations: { parentFolder: true },
+			});
+			expect(importedWorkflow?.parentFolder?.id).toBe(folderId);
+
+			const tables = await tablesInProject(project.id);
+			expect(tables).toHaveLength(1);
+			expect(tables[0].id).toBe(tableId);
+			expect(tables[0].columns.map(({ name, type }) => ({ name, type }))).toEqual([
+				{ name: 'email', type: 'string' },
+			]);
+		});
+
+		it('blocks the whole folder package when a data table cannot be created', async () => {
+			const { packageBuffer, folderId } = await exportFolderPackage();
+			await dataTableService.createDataTable(project.id, {
+				name: 'Folder Trip',
+				columns: [{ name: 'email', type: 'string' }],
+			});
+
+			await expect(
+				importPackage({ user: owner, projectId: project.id, packageBuffer }),
+			).rejects.toMatchObject({
+				message: expect.stringContaining('Import blocked'),
+				meta: {
+					issues: [
+						expect.objectContaining({ type: 'data-table-unresolved', kind: 'name-conflict' }),
+					],
+				},
+			});
+
+			expect(await Container.get(FolderRepository).findOneBy({ id: folderId })).toBeNull();
+			expect(await workflowRepository.count()).toBe(0);
 			expect(await tablesInProject(project.id)).toHaveLength(1);
 		});
 	});
