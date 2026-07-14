@@ -40,6 +40,7 @@ import type {
 	InstanceAiEvaluationConfigService,
 	EvaluationConfigSummary,
 	UpsertEvaluationConfigInput,
+	InstanceAiBuilderDelegate,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
@@ -337,13 +338,37 @@ export class InstanceAiAdapterService {
 				: {}),
 			...(builderDelegateAdapter && projectId
 				? {
-						builderDelegate: builderDelegateAdapter.createDelegate(
-							user,
-							projectId,
-							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+						builderDelegate: this.withBuilderCreateTelemetry(
+							builderDelegateAdapter.createDelegate(
+								user,
+								projectId,
+								new AgentsCredentialProvider(this.credentialsService, projectId, user),
+							),
+							threadId,
 						),
 					}
 				: {}),
+		};
+	}
+
+	/** Mirror of the workflow-adapter telemetry: track agent creation via the
+	 *  builder sub-agent at the delegate boundary, only in a thread context. */
+	private withBuilderCreateTelemetry(
+		delegate: InstanceAiBuilderDelegate,
+		threadId: string | undefined,
+	): InstanceAiBuilderDelegate {
+		if (!threadId) return delegate;
+		return {
+			...delegate,
+			createAgent: async (name) => {
+				const created = await delegate.createAgent(name);
+				this.telemetry.track('Builder created agent', {
+					thread_id: threadId,
+					agent_id: created.agentId,
+					project_id: created.projectId,
+				});
+				return created;
+			},
 		};
 	}
 

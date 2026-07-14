@@ -79,6 +79,22 @@ function didUpdateConfig(workSummary: WorkSummary): boolean {
 	);
 }
 
+/** One event per succeeded config-mutation call — parity with `Builder modified workflow`, which fires once per save. */
+function trackConfigMutations(
+	context: OrchestrationContext,
+	agentId: string,
+	workSummary: WorkSummary,
+): void {
+	const mutationToolNames = new Set<string>(CONFIG_MUTATION_TOOL_NAMES);
+	for (const call of workSummary.toolCalls) {
+		if (!call.succeeded || !mutationToolNames.has(call.toolName)) continue;
+		context.trackTelemetry?.('Builder modified agent', {
+			thread_id: context.threadId,
+			agent_id: agentId,
+		});
+	}
+}
+
 function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): string {
 	const lines = workflowContext.map(
 		(workflow) =>
@@ -345,6 +361,7 @@ async function runBuilderConsumeLoop(params: {
 	// the builder agent was constructed — scope check and existence check both
 	// passed — so a deferred agentId-path bind is now safe to persist.
 	await onSettled?.();
+	trackConfigMutations(context, target.agentId, result.workSummary);
 
 	if (result.status !== 'suspended') {
 		const output = await finishTurn(context, builderAgentId, result, carriedConfigUpdated);
