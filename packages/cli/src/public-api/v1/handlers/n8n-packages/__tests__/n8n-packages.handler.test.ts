@@ -272,7 +272,10 @@ describe('n8n-packages handler', () => {
 		it('emits n8n-package-export-failed with reason=blocked when the service rejects a blocked export', async () => {
 			mockService.exportPackage.mockRejectedValue(new PackageExportBlockedError('Export blocked'));
 
-			await run(makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export']), makeResponse());
+			await run(
+				makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export', 'variable:list']),
+				makeResponse(),
+			);
 
 			expect(emittedEvent('n8n-package-export-failed')).toEqual({
 				user: { id: 'user-1' },
