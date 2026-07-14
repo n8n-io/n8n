@@ -19,7 +19,7 @@ export type BreakingChangeVersion = z.infer<typeof breakingChangeVersionSchema>;
  * When a new major version is released, update this value and add the
  * corresponding breaking-change rules on the backend.
  */
-export const MIGRATION_REPORT_TARGET_VERSION: BreakingChangeVersion | null = 'v3';
+export const MIGRATION_REPORT_TARGET_VERSION: BreakingChangeVersion | null = null;
 
 // Common schemas
 const recommendationSchema = z.object({
