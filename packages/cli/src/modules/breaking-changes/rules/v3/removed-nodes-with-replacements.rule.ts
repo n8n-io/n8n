@@ -185,6 +185,38 @@ export const ICalendarRemovedRule = createNodeReplacementRule({
 	],
 });
 
+export const ItemListsRemovedRule = createNodeReplacementRule({
+	id: 'item-lists-removed',
+	removedNodeName: 'Item Lists',
+	removedNodeType: 'n8n-nodes-base.itemLists',
+	recommendations: [
+		{
+			action: 'Replace with Aggregate',
+			description: 'For Concatenate Items, replace this node with Aggregate.',
+		},
+		{
+			action: 'Replace with Limit',
+			description: 'For Limit, replace this node with Limit.',
+		},
+		{
+			action: 'Replace with Remove Duplicates',
+			description: 'For Remove Duplicates, replace this node with Remove Duplicates.',
+		},
+		{
+			action: 'Replace with Sort',
+			description: 'For Sort, replace this node with Sort.',
+		},
+		{
+			action: 'Replace with Split Out',
+			description: 'For Split Out Items, replace this node with Split Out.',
+		},
+		{
+			action: 'Replace with Summarize',
+			description: 'For Summarize, replace this node with Summarize.',
+		},
+	],
+});
+
 export const InMemoryVectorStoreInsertRemovedRule = createNodeReplacementRule({
 	id: 'in-memory-vector-store-insert-removed',
 	removedNodeName: 'In Memory Vector Store Insert',
@@ -409,6 +441,7 @@ export const directNodeReplacementRules = [
 	{ rule: HtmlExtractRemovedRule, removedNodeType: 'n8n-nodes-base.htmlExtract' },
 	{ rule: HttpRequestToolRemovedRule, removedNodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest' },
 	{ rule: ICalendarRemovedRule, removedNodeType: 'n8n-nodes-base.iCal' },
+	{ rule: ItemListsRemovedRule, removedNodeType: 'n8n-nodes-base.itemLists' },
 	{
 		rule: InMemoryVectorStoreInsertRemovedRule,
 		removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreInMemoryInsert',
