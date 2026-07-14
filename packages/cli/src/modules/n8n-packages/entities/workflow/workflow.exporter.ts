@@ -1,4 +1,4 @@
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -26,7 +26,6 @@ export interface WorkflowExportRequest {
 export interface WorkflowExportResult {
 	entries: ManifestEntry[];
 	requirements: WorkflowExportRequirements;
-	workflowEntities: WorkflowEntity[];
 }
 
 @Service()
@@ -78,6 +77,6 @@ export class WorkflowExporter {
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));
 		}
 
-		return { entries, requirements: { credentials, dataTables }, workflowEntities: workflows };
+		return { entries, requirements: { credentials, dataTables } };
 	}
 }

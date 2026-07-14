@@ -5,18 +5,15 @@ import type { Readable } from 'node:stream';
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { User } from '@n8n/db';
 import { N8nPackageParser } from './engine/n8n-package-parser';
 import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { DataTableExporter } from './entities/data-table/data-table.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
-import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
-import { extractSubWorkflowRequirements } from './entities/workflow/sub-workflow-requirements';
+import { PackageWorkflowRequirementValidator } from './entities/workflow/package-workflow-requirement.validator';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
@@ -48,7 +45,7 @@ export class N8nPackagesService {
 		private readonly projectPackageImporter: ProjectPackageImporter,
 		private readonly workflowPackageImporter: WorkflowPackageImporter,
 		private readonly eventService: EventService,
-		private readonly workflowFinder: WorkflowFinderService,
+		private readonly workflowRequirementValidator: PackageWorkflowRequirementValidator,
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
@@ -106,9 +103,9 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
-		await this.assertStaticSubWorkflowsIncluded(
-			new Set(allWorkflowsInPackage.map(({ id }) => id)),
+		await this.workflowRequirementValidator.validateStaticSubWorkflowsIncluded(
 			request.user,
+			new Set(allWorkflowsInPackage.map(({ id }) => id)),
 		);
 
 		const credentialExportResult = await this.credentialExporter.export({
@@ -184,46 +181,6 @@ export class N8nPackagesService {
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
 		const folderWorkflowIds = new Set(workflowsInFolders.map((entry) => entry.id) ?? []);
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
-	}
-
-	/**
-	 * OPTIMIZE: potentially accept the allInPackageWorkflows as an argument instead of a Set.
-	 * This way ther is slightly less work for the caller. Since this is a private method, it's not a big deal.
-	 */
-	private async assertStaticSubWorkflowsIncluded(exportedWorkflowIds: Set<string>, user: User) {
-		const missingSubWorkflowIds = new Set<string>();
-
-		for (const workflowId of exportedWorkflowIds) {
-			const workflow = await this.workflowFinder.findWorkflowForUser(workflowId, user, [
-				'workflow:export',
-			]);
-
-			if (!workflow) {
-				missingSubWorkflowIds.add(workflowId);
-				continue;
-			}
-
-			for (const reference of extractSubWorkflowRequirements(workflow)) {
-				if (!exportedWorkflowIds.has(reference.sourceWorkflowId)) {
-					missingSubWorkflowIds.add(reference.sourceWorkflowId);
-				}
-			}
-		}
-
-		if (missingSubWorkflowIds.size === 0) return;
-
-		const displayedWorkflowIds = [...missingSubWorkflowIds].slice(0, 20);
-		const omittedCount = missingSubWorkflowIds.size - displayedWorkflowIds.length;
-		const dependencyLabel = missingSubWorkflowIds.size === 1 ? 'dependency' : 'dependencies';
-
-		throw new PackageExportBlockedError(
-			`${missingSubWorkflowIds.size} sub-workflow ${dependencyLabel} not included in the package. Export aborted.`,
-			{
-				description: `Sub-workflow IDs not included in the package: ${displayedWorkflowIds.join(', ')}${
-					omittedCount > 0 ? `, and ${omittedCount} more` : ''
-				}`,
-			},
-		);
 	}
 
 	private buildManifestRequirements(

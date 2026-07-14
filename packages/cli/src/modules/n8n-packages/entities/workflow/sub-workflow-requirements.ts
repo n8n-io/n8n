@@ -3,7 +3,7 @@ import { getSubworkflowId } from 'n8n-workflow';
 
 export interface WorkflowSubWorkflowReference {
 	workflowId: string;
-	sourceWorkflowId: string;
+	referencedWorkflowId: string;
 }
 
 export function extractSubWorkflowRequirements(
@@ -12,12 +12,12 @@ export function extractSubWorkflowRequirements(
 	const byId = new Map<string, WorkflowSubWorkflowReference>();
 
 	for (const node of workflow.nodes ?? []) {
-		const sourceWorkflowId = getSubworkflowId(node);
-		if (!sourceWorkflowId || byId.has(sourceWorkflowId)) continue;
+		const referencedWorkflowId = getSubworkflowId(node);
+		if (!referencedWorkflowId || byId.has(referencedWorkflowId)) continue;
 
-		byId.set(sourceWorkflowId, {
+		byId.set(referencedWorkflowId, {
 			workflowId: workflow.id,
-			sourceWorkflowId,
+			referencedWorkflowId,
 		});
 	}
 

@@ -34,7 +34,7 @@ describe('extractSubWorkflowRequirements', () => {
 		]);
 
 		expect(extractSubWorkflowRequirements(workflow)).toEqual([
-			{ workflowId: 'wf-parent', sourceWorkflowId: 'wf-child' },
+			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
 		]);
 	});
 
@@ -45,7 +45,7 @@ describe('extractSubWorkflowRequirements', () => {
 		]);
 
 		expect(extractSubWorkflowRequirements(workflow)).toEqual([
-			{ workflowId: 'wf-parent', sourceWorkflowId: 'wf-child' },
+			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
 		]);
 	});
 

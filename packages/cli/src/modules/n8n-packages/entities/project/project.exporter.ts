@@ -1,4 +1,4 @@
-import type { Project, User, WorkflowEntity } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { FolderFinderService } from '@/services/folder-finder.service';
@@ -27,10 +27,8 @@ interface ProjectExportResult {
 	entries: ManifestEntry[];
 	folderEntries: ManifestEntry[];
 	workflowEntries: ManifestEntry[];
-	workflowEntities: WorkflowEntity[];
 	requirements: WorkflowExportRequirements;
 	projectTargetsById: Map<string, string>;
-	folderIds: string[];
 }
 
 @Service()
@@ -82,10 +80,8 @@ export class ProjectExporter {
 			entries: [{ id: project.id, name: project.name, target }],
 			folderEntries: folders.entries,
 			workflowEntries: [...folders.workflowEntries, ...rootWorkflows.entries],
-			workflowEntities: [...folders.workflowEntities, ...rootWorkflows.workflowEntities],
 			requirements: mergeRequirements(folders.requirements, rootWorkflows.requirements),
 			projectTargetsById: new Map([[project.id, target]]),
-			folderIds: folders.folderIds,
 		};
 	}
 
@@ -105,9 +101,7 @@ export class ProjectExporter {
 			return {
 				entries: [],
 				workflowEntries: [],
-				workflowEntities: [],
 				requirements: mergeRequirements(),
-				folderIds: [],
 			};
 		}
 
@@ -126,7 +120,7 @@ export class ProjectExporter {
 	): Promise<WorkflowExportResult> {
 		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId);
 		if (rootWorkflowIds.length === 0) {
-			return { entries: [], requirements: mergeRequirements(), workflowEntities: [] };
+			return { entries: [], requirements: mergeRequirements() };
 		}
 
 		return await this.workflowExporter.export({
@@ -142,10 +136,8 @@ export class ProjectExporter {
 			entries: results.flatMap((result) => result.entries),
 			folderEntries: results.flatMap((result) => result.folderEntries),
 			workflowEntries: results.flatMap((result) => result.workflowEntries),
-			workflowEntities: results.flatMap((result) => result.workflowEntities),
 			requirements: mergeRequirements(...results.map((result) => result.requirements)),
 			projectTargetsById: new Map(results.flatMap((result) => [...result.projectTargetsById])),
-			folderIds: results.flatMap((result) => result.folderIds),
 		};
 	}
 }
