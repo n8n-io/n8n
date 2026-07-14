@@ -40,7 +40,7 @@ import type {
 	TaskStorage,
 } from '../../src/types';
 import { asResumable } from '../../src/utils/stream-helpers';
-import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-process-builder';
+import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, EventOutcome } from '../types';
@@ -76,7 +76,7 @@ export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
 	const started = Date.now();
-	const maxSteps = options.maxSteps ?? 5;
+	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps ?? 5;
 	const timeoutMs = options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
 
@@ -111,9 +111,9 @@ export async function runDiscoveryScenario(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `delegate`, `plan`, and runtime skills. We provide stubs for the heavy fields:
-		// discovery scenarios measure first-step tool-call decisions, not background
-		// execution.
+		// `create-tasks`, `eval-setup-with-agent`, and runtime skills. We provide stubs
+		// for the heavy fields: discovery scenarios measure first-step tool-call
+		// decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
 			modelId: options.modelId,
@@ -133,6 +133,7 @@ export async function runDiscoveryScenario(
 			// Eager tool loading — discovery measures dispatch given the full toolset,
 			// not whether the orchestrator can find a tool through search.
 			disableDeferredTools: true,
+			thinkingEnabled: false,
 		});
 
 		const streamSource = normalizeStreamSource(
@@ -250,11 +251,11 @@ interface StubOrchestrationContextOptions {
 function createStubOrchestrationContext(
 	opts: StubOrchestrationContextOptions,
 ): OrchestrationContext {
-	// Domain tools are passed to spawned sub-agents (delegate).
-	// Discovery scenarios measure the orchestrator's first-step dispatch decision; sub-agent
-	// execution is out of scope. We still populate domainTools faithfully so any sub-agent
-	// that does spawn has a coherent toolset (avoids hitting "no tools" errors that would
-	// confuse the diagnostic comment).
+	// Domain tools are passed to background agents such as eval-setup.
+	// Discovery scenarios measure the orchestrator's first-step dispatch decision;
+	// background execution is out of scope. We still populate domainTools faithfully
+	// so any background agent that does spawn has a coherent toolset (avoids hitting
+	// "no tools" errors that would confuse the diagnostic comment).
 	const domainTools: InstanceAiToolRegistry = createAllTools(opts.context);
 
 	const taskStorage: TaskStorage = {
@@ -270,7 +271,6 @@ function createStubOrchestrationContext(
 		userId: opts.context.userId,
 		orchestratorAgentId: 'n8n-instance-agent',
 		modelId: opts.modelId,
-		subAgentMaxSteps: 10,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
 		domainTools,
@@ -279,13 +279,13 @@ function createStubOrchestrationContext(
 		taskStorage,
 		// Discovery evals assert first-dispatch intent only. Production starts a
 		// detached background task here; the harness accepts the spawn so the tool
-		// can publish its `agent-spawned` event without executing the sub-agent.
+		// can publish its `agent-spawned` event without executing the background agent.
 		spawnBackgroundTask: ({ taskId, agentId }) => ({ status: 'started', taskId, agentId }),
 		// Surface the localMcpServer so Computer Use browser tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
-		// Used for the orchestrator's untrusted-content doctrine and other domain references
-		// inside sub-agent tools. Provide the same context the orchestrator sees.
+		// Used for the orchestrator's untrusted-content doctrine and other domain references.
+		// Provide the same context the orchestrator sees.
 		domainContext: opts.context,
 	};
 }

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { MCP_STORE } from './mcp.constants';
+import { MCP_ENDPOINT, MCP_STORE } from './mcp.constants';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
@@ -16,6 +16,8 @@ import {
 	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
+	getAllowedRedirectUris,
+	updateAllowedRedirectUris,
 	type ToggleWorkflowsMcpAccessResponse,
 	type ToggleWorkflowsMcpAccessTarget,
 } from '@/features/ai/mcpAccess/mcp.api';
@@ -37,26 +39,34 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const allowedRedirectUris = ref<string[]>([]);
 	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 	const mcpManagedByEnv = computed(() => !!settingsStore.moduleSettings.mcp?.mcpManagedByEnv);
 
+	// Backend-provided canonical URL, so a configured dedicated MCP base URL is
+	// reflected; the editor-base fallback covers settings not yet loaded.
+	const serverUrl = computed(
+		() =>
+			settingsStore.moduleSettings.mcp?.serverUrl ?? `${rootStore.urlBaseEditor}${MCP_ENDPOINT}`,
+	);
+
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
 		pageSize = 50,
-	): Promise<WorkflowListItem[]> {
-		const workflows = await workflowsListStore.fetchWorkflowsPage(
+	): Promise<{ data: WorkflowListItem[]; count: number }> {
+		const { data, count } = await workflowsListStore.fetchWorkflowsPageWithCount(
 			undefined, // projectId
 			page,
 			pageSize,
 			'updatedAt:desc',
 			{ isArchived: false, availableInMCP: true },
 			false, // includeFolders
-			false, // includeAllVersions
+			false, // onlySharedWithMe
 		);
-		return workflows.filter(isWorkflowListItem);
+		return { data: data.filter(isWorkflowListItem), count };
 	}
 
 	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
@@ -199,9 +209,21 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		connectPopoverOpen.value = false;
 	}
 
+	async function fetchAllowedRedirectUris(): Promise<string[]> {
+		const response = await getAllowedRedirectUris(rootStore.restApiContext);
+		allowedRedirectUris.value = response.uris;
+		return response.uris;
+	}
+
+	async function setAllowedRedirectUris(uris: string[]): Promise<void> {
+		await updateAllowedRedirectUris(rootStore.restApiContext, uris);
+		allowedRedirectUris.value = uris;
+	}
+
 	return {
 		mcpAccessEnabled,
 		mcpManagedByEnv,
+		serverUrl,
 		fetchWorkflowsAvailableForMCP,
 		setMcpAccessEnabled,
 		toggleWorkflowMcpAccess,
@@ -216,6 +238,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		getInstanceClientStats,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
+		allowedRedirectUris,
+		fetchAllowedRedirectUris,
+		setAllowedRedirectUris,
 		connectPopoverOpen,
 		openConnectPopover,
 		closeConnectPopover,

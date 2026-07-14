@@ -31,6 +31,55 @@ describe('packageManifestSchema', () => {
 		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate/i);
 	});
 
+	it('rejects duplicate credential ids in requirements.credentials', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				credentials: [
+					{ id: 'cred-1', name: 'A', type: 'githubApi', usedByWorkflows: ['wf-abc'] },
+					{ id: 'cred-1', name: 'B', type: 'slackApi', usedByWorkflows: ['wf-abc'] },
+				],
+			},
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate credential id/i);
+	});
+
+	it('rejects duplicate data table ids in requirements.dataTables', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				dataTables: [
+					{ id: 'dt-1', name: 'A', sourceProjectId: 'proj-1', usedByWorkflows: ['wf-abc'] },
+					{ id: 'dt-1', name: 'B', sourceProjectId: 'proj-1', usedByWorkflows: ['wf-abc'] },
+				],
+			},
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate data table id/i);
+	});
+
+	it('preserves a folders section', () => {
+		const manifest = {
+			...validManifest,
+			folders: [{ id: 'fld-1', name: 'to_production', target: 'folders/to_production' }],
+		};
+
+		expect(packageManifestSchema.parse(manifest).folders).toEqual(manifest.folders);
+	});
+
+	it('rejects a manifest containing duplicate folder ids', () => {
+		const manifest = {
+			...validManifest,
+			folders: [
+				{ id: 'fld-1', name: 'First', target: 'folders/first' },
+				{ id: 'fld-1', name: 'Second', target: 'folders/nested/second' },
+			],
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate folder id/i);
+	});
+
 	it('accepts manifests with unknown sections for forward compatibility', () => {
 		const manifest = {
 			...validManifest,

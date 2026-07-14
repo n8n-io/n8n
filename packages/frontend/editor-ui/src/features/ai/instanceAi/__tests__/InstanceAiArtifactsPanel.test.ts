@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import { defineComponent, h, nextTick, reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -16,6 +17,7 @@ vi.mock('../instanceAi.store', () => ({
 }));
 
 const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
+	pinia: createTestingPinia(),
 	global: {
 		stubs: {
 			ConnectionsCard: defineComponent({
@@ -45,14 +47,6 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(getByTestId('instance-ai-artifacts-sidebar')).toBeInTheDocument();
 		expect(getByTestId('instance-ai-artifacts-sidebar-group')).toBeInTheDocument();
-		expect(getByTestId('instance-ai-artifacts-sidebar-pin')).toHaveAttribute(
-			'aria-label',
-			'Unpin panel',
-		);
-		expect(getByTestId('instance-ai-artifacts-sidebar-pin')).toHaveAttribute(
-			'aria-pressed',
-			'true',
-		);
 		expect(getByText('No artifacts yet')).toBeInTheDocument();
 		expect(queryByText('To-do list')).not.toBeInTheDocument();
 		expect(queryByText('No tasks yet')).not.toBeInTheDocument();
@@ -65,24 +59,6 @@ describe('InstanceAiArtifactsPanel', () => {
 		await nextTick();
 
 		expect(getByTestId('connections-card')).toHaveAttribute('data-portal-target-tag', 'ASIDE');
-	});
-
-	it('emits when the pin button is clicked and reflects the unpinned label', async () => {
-		const { emitted, getByTestId } = renderComponent({ props: { isPinned: false } });
-		const pinButton = getByTestId('instance-ai-artifacts-sidebar-pin');
-
-		expect(pinButton).toHaveAttribute('aria-label', 'Pin panel');
-		expect(pinButton).toHaveAttribute('aria-pressed', 'false');
-
-		await fireEvent.click(pinButton);
-
-		expect(emitted('togglePinned')).toHaveLength(1);
-	});
-
-	it('hides the pin button when pinning is unavailable', () => {
-		const { queryByTestId } = renderComponent({ props: { isPinningAvailable: false } });
-
-		expect(queryByTestId('instance-ai-artifacts-sidebar-pin')).not.toBeInTheDocument();
 	});
 
 	it('opens artifacts in preview and shows tasks without progress counts', async () => {
@@ -121,5 +97,73 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(artifactLink);
 
 		expect(openWorkflowPreview).toHaveBeenCalledWith('wf-1');
+	});
+
+	it('renders agent artifacts and opens them in the side panel', async () => {
+		const openAgentPreview = vi.fn();
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'SEO Auditor',
+				},
+			],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openAgentPreview,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open SEO Auditor' });
+		expect(artifactLink).toHaveAttribute('href', '/projects/proj-1/agents/agent-1');
+		expect(artifactLink.querySelector('[data-icon="robot"]')).toBeInTheDocument();
+
+		const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+		const wasNotPrevented = artifactLink.dispatchEvent(event);
+
+		expect(wasNotPrevented).toBe(false);
+		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
+	});
+
+	it('leaves modified agent artifact clicks to the browser', () => {
+		const openAgentPreview = vi.fn();
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'SEO Auditor',
+				},
+			],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openAgentPreview,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open SEO Auditor' });
+		let wasDefaultPreventedByComponent: boolean | undefined;
+		artifactLink.addEventListener('click', (event) => {
+			wasDefaultPreventedByComponent = event.defaultPrevented;
+			event.preventDefault();
+		});
+		const event = new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true });
+		artifactLink.dispatchEvent(event);
+
+		expect(wasDefaultPreventedByComponent).toBe(false);
+		expect(openAgentPreview).not.toHaveBeenCalled();
 	});
 });

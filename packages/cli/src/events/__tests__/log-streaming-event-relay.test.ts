@@ -1,7 +1,7 @@
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -16,7 +16,7 @@ describe('LogStreamingEventRelay', () => {
 	new LogStreamingEventRelay(eventService, eventBus, instanceSettings).init();
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('workflow events', () => {
@@ -50,6 +50,176 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'owner',
 					workflowId: 'wf123',
 					workflowName: 'Test Workflow',
+				},
+			});
+		});
+
+		it('should log on `n8n-package-imported` event', () => {
+			const event: RelayEventMap['n8n-package-imported'] = {
+				user: {
+					id: 'user-import',
+					email: 'importer@example.com',
+					firstName: 'Import',
+					lastName: 'User',
+					role: { slug: 'global:admin' },
+				},
+				projectId: 'proj-brie',
+				folderId: 'folder-cheese',
+				workflowIds: ['wf-cheddar', 'wf-brie'],
+				options: {
+					workflowConflictPolicy: 'new-version',
+					workflowIdPolicy: 'new',
+					credentialMatchingMode: 'id-only',
+					credentialMissingMode: 'must-preexist',
+					workflowPublishingPolicy: 'preserve-published-state',
+				},
+				packageSourceId: 'source-instance-1',
+				packageVersion: '1',
+				credentialIds: {
+					matched: ['cred-1'],
+					created: [],
+					updated: [],
+				},
+				// Telemetry-only; must not appear in the audit payload below.
+				counts: {
+					workflows: {
+						created: 1,
+						updated: 1,
+						skipped: 0,
+					},
+					credentials: {
+						matched: 1,
+						created: 0,
+						requirements: 1,
+					},
+				},
+			};
+
+			eventService.emit('n8n-package-imported', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.n8n-package.import.success',
+				payload: {
+					userId: 'user-import',
+					_email: 'importer@example.com',
+					_firstName: 'Import',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					projectId: 'proj-brie',
+					folderId: 'folder-cheese',
+					workflowIds: ['wf-cheddar', 'wf-brie'],
+					options: {
+						workflowConflictPolicy: 'new-version',
+						workflowIdPolicy: 'new',
+						credentialMatchingMode: 'id-only',
+						credentialMissingMode: 'must-preexist',
+						workflowPublishingPolicy: 'preserve-published-state',
+					},
+					packageSourceId: 'source-instance-1',
+					packageVersion: '1',
+					credentialIds: {
+						matched: ['cred-1'],
+						created: [],
+						updated: [],
+					},
+				},
+			});
+		});
+
+		it('should log on `n8n-package-exported` event', () => {
+			const event: RelayEventMap['n8n-package-exported'] = {
+				user: {
+					id: 'user-export',
+					email: 'exporter@example.com',
+					firstName: 'Export',
+					lastName: 'User',
+					role: { slug: 'global:admin' },
+				},
+				workflowIds: ['wf-cheddar', 'wf-brie'],
+				folderIds: ['folder-gouda'],
+				projectIds: ['proj-stilton'],
+				// Telemetry-only; must not appear in the audit payload below.
+				counts: {
+					workflows: 2,
+					folders: 1,
+					credentials: 1,
+					dataTables: 1,
+				},
+			};
+
+			eventService.emit('n8n-package-exported', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.n8n-package.export.success',
+				payload: {
+					userId: 'user-export',
+					_email: 'exporter@example.com',
+					_firstName: 'Export',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					workflowIds: ['wf-cheddar', 'wf-brie'],
+					folderIds: ['folder-gouda'],
+					projectIds: ['proj-stilton'],
+				},
+			});
+		});
+
+		it('should log on `n8n-package-export-failed` event', () => {
+			const event: RelayEventMap['n8n-package-export-failed'] = {
+				user: {
+					id: 'user-export',
+					email: 'exporter@example.com',
+					firstName: 'Export',
+					lastName: 'User',
+					role: { slug: 'global:admin' },
+				},
+				reason: 'access-denied',
+				workflowIds: ['wf-stilton'],
+			};
+
+			eventService.emit('n8n-package-export-failed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.n8n-package.export.failed',
+				payload: {
+					userId: 'user-export',
+					_email: 'exporter@example.com',
+					_firstName: 'Export',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					operation: 'export',
+					reason: 'access-denied',
+					workflowIds: ['wf-stilton'],
+				},
+			});
+		});
+
+		it('should log on `n8n-package-import-failed` event', () => {
+			const event: RelayEventMap['n8n-package-import-failed'] = {
+				user: {
+					id: 'user-import',
+					email: 'importer@example.com',
+					firstName: 'Import',
+					lastName: 'User',
+					role: { slug: 'global:admin' },
+				},
+				reason: 'access-denied',
+				projectId: 'proj-brie',
+			};
+
+			eventService.emit('n8n-package-import-failed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.n8n-package.import.failed',
+				payload: {
+					userId: 'user-import',
+					_email: 'importer@example.com',
+					_firstName: 'Import',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					operation: 'import',
+					reason: 'access-denied',
+					projectId: 'proj-brie',
 				},
 			});
 		});
@@ -434,7 +604,7 @@ describe('LogStreamingEventRelay', () => {
 					status: 'success',
 					mode: 'manual',
 					data: { resultData: {} },
-				}),
+				} as never),
 				projectId: 'proj-456',
 				projectName: 'My Project',
 			});
@@ -465,7 +635,7 @@ describe('LogStreamingEventRelay', () => {
 				mode: 'manual',
 				jobId: '12345',
 				data: { resultData: {} },
-			});
+			} as never);
 
 			const event = {
 				executionId: 'exec-123',
@@ -495,7 +665,6 @@ describe('LogStreamingEventRelay', () => {
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
-						// @ts-expect-error Partial mock
 						error: {
 							node: mock<INode>({ type: 'some-type' }),
 							message: 'some-message',
@@ -503,7 +672,7 @@ describe('LogStreamingEventRelay', () => {
 						errorMessage: 'some-message',
 					},
 				},
-			}) as unknown as IRun;
+			} as never) as unknown as IRun;
 
 			const event = {
 				executionId: 'some-id',
@@ -545,7 +714,6 @@ describe('LogStreamingEventRelay', () => {
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
-						// @ts-expect-error Partial mock
 						error: {
 							node: mock<INode>({ type: 'some-type' }),
 							message: 'some-message',
@@ -553,7 +721,7 @@ describe('LogStreamingEventRelay', () => {
 						errorMessage: 'some-message',
 					},
 				},
-			}) as unknown as IRun;
+			} as never) as unknown as IRun;
 
 			const event = {
 				executionId: 'exec-456',
@@ -1667,7 +1835,7 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `public-api-key-deleted` event', () => {
+		it('should log on `public-api-key-deleted` event when the user deletes their own key', () => {
 			const event: RelayEventMap['public-api-key-deleted'] = {
 				user: {
 					id: 'user606',
@@ -1677,6 +1845,7 @@ describe('LogStreamingEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				publicApi: true,
+				isOwn: true,
 			};
 
 			eventService.emit('public-api-key-deleted', event);
@@ -1689,6 +1858,35 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'API',
 					_lastName: 'User',
 					globalRole: 'global:owner',
+					is_own: true,
+				},
+			});
+		});
+
+		it('should log `is_own: false` on `public-api-key-deleted` event when an admin revokes another user’s key', () => {
+			const event: RelayEventMap['public-api-key-deleted'] = {
+				user: {
+					id: 'admin-1',
+					email: 'admin@example.com',
+					firstName: 'Admin',
+					lastName: 'User',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				publicApi: false,
+				isOwn: false,
+			};
+
+			eventService.emit('public-api-key-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.api.deleted',
+				payload: {
+					userId: 'admin-1',
+					_email: 'admin@example.com',
+					_firstName: 'Admin',
+					_lastName: 'User',
+					globalRole: 'global:owner',
+					is_own: false,
 				},
 			});
 		});
@@ -2656,6 +2854,24 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('does not emit an audit event for data_redaction_enforcement_floor (telemetry-only; audit is handled by redaction-enforcement-updated)', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user404',
+					email: 'admin7@example.com',
+					firstName: 'Seventh',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				settingName: 'data_redaction_enforcement_floor',
+				value: 'all',
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('redaction enforcement events', () => {
@@ -2668,8 +2884,8 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'Admin',
 					role: { slug: 'global:owner' },
 				},
-				before: { enforced: false, manual: false, production: false },
-				after: { enforced: true, manual: false, production: true },
+				before: 'off',
+				after: 'production',
 			};
 
 			eventService.emit('redaction-enforcement-updated', event);
@@ -2682,8 +2898,8 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Seventh',
 					_lastName: 'Admin',
 					globalRole: 'global:owner',
-					before: { enforced: false, manual: false, production: false },
-					after: { enforced: true, manual: false, production: true },
+					before: 'off',
+					after: 'production',
 				},
 			});
 		});
@@ -2697,8 +2913,8 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'Admin',
 					role: { slug: 'global:owner' },
 				},
-				before: { enforced: true, manual: true, production: true },
-				after: { enforced: true, manual: false, production: true },
+				before: 'all',
+				after: 'production',
 			};
 
 			eventService.emit('redaction-enforcement-updated', event);
@@ -2711,13 +2927,13 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Seventh',
 					_lastName: 'Admin',
 					globalRole: 'global:owner',
-					before: { enforced: true, manual: true, production: true },
-					after: { enforced: true, manual: false, production: true },
+					before: 'all',
+					after: 'production',
 				},
 			});
 		});
 
-		it('should log `redaction-enforcement.updated` for upgrade to `all` (full-tuple passthrough)', () => {
+		it('should log `redaction-enforcement.updated` for upgrade to `all`', () => {
 			const event: RelayEventMap['redaction-enforcement-updated'] = {
 				user: {
 					id: 'user404',
@@ -2726,8 +2942,8 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'Admin',
 					role: { slug: 'global:owner' },
 				},
-				before: { enforced: true, manual: false, production: true },
-				after: { enforced: true, manual: true, production: true },
+				before: 'production',
+				after: 'all',
 			};
 
 			eventService.emit('redaction-enforcement-updated', event);
@@ -2740,8 +2956,8 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Seventh',
 					_lastName: 'Admin',
 					globalRole: 'global:owner',
-					before: { enforced: true, manual: false, production: true },
-					after: { enforced: true, manual: true, production: true },
+					before: 'production',
+					after: 'all',
 				},
 			});
 		});

@@ -2,24 +2,32 @@ import type { InstanceAiAgentNode } from '@n8n/api-types';
 
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
 
-const mockListMessages = jest.fn();
-const mockGetThread = jest.fn();
-const mockSaveThread = jest.fn();
-const mockDeleteThread = jest.fn();
-const mockDeleteThreadsByResourceIdPrefix = jest.fn();
-const mockListThreads = jest.fn();
+const mockListMessages = vi.fn();
+const mockGetThread = vi.fn();
+const mockSaveThread = vi.fn();
+const mockDeleteThread = vi.fn();
+const mockDeleteThreadsByResourceIdPrefix = vi.fn();
+const mockDeleteThreadsByResourceId = vi.fn();
+const mockListThreads = vi.fn();
+const mockSaveThreadWithProject = vi.fn();
+const mockGetThreadProjectId = vi.fn();
+const mockSaveMessages = vi.fn();
 const mockAgentMemory = {
 	listMessages: mockListMessages,
 	getThread: mockGetThread,
 	saveThread: mockSaveThread,
 	deleteThread: mockDeleteThread,
 	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
+	deleteThreadsByResourceId: mockDeleteThreadsByResourceId,
 	listThreads: mockListThreads,
+	saveThreadWithProject: mockSaveThreadWithProject,
+	getThreadProjectId: mockGetThreadProjectId,
+	saveMessages: mockSaveMessages,
 };
 
 // Mock GlobalConfig
-const mockDbSnapshotStorage = { getAll: jest.fn().mockResolvedValue([]) };
-const mockCheckpointRepository = { findActiveByThreadId: jest.fn().mockResolvedValue([]) };
+const mockDbSnapshotStorage = { getAll: vi.fn().mockResolvedValue([]) };
+const mockCheckpointRepository = { findActiveByThreadId: vi.fn().mockResolvedValue([]) };
 
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
@@ -37,7 +45,7 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 			},
 		},
 	};
-	const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+	const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 	return new InstanceAiMemoryService(
 		mockLogger as never,
 		mockConfig as never,
@@ -49,7 +57,7 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 }
 
 const mockPendingConfirmationRepository = {
-	findLiveRequestIds: jest.fn(async () => new Set<string>()),
+	findLiveRequestIds: vi.fn(async () => new Set<string>()),
 };
 
 function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode {
@@ -79,7 +87,7 @@ function makeThread(id: string, updatedAt: string) {
 
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockDbSnapshotStorage.getAll.mockResolvedValue([]);
 		mockListMessages.mockResolvedValue({ messages: [] });
 	});
@@ -180,11 +188,13 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		expect(result.messages).toEqual([]);
 	});
 
-	it('surfaces in-flight user message from a suspended checkpoint when memory is empty', async () => {
+	it('surfaces in-flight checkpoint messages not yet committed to memory', async () => {
 		// A turn that suspended at HITL never gets `saveToMemory` called by the
-		// SDK, so the user prompt + intermediate assistant messages live only
-		// in `state.messageList.messages`. The /messages endpoint should
-		// surface them so a page reload doesn't drop the original user message.
+		// SDK. The inbound user message is persisted on receipt, but the
+		// intermediate assistant messages (and any pending tool-call) live only
+		// in `state.messageList.messages` until the turn resumes and completes.
+		// The /messages endpoint should surface them so a page reload doesn't
+		// drop in-flight artifacts.
 		mockListMessages.mockResolvedValue({ messages: [] });
 		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
 			{
@@ -290,12 +300,12 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 
 describe('InstanceAiMemoryService.ensureThread', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
-	it('creates a thread when it does not exist yet', async () => {
+	it('creates a thread bound to the project in a single atomic call', async () => {
 		mockGetThread.mockResolvedValueOnce(null);
-		mockSaveThread.mockResolvedValueOnce({
+		mockSaveThreadWithProject.mockResolvedValueOnce({
 			id: 'thread-new',
 			title: '',
 			resourceId: 'user-1',
@@ -305,13 +315,15 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		});
 
 		const service = createService();
-		const result = await service.ensureThread('user-1', 'thread-new');
+		const result = await service.ensureThread('user-1', 'thread-new', 'project-1');
 
-		expect(mockSaveThread).toHaveBeenCalledWith({
-			id: 'thread-new',
-			resourceId: 'user-1',
-			title: '',
-		});
+		// Thread + project binding are written together, so a partial failure can
+		// never persist a project-less thread.
+		expect(mockSaveThreadWithProject).toHaveBeenCalledWith(
+			{ id: 'thread-new', resourceId: 'user-1', title: '' },
+			'project-1',
+		);
+		expect(mockSaveThread).not.toHaveBeenCalled();
 		expect(result.created).toBe(true);
 		expect(result.thread.id).toBe('thread-new');
 		expect(result.thread.resourceId).toBe('user-1');
@@ -328,7 +340,7 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		});
 
 		const service = createService();
-		const result = await service.ensureThread('user-1', 'thread-existing');
+		const result = await service.ensureThread('user-1', 'thread-existing', 'project-1');
 
 		expect(mockSaveThread).not.toHaveBeenCalled();
 		expect(result.created).toBe(false);
@@ -336,9 +348,90 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 	});
 });
 
+describe('InstanceAiMemoryService.restoreThreadMessages', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('preserves message ids and content verbatim, coercing createdAt back to a Date', async () => {
+		const service = createService();
+
+		const result = await service.restoreThreadMessages('user-1', 'thread-1', [
+			{
+				id: 'msg-user',
+				type: 'llm',
+				role: 'user',
+				content: [{ type: 'text', text: 'Send a daily digest to #cosmic-otter-alerts' }],
+				createdAt: '2026-01-01T00:00:00.000Z',
+			},
+			{
+				id: 'msg-assistant',
+				type: 'llm',
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: 'Built it.' },
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'build-workflow',
+						state: 'resolved',
+						input: { code: '…' },
+						output: { success: true, workflowId: 'wf-1' },
+					},
+				],
+				createdAt: '2026-01-01T00:00:01.000Z',
+			},
+		]);
+
+		expect(mockSaveMessages).toHaveBeenCalledTimes(1);
+		const args = mockSaveMessages.mock.calls[0][0];
+		expect(args.threadId).toBe('thread-1');
+		expect(args.resourceId).toBe('user-1');
+		expect(args.messages).toHaveLength(2);
+		// Verbatim restore: same ids and content blocks, createdAt as ascending Dates.
+		expect(args.messages[0].id).toBe('msg-user');
+		expect(args.messages[1].content[1].toolCallId).toBe('tc-1');
+		expect(args.messages[0].createdAt).toEqual(new Date('2026-01-01T00:00:00.000Z'));
+		expect(args.messages[1].createdAt).toEqual(new Date('2026-01-01T00:00:01.000Z'));
+		expect(result).toEqual({ restored: 2 });
+	});
+
+	it('accepts custom messages (no role, data payload)', async () => {
+		const service = createService();
+
+		await service.restoreThreadMessages('user-1', 'thread-1', [
+			{
+				id: 'msg-custom',
+				type: 'custom',
+				data: { widget: 'setup-card' },
+				createdAt: '2026-01-01T00:00:00.000Z',
+			},
+		]);
+
+		expect(mockSaveMessages.mock.calls[0][0].messages[0].data).toEqual({ widget: 'setup-card' });
+	});
+
+	it.each([
+		['missing id', { role: 'user', content: [], createdAt: '2026-01-01T00:00:00.000Z' }],
+		['unparseable createdAt', { id: 'm', role: 'user', content: [], createdAt: 'not-a-date' }],
+		['missing content', { id: 'm', role: 'user', createdAt: '2026-01-01T00:00:00.000Z' }],
+		['custom without data', { id: 'm', type: 'custom', createdAt: '2026-01-01T00:00:00.000Z' }],
+	])(
+		'rejects a structurally invalid message (%s) without writing anything',
+		async (_label, bad) => {
+			const service = createService();
+
+			await expect(service.restoreThreadMessages('user-1', 'thread-1', [bad])).rejects.toThrow(
+				'Seed message at index 0',
+			);
+			expect(mockSaveMessages).not.toHaveBeenCalled();
+		},
+	);
+});
+
 describe('InstanceAiMemoryService.deleteThread', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('deletes hidden sub-agent threads before deleting the parent thread', async () => {
@@ -356,13 +449,125 @@ describe('InstanceAiMemoryService.deleteThread', () => {
 	});
 });
 
+describe('InstanceAiMemoryService.ensureThread launch metadata', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('writes source/origin/sourceContext into metadata when creating', async () => {
+		mockGetThread.mockResolvedValueOnce(null);
+		mockSaveThreadWithProject.mockResolvedValueOnce({
+			id: 'thread-1',
+			title: '',
+			resourceId: 'user-1',
+			metadata: {
+				source: 'template-view',
+				origin: 'internal',
+				sourceContext: { templateId: '42' },
+			},
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		});
+
+		const service = createService();
+		const result = await service.ensureThread('user-1', 'thread-1', 'project-1', {
+			source: 'template-view',
+			origin: 'internal',
+			sourceContext: { templateId: '42' },
+		});
+
+		expect(mockSaveThreadWithProject).toHaveBeenCalledWith(
+			{
+				id: 'thread-1',
+				resourceId: 'user-1',
+				title: '',
+				metadata: {
+					source: 'template-view',
+					origin: 'internal',
+					sourceContext: { templateId: '42' },
+				},
+			},
+			'project-1',
+		);
+		expect(result.created).toBe(true);
+	});
+
+	it('omits sourceContext from metadata when not provided', async () => {
+		mockGetThread.mockResolvedValueOnce(null);
+		mockSaveThreadWithProject.mockResolvedValueOnce({
+			id: 'thread-2',
+			title: '',
+			resourceId: 'user-1',
+			metadata: { source: 'website-template', origin: 'external' },
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		});
+
+		const service = createService();
+		await service.ensureThread('user-1', 'thread-2', 'project-1', {
+			source: 'website-template',
+			origin: 'external',
+		});
+
+		expect(mockSaveThreadWithProject).toHaveBeenCalledWith(
+			{
+				id: 'thread-2',
+				resourceId: 'user-1',
+				title: '',
+				metadata: {
+					source: 'website-template',
+					origin: 'external',
+				},
+			},
+			'project-1',
+		);
+	});
+
+	it('does not pass metadata when the thread already exists', async () => {
+		mockGetThread.mockResolvedValueOnce({
+			id: 'thread-existing',
+			title: 'Existing',
+			resourceId: 'user-1',
+			metadata: { foo: 'bar' },
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		});
+
+		const service = createService();
+		const result = await service.ensureThread('user-1', 'thread-existing', 'project-1', {
+			source: 'template-view',
+			origin: 'internal',
+			sourceContext: { templateId: '42' },
+		});
+
+		expect(result.created).toBe(false);
+		expect(mockSaveThreadWithProject).not.toHaveBeenCalled();
+	});
+});
+
+describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('delegates to the agent memory and returns the number of deleted threads', async () => {
+		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3);
+		const service = createService();
+
+		const deleted = await service.deleteThreadsForUser('user-1');
+
+		expect(deleted).toBe(3);
+		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('user-1');
+	});
+});
+
 describe('InstanceAiMemoryService.cleanupExpiredThreads', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('queries oldest threads first so fresh threads do not hide expired ones', async () => {
-		const dateNow = jest
+		const dateNow = vi
 			.spyOn(Date, 'now')
 			.mockReturnValue(new Date('2026-05-15T00:00:00.000Z').getTime());
 		const expiredThread = makeThread('expired-thread', '2026-05-01T00:00:00.000Z');

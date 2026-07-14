@@ -2,25 +2,27 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { Github } from '../Github.node';
 import * as GenericFunctions from '../GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
+import type * as _importType0 from '../GenericFunctions';
 
-jest.mock('../GenericFunctions', () => ({
-	...jest.requireActual('../GenericFunctions'),
-	githubApiRequest: jest.fn(),
-	getFileSha: jest.fn(),
+vi.mock('../GenericFunctions', async () => ({
+	...(await vi.importActual<typeof _importType0>('../GenericFunctions')),
+	githubApiRequest: vi.fn(),
+	getFileSha: vi.fn(),
 }));
 
 describe('Github Node - File Create/Edit Operations', () => {
 	let github: Github;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 
 	beforeEach(() => {
 		github = new Github();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions = {
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-			getNode: jest.fn().mockReturnValue({
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+			getNode: vi.fn().mockReturnValue({
 				id: 'test-node-id',
 				name: 'Github',
 				type: 'n8n-nodes-base.github',
@@ -29,23 +31,23 @@ describe('Github Node - File Create/Edit Operations', () => {
 				parameters: {},
 			}),
 			helpers: {
-				assertBinaryData: jest.fn(),
-				getBinaryDataBuffer: jest.fn(),
-				requestWithAuthentication: jest.fn(),
-				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
-				constructExecutionMetaData: jest.fn((data) => data),
+				assertBinaryData: vi.fn(),
+				getBinaryDataBuffer: vi.fn(),
+				requestWithAuthentication: vi.fn(),
+				returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: vi.fn((data) => data),
 			},
-			getCredentials: jest.fn().mockResolvedValue({
+			getCredentials: vi.fn().mockResolvedValue({
 				accessToken: 'test-token',
 				server: 'https://api.github.com',
 			}),
-			continueOnFail: jest.fn().mockReturnValue(false),
-		} as unknown as jest.Mocked<IExecuteFunctions>;
+			continueOnFail: vi.fn().mockReturnValue(false),
+		} as unknown as Mocked<IExecuteFunctions>;
 	});
 
 	describe('File Create - Binary Data', () => {
 		it('should handle binary data by converting buffer to base64', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: any) => {
 					const params: Record<string, any> = {
 						resource: 'file',
@@ -69,12 +71,10 @@ describe('Github Node - File Create/Edit Operations', () => {
 				fileName: 'test.txt',
 			};
 			const expectedBuffer = Buffer.from('test content');
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
-				expectedBuffer,
-			);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(expectedBuffer);
 
-			(GenericFunctions.githubApiRequest as jest.Mock).mockResolvedValue({
+			(GenericFunctions.githubApiRequest as Mock).mockResolvedValue({
 				content: {
 					name: 'file.txt',
 					path: 'test/file.txt',
@@ -104,7 +104,7 @@ describe('Github Node - File Create/Edit Operations', () => {
 	describe('File Create - Text Content', () => {
 		it('should use base64 content as-is when fileContent is already base64', async () => {
 			const base64Content = 'dGVzdCBjb250ZW50';
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: any) => {
 					const params: Record<string, any> = {
 						resource: 'file',
@@ -121,7 +121,7 @@ describe('Github Node - File Create/Edit Operations', () => {
 				},
 			);
 
-			(GenericFunctions.githubApiRequest as jest.Mock).mockResolvedValue({
+			(GenericFunctions.githubApiRequest as Mock).mockResolvedValue({
 				content: {
 					name: 'file.txt',
 					path: 'test/file.txt',
@@ -147,7 +147,7 @@ describe('Github Node - File Create/Edit Operations', () => {
 
 		it('should convert plain text to base64 when fileContent is not base64', async () => {
 			const plainTextContent = 'Hello, World! This is plain text.';
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: any) => {
 					const params: Record<string, any> = {
 						resource: 'file',
@@ -164,7 +164,7 @@ describe('Github Node - File Create/Edit Operations', () => {
 				},
 			);
 
-			(GenericFunctions.githubApiRequest as jest.Mock).mockResolvedValue({
+			(GenericFunctions.githubApiRequest as Mock).mockResolvedValue({
 				content: {
 					name: 'file.txt',
 					path: 'test/file.txt',
@@ -193,7 +193,7 @@ describe('Github Node - File Create/Edit Operations', () => {
 
 	describe('File Edit - Binary Data', () => {
 		it('should get file SHA and convert buffer to base64 for edit operation', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: any) => {
 					const params: Record<string, any> = {
 						resource: 'file',
@@ -217,14 +217,12 @@ describe('Github Node - File Create/Edit Operations', () => {
 				fileName: 'test.txt',
 			};
 			const expectedBuffer = Buffer.from('updated content');
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
-				expectedBuffer,
-			);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(expectedBuffer);
 
-			(GenericFunctions.getFileSha as jest.Mock).mockResolvedValue('existing-sha-123');
+			(GenericFunctions.getFileSha as Mock).mockResolvedValue('existing-sha-123');
 
-			(GenericFunctions.githubApiRequest as jest.Mock).mockResolvedValue({
+			(GenericFunctions.githubApiRequest as Mock).mockResolvedValue({
 				content: {
 					name: 'file.txt',
 					path: 'test/file.txt',

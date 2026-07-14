@@ -1,0 +1,114 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Use tools_echo to echo messages. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Echo \"needs approval\" using tools_echo."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "tools_echo",
+					"description": "Echo the message back as-is",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"message": {
+								"type": "string",
+								"description": "Message to echo"
+							}
+						},
+						"required": ["message"]
+					}
+				},
+				{
+					"name": "tools_add",
+					"description": "Add two numbers together",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"]
+					}
+				},
+				{
+					"name": "tools_image",
+					"description": "Return a small image with a caption",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"caption": {
+								"type": "string",
+								"description": "Image caption"
+							}
+						},
+						"required": ["caption"]
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013cd544d8fda3010bdefaf88e61c24a04d917c5cad7a68ab4aed7657aa4a650df1405c1c3b6b3b5129f27faf0c041216d8bd143537bf379399375fd490f62c29c9395c10771eadbf11e891256bf0ab8a80418f84b47d035b4369042960902bac050d0a94cb7af076900dc6c371361a0e47908214f11f6ec187a30f93729565e3dbc7af7231fffef8e7a17c98cd9f203d8a042958a32280ce49e751c7b0b9d19eb407f6e3670ace9b8a5b426734305d2bb5831c3dd5a473ea81823c4ae55aac6eb397baaa3df76649da019bbc19a690635e10cf2da19746f3bec59eb784e21cd7fac6005415549245c5b3f2b9fd811d15c76c48c1d4be0b65590a8e6c2373e25e920506b13202ad8845d673b251385f900106da788e0d4a8533451042d2fbc2cd0d6d1bbf2b2a9f29932f4fb7ff84c926a0a0df5bd95d3eaadef9796314af1db52310df351f8e26d297774df1e5ded7f7efbeddbeffa43fae3e379082c6b2f5739cf2c26cc254b507b60eb1bc4a45d9fb00425aca7d5fdc415925f5e2484a02118473ea05298f97d56f4c7aeab7c821a96d1f7f39a3f7c6155a2f516d406000e1520bae94c47ada2edb14188417e6e24a492553d044c225585516c26b26f64a999906ff9722a9290408e737d8542f2db0a93a299cac717bf14f4aea91d091d0bbc9ddf57fe5650effee343fbba5e182ea5335ec72b077fc0b30f98a673e070000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:52Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:52Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:52Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:52Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a154f8a02a415b7f-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Fri, 03 Jul 2026 09:47:52 GMT",
+			"request-id": "req_011Cceuukr6ENrt6ox7sB9n7",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-7abd50dc0cdbb86530a4174023892889-c82228692580835e-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

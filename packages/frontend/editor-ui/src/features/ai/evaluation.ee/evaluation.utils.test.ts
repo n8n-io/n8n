@@ -4,8 +4,10 @@ import {
 	applyCachedVisibility,
 	computeDelta,
 	computeDurationMs,
+	extractAnswerText,
 	formatDeltaPercent,
 	formatDuration,
+	formatMetricAverage,
 	formatMetricLabel,
 	formatMetricPercent,
 	formatMetricRawScore,
@@ -1288,6 +1290,24 @@ describe('utils', () => {
 		});
 	});
 
+	describe('formatMetricAverage', () => {
+		it('returns the "X / 5" average form for AI-based metrics', () => {
+			expect(formatMetricAverage(5, { category: 'aiBased' })).toBe('5 / 5');
+			expect(formatMetricAverage(4.2, { category: 'aiBased' })).toBe('4.2 / 5');
+			expect(formatMetricAverage(1, { category: 'aiBased' })).toBe('1 / 5');
+		});
+		it('returns the 0-1 average to two decimals for normalized metrics', () => {
+			expect(formatMetricAverage(0.75, { category: 'categorization' })).toBe('0.75');
+			expect(formatMetricAverage(1, { category: 'toolsUsed' })).toBe('1.00');
+			expect(formatMetricAverage(0, { category: 'toolsUsed' })).toBe('0.00');
+			expect(formatMetricAverage(0.5, { category: 'custom' })).toBe('0.50');
+		});
+		it('returns a dash for missing or NaN values', () => {
+			expect(formatMetricAverage(undefined, { category: 'aiBased' })).toBe('–');
+			expect(formatMetricAverage(NaN, { category: 'categorization' })).toBe('–');
+		});
+	});
+
 	describe('formatMetricRawScore', () => {
 		it('returns the integer x/5 form for AI-based metrics', () => {
 			expect(formatMetricRawScore(5, { category: 'aiBased' })).toBe('5/5');
@@ -1428,6 +1448,42 @@ describe('utils', () => {
 			expect(getMetricCategory('customMetrics')).toBe('custom');
 			expect(getMetricCategory(undefined)).toBe('custom');
 			expect(getMetricCategory('madeUpType')).toBe('custom');
+		});
+	});
+
+	describe('extractAnswerText', () => {
+		it('returns null as empty string', () => {
+			expect(extractAnswerText(null)).toBe('');
+		});
+		it('returns undefined as empty string', () => {
+			expect(extractAnswerText(undefined)).toBe('');
+		});
+		it('converts a number primitive to a string', () => {
+			expect(extractAnswerText(42)).toBe('42');
+		});
+		it('passes a string primitive through unchanged', () => {
+			expect(extractAnswerText('hi')).toBe('hi');
+		});
+		it('extracts the output field when present', () => {
+			expect(extractAnswerText({ output: 'Paris' })).toBe('Paris');
+		});
+		it('falls back to text when output is absent', () => {
+			expect(extractAnswerText({ text: 'x' })).toBe('x');
+		});
+		it('falls back to response when output and text are absent', () => {
+			expect(extractAnswerText({ response: 'y' })).toBe('y');
+		});
+		it('JSON.stringifies a preferred field that is itself an object', () => {
+			expect(extractAnswerText({ output: { a: 1 } })).toBe('{"a":1}');
+		});
+		it('uses the single key value when no preferred field exists', () => {
+			expect(extractAnswerText({ answer: 'z' })).toBe('z');
+		});
+		it('JSON.stringifies the whole object for multi-key non-preferred objects', () => {
+			expect(extractAnswerText({ a: 1, b: 2 })).toBe(JSON.stringify({ a: 1, b: 2 }));
+		});
+		it('JSON.stringifies a single-key value that is itself an object', () => {
+			expect(extractAnswerText({ nested: { x: 1 } })).toBe('{"x":1}');
 		});
 	});
 });

@@ -7,6 +7,7 @@ import {
 	type InterruptibleToolContext,
 	type ToolContext,
 } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	ROOT_CONTEXT,
 	SpanStatusCode,
@@ -42,6 +43,7 @@ import {
 	GEN_AI_COMPLETION,
 	GEN_AI_PROMPT,
 	mergeTraceInputs,
+	rawTracePayload,
 	redactLangSmithTelemetrySpan,
 	sanitizeTracePayload,
 	sanitizeTraceValue,
@@ -51,7 +53,6 @@ import {
 } from './trace-payloads';
 import type { IdRemapper, TraceIndex, TraceWriter } from './trace-replay';
 import { PURE_REPLAY_TOOLS } from './trace-replay';
-import { isRecord } from '../utils/stream-helpers';
 
 export {
 	buildAgentTraceInputs,
@@ -337,11 +338,24 @@ async function finishProductSpan(
 	}
 
 	if (options?.outputs !== undefined) {
-		const completion = stringifyTracePayload(options.outputs);
+		let completion: string | undefined;
+		let runOutputs: Record<string, unknown> | undefined;
+		if (options.rawOutputs) {
+			// Lossless pre-bounded payload; the export scrubber still redacts inside it.
+			const raw = rawTracePayload(options.outputs);
+			try {
+				completion = JSON.stringify(raw);
+				runOutputs = raw;
+			} catch {
+				// Unserializable (cycles) — fall through to the sanitized path.
+			}
+		}
+		completion ??= stringifyTracePayload(options.outputs);
+		runOutputs ??= sanitizeTracePayload(options.outputs);
 		if (completion !== undefined) {
 			attributes[GEN_AI_COMPLETION] = completion;
 		}
-		run.outputs = sanitizeTracePayload(options.outputs);
+		run.outputs = runOutputs;
 	}
 
 	run.endTime = Date.now();
@@ -652,6 +666,11 @@ function readBooleanEnvFlag(value: string | undefined): boolean | undefined {
 	return undefined;
 }
 
+// LANGSMITH_PROJECT lets deployments (e.g. eval CI) route product traces off the default project.
+function resolveDefaultProjectName(): string {
+	return process.env.LANGSMITH_PROJECT ?? process.env.LANGCHAIN_PROJECT ?? DEFAULT_PROJECT_NAME;
+}
+
 function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
 	if (readBooleanEnvFlag(process.env.N8N_DIAGNOSTICS_ENABLED) === false) {
 		return false;
@@ -933,6 +952,7 @@ async function startAndFinishProductChildSpan(
 		metadata?: Record<string, unknown>;
 		inputs?: unknown;
 		outputs?: unknown;
+		rawOutputs?: boolean;
 		error?: string;
 		forceFlush?: boolean;
 	},
@@ -956,12 +976,62 @@ async function startAndFinishProductChildSpan(
 	}
 	await finishProductSpanBestEffort(currentTrace.runtime, childRun, {
 		...(options.outputs !== undefined ? { outputs: options.outputs } : {}),
+		...(options.rawOutputs ? { rawOutputs: true } : {}),
 		...(options.error ? { error: options.error } : {}),
 		metadata: {
 			final_status: options.error ? 'error' : 'completed',
 		},
 		forceFlush: options.forceFlush,
 	});
+}
+
+/**
+ * Emit a trace-only child run, preferring the current turn's ambient trace: a
+ * tool suspended in one turn and resumed in a later one holds a stale handle
+ * whose shut-down runtime silently exports nothing. Returns the path taken.
+ */
+export async function emitTraceOnlyChildRun(
+	fallbackTracing: InstanceAiTraceContext | undefined,
+	init: InstanceAiTraceRunInit,
+	finish: { outputs: unknown; rawOutputs?: boolean },
+): Promise<'ambient' | 'handle' | 'skipped'> {
+	// Raw payloads are flagged in metadata so the export scrubber lifts its
+	// structural depth cap for them — keyed on producer-set metadata, not on a
+	// span name any tool could claim.
+	const metadata = finish.rawOutputs
+		? { ...init.metadata, raw_trace_payload: true }
+		: init.metadata;
+	const currentTrace = getCurrentProductTrace();
+	if (currentTrace) {
+		await startAndFinishProductChildSpan(currentTrace, {
+			name: init.name,
+			canonicalName: init.canonicalName,
+			runType: init.runType,
+			tags: init.tags,
+			metadata,
+			inputs: init.inputs,
+			outputs: finish.outputs,
+			rawOutputs: finish.rawOutputs,
+		});
+		return 'ambient';
+	}
+	// A dead handle's runs are spanless and export nothing — don't claim 'handle'.
+	if (fallbackTracing && (fallbackTracing.isLive?.() ?? true)) {
+		try {
+			const run = await fallbackTracing.startChildRun(fallbackTracing.actorRun, {
+				...init,
+				metadata,
+			});
+			await fallbackTracing.finishRun(run, {
+				outputs: finish.outputs,
+				...(finish.rawOutputs ? { rawOutputs: true } : {}),
+			});
+			return 'handle';
+		} catch {
+			// Best-effort: tracing must never break the caller.
+		}
+	}
+	return 'skipped';
 }
 
 async function traceProductSuspendableToolExecute(
@@ -1126,6 +1196,7 @@ function createTraceContext(
 		messageRun: rootRun,
 		orchestratorRun: actorRun,
 		startChildRun,
+		isLive: () => !otelRuntime.shutdown,
 		withRunTree,
 		withActiveSpan,
 		toHeaders: () => ({}),
@@ -1278,11 +1349,20 @@ function recordWrapTool(
 			const resumeData = isInterruptibleToolContext(context) ? context.resumeData : undefined;
 			const inputRecord = (input ?? {}) as Record<string, unknown>;
 			let capturedSuspendPayload: Record<string, unknown> | undefined;
+			let recordedSuspend = false;
 			const wrappedContext: NativeToolContext = isInterruptibleToolContext(context)
 				? {
 						...context,
 						suspend: async (suspendPayload: unknown) => {
 							capturedSuspendPayload = isRecord(suspendPayload) ? suspendPayload : {};
+							traceWriter.recordToolSuspend(
+								agentRole,
+								tool.name,
+								inputRecord,
+								{},
+								capturedSuspendPayload,
+							);
+							recordedSuspend = true;
 							return await context.suspend(suspendPayload);
 						},
 					}
@@ -1300,13 +1380,15 @@ function recordWrapTool(
 					resumeData as Record<string, unknown>,
 				);
 			} else if (capturedSuspendPayload) {
-				traceWriter.recordToolSuspend(
-					agentRole,
-					tool.name,
-					inputRecord,
-					{},
-					capturedSuspendPayload,
-				);
+				if (!recordedSuspend) {
+					traceWriter.recordToolSuspend(
+						agentRole,
+						tool.name,
+						inputRecord,
+						{},
+						capturedSuspendPayload,
+					);
+				}
 			} else {
 				traceWriter.recordToolCall(agentRole, tool.name, inputRecord, outputRecord);
 			}
@@ -1626,7 +1708,7 @@ export async function createInstanceAiTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName = options.projectName ?? resolveDefaultProjectName();
 	const baseMetadata = await buildBaseMetadata(options);
 
 	const createTraceRuns = async () => {
@@ -1688,7 +1770,8 @@ export async function continueInstanceAiTraceContext(
 	}
 
 	const baseMetadata = await buildBaseMetadata(options);
-	const projectName = existingContext?.projectName ?? options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName =
+		existingContext?.projectName ?? options.projectName ?? resolveDefaultProjectName();
 	const continuedMetadata =
 		existingContext && existingContext.rootRun.traceId !== 'stub'
 			? {
@@ -1762,7 +1845,7 @@ export async function createDetachedSubAgentTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName = options.projectName ?? resolveDefaultProjectName();
 	const baseMetadata = await buildBaseMetadata(options);
 
 	const createDetachedRuns = async () => {
@@ -1821,7 +1904,7 @@ export async function createInternalOperationTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName = options.projectName ?? resolveDefaultProjectName();
 	const baseMetadata = await buildBaseMetadata({
 		...options,
 		messageId: options.messageId ?? `internal:${options.operationName}:${options.runId}`,

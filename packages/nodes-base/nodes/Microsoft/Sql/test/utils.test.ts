@@ -3,6 +3,8 @@ import type { IResult } from 'mssql';
 import type mssql from 'mssql';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
+import type { MockInstance } from 'vitest';
+
 import {
 	configurePool,
 	copyInputItem,
@@ -17,7 +19,7 @@ import {
 } from '../GenericFunctions';
 
 describe('MSSQL tests', () => {
-	let querySpy: jest.SpyInstance;
+	let querySpy: MockInstance;
 	let request: Request;
 
 	const assertParameters = (parameters: unknown[][] | IDataObject) => {
@@ -36,8 +38,8 @@ describe('MSSQL tests', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		querySpy = jest.spyOn(Request.prototype, 'query').mockImplementation(async function (
+		vi.resetAllMocks();
+		querySpy = vi.spyOn(Request.prototype, 'query').mockImplementation(async function (
 			this: Request,
 		) {
 			// eslint-disable-next-line @typescript-eslint/no-this-alias

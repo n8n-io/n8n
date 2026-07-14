@@ -2,7 +2,7 @@
 // Shared types for the instance-ai workflow test case evaluator
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '@n8n/api-types';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
@@ -150,6 +150,12 @@ export interface EventOutcome {
 	agentActivities: AgentActivity[];
 }
 
+export interface BuildTrace {
+	finalText: string;
+	toolCalls: CapturedToolCall[];
+	agentActivities: AgentActivity[];
+}
+
 // ---------------------------------------------------------------------------
 // Workflow evaluation test cases
 // ---------------------------------------------------------------------------
@@ -168,22 +174,57 @@ export interface ConversationTurn {
 	text: string;
 }
 
+export interface TestCaseCredential {
+	/** n8n credential type name, e.g. `slackApi`. Must have a template in credentials/seeder.ts. */
+	type: string;
+	/** Display name; defaults to the template's name, auto-suffixed on duplicates. */
+	name?: string;
+}
+
 export interface WorkflowTestCase {
+	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
+	description?: string;
 	/**
-	 * Hand-authored conversation that drives the build. Must have ≥1 turn,
-	 * and the first turn must be `user`.
-	 *
-	 * - One user turn, no assistant turns → auto-approve mode (single-prompt build).
-	 * - Anything else → multi-turn UserProxyLlm engages (answers clarifications,
-	 *   sends follow-ups consuming `messageBudget`).
+	 * Hand-authored conversation that drives the build (≥1 turn, first `user`).
+	 * One user turn → auto-approve single-prompt build; more → multi-turn proxy.
+	 * Required unless `seedThread` is set, in which case it's optional and
+	 * continues after the trace's live turn (`[<live turn>, ...conversation]`).
 	 */
-	conversation: ConversationTurn[];
+	conversation?: ConversationTurn[];
 	complexity: 'simple' | 'medium' | 'complex';
 	tags: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-	executionScenarios: ExecutionScenario[];
+	/** Optional — a build-only case is graded by process/outcome expectations instead. */
+	executionScenarios?: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
+	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
+	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */
+	processExpectations?: string[];
+	/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
+	 *  so they also run in prebuilt/MCP runs. Counted toward the pass rate alongside scenarios. */
+	outcomeExpectations?: string[];
+	/**
+	 * Credentials visible to this case's build. Created for real before the build
+	 * and pinned as the thread's entire credential view — cases without this
+	 * field build with an empty view (everything mocks).
+	 */
+	credentials?: TestCaseCredential[];
+	/** Synthetic seed file (messages + workflows) restored before the live turn.
+	 *  Synthetic fixtures only; mutually exclusive with the other seeds. */
+	seedFile?: string;
+	/** Prose turns seeded as plain-text history (no tool calls/workflows).
+	 *  Mutually exclusive with `seedFile`. */
+	priorConversation?: ConversationTurn[];
+	/** Reproduce a real conversation from its LangSmith trace at run time: restore
+	 *  up to the live turn (the last user message, or one pinned by `liveTurnRunId`)
+	 *  and send that live. Commits only the thread id (workspace auto-discovered;
+	 *  `project`/`endpoint` override the source project/tenant). Supplies the live
+	 *  turn, so `conversation` is optional. Transient (~14d). */
+	seedThread?: { threadId: string; project?: string; endpoint?: string; liveTurnRunId?: string };
+	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
+	datasets: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -194,16 +235,34 @@ export interface ExecutionScenarioResult {
 	scenario: ExecutionScenario;
 	success: boolean;
 	evalResult?: InstanceAiEvalExecutionResult;
+	/** Workflow actually executed for this scenario, after multi-workflow routing. */
+	workflowId?: string;
 	score: number;
 	reasoning: string;
 	/** Root cause category when the scenario fails */
 	failureCategory?: string;
 	/** Detailed root cause explanation */
 	rootCause?: string;
+	/** Verifier returned no verdict after all attempts (infra failure, not a
+	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
+	 *  mirroring `BuildExpectationResult.incomplete`. */
+	incomplete?: boolean;
+}
+
+/** Verdict for one author-written build expectation. Scored as a unit in the
+ *  pass rate alongside execution scenarios. */
+export interface BuildExpectationResult {
+	expectation: string;
+	pass: boolean;
+	reason: string;
+	/** Judge returned no verdict (flaky/partial). Rendered neutrally, kept out of the count. */
+	incomplete?: boolean;
 }
 
 export interface WorkflowTestCaseResult {
 	testCase: WorkflowTestCase;
+	/** Source-file slug (matches the PR-comment / comparison label, for consistency). */
+	fileSlug?: string;
 	workflowId?: string;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
@@ -214,6 +273,16 @@ export interface WorkflowTestCaseResult {
 	threadId?: string;
 	transcript?: TranscriptTurn[];
 	workflowChecks?: CheckOutcome[];
+	/** Captured build-time sub-agent/tool activity for builder debugging. */
+	buildTrace?: BuildTrace;
+	/** Per-expectation verdicts from the build-expectations judge. Aggregated as
+	 *  scoring units alongside execution scenarios. */
+	buildExpectationResults?: BuildExpectationResult[];
+	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
+	 *  configs each get their own URL for canvas/execution links. */
+	n8nBaseUrl?: string;
+	/** Per-run LLM step debug captured from the instance-ai debug API after build. */
+	runDebug?: InstanceAiRunDebugResponse[];
 }
 
 // ---------------------------------------------------------------------------
@@ -222,21 +291,58 @@ export interface WorkflowTestCaseResult {
 
 export interface TranscriptTurn {
 	userMessage?: string;
-	agentText: string;
-	toolInteractions: ToolInteraction[];
+	/** Agent narration and tool interactions, interleaved in the order they occurred. */
+	steps: TranscriptStep[];
+	/** True for turns restored from a conversation seed — context that predates
+	 *  the evaluated run, as opposed to behaviour captured live. */
+	seeded?: boolean;
 }
+
+/** One ordered step within a turn: a slice of agent narration or a tool interaction. */
+/** Synthetic event type injected into the captured stream at each user-message
+ *  send, so the transcript can group an agent's runs (and any resumes, which
+ *  each emit their own `run-start`) under the message that triggered them.
+ *  Ignored by the metric/outcome consumers (unknown type → default case). */
+export const USER_TURN_EVENT = 'eval-user-turn';
+
+export type TranscriptStep = ToolInteraction | { kind: 'agent-text'; text: string };
 
 export type ToolInteraction =
 	| { kind: 'plan'; tasks: PlanTask[] }
 	| { kind: 'ask-user'; questions: AskUserQuestion[]; answers?: AskUserAnswer[] }
+	| {
+			kind: 'setup-card';
+			requests: SetupCardRequest[];
+			/** What the proxy did with the card. */
+			outcome: 'filled' | 'skipped' | 'declined' | 'pending';
+			/** Parameter names the proxy filled, when outcome is 'filled'. */
+			filled?: string[];
+	  }
 	| {
 			kind: 'setup-wizard';
 			completedNodes: SetupWizardCompletedNode[];
 			skippedNodes: SetupWizardSkippedNode[];
 			reason?: string;
 	  }
-	| { kind: 'confirmation'; toolName: string; resumeReason: string; approved?: boolean }
-	| { kind: 'tool-call'; toolName: string };
+	| {
+			kind: 'confirmation';
+			toolName: string;
+			resumeReason: string;
+			approved?: boolean;
+			/** Prompt the agent showed when requesting confirmation. */
+			message?: string;
+			/** Free-text the user sent with their decision (e.g. plan-review feedback). */
+			feedback?: string;
+	  }
+	| {
+			kind: 'tool-call';
+			toolName: string;
+			toolCallId?: string;
+			args?: Record<string, unknown>;
+			/** Tool output (success) or error message — paired to the call by toolCallId. */
+			result?: unknown;
+			error?: string;
+	  };
 
 export interface PlanTask {
 	title?: string;
@@ -266,6 +372,13 @@ export interface SetupWizardSkippedNode {
 	credentialType?: string;
 }
 
+export interface SetupCardRequest {
+	nodeName: string;
+	credentialType?: string;
+	/** Non-credential parameters the card asks the user to fill, by name. */
+	params?: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Multi-run aggregation
 // ---------------------------------------------------------------------------
@@ -273,6 +386,8 @@ export interface SetupWizardSkippedNode {
 export interface ExecutionScenarioAggregation {
 	scenario: ExecutionScenario;
 	runs: ExecutionScenarioResult[];
+	/** Runs where the verifier returned a verdict (excludes `incomplete`). */
+	evaluatedCount: number;
 	passCount: number;
 	passRate: number;
 	/** probability at least 1 of k attempts passes */
@@ -281,11 +396,25 @@ export interface ExecutionScenarioAggregation {
 	passHatK: number[];
 }
 
+/** A build expectation aggregated across runs as a measured unit (granular, alongside scenarios). */
+export interface BuildExpectationAggregation {
+	expectation: string;
+	runs: BuildExpectationResult[];
+	/** Runs where the judge returned a verdict (excludes `incomplete`). */
+	evaluatedCount: number;
+	passCount: number;
+	passRate: number;
+	passAtK: number[];
+	passHatK: number[];
+}
+
 export interface TestCaseAggregation {
 	testCase: WorkflowTestCase;
 	runs: WorkflowTestCaseResult[];
 	buildSuccessCount: number;
 	executionScenarios: ExecutionScenarioAggregation[];
+	/** Build expectations aggregated as measured units (counted in the pass rate). */
+	buildExpectations: BuildExpectationAggregation[];
 }
 
 export interface MultiRunEvaluation {

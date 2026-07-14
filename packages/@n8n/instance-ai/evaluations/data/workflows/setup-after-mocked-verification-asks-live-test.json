@@ -1,0 +1,48 @@
+{
+	"description": "After setup completes, if the workflow was verified with mocked or simulated data, the agent should ask whether to run a live test without mocks and must not start a live run without user consent.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Build a workflow named \"Pokemon digest live-test ask\".",
+				"Every weekday at 9am, call GET https://pokeapi.co/api/v2/pokemon/pikachu without credentials, format Pikachu's name, ID, height, weight, and types, and post a concise summary to Slack.",
+				"I don't know the Slack channel yet."
+			]
+		},
+		{
+			"role": "user",
+			"text": "[When setup asks for the Slack channel, fill it with #pokemon-digest. If the agent asks whether to run a live test without mocked data after setup, say yes. Approve the live run/execute-workflow confirmation.]"
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": [
+		"behaviour",
+		"setup",
+		"verification",
+		"mocking",
+		"live-test",
+		"schedule",
+		"slack",
+		"http"
+	],
+	"credentials": [{ "type": "slackApi" }],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The agent verified the built workflow with mocked, pinned, or simulated data rather than blocking verification until all real setup details were available.",
+		"After setup filled the Slack channel as #pokemon-digest, the agent acknowledged that prior verification used mocked or simulated data and asked whether the user wanted to run a live test without mocks.",
+		"After the user agreed, the agent ran or requested approval to run the workflow without mocked/pinned data, received approval if a live-run confirmation was shown, and reported the live no-mock test result separately from the earlier mocked verification."
+	],
+	"outcomeExpectations": [
+		"The final workflow is named \"Pokemon digest live-test ask\", runs every weekday at 9am, fetches Pikachu from https://pokeapi.co/api/v2/pokemon/pikachu using an HTTP Request or equivalent API call with no credentials, formats Pikachu's name, ID, height, weight, and types, and posts a concise summary to Slack #pokemon-digest."
+	],
+	"executionScenarios": [
+		{
+			"name": "pokemon-digest",
+			"description": "The PokeAPI returns Pikachu data, which is formatted and sent to Slack.",
+			"dataSetup": "The PokeAPI response for Pikachu includes name pikachu, id 25, height 4, weight 60, and type electric. The Slack message node posts to #pokemon-digest and returns { \"ok\": true, \"ts\": \"1700000000.000300\" }.",
+			"successCriteria": "The workflow executes without errors. It fetches Pikachu from the no-auth PokeAPI endpoint, formats name, ID, height, weight, and types, and posts a concise weekday digest to #pokemon-digest. The initial execution scenario may use mocked API/Slack responses; the process expectations separately verify that the agent later ran or sought approval for a live no-mock test after setup."
+		}
+	]
+}

@@ -15,7 +15,8 @@ export type McpSettingsResponse = {
 export type ToggleWorkflowsMcpAccessTarget =
 	| { workflowIds: string[] }
 	| { projectId: string }
-	| { folderId: string };
+	| { folderId: string }
+	| { allWorkflows: true };
 
 export type ToggleWorkflowsMcpAccessResponse = {
 	updatedCount: number;
@@ -47,9 +48,23 @@ export async function rotateApiKey(context: IRestApiContext): Promise<ApiKey> {
 	return await makeRestApiRequest(context, 'POST', '/mcp/api-key/rotate');
 }
 
+export async function getAllowedRedirectUris(
+	context: IRestApiContext,
+): Promise<{ uris: string[] }> {
+	return await makeRestApiRequest(context, 'GET', '/mcp/oauth/allowed-redirect-uris');
+}
+
+export async function updateAllowedRedirectUris(
+	context: IRestApiContext,
+	uris: string[],
+): Promise<{ success: boolean }> {
+	return await makeRestApiRequest(context, 'PATCH', '/mcp/oauth/allowed-redirect-uris', { uris });
+}
+
 /**
  * Bulk-toggles MCP availability for a set of workflows scoped by either an
- * explicit id list, a project, or a folder (+ its descendants).
+ * explicit id list, a project, a folder (+ its descendants), or all
+ * workflows the user can update.
  */
 export async function toggleWorkflowsMcpAccessApi(
 	context: IRestApiContext,

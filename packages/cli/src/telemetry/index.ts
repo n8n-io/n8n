@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRelationRepository,
@@ -9,12 +10,17 @@ import {
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import axios from 'axios';
+import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
-import type { IAgentExecutionTrackProperties, IExecutionTrackProperties } from '@/interfaces';
+import type {
+	IAgentConfigurationTelemetryProperties,
+	IAgentExecutionTrackProperties,
+	IAgentTurnFinishedTrackProperties,
+	IExecutionTrackProperties,
+} from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
@@ -71,9 +77,29 @@ interface IAgentExecutionCountsBuffer {
 	};
 }
 
+interface IAgentSessionMetrics {
+	latency_ms: number;
+	cost: number;
+	tool_call_count: number;
+	num_skills: number;
+	turn_count: number;
+}
+
+interface IAgentSessionMetricsBuffer {
+	[bufferKey: string]: {
+		agent_id: string;
+		run_type: IAgentTurnFinishedTrackProperties['run_type'];
+		turn_status: IAgentTurnFinishedTrackProperties['turn_status'];
+		configuration: IAgentConfigurationTelemetryProperties;
+		sessions: Record<string, IAgentSessionMetrics>;
+	};
+}
+
 @Service()
 export class Telemetry {
 	private rudderStack?: RudderStack;
+
+	private userCloudId?: string;
 
 	private pulseIntervalReference: NodeJS.Timeout;
 
@@ -83,6 +109,8 @@ export class Telemetry {
 
 	private agentExecutionCountsBuffer: IAgentExecutionCountsBuffer = {};
 
+	private agentSessionMetricsBuffer: IAgentSessionMetricsBuffer = {};
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly postHog: PostHogClient,
@@ -91,6 +119,7 @@ export class Telemetry {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
 		private readonly errorReporter: ErrorReporter,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	// PostHog groupIdentify only accepts flat objects with string or number values, function sanitizes objects to match that format.
@@ -152,13 +181,20 @@ export class Telemetry {
 			const logLevel = this.globalConfig.logging.level;
 
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
-			const axiosInstance = axios.create();
-			axiosInstance.interceptors.request.use((cfg) => {
-				cfg.headers.setContentType('application/json', false);
-				return cfg;
-			});
+
+			const { httpAgent, httpsAgent } = this.outboundHttp
+				.transport({
+					ssrf: 'disabled', // The data-plane host is fixed and the SDK owns the request lifecycle, so SSRF is disabled.
+				})
+				.getNodeAgent();
+			const axiosConfig: AxiosRequestConfig = {
+				httpAgent,
+				httpsAgent,
+				headers: { 'Content-Type': 'application/json' },
+			};
+
 			this.rudderStack = new RudderStack(key, {
-				axiosInstance,
+				axiosConfig,
 				logLevel,
 				dataPlaneUrl,
 				gzip: false,
@@ -187,6 +223,7 @@ export class Telemetry {
 
 		this.flushWorkflowExecutionCounts();
 		this.flushAgentExecutionCounts();
+		this.flushAgentSessionMetrics();
 
 		// Flush API invocation counts
 		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
@@ -273,6 +310,47 @@ export class Telemetry {
 		this.agentExecutionCountsBuffer = {};
 	}
 
+	private getAgentSessionMetricsBufferKey(properties: IAgentTurnFinishedTrackProperties) {
+		return [
+			properties.agent_id,
+			properties.run_type,
+			properties.turn_status,
+			JSON.stringify(properties.configuration),
+		].join(':');
+	}
+
+	private flushAgentSessionMetrics() {
+		for (const bucket of Object.values(this.agentSessionMetricsBuffer)) {
+			const sessions = Object.values(bucket.sessions);
+			if (sessions.length === 0) continue;
+
+			const latencyMsSum = sessions.reduce((total, session) => total + session.latency_ms, 0);
+			const costSum = sessions.reduce((total, session) => total + session.cost, 0);
+			const toolCallCountSum = sessions.reduce(
+				(total, session) => total + session.tool_call_count,
+				0,
+			);
+			const numSkillsSum = sessions.reduce((total, session) => total + session.num_skills, 0);
+			const turnCount = sessions.reduce((total, session) => total + session.turn_count, 0);
+
+			this.track('Agent session metrics', {
+				event_version: '1',
+				agent_id: bucket.agent_id,
+				...bucket.configuration,
+				run_type: bucket.run_type,
+				turn_status: bucket.turn_status,
+				session_count: sessions.length,
+				turn_count: turnCount,
+				latency_ms_sum: latencyMsSum,
+				cost_sum: costSum,
+				tool_call_count_sum: toolCallCountSum,
+				num_skills_sum: numSkillsSum,
+			});
+		}
+
+		this.agentSessionMetricsBuffer = {};
+	}
+
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
 		if (this.rudderStack) {
 			const execTime = new Date();
@@ -306,8 +384,8 @@ export class Telemetry {
 				this.addExecutionTrackData(workflowId, sourceKey, execTime);
 			}
 
-			if (properties.used_dynamic_credentials) {
-				this.track('Workflow execution with dynamic credentials', properties);
+			if (properties.used_end_user_credentials) {
+				this.track('Workflow execution with end-user credentials', properties);
 			}
 
 			if (
@@ -359,6 +437,34 @@ export class Telemetry {
 		agentExecutionCounts.tool_call_count += tool_call_count;
 	}
 
+	trackAgentTurnFinished(properties: IAgentTurnFinishedTrackProperties) {
+		if (!this.rudderStack) return;
+
+		const bufferKey = this.getAgentSessionMetricsBufferKey(properties);
+		this.agentSessionMetricsBuffer[bufferKey] = this.agentSessionMetricsBuffer[bufferKey] ?? {
+			agent_id: properties.agent_id,
+			run_type: properties.run_type,
+			turn_status: properties.turn_status,
+			configuration: properties.configuration,
+			sessions: {},
+		};
+
+		const bucket = this.agentSessionMetricsBuffer[bufferKey];
+		const session = bucket.sessions[properties.thread_id] ?? {
+			latency_ms: 0,
+			cost: 0,
+			tool_call_count: 0,
+			num_skills: properties.configuration.num_skills,
+			turn_count: 0,
+		};
+
+		session.latency_ms += properties.latency_ms;
+		session.cost += properties.cost;
+		session.tool_call_count += properties.tool_call_count;
+		session.turn_count++;
+		bucket.sessions[properties.thread_id] = session;
+	}
+
 	trackApiInvocation(properties: IApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
@@ -389,7 +495,7 @@ export class Telemetry {
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 
-	// Used for either adding properties to group (no userId provided), or attaching user to instance group (userId provided)
+	// Sets instance group properties and attaches user to instance group.
 	groupIdentify({
 		userId,
 		traits,
@@ -432,7 +538,6 @@ export class Telemetry {
 				userId: userId ? `${instanceId}#${userId}` : instanceId, // If no userId provided, falling back to instanceId for cross-compatibility
 				traits: { ...traits, instanceId },
 				context: {
-					// provide a fake IP address to instruct RudderStack to not use the user's IP address
 					ip: '0.0.0.0',
 				},
 			});
@@ -444,6 +549,10 @@ export class Telemetry {
 				properties: traits,
 			});
 		}
+	}
+
+	setUserCloudId(userCloudId?: string) {
+		this.userCloudId = userCloudId;
 	}
 
 	track(eventName: string, properties: ITelemetryTrackProperties = {}) {
@@ -464,7 +573,7 @@ export class Telemetry {
 			userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
 			event: eventName,
 			properties: updatedProperties,
-			context: {},
+			context: this.userCloudId ? { traits: { user_cloud_id: this.userCloudId } } : {},
 		};
 
 		// Build the actual payload that will be sent to RudderStack (with fake IP)
@@ -498,5 +607,9 @@ export class Telemetry {
 
 	getAgentExecutionCountsBuffer(): IAgentExecutionCountsBuffer {
 		return this.agentExecutionCountsBuffer;
+	}
+
+	getAgentSessionMetricsBuffer(): IAgentSessionMetricsBuffer {
+		return this.agentSessionMetricsBuffer;
 	}
 }

@@ -2,19 +2,22 @@ import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import {
-	createResultError,
-	createResultOk,
+	NodeHelpers,
+	type CredentialInformation,
 	type GenericValue,
 	type ICredentialDataDecryptedObject,
 	type ICredentialType,
-	type Result,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { getTrustedOAuthOrigins, parseOAuthCallbackMessage } from './oauthCallback';
 
 /**
  * Composable for OAuth credential type detection and authorization.
@@ -24,6 +27,7 @@ export function useCredentialOAuth() {
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const workflowsStore = useWorkflowsStore();
+	const rootStore = useRootStore();
 
 	const toast = useToast();
 	const i18n = useI18n();
@@ -108,10 +112,43 @@ export function useCredentialOAuth() {
 		);
 	}
 
-	function getManuallyConfigurableProperties(credentialType: ICredentialType) {
-		return credentialType.properties.filter(
-			(prop) => prop.type !== 'hidden' && prop.type !== 'notice',
-		);
+	/**
+	 * Returns properties the user must fill in. Walks the extends chain so
+	 * inherited fields (e.g. `clientId`/`clientSecret` from `oAuth2Api`) are
+	 * considered, and applies `displayOptions` against the effective defaults
+	 * — matching the credential edit modal's `credentialProperties` /
+	 * `displayCredentialParameter` logic.
+	 */
+	function getManuallyConfigurableProperties(credentialType: ICredentialType): INodeProperties[] {
+		const mergedProperties = getMergedCredentialProperties(credentialType.name);
+		const defaults: ICredentialDataDecryptedObject = {};
+		for (const prop of mergedProperties) {
+			defaults[prop.name] = prop.default as CredentialInformation;
+		}
+
+		return mergedProperties.filter((prop) => {
+			if (prop.type === 'hidden' || prop.type === 'notice') return false;
+			return NodeHelpers.displayParameter(defaults, prop, null, null);
+		});
+	}
+
+	function getMergedCredentialProperties(
+		credentialTypeName: string,
+		visited = new Set<string>(),
+	): INodeProperties[] {
+		if (visited.has(credentialTypeName)) return [];
+		visited.add(credentialTypeName);
+
+		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
+		if (!credentialType) return [];
+		if (credentialType.extends === undefined) return credentialType.properties;
+
+		const merged: INodeProperties[] = [];
+		for (const parentName of credentialType.extends) {
+			NodeHelpers.mergeNodeProperties(merged, getMergedCredentialProperties(parentName, visited));
+		}
+		NodeHelpers.mergeNodeProperties(merged, credentialType.properties);
+		return merged;
 	}
 
 	function hasManualCredentialInputFields(credentialType: ICredentialType): boolean {
@@ -172,36 +209,63 @@ export function useCredentialOAuth() {
 	async function waitForOAuthCallback(popup: Window, signal?: AbortSignal): Promise<boolean> {
 		return await new Promise((resolve) => {
 			const oauthChannel = new BroadcastChannel('oauth-callback');
+			const trustedOrigins = getTrustedOAuthOrigins(rootStore.urlBaseEditor);
 			let settled = false;
 
-			const settle = (result: boolean) => {
+			function settle(result: boolean) {
 				if (settled) return;
 				settled = true;
 				oauthChannel.close();
+				clearInterval(popupClosedPoll);
+				window.removeEventListener('message', onWindowMessage);
 				resolve(result);
-			};
+			}
+
+			function handleResult(result: boolean) {
+				if (settled) return;
+				popup.close();
+
+				if (result) {
+					toast.showMessage({
+						title: i18n.baseText('nodeCredentials.oauth.accountConnected'),
+						type: 'success',
+					});
+				} else {
+					toast.showMessage({
+						title: i18n.baseText('nodeCredentials.oauth.accountConnectionFailed'),
+						type: 'error',
+					});
+				}
+
+				settle(result);
+			}
+
+			// Cross-origin embed fallback: the callback page also posts to the opener.
+			function onWindowMessage(event: MessageEvent) {
+				const result = parseOAuthCallbackMessage(event, trustedOrigins);
+				if (result === null) return;
+				handleResult(result === 'success');
+			}
 
 			signal?.addEventListener('abort', () => {
 				settle(false);
 			});
 
 			oauthChannel.addEventListener('message', (event: MessageEvent) => {
-				popup.close();
+				handleResult(event.data === 'success');
+			});
 
-				if (event.data === 'success') {
-					toast.showMessage({
-						title: i18n.baseText('nodeCredentials.oauth.accountConnected'),
-						type: 'success',
-					});
-					settle(true);
-				} else {
-					toast.showMessage({
-						title: i18n.baseText('nodeCredentials.oauth.accountConnectionFailed'),
-						type: 'error',
-					});
+			window.addEventListener('message', onWindowMessage);
+
+			// Fallback: if the popup is closed without delivering a callback (e.g. the
+			// user closes it manually), no message ever arrives. Poll for the closed
+			// popup so the promise resolves and the listeners above are cleaned up
+			// instead of leaking and hanging indefinitely.
+			const popupClosedPoll = setInterval(() => {
+				if (popup.closed) {
 					settle(false);
 				}
-			});
+			}, 500);
 		});
 	}
 
@@ -256,10 +320,14 @@ export function useCredentialOAuth() {
 
 		let credential: ICredentialsResponse;
 		try {
+			const name = await credentialsStore.getNewCredentialName({
+				credentialTypeName,
+				fallbackName: credentialType.displayName,
+			});
 			credential = await credentialsStore.createNewCredential(
 				{
 					id: '',
-					name: credentialType.displayName,
+					name,
 					type: credentialTypeName,
 					data,
 				},

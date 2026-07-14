@@ -1,5 +1,6 @@
 import type {
 	IConnections,
+	IWorkflowGroup,
 	INodeTypeDescription,
 	NodeGroupValidationResult,
 	NodeSelectionValidationResult,
@@ -16,6 +17,10 @@ import type { INodeUi } from '@/Interface';
 
 export type SelectionValidationResult = NodeSelectionValidationResult<INodeUi>;
 export type GroupValidationResult = NodeGroupValidationResult<INodeUi>;
+
+type GroupValidationOptions = {
+	ignoredNodeGroupIds?: string[];
+};
 
 export function useSelectionValidation() {
 	const nodeTypesStore = useNodeTypesStore();
@@ -56,12 +61,36 @@ export function useSelectionValidation() {
 	function isSelectionGroupable(
 		nodeIds: string[],
 		connectionsBySourceNode?: IConnections,
+		options: GroupValidationOptions = {},
 	): GroupValidationResult {
 		const store = workflowDocumentStore.value;
+		const ignoredNodeGroupIds = new Set(options.ignoredNodeGroupIds ?? []);
+		const existingNodeGroups: IWorkflowGroup[] = (store?.allGroups ?? []).filter(
+			(group) => !ignoredNodeGroupIds.has(group.id),
+		);
+
 		return validateNodeSelectionForGrouping({
 			...getValidationInput(nodeIds, connectionsBySourceNode),
-			existingNodeGroups: store?.allGroups ?? [],
+			existingNodeGroups,
 		});
+	}
+
+	/**
+	 * Resolves a prospective group selection: drops ids that don't resolve to a
+	 * node, expands the rest with their attached sub-nodes, and validates the
+	 * result. Returns the expanded member ids when groupable, null otherwise.
+	 *
+	 * Group creation eligibility and execution must both go through this so the
+	 * checked selection and the created group can't diverge (e.g. stale ids
+	 * being validated away but still persisted as group members).
+	 */
+	function resolveGroupableNodeIds(nodeIds: string[]): string[] | null {
+		const store = workflowDocumentStore.value;
+		const resolvedIds = nodeIds.filter((id) => store?.getNodeById(id));
+		if (resolvedIds.length === 0) return null;
+
+		const expandedIds = expandSelectionWithSubNodes(resolvedIds);
+		return isSelectionGroupable(expandedIds).valid ? expandedIds : null;
 	}
 
 	function getValidationInput(nodeIds: string[], connectionsBySourceNode?: IConnections) {
@@ -86,5 +115,10 @@ export function useSelectionValidation() {
 		};
 	}
 
-	return { isSelectionExtractable, isSelectionGroupable, expandSelectionWithSubNodes };
+	return {
+		isSelectionExtractable,
+		isSelectionGroupable,
+		expandSelectionWithSubNodes,
+		resolveGroupableNodeIds,
+	};
 }

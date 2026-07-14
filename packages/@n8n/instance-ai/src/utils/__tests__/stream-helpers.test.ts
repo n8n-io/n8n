@@ -1,4 +1,6 @@
-import { isRecord, parseSuspension, asResumable, resumeAgentStream } from '../stream-helpers';
+import { isRecord } from '@n8n/utils/is-record';
+
+import { parseSuspension, asResumable, resumeAgentStream } from '../stream-helpers';
 
 describe('isRecord', () => {
 	it('returns true for plain objects', () => {
@@ -126,7 +128,7 @@ describe('parseSuspension', () => {
 
 describe('asResumable', () => {
 	it('casts agent to Resumable interface', () => {
-		const agent = { resume: jest.fn() };
+		const agent = { resume: vi.fn() };
 		const resumable = asResumable(agent);
 		expect(resumable.resume).toBe(agent.resume);
 	});
@@ -135,7 +137,7 @@ describe('asResumable', () => {
 describe('resumeAgentStream', () => {
 	it('uses native agent resume in stream mode', async () => {
 		const resumed = { runId: 'run-2' };
-		const agent = { resume: jest.fn().mockResolvedValue(resumed) };
+		const agent = { resume: vi.fn().mockResolvedValue(resumed) };
 
 		await expect(resumeAgentStream(agent, { approved: true }, { runId: 'run-1' })).resolves.toBe(
 			resumed,

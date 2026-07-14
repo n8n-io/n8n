@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INode, AssignmentCollectionValue } from 'n8n-workflow';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
@@ -6,17 +6,18 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
 
 import { metricHandlers } from '../utils/metricHandlers';
+import type { Mocked } from 'vitest';
 
 // Mock the validateEntry function
-jest.mock('../../Set/v2/helpers/utils', () => ({
-	validateEntry: jest.fn((name: string, _type: string, value: any) => ({
+vi.mock('../../Set/v2/helpers/utils', () => ({
+	validateEntry: vi.fn((name: string, _type: string, value: any) => ({
 		name,
 		value,
 	})),
 }));
 
 describe('metricHandlers', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
 
 	beforeEach(() => {
@@ -33,7 +34,7 @@ describe('metricHandlers', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('customMetrics', () => {
@@ -569,7 +570,7 @@ describe('metricHandlers', () => {
 	});
 
 	describe('helpfulness', () => {
-		let mockLLM: jest.Mocked<BaseLanguageModel>;
+		let mockLLM: Mocked<BaseLanguageModel>;
 
 		beforeEach(() => {
 			mockLLM = mock<BaseLanguageModel>();
@@ -587,14 +588,14 @@ describe('metricHandlers', () => {
 			const mockLLMWithStructuredOutput = mock<Runnable>();
 			mockLLMWithStructuredOutput.invoke.mockResolvedValue(mockResponse);
 
-			mockLLM.withStructuredOutput = jest.fn().mockReturnValue(mockLLMWithStructuredOutput);
+			mockLLM.withStructuredOutput = vi.fn().mockReturnValue(mockLLMWithStructuredOutput);
 
 			// Mock ChatPromptTemplate.fromMessages to return a chain that can be piped
 			const mockChatPromptTemplate = mock<ChatPromptTemplate>();
 			mockChatPromptTemplate.pipe.mockReturnValue(mockLLMWithStructuredOutput);
 
 			// Mock the static method
-			jest.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
+			vi.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'userQuery') return 'What is the capital of France?';
@@ -660,7 +661,7 @@ describe('metricHandlers', () => {
 			const mockChatPromptTemplate = mock<ChatPromptTemplate>();
 			mockChatPromptTemplate.pipe.mockReturnValue(mockMiddleChain);
 
-			jest.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
+			vi.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'userQuery') return 'What is the capital of France?';
@@ -679,7 +680,7 @@ describe('metricHandlers', () => {
 	});
 
 	describe('correctness', () => {
-		let mockLLM: jest.Mocked<BaseLanguageModel>;
+		let mockLLM: Mocked<BaseLanguageModel>;
 
 		beforeEach(() => {
 			mockLLM = mock<BaseLanguageModel>();
@@ -697,12 +698,12 @@ describe('metricHandlers', () => {
 			const mockLLMWithStructuredOutput = mock<Runnable>();
 			mockLLMWithStructuredOutput.invoke.mockResolvedValue(mockResponse);
 
-			mockLLM.withStructuredOutput = jest.fn().mockReturnValue(mockLLMWithStructuredOutput);
+			mockLLM.withStructuredOutput = vi.fn().mockReturnValue(mockLLMWithStructuredOutput);
 
 			const mockChatPromptTemplate = mock<ChatPromptTemplate>();
 			mockChatPromptTemplate.pipe.mockReturnValue(mockLLMWithStructuredOutput);
 
-			jest.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
+			vi.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'expectedAnswer') return 'Paris';
@@ -768,7 +769,7 @@ describe('metricHandlers', () => {
 			const mockChatPromptTemplate = mock<ChatPromptTemplate>();
 			mockChatPromptTemplate.pipe.mockReturnValue(mockMiddleChain);
 
-			jest.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
+			vi.spyOn(ChatPromptTemplate, 'fromMessages').mockReturnValue(mockChatPromptTemplate);
 
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'expectedAnswer') return 'Paris';

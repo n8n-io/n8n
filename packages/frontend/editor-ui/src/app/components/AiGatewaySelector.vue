@@ -3,10 +3,13 @@ import { watch, computed } from 'vue';
 import { N8nActionPill } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
+import { useN8nCreditsCredentialSelectionExperiment } from '@/experiments/n8nCreditsCredentialSelection';
+
+type CredentialMode = 'gateway' | 'own';
 
 const props = defineProps<{
 	aiGatewayEnabled: boolean;
@@ -20,12 +23,17 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const telemetry = useTelemetry();
 
 const { balance, fetchWallet } = useAiGateway();
+const { isFeatureEnabled: shouldShowOwnCredentialFirst } =
+	useN8nCreditsCredentialSelectionExperiment();
 
 const isBalanceDepleted = computed(() => balance.value !== undefined && balance.value <= 0);
+const credentialModeOrder = computed<CredentialMode[]>(() =>
+	shouldShowOwnCredentialFirst.value ? ['own', 'gateway'] : ['gateway', 'own'],
+);
 
 // Fetch when enabled (on mount if already enabled, or when toggled on)
 watch(
@@ -38,7 +46,7 @@ watch(
 
 // Refresh after each execution completes so the badge reflects consumed balance.
 watch(
-	() => workflowsStore.workflowExecutionData,
+	() => workflowExecutionStateStore.value.activeExecution,
 	(executionData) => {
 		if (
 			(executionData?.finished || executionData?.stoppedAt !== undefined) &&
@@ -79,70 +87,74 @@ function onBadgeClick(event: MouseEvent): void {
 		data-test-id="ai-gateway-selector"
 	>
 		<div role="radiogroup" :aria-label="i18n.baseText('aiGateway.credentialMode.sectionLabel')">
-			<button
-				type="button"
-				role="radio"
-				:aria-checked="aiGatewayEnabled"
-				:disabled="readonly"
-				data-test-id="ai-gateway-selector-connect"
-				:class="[$style.card, aiGatewayEnabled ? $style.cardSelected : $style.cardIdle]"
-				@click="selectGateway"
-			>
-				<span :class="$style.cardMain">
-					<span
-						:class="[$style.radioOuter, aiGatewayEnabled && $style.radioOuterOn]"
-						aria-hidden="true"
-					/>
-					<span :class="$style.textBlock">
-						<span :class="$style.title">
-							{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.title') }}
-						</span>
-						<span :class="$style.subtitle">
-							{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.subtitle') }}
+			<template v-for="mode in credentialModeOrder" :key="mode">
+				<button
+					v-if="mode === 'gateway'"
+					type="button"
+					role="radio"
+					:aria-checked="aiGatewayEnabled"
+					:disabled="readonly"
+					data-test-id="ai-gateway-selector-connect"
+					:class="[$style.card, aiGatewayEnabled ? $style.cardSelected : $style.cardIdle]"
+					@click="selectGateway"
+				>
+					<span :class="$style.cardMain">
+						<span
+							:class="[$style.radioOuter, aiGatewayEnabled && $style.radioOuterOn]"
+							aria-hidden="true"
+						/>
+						<span :class="$style.textBlock">
+							<span :class="$style.title">
+								{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.title') }}
+							</span>
+							<span :class="$style.subtitle">
+								{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.subtitle') }}
+							</span>
 						</span>
 					</span>
-				</span>
-				<N8nActionPill
-					v-if="aiGatewayEnabled && balance !== undefined"
-					:clickable="!readonly"
-					:type="isBalanceDepleted ? 'danger' : 'default'"
-					size="small"
-					:text="
-						isBalanceDepleted
-							? i18n.baseText('aiGateway.wallet.noCredits')
-							: i18n.baseText('aiGateway.wallet.balanceRemaining', {
-									interpolate: { balance: `$${Number(balance).toFixed(2)}` },
-								})
-					"
-					:hover-text="!readonly ? i18n.baseText('aiGateway.toggle.topUp') : undefined"
-					@click="onBadgeClick"
-				/>
-			</button>
+					<N8nActionPill
+						v-if="aiGatewayEnabled && balance !== undefined"
+						:clickable="!readonly"
+						:type="isBalanceDepleted ? 'danger' : 'default'"
+						size="small"
+						:text="
+							isBalanceDepleted
+								? i18n.baseText('aiGateway.wallet.noCredits')
+								: i18n.baseText('aiGateway.wallet.balanceRemaining', {
+										interpolate: { balance: `$${Number(balance).toFixed(2)}` },
+									})
+						"
+						:hover-text="!readonly ? i18n.baseText('aiGateway.toggle.topUp') : undefined"
+						@click="onBadgeClick"
+					/>
+				</button>
 
-			<button
-				type="button"
-				role="radio"
-				:aria-checked="!aiGatewayEnabled"
-				:disabled="readonly"
-				data-test-id="ai-gateway-mode-card-own"
-				:class="[$style.card, !aiGatewayEnabled ? $style.cardSelected : $style.cardIdle]"
-				@click="selectOwnCredential"
-			>
-				<span :class="$style.cardMain">
-					<span
-						:class="[$style.radioOuter, !aiGatewayEnabled && $style.radioOuterOn]"
-						aria-hidden="true"
-					/>
-					<span :class="$style.textBlock">
-						<span :class="$style.title">
-							{{ i18n.baseText('aiGateway.credentialMode.own.title') }}
-						</span>
-						<span :class="$style.subtitle">
-							{{ i18n.baseText('aiGateway.credentialMode.own.subtitle') }}
+				<button
+					v-else
+					type="button"
+					role="radio"
+					:aria-checked="!aiGatewayEnabled"
+					:disabled="readonly"
+					data-test-id="ai-gateway-mode-card-own"
+					:class="[$style.card, !aiGatewayEnabled ? $style.cardSelected : $style.cardIdle]"
+					@click="selectOwnCredential"
+				>
+					<span :class="$style.cardMain">
+						<span
+							:class="[$style.radioOuter, !aiGatewayEnabled && $style.radioOuterOn]"
+							aria-hidden="true"
+						/>
+						<span :class="$style.textBlock">
+							<span :class="$style.title">
+								{{ i18n.baseText('aiGateway.credentialMode.own.title') }}
+							</span>
+							<span :class="$style.subtitle">
+								{{ i18n.baseText('aiGateway.credentialMode.own.subtitle') }}
+							</span>
 						</span>
 					</span>
-				</span>
-			</button>
+				</button>
+			</template>
 		</div>
 	</div>
 </template>

@@ -434,6 +434,66 @@ describe('memoryManagement', () => {
 			expect(result[3]).toBeInstanceOf(ToolMessage);
 		});
 
+		it('should not fabricate an AIMessage for parallel tool calls with an empty messageLog', () => {
+			// Parallel Gemini calls: a single shared AIMessage (with all tool_calls and the
+			// thought signature) on the first step, empty messageLog on the rest.
+			const sharedAIMessage = new AIMessage({
+				content: 'Calling tools: tool_a, tool_b',
+				tool_calls: [
+					{ id: 'call-a', name: 'tool_a', args: { input: 'test' }, type: 'tool_call' },
+					{ id: 'call-b', name: 'tool_b', args: { input: 'test' }, type: 'tool_call' },
+				],
+				additional_kwargs: {
+					signatures: ['', 'sig-a', ''],
+					__gemini_function_call_thought_signatures__: { 'call-a': 'sig-a' },
+				},
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'tool_a',
+						toolInput: { input: 'test' },
+						log: 'Calling tools: tool_a, tool_b',
+						messageLog: [sharedAIMessage],
+						toolCallId: 'call-a',
+						type: 'tool_call',
+					},
+					observation: 'tool_a executed',
+				},
+				{
+					action: {
+						tool: 'tool_b',
+						toolInput: { input: 'test' },
+						log: 'Calling tool_b',
+						messageLog: [],
+						toolCallId: 'call-b',
+						type: 'tool_call',
+					},
+					observation: 'tool_b executed',
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps);
+
+			// Expected: [sharedAIMessage, ToolMessage(tool_a), ToolMessage(tool_b)]
+			// NOT a spurious second AIMessage for tool_b.
+			expect(result).toHaveLength(3);
+			expect(result[0]).toBe(sharedAIMessage);
+			expect(result[1]).toBeInstanceOf(ToolMessage);
+			expect((result[1] as ToolMessage).tool_call_id).toBe('call-a');
+			expect((result[1] as ToolMessage).name).toBe('tool_a');
+			expect(result[2]).toBeInstanceOf(ToolMessage);
+			expect((result[2] as ToolMessage).tool_call_id).toBe('call-b');
+			expect((result[2] as ToolMessage).name).toBe('tool_b');
+
+			// The shared message retains its thought signatures untouched.
+			expect((result[0] as AIMessage).additional_kwargs).toEqual({
+				signatures: ['', 'sig-a', ''],
+				__gemini_function_call_thought_signatures__: { 'call-a': 'sig-a' },
+			});
+		});
+
 		it('should return empty array for empty steps', () => {
 			const result = buildMessagesFromSteps([]);
 			expect(result).toHaveLength(0);
@@ -489,6 +549,65 @@ describe('memoryManagement', () => {
 			expect(savedMessages[2]).toBeInstanceOf(ToolMessage);
 			expect(savedMessages[3]).toBeInstanceOf(AIMessage);
 			expect(savedMessages[3].content).toBe('The answer is 4');
+		});
+
+		it('should save parallel tool calls as a single AI tool-call message (no spurious AIMessage)', async () => {
+			const sharedAIMessage = new AIMessage({
+				content: 'Calling tools: tool_a, tool_b',
+				tool_calls: [
+					{ id: 'call-a', name: 'tool_a', args: { input: 'test' }, type: 'tool_call' },
+					{ id: 'call-b', name: 'tool_b', args: { input: 'test' }, type: 'tool_call' },
+				],
+				additional_kwargs: {
+					signatures: ['', 'sig-a', ''],
+					__gemini_function_call_thought_signatures__: { 'call-a': 'sig-a' },
+				},
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'tool_a',
+						toolInput: { input: 'test' },
+						log: 'Calling tools: tool_a, tool_b',
+						messageLog: [sharedAIMessage],
+						toolCallId: 'call-a',
+						type: 'tool_call',
+					},
+					observation: 'tool_a executed',
+				},
+				{
+					action: {
+						tool: 'tool_b',
+						toolInput: { input: 'test' },
+						log: 'Calling tool_b',
+						messageLog: [],
+						toolCallId: 'call-b',
+						type: 'tool_call',
+					},
+					observation: 'tool_b executed',
+				},
+			];
+
+			await saveToMemory('Hello', 'done', mockMemory, steps);
+
+			expect(mockChatHistory.addMessages).toHaveBeenCalledTimes(1);
+			const savedMessages = mockChatHistory.addMessages.mock.calls[0][0];
+
+			// Human, sharedAIMessage, ToolMessage(tool_a), ToolMessage(tool_b), final AIMessage
+			expect(savedMessages).toHaveLength(5);
+			expect(savedMessages[0]).toBeInstanceOf(HumanMessage);
+			expect(savedMessages[1]).toBe(sharedAIMessage);
+			expect(savedMessages[2]).toBeInstanceOf(ToolMessage);
+			expect(savedMessages[3]).toBeInstanceOf(ToolMessage);
+			expect(savedMessages[4]).toBeInstanceOf(AIMessage);
+			expect(savedMessages[4].content).toBe('done');
+
+			// Exactly one AI tool-call message — no consecutive AIMessages.
+			const aiToolCallMessages = savedMessages.filter(
+				(m: AIMessage) => m instanceof AIMessage && (m.tool_calls?.length ?? 0) > 0,
+			);
+			expect(aiToolCallMessages).toHaveLength(1);
 		});
 
 		it('should fall back to string format when addMessages is not available', async () => {

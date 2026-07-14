@@ -1,5 +1,14 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+// Single source of truth for project-owned entity transfer decisions
+const ownershipTransferManifest = require('./src/services/ownership-transfer/ownership-transfer.manifest.json');
+const acknowledgedProjectOwnedEntities = [
+	...ownershipTransferManifest.transferred,
+	...ownershipTransferManifest.notTransferred,
+].map(({ name, path }) => ({ name, path }));
 
 const INSTANCE_AI_LAZY_IMPORT_MESSAGE =
 	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the Instance AI idle-memory guardrail.';
@@ -17,7 +26,7 @@ const instanceAiLazyRuntimeImports = [
 }));
 
 export default defineConfig(
-	globalIgnores(['scripts/**/*.mjs', 'jest.config*.js', 'test/*-testcontainers.js', 'coverage/**']),
+	globalIgnores(['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**']),
 	nodeConfig,
 	{
 		rules: {
@@ -26,6 +35,10 @@ export default defineConfig(
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
+			'n8n-local-rules/project-owned-entity-transfer': [
+				'error',
+				{ acknowledged: acknowledgedProjectOwnedEntities },
+			],
 			// Disabled until we have a plan on how to fix these issues long term
 			'n8n-local-rules/no-import-enterprise-edition': 'off',
 
@@ -114,6 +127,9 @@ export default defineConfig(
 	{
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
+			// Allow inline `typeof import('x')` type annotations — the idiomatic shape for
+			// `vi.importActual<typeof import('x')>('x')` in mock factories.
+			'@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
 			'id-denylist': 'warn',
 			'prefer-const': 'warn',
 			'n8n-local-rules/no-dynamic-import-template': 'off',

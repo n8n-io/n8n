@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/ai-node-sdk",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T11:42:11.145Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1516,
+            1111,
+            1121
+          ],
+          "min": 1111,
+          "median": 1121,
+          "mean": 1249
+        },
+        "build": {
+          "runsMs": [
+            1271,
+            1209,
+            1186
+          ],
+          "min": 1186,
+          "median": 1209,
+          "mean": 1222
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T11:50:05.746Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            600,
+            515,
+            526
+          ],
+          "min": 515,
+          "median": 526,
+          "mean": 547
+        },
+        "build": {
+          "runsMs": [
+            552,
+            540,
+            603
+          ],
+          "min": 540,
+          "median": 552,
+          "mean": 565
+        }
+      }
+    }
+  }
+}

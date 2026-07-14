@@ -60,16 +60,30 @@ const initialState = {
 	},
 	[STORES.PROJECTS]: {
 		currentProjectId: null,
-		availableProjects: [
+		personalProject: {
+			id: 'project-2',
+			name: 'Personal Project',
+			type: 'personal',
+			scopes: ['projectVariable:create'],
+		},
+		myProjects: [
 			{
 				id: 'project-1',
 				name: 'Test Project',
 				type: 'team',
+				scopes: ['projectVariable:create'],
 			},
 			{
 				id: 'project-2',
 				name: 'Personal Project',
 				type: 'personal',
+				scopes: ['projectVariable:create'],
+			},
+			{
+				id: 'project-3',
+				name: 'No Access Project',
+				type: 'team',
+				scopes: [],
 			},
 		],
 	},
@@ -155,6 +169,35 @@ describe('VariableModal', () => {
 				value: 'new value',
 			});
 			expect(uiStore.closeModal).toHaveBeenCalledWith(VARIABLE_MODAL_KEY);
+		});
+
+		it('should create a global variable with empty projectId when pre-scoped to global', async () => {
+			const { getByTestId } = renderModal({
+				props: {
+					mode: 'new',
+					projectId: '',
+				},
+				global,
+				pinia,
+			});
+
+			const keyInput = getByTestId('variable-modal-key-input').querySelector('input');
+			const valueInput = getByTestId('variable-modal-value-input').querySelector('textarea');
+
+			if (!keyInput || !valueInput) {
+				throw new Error('Input elements not found');
+			}
+
+			await userEvent.type(keyInput, 'NEW_VAR');
+			await userEvent.type(valueInput, 'new value');
+			await userEvent.click(getByTestId('variable-modal-save-button'));
+
+			// Must send an empty string, never null (backend DTO rejects null)
+			expect(environmentsStore.createVariable).toHaveBeenCalledWith({
+				key: 'NEW_VAR',
+				value: 'new value',
+				projectId: '',
+			});
 		});
 
 		it('should disable save button when key is invalid', async () => {
@@ -314,6 +357,72 @@ describe('VariableModal', () => {
 			});
 
 			expect(getByTestId('variable-modal-scope-select')).toBeInTheDocument();
+		});
+
+		it('disables scope options where the user cannot create variables', () => {
+			projectsStore.currentProjectId = undefined;
+
+			renderModal({
+				props: {
+					mode: 'new',
+				},
+				global,
+				pinia,
+			});
+
+			const items = Array.from(document.querySelectorAll('li.el-select-dropdown__item'));
+			const find = (label: string) => items.find((li) => li.textContent?.includes(label));
+
+			// has projectVariable:create → enabled
+			expect(find('Test Project')?.className).not.toContain('is-disabled');
+			// no create scope → disabled
+			expect(find('No Access Project')?.className).toContain('is-disabled');
+		});
+
+		it('should hide scope field when scope is pre-selected via projectId prop', () => {
+			projectsStore.currentProjectId = undefined;
+
+			const { queryByTestId } = renderModal({
+				props: {
+					mode: 'new',
+					projectId: 'project-1',
+				},
+				global,
+				pinia,
+			});
+
+			expect(queryByTestId('variable-modal-scope-select')).not.toBeInTheDocument();
+		});
+
+		it('should list Global, Personal and team projects from myProjects in the scope dropdown', () => {
+			projectsStore.currentProjectId = undefined;
+
+			const { getByText } = renderModal({
+				props: {
+					mode: 'new',
+				},
+				global,
+				pinia,
+			});
+
+			expect(getByText('Global')).toBeInTheDocument();
+			expect(getByText('Personal')).toBeInTheDocument();
+			expect(getByText('Test Project')).toBeInTheDocument();
+		});
+
+		it('should hide scope field when global scope is pre-selected via projectId prop', () => {
+			projectsStore.currentProjectId = undefined;
+
+			const { queryByTestId } = renderModal({
+				props: {
+					mode: 'new',
+					projectId: '', // empty string = global, pre-selected from the menu
+				},
+				global,
+				pinia,
+			});
+
+			expect(queryByTestId('variable-modal-scope-select')).not.toBeInTheDocument();
 		});
 	});
 

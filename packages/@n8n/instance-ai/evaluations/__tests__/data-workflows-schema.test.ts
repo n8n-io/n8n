@@ -1,15 +1,18 @@
-jest.mock('fs', () => ({
-	readdirSync: jest.fn(),
-	readFileSync: jest.fn(),
+/* eslint-disable import-x/order */
+import { vi } from 'vitest';
+
+vi.mock('fs', () => ({
+	readdirSync: vi.fn(),
+	readFileSync: vi.fn(),
 }));
 
 import { readdirSync, readFileSync } from 'fs';
 
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
-import { WorkflowTestCaseSchema } from '../data/workflows/schema';
+import { EvalTestCaseSchema, conversationTurnTextSchema } from '../harness/schema';
 
-const mockedReaddir = jest.mocked(readdirSync);
-const mockedReadFile = jest.mocked(readFileSync);
+const mockedReaddir = vi.mocked(readdirSync);
+const mockedReadFile = vi.mocked(readFileSync);
 
 const validFixture = () => ({
 	conversation: [{ role: 'user' as const, text: 'Build a thing' }],
@@ -26,36 +29,219 @@ const validFixture = () => ({
 });
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	mockedReaddir.mockReturnValue(['demo.json'] as unknown as ReturnType<typeof readdirSync>);
 });
 
-describe('WorkflowTestCaseSchema', () => {
+describe('EvalTestCaseSchema', () => {
 	it('accepts a minimal valid fixture', () => {
-		const parsed = WorkflowTestCaseSchema.parse(validFixture());
+		const parsed = EvalTestCaseSchema.parse(validFixture());
 		expect(parsed.executionScenarios).toHaveLength(1);
 		expect(parsed.conversation[0].role).toBe('user');
 	});
 
 	it('rejects an empty conversation', () => {
-		expect(() => WorkflowTestCaseSchema.parse({ ...validFixture(), conversation: [] })).toThrow();
+		expect(() => EvalTestCaseSchema.parse({ ...validFixture(), conversation: [] })).toThrow();
 	});
 
-	it('rejects an empty executionScenarios array', () => {
-		expect(() =>
-			WorkflowTestCaseSchema.parse({ ...validFixture(), executionScenarios: [] }),
-		).toThrow();
+	it('normalizes an array-form turn text to a newline-joined string', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			conversation: [{ role: 'user', text: ['line 1', 'line 2'] }],
+		});
+		expect(parsed.conversation[0].text).toBe('line 1\nline 2');
+	});
+
+	it('rejects 0 execution scenarios AND 0 expectations (a case must assert something)', () => {
+		expect(() => EvalTestCaseSchema.parse({ ...validFixture(), executionScenarios: [] })).toThrow(
+			/at least one executionScenario, or a process\/outcome expectation/,
+		);
+	});
+
+	it('accepts an empty executionScenarios array when an outcome expectation is present', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			executionScenarios: [],
+			outcomeExpectations: ['The workflow posts a summary to Slack #growth.'],
+		});
+		expect(parsed.executionScenarios).toEqual([]);
+		expect(parsed.outcomeExpectations).toHaveLength(1);
+	});
+
+	it('accepts an omitted executionScenarios key when a process expectation is present', () => {
+		const { executionScenarios: _omit, ...rest } = validFixture();
+		const parsed = EvalTestCaseSchema.parse({
+			...rest,
+			processExpectations: ['Before building, the agent asked which Slack channel to use.'],
+		});
+		expect(parsed.executionScenarios).toBeUndefined();
+		expect(parsed.processExpectations).toHaveLength(1);
 	});
 
 	it('rejects an unknown complexity value', () => {
+		expect(() => EvalTestCaseSchema.parse({ ...validFixture(), complexity: 'gigantic' })).toThrow();
+	});
+
+	it('accepts a prose priorConversation prelude', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			priorConversation: [{ role: 'user', text: 'We already agreed on #cosmic-otter-alerts' }],
+		});
+		expect(parsed.priorConversation).toHaveLength(1);
+	});
+
+	it('rejects seedFile combined with priorConversation', () => {
 		expect(() =>
-			WorkflowTestCaseSchema.parse({ ...validFixture(), complexity: 'gigantic' }),
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seedFile: 'seeds/some-thread.seed.json',
+				priorConversation: [{ role: 'user', text: 'prelude' }],
+			}),
+		).toThrow(/mutually exclusive/);
+	});
+
+	it('accepts a seedThread case with no conversation (live turn from the trace)', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		const parsed = EvalTestCaseSchema.parse({
+			...rest,
+			seedThread: { threadId: 'example-thread-id' },
+		});
+		expect(parsed.seedThread?.threadId).toBe('example-thread-id');
+		expect(parsed.conversation).toBeUndefined();
+	});
+
+	it('accepts seedThread WITH a conversation (continuation after the live turn)', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seedThread: { threadId: 't1' },
+			conversation: [{ role: 'user', text: 'now also add error handling' }],
+		});
+		expect(parsed.seedThread?.threadId).toBe('t1');
+		expect(parsed.conversation).toHaveLength(1);
+	});
+
+	it('accepts a seedThread carrying a dual-tenant endpoint (US-sourced case)', () => {
+		// Cross-repo contract (TRUST-212): LangTracer's buildExportedTestCase emits
+		// seedThread.endpoint for a US-sourced replay; the harness must retain it
+		// (the inner seedThread object isn't .strict(), so an un-modelled field
+		// would be silently stripped and the read would wrongly target home/EU).
+		const { conversation: _omit, ...rest } = validFixture();
+		const parsed = EvalTestCaseSchema.parse({
+			...rest,
+			seedThread: { threadId: 't1', endpoint: 'https://api.smith.langchain.com' },
+		});
+		expect(parsed.seedThread?.endpoint).toBe('https://api.smith.langchain.com');
+	});
+
+	it('rejects a seedThread endpoint that is not a URL', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...rest, seedThread: { threadId: 't1', endpoint: 'us' } }),
 		).toThrow();
 	});
 
+	it('retains seedThread.liveTurnRunId through parse (LangTracer live-turn pin)', () => {
+		// Regression guard: the inner seedThread object is non-strict, so before the field
+		// was modelled it was silently stripped on parse and never reached the reconstructor.
+		const { conversation: _omit, ...rest } = validFixture();
+		const parsed = EvalTestCaseSchema.parse({
+			...rest,
+			seedThread: { threadId: 't1', liveTurnRunId: 'run-abc-123' },
+		});
+		expect(parsed.seedThread?.liveTurnRunId).toBe('run-abc-123');
+	});
+
+	it('rejects an empty-string seedThread.liveTurnRunId', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...rest, seedThread: { threadId: 't1', liveTurnRunId: '' } }),
+		).toThrow();
+	});
+
+	it('rejects seedThread combined with another seeding mode', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...rest,
+				seedThread: { threadId: 't1' },
+				seedFile: 'seeds/x.seed.json',
+			}),
+		).toThrow(/mutually exclusive/);
+	});
+
+	it('rejects a non-seedThread case that omits conversation', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		expect(() => EvalTestCaseSchema.parse(rest)).toThrow(/needs a conversation, or a seedThread/);
+	});
+
 	it('accepts the optional triggerType field', () => {
-		const parsed = WorkflowTestCaseSchema.parse({ ...validFixture(), triggerType: 'webhook' });
+		const parsed = EvalTestCaseSchema.parse({ ...validFixture(), triggerType: 'webhook' });
 		expect(parsed.triggerType).toBe('webhook');
+	});
+
+	it('accepts the optional process/outcome expectation arrays', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			processExpectations: ['the agent asked which channel before building'],
+			outcomeExpectations: ['the final workflow posts to Slack'],
+		});
+		expect(parsed.processExpectations).toEqual(['the agent asked which channel before building']);
+		expect(parsed.outcomeExpectations).toEqual(['the final workflow posts to Slack']);
+	});
+
+	it('leaves expectation arrays undefined when omitted', () => {
+		const parsed = EvalTestCaseSchema.parse(validFixture());
+		expect(parsed.processExpectations).toBeUndefined();
+		expect(parsed.outcomeExpectations).toBeUndefined();
+	});
+
+	it('rejects a non-array expectation field', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...validFixture(), outcomeExpectations: 'nope' }),
+		).toThrow();
+	});
+
+	it('rejects an empty-string expectation', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...validFixture(), processExpectations: [''] }),
+		).toThrow();
+	});
+
+	it('rejects a legacy buildExpectations key with a migration hint', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				buildExpectations: ['legacy assertion that would otherwise be silently dropped'],
+			}),
+		).toThrow(/no longer supported/);
+	});
+
+	it('rejects an unknown top-level key instead of silently stripping it', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...validFixture(), outcomeExpectaiton: ['typo'] }),
+		).toThrow(/[Uu]nrecognized key/);
+	});
+
+	it('accepts a credentials entry with a supported type', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			credentials: [{ type: 'slackApi' }, { type: 'notionApi', name: 'My Notion' }],
+		});
+		expect(parsed.credentials).toEqual([
+			{ type: 'slackApi' },
+			{ type: 'notionApi', name: 'My Notion' },
+		]);
+	});
+
+	it('rejects a credentials entry with an unknown type', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...validFixture(), credentials: [{ type: 'madeUpApi' }] }),
+		).toThrow(/unknown credential type/);
+	});
+
+	it('leaves credentials undefined when omitted', () => {
+		const parsed = EvalTestCaseSchema.parse(validFixture());
+		expect(parsed.credentials).toBeUndefined();
 	});
 
 	it('accepts the optional requires hint on scenarios', () => {
@@ -64,7 +250,7 @@ describe('WorkflowTestCaseSchema', () => {
 			...fixture.executionScenarios[0],
 			requires: 'mock-server',
 		} as (typeof fixture.executionScenarios)[number];
-		const parsed = WorkflowTestCaseSchema.parse(fixture);
+		const parsed = EvalTestCaseSchema.parse(fixture);
 		expect(parsed.executionScenarios[0].requires).toBe('mock-server');
 	});
 });
@@ -85,6 +271,18 @@ describe('loadWorkflowTestCasesWithFiles · file-aware errors', () => {
 	it('throws with the file path on a schema validation failure', () => {
 		mockedReadFile.mockReturnValue(JSON.stringify({ conversation: [] }));
 		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/demo\.json/);
-		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/executionScenarios/);
+		expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/complexity/);
+	});
+});
+
+describe('conversationTurnTextSchema', () => {
+	it('passes a plain string through unchanged', () => {
+		expect(conversationTurnTextSchema.parse('one line')).toBe('one line');
+	});
+
+	it('joins an array of lines with newlines', () => {
+		// The mcp-manifest builder reuses this, so the array form must normalize
+		// to a string before its buildPromptFromConversation calls .text.trim().
+		expect(conversationTurnTextSchema.parse(['line 1', 'line 2'])).toBe('line 1\nline 2');
 	});
 });

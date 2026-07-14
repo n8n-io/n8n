@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+import {
+	ASK_QUESTIONS_TOOL_NAME,
+	CONFIGURE_CHANNEL_TOOL_NAME,
+} from './agents/agent-interaction.schema';
+
 /**
  * Canonical names of the interactive agent-builder tools.
  *
@@ -8,40 +13,25 @@ import { z } from 'zod';
  * by it. There is no separate `interactionType` field — the tool name IS the
  * interaction kind.
  */
-export const ASK_LLM_TOOL_NAME = 'ask_llm' as const;
 export const ASK_CREDENTIAL_TOOL_NAME = 'ask_credential' as const;
-export const ASK_QUESTION_TOOL_NAME = 'ask_question' as const;
+export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = 'ask_embedding_credential' as const;
+export { ASK_QUESTIONS_TOOL_NAME, CONFIGURE_CHANNEL_TOOL_NAME };
+/**
+ * Frontend-only discriminator for generic approval cards.
+ *
+ * Approval suspensions keep the underlying tool name on the wire, so the FE
+ * maps them to this value before dispatching to the approval card component.
+ */
+export const APPROVAL_TOOL_NAME = 'approval' as const;
 
 export const interactiveToolNameSchema = z.union([
-	z.literal(ASK_LLM_TOOL_NAME),
 	z.literal(ASK_CREDENTIAL_TOOL_NAME),
-	z.literal(ASK_QUESTION_TOOL_NAME),
+	z.literal(ASK_EMBEDDING_CREDENTIAL_TOOL_NAME),
+	z.literal(ASK_QUESTIONS_TOOL_NAME),
+	z.literal(CONFIGURE_CHANNEL_TOOL_NAME),
 ]);
 
 export type InteractiveToolName = z.infer<typeof interactiveToolNameSchema>;
-
-// ---------------------------------------------------------------------------
-// ask_llm
-// ---------------------------------------------------------------------------
-
-export const askLlmInputSchema = z.object({
-	purpose: z
-		.string()
-		.optional()
-		.describe(
-			'Short sentence describing why the model is needed, e.g. "Main LLM for the Slack triage agent"',
-		),
-});
-
-export const askLlmResumeSchema = z.object({
-	provider: z.string(),
-	model: z.string(),
-	credentialId: z.string(),
-	credentialName: z.string(),
-});
-
-export type AskLlmInput = z.infer<typeof askLlmInputSchema>;
-export type AskLlmResume = z.infer<typeof askLlmResumeSchema>;
 
 // ---------------------------------------------------------------------------
 // ask_credential
@@ -60,57 +50,22 @@ export const askCredentialInputSchema = z.object({
 		.describe('Credential key on node.credentials, e.g. "slackApi"'),
 });
 
-export const askCredentialResumeSchema = z.union([
-	z.object({ credentialId: z.string(), credentialName: z.string() }),
-	z.object({ skipped: z.literal(true) }),
-]);
-
 export type AskCredentialInput = z.infer<typeof askCredentialInputSchema>;
-export type AskCredentialResume = z.infer<typeof askCredentialResumeSchema>;
+
+/**
+ * Suspend/resume for `ask_credential` and `ask_embedding_credential` now use
+ * the shared instance-AI-compatible contract (`agents/agent-interaction.schema.ts`,
+ * re-exported below) instead of a builder-only shape — see that module for
+ * the full suspend payload (`credentialSuspendPayloadSchema`).
+ */
 
 // ---------------------------------------------------------------------------
-// ask_question
+// Cancellation
 // ---------------------------------------------------------------------------
 
-export const askQuestionOptionSchema = z.object({
-	label: z.string().describe('Display label for this option'),
-	value: z.string().describe('Internal value for this option'),
-	description: z.string().optional().describe('Optional additional explanation'),
+export const cancellationResumeSchema = z.object({
+	_type: z.literal('agent.cancellation'),
+	message: z.string().min(1),
 });
 
-export const askQuestionInputSchema = z.object({
-	question: z.string().describe('The question to display to the user'),
-	options: z
-		.array(askQuestionOptionSchema)
-		.min(1)
-		.describe(
-			'Choices to present. With a single option the tool auto-resolves to that option without rendering a card.',
-		),
-	allowMultiple: z
-		.boolean()
-		.optional()
-		.describe('If true the user may select more than one option; defaults to false'),
-});
-
-export const askQuestionResumeSchema = z.object({
-	values: z
-		.array(z.string())
-		.min(1)
-		.describe('Selected option values, or freeform text entered in the Other field.'),
-});
-
-export type AskQuestionOption = z.infer<typeof askQuestionOptionSchema>;
-export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
-export type AskQuestionResume = z.infer<typeof askQuestionResumeSchema>;
-
-// ---------------------------------------------------------------------------
-// Discriminated union of all resume payloads (used by AgentBuildResumeDto)
-// ---------------------------------------------------------------------------
-
-export const interactiveResumeDataSchema = z.union([
-	askLlmResumeSchema,
-	askCredentialResumeSchema,
-	askQuestionResumeSchema,
-]);
-
-export type InteractiveResumeData = z.infer<typeof interactiveResumeDataSchema>;
+export type CancellationResumeData = z.infer<typeof cancellationResumeSchema>;

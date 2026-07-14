@@ -1,5 +1,5 @@
 import type { PushMessage } from '@n8n/api-types';
-import { inProduction, Logger } from '@n8n/backend-common';
+import { inProduction, Logger, TypedEmitter } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -13,10 +13,12 @@ import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { TypedEmitter } from '@/typed-emitter';
 
 import { validateOriginHeaders } from './origin-validator';
+import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
 import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
 import {
@@ -26,19 +28,11 @@ import {
 	type WebSocketPushRequest,
 } from './types';
 import { WebSocketPush } from './websocket.push';
-import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 type PushEvents = {
 	editorUiConnected: string;
 	message: OnPushMessage;
 };
-
-/**
- * Max allowed size of a push message in bytes. Events going through the pubsub
- * channel are trimmed if exceeding this size.
- */
-const MAX_PAYLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5 MiB
 
 /**
  * Push service for uni- or bi-directional communication with frontend clients.
@@ -246,10 +240,10 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (type === 'nodeExecuteAfterData') {
 			const eventSizeBytes = new TextEncoder().encode(JSON.stringify(pushMsg.data)).length;
 
-			if (eventSizeBytes > MAX_PAYLOAD_SIZE_BYTES) {
+			if (eventSizeBytes > MAX_PUBSUB_PAYLOAD_BYTES) {
 				const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
 				const eventMb = toMb(eventSizeBytes);
-				const maxMb = toMb(MAX_PAYLOAD_SIZE_BYTES);
+				const maxMb = toMb(MAX_PUBSUB_PAYLOAD_BYTES);
 
 				this.logger.warn(
 					`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Skipping...`,

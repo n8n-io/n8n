@@ -7,9 +7,9 @@ natural language interface to workflows, executions, credentials, and nodes — 
 the goal that most users never need to interact with workflows directly.
 
 The system follows the **deep agent architecture** — an orchestrator with explicit
-planning, dynamic sub-agent delegation, observational memory, and structured
-prompts. The LLM controls the execution loop; the architecture provides the
-primitives.
+planning, orchestrator-led workflow building, a specialized eval-setup background
+agent, observational memory, and structured prompts. The LLM controls the
+execution loop; the architecture provides the primitives.
 
 The system is LLM-agnostic and designed to work with any capable language model.
 
@@ -34,23 +34,21 @@ graph TB
         Service --> Factory[Agent Factory]
         Factory --> OrcAgent[Orchestrator]
         OrcAgent --> PlanTool[Plan Tool]
-        OrcAgent --> DelegateTool[Delegate Tool]
+        OrcAgent --> BuildTool[build-workflow]
         OrcAgent --> DirectTools[Domain Tools]
         OrcAgent --> MCPTools[MCP Tools]
         OrcAgent --> Memory[Memory System]
+        OrcAgent --> EvalSetupTool[eval-setup-with-agent]
     end
 
-    subgraph SubAgents ["Dynamic Sub-Agents"]
-        DelegateTool -->|spawns| SubAgent1[Sub-Agent A]
-        DelegateTool -->|spawns| SubAgent2[Sub-Agent B]
-        SubAgent1 --> ToolSubset1[Tool Subset]
-        SubAgent2 --> ToolSubset2[Tool Subset]
+    subgraph BackgroundAgents ["Background Agents"]
+        EvalSetupTool -->|spawns| EvalSetupAgent[Eval Setup Agent]
+        EvalSetupAgent --> EvalTools[Workflow + Node Tools]
     end
 
     subgraph EventSystem ["Event System"]
         OrcAgent -->|publishes| EventBus
-        SubAgent1 -->|publishes| EventBus
-        SubAgent2 -->|publishes| EventBus
+        EvalSetupAgent -->|publishes| EventBus
         EventBus --> ThreadStorage[Thread Event Storage]
     end
 
@@ -76,10 +74,10 @@ graph TB
 
     subgraph Sandbox ["Sandbox (Optional)"]
         Service -->|per-thread| WorkspaceManager[Workspace Manager]
+        WorkspaceManager --> N8nSandbox[n8n Sandbox Service]
         WorkspaceManager --> DaytonaSandbox[Daytona Container]
-        WorkspaceManager --> LocalSandbox[Local Sandbox]
+        N8nSandbox --> SandboxFS[Filesystem + execute_command]
         DaytonaSandbox --> SandboxFS[Filesystem + execute_command]
-        LocalSandbox --> SandboxFS
     end
 
 
@@ -95,85 +93,88 @@ The system implements the four pillars of the deep agent pattern:
 
 ### 1. Explicit Planning
 
-The orchestrator uses a `plan` tool to externalize its execution strategy.
-Between phases of the autonomous loop, the orchestrator reviews and updates the
-plan. This serves as a context engineering mechanism — writing the plan forces
-structured reasoning, and reading it back prevents goal drift over long loops.
+The orchestrator loads the `planning` skill to externalize its execution
+strategy for work that needs dependency coordination: multiple workflows, shared
+artifacts, cross-workflow data contracts, or ambiguous business process design.
+After normal discovery, it calls `create-tasks` to persist the task graph for
+user approval. Clear single-workflow builds, including new and one-off
+workflows, go directly to the builder and do not create a plan merely to obtain
+verification.
 
 Plans are stored in thread-scoped storage (see ADR-017).
 
-### 2. Dynamic Sub-Agent Composition
+### 2. Orchestrator-Led Execution
 
-The orchestrator composes sub-agents on the fly via the `delegate` tool. Instead
-of a fixed taxonomy (Builder, Debugger, Evaluator), the orchestrator specifies:
+Most work runs in the orchestrator itself: workflow building via the
+`workflow-builder` skill and `build-workflow`, data-table operations, web
+research, credential setup with Computer Use, and MCP tools.
 
-- **Role** — free-form description ("workflow builder", "credential validator")
-- **Instructions** — task-specific system prompt
-- **Tools** — subset of registered tools the sub-agent needs
-
-Sub-agents are stateless (ADR-011), get clean context windows, and publish events
-directly to the event bus (ADR-014). They cannot spawn their own sub-agents.
+The only remaining detached background agent is the **eval-setup agent**
+(`eval-setup-with-agent`). It patches workflows with EvaluationTrigger and
+Evaluation nodes after the user approves an eval proposal. It receives a
+focused tool subset, publishes events directly to the event bus (ADR-014), and
+cannot spawn further agents.
 
 ### 3. Observational Memory
 
-Mastra's observational memory compresses old messages into dense observations via
+`@n8n/agents` observational memory compresses old messages into dense observations via
 background Observer and Reflector agents. Tool-heavy workloads (workflow
 definitions, execution results) get 5–40x compression. This prevents context
 degradation over 50+ step autonomous loops (see ADR-016).
 
 ### 4. Structured System Prompt
 
-The orchestrator's system prompt covers delegation patterns, planning discipline,
-loop behavior, and tool usage guidelines. Sub-agents get focused, task-specific
-prompts written by the orchestrator.
+The orchestrator's system prompt covers planning discipline, loop behavior, and
+tool usage guidelines. The eval-setup background agent gets a focused, task-specific
+prompt.
 
 ## Agent Hierarchy
 
 ```mermaid
 graph TD
-    O[Orchestrator Agent] -->|delegate| S1[Sub-Agent: role A]
-    O -->|build-workflow-with-agent| S2[Builder Agent]
-    O -->|plan| S3[Planned Tasks]
+    O[Orchestrator Agent] -->|planning skill + create-tasks| S3[Planned Tasks]
+    O -->|workflow-builder skill| T10[build-workflow]
     O -->|direct| T1[list-workflows]
     O -->|direct| T2[run-workflow]
     O -->|direct| T3[get-execution]
-    O -->|direct| T4[plan]
+    O -->|direct| T4[create-tasks]
     O -->|direct| T5[data-tables]
+    O -->|eval-setup-with-agent| S5[Eval Setup Agent]
 
-    S3 -->|kind: build-workflow| S4[Builder Agent]
-    S3 -->|kind: delegate| S7[Custom Sub-Agent]
+    S3 -->|kind: build-workflow| S4[Orchestrator Follow-Up]
+    S3 -->|kind: checkpoint| S6[Orchestrator Follow-Up]
 
-    S1 -->|tools| T6[get-execution]
-    S1 -->|tools| T7[get-workflow]
-    S2 -->|tools| T8[search-nodes]
-    S2 -->|tools| T9[build-workflow]
+    S4 -->|tools| T8[search-nodes]
+    S4 -->|tools| T9[workspace files]
+    S4 -->|tools| T10
+    S5 -->|tools| T11[workflows + nodes]
 
     style O fill:#f9f,stroke:#333
-    style S1 fill:#bbf,stroke:#333
-    style S2 fill:#bbf,stroke:#333
     style S3 fill:#ffa,stroke:#333
     style S4 fill:#bbf,stroke:#333
-    style S7 fill:#bbf,stroke:#333
+    style S5 fill:#bbf,stroke:#333
+    style S6 fill:#bbf,stroke:#333
 ```
 
 **Orchestrator** handles directly:
 - Read-only queries (list-workflows, get-execution, list-credentials)
 - Execution triggers (run-workflow)
-- Planning (plan tool — always direct)
+- Planning (`planning` skill + `create-tasks` — always direct)
+- Workflow building (`workflow-builder` skill + workspace files + `build-workflow`)
 - Verification and credential application (verify-built-workflow, apply-workflow-credentials)
+- Data-table work (`data-table-manager` skill + `data-tables` / `parse-file`)
 
-**Single-task delegation** (`delegate`, `build-workflow-with-agent`):
-- Complex multi-step operations (building workflows, debugging failures)
-- Tasks that benefit from clean context (no accumulated noise)
-- Builder agent runs as a background task — returns immediately
-
-**Multi-task plans** (`plan` tool):
+**Planned tasks** (`planning` skill + `create-tasks`):
 - Dependency-aware task graphs with parallel execution
-- Each task dispatched to a preconfigured executor (builder, checkpoint, or delegate)
+- `build-workflow` tasks run as orchestrator follow-ups with the workflow-builder skill
+- `checkpoint` tasks run as orchestrator follow-ups for semantic or cross-workflow validation
 - User approves the plan before execution starts
+- Workflow runtime verification is tracked separately as a workflow-loop
+  obligation, so routine "verify workflow" checkpoints are not required
 
-The orchestrator decides what to delegate based on complexity — simple reads
-stay direct, complex operations go to focused sub-agents.
+**Eval setup** (`eval-setup-with-agent`):
+- Detached background agent that patches eval nodes into an existing workflow
+- Triggered after `evals(action="propose")` returns `shouldDelegateToEvalSetupAgent: true`
 
 ## Package Responsibilities
 
@@ -182,19 +183,20 @@ stay direct, complex operations go to focused sub-agents.
 The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
-- **Sub-agent factory** (`agent/`) — creates stateless sub-agents with mandatory protocol and tool subsets
-- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `build-workflow-with-agent`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
-- **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, web research, filesystem, templates, and best practices
+- **Sub-agent factory** (`agent/`) — creates the eval-setup background agent and shared sub-agent protocol
+- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `eval-setup-with-agent`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
+- **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
+- **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
 - **Planned tasks** (`planned-tasks/`) — task graph coordination, dependency resolution, scheduled execution
 - **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state machine for workflow builder agents
-- **Workflow builder** (`workflow-builder/`) — TypeScript SDK code parsing, validation, patching, and prompt sections
-- **Workspace** (`workspace/`) — sandbox provisioning (Daytona / local), filesystem abstraction, snapshot management
+- **Workflow builder** (`workflow-builder/`) — TypeScript SDK source files, parsing, validation, and prompt sections
+- **Workspace** (`workspace/`) — sandbox provisioning (n8n sandbox service / Daytona), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
 - **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
-- **Stream mapping** (`stream/`) — Mastra chunk → canonical event translation, HITL consumption
+- **Stream mapping** (`stream/`) — agent chunk → canonical event translation, HITL consumption
 - **Event bus interface** (`event-bus/`) — publishing agent events to the thread channel
 - **Tracing** (`tracing/`) — LangSmith integration for step-level observability
 - **System prompt** (`agent/`) — dynamic context-aware prompt based on instance configuration
@@ -262,13 +264,13 @@ intentional:
 - MCP server configuration can change between requests
 - User context (permissions) is request-scoped
 - Memory is handled externally (storage-backed), not in-agent
-- Sub-agents are created dynamically within the request lifecycle
+- Background agents (eval-setup) are created within the request lifecycle
 
 ### 3. Pub/Sub Streaming
 
 The event bus decouples agent execution from event delivery:
 
-- All agents (orchestrator + sub-agents) publish to a per-thread channel
+- All agents (orchestrator + eval-setup background agent) publish to a per-thread channel
 - Frontend subscribes via SSE with `Last-Event-ID` for reconnect/replay
 - All events carry `runId` (correlates to triggering message) and `agentId`
 - SSE events use monotonically increasing per-thread `id` values for replay
@@ -289,29 +291,29 @@ Instance AI uses n8n's module system (`@BackendModule`). This means:
 
 ## Runtime & Streaming
 
-The agent runtime is built on Mastra's streaming primitives with added
+The agent runtime is built on `@n8n/agents` streaming primitives with added
 resumability, HITL suspension, and background task management.
 
 ### Stream Execution
 
 ```
 streamAgentRun() → agent.stream() → executeResumableStream()
-  ├─ for each chunk: mapMastraChunkToEvent() → eventBus.publish()
+  ├─ for each chunk: mapAgentChunkToEvent() → eventBus.publish()
   ├─ on suspension: wait for confirmation → agent.resumeStream() → loop
-  └─ return StreamRunResult {status, mastraRunId, text}
+  └─ return StreamRunResult {status, agentRunId, text}
 ```
 
-The `executeResumableStream()` loop consumes Mastra chunks, translates them to
+The `executeResumableStream()` loop consumes agent chunks, translates them to
 canonical `InstanceAiEvent` schema, publishes to the event bus, and handles HITL
 suspension/resume cycles. Two control modes:
 
 - **Manual** — returns suspension to caller (used by the orchestrator's main run)
-- **Auto** — waits for confirmation and resumes automatically (used by background sub-agents)
+- **Auto** — waits for confirmation and resumes automatically (used by the eval-setup background agent)
 
 ### Background Task Manager
 
-Long-running tasks (workflow builds and delegated work) run as
-background tasks with concurrency limits (default: 5 per thread). Features:
+Long-running eval-setup tasks run as background tasks with concurrency limits
+(default: 5 per thread). Features:
 
 - **Correction queueing** — users can steer running tasks mid-flight via
   `correct-background-task`
@@ -333,23 +335,24 @@ In-memory registry of active, suspended, and pending runs per thread. Manages:
 
 ### Planned Task System
 
-The `plan` tool creates dependency-aware task graphs for multi-step work. Each
-task has a `kind` that determines its executor:
+The `planning` skill guides discovery and `create-tasks` creates
+dependency-aware task graphs for multi-step work. Each task has a `kind` that
+determines its executor:
 
 | Kind | Executor | Tools |
 |------|----------|-------|
-| `build-workflow` | Builder agent | search-nodes, build-workflow, get-node-type-definition, etc. |
-| `delegate` | Custom sub-agent | Orchestrator-specified subset |
-| `checkpoint` | Orchestrator follow-up | verify-built-workflow, executions |
+| `build-workflow` | Orchestrator follow-up with workflow-builder skill | search-nodes, workspace file tools, build-workflow, get-node-type-definition, etc. |
+| `checkpoint` | Orchestrator follow-up | Semantic or cross-workflow validation that standard runtime verification cannot cover |
 
 Standalone data-table work bypasses planned tasks: the orchestrator loads the
-`data-table-manager` skill and uses `data-tables` / `parse-file` directly.
+`data-table-manager` skill and uses `data-tables` / `parse-file` directly. A
+single workflow with a workflow-local table can use the direct builder path;
+planning is reserved for shared schema work or real dependency coordination.
 
-Build and delegate tasks run detached as background agents. Checkpoint
-tasks run as orchestrator follow-ups so they can inspect the latest workflow
-state before verifying. Dependencies are respected — a task only starts when all
-its `deps` have succeeded. The plan is shown to the user for approval before
-execution begins.
+Build-workflow tasks run as orchestrator follow-ups. Checkpoint tasks run
+as orchestrator follow-ups when the plan includes an exceptional semantic check.
+Dependencies are respected — a task only starts when all its `deps` have
+succeeded. The plan is shown to the user for approval before execution begins.
 
 ### Workflow Loop State Machine
 
@@ -364,7 +367,17 @@ build → submit → verify → (success | needs_patch | needs_rebuild | failed_
                                         verify          verify
 ```
 
-The `report-verification-verdict` tool feeds results into this state machine,
+Workflow-loop storage also derives a `WorkflowVerificationObligation` from each
+builder outcome. The service uses this obligation as the completion gate for both
+direct and planned workflow builds:
+
+- `ready_to_verify` schedules an internal workflow-verification follow-up.
+- `verified` reuses structured `verify-built-workflow` evidence.
+- `needs_setup` routes to `workflows(action="setup")`.
+- `not_verifiable` is a warning/manual-test completion state, not "verified".
+- `blocked` carries the build or verification blocker.
+
+The `report-verification-verdict` tool feeds results into the state machine,
 which returns guidance for the next action. Same failure signature twice triggers
 a terminal state to prevent infinite loops.
 
@@ -372,7 +385,7 @@ a terminal state to prevent infinite loops.
 
 To keep the orchestrator's context lean, tools are stratified into two tiers:
 
-- **Core tools** (always-loaded): `plan`, `delegate`, `ask-user`, `web-search`,
+- **Core tools** (always-loaded): `create-tasks`, `ask-user`, `web-search`,
   `fetch-url` — these are directly available to the LLM
 - **Deferred tools** (behind ToolSearchProcessor): all other domain tools —
   discovered on-demand via `search_tools` and activated via `load_tool`
@@ -427,9 +440,9 @@ allowing the user to approve or deny access to specific hosts.
 - **Domain access gating** — external URL fetches require per-domain user approval
 - **Memory isolation** — messages, observations, plans, and event history are
   thread-scoped. Cross-user isolation is enforced.
-- **Sub-agent containment** — sub-agents cannot spawn their own sub-agents,
-  can only use native domain tools from the registered pool (no MCP tools), and
-  have low `maxSteps`. A mandatory protocol prevents cascading delegation.
+- **Sub-agent containment** — the eval-setup background agent cannot spawn further
+  agents, receives only its wired tool subset (no MCP tools), and has a bounded
+  `maxIterations`. A mandatory protocol prevents cascading delegation.
 - **MCP tool isolation** — MCP tools are name-checked against reserved domain tool
   names to prevent malicious shadowing. Schema sanitization prevents schema-based attacks.
 - **Sandbox isolation** — when enabled, code execution runs in isolated Daytona

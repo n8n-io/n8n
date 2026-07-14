@@ -2,6 +2,11 @@ export type McpVerifyResult =
 	| { ok: true; servers: Array<{ name: string; tools: number }> }
 	| { ok: false; errors: Array<{ server: string; error: string }> };
 
+export interface McpToolCallSettledEvent {
+	toolName: string;
+	success: boolean;
+}
+
 export interface McpServerConfig {
 	/** Display name used as a tool name prefix. Must be unique across all `.mcp()` calls. */
 	name: string;
@@ -21,6 +26,9 @@ export interface McpServerConfig {
 	/** Optional auth headers for URL-based transports. */
 	headers?: Record<string, string>;
 
+	/** Optional callback that's invoked after an MCP tool call settles. */
+	onToolCallSettled?: (event: McpToolCallSettledEvent) => void | Promise<void>;
+
 	/**
 	 * Maximum time in milliseconds to wait for this server connection (transport
 	 * start and MCP initialize). When omitted, the MCP SDK default applies for
@@ -34,8 +42,7 @@ export interface McpServerConfig {
 	 * - `true` — every tool from this server requires approval before execution.
 	 * - `string[]` — only the listed tools (by their original, un-prefixed names)
 	 *   require approval; all other tools from the server run without interruption.
-	 * - `false` / omitted — no per-server approval requirement (the global
-	 *   `.requireToolApproval()` flag on the Agent still applies).
+	 * - `false` / omitted — no approval requirement.
 	 */
 	requireApproval?: string[] | boolean;
 

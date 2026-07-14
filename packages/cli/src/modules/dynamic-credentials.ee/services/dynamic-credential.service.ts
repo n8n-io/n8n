@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { AuthenticatedRequest } from '@n8n/db';
 import { CredentialResolverDataNotFoundError, CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
@@ -29,7 +30,6 @@ import { CredentialResolutionError } from '../errors/credential-resolution.error
 import { CredentialResolverNotConfiguredError } from '../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../errors/missing-execution-context.error';
-import { AuthenticatedRequest } from '@n8n/db';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -116,15 +116,17 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// Resolve expressions in resolver configuration using global data only
 			const resolverConfig = await this.expressionService.resolve(parsedConfig);
 
+			const handle = {
+				resolverId: resolverEntity.id,
+				resolverName: resolverEntity.type,
+				configuration: resolverConfig,
+			};
+
 			// Attempt dynamic resolution
 			const dynamicData = await resolver.getSecret(
 				credentialsResolveMetadata.id,
 				credentialContext,
-				{
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-					configuration: resolverConfig,
-				},
+				handle,
 			);
 
 			this.logger.debug('Successfully resolved dynamic credentials', {
@@ -141,8 +143,22 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				}
 			}
 
+			// Capture the n8n user the credentials resolved to (only resolvers
+			// keyed on n8n identities implement this). Best-effort: a failure to
+			// resolve the owning user must not fail credential resolution — the
+			// execution simply stays unattributed (redacted for everyone).
+			let resolvedUserId: string | undefined;
+			try {
+				resolvedUserId = await resolver.resolveOwningUserId?.(credentialContext, handle);
+			} catch (error) {
+				this.logger.debug('Could not resolve owning user for dynamic credentials', {
+					credentialId: credentialsResolveMetadata.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+
 			// Adds and override static data with dynamically resolved data
-			return { data: { ...staticData, ...dynamicData }, isDynamic: true };
+			return { data: { ...staticData, ...dynamicData }, isDynamic: true, resolvedUserId };
 		} catch (error) {
 			return this.handleResolutionError(
 				credentialsResolveMetadata,
@@ -212,7 +228,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// TODO(M14): emit `private_credential.resolution_failed_missing_connection`
 			// via EventService once the relay event is defined in RelayEventMap.
 			throw new CredentialResolutionError(
-				`'${credentialsResolveMetadata.name}' private credential is not connected for you. Connect yours to execute this workflow manually.`,
+				`'${credentialsResolveMetadata.name}' end-user credential is not connected for you. Connect yours to execute this workflow manually.`,
 				{ cause: error },
 			);
 		}

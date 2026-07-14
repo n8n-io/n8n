@@ -42,8 +42,8 @@ import {
 
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -52,6 +52,7 @@ import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-se
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -932,6 +933,12 @@ export class CredentialsService {
 			return;
 		}
 
+		if (credential.isResolvable) {
+			const owningProject =
+				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			await this.ensureCanManageEndUserCredential(user, owningProject?.id);
+		}
+
 		await this.credentialsRepository.remove(credential);
 	}
 
@@ -1007,7 +1014,7 @@ export class CredentialsService {
 		for (const dataKey of Object.keys(data)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
-				if (data[dataKey].toString().length > 0) {
+				if (String(data[dataKey] ?? '').length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
@@ -1031,9 +1038,9 @@ export class CredentialsService {
 
 			if (
 				prop.typeOptions?.password &&
-				(!data[dataKey].toString().startsWith('={{') || prop.noDataExpression)
+				(!String(data[dataKey] ?? '').startsWith('={{') || prop.noDataExpression)
 			) {
-				if (data[dataKey].toString().length > 0) {
+				if (String(data[dataKey] ?? '').length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
@@ -1137,6 +1144,25 @@ export class CredentialsService {
 		try {
 			return this.credentialTypes.getByName(credentialType).properties;
 		} catch {
+			return [];
+		}
+	}
+
+	/**
+	 * Shared (static, non-resolvable) fields whose value changed vs. the stored
+	 * credential. `newData` must be un-redacted (see `prepareUpdateData`).
+	 */
+	async getChangedSharedFields(
+		credential: CredentialsEntity,
+		newData: ICredentialDataDecryptedObject,
+	): Promise<string[]> {
+		try {
+			const credentialType = this.credentialTypes.getByName(credential.type);
+			const oldData = await this.decrypt(credential, true);
+			return getChangedSharedFields(credentialType, oldData, newData);
+		} catch {
+			// Unknown credential type or decrypt failure: fall back to leaving
+			// connections untouched rather than blocking the update.
 			return [];
 		}
 	}
@@ -1325,6 +1351,31 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Creates an empty credential placeholder for package import. Skips field
+	 * validation so every known type can be stubbed; {@link save} still enforces
+	 * `credential:create` on the target project.
+	 */
+	async createStubCredential(
+		opts: { name: string; type: string; projectId: string },
+		user: User,
+	): Promise<CredentialsEntity> {
+		const encryptedCredential = await this.createEncryptedData({
+			id: null,
+			name: opts.name,
+			type: opts.type,
+			data: {},
+		});
+
+		const credentialEntity = this.credentialsRepository.create({
+			...encryptedCredential,
+			isManaged: false,
+			isResolvable: false,
+		});
+
+		return await this.save(credentialEntity, encryptedCredential, user, opts.projectId, {});
+	}
+
+	/**
 	 * Used to check credential data for creating a new credential.
 	 * TODO: consider refactoring enable using this for both creating and updating, right now only used for creation
 	 * (likely only affects the validateExternalSecretsPermissions call)
@@ -1399,8 +1450,31 @@ export class CredentialsService {
 		return await this.createCredential({ ...dto, isManaged: true }, user);
 	}
 
+	/**
+	 * The end-user (resolvable) credential lifecycle — creating one, switching a
+	 * credential to or from end-user, deleting or transferring one — is limited
+	 * to roles holding `credential:createEndUser` on the owning project
+	 * (instance owners/admins, project admins, and personal project owners by
+	 * default). These operations affect every user's own connection, not just
+	 * the caller's, so they need more than the plain credential CRUD scopes.
+	 */
+	async ensureCanManageEndUserCredential(user: User, projectId?: string) {
+		const allowed =
+			projectId !== undefined &&
+			(await userHasScopes(user, ['credential:createEndUser'], false, { projectId }));
+		if (!allowed) {
+			throw new ForbiddenError(
+				'You do not have permission to manage end-user credentials in this project',
+			);
+		}
+	}
+
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
 		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
+
+		if (opts.isResolvable === true) {
+			await this.ensureCanManageEndUserCredential(user, targetProjectId);
+		}
 
 		await this.checkCredentialData(
 			opts.type,

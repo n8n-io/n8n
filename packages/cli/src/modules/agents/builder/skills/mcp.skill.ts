@@ -1,5 +1,5 @@
 import type { RuntimeSkill } from '@n8n/agents';
-import { ASK_QUESTION_TOOL_NAME, McpServerConfigSchema } from '@n8n/api-types';
+import { ASK_QUESTIONS_TOOL_NAME, McpServerConfigSchema } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -15,6 +15,22 @@ export function mcpSkill(): RuntimeSkill {
 		name: 'Agent builder MCP servers',
 		description:
 			'Use when adding, removing, or updating MCP (Model Context Protocol) servers on the target agent.',
+		recommendedTools: [
+			'search_mcp_servers',
+			'ask_credential',
+			'verify_mcp_server',
+			'read_config',
+			'patch_config',
+		],
+		allowedTools: [
+			'search_mcp_servers',
+			'ask_credential',
+			'verify_mcp_server',
+			'ask_questions',
+			'read_config',
+			'patch_config',
+			'write_config',
+		],
 		instructions: `\
 ## Purpose
 
@@ -87,7 +103,7 @@ by \`search_mcp_servers\`.
 
 For custom MCP servers, if credential type is unknown, ask the user which
 credential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers
-Auth, or None) via \`${ASK_QUESTION_TOOL_NAME}\`. Then map to:
+Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 
 - \`bearerAuth\` -> \`ask_credential\` with \`credentialType: "httpBearerAuth"\`
 - \`headerAuth\` -> \`ask_credential\` with \`credentialType: "httpHeaderAuth"\`

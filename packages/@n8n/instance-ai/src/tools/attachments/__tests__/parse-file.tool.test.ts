@@ -14,52 +14,58 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 	return {
 		userId: 'test-user',
 		workflowService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			getAsWorkflowJSON: jest.fn(),
-			createFromWorkflowJSON: jest.fn(),
-			updateFromWorkflowJSON: jest.fn(),
-			archive: jest.fn(),
-			unarchive: jest.fn(),
-			publish: jest.fn(),
-			unpublish: jest.fn(),
-			clearAiTemporary: jest.fn(),
-			archiveIfAiTemporary: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			getAsWorkflowJSON: vi.fn(),
+			getWorkflowHead: vi.fn(),
+			getWorkflowSnapshot: vi.fn(),
+			createFromWorkflowJSON: vi.fn(),
+			updateFromWorkflowJSON: vi.fn(),
+			archive: vi.fn(),
+			unarchive: vi.fn(),
+			publish: vi.fn(),
+			unpublish: vi.fn(),
+			clearAiTemporary: vi.fn(),
+			archiveIfAiTemporary: vi.fn(),
 		},
 		executionService: {
-			list: jest.fn(),
-			run: jest.fn(),
-			getStatus: jest.fn(),
-			getResult: jest.fn(),
-			stop: jest.fn(),
-			getDebugInfo: jest.fn(),
-			getNodeOutput: jest.fn(),
-			getResolvedNodeParameters: jest.fn(),
+			list: vi.fn(),
+			run: vi.fn(),
+			getStatus: vi.fn(),
+			getResult: vi.fn(),
+			stop: vi.fn(),
+			getDebugInfo: vi.fn(),
+			getNodeOutput: vi.fn(),
+			getResolvedNodeParameters: vi.fn(),
 		},
 		credentialService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			delete: jest.fn(),
-			test: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			delete: vi.fn(),
+			test: vi.fn(),
 		},
 		nodeService: {
-			listAvailable: jest.fn(),
-			getDescription: jest.fn(),
-			listSearchable: jest.fn(),
+			listAvailable: vi.fn(),
+			getDescription: vi.fn(),
+			listSearchable: vi.fn(),
 		},
 		dataTableService: {
-			list: jest.fn(),
-			create: jest.fn(),
-			delete: jest.fn(),
-			getSchema: jest.fn(),
-			addColumn: jest.fn(),
-			deleteColumn: jest.fn(),
-			renameColumn: jest.fn(),
-			queryRows: jest.fn(),
-			insertRows: jest.fn(),
-			updateRows: jest.fn(),
-			deleteRows: jest.fn(),
+			list: vi.fn(),
+			create: vi.fn(),
+			delete: vi.fn(),
+			getSchema: vi.fn(),
+			addColumn: vi.fn(),
+			deleteColumn: vi.fn(),
+			renameColumn: vi.fn(),
+			queryRows: vi.fn(),
+			insertRows: vi.fn(),
+			updateRows: vi.fn(),
+			deleteRows: vi.fn(),
 		},
+		workflowTemplateService: {
+			getTemplate: vi.fn(),
+		},
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 		...overrides,
 	};
 }
@@ -94,7 +100,7 @@ describe('createParseFileTool', () => {
 		it('returns error', async () => {
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64('a,b\n1,2'), mimeType: 'text/csv', fileName: 'test.csv' },
+					{ type: 'file', data: toBase64('a,b\n1,2'), mimeType: 'text/csv', fileName: 'test.csv' },
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -114,7 +120,7 @@ describe('createParseFileTool', () => {
 			const csv = 'name,age\nAlice,30\nBob,25';
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64(csv), mimeType: 'text/csv', fileName: 'people.csv' },
+					{ type: 'file', data: toBase64(csv), mimeType: 'text/csv', fileName: 'people.csv' },
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -139,7 +145,12 @@ describe('createParseFileTool', () => {
 			const json = JSON.stringify([{ name: 'Alice', active: true }]);
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64(json), mimeType: 'application/json', fileName: 'data.json' },
+					{
+						type: 'file',
+						data: toBase64(json),
+						mimeType: 'application/json',
+						fileName: 'data.json',
+					},
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -162,7 +173,7 @@ describe('createParseFileTool', () => {
 				'<html><head><title>Release</title></head><body><p>Launch codeword: amber-otter</p></body></html>';
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64(html), mimeType: 'text/html', fileName: 'release.html' },
+					{ type: 'file', data: toBase64(html), mimeType: 'text/html', fileName: 'release.html' },
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -184,7 +195,7 @@ describe('createParseFileTool', () => {
 		it('returns error gracefully', async () => {
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64('pixels'), mimeType: 'image/png', fileName: 'photo.png' },
+					{ type: 'file', data: toBase64('pixels'), mimeType: 'image/png', fileName: 'photo.png' },
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -204,7 +215,12 @@ describe('createParseFileTool', () => {
 		it('reports the detected format in the error result', async () => {
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64('not json'), mimeType: 'application/json', fileName: 'data.json' },
+					{
+						type: 'file',
+						data: toBase64('not json'),
+						mimeType: 'application/json',
+						fileName: 'data.json',
+					},
 				],
 			});
 			const tool = createParseFileTool(context);
@@ -224,7 +240,7 @@ describe('createParseFileTool', () => {
 		it('handles gracefully', async () => {
 			const context = createMockContext({
 				currentUserAttachments: [
-					{ data: toBase64(''), mimeType: 'text/csv', fileName: 'empty.csv' },
+					{ type: 'file', data: toBase64(''), mimeType: 'text/csv', fileName: 'empty.csv' },
 				],
 			});
 			const tool = createParseFileTool(context);

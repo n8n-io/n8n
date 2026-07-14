@@ -193,7 +193,7 @@ export class AgentBrowserAdapter implements Adapter {
 		}
 
 		if (!this.relay.isExtensionConnected()) {
-			const extensionEndpoint = this.relay.extensionEndpoint(this.relayPort!);
+			const extensionEndpoint = this.relay.extensionEndpoint(this.relayPort);
 			// `N8N_EVAL_AUTO_BROWSER_CONNECT=1` mirrors the playwright adapter — see
 			// `playwright.ts` for the full justification. The extension only honors
 			// the flag when the relay URL is localhost, which it always is here.
@@ -221,7 +221,7 @@ export class AgentBrowserAdapter implements Adapter {
 			log.debug('launch: extension already connected to existing relay');
 		}
 
-		this.cdpEndpoint = this.relay.cdpEndpoint(this.relayPort!);
+		this.cdpEndpoint = this.relay.cdpEndpoint(this.relayPort);
 		log.debug('launch: cdp endpoint:', this.cdpEndpoint);
 
 		this.relay.onExtensionDisconnect = (reason) => {

@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
@@ -11,24 +11,24 @@ import { Amqp } from './Amqp.node';
 
 // Mock the entire rhea module
 const mockSender = {
-	close: jest.fn(),
-	send: jest.fn().mockReturnValue({ id: 'test-message-id' }),
+	close: vi.fn(),
+	send: vi.fn().mockReturnValue({ id: 'test-message-id' }),
 };
 
 const mockConnection = {
-	close: jest.fn(),
-	open_sender: jest.fn().mockReturnValue(mockSender),
+	close: vi.fn(),
+	open_sender: vi.fn().mockReturnValue(mockSender),
 	options: { reconnect: true },
 };
 
 const mockContainer = {
-	connect: jest.fn().mockReturnValue(mockConnection),
-	on: jest.fn(),
-	once: jest.fn(),
+	connect: vi.fn().mockReturnValue(mockConnection),
+	on: vi.fn(),
+	once: vi.fn(),
 };
 
-jest.mock('rhea', () => ({
-	create_container: jest.fn(() => mockContainer),
+vi.mock('rhea', () => ({
+	create_container: vi.fn(() => mockContainer),
 }));
 
 describe('AMQP Node', () => {
@@ -41,12 +41,12 @@ describe('AMQP Node', () => {
 	});
 
 	const executeFunctions = mock<IExecuteFunctions>({
-		getNode: jest.fn().mockReturnValue({ name: 'AMQP Test Node' }),
-		continueOnFail: jest.fn().mockReturnValue(false),
+		getNode: vi.fn().mockReturnValue({ name: 'AMQP Test Node' }),
+		continueOnFail: vi.fn().mockReturnValue(false),
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		executeFunctions.getCredentials.calledWith('amqp').mockResolvedValue(credentials);
 		executeFunctions.getInputData.mockReturnValue([{ json: { testing: true } }]);

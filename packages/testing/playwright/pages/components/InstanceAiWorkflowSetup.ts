@@ -1,7 +1,13 @@
 import type { Locator } from '@playwright/test';
 
+import { FloatingUiHelper } from './FloatingUiHelper';
+
 export class InstanceAiWorkflowSetup {
-	constructor(private root: Locator) {}
+	private floatingUi: FloatingUiHelper;
+
+	constructor(private root: Locator) {
+		this.floatingUi = new FloatingUiHelper(root.page());
+	}
 
 	getContainer(): Locator {
 		return this.root;
@@ -28,7 +34,7 @@ export class InstanceAiWorkflowSetup {
 	}
 
 	getCredentialOption(credentialName: string): Locator {
-		return this.root.page().getByRole('option', { name: credentialName });
+		return this.floatingUi.getVisiblePopoverOption(credentialName);
 	}
 
 	getCredentialOptionById(credentialId: string): Locator {

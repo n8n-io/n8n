@@ -1,17 +1,21 @@
-import { mockInstance, testDb } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { createOwnerWithApiKey } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
-
+import { CredentialTypes } from '@/credential-types';
+import { EventService } from '@/events/event.service';
+import {
+	buildImportPackageBuffer,
+	serializedWorkflowWithCredential,
+} from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { Telemetry } from '@/telemetry';
+
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
@@ -22,6 +26,9 @@ let ownerPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {
+	const credentialTypesMock = mockInstance(CredentialTypes);
+	credentialTypesMock.recognizes.mockReturnValue(true);
+
 	owner = await createOwnerWithApiKey();
 	Container.get(InstanceSettings).markAsLeader();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -30,14 +37,13 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
+	await testDb.truncate([
+		'WorkflowEntity',
+		'SharedWorkflow',
+		'CredentialsEntity',
+		'SharedCredentials',
+	]);
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
-	testServer.license.enable(LICENSE_FEATURES.N8N_PACKAGES);
-	Container.get(GlobalConfig).publicApi.packagesEnabled = true;
-});
-
-afterEach(() => {
-	Container.get(GlobalConfig).publicApi.packagesEnabled = false;
 });
 
 const testWithAPIKey = (method: 'post', url: string, apiKey: string | null) => async () => {
@@ -78,7 +84,7 @@ async function buildImportPackage(): Promise<Buffer> {
 			connections: {},
 			versionId: 'wire-version-id',
 			parentFolderId: null,
-			active: false,
+			isPublished: false,
 			isArchived: false,
 		}),
 	);
@@ -114,11 +120,83 @@ describe('POST /n8n-packages/import', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('rejects import when the API key lacks workflow:import scope', async () => {
+		const limitedOwner = await createOwnerWithApiKey({ scopes: ['workflow:export'] });
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const tarBuffer = await buildImportPackage();
+
+		const response = await testServer
+			.publicApiAgentFor(limitedOwner)
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(403);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'access-denied' }),
+		);
+	});
+
+	test('rejects import into a project the caller has no access to', async () => {
+		const projectOwner = await createOwnerWithApiKey();
+		const project = await createTeamProject('Someone else project', projectOwner);
+		const outsider = await createMemberWithApiKey();
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const tarBuffer = await buildImportPackage();
+
+		const response = await testServer
+			.publicApiAgentFor(outsider)
+			.post('/n8n-packages/import')
+			.field('projectId', project.id)
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(403);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'access-denied', projectId: project.id }),
+		);
+	});
+
+	test('rejects import when the projectId does not exist', async () => {
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', 'does-not-exist')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(404);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'entity-not-found', projectId: 'does-not-exist' }),
+		);
+	});
+
+	test('rejects bindings keyed by an unsupported entity type', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			// "credential" (no trailing s) is a plausible typo that must error, not silently no-op.
+			.field('bindings', '{"credential":{"source":"target"}}')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Unrecognized key');
+		expect(response.body.message).toContain('credential');
+	});
+
 	test('imports a package and returns the rich ImportResult', async () => {
 		const tarBuffer = await buildImportPackage();
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
@@ -130,16 +208,146 @@ describe('POST /n8n-packages/import', () => {
 			},
 			workflows: [
 				{
-					sourceId: 'wf-http-source',
+					sourceWorkflowId: 'wf-http-source',
 					localId: expect.any(String),
 					name: 'HTTP Imported',
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					publishing: { state: 'unchanged' },
+					status: 'created',
 				},
 			],
+			folders: [],
+			projects: [],
+			bindings: {
+				workflows: { 'wf-http-source': expect.any(String) },
+				credentials: {},
+			},
+			credentials: {
+				matched: [],
+				stubbed: [],
+			},
 		});
 
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('accepts a request that supplies every documented form field', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', ownerPersonalProject.id)
+			.field('folderId', '')
+			.field('credentialMatchingMode', 'id-only')
+			.field('credentialMissingMode', 'must-preexist')
+			.field('bindings', '{}')
+			.field('workflowConflictPolicy', 'fail')
+			.field('workflowIdPolicy', 'new')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('returns 409 with conflict metadata when a workflow already exists under fail policy', async () => {
+		const firstBuffer = await buildImportPackage();
+
+		const first = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('credentialMatchingMode', 'id-only')
+			.field('credentialMissingMode', 'must-preexist')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', firstBuffer, 'import.n8np');
+		expect(first.statusCode).toBe(200);
+		const existingWorkflowId = first.body.workflows[0].localId;
+
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const secondBuffer = await buildImportPackage();
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('credentialMatchingMode', 'id-only')
+			.field('credentialMissingMode', 'must-preexist')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', secondBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body).toMatchObject({
+			message: expect.stringContaining('Import blocked'),
+			issues: [
+				{
+					type: 'workflow-conflict',
+					sourceWorkflowId: 'wf-http-source',
+					existingWorkflowId,
+					name: 'HTTP Imported',
+				},
+			],
+		});
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-import-failed',
+			expect.objectContaining({ reason: 'blocked' }),
+		);
+	});
+
+	test('returns 422 when credential references cannot be resolved under must-preexist', async () => {
+		const tarBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-miss',
+					name: 'Missing Credential',
+					credentialId: 'non-existent-credential',
+					credentialName: 'Missing',
+				}),
+			],
+			{ sourceId: 'http-integration-credential-fail' },
+		);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.field('credentialMissingMode', 'must-preexist')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toMatchObject({
+			message: expect.stringContaining('Import blocked'),
+			issues: [
+				expect.objectContaining({
+					type: 'credential-unresolved',
+					kind: 'not_found',
+					sourceId: 'non-existent-credential',
+				}),
+			],
+		});
+	});
+
+	test('creates stub credentials by default when references are missing', async () => {
+		const tarBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-stub',
+					name: 'Stub Credential Workflow',
+					credentialId: 'missing-credential',
+					credentialName: 'Missing',
+				}),
+			],
+			{ sourceId: 'http-integration-credential-stub' },
+		);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.credentials).toEqual({
+			matched: [],
+			stubbed: ['missing-credential'],
+		});
+		expect(response.body.bindings.credentials).toEqual({
+			'missing-credential': expect.any(String),
+		});
+		expect(response.body.workflows).toHaveLength(1);
 	});
 });

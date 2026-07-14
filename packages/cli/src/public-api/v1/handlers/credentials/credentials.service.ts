@@ -439,28 +439,36 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						properties: {
 							[dependantName]: conditionalValue,
 						},
+						// Require the controlling field in the `if` so the condition only
+						// matches when it is actually present and equal. Without this, an
+						// absent controlling field makes `properties` vacuously true and the
+						// `then` block would fire unexpectedly.
+						required: [dependantName],
 					},
 					then: {
-						allOf: [],
-					},
-					else: {
 						allOf: [],
 					},
 				};
 				resolveProperties.push(dependencyKey);
 			}
 
-			propertyRequiredDependencies[dependencyKey].then?.allOf.push({ required: [property.name] });
-			propertyRequiredDependencies[dependencyKey].else?.allOf.push({
-				not: { required: [property.name] },
-			});
-			// remove global required
+			// Only enforce a field as required when the credential actually marks it `required`.
+			if (property.required) {
+				propertyRequiredDependencies[dependencyKey].then?.allOf.push({
+					required: [property.name],
+				});
+			}
+			// Requiredness is now conditional, so drop it from the global required list.
 			requiredFields = requiredFields.filter((field) => field !== property.name);
 		}
 	});
 	Object.assign(jsonSchema, { required: requiredFields });
 
-	jsonSchema.allOf = Object.values(propertyRequiredDependencies);
+	// Drop conditionals that ended up with no required fields, so credentials whose
+	// conditional fields are all optional produce no `allOf` constraints.
+	jsonSchema.allOf = Object.values(propertyRequiredDependencies).filter(
+		(dependency) => (dependency.then?.allOf.length ?? 0) > 0,
+	);
 
 	if (!jsonSchema.allOf.length) {
 		delete jsonSchema.allOf;
