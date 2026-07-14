@@ -1,10 +1,12 @@
-import { createPinia, setActivePinia } from 'pinia';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import type * as PermissionsModule from '@n8n/permissions';
 import type { Scope } from '@n8n/permissions';
 import { hasScope } from '@n8n/permissions';
+import { createPinia, setActivePinia } from 'pinia';
+
+import { useRBACStore } from './rbac.store';
 
 vi.mock('@n8n/permissions', async () => {
-	const { hasScope } = await vi.importActual<typeof import('@n8n/permissions')>('@n8n/permissions');
+	const { hasScope } = await vi.importActual<typeof PermissionsModule>('@n8n/permissions');
 	return {
 		hasScope: vi.fn().mockImplementation(hasScope),
 	};

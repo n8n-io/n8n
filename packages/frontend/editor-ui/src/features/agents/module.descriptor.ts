@@ -1,6 +1,6 @@
 import { i18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
-import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	AGENTS_LIST_VIEW,

@@ -1269,4 +1269,78 @@ describe('DynamicCredentialService', () => {
 			expect(service.getSystemResolverId()).toBe('system-n8n');
 		});
 	});
+
+	describe('resolveOwningUserIdForAuthorization', () => {
+		it('returns unbound when the resolver does not map to an n8n user', async () => {
+			mockResolverRepository.findOneBy.mockResolvedValue(createMockResolverEntity());
+			// External-identity resolvers (Slack, OAuth) do not implement resolveOwningUserId.
+			mockResolverRegistry.getResolverByTypename.mockReturnValue(createMockResolver());
+
+			const result = await service.resolveOwningUserIdForAuthorization(
+				createMockCredentialContext(),
+				'resolver-456',
+			);
+
+			expect(result).toEqual({ status: 'unbound' });
+		});
+
+		it('returns unbound when the resolver entity is missing', async () => {
+			mockResolverRepository.findOneBy.mockResolvedValue(null);
+
+			const result = await service.resolveOwningUserIdForAuthorization(
+				createMockCredentialContext(),
+				'resolver-456',
+			);
+
+			expect(result).toEqual({ status: 'unbound' });
+		});
+
+		it('returns bound with the user id when the resolver maps to an n8n user', async () => {
+			mockResolverRepository.findOneBy.mockResolvedValue(createMockResolverEntity());
+			mockCipher.decryptV2.mockResolvedValue('{}');
+			mockResolverRegistry.getResolverByTypename.mockReturnValue({
+				...createMockResolver(),
+				resolveOwningUserId: vi.fn().mockResolvedValue('user-789'),
+			});
+
+			const result = await service.resolveOwningUserIdForAuthorization(
+				createMockCredentialContext(),
+				'resolver-456',
+			);
+
+			expect(result).toEqual({ status: 'bound', userId: 'user-789' });
+		});
+
+		it('returns unresolved when the resolver maps to a user but returns nothing', async () => {
+			mockResolverRepository.findOneBy.mockResolvedValue(createMockResolverEntity());
+			mockCipher.decryptV2.mockResolvedValue('{}');
+			mockResolverRegistry.getResolverByTypename.mockReturnValue({
+				...createMockResolver(),
+				resolveOwningUserId: vi.fn().mockResolvedValue(undefined),
+			});
+
+			const result = await service.resolveOwningUserIdForAuthorization(
+				createMockCredentialContext(),
+				'resolver-456',
+			);
+
+			expect(result).toEqual({ status: 'unresolved' });
+		});
+
+		it('returns unresolved when resolving the owning user throws', async () => {
+			mockResolverRepository.findOneBy.mockResolvedValue(createMockResolverEntity());
+			mockCipher.decryptV2.mockResolvedValue('{}');
+			mockResolverRegistry.getResolverByTypename.mockReturnValue({
+				...createMockResolver(),
+				resolveOwningUserId: vi.fn().mockRejectedValue(new Error('token expired')),
+			});
+
+			const result = await service.resolveOwningUserIdForAuthorization(
+				createMockCredentialContext(),
+				'resolver-456',
+			);
+
+			expect(result).toEqual({ status: 'unresolved' });
+		});
+	});
 });
