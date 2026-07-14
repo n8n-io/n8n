@@ -37,6 +37,8 @@ withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 }
 
 .label {
-	flex-shrink: 0;
+	// Allow long labels to shrink and wrap inside the capped-width tooltip
+	// instead of overflowing and appearing cut off.
+	min-width: 0;
 }
 </style>
