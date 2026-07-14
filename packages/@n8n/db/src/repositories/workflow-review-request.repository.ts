@@ -3,7 +3,8 @@ import { DataSource, Repository } from '@n8n/typeorm';
 
 import {
 	WorkflowReviewRequest,
-	type WorkflowReviewRequestStatus,
+	type WorkflowReviewRequestDecision,
+	type WorkflowReviewRequestState,
 } from '../entities/workflow-review-request.ee';
 
 @Service()
@@ -15,7 +16,8 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 	async createRequest(input: {
 		id?: string;
 		projectId: string;
-		status?: WorkflowReviewRequestStatus;
+		state?: WorkflowReviewRequestState;
+		decision?: WorkflowReviewRequestDecision;
 		title: string;
 		description?: string | null;
 		createdById: string | null;
@@ -24,15 +26,15 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 		const entity = this.create({
 			id: input.id,
 			projectId: input.projectId,
-			status: input.status ?? 'pending',
+			state: input.state ?? 'open',
+			decision: input.decision ?? 'pending',
 			title: input.title,
 			description: input.description ?? null,
 			createdById: input.createdById,
 			updatedById: input.updatedById ?? input.createdById,
-			archivedById: null,
-			archivedAt: null,
-			publishError: null,
-			publishErrorAt: null,
+			closedById: null,
+			closedAt: null,
+			approvedAt: null,
 		});
 		return await this.save(entity);
 	}

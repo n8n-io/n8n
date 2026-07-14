@@ -73,7 +73,7 @@ erDiagram
 "user_favorites" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_builder_session" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_publish_history" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"workflow_review_request" }o--o| "user" : "FOREIGN KEY (archivedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_request" }o--o| "user" : "FOREIGN KEY (closedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request_authors" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -295,16 +295,16 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "workflow_review_request" {
-  datetime_3_ archivedAt
-  varchar archivedById FK
+  datetime_3_ approvedAt
+  datetime_3_ closedAt
+  varchar closedById FK
   datetime_3_ createdAt
   varchar createdById FK
+  varchar_50_ decision
   TEXT description
   varchar_36_ id PK
   varchar_36_ projectId FK
-  TEXT publishError
-  datetime_3_ publishErrorAt
-  varchar_50_ status
+  varchar_16_ state
   varchar_512_ title
   datetime_3_ updatedAt
   varchar updatedById FK

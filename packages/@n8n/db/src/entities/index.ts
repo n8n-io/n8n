@@ -65,8 +65,10 @@ import { WorkflowReviewRequestReviewer } from './workflow-review-request-reviewe
 import { WorkflowReviewRequestWorkflow } from './workflow-review-request-workflow.ee';
 import {
 	WorkflowReviewRequest,
-	WorkflowReviewRequestStatus,
-	WorkflowReviewRequestStatusList,
+	WorkflowReviewRequestDecision,
+	WorkflowReviewRequestDecisionList,
+	WorkflowReviewRequestState,
+	WorkflowReviewRequestStateList,
 } from './workflow-review-request.ee';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
@@ -122,8 +124,10 @@ export {
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	WorkflowReviewRequest,
-	WorkflowReviewRequestStatus,
-	WorkflowReviewRequestStatusList,
+	WorkflowReviewRequestState,
+	WorkflowReviewRequestStateList,
+	WorkflowReviewRequestDecision,
+	WorkflowReviewRequestDecisionList,
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestReviewer,
 	WorkflowReviewRequestAuthor,

@@ -163,15 +163,15 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 			const prefix = context.tablePrefix;
 
 			expect(
-				await indexExists(context, `IDX_${prefix}workflow_review_request_project_status_created`),
-			).toBe(true);
-			expect(
-				await indexExists(context, `IDX_${prefix}workflow_review_request_open_project_created`),
+				await indexExists(
+					context,
+					`IDX_${prefix}workflow_review_request_project_state_decision_created`,
+				),
 			).toBe(true);
 			expect(
 				await indexExists(
 					context,
-					`IDX_${prefix}workflow_review_request_workflow_request_workflow`,
+					`UQ_${prefix}workflow_review_request_workflow_request_workflow`,
 				),
 			).toBe(true);
 			expect(
@@ -184,16 +184,10 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 				await indexExists(context, `IDX_${prefix}workflow_review_request_workflow_workflow_id`),
 			).toBe(true);
 			expect(
-				await indexExists(context, `IDX_${prefix}workflow_review_request_reviewers_request_user`),
+				await indexExists(context, `UQ_${prefix}workflow_review_request_reviewers_request_user`),
 			).toBe(true);
 			expect(
-				await indexExists(context, `IDX_${prefix}workflow_review_request_reviewers_user_id`),
-			).toBe(true);
-			expect(
-				await indexExists(context, `IDX_${prefix}workflow_review_request_authors_request_user`),
-			).toBe(true);
-			expect(
-				await indexExists(context, `IDX_${prefix}workflow_review_request_authors_user_id`),
+				await indexExists(context, `UQ_${prefix}workflow_review_request_authors_request_user`),
 			).toBe(true);
 		} finally {
 			await context.queryRunner.release();
@@ -228,12 +222,13 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 
 			await context.runQuery(
 				`INSERT INTO ${context.escape.tableName('workflow_review_request')}
-			 ("id", "projectId", "status", "title", "description", "createdById", "updatedById", "createdAt", "updatedAt")
-			 VALUES (:id, :projectId, :status, :title, :description, :createdById, :updatedById, :createdAt, :updatedAt)`,
+			 ("id", "projectId", "state", "decision", "title", "description", "createdById", "updatedById", "createdAt", "updatedAt")
+			 VALUES (:id, :projectId, :state, :decision, :title, :description, :createdById, :updatedById, :createdAt, :updatedAt)`,
 				{
 					id: requestId,
 					projectId,
-					status: 'pending',
+					state: 'open',
+					decision: 'pending',
 					title: 'Test review',
 					description: 'Optional description',
 					createdById: userId,
@@ -277,11 +272,11 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 				},
 			);
 
-			const [request] = await context.runQuery<Array<{ id: string; status: string }>>(
-				`SELECT "id", "status" FROM ${context.escape.tableName('workflow_review_request')} WHERE "id" = :id`,
+			const [request] = await context.runQuery<Array<{ id: string; state: string; decision: string }>>(
+				`SELECT "id", "state", "decision" FROM ${context.escape.tableName('workflow_review_request')} WHERE "id" = :id`,
 				{ id: requestId },
 			);
-			expect(request).toEqual({ id: requestId, status: 'pending' });
+			expect(request).toEqual({ id: requestId, state: 'open', decision: 'pending' });
 
 			const childRows = await context.runQuery<Array<{ workflowId: string }>>(
 				`SELECT "workflowId" FROM ${context.escape.tableName('workflow_review_request_workflow')} WHERE "workflowReviewRequestId" = :requestId`,
@@ -315,12 +310,13 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 
 			await context.runQuery(
 				`INSERT INTO ${context.escape.tableName('workflow_review_request')}
-			 ("id", "projectId", "status", "title", "createdAt", "updatedAt")
-			 VALUES (:id, :projectId, :status, :title, :createdAt, :updatedAt)`,
+			 ("id", "projectId", "state", "decision", "title", "createdAt", "updatedAt")
+			 VALUES (:id, :projectId, :state, :decision, :title, :createdAt, :updatedAt)`,
 				{
 					id: requestId,
 					projectId,
-					status: 'pending',
+					state: 'open',
+					decision: 'pending',
 					title: 'Cascade test',
 					createdAt: now,
 					updatedAt: now,

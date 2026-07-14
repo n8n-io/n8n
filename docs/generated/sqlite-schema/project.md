@@ -190,16 +190,16 @@ erDiagram
   TEXT value
 }
 "workflow_review_request" {
-  datetime_3_ archivedAt
-  varchar archivedById FK
+  datetime_3_ approvedAt
+  datetime_3_ closedAt
+  varchar closedById FK
   datetime_3_ createdAt
   varchar createdById FK
+  varchar_50_ decision
   TEXT description
   varchar_36_ id PK
   varchar_36_ projectId FK
-  TEXT publishError
-  datetime_3_ publishErrorAt
-  varchar_50_ status
+  varchar_16_ state
   varchar_512_ title
   datetime_3_ updatedAt
   varchar updatedById FK
