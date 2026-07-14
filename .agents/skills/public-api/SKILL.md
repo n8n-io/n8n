@@ -18,6 +18,12 @@ each handler's `spec/` directory.
    - Export middleware arrays keyed by `x-eov-operation-id`.
    - Tag the first middleware with `__apiKeyScope` and add `x-required-scope` in
      the path YAML (see `scope-parity.test.ts`).
+   - **Delegate to the same service/controller layer as the internal REST API.**
+     Parse input with `@n8n/api-types` DTOs, call `Container.get(SomeService)` or
+     `Container.get(SomeController)`, map errors — do not reach into repositories
+     or duplicate business logic in the handler. Older handlers like
+     `handlers/credentials/` and `handlers/workflows/` predate this pattern;
+     follow them only for middleware/OpenAPI wiring, not for data access.
 2. **OpenAPI path spec** — `handlers/<feature>/spec/paths/<path>.yml`
    - Set `tags: [<TagName>]` matching a top-level tag in `openapi.yml`.
 3. **Register path** — add a `$ref` entry under `paths:` in `openapi.yml`.
@@ -46,7 +52,8 @@ sort order.
 
 ## Reference handlers
 
-- Simple GET: `handlers/insights/`
-- CRUD: `handlers/credentials/`, `handlers/workflows/`
+- Simple GET via service: `handlers/insights/`
+- CRUD via service/controller: `handlers/variables/`, `handlers/folders/`,
+  `handlers/projects/`, `handlers/data-tables/`
 - Multipart: `handlers/n8n-packages/` (see also
   `packages/cli/src/modules/n8n-packages/CLAUDE.md`)
