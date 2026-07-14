@@ -814,15 +814,27 @@ function onDeleteSelection() {
 	if (ids.length > 0) emit('delete:nodes', ids);
 }
 
+// VueFlow selects a clicked title bar before emitting node-click, so by then
+// a pre-existing selection is indistinguishable from one the click created.
+// Snapshot the selection when the gesture starts — pointerdown precedes the
+// click in both of VueFlow's click delivery paths — so onNodeClick can tell
+// them apart.
+let selectedIdsOnPointerDown = new Set<string>();
+
+function onPointerDownCapture() {
+	selectedIdsOnPointerDown = new Set(selectedNodesAndGroups.value.map(({ id }) => id));
+}
+
 function onNodeClick({ event, node }: NodeMouseEvent) {
 	if (isCanvasGroupNode(node)) {
 		// Modifier clicks keep VueFlow's multi-select behavior (cmd/ctrl+click).
 		if (event.ctrlKey || event.metaKey || event.shiftKey) return;
 
-		// A plain click on the title bar toggles collapse instead of selecting.
+		// A plain click on the title bar toggles collapse instead of selecting —
 		// VueFlow already selected the node before emitting this event, so undo
-		// that first — selection stays a cmd+click/lasso gesture.
-		if (node.selected) {
+		// that. But a group selected before the gesture (e.g. via cmd+click)
+		// keeps its selection; the click only toggles it.
+		if (node.selected && !selectedIdsOnPointerDown.has(node.id)) {
 			removeSelectedNodes([node]);
 		}
 		const groupId = parseCanvasGroupNodeId(node.id);
@@ -1580,6 +1592,7 @@ defineExpose({
 		:disable-keyboard-a11y="true"
 		:delete-key-code="null"
 		data-test-id="canvas"
+		@pointerdown.capture="onPointerDownCapture"
 		@connect-start="onConnectStart"
 		@connect="onConnect"
 		@connect-end="onConnectEnd"

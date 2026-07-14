@@ -84,23 +84,27 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 const canvasId = 'canvas';
 
 function createCanvasGroupNode({
+	id = 'g1',
 	nodesRect = { x: 0, y: 0, width: 300, height: 100 },
 	selectable = true,
 	nodeIds = ['node-1'],
+	position = { x: 0, y: 0 },
 }: {
+	id?: string;
 	nodesRect?: NonNullable<CanvasGroupNode['data']>['nodesRect'];
 	selectable?: boolean;
 	nodeIds?: string[];
+	position?: { x: number; y: number };
 } = {}): CanvasGroupNode {
 	return {
-		id: 'group:g1',
+		id: `group:${id}`,
 		type: CANVAS_NODE_GROUP_TYPE,
-		position: { x: 0, y: 0 },
+		position,
 		width: 300,
 		height: 40,
 		selectable,
 		data: {
-			group: { id: 'g1', name: 'Group 1', nodeIds },
+			group: { id, name: `Group ${id}`, nodeIds },
 			nodesRect,
 			isCollapsed: false,
 		},
@@ -325,6 +329,48 @@ describe('Canvas', () => {
 
 			expect(nodeGroupView.isGroupCollapsed('g1')).toBe(false);
 			expect(vueFlow.getSelectedNodes.value).toHaveLength(0);
+		});
+
+		it('keeps a multi-selected group selected when a plain header click toggles it', async () => {
+			workflowDocumentStore.setNodeGroups([
+				{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] },
+				{ id: 'g2', name: 'Group 2', nodeIds: ['node-2'] },
+			]);
+			const nodeGroupView = createNodeGroupViewMock(false);
+			const { container } = renderComponent({
+				props: {
+					nodes: [
+						createCanvasNodeElement({ id: 'node-1' }),
+						createCanvasNodeElement({ id: 'node-2', position: { x: 400, y: 0 } }),
+						createCanvasGroupNode({ id: 'g1' }),
+						createCanvasGroupNode({ id: 'g2', nodeIds: ['node-2'], position: { x: 400, y: 0 } }),
+					],
+				},
+				global: { provide: { [NodeGroupViewKey as symbol]: nodeGroupView } },
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(4));
+
+			// Both title bars selected, as with cmd+click.
+			const vueFlow = useVueFlow(canvasId);
+			vueFlow.addSelectedNodes([vueFlow.findNode('group:g1')!, vueFlow.findNode('group:g2')!]);
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(
+					expect.arrayContaining(['group:g1', 'group:g2']),
+				),
+			);
+
+			const header = container.querySelector<HTMLElement>(
+				'[data-id="group:g1"] [data-test-id="canvas-node-group-header"]',
+			)!;
+			// Pointerdown precedes the click, as in a real browser gesture.
+			await fireEvent.pointerDown(header);
+			await fireEvent.click(header);
+
+			await waitFor(() => expect(nodeGroupView.isGroupCollapsed('g1')).toBe(true));
+			expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(
+				expect.arrayContaining(['group:g1', 'group:g2']),
+			);
 		});
 	});
 
