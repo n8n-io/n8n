@@ -7,10 +7,11 @@ import { reap } from '../reap';
 
 /**
  * The reaper's per-row decision over arbitrary expired-lease batches: every row
- * gets exactly one terminal-or-retry decision (never two, never none). A row with
- * attempts left is reclaimed; a last-attempt row is resolved by the effect boundary
- * — completed as succeeded if it was already dispatched (`dispatchedAt` set), else
- * dead-lettered. Reclaim always uses the shared backoff curve.
+ * gets exactly one terminal-or-retry decision (never two, never none). The effect
+ * boundary is the primary split: a dispatched row (`dispatchedAt` set) is completed
+ * as succeeded whatever its attempts, never redelivered. Only a never-dispatched row
+ * splits on the attempt count — reclaimed if it has attempts left, else dead-lettered.
+ * Reclaim always uses the shared backoff curve.
  */
 describe('reap decision (fast-check)', () => {
 	const arbRows = fc
@@ -53,10 +54,11 @@ describe('reap decision (fast-check)', () => {
 				const result = await reap(store, { batchSize: rows.length || 1 });
 
 				const lastAttempt = (r: ExpiredLeaseRow) => r.attempts + 1 >= r.maxAttempts;
-				const expectedReclaim = rows.filter((r) => !lastAttempt(r));
-				// A last-attempt row that was already dispatched is completed, not failed.
-				const expectedComplete = rows.filter((r) => lastAttempt(r) && r.dispatchedAt !== null);
-				const expectedDeadLetter = rows.filter((r) => lastAttempt(r) && r.dispatchedAt === null);
+				// Effect boundary first: any dispatched row is completed regardless of attempts.
+				// A never-dispatched row then splits on the attempt count.
+				const expectedComplete = rows.filter((r) => r.dispatchedAt !== null);
+				const expectedReclaim = rows.filter((r) => r.dispatchedAt === null && !lastAttempt(r));
+				const expectedDeadLetter = rows.filter((r) => r.dispatchedAt === null && lastAttempt(r));
 
 				const reclaimCalls = store.reclaimExpired.mock.calls;
 				const completeIds = store.completeExpired.mock.calls.map(([ref]) => ref.id);

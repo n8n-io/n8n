@@ -109,16 +109,18 @@ export type ScheduledTaskMetricSnapshot = {
 export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	private readonly isPostgres: boolean;
 	private readonly tableName: string;
-	// Quoted here so the reaper update below doesn't have to quote this
-	// camelCase column itself for Postgres (SQLite accepts the same
+	// Quoted here so the reaper update below doesn't have to quote these
+	// camelCase columns itself for Postgres (SQLite accepts the same
 	// double-quoted identifier).
 	private readonly leaseExpiresAtColumn: string;
+	private readonly dispatchedAtColumn: string;
 
 	constructor(dataSource: DataSource, config: DatabaseConfig) {
 		super(ScheduledTask, dataSource.manager);
 		this.isPostgres = config.type === 'postgresdb';
 		this.tableName = this.manager.connection.driver.escape(`${config.tablePrefix}scheduled_task`);
 		this.leaseExpiresAtColumn = this.manager.connection.driver.escape('leaseExpiresAt');
+		this.dispatchedAtColumn = this.manager.connection.driver.escape('dispatchedAt');
 	}
 
 	/**
@@ -468,49 +470,64 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * `@n8n/scheduler`.)
 	 */
 	async reclaimExpired(ref: ClaimedRef, backoffMs: number, errorMessage: string): Promise<number> {
-		return await this.runReaperUpdate(ref, {
-			status: ScheduledTaskStatus.Pending,
-			runAt: () => dbNowPlusMsLiteral(this.isPostgres, backoffMs),
-			attempts: () => 'attempts + 1',
-			leaseEpoch: () => 'leaseEpoch + 1',
-			claimedBy: null,
-			leaseExpiresAt: null,
-			errorMessage,
-			// Reclaim is the pre-dispatch path (the reaper only reclaims a row whose
-			// `dispatchedAt` is null; a dispatched one is completed instead). Clear
-			// `startedAt` so the redelivery can re-acquire the dispatch mutex; `dispatchedAt`
-			// is already null here, cleared alongside to keep the pending row clean.
-			startedAt: null,
-			dispatchedAt: null,
-		});
+		return await this.runReaperUpdate(
+			ref,
+			{
+				status: ScheduledTaskStatus.Pending,
+				runAt: () => dbNowPlusMsLiteral(this.isPostgres, backoffMs),
+				attempts: () => 'attempts + 1',
+				leaseEpoch: () => 'leaseEpoch + 1',
+				claimedBy: null,
+				leaseExpiresAt: null,
+				errorMessage,
+				// Reclaim is the pre-dispatch path (fenced on `dispatchedAt IS NULL` below; a
+				// dispatched one is completed instead). Clear `startedAt` so the redelivery can
+				// re-acquire the dispatch mutex; `dispatchedAt` is already null here, cleared
+				// alongside to keep the pending row clean.
+				startedAt: null,
+				dispatchedAt: null,
+			},
+			'pre-dispatch',
+		);
 	}
 
 	/**
 	 * Reaper dead-letter: an expired-lease `running` task at its last attempt to
-	 * terminal `failed`. Same guard as {@link reclaimExpired}; terminal, so no epoch
-	 * bump (the `status` change alone fences a stale owner). Returns rows affected.
+	 * terminal `failed`. Same guard as {@link reclaimExpired}, including the
+	 * `dispatchedAt IS NULL` fence: a dispatched occurrence is never failed (the reaper
+	 * completes it instead). Terminal, so no epoch bump (the `status` change alone
+	 * fences a stale owner). Returns rows affected.
 	 */
 	async deadLetterExpired(ref: ClaimedRef, errorMessage: string): Promise<number> {
-		return await this.runReaperUpdate(ref, {
-			status: ScheduledTaskStatus.Failed,
-			finishedAt: () => dbNowLiteral(this.isPostgres),
-			attempts: () => 'attempts + 1',
-			errorMessage,
-		});
+		return await this.runReaperUpdate(
+			ref,
+			{
+				status: ScheduledTaskStatus.Failed,
+				finishedAt: () => dbNowLiteral(this.isPostgres),
+				attempts: () => 'attempts + 1',
+				errorMessage,
+			},
+			'pre-dispatch',
+		);
 	}
 
 	/**
 	 * Reaper completion: an expired-lease `running` task that was already dispatched
-	 * (its effect happened) to terminal `succeeded`, on its last attempt. Recording it
-	 * failed would blame the scheduler for work that was done, and reclaiming it would
-	 * dispatch the same occurrence twice; completing it does neither. Same guard as
-	 * {@link deadLetterExpired}; terminal, so no epoch bump. Returns rows affected.
+	 * (its effect happened) to terminal `succeeded`. Recording it failed would blame the
+	 * scheduler for work that was done, and reclaiming it would dispatch the same
+	 * occurrence twice; completing it does neither. Same guard as {@link deadLetterExpired}
+	 * but fenced on `dispatchedAt IS NOT NULL` (the post-dispatch counterpart); terminal,
+	 * so no epoch bump. Returns rows affected.
 	 */
 	async completeExpired(ref: ClaimedRef): Promise<number> {
-		return await this.runReaperUpdate(ref, {
-			status: ScheduledTaskStatus.Succeeded,
-			finishedAt: () => dbNowLiteral(this.isPostgres),
-		});
+		return await this.runReaperUpdate(
+			ref,
+			{
+				status: ScheduledTaskStatus.Succeeded,
+				finishedAt: () => dbNowLiteral(this.isPostgres),
+			},
+			'post-dispatch',
+		);
 	}
 
 	/**
@@ -543,19 +560,33 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * does not guard on `claimedBy` (the reaper is not the owner) and re-asserts the
 	 * expiry so a lease renewed between the sweep's read and this write is left alone.
 	 * Returns rows affected; 0 is benign (another reaper won it, or the owner finished).
+	 *
+	 * `dispatched` fences the outcome on the effect boundary so it stays consistent
+	 * with the marker at write time, not just at the sweep's read: a pre-dispatch
+	 * outcome (reclaim, dead-letter) only lands while `dispatchedAt` is still null, and
+	 * a post-dispatch one (complete) only while it is set. A `markDispatched` that
+	 * raced in between the sweep's read and this write therefore turns a would-be
+	 * dead-letter/reclaim into a benign no-op instead of failing (or redelivering) a
+	 * dispatched occurrence; the next sweep reads the marker and completes the row.
 	 */
 	private async runReaperUpdate(
 		ref: ClaimedRef,
 		values: QueryDeepPartialEntity<ScheduledTask>,
+		dispatched: 'pre-dispatch' | 'post-dispatch',
 	): Promise<number> {
 		const { id, claimedEpoch } = ref;
-		// No alias on an UPDATE builder, so quote the camelCase column ourselves for
+		// No alias on an UPDATE builder, so quote the camelCase columns ourselves for
 		// Postgres (SQLite accepts the same double-quoted identifier).
+		const dispatchedFence =
+			dispatched === 'post-dispatch'
+				? `${this.dispatchedAtColumn} IS NOT NULL`
+				: `${this.dispatchedAtColumn} IS NULL`;
 		const result = await this.createQueryBuilder()
 			.update(ScheduledTask)
 			.set(values)
 			.where({ id, status: ScheduledTaskStatus.Running, leaseEpoch: claimedEpoch })
 			.andWhere(`${this.leaseExpiresAtColumn} < ${dbNowLiteral(this.isPostgres)}`)
+			.andWhere(dispatchedFence)
 			.execute();
 		return result.affected ?? 0;
 	}

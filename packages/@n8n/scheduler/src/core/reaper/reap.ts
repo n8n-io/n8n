@@ -95,9 +95,12 @@ export interface ReaperHooks {
  * reapers on every main are safe. A row that throws is skipped (reported via
  * `hooks.onRowError`), not allowed to abort the rest of the pass.
  *
- * One pass reclaims (or dead-letters) up to `batchSize` expired-lease tasks: a task
- * with attempts left goes back to `pending` with a backoff and a bumped epoch; one
- * at its last attempt fails terminally. Returns the counts.
+ * One pass resolves up to `batchSize` expired-lease tasks, splitting first on the
+ * effect boundary: a task the owner already dispatched is completed as succeeded
+ * (its effect happened, so it is never redelivered), whatever its attempts. A
+ * never-dispatched task with attempts left goes back to `pending` with a backoff and
+ * a bumped epoch; one at its last attempt is salvaged once and then fails terminally.
+ * Returns the counts.
  *
  * Cancellation (`signal`, aborted when the driving loop times the pass out or
  * shuts down) is task-granular.
@@ -127,69 +130,71 @@ export async function reap(
 			// same as a handler failure would.
 			const nextAttempts = task.attempts + 1;
 			const ref = { id: task.id, claimedEpoch: task.leaseEpoch };
-			if (nextAttempts >= task.maxAttempts) {
-				// Last attempt: the effect boundary decides how the row is terminally resolved.
-				// - If the owner was lost after dispatch (`dispatchedAt` set), the effect already happened:
-				//   complete it as succeeded rather than record a failure for work that was done,
-				//   and never dispatch it again. It is a success, not a failure, so it is not counted
-				//   as dead-lettered; the `onCompletedAfterDispatch` hook reports it instead.
-				// - If it was lost before dispatch, the effect never happened:
-				//   salvage it with one final dispatch, then dead-letter it as failed.
-				if (task.dispatchedAt !== null) {
-					const affected = await store.completeExpired(ref);
-					if (affected > 0) {
+			// The effect boundary is the primary split, ahead of the attempt count: a row
+			// the owner dispatched before losing its lease already had its effect happen, so
+			// it is completed whatever the attempts left and never redelivered. Only a
+			// never-dispatched row is reclaimed for another attempt or, on its last one,
+			// salvaged once and dead-lettered.
+			if (task.dispatchedAt !== null) {
+				// Post-dispatch: complete as succeeded rather than record a failure for work
+				// that was done, and never dispatch it again. A success, not a failure, so it
+				// is not counted as dead-lettered; `onCompletedAfterDispatch` reports it.
+				const affected = await store.completeExpired(ref);
+				if (affected > 0) {
+					try {
+						// Stryker disable next-line OptionalChaining: the enclosing catch
+						// already swallows a call on an undefined hook, same as `?.` skipping it.
+						hooks.onCompletedAfterDispatch?.({ taskId: task.id });
+					} catch {
+						// A host-supplied reporter must not break the sweep it observes.
+					}
+				}
+			} else if (nextAttempts >= task.maxAttempts) {
+				// Never dispatched, last attempt: the effect never happened. Salvage the lost
+				// occurrence with one final dispatch BEFORE the terminal write. Dead-lettering
+				// first would strand the effect: a crash in the gap before the dispatch, or a
+				// dispatch that itself fails, would leave a terminal `failed` row no reaper
+				// sweeps again, losing a never-dispatched occurrence. Dispatching first keeps
+				// the row `running` and lease-expired until the effect is handed off, so a
+				// crash only costs a redelivery on the next sweep. It is ungated (a lost
+				// dead-letter race no longer suppresses it), so concurrent reapers may both
+				// salvage; the unique `deduplicationKey` index suppresses the duplicate effect,
+				// the same effect-level backstop the executor relies on.
+				if (dispatch !== undefined) {
+					try {
+						await dispatch(task);
+					} catch (error) {
 						try {
 							// Stryker disable next-line OptionalChaining: the enclosing catch
 							// already swallows a call on an undefined hook, same as `?.` skipping it.
-							hooks.onCompletedAfterDispatch?.({ taskId: task.id });
-						} catch {
-							// A host-supplied reporter must not break the sweep it observes.
-						}
-					}
-				} else {
-					// Salvage the lost occurrence with one final dispatch BEFORE the terminal
-					// write. Dead-lettering first would strand the effect: a crash in the gap
-					// before the dispatch, or a dispatch that itself fails, would leave a
-					// terminal `failed` row no reaper sweeps again, losing a never-dispatched
-					// occurrence. Dispatching first keeps the row `running` and lease-expired
-					// until the effect is handed off, so a crash only costs a redelivery on the
-					// next sweep. It is ungated (a lost dead-letter race no longer suppresses
-					// it), so concurrent reapers may both salvage; the unique `deduplicationKey`
-					// index suppresses the duplicate effect, the same effect-level backstop the
-					// executor relies on.
-					if (dispatch !== undefined) {
-						try {
-							await dispatch(task);
-						} catch (error) {
-							try {
-								// Stryker disable next-line OptionalChaining: the enclosing catch
-								// already swallows a call on an undefined hook, same as `?.` skipping it.
-								hooks.onSalvageError?.(task.id, error);
-							} catch {
-								// A host-supplied reporter must not break the sweep it observes.
-							}
-						}
-					}
-					// Now record the terminal failure, after the effect was attempted. Guarded
-					// and epoch-fenced, so only one reaper wins the row; a lost race (0 rows)
-					// means another actor already resolved it and there is nothing to report.
-					const affected = await store.deadLetterExpired(ref, LEASE_EXPIRED_MESSAGE);
-					deadLettered += affected;
-					if (affected > 0) {
-						try {
-							// Stryker disable next-line OptionalChaining: the enclosing catch
-							// already swallows a call on an undefined hook, same as `?.` skipping it.
-							hooks.onDeadLetter?.({
-								taskId: task.id,
-								attempts: nextAttempts,
-								maxAttempts: task.maxAttempts,
-							});
+							hooks.onSalvageError?.(task.id, error);
 						} catch {
 							// A host-supplied reporter must not break the sweep it observes.
 						}
 					}
 				}
+				// Now record the terminal failure, after the effect was attempted. Guarded and
+				// epoch-fenced, and fenced on `dispatchedAt` still being null: a marker that
+				// landed during the sweep turns this into a benign no-op (the next sweep then
+				// completes the row) instead of failing a dispatched occurrence. A lost race
+				// (0 rows) likewise means another actor already resolved it.
+				const affected = await store.deadLetterExpired(ref, LEASE_EXPIRED_MESSAGE);
+				deadLettered += affected;
+				if (affected > 0) {
+					try {
+						// Stryker disable next-line OptionalChaining: the enclosing catch
+						// already swallows a call on an undefined hook, same as `?.` skipping it.
+						hooks.onDeadLetter?.({
+							taskId: task.id,
+							attempts: nextAttempts,
+							maxAttempts: task.maxAttempts,
+						});
+					} catch {
+						// A host-supplied reporter must not break the sweep it observes.
+					}
+				}
 			} else {
+				// Never dispatched, attempts left: return it to `pending` for another attempt.
 				reclaimed += await store.reclaimExpired(ref, backoff(nextAttempts), LEASE_EXPIRED_MESSAGE);
 			}
 		} catch (error) {

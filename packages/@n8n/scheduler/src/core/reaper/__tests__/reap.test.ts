@@ -189,6 +189,27 @@ describe('reap', () => {
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
 	});
 
+	it('completes a post-dispatch expired lease even with attempts left, never reclaiming it', async () => {
+		const { store, onCompletedAfterDispatch } = setup();
+		const dispatch = vi.fn().mockResolvedValue(undefined);
+		// Dispatched (the effect happened) but not on its last attempt: the effect
+		// boundary, not the attempt count, decides. It is completed, not reclaimed for a
+		// re-run that would fire the effect a second time.
+		const task = expiredTask({ attempts: 0, maxAttempts: 3, dispatchedAt: new Date() });
+		store.findExpiredLeases.mockResolvedValue([task]);
+
+		const result = await reap(store, { batchSize: 100 }, { onCompletedAfterDispatch }, dispatch);
+
+		expect(store.completeExpired).toHaveBeenCalledWith({
+			id: task.id,
+			claimedEpoch: task.leaseEpoch,
+		});
+		expect(store.reclaimExpired).not.toHaveBeenCalled();
+		expect(dispatch).not.toHaveBeenCalled();
+		expect(onCompletedAfterDispatch).toHaveBeenCalledWith({ taskId: task.id });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
+	});
+
 	it('dead-letters when the next attempt reaches maxAttempts', async () => {
 		const { store, run } = setup();
 		// nextAttempt = 3 == maxAttempts -> terminal, not another reclaim.
