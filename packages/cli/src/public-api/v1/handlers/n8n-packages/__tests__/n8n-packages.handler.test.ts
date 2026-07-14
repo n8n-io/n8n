@@ -15,6 +15,7 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
+	PackageExportBlockedError,
 } from '@/modules/n8n-packages/entities/package-export.errors';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
@@ -224,6 +225,18 @@ describe('n8n-packages handler', () => {
 			expect(emittedEvent('n8n-package-export-failed')).toEqual({
 				user: { id: 'user-1' },
 				reason: 'entity-not-found',
+				workflowIds: ['wf-1'],
+			});
+		});
+
+		it('emits n8n-package-export-failed with reason=blocked when the service rejects a blocked export', async () => {
+			mockService.exportPackage.mockRejectedValue(new PackageExportBlockedError('Export blocked'));
+
+			await run(makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export']), makeResponse());
+
+			expect(emittedEvent('n8n-package-export-failed')).toEqual({
+				user: { id: 'user-1' },
+				reason: 'blocked',
 				workflowIds: ['wf-1'],
 			});
 		});
