@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 import {
 	cleanStoredUserMessage,
-	extractEditorContextWorkflowAttachments,
+	extractEditorContextResourceAttachments,
 } from './internal-messages';
 
 type RunSnapshots = AgentTreeSnapshot[];
@@ -418,9 +418,9 @@ export function parseStoredMessages(
 			const content = cleanStoredUserMessage(text);
 			if (content === null) continue;
 
-			// Rebuild the editor hand-off's workflow attachments so the UI can
-			// re-surface them (chip + artifact) after a reload.
-			const attachments = extractEditorContextWorkflowAttachments(text);
+			// Rebuild the editor hand-off's resource attachments (workflow/agent) so
+			// the UI can re-surface them (chip + artifact) after a reload.
+			const attachments = extractEditorContextResourceAttachments(text);
 
 			messages.push({
 				id: msg.id,

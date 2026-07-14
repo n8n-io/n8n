@@ -245,6 +245,14 @@ export class LmChatAwsBedrock implements INodeType {
 						type: 'number',
 					},
 					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						default: 60000,
+						description:
+							'Maximum amount of time a request is allowed to take in milliseconds. Increase this for long generations; set to 0 to disable.',
+						type: 'number',
+					},
+					{
 						displayName: 'Additional Model Request Fields',
 						name: 'additionalModelRequestFields',
 						default: '{}',
@@ -287,8 +295,9 @@ export class LmChatAwsBedrock implements INodeType {
 										displayName: 'Guardrail Version',
 										name: 'guardrailVersion',
 										type: 'string',
-										default: '',
-										description: 'The version of the guardrail to apply',
+										default: 'DRAFT',
+										description:
+											'The version of the guardrail to apply, e.g. "1". Defaults to the working draft ("DRAFT").',
 									},
 									{
 										displayName: 'Trace',
@@ -323,6 +332,7 @@ export class LmChatAwsBedrock implements INodeType {
 			maxTokensToSample?: number;
 			topP?: number;
 			maxRetries?: number;
+			timeout?: number;
 			additionalModelRequestFields?: string;
 			latency?: PerformanceConfigLatency;
 			guardrail?: {
@@ -346,8 +356,13 @@ export class LmChatAwsBedrock implements INodeType {
 			region = arnRegion;
 		}
 
-		// Pass the pre-configured client to avoid credential resolution proxy issues
-		const client = createBedrockRuntimeClient({ region, credentials, bedrockRuntimeEndpoint });
+		const client = createBedrockRuntimeClient({
+			region,
+			credentials,
+			bedrockRuntimeEndpoint,
+			maxRetries: options.maxRetries,
+			timeout: options.timeout,
+		});
 
 		// Forward only user-set options; unset ones are omitted so model defaults are preserved.
 		const modelConfig: ChatBedrockConverseInput = {
@@ -361,14 +376,16 @@ export class LmChatAwsBedrock implements INodeType {
 		if (options.temperature !== undefined) modelConfig.temperature = options.temperature;
 		if (options.maxTokensToSample !== undefined) modelConfig.maxTokens = options.maxTokensToSample;
 		if (options.topP !== undefined) modelConfig.topP = options.topP;
-		if (options.maxRetries !== undefined) modelConfig.maxRetries = options.maxRetries;
 		if (options.latency !== undefined) modelConfig.performanceConfig = { latency: options.latency };
 
 		const guardrail = options.guardrail?.values;
 		if (guardrail?.guardrailIdentifier) {
 			modelConfig.guardrailConfig = {
 				guardrailIdentifier: guardrail.guardrailIdentifier,
-				...(guardrail.guardrailVersion ? { guardrailVersion: guardrail.guardrailVersion } : {}),
+				// AWS requires a version whenever guardrailConfig is sent. The field may be blank,
+				// whitespace (e.g. from an expression), or absent (collection defaults only
+				// materialize on add); fall back to the working draft.
+				guardrailVersion: guardrail.guardrailVersion?.trim() || 'DRAFT',
 				...(guardrail.trace ? { trace: guardrail.trace } : {}),
 			};
 		}

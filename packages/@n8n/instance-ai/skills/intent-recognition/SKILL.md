@@ -84,29 +84,41 @@ directly onto the matching anchor value.
 0. If the user is mid-build on an existing workflow or agent, apply context
    continuity (see Signals) before anything else — an incremental request
    normally extends the current primitive.
-1. If the request is not a build intent — a meta or product question, or a
+1. **Explicit artifact requests.** When the user names the deliverable —
+   "build me an agent/assistant that…", "create a workflow that…" — the
+   named primitive is a routing instruction, not surface vocabulary.
+   Classify by it unless the described behavior is unambiguously the other
+   primitive's shape (e.g. "an agent" whose behavior is a fixed
+   schedule-fetch-notify pipeline). Even then, never switch silently:
+   propose the reclassified design and say you are deviating from the named
+   primitive, grounding the choice in the task's shape. The false-friends
+   rule applies to task descriptions, not to an explicitly requested
+   artifact.
+2. If the request is not a build intent — a meta or product question, or a
    one-off content task with no trigger or reuse — classify **out-of-scope**
    and answer or do it directly.
-2. Split the request into parts only if it contains multiple independent
+3. Split the request into parts only if it contains multiple independent
    automations with separate lifecycles (unrelated triggers, audiences, or
    cadences). Markers like numbering or "and separately" are a giveaway but
    are not required — a single plain sentence can contain two automations.
    Do not split a single automation that merely enumerates many tools or
-   steps. Run steps 3-7 on each part.
-3. Test the agent signals. If any one holds, classify **agent-anchored**.
-4. Otherwise, test the workflow conditions. If all of them hold, classify
+   steps. Run steps 4-8 on each part.
+4. Test the agent signals. If any one holds, classify **agent-anchored**.
+5. Otherwise, test the workflow conditions. If all of them hold, classify
    **workflow-anchored**.
-5. Decide `embeds_other` in both directions: does an agent step appear inside
+6. Decide `embeds_other` in both directions: does an agent step appear inside
    this workflow, or does this agent invoke workflows as tools?
-6. If the request is under-specified on an anchor-deciding axis (rule-based
+7. If the request is under-specified on an anchor-deciding axis (rule-based
    vs judgment-based, scope/autonomy, interaction mode), classify
    **needs-clarification** and name the missing axis instead of guessing.
-7. If both anchors are genuinely defensible, apply the growth tiebreaker:
+8. If both anchors are genuinely defensible, apply the growth tiebreaker:
    prefer whichever primitive scales with likely complexity growth — usually
    agent-anchored when novel situations, longer horizons, or learning are
    implied. The tiebreaker applies only to genuine ties: when a bounded
    workflow reading fully satisfies the request, prefer it. If it is a real
    toss-up, say so and name both readings instead of feigning certainty.
+   The workflow preference applies to task-shaped requests; it never
+   overrides an explicitly requested agent artifact (step 1).
 
 ## Signals
 
@@ -119,7 +131,9 @@ directly onto the matching anchor value.
   whether to intervene.
 - Self-improving or skill accretion is first-class: learns from feedback
   over time, gets better at the task.
-- Chat or session-based interaction.
+- Chat or session-based interaction. A workflow with a Chat Trigger is not
+  a substitute — this signal holds unless the chat merely triggers a fixed
+  pipeline (see Gotchas).
 - Cross-session memory.
 
 **Workflow-anchored** (all must hold):
@@ -162,8 +176,10 @@ instead.
 
 **False friends — not signals**:
 
-- Surface vocabulary: "agent", "assistant", "bot", "workflow", "automate" in
-  the request text carry no weight. Classify the shape, not the words.
+- Surface vocabulary: "agent", "assistant", "bot", "workflow", "automate"
+  in a *task description* carry no weight — classify the shape, not the
+  words. An explicit artifact request ("build me an agent that…") is not a
+  false friend; see Decision Step 1.
 - Step count and tool count: long linear pipelines and high tool counts are
   not agentic. Seven deterministic steps with zero branches is still a
   workflow.
@@ -204,11 +220,22 @@ instead.
   `embeds_other: true`: long-running coordination invoking a workflow tool.
 - "Configure an AI agent to send me a nightly digest of new GitHub stars."
   -> **workflow-anchored**, `embeds_other: false`: fixed schedule and action
-  despite the word "agent" — a false friend.
+  despite the word "agent" — a false friend. When the user instead
+  explicitly asks to *build an agent* around a fixed pipeline like this,
+  keep the workflow classification but say so rather than switching
+  silently (step 1).
 - "Spin up a lightweight workflow that talks to shoppers on our storefront
   and handles their product questions." -> **agent-anchored**: chat-based
   Q&A means the LLM owns turn-by-turn control despite the word "workflow" —
   a false friend in the other direction.
+- "Build me an agent that answers customer questions from our docs." ->
+  **agent-anchored**, `embeds_other: false`: explicit agent artifact
+  request plus chat-shaped open-ended Q&A. The deliverable is an n8n Agent
+  — not a workflow with a Chat Trigger and an AI Agent node.
+- "Give me a chat box where I paste a company name and it runs our
+  enrichment steps and replies with the result." -> **workflow-anchored**,
+  `embeds_other: false`: chat is merely the manual trigger for a fixed
+  graph — the one case where a Chat Trigger workflow is the right build.
 - "Post every new Airtable record to a Discord channel, and separately set up
   an agent that handles customer refund requests end-to-end." -> two parts,
   joined only by topic, not data or trigger: "Airtable-to-Discord posting"
@@ -242,7 +269,17 @@ instead.
 - Never split a compound request on tool or step enumeration alone — split
   only on separate lifecycles.
 - Unnecessary agency adds latency, cost, and compounding error risk — do not
-  reach for an agent when a bounded workflow fully satisfies the request.
+  reach for an agent when a bounded workflow fully satisfies a task-shaped
+  request. This is not a license to override an explicit agent request.
+- Never satisfy an **agent-anchored** classification with a workflow
+  containing a Chat Trigger + AI Agent node. Agent-anchored requests
+  produce an n8n Agent artifact via the agent build path; the AI Agent
+  *node* exists only for `embeds_other: true` steps inside a genuinely
+  workflow-anchored pipeline. A Chat Trigger workflow is correct only when
+  chat is merely the manual trigger for a fixed graph.
+- Do not demote an explicitly requested agent to an embedded AI Agent step
+  inside a workflow — workflow-anchored with `embeds_other: true` is for
+  agent steps inside a pipeline the user described as a pipeline.
 - Do not use an agent when progress cannot be verified: if the path cannot
   be scripted and the result cannot be checked, the design is not ready.
 - Respect the current build context: an incremental request stays on the
@@ -258,7 +295,7 @@ Return a concise classification and reason:
 Anchor: workflow-anchored | agent-anchored | needs-clarification | out-of-scope
 Embeds other: true | false | n/a
 Reason: <one or two sentences citing the deciding signals>
-Next step: <build workflow / build workflow with embedded agent step / design agent (workflows as tools where actions should be reusable) / ask clarification / answer directly>
+Next step: <build workflow / build workflow with embedded agent step / build n8n Agent artifact (agent build path; workflows as tools where actions should be reusable) / ask clarification / answer directly>
 ```
 
 For build requests, do not expose this format unless the user asks for

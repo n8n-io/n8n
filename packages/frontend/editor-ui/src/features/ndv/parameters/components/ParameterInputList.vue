@@ -26,6 +26,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
 	MODAL_CONFIRM,
+	TELEGRAM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -43,6 +44,10 @@ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
+import {
+	filterTelegramHitlParameters,
+	useEnhancedHitlTelegramExperiment,
+} from '@/experiments/enhancedHitlTelegram';
 import {
 	getParameterTypeOption,
 	type ParameterOptionsOverrides,
@@ -113,6 +118,7 @@ const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
+const { isFeatureEnabled: isEnhancedHitlTelegramEnabled } = useEnhancedHitlTelegramExperiment();
 const {
 	dismissCallout,
 	isCalloutDismissed,
@@ -184,7 +190,13 @@ const parameterItems = ref<ParameterComputedData[]>([]);
 let previousParameterNames: string[] = [];
 
 throttledWatch(
-	[() => props.parameters, () => props.nodeValues, node, hasChatOrManualChatParent],
+	[
+		() => props.parameters,
+		() => props.nodeValues,
+		node,
+		hasChatOrManualChatParent,
+		isEnhancedHitlTelegramEnabled,
+	],
 	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
@@ -225,6 +237,12 @@ throttledWatch(
 			(node.value.typeVersion ?? 0) >= 3.1
 		) {
 			filteredParameters = updateAgentParameters(parameters, node.value.name);
+		} else if (
+			node.value &&
+			node.value.type === TELEGRAM_NODE_TYPE &&
+			!isEnhancedHitlTelegramEnabled.value
+		) {
+			filteredParameters = filterTelegramHitlParameters(parameters);
 		} else {
 			filteredParameters = parameters;
 		}

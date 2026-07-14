@@ -230,6 +230,7 @@ describe('GlobalConfig', () => {
 			publicationOutboxFailedRetentionHours: 168,
 			publicationOutboxCleanupIntervalSeconds: 1200,
 			publicationOutboxCleanupBatchSize: 1000,
+			publicationReconcileIntervalSeconds: 10,
 			autosaveDisabled: false,
 			minScheduleIntervalSeconds: 0,
 		},
@@ -461,6 +462,7 @@ describe('GlobalConfig', () => {
 			jitterRatio: 0.1,
 			minIntervalSeconds: 0,
 			maxConcurrentPasses: 10,
+			triggerNodeMode: 'legacy',
 		},
 		evaluation: {
 			collectionsEnabled: false,

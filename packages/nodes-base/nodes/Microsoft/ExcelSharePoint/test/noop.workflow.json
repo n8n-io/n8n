@@ -1,0 +1,40 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "8f4a1c22-6e1d-4a35-9c40-1af2f9f70301",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.microsoftExcelSharePoint",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "4c9be7de-51f2-4633-8b0a-2f4f3f1f9d02",
+			"name": "Microsoft Excel (SharePoint)"
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel (SharePoint)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Microsoft Excel (SharePoint)": [
+			{
+				"json": {}
+			}
+		]
+	}
+}

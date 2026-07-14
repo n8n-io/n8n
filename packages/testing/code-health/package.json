@@ -38,6 +38,7 @@
 	},
   "devDependencies": {
 		"@vitest/coverage-v8": "catalog:",
+		"fast-check": "catalog:",
 		"vitest": "catalog:"
   }
 }
