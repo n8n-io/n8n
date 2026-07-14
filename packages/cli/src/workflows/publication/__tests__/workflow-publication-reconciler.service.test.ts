@@ -160,12 +160,12 @@ describe('WorkflowPublicationReconciler', () => {
 			expect(outboxRepository.enqueueByWorkflowIds).not.toHaveBeenCalled();
 		});
 
-		it('enqueues only the deficient workflows among several', async () => {
+		it('enqueues only the workflows with missing triggers among several', async () => {
 			triggerStatusRepository.findActivatedInMemoryTriggers.mockResolvedValue([
 				{ workflowId: 'wf-1', nodeId: 'n1' },
 				{ workflowId: 'wf-2', nodeId: 'n2' },
 			]);
-			setRegistered({ 'wf-1': ['n1'], 'wf-2': [] }); // only wf-2 is deficient
+			setRegistered({ 'wf-1': ['n1'], 'wf-2': [] }); // only wf-2 is missing a trigger
 
 			await service.reconcile();
 

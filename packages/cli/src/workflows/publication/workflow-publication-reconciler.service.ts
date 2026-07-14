@@ -107,15 +107,15 @@ export class WorkflowPublicationReconciler {
 			async (span) => {
 				const startedAt = Date.now();
 				try {
-					const deficient = await this.findDeficientWorkflows();
+					const missing = await this.findMissingActiveWorkflows();
 
-					span.setAttribute('n8n.publication.deficient_workflows', deficient.length);
+					span.setAttribute('n8n.publication.deficient_workflows', missing.length);
 
-					if (deficient.length > 0) {
+					if (missing.length > 0) {
 						this.logger.debug('Re-publishing workflows with missing in-memory triggers', {
-							workflowIds: deficient,
+							workflowIds: missing,
 						});
-						await this.outboxRepository.enqueueByWorkflowIds(deficient);
+						await this.outboxRepository.enqueueByWorkflowIds(missing);
 						this.outboxConsumer.startPolling();
 						await this.outboxConsumer.drainPending();
 					}
@@ -123,7 +123,7 @@ export class WorkflowPublicationReconciler {
 					span.setStatus({ code: SpanStatus.ok });
 					this.eventService.emit('workflow-publication-reconciliation', {
 						result: 'success',
-						deficientCount: deficient.length,
+						deficientCount: missing.length,
 						durationMs: Date.now() - startedAt,
 					});
 				} catch (error) {
@@ -144,12 +144,12 @@ export class WorkflowPublicationReconciler {
 	 * registered, excluding any already covered by an in-flight publication (so
 	 * the reconciler never competes with a publication that is about to fix it).
 	 */
-	private async findDeficientWorkflows(): Promise<string[]> {
+	private async findMissingActiveWorkflows(): Promise<string[]> {
 		const desiredByWorkflow = this.groupByWorkflow(
 			await this.triggerStatusRepository.findActivatedInMemoryTriggers(),
 		);
 
-		const deficient: string[] = [];
+		const missing: string[] = [];
 		for (const [workflowId, desiredNodeIds] of desiredByWorkflow) {
 			const registered = this.nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds(workflowId);
 			const hasMissing = [...desiredNodeIds].some((nodeId) => !registered.has(nodeId));
@@ -159,10 +159,10 @@ export class WorkflowPublicationReconciler {
 			// re-enqueuing would only churn. The enqueue is idempotent regardless.
 			if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) continue;
 
-			deficient.push(workflowId);
+			missing.push(workflowId);
 		}
 
-		return deficient;
+		return missing;
 	}
 
 	private groupByWorkflow(rows: Array<{ workflowId: string; nodeId: string }>) {
