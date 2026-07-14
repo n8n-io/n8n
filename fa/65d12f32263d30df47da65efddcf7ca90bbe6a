@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/ToDo/GenericFunctions.ts
+  s_e1c9c54ffa6807::t_9d5b055abb97ee 70,83-86,91,94,153,168
+packages/nodes-base/nodes/Microsoft/ToDo/MicrosoftToDo.node.ts
+  s_e1c9c54ffa6807::t_b9b110543daf77 173,188,204,221,231,252,298,312,327,343,353,396,418,430,443,457,467,485
+packages/nodes-base/nodes/Microsoft/ToDo/test/GenericFunctions.test.ts
+  s_e1c9c54ffa6807::t_2658bf4df47cb7 61,83,104,126,148,170,192,214,239,248,257,266,274,337,350,363,376,389,407,423,434,448,613,626
+packages/nodes-base/nodes/Microsoft/test/GenericFunctions.test.ts
+  s_e1c9c54ffa6807::t_a6ca20a7242030 168-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "fa65d12f32263d30df47da65efddcf7ca90bbe6a",
+  "prompts": {},
+  "sessions": {
+    "s_e1c9c54ffa6807": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9b01429-509e-46f2-8282-f82d9a115547",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
