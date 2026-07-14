@@ -54,6 +54,7 @@ import type {
 	SessionWorkflowRef,
 } from '../../types';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
+import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from './tracing-utils';
 
 function isBuilderNotConfiguredError(error: unknown): boolean {
 	return isRecord(error) && error.code === BUILDER_NOT_CONFIGURED_CODE;
@@ -99,7 +100,17 @@ function buildOutboundMessage(message: string, workflowContext?: SessionWorkflow
 /** Builder sessions are keyed per assistant thread + target agent; the resume
  *  leg must reconstruct this byte-identically after a restart. */
 function builderSessionFor(context: OrchestrationContext, agentId: string) {
-	return { threadId: `ia-builder:${context.threadId}:${agentId}`, modelConfig: context.modelId };
+	const telemetry = context.tracing?.getTelemetry?.({
+		agentRole: 'agent-builder',
+		functionId: 'instance-ai.subagent.agent-builder',
+		executionMode: 'foreground',
+		metadata: { agent_id: builderAgentIdFor(agentId), target_agent_id: agentId },
+	});
+	return {
+		threadId: `ia-builder:${context.threadId}:${agentId}`,
+		modelConfig: context.modelId,
+		...(telemetry ? { telemetry } : {}),
+	};
 }
 
 function builderAgentIdFor(agentId: string): string {
@@ -274,23 +285,48 @@ async function runBuilderConsumeLoop(params: {
 	carriedConfigUpdated: boolean;
 	/** Runs once the stream settles (any status) — used to persist a deferred agentId-path bind. */
 	onSettled?: () => Promise<void>;
+	/** Trace inputs recorded on the child run (distinct per leg: outbound message vs. resume marker). */
+	traceInputs?: unknown;
 }): Promise<BuildAgentOutput> {
-	const { context, delegate, ctx, target, builderAgentId, turn, carriedConfigUpdated, onSettled } =
-		params;
+	const {
+		context,
+		delegate,
+		ctx,
+		target,
+		builderAgentId,
+		turn,
+		carriedConfigUpdated,
+		onSettled,
+		traceInputs,
+	} = params;
+
+	const traceRun = await startSubAgentTrace(context, {
+		agentId: builderAgentId,
+		role: 'agent-builder',
+		kind: 'agent-builder',
+		metadata: { target_agent_id: target.agentId },
+		...(traceInputs !== undefined ? { inputs: traceInputs } : {}),
+	});
 
 	let result: ConsumeStreamCascadingResult;
 	try {
-		result = await consumeStreamCascading({
-			agent: undefined,
-			stream: turn,
-			runId: context.runId,
-			agentId: builderAgentId,
-			eventBus: context.eventBus,
-			logger: context.logger,
-			threadId: context.threadId,
-			abortSignal: context.abortSignal,
-		});
+		result = await withTraceRun(
+			context,
+			traceRun,
+			async () =>
+				await consumeStreamCascading({
+					agent: undefined,
+					stream: turn,
+					runId: context.runId,
+					agentId: builderAgentId,
+					eventBus: context.eventBus,
+					logger: context.logger,
+					threadId: context.threadId,
+					abortSignal: context.abortSignal,
+				}),
+		);
 	} catch (error) {
+		await failTraceRun(context, traceRun, error);
 		// `buildAgent`/`resumeBuild` on the delegate are async generators: calling
 		// them never throws, so errors from their bodies (builder-not-configured,
 		// an expired/missing checkpoint) only surface here, during consumption —
@@ -308,7 +344,13 @@ async function runBuilderConsumeLoop(params: {
 	await onSettled?.();
 
 	if (result.status !== 'suspended') {
-		return await finishTurn(context, builderAgentId, result, carriedConfigUpdated);
+		const output = await finishTurn(context, builderAgentId, result, carriedConfigUpdated);
+		if (output.ok) {
+			await finishTraceRun(context, traceRun, { outputs: output });
+		} else {
+			await failTraceRun(context, traceRun, new Error(output.error ?? 'builder run failed'));
+		}
+		return output;
 	}
 
 	const configUpdatedSoFar = carriedConfigUpdated || didUpdateConfig(result.workSummary);
@@ -330,12 +372,14 @@ async function runBuilderConsumeLoop(params: {
 		}
 		const message =
 			"The agent builder's confirmation request could not be shown in this chat; the build turn was cancelled.";
+		await failTraceRun(context, traceRun, new Error(message));
 		publishAgentBuilderFailure(context, builderAgentId, new Error(message));
 		return { ok: false, error: message, configUpdated: configUpdatedSoFar };
 	}
 
 	// The builder-level requestId must not leak up: the FE confirms against the
 	// orchestrator's own suspension, so a fresh one is minted here.
+	await finishTraceRun(context, traceRun, { metadata: { outcome: 'suspended' } });
 	return await ctx.suspend({
 		...parsedSuspendPayload.data,
 		requestId: nanoid(),
@@ -430,6 +474,7 @@ async function handleResume(
 		builderAgentId,
 		turn,
 		carriedConfigUpdated: ref.configUpdated,
+		traceInputs: { resumed: true },
 	});
 }
 
@@ -516,6 +561,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				builderAgentId,
 				turn,
 				carriedConfigUpdated: false,
+				traceInputs: { message: outboundMessage },
 				onSettled: bindAfterTurn
 					? async () => {
 							domainContext.agentBuilderTarget = boundTarget;

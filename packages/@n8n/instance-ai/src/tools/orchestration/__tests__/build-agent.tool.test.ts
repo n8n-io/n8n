@@ -10,6 +10,8 @@ import type {
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
 	InstanceAiContext,
+	InstanceAiTraceContext,
+	InstanceAiTraceRun,
 	OrchestrationContext,
 } from '../../../types';
 import type * as AgentTargetBindingModule from '../agent-target-binding';
@@ -130,6 +132,21 @@ function configureChannelSuspendPayload() {
 	};
 }
 
+/** Stub for `context.tracing`: a sentinel telemetry object plus mocked child-run lifecycle. */
+function makeTracingStub() {
+	const sentinelTelemetry = { functionId: 'sentinel' } as unknown as ReturnType<
+		NonNullable<InstanceAiTraceContext['getTelemetry']>
+	>;
+	const traceRun = { id: 'trace-run-1' } as unknown as InstanceAiTraceRun;
+	const tracing = mock<InstanceAiTraceContext>();
+	tracing.getTelemetry = vi.fn(() => sentinelTelemetry);
+	tracing.startChildRun.mockResolvedValue(traceRun);
+	tracing.withActiveSpan.mockImplementation(async (_run, fn) => await fn());
+	tracing.finishRun.mockResolvedValue(undefined);
+	tracing.failRun.mockResolvedValue(undefined);
+	return { tracing, sentinelTelemetry, traceRun };
+}
+
 function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): {
 	context: OrchestrationContext;
 	delegate: InstanceAiBuilderDelegate;
@@ -171,6 +188,8 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	// Sentinel model — the orchestrator's own resolved model, which the
 	// builder sub-agent session must inherit (see `session.modelConfig`).
 	context.modelId = 'anthropic/claude-sonnet-host-resolved';
+	// Tracing-off is the default; tracing tests set their own stub.
+	context.tracing = undefined;
 
 	return { context, delegate, publishedEvents };
 }
@@ -968,6 +987,171 @@ describe('build-agent tool', () => {
 					{ resumeData: { approved: true }, suspendPayload: suspendPayloadWithCheckpoint() },
 				),
 			).rejects.toThrow('boom mid-resume');
+		});
+	});
+
+	describe('parent-trace tracing', () => {
+		it('includes host telemetry from context.tracing.getTelemetry in the builder session', async () => {
+			const { context, delegate } = makeContext();
+			const { tracing, sentinelTelemetry } = makeTracingStub();
+			context.tracing = tracing;
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'ok'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(tracing.getTelemetry).toHaveBeenCalledWith({
+				agentRole: 'agent-builder',
+				functionId: 'instance-ai.subagent.agent-builder',
+				executionMode: 'foreground',
+				metadata: { agent_id: 'agent-builder:agent-1', target_agent_id: 'agent-1' },
+			});
+			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
+			expect(sessionArg).toEqual(expect.objectContaining({ telemetry: sentinelTelemetry }));
+		});
+
+		it('omits telemetry from the builder session when tracing is unset', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'ok'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
+			expect(sessionArg).not.toHaveProperty('telemetry');
+		});
+
+		it('starts a labeled agent-builder child run and finishes it with outputs on completion', async () => {
+			const { context, delegate } = makeContext();
+			const { tracing, traceRun } = makeTracingStub();
+			context.tracing = tracing;
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'ok'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(tracing.startChildRun).toHaveBeenCalledTimes(1);
+			const [, initOptions] = tracing.startChildRun.mock.calls[0];
+			expect(initOptions).toMatchObject({
+				name: 'agent: agent-builder',
+				canonicalName: 'instance-ai.subagent.agent-builder.stream',
+				tags: ['sub-agent'],
+				metadata: {
+					agent_role: 'agent-builder',
+					agent_id: 'agent-builder:agent-1',
+					task_kind: 'agent-builder',
+					target_agent_id: 'agent-1',
+				},
+			});
+			const [finishedRun, finishOptions] = tracing.finishRun.mock.calls[0];
+			expect(finishedRun).toBe(traceRun);
+			expect(finishOptions).toMatchObject({ outputs: { ok: true } });
+			expect(tracing.failRun).not.toHaveBeenCalled();
+		});
+
+		it('fails the child run when the builder result status is errored', async () => {
+			const { context, delegate } = makeContext();
+			const { tracing, traceRun } = makeTracingStub();
+			context.tracing = tracing;
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream([{ type: 'error', error: 'boom' }], ''),
+			);
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(tracing.failRun).toHaveBeenCalledWith(traceRun, expect.any(Error), undefined);
+			expect(tracing.finishRun).not.toHaveBeenCalled();
+		});
+
+		it('fails the child run when the stream throws mid-consumption', async () => {
+			const { context, delegate } = makeContext();
+			const { tracing, traceRun } = makeTracingStub();
+			context.tracing = tracing;
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				throwingStream(new Error('stream exploded')),
+			);
+
+			await expect(runTool(context, { message: 'Build it', name: 'New Agent' })).rejects.toThrow(
+				'stream exploded',
+			);
+
+			expect(tracing.failRun).toHaveBeenCalledWith(traceRun, expect.any(Error), undefined);
+		});
+
+		it('finishes the child run with a suspended outcome before cascading the suspension', async () => {
+			const { context, delegate } = makeContext();
+			const { tracing, traceRun } = makeTracingStub();
+			context.tracing = tracing;
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				suspendingStream('ask_questions', askQuestionsSuspendPayload()),
+			);
+			const suspend: Mock = vi.fn().mockResolvedValue(undefined);
+
+			await runToolWithCtx(context, { message: 'Build it', name: 'New Agent' }, { suspend });
+
+			expect(tracing.finishRun).toHaveBeenCalledWith(
+				traceRun,
+				expect.objectContaining({ metadata: { outcome: 'suspended' } }),
+			);
+			expect(tracing.finishRun.mock.invocationCallOrder[0]).toBeLessThan(
+				suspend.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('resume leg also includes host telemetry in the builder session', async () => {
+			const { context, delegate } = makeContext();
+			const { tracing, sentinelTelemetry } = makeTracingStub();
+			context.tracing = tracing;
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Using Slack.'));
+			const resumeData = {
+				approved: true,
+				answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
+			};
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData,
+					suspendPayload: {
+						...askQuestionsSuspendPayload(),
+						requestId: 'orch-req-1',
+						builderCheckpoint: {
+							runId: 'builder-run-1',
+							toolCallId: 'builder-call-1',
+							configUpdated: false,
+						},
+					},
+				},
+			);
+
+			const [, , sessionArg] = vi.mocked(delegate.resumeBuild).mock.calls[0];
+			expect(sessionArg).toEqual(expect.objectContaining({ telemetry: sentinelTelemetry }));
 		});
 	});
 });

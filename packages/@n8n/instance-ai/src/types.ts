@@ -852,6 +852,11 @@ export interface BuilderDelegateSession {
 	 * model.
 	 */
 	modelConfig?: ModelConfig;
+	/**
+	 * Host telemetry for the builder run — produced from the parent instance-AI
+	 * trace context so the builder's LLM/tool spans join the parent trace.
+	 */
+	telemetry?: Telemetry | BuiltTelemetry;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
