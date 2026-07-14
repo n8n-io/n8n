@@ -2,9 +2,8 @@ import {
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	agentSkillSchema,
-	CreateAgentSkillDto,
-	UpdateAgentSkillDto,
-} from '../dto';
+} from '../agent-skill.schema';
+import { CreateAgentSkillDto, UpdateAgentSkillDto } from '../dto';
 
 describe('agent skill DTOs', () => {
 	const validSkill = {
