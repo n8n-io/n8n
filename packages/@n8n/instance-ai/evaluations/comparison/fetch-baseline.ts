@@ -62,10 +62,39 @@ const outputsSchema = z
 	})
 	.passthrough();
 
+/** How many newest candidates to probe for the completion marker. Wide enough
+ *  that a burst of failed captures can't hide an older completed baseline
+ *  behind the probe window; only the no-marker-found path pays the extra
+ *  reads. The plain-newest fallback below stays for pre-marker cohorts. */
+const MAX_COMPLETION_PROBES = 25;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
- * Return the most recently created baseline experiment, or `undefined` if
- * none exist. We pick by `start_time` so a re-run of an older snapshot
- * doesn't displace the latest one.
+ * A capture killed mid-run (job timeout, runner death) leaves a partial
+ * experiment with the baseline prefix. The CLI writes aggregate metadata
+ * (`pass_rate_per_iter`) only at successful run end — treat it as the
+ * completion marker so partial captures never become the comparison target.
+ */
+async function hasCompletionMarker(client: Client, projectName: string): Promise<boolean> {
+	try {
+		const project = await client.readProject({ projectName });
+		const extra: unknown = project.extra;
+		if (!isRecord(extra) || !isRecord(extra.metadata)) return false;
+		return 'pass_rate_per_iter' in extra.metadata;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Return the most recently created COMPLETED baseline experiment, or
+ * `undefined` if none exist. We pick by `start_time` so a re-run of an older
+ * snapshot doesn't displace the latest one, and require the completion marker
+ * so a killed capture doesn't either (falling back to the plain newest when
+ * no probed candidate carries the marker, e.g. legacy cohorts).
  *
  * `prefix` defaults to the Instance AI baseline. Pass a different prefix (e.g.
  * `mcp-baseline-`) to scope the lookup to an isolated cohort, so an MCP run
@@ -75,14 +104,18 @@ export async function findLatestBaseline(
 	client: Client,
 	prefix: string = BASELINE_EXPERIMENT_PREFIX,
 ): Promise<string | undefined> {
-	let latest: { name: string; ts: number } | undefined;
+	const candidates: Array<{ name: string; ts: number }> = [];
 	for await (const project of client.listProjects({ nameContains: prefix })) {
 		const name = project.name;
 		if (!name?.startsWith(prefix)) continue;
 		const ts = project.start_time ? new Date(project.start_time).getTime() : 0;
-		if (!latest || ts > latest.ts) latest = { name, ts };
+		candidates.push({ name, ts });
 	}
-	return latest?.name;
+	candidates.sort((a, b) => b.ts - a.ts);
+	for (const candidate of candidates.slice(0, MAX_COMPLETION_PROBES)) {
+		if (await hasCompletionMarker(client, candidate.name)) return candidate.name;
+	}
+	return candidates[0]?.name;
 }
 
 /**
