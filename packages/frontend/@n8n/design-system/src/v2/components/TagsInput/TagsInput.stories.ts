@@ -324,7 +324,7 @@ export const Duplicates = {
 	}),
 } satisfies Story;
 
-export const DuplicateAnimation = {
+export const DuplicateToEnd = {
 	render: (args) => ({
 		components: { TagsInput },
 		setup() {
@@ -367,8 +367,8 @@ export const DuplicateAnimation = {
 		},
 		template: `
 		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--sm);">
-			<p style="margin: 0; color: var(--color--text--tint-1); font-size: var(--font-size--xs);">
-				Duplicates are blocked. Use the buttons to replay the highlight animation.
+			<p style="margin: 0; color: var(--text-color--subtler); font-size: var(--font-size--xs);">
+				Duplicates are blocked — adding an existing tag moves it to the end.
 			</p>
 			<div ref="fieldRef">
 				<TagsInput
@@ -387,8 +387,8 @@ export const DuplicateAnimation = {
 						padding: var(--spacing--3xs) var(--spacing--xs);
 						border: var(--border);
 						border-radius: var(--radius--2xs);
-						background: var(--color--background);
-						color: var(--color--text);
+						background: var(--background--surface);
+						color: var(--text-color);
 						cursor: pointer;
 						font: inherit;
 						font-size: var(--font-size--xs);
@@ -404,7 +404,7 @@ export const DuplicateAnimation = {
 						border: var(--border);
 						border-radius: var(--radius--2xs);
 						background: transparent;
-						color: var(--color--text--tint-1);
+						color: var(--text-color--subtler);
 						cursor: pointer;
 						font: inherit;
 						font-size: var(--font-size--xs);

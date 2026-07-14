@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactivePick } from '@vueuse/core';
-import { nextTick, onBeforeUnmount, ref, useCssModule, useTemplateRef } from 'vue';
+import { computed, useCssModule, useTemplateRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
@@ -44,12 +44,8 @@ const sizes: Record<TagsInputSizes, string> = {
 };
 
 const rootRef = useTemplateRef<HTMLElement>('root');
-const highlightedTagIndex = ref<number | null>(null);
-let duplicatePulseTimer: ReturnType<typeof setTimeout> | undefined;
 
-const DUPLICATE_BEAM_MS = 1000;
-
-const rootProps = useForwardPropsEmits(
+const forwarded = useForwardPropsEmits(
 	reactivePick(
 		props,
 		'modelValue',
@@ -68,6 +64,12 @@ const rootProps = useForwardPropsEmits(
 	),
 	emit,
 );
+
+/** Handle `invalid` ourselves so duplicates can move to the end without emitting. */
+const rootProps = computed(() => {
+	const { onInvalid: _, ...rest } = forwarded.value;
+	return rest;
+});
 
 function getTagKey(value: TagsInputValue, index: number): string {
 	return typeof value === 'string' ? `${value}-${index}` : `tag-${index}`;
@@ -104,80 +106,50 @@ function clearDraftInput() {
 	input.dispatchEvent(new InputEvent('input', { bubbles: true, data: null }));
 }
 
-function findDuplicateTagIndex(value: TagsInputValue): number {
-	const label = getDisplayValue(value);
-	const tags = props.modelValue;
-
-	if (Array.isArray(tags)) {
-		const exactIndex = tags.findIndex((tag) => tag === value);
-		if (exactIndex !== -1) {
-			return exactIndex;
-		}
-
-		if (label) {
-			const labelIndex = tags.findIndex((tag) => getDisplayValue(tag) === label);
-			if (labelIndex !== -1) {
-				return labelIndex;
-			}
-		}
+function findDuplicateTagIndex(tags: TagsInputValue[], value: TagsInputValue): number {
+	const exactIndex = tags.findIndex((tag) => tag === value);
+	if (exactIndex !== -1) {
+		return exactIndex;
 	}
 
-	const rootEl = rootRef.value;
-	if (!(rootEl instanceof HTMLElement) || !label) {
+	const label = getDisplayValue(value);
+	if (!label) {
 		return -1;
 	}
 
-	const textEls = rootEl.querySelectorAll(`.${$style.tagText}`);
-	for (let index = 0; index < textEls.length; index++) {
-		if (textEls[index]?.textContent === label) {
-			return index;
-		}
-	}
-
-	return -1;
+	return tags.findIndex((tag) => getDisplayValue(tag) === label);
 }
 
-function pulseDuplicateTag(value: TagsInputValue) {
-	const index = findDuplicateTagIndex(value);
+/** When duplicates are blocked, move the existing tag to the end instead of rejecting. */
+function moveDuplicateToEnd(value: TagsInputValue): boolean {
+	const tags = props.modelValue;
+	if (!Array.isArray(tags)) {
+		return false;
+	}
+
+	const index = findDuplicateTagIndex(tags, value);
 	if (index === -1) {
+		return false;
+	}
+
+	emit('update:modelValue', [...tags.slice(0, index), ...tags.slice(index + 1), value]);
+	return true;
+}
+
+/** Reka keeps the draft text on duplicate/max; clear it. Duplicates are moved to the end. */
+function onInvalid(value: TagsInputValue) {
+	clearDraftInput();
+
+	if (moveDuplicateToEnd(value)) {
 		return;
 	}
 
-	highlightedTagIndex.value = null;
-	void nextTick(() => {
-		highlightedTagIndex.value = index;
-
-		const rootEl = rootRef.value;
-		const tagEl = rootEl?.querySelectorAll(`.${$style.tag}`)[index];
-		tagEl?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-	});
-
-	clearTimeout(duplicatePulseTimer);
-	duplicatePulseTimer = setTimeout(() => {
-		highlightedTagIndex.value = null;
-	}, DUPLICATE_BEAM_MS);
-}
-
-/** Reka keeps the draft text on duplicate/max; clear it so it feels like a successful add. */
-function onInvalid(value: TagsInputValue) {
 	emit('invalid', value);
-	clearDraftInput();
-	pulseDuplicateTag(value);
-}
-
-function getTagClass(index: number): string {
-	return [$style.tag, highlightedTagIndex.value === index && $style.tagDuplicateBeam]
-		.filter(Boolean)
-		.join(' ');
 }
 
 function getInputClass(isEmpty: boolean): string {
 	return [$style.input, isEmpty && $style.inputEmpty].filter(Boolean).join(' ');
 }
-
-onBeforeUnmount(() => {
-	clearTimeout(duplicatePulseTimer);
-});
 </script>
 
 <template>
@@ -193,7 +165,7 @@ onBeforeUnmount(() => {
 					v-for="(tag, index) in modelValue"
 					:key="getTagKey(tag, index)"
 					:value="tag"
-					:class="getTagClass(index)"
+					:class="$style.tag"
 				>
 					<slot
 						name="tag"
@@ -348,7 +320,6 @@ onBeforeUnmount(() => {
 }
 
 .tag {
-	position: relative;
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--5xs);
@@ -363,110 +334,11 @@ onBeforeUnmount(() => {
 	font-size: var(--tag--font-size);
 	font-weight: var(--tag--font-weight);
 	line-height: var(--tag--line-height);
-	transition:
-		background-color var(--duration--snappy) var(--easing--ease-out),
-		color var(--duration--snappy) var(--easing--ease-out),
-		border-color var(--duration--snappy) var(--easing--ease-out);
 
 	&[data-state='active'],
 	&[aria-current='true'] {
 		background-color: var(--tag--color--background--hover);
 		border-color: var(--tag--border-color--hover);
-	}
-}
-
-.tagDuplicateBeam {
-	--tag-duplicate--duration: var(--duration--slow);
-	--tag-duplicate--color--background: light-dark(
-		var(--color--purple-100),
-		var(--color--purple-950)
-	);
-	--tag-duplicate--color--text: light-dark(var(--color--purple-700), var(--color--purple-300));
-
-	background-color: var(--tag-duplicate--color--background);
-	color: var(--tag-duplicate--color--text);
-	animation: tag-duplicate-fill var(--tag-duplicate--duration) linear 1 forwards;
-
-	.tagDelete {
-		color: inherit;
-	}
-
-	&::before {
-		content: '';
-		position: absolute;
-		inset: -1px;
-		z-index: 1;
-		border-radius: inherit;
-		padding: 1px;
-		background: conic-gradient(
-			from var(--tag-beam-angle, 0deg),
-			transparent 0%,
-			transparent 52%,
-			var(--color--purple-alpha-200) 64%,
-			var(--color--purple-300) 74%,
-			var(--focus--border-color) 82%,
-			var(--color--purple-300) 88%,
-			var(--color--purple-alpha-200) 94%,
-			transparent 100%
-		);
-		pointer-events: none;
-		-webkit-mask:
-			linear-gradient(#fff 0 0) content-box,
-			linear-gradient(#fff 0 0);
-		mask:
-			linear-gradient(#fff 0 0) content-box,
-			linear-gradient(#fff 0 0);
-		-webkit-mask-composite: xor;
-		mask-composite: exclude;
-		animation:
-			tag-duplicate-beam-spin var(--tag-duplicate--duration) cubic-bezier(0.55, 0.05, 0.2, 1) 1,
-			tag-duplicate-beam-fade var(--tag-duplicate--duration) linear 1 forwards;
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		border-color: var(--focus--border-color);
-		animation: none;
-
-		&::before {
-			animation: none;
-			background: var(--focus--border-color);
-		}
-	}
-}
-
-@property --tag-beam-angle {
-	syntax: '<angle>';
-	inherits: false;
-	initial-value: 0deg;
-}
-
-@keyframes tag-duplicate-beam-spin {
-	to {
-		--tag-beam-angle: 360deg;
-	}
-}
-
-@keyframes tag-duplicate-beam-fade {
-	0%,
-	45% {
-		opacity: 1;
-	}
-
-	100% {
-		opacity: 0;
-	}
-}
-
-@keyframes tag-duplicate-fill {
-	0%,
-	45% {
-		background-color: var(--tag-duplicate--color--background);
-		color: var(--tag-duplicate--color--text);
-	}
-
-	100% {
-		background-color: var(--tag--color--background);
-		color: var(--tag--color--text);
 	}
 }
 
@@ -490,7 +362,6 @@ onBeforeUnmount(() => {
 	color: var(--icon-color);
 	cursor: pointer;
 	margin-top: var(--tag--delete--offset);
-	transition: color var(--duration--snappy) var(--easing--ease-out);
 
 	&:hover,
 	&:focus {

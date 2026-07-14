@@ -193,6 +193,25 @@ describe('v2/components/TagsInput', () => {
 			});
 			expect(wrapper.emitted('update:modelValue')).toBeFalsy();
 		});
+
+		it('should move an existing tag to the end when a duplicate is added', async () => {
+			const wrapper = render(TagsInput, {
+				props: {
+					modelValue: ['alpha', 'beta', 'gamma'],
+					placeholder: 'Add tags...',
+				},
+			});
+
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			await userEvent.type(input!, 'alpha{Enter}');
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['beta', 'gamma', 'alpha']]);
+			});
+			expect(wrapper.emitted('invalid')).toBeFalsy();
+			expect(input).toHaveValue('');
+		});
 	});
 
 	describe('keyboard', () => {

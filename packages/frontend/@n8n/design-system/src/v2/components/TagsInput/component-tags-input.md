@@ -23,7 +23,7 @@ Freeform tag entry field. Users type values and create tags via delimiter (defau
 - `size?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge'` - Sets `--input--height`. Tag height is `height − 2× inset`; inset/gap share `--tags-input--padding`. Default: `'large'`
 - `addOnPaste?: boolean` / `addOnBlur?: boolean` / `addOnTab?: boolean` - Extra ways to commit a tag
 - `max?: number` - Max tags. Reka treats `0` as unlimited
-- `duplicate?: boolean` - When `true`, allow duplicate tags
+- `duplicate?: boolean` - When `true`, allow duplicate tags. When `false` (default), adding an existing tag moves it to the end of the list
 - `name?: string` / `required?: boolean` - Form field props forwarded to Reka
 
 Cap height with `--tags-input--max-height` on a parent (or the field). The chrome stays fixed; tags scroll inside.
@@ -34,7 +34,7 @@ Cap height with `--tags-input--max-height` on a parent (or the field). The chrom
 - `update:modelValue(value: TagsInputValue[])` - Fired when the tag list changes
 - `addTag(value: TagsInputValue)` - Fired when a tag is added
 - `removeTag(value: TagsInputValue)` - Fired when a tag is removed
-- `invalid(value: TagsInputValue)` - Fired when an add is rejected (duplicate/max). Draft text is cleared. On duplicate, a purple highlight travels around the existing tag.
+- `invalid(value: TagsInputValue)` - Fired when an add is rejected (e.g. max). Draft text is cleared. Duplicate adds move the existing tag to the end instead of emitting `invalid`.
 
 
 **Slots**
