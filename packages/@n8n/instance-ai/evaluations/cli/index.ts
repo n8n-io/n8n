@@ -1092,8 +1092,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				// so they take one of its work slots — that's what makes scenario
 				// backlog visible to the build allocator. A quarantined lane keeps
 				// the slot request queued until re-admission (the workflow survives
-				// the container restart), bounded by the scenario's own budget.
-				await allocator.acquireOn(builtOnLane, { deadlineMs: scenarioTimeoutMs });
+				// the container restart). Waiting burns no compute, so the deadline
+				// is 2× the scenario budget: enough to outlast in-flight builds
+				// ahead of it, while still bounding a truly wedged lane.
+				await allocator.acquireOn(builtOnLane, { deadlineMs: scenarioTimeoutMs * 2 });
 				try {
 					result = await builtOnLane.tracedExecute({
 						workflowId: build.workflowId,

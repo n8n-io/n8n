@@ -2,9 +2,11 @@
 // scenario executions alike — capped at `laneConcurrency`, and a lane never
 // runs the same build key twice concurrently. Builds may run on any lane
 // (least-loaded wins); scenario executions are pinned to the lane holding
-// their workflow and wait for a slot there via `acquireOn`. Counting both
-// kinds of work is what stops a lane that falls behind on scenario
-// executions from continuing to win new builds while its backlog grows.
+// their workflow and wait for a slot there via `acquireOn`. Two rules keep
+// the pinned work from starving behind builds: a freed slot serves pinned
+// waiters before build waiters (builds have other lanes to go to), and build
+// placement counts a lane's queued pinned work as load, steering new builds
+// away from a backlog instead of piling more work in front of it.
 //
 // A dead lane fails builds in milliseconds, making it permanently the
 // least-loaded lane — it would swallow the whole remaining queue. Consecutive
@@ -47,6 +49,11 @@ const DEFAULT_ALL_QUARANTINED_GRACE_MS = 5 * 60_000;
 
 export class LaneAllocator<L extends AllocatableLane> {
 	private readonly waiters: Array<Waiter<L>> = [];
+
+	/** Queued pinned waiters per lane. Build placement counts these as load so
+	 *  new builds route away from a lane whose scenario backlog is growing —
+	 *  builds can run anywhere, the queued scenarios can't. */
+	private readonly pinnedQueued = new Map<L, number>();
 
 	private readonly consecutiveFailures = new Map<L, number>();
 
@@ -94,7 +101,10 @@ export class LaneAllocator<L extends AllocatableLane> {
 				const deadlineMs = opts.deadlineMs;
 				waiter.deadline = setTimeout(() => {
 					const i = this.waiters.indexOf(waiter);
-					if (i !== -1) this.waiters.splice(i, 1);
+					if (i !== -1) {
+						this.waiters.splice(i, 1);
+						this.trackPinned(lane, -1);
+					}
 					reject(
 						new Error(
 							`no lane slot within ${String(deadlineMs)}ms (${this.quarantined.has(lane) ? 'lane quarantined' : 'lane at capacity'})`,
@@ -104,6 +114,7 @@ export class LaneAllocator<L extends AllocatableLane> {
 				waiter.deadline.unref?.();
 			}
 			this.waiters.push(waiter);
+			this.trackPinned(lane, +1);
 		});
 	}
 
@@ -199,15 +210,28 @@ export class LaneAllocator<L extends AllocatableLane> {
 			if (w.deadline) clearTimeout(w.deadline);
 			w.reject(error);
 		}
+		this.pinnedQueued.clear();
+	}
+
+	private trackPinned(lane: L, delta: number): void {
+		const next = (this.pinnedQueued.get(lane) ?? 0) + delta;
+		if (next > 0) this.pinnedQueued.set(lane, next);
+		else this.pinnedQueued.delete(lane);
 	}
 
 	private findFree(key: string, not?: L): L | undefined {
 		// Least-loaded policy: spread builds evenly across lanes rather than
-		// filling lane 0 to cap before touching lane 1. Avoids hot-spotting.
+		// filling lane 0 to cap before touching lane 1. Queued pinned scenario
+		// work counts as load so builds route away from a growing backlog.
 		let best: L | undefined;
+		let bestLoad = Number.POSITIVE_INFINITY;
 		for (const lane of this.lanes) {
 			if (lane === not || !this.canServe(lane, key)) continue;
-			if (best === undefined || lane.activeWork < best.activeWork) best = lane;
+			const load = lane.activeWork + (this.pinnedQueued.get(lane) ?? 0);
+			if (load < bestLoad) {
+				best = lane;
+				bestLoad = load;
+			}
 		}
 		return best;
 	}
@@ -226,13 +250,16 @@ export class LaneAllocator<L extends AllocatableLane> {
 	}
 
 	private wakeNext(lane: L): boolean {
-		// Wake the first waiter this lane can now serve. FIFO ordering.
-		for (let i = 0; i < this.waiters.length; i++) {
-			const w = this.waiters[i];
-			if (w.lane !== undefined && w.lane !== lane) continue;
-			if (this.canServe(lane, w.key)) {
+		// Pinned waiters win a freed slot over builds — a queued build can run
+		// on any lane, the pinned scenario only here. FIFO within each class.
+		for (const pinnedPass of [true, false]) {
+			for (let i = 0; i < this.waiters.length; i++) {
+				const w = this.waiters[i];
+				if (pinnedPass ? w.lane !== lane : w.lane !== undefined) continue;
+				if (!this.canServe(lane, w.key)) continue;
 				this.waiters.splice(i, 1);
 				if (w.deadline) clearTimeout(w.deadline);
+				if (w.lane !== undefined) this.trackPinned(w.lane, -1);
 				this.markBusy(lane, w.key);
 				w.resolve(lane);
 				return true;

@@ -93,6 +93,10 @@ describe('LaneAllocator', () => {
 	});
 
 	describe('pinned work slots (scenario executions)', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
 		it('counts pinned work toward the lane cap so a backlogged lane stops winning builds', async () => {
 			const lanes = newLanes(2);
 			const a = new LaneAllocator(lanes, 2);
@@ -157,6 +161,48 @@ describe('LaneAllocator', () => {
 			expect(resolved).toBe(true);
 			expect(lanes[0].activeWork).toBe(1);
 			vi.useRealTimers();
+		});
+
+		it('serves a queued pinned waiter before an earlier-queued build waiter', async () => {
+			const lanes = newLanes(1);
+			const a = new LaneAllocator(lanes, 1);
+			await a.acquire('p1'); // fills the lane
+			const order: string[] = [];
+			void a.acquire('p2').then(() => order.push('build'));
+			void a.acquireOn(lanes[0]).then(() => order.push('pinned'));
+			a.release(lanes[0], 'p1');
+			await new Promise((r) => setImmediate(r));
+			// The build queued first, but it could run on any lane — the pinned
+			// scenario can only run here, so it wins the freed slot.
+			expect(order).toEqual(['pinned']);
+			a.release(lanes[0]);
+			await new Promise((r) => setImmediate(r));
+			expect(order).toEqual(['pinned', 'build']);
+		});
+
+		it('hands a re-admitted lane to its pinned backlog before queued builds', async () => {
+			vi.useFakeTimers();
+			const lanes = newLanes(1);
+			let healthy = false;
+			const a = new LaneAllocator(lanes, 2, {
+				probe: async () => await Promise.resolve(healthy),
+				probeIntervalMs: 1000,
+				quarantineThreshold: 1,
+				allQuarantinedGraceMs: 60_000,
+			});
+			a.reportOutcome(lanes[0], 'transient-failure');
+			const order: string[] = [];
+			void a.acquire('p1').then(() => order.push('build'));
+			void a.acquireOn(lanes[0]).then(() => order.push('pinned-1'));
+			void a.acquireOn(lanes[0]).then(() => order.push('pinned-2'));
+			healthy = true;
+			await vi.advanceTimersByTimeAsync(1000);
+			// Two slots on re-admission: the pinned backlog (which waited through
+			// the outage) fills them; the build — queued first — stays behind.
+			expect(order).toEqual(['pinned-1', 'pinned-2']);
+			a.release(lanes[0]);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(order).toEqual(['pinned-1', 'pinned-2', 'build']);
 		});
 
 		it('does not hand a freed slot on another lane to a pinned waiter', async () => {
