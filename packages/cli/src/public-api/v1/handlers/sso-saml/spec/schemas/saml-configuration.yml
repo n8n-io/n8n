@@ -49,7 +49,10 @@ properties:
         description: SAML attributes mapped to n8n project roles, formatted as `<projectId>:<role>`.
   metadata:
     type: string
-    description: Identity provider metadata in XML format.
+    description: >
+      Identity provider metadata in XML format. Redacted on read when set because it
+      contains IdP certificates; never echoed back in plaintext.
+    example: '**hidden**'
   metadataUrl:
     type: string
     description: URL to fetch identity provider metadata from.
@@ -90,7 +93,10 @@ properties:
     example: '**hidden**'
   signingCertificate:
     type: string
-    description: PEM-encoded certificate containing the public key matching the signing private key.
+    description: >
+      PEM-encoded certificate containing the public key matching the signing private key.
+      Redacted on read when set; never echoed back in plaintext.
+    example: '**hidden**'
   acsBinding:
     type: string
     enum: [redirect, post]

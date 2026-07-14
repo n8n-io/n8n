@@ -55,7 +55,7 @@ describe('SAML SSO configuration in Public API', () => {
 			expect(response.body.returnUrl).toContain('/rest/sso/saml/acs');
 		});
 
-		it('redacts the signing private key on read', async () => {
+		it('redacts certificates and secrets on read', async () => {
 			testServer.license.enable('feat:saml');
 			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
 
@@ -72,7 +72,10 @@ describe('SAML SSO configuration in Public API', () => {
 
 			expect(response.status).toBe(200);
 			expect(response.body.signingPrivateKey).toBe(CREDENTIAL_BLANKING_VALUE);
-			expect(response.body.signingCertificate).toBe(RSA_TEST_CERTIFICATE);
+			expect(response.body.signingCertificate).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(response.body.metadata).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(response.body.metadata).not.toContain('BEGIN CERTIFICATE');
+			expect(response.body.signingCertificate).not.toContain('BEGIN CERTIFICATE');
 		});
 
 		it('rejects with 403 when not licensed', async () => {
