@@ -49,5 +49,11 @@ describe('AuthService Browser ID Whitelist', () => {
 			expect(skipEndpoints).toContain('/rest/oauth1-credential/callback');
 			expect(skipEndpoints).toContain('/rest/oauth2-credential/callback');
 		});
+
+		it('should include the dynamic-credential authorize link in the skip browser ID check endpoints', () => {
+			const skipEndpoints = (authService as any).skipBrowserIdCheckEndpoints;
+
+			expect(skipEndpoints).toContain('/rest/credentials/:id/authorize');
+		});
 	});
 });
