@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import _debounce from 'lodash/debounce';
 
-import { getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from './durations';
 
 export interface DebounceOptions {
 	debounceTime: number;
