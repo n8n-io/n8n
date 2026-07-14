@@ -354,6 +354,14 @@ red is harness-caused (per "A red is signal", above):
 - **Mock response shape** — the LLM-generated mock response can omit the real
   envelope, crashing a downstream parse/format node. Recurring, reproducible
   shapes to expect (all produce a red on a *correct* build):
+  - **OpenAI structured output** — the mock returns a plain `{content: "..."}`
+    instead of the Responses envelope (`output[0].content[0].text`), so anything
+    parsing the model output gets nothing. A **Structured Output Parser** crashes;
+    the **Information Extractor** and **Text Classifier** LangChain nodes surface
+    it as the node error **`Model output doesn't fit required format`**. This is a
+    very common red for extract/classify/route builds and is easy to misread as a
+    builder bug — the node is wired correctly, the mock envelope is the cause.
+    Carry correctness in `outcomeExpectations` and note the red as harness-caused.
   - **Gmail** mock returns headers as top-level capitalized fields (`From`,
     `Subject`) instead of under `payload.headers`, so a Code/Filter node reading
     the sender/subject gets empty strings (e.g. a "drop no-reply senders" safety
@@ -541,6 +549,12 @@ dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building 
   `<slugs...>` (exact file slugs), `--changed` (new/untracked + staged + modified
   `data/workflows/*.json`, ideal right after authoring an uncommitted case),
   `--filter`/`--tier` (with `--exclude` as a modifier).
+- **Multiple positional slugs? Skip pnpm — call the script directly.** `pnpm
+  eval:langtracer-push … slugA slugB` forwards the slugs as one joined argument
+  (`"slugA slugB"`), so no case file matches and nothing is pushed. Either use a
+  no-positional selector through pnpm (`--changed`), or run the script directly so
+  each slug is its own argv: `dotenvx run -f .env.eval -- npx tsx
+  evaluations/cli/langtracer-push.ts --suite <slug> <slug1> <slug2> …`.
 - **Env:** `LANGTRACER_URL` + `LANGTRACER_API_KEY` (an `lt_` bearer; one key works
   for MCP + REST) — put them in `.env.eval` and run under `dotenvx`.
 - **Options:** `--set-kind regression|capability_gap` (default `regression`, must
