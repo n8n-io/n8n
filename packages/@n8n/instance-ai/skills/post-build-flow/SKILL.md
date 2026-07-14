@@ -56,10 +56,13 @@ Pick in this order:
    exists — search with `credentials(action="search-types")`.
 2. **Templated Custom Auth** (`httpTemplatedCustomAuth`) for any service
    without a dedicated type whose auth is expressible as header/query/body
-   values — which covers API keys, bearer tokens, and basic-style headers.
-   Always provide a recipe (below) so the user only pastes their secret.
-3. **Plain generic types** (`httpDigestAuth`, `oAuth2Api`, …) only for what a
-   template cannot express: digest's challenge-response, OAuth flows.
+   values — which covers API keys and bearer tokens (`Authorization: Bearer
+   <token>` becomes `{"headers":{"Authorization":"Bearer {{api_key}}"}}`, not
+   `httpBearerAuth`). Always provide a recipe (below) so the user only pastes
+   their secret.
+3. **Plain generic types** (`httpBasicAuth`, `httpDigestAuth`, `oAuth2Api`, …)
+   only for what a template cannot express: basic auth's base64-encoded pair,
+   digest's challenge-response, OAuth flows.
 
 ### Credential recipes for Templated Custom Auth
 

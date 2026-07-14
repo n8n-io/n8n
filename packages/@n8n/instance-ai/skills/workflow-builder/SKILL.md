@@ -270,14 +270,19 @@ decision after testing.
   1. A **dedicated credential type** whenever search finds one.
   2. **Templated Custom Auth** (`httpTemplatedCustomAuth`) for any service
      without a dedicated type whose auth is expressible as header/query/body
-     values — this covers API keys, bearer tokens, and basic-style headers.
-     Set the HTTP Request node's `genericAuthType` to it, and note the
-     provider's documented auth scheme (header format, docs URL, a cheap
+     values — this covers API keys and bearer tokens. When the provider
+     documents `Authorization: Bearer <token>`, do NOT reach for
+     `httpBearerAuth`: template it as
+     `{"headers":{"Authorization":"Bearer {{api_key}}"}}`. Set the HTTP
+     Request node's `genericAuthType` to `httpTemplatedCustomAuth`, and note
+     the provider's documented auth scheme (header format, docs URL, a cheap
      authenticated GET endpoint) while you have the docs open: the setup call
      needs them for the `credentialHints` recipe (see the post-build-flow
-     skill).
-  3. Plain generic types (`httpDigestAuth`, `oAuth2Api`, …) only for what a
-     template cannot express: digest's challenge-response, OAuth flows.
+     skill). Setup rejects new plain generic credentials on HTTP Request
+     nodes, so picking Bearer/Header/Query/Custom Auth here means rebuilding.
+  3. Plain generic types (`httpBasicAuth`, `httpDigestAuth`, `oAuth2Api`, …)
+     only for what a template cannot express: basic auth's base64-encoded
+     pair, digest's challenge-response, OAuth flows.
 - These rules apply to outbound service calls. Inbound trigger nodes (Webhook,
   Form, Chat, MCP Trigger) keep authentication at its default `none` unless
   the user explicitly asks to authenticate inbound traffic.

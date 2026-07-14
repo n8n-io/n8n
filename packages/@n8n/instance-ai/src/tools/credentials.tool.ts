@@ -94,6 +94,19 @@ export const setupHintField = z
 		`Recipe for creating a "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" credential so the user only has to paste their secret(s) — the rest is pre-filled. Provide it whenever the service has no dedicated credential type and its auth is expressible as header/query/body values; ground it in the provider's documentation, never guess the format.`,
 	);
 
+/**
+ * Plain generic auth types a Templated Custom Auth template can fully express
+ * (basic auth is excluded: base64-encoding the user/password pair is beyond a
+ * template). Creating a NEW credential of one of these on an HTTP Request node
+ * is steered to the templated type instead.
+ */
+export const TEMPLATABLE_PLAIN_AUTH_TYPES = new Set([
+	'httpBearerAuth',
+	'httpHeaderAuth',
+	'httpQueryAuth',
+	'httpCustomAuth',
+]);
+
 const TEMPLATE_MARKER_REGEX = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
 /**
@@ -430,7 +443,7 @@ async function handleSearchTypes(
 	if (results.length === 0) {
 		return {
 			results,
-			guidance: `No dedicated credential type matches. If the service's auth fits header/query/body values, use "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" and provide a credentialHints recipe during setup (see the workflow-builder skill); fall back to other generic types only for what a template cannot express (digest, OAuth flows).`,
+			guidance: `No dedicated credential type matches. If the service's auth fits header/query/body values, use "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" and provide a credentialHints recipe during setup (see the workflow-builder skill). This includes bearer tokens: when the provider documents \`Authorization: Bearer <token>\`, do NOT use httpBearerAuth — template it as {"headers":{"Authorization":"Bearer {{api_key}}"}}. Fall back to other generic types only for what a template cannot express (basic auth's base64 pair, digest, OAuth flows).`,
 		};
 	}
 
