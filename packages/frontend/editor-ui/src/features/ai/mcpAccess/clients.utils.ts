@@ -1,5 +1,7 @@
 import type { Component } from 'vue';
 
+import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+
 import ClaudeIcon from './assets/client-icons/claude.svg?component';
 import CursorIcon from './assets/client-icons/cursor.svg?component';
 import OpenAiIcon from './assets/client-icons/openai.svg?component';
@@ -41,4 +43,13 @@ export function getClientBrand(clientName: string): McpClientBrand {
  */
 export function scopeLabelKeySuffix(scope: string): string {
 	return scope.replace(':', '.');
+}
+
+/**
+ * Whether a grant covers every scope the instance offers. Pre-scoping grants
+ * are backfilled to the full launch scope set, so they surface as a single
+ * "Full access" label rather than an enumeration of every scope.
+ */
+export function isFullAccessGrant(scopes: string[]): boolean {
+	return scopes.length > 0 && MCP_INSTANCE_SCOPES.every((scope) => scopes.includes(scope));
 }

@@ -19,6 +19,7 @@ import { Service } from '@n8n/di';
 import type { Response } from 'express';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';
+import { UserConsent } from './database/entities/oauth-user-consent.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
@@ -478,9 +479,30 @@ export class OAuthServerService implements OAuthServerProvider {
 		await this.authorizationCodeService.deleteForGrant(clientId, userId);
 		await this.userConsentRepository.delete({ clientId, userId });
 
-		const remainingConsents = await this.userConsentRepository.countBy({ clientId });
-		if (remainingConsents === 0) {
-			await this.oauthClientRepository.delete({ id: clientId });
+		// Garbage-collect the client only when no consents remain. A single
+		// conditional delete (rather than count-then-delete) keeps this atomic:
+		// a concurrent authorization for the same shared client either commits
+		// its consent first — so `NOT EXISTS` keeps the client — or, if the
+		// client is already gone, fails cleanly on the foreign key instead of
+		// being silently cascade-deleted.
+		const result = await this.oauthClientRepository
+			.createQueryBuilder()
+			.delete()
+			.from(OAuthClient)
+			.where('id = :clientId', { clientId })
+			.andWhere((qb) => {
+				const subQuery = qb
+					.subQuery()
+					.select('1')
+					.from(UserConsent, 'consent')
+					.where('consent.clientId = :clientId')
+					.getQuery();
+				return `NOT EXISTS ${subQuery}`;
+			})
+			.setParameter('clientId', clientId)
+			.execute();
+
+		if (result.affected && result.affected > 0) {
 			this.logger.info('OAuth client deleted after last consent was revoked', {
 				clientId,
 				clientName: client.name,

@@ -3214,6 +3214,8 @@
 	"settings.mcp.oAuthClients.scope.project.read": "Search projects and folders",
 	"settings.mcp.oAuthClients.scope.tag.read": "List tags",
 	"settings.mcp.oAuthClients.scope.more": "+{count}",
+	"settings.mcp.oAuthClients.access.full": "Full access",
+	"settings.mcp.oAuthClients.access.none": "No access",
 	"settings.mcp.oAuthClients.details.subtitle": "Connected to this instance over MCP",
 	"settings.mcp.oAuthClients.details.subtitleWithType": "{type} · Connected to this instance over MCP",
 	"settings.mcp.oAuthClients.details.connectedOn": "Connected on",

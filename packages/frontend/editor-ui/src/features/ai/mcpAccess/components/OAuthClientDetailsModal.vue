@@ -17,7 +17,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { classifyScope } from '@/app/components/scopes/scopes.utils';
-import { getClientBrand, scopeLabelKeySuffix } from '../clients.utils';
+import { getClientBrand, isFullAccessGrant, scopeLabelKeySuffix } from '../clients.utils';
 
 const props = defineProps<{
 	client: OAuthClientResponseDto | null;
@@ -50,6 +50,9 @@ function scopeLabel(scope: string): string {
 	return label === key ? scope : label;
 }
 
+// A grant covering every instance scope (e.g. a pre-scoping consent backfilled
+// to the full launch set) shows as a single "Full access" line.
+const isFullAccess = computed(() => isFullAccessGrant(props.client?.scopes ?? []));
 const readScopes = computed(
 	() => props.client?.scopes?.filter((scope) => classifyScope(scope) === 'read') ?? [],
 );
@@ -104,22 +107,27 @@ function onRevoke() {
 					{{ i18n.baseText('settings.mcp.oAuthClients.details.access') }}
 				</N8nText>
 				<div :class="$style.access" data-test-id="mcp-client-details-access">
-					<div v-if="readScopes.length" :class="$style['access-group']">
-						<N8nText color="text-light" size="xsmall" :class="$style['access-heading']">
-							{{ i18n.baseText('settings.mcp.oAuthClients.details.readOnly') }}
-						</N8nText>
-						<N8nText v-for="scope in readScopes" :key="scope" color="text-dark" size="small">
-							{{ scopeLabel(scope) }}
-						</N8nText>
-					</div>
-					<div v-if="writeScopes.length" :class="$style['access-group']">
-						<N8nText color="text-light" size="xsmall" :class="$style['access-heading']">
-							{{ i18n.baseText('settings.mcp.oAuthClients.details.write') }}
-						</N8nText>
-						<N8nText v-for="scope in writeScopes" :key="scope" color="text-dark" size="small">
-							{{ scopeLabel(scope) }}
-						</N8nText>
-					</div>
+					<N8nText v-if="isFullAccess" color="text-dark" size="small">
+						{{ i18n.baseText('settings.mcp.oAuthClients.access.full') }}
+					</N8nText>
+					<template v-else>
+						<div v-if="readScopes.length" :class="$style['access-group']">
+							<N8nText color="text-light" size="xsmall" :class="$style['access-heading']">
+								{{ i18n.baseText('settings.mcp.oAuthClients.details.readOnly') }}
+							</N8nText>
+							<N8nText v-for="scope in readScopes" :key="scope" color="text-dark" size="small">
+								{{ scopeLabel(scope) }}
+							</N8nText>
+						</div>
+						<div v-if="writeScopes.length" :class="$style['access-group']">
+							<N8nText color="text-light" size="xsmall" :class="$style['access-heading']">
+								{{ i18n.baseText('settings.mcp.oAuthClients.details.write') }}
+							</N8nText>
+							<N8nText v-for="scope in writeScopes" :key="scope" color="text-dark" size="small">
+								{{ scopeLabel(scope) }}
+							</N8nText>
+						</div>
+					</template>
 				</div>
 			</div>
 

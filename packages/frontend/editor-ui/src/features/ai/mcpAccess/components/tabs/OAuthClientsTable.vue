@@ -7,7 +7,7 @@ import { computed, ref, watch } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { getClientBrand, scopeLabelKeySuffix } from '../../clients.utils';
+import { getClientBrand, isFullAccessGrant, scopeLabelKeySuffix } from '../../clients.utils';
 import OAuthClientDetailsModal from '../OAuthClientDetailsModal.vue';
 
 const i18n = useI18n();
@@ -101,6 +101,10 @@ function scopeLabel(scope: string): string {
 }
 
 function accessSummary(client: OAuthClientResponseDto): string {
+	if (client.scopes.length === 0) return i18n.baseText('settings.mcp.oAuthClients.access.none');
+	if (isFullAccessGrant(client.scopes)) {
+		return i18n.baseText('settings.mcp.oAuthClients.access.full');
+	}
 	const labels = client.scopes.map(scopeLabel);
 	const visible = labels.slice(0, 2).join(', ');
 	const remaining = labels.length - 2;
