@@ -228,6 +228,8 @@ import { BackfillInstanceAiEventLog1784000000051 } from '../common/1784000000051
 import { CreateWorkflowReviewRequestTables1784000000046 } from '../common/1784000000046-CreateWorkflowReviewRequestTables';
 import { CreateInstanceAiEventsTable1784000000046 } from '../common/1784000000046-CreateInstanceAiEventsTable';
 import { CreateWorkflowReviewRequestTables1784000000047 } from '../common/1784000000047-CreateWorkflowReviewRequestTables';
+import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/1784000000047-BackfillPreScopingOAuthGrantScopes';
+import { CreateWorkflowReviewRequestTables1784000000048 } from '../common/1784000000048-CreateWorkflowReviewRequestTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -460,5 +462,6 @@ export const postgresMigrations: Migration[] = [
 	BackfillInstanceAiEventLog1784000000051,
 	CreateWorkflowReviewRequestTables1784000000046,
 	CreateInstanceAiEventsTable1784000000046,
-	CreateWorkflowReviewRequestTables1784000000047,
+	BackfillPreScopingOAuthGrantScopes1784000000047,
+	CreateWorkflowReviewRequestTables1784000000048,
 ];
