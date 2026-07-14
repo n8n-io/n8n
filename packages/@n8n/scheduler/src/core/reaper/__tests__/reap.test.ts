@@ -110,7 +110,25 @@ describe('reap', () => {
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
 	});
 
-	it('does not salvage-dispatch when the dead-letter lost its race', async () => {
+	it('salvages before the terminal write, so a crash cannot strand a never-dispatched effect', async () => {
+		const { store } = setup();
+		const dispatch = vi.fn().mockResolvedValue(undefined);
+		store.findExpiredLeases.mockResolvedValue([
+			expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: null }),
+		]);
+
+		await reap(store, { batchSize: 100 }, {}, dispatch);
+
+		// The effect is handed off before the row goes terminal: dead-lettering first
+		// would leave a `failed` row no reaper sweeps again if a crash hit the gap.
+		expect(dispatch).toHaveBeenCalledOnce();
+		expect(store.deadLetterExpired).toHaveBeenCalledOnce();
+		expect(dispatch.mock.invocationCallOrder[0]).toBeLessThan(
+			store.deadLetterExpired.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('salvages even when the dead-letter loses its race, leaving the duplicate to the dedup index', async () => {
 		const { store } = setup();
 		const dispatch = vi.fn().mockResolvedValue(undefined);
 		store.deadLetterExpired.mockResolvedValue(0); // another actor decided the row first
@@ -120,8 +138,28 @@ describe('reap', () => {
 
 		const result = await reap(store, { batchSize: 100 }, {}, dispatch);
 
-		expect(dispatch).not.toHaveBeenCalled();
+		// Salvage is ungated: concurrent reapers may both dispatch, and the unique
+		// deduplicationKey index suppresses the duplicate effect. The lost terminal
+		// race is a benign no-op: not counted, nothing to report.
+		expect(dispatch).toHaveBeenCalledTimes(1);
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
+	});
+
+	it('still dead-letters and reports the error when the final salvage dispatch throws', async () => {
+		const { store } = setup();
+		const onSalvageError = vi.fn();
+		const failure = new Error('handler down');
+		const dispatch = vi.fn().mockRejectedValue(failure);
+		const task = expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: null });
+		store.findExpiredLeases.mockResolvedValue([task]);
+
+		const result = await reap(store, { batchSize: 100 }, { onSalvageError }, dispatch);
+
+		// The occurrence exhausted its attempts and its final salvage failed: a genuine
+		// terminal failure, recorded only after the effect was attempted, and reported.
+		expect(onSalvageError).toHaveBeenCalledWith(task.id, failure);
+		expect(store.deadLetterExpired).toHaveBeenCalledOnce();
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
 	});
 
 	it('completes a post-dispatch expired lease as succeeded instead of failing it', async () => {
