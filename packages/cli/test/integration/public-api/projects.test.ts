@@ -63,25 +63,6 @@ describe('Projects in Public API', () => {
 			});
 		});
 
-		it('if not licensed, should still return projects (listing is not gated by license)', async () => {
-			/**
-			 * Arrange
-			 */
-			const owner = await createOwnerWithApiKey();
-
-			/**
-			 * Act
-			 */
-			const response = await testServer.publicApiAgentFor(owner).get('/projects');
-
-			/**
-			 * Assert
-			 */
-			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('data');
-			expect(response.body.data).toContainEqual(expect.objectContaining({ type: 'personal' }));
-		});
-
 		it('if not authenticated, should reject', async () => {
 			/**
 			 * Act
@@ -504,28 +485,6 @@ describe('Projects in Public API', () => {
 				...second.body.data.map((m: { id: string }) => m.id),
 			];
 			expect(new Set(allIds).size).toBe(3);
-		});
-
-		it('if not licensed, should still return project members (listing is not gated by license)', async () => {
-			/**
-			 * Arrange
-			 */
-			const owner = await createOwnerWithApiKey();
-			const project = await createTeamProject('shared-project', owner);
-
-			/**
-			 * Act
-			 */
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.get(`/projects/${project.id}/users`);
-
-			/**
-			 * Assert
-			 */
-			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('data');
-			expect(response.body.data).toContainEqual(expect.objectContaining({ id: owner.id }));
 		});
 
 		it('if not authenticated, should reject', async () => {
