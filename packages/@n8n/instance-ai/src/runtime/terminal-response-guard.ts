@@ -1,8 +1,11 @@
 import {
 	isDisplayableConfirmationRequest,
 	type InstanceAiConfirmationRequestEvent,
+	type InstanceAiErrorEvent,
 	type InstanceAiEvent,
 } from '@n8n/api-types';
+
+type InstanceAiErrorCode = NonNullable<InstanceAiErrorEvent['payload']['code']>;
 
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 
@@ -71,6 +74,7 @@ export class InstanceAiTerminalResponseGuard {
 		options: {
 			workSummary?: WorkSummary;
 			errorMessage?: string;
+			errorCode?: InstanceAiErrorCode;
 			suppressCompletedFallback?: boolean;
 		} = {},
 	): TerminalResponseDecision {
@@ -128,6 +132,7 @@ export class InstanceAiTerminalResponseGuard {
 		}
 
 		if (status === 'cancelled') {
+			// A cancelled run needs no assistant placeholder: the stopped state is self-evident in the UI.
 			if (visibility.hasRootText || visibility.hasRootError) {
 				return {
 					status,
@@ -136,11 +141,12 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'already-visible',
 				};
 			}
-			return this.emitText(
+			return {
 				status,
-				'cancelled-silent',
-				'The run was cancelled before I could send a response.',
-			);
+				visibilitySource: 'none',
+				action: 'none',
+				reason: 'cancelled-silent',
+			};
 		}
 
 		if (visibility.hasRootError) {
@@ -157,6 +163,7 @@ export class InstanceAiTerminalResponseGuard {
 			visibility.hasRootText ? 'errored-after-text' : 'errored-silent',
 			options.errorMessage ??
 				'I hit an error before I could finish that response. Please try again.',
+			options.errorCode,
 		);
 	}
 
@@ -257,6 +264,7 @@ export class InstanceAiTerminalResponseGuard {
 		status: TerminalResponseStatus,
 		reason: TerminalResponseDecision['reason'],
 		content: string,
+		code?: InstanceAiErrorCode,
 	): TerminalResponseDecision {
 		return {
 			status,
@@ -268,7 +276,7 @@ export class InstanceAiTerminalResponseGuard {
 				runId: this.options.runId,
 				agentId: this.options.rootAgentId,
 				responseId: this.fallbackResponseId(status),
-				payload: { content },
+				payload: { content, ...(code ? { code } : {}) },
 			},
 		};
 	}

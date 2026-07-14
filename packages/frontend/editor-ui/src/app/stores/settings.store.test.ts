@@ -7,6 +7,7 @@ const mockRootStore = {
 	restApiContext: {},
 	setUrlBaseWebhook: vi.fn(),
 	setUrlBaseEditor: vi.fn(),
+	setUrlBaseWebhookTest: vi.fn(),
 	setEndpointForm: vi.fn(),
 	setEndpointFormTest: vi.fn(),
 	setEndpointFormWaiting: vi.fn(),
@@ -118,6 +119,56 @@ describe('settings.store', () => {
 			await settingsStore.getSettings();
 
 			expect(settingsStore.isAutosaveEnabled).toBe(true);
+		});
+	});
+
+	describe('isCrdtCollaborationEnabled', () => {
+		it('should return true when collaboration.crdt is local', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'local' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(true);
+		});
+
+		it('should return true when collaboration.crdt is server', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'server' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(true);
+		});
+
+		it('should return false when collaboration.crdt is off', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'off' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(false);
+		});
+
+		it('should return false when collaboration is undefined', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(false);
 		});
 	});
 
@@ -239,6 +290,32 @@ describe('settings.store', () => {
 		});
 	});
 
+	describe('isWorkflowPublicationServiceEnabled', () => {
+		it('should return true when useWorkflowPublicationService is true', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				useWorkflowPublicationService: true,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isWorkflowPublicationServiceEnabled).toBe(true);
+		});
+
+		it('should return false when useWorkflowPublicationService is undefined', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				useWorkflowPublicationService: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isWorkflowPublicationServiceEnabled).toBe(false);
+		});
+	});
+
 	describe('isOtelCustomSpanAttributesEnabled', () => {
 		it('should return false when otel module is not active', async () => {
 			getSettings.mockResolvedValueOnce({
@@ -249,7 +326,11 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { otel: { enabled: true } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
 
 			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
 		});
@@ -263,7 +344,11 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { otel: { enabled: false } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: false,
+				},
+			};
 
 			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
 		});
@@ -277,7 +362,11 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { otel: { enabled: true } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
 
 			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
 		});
@@ -291,7 +380,11 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { otel: { enabled: true } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
 
 			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(true);
 		});

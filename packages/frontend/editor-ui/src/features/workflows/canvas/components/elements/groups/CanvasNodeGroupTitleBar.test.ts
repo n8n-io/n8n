@@ -25,6 +25,7 @@ vi.mock('@vue-flow/core', () => ({
 	useVueFlow: () => ({
 		getSelectedNodes: selectedNodesRef,
 		removeSelectedNodes: removeSelectedNodesMock,
+		viewport: { value: { x: 0, y: 0, zoom: 1 } },
 	}),
 }));
 
@@ -42,6 +43,7 @@ function makeData(overrides: Partial<CanvasGroupNodeData> = {}): CanvasGroupNode
 	return {
 		group: baseGroup,
 		nodesRect: { x: 0, y: 0, width: 500, height: 100 },
+		isCollapsed: true,
 		...overrides,
 	};
 }
@@ -53,6 +55,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			autofocusGroupId: string | null;
 			dimensions: { width: number; height: number };
 			readOnly: boolean;
+			selected: boolean;
 		}> = {},
 	) {
 		return renderComponent(CanvasNodeGroupTitleBar, {
@@ -62,15 +65,100 @@ describe('CanvasNodeGroupTitleBar', () => {
 				autofocusGroupId: props.autofocusGroupId ?? null,
 				dimensions: props.dimensions,
 				readOnly: props.readOnly ?? false,
+				selected: props.selected ?? false,
 			},
 		});
 	}
 
-	describe('height invariant; nodrag on interactive children', () => {
-		it('has the fixed header height', () => {
+	describe('chevron caption and icon by state', () => {
+		it('renders chevrons-up-down with Expand label when collapsed', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			const toggle = wrapper.getByTestId('canvas-node-group-toggle');
+			expect(toggle.getAttribute('aria-label')).toBe('Expand');
+			expect(toggle.getAttribute('aria-expanded')).toBe('false');
+			expect(toggle.querySelector('svg')).toBeTruthy();
+		});
+
+		it('renders chevrons-down-up with Collapse label when expanded', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+			const toggle = wrapper.getByTestId('canvas-node-group-toggle');
+			expect(toggle.getAttribute('aria-label')).toBe('Collapse');
+			expect(toggle.getAttribute('aria-expanded')).toBe('true');
+		});
+
+		it('emits toggle when chevron is clicked', async () => {
 			const wrapper = render();
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-toggle'));
+			expect(wrapper.emitted().toggle).toEqual([['g1']]);
+		});
+	});
+
+	describe('context menu', () => {
+		it('emits open:contextmenu with the group id on right-click', async () => {
+			const wrapper = render();
+			await fireEvent.contextMenu(wrapper.getByTestId('canvas-node-group'));
+
+			const emitted = wrapper.emitted()['open:contextmenu'] as Array<[string, MouseEvent]>;
+			expect(emitted).toHaveLength(1);
+			expect(emitted[0][0]).toBe('g1');
+			expect(emitted[0][1]).toBeInstanceOf(MouseEvent);
+		});
+
+		it('emits open:contextmenu when right-clicking the title preview', async () => {
+			const wrapper = render();
+			await fireEvent.contextMenu(wrapper.getByTestId('inline-edit-preview'));
+
+			expect(wrapper.emitted()['open:contextmenu']).toHaveLength(1);
+		});
+
+		it('does not emit open:contextmenu while the title is being edited', async () => {
+			const wrapper = render();
+			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
+			await fireEvent.contextMenu(wrapper.getByTestId('inline-edit-input'));
+
+			expect(wrapper.emitted()['open:contextmenu']).toBeUndefined();
+		});
+	});
+
+	describe('double-click to toggle collapse', () => {
+		it('emits toggle when the group body is double-clicked', async () => {
+			const wrapper = render();
+			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-header'));
+			expect(wrapper.emitted().toggle).toEqual([['g1']]);
+		});
+
+		it('does not emit toggle when the title is double-clicked', async () => {
+			const wrapper = render();
+			const titleArea = wrapper.getByTestId('canvas-node-group-title');
+			const titleEdit = titleArea.querySelector('.nodrag') as HTMLElement;
+			await fireEvent.dblClick(titleEdit);
+			expect(wrapper.emitted().toggle).toBeUndefined();
+		});
+
+		it('does not emit toggle when the ungroup button is double-clicked', async () => {
+			const wrapper = render();
+			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-ungroup'));
+			expect(wrapper.emitted().toggle).toBeUndefined();
+		});
+	});
+
+	describe('height invariant; nodrag on interactive children', () => {
+		it('has the fixed header height when collapsed', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
 			const el = wrapper.getByTestId('canvas-node-group') as HTMLElement;
 			expect(el.style.height).toBe(`${GROUP_HEADER_HEIGHT}px`);
+		});
+
+		it('has the fixed header height when expanded', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+			const el = wrapper.getByTestId('canvas-node-group') as HTMLElement;
+			expect(el.style.height).toBe(`${GROUP_HEADER_HEIGHT}px`);
+		});
+
+		it('chevron carries nodrag so VueFlow does not drag on click', () => {
+			const wrapper = render();
+			const toggle = wrapper.getByTestId('canvas-node-group-toggle');
+			expect(toggle.classList.contains('nodrag')).toBe(true);
 		});
 
 		it('ungroup button carries nodrag', () => {
@@ -86,16 +174,115 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
-	describe('frame', () => {
-		it('renders the frame around the nodes', () => {
-			const wrapper = render();
+	describe('frame visibility', () => {
+		it('renders the frame around the nodes when expanded', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			expect(wrapper.queryByTestId('canvas-node-group-frame')).toBeTruthy();
+		});
+
+		it('hides the frame when collapsed', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			expect(wrapper.queryByTestId('canvas-node-group-frame')).toBeNull();
+		});
+	});
+
+	describe('execution-status classes', () => {
+		it('applies no status class when executionStatus is undefined (idle)', () => {
+			const wrapper = render({ data: makeData({ executionStatus: undefined }) });
+			const root = wrapper.getByTestId('canvas-node-group');
+			// No status icon and no .success / .error / .running class semantics.
+			expect(wrapper.queryByTestId('canvas-node-group-status-success')).toBeNull();
+			expect(wrapper.queryByTestId('canvas-node-group-status-error')).toBeNull();
+			// status classes are CSS module hashed; we can only check via test ids.
+			expect(root).toBeTruthy();
+		});
+
+		it('shows success icon when executionStatus is success', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'success' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-success')).toBeTruthy();
+		});
+
+		it('shows error icon when executionStatus is error', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'error' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-error')).toBeTruthy();
+		});
+
+		it('shows warning icon when executionStatus is warning (a member node is dirty)', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'warning' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-warning')).toBeTruthy();
+		});
+
+		it('shows the validation issues triangle when executionStatus is issues', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'issues' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-issues')).toBeTruthy();
+			// Issues must not render the execution-error mark.
+			expect(wrapper.queryByTestId('canvas-node-group-status-error')).toBeNull();
+		});
+
+		it('hides the status mark when the group is expanded (member nodes show their own)', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'success', isCollapsed: false }),
+			});
+			expect(wrapper.queryByTestId('canvas-node-group-status-success')).toBeNull();
+		});
+
+		it('hides the validation issues triangle when the group is expanded', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'issues', isCollapsed: false }),
+			});
+			expect(wrapper.queryByTestId('canvas-node-group-status-issues')).toBeNull();
+		});
+
+		it('applies a hashed `running` class when executionStatus is running', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'running' }),
+			});
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /running/i.test(c))).toBe(true);
+		});
+
+		it('applies a hashed `waiting` class when executionStatus is waiting', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'waiting' }),
+			});
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /waiting/i.test(c))).toBe(true);
+		});
+	});
+
+	describe('deactivated state', () => {
+		it('shows the deactivated label next to the name when every member node is disabled', () => {
+			const wrapper = render({ data: makeData({ allNodesDisabled: true }) });
+			expect(wrapper.getByTestId('canvas-node-group-deactivated-label')).toHaveTextContent(
+				'(Deactivated)',
+			);
+		});
+
+		it('applies a hashed `deactivated` class for the toned-down title styling', () => {
+			const wrapper = render({ data: makeData({ allNodesDisabled: true }) });
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /deactivated/i.test(c))).toBe(true);
+		});
+
+		it('hides the deactivated label while any member node is enabled', () => {
+			const wrapper = render();
+			expect(wrapper.queryByTestId('canvas-node-group-deactivated-label')).toBeNull();
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /deactivated/i.test(c))).toBe(false);
 		});
 	});
 
 	describe('title rename + ungroup parity with old overlay', () => {
 		it('emits update:name on commit', async () => {
-			const wrapper = render();
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
 			const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
 			await fireEvent.update(input, 'Renamed');
@@ -187,6 +374,61 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render();
 			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'));
 			expect(removeSelectedNodesMock).not.toHaveBeenCalled();
+		});
+
+		it('preserves selection when this title bar is part of it (multi-select group drag)', () => {
+			// VueFlow node id for this group is `group:${baseGroup.id}`
+			selectedNodesRef.value = [{ id: 'group:g1' }, { id: 'group:g2' }];
+			removeSelectedNodesMock.mockClear();
+			const wrapper = render();
+			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'));
+			expect(removeSelectedNodesMock).not.toHaveBeenCalled();
+		});
+
+		it('preserves selection on modifier-click (additive multi-select)', () => {
+			selectedNodesRef.value = [{ id: 'unrelated-node' }];
+			removeSelectedNodesMock.mockClear();
+			const wrapper = render();
+			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'), { metaKey: true });
+			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'), { ctrlKey: true });
+			expect(removeSelectedNodesMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('selection visual', () => {
+		it('does not apply the selected class when not selected', () => {
+			const wrapper = render({ selected: false });
+			const root = wrapper.getByTestId('canvas-node-group');
+			const hasSelectedClass = [...root.classList].some((c) => /selected/i.test(c));
+			expect(hasSelectedClass).toBe(false);
+		});
+
+		it('applies a hashed `selected` class when selected', () => {
+			const wrapper = render({ selected: true });
+			const root = wrapper.getByTestId('canvas-node-group');
+			const hasSelectedClass = [...root.classList].some((c) => /selected/i.test(c));
+			expect(hasSelectedClass).toBe(true);
+		});
+
+		it('renders a full-group selection ring when expanded and selected', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }), selected: true });
+			expect(wrapper.getByTestId('canvas-node-group-selection-ring')).toBeInTheDocument();
+		});
+
+		it('does not render the selection ring when collapsed or unselected', () => {
+			const collapsedSelected = render({ data: makeData({ isCollapsed: true }), selected: true });
+			expect(
+				collapsedSelected.queryByTestId('canvas-node-group-selection-ring'),
+			).not.toBeInTheDocument();
+			collapsedSelected.unmount();
+
+			const expandedUnselected = render({
+				data: makeData({ isCollapsed: false }),
+				selected: false,
+			});
+			expect(
+				expandedUnselected.queryByTestId('canvas-node-group-selection-ring'),
+			).not.toBeInTheDocument();
 		});
 	});
 });

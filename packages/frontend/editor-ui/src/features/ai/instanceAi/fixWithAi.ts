@@ -1,11 +1,5 @@
 import { useI18n } from '@n8n/i18n';
 
-/**
- * Temporary kill-switch for the execution-failure "Fix with AI" card in Instance AI.
- * Re-enable once agent vs user run gating is in place (INS-407).
- */
-export const IS_FIX_WITH_AI_OFFER_ENABLED = false;
-
 export interface FixWithAiError {
 	nodeName: string;
 	errorMessage: string;

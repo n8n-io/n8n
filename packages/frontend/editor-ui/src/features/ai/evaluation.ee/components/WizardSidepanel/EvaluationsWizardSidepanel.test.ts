@@ -8,6 +8,7 @@ import EvaluationsWizardSidepanel from './EvaluationsWizardSidepanel.vue';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useEvaluationStore } from '../../evaluation.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 // Plain mutable holders instead of module-scope `ref()`s — reactive refs
 // surviving teardown have caused post-teardown rejections on Node 24.
@@ -106,11 +107,23 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
+const { workflowIdHolder } = vi.hoisted(() => ({
+	workflowIdHolder: { current: (): string => '' },
+}));
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => workflowIdHolder.current()),
+		useRouteWorkflowId: () => computed(() => workflowIdHolder.current()),
+	};
+});
+
 const renderComponent = createComponentRenderer(EvaluationsWizardSidepanel);
 
 describe('EvaluationsWizardSidepanel', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+		workflowIdHolder.current = () => useWorkflowsStore().workflowId;
 		mocks.workflowId = 'workflow-id';
 		mocks.allNodes = [];
 		mocks.nodeTypeOutputs = {};
@@ -618,6 +631,68 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(getByTestId('evaluations-wizard-sidepanel-case-1')).toBeInTheDocument();
 	});
 
+	it('shows each case its own expected answer from the matching dataset row', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		const evalStore = useEvaluationStore();
+		store.open(3);
+		store.selectedMetricKeys = ['correctness'];
+		// One expected-value record per dataset row, indexed by position/runIndex.
+		store.datasetExpectedByRow = [
+			{ expectedAnswer: 'answer one' },
+			{ expectedAnswer: 'answer two' },
+		];
+		evalStore.testRunsById = {
+			'run-1': {
+				id: 'run-1',
+				workflowId: 'workflow-id',
+				status: 'success',
+				metrics: { correctness: 0.9 },
+				createdAt: '',
+				updatedAt: '',
+				runAt: '',
+				completedAt: '',
+			},
+		};
+		evalStore.testCaseExecutionsById = {
+			'case-1': {
+				id: 'case-1',
+				testRunId: 'run-1',
+				executionId: null,
+				status: 'success',
+				createdAt: '',
+				updatedAt: '',
+				runAt: null,
+				runIndex: 0,
+				metrics: { correctness: 4 },
+				outputs: { output: 'hello' },
+			},
+			'case-2': {
+				id: 'case-2',
+				testRunId: 'run-1',
+				executionId: null,
+				status: 'success',
+				createdAt: '',
+				updatedAt: '',
+				runAt: null,
+				runIndex: 1,
+				metrics: { correctness: 5 },
+				outputs: { output: 'world' },
+			},
+		};
+
+		const { getByTestId } = renderComponent();
+
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-case-toggle-1'));
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-case-toggle-2'));
+
+		expect(getByTestId('evaluations-wizard-sidepanel-case-detail-1')).toHaveTextContent(
+			'answer one',
+		);
+		expect(getByTestId('evaluations-wizard-sidepanel-case-detail-2')).toHaveTextContent(
+			'answer two',
+		);
+	});
+
 	it('tracks "User viewed evaluation results" once when a finished run renders on step 3', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		const evalStore = useEvaluationStore();
@@ -756,6 +831,62 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(
 			queryByTestId(`evaluations-wizard-sidepanel-custom-check-${id}`),
 		).not.toBeInTheDocument();
+	});
+
+	describe('wizard step-view telemetry', () => {
+		const stepEvents = () =>
+			trackMock.mock.calls.filter(
+				([event]) => event === 'User viewed evaluation config wizard step',
+			);
+
+		it('tracks the scorers step once with step_name and 1-based step_index', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(1);
+
+			renderComponent();
+			await nextTick();
+
+			const events = stepEvents();
+			expect(events).toHaveLength(1);
+			expect(events[0][1]).toEqual({
+				workflow_id: 'workflow-id',
+				step_name: 'setup_scorers',
+				step_index: 2,
+			});
+		});
+
+		it('tracks each step as the user advances, and dedupes a revisited step', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(1);
+
+			renderComponent();
+			await nextTick();
+
+			store.setStep(2);
+			await nextTick();
+			// Going back to an already-viewed step must not emit a duplicate.
+			store.setStep(1);
+			await nextTick();
+
+			const events = stepEvents();
+			expect(events.map((call) => call[1])).toEqual([
+				{ workflow_id: 'workflow-id', step_name: 'setup_scorers', step_index: 2 },
+				{ workflow_id: 'workflow-id', step_name: 'add_test_cases', step_index: 3 },
+			]);
+		});
+
+		it('does not track a step while the run-first gate is showing', async () => {
+			// The execution probe (and thus the gate) only runs on steps 0 and 2.
+			mocks.sliceInputs = { fieldNames: [], values: {}, hasExecution: false };
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(2);
+
+			const { findByTestId } = renderComponent();
+			// Wait for the probe to settle and the gate to render.
+			await findByTestId('evaluations-wizard-sidepanel-gate');
+
+			expect(stepEvents()).toHaveLength(0);
+		});
 	});
 
 	describe('run-first gate', () => {

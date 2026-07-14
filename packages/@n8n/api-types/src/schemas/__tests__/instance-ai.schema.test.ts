@@ -1,9 +1,21 @@
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	applyBranchReadOnlyOverrides,
+	buildFetchUrlGrantKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	errorPayloadSchema,
+	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
+	instanceAiEventSchema,
 	isDisplayableConfirmationRequest,
+	InstanceAiEnsureThreadRequest,
+	normalizeInstanceAiThreadSource,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	isInstanceAiSandboxProvider,
+	isKnownInstanceAiErrorCode,
+	parseDomainAccessGrants,
+	WEB_SEARCH_GRANT_KEY,
+	workflowSetupNodeSchema,
 	type InstanceAiConfirmationInputType,
 	type InstanceAiConfirmationRequestPayload,
 	type InstanceAiPermissions,
@@ -28,6 +40,108 @@ describe('sandbox provider', () => {
 		expect(
 			InstanceAiAdminSettingsUpdateRequest.safeParse({ sandboxProvider: 'n8n-sandbox' }).success,
 		).toBe(true);
+	});
+});
+
+describe('instanceAiEventSchema', () => {
+	it('preserves traceId on run-start events', () => {
+		const event = {
+			type: 'run-start',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: { messageId: 'msg-1', traceId: 'trace-1' },
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+});
+
+describe('errorPayloadSchema', () => {
+	it('accepts a payload without a code', () => {
+		expect(errorPayloadSchema.parse({ content: 'boom' })).toEqual({ content: 'boom' });
+	});
+
+	it('accepts the quota_exhausted code', () => {
+		const payload = { content: 'out of credits', code: 'quota_exhausted' as const };
+		expect(errorPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('accepts an unknown code and preserves it (forward-compatible)', () => {
+		// A newer service may emit an error code an older client doesn't recognize.
+		// The wire schema must not reject it, otherwise the whole error event is
+		// dropped by instanceAiEventSchema.safeParse before the reducer's
+		// unknown-code fallback can render a generic error.
+		const parsed = errorPayloadSchema.safeParse({ content: 'boom', code: 'some_future_code' });
+		expect(parsed.success).toBe(true);
+		expect(parsed.success && parsed.data.code).toBe('some_future_code');
+	});
+});
+
+describe('isKnownInstanceAiErrorCode', () => {
+	it('is true for a recognized code', () => {
+		expect(isKnownInstanceAiErrorCode('quota_exhausted')).toBe(true);
+	});
+
+	it('is false for an unknown code or undefined', () => {
+		expect(isKnownInstanceAiErrorCode('some_future_code')).toBe(false);
+		expect(isKnownInstanceAiErrorCode(undefined)).toBe(false);
+	});
+});
+
+describe('workflowSetupNodeSchema credentials', () => {
+	const baseNode = {
+		name: 'Gemini',
+		type: 'n8n-nodes-base.lmChatGoogleGemini',
+		typeVersion: 1,
+		parameters: {},
+		position: [0, 0] as [number, number],
+		id: 'node-1',
+	};
+
+	it('accepts AI Gateway-managed credential entries', () => {
+		const result = workflowSetupNodeSchema.safeParse({
+			node: {
+				...baseNode,
+				credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+			},
+			isTrigger: false,
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.data?.node.credentials?.googlePalmApi).toEqual({
+			id: null,
+			name: '',
+			__aiGatewayManaged: true,
+		});
+	});
+
+	it('accepts real credential entries', () => {
+		const result = workflowSetupNodeSchema.safeParse({
+			node: {
+				...baseNode,
+				credentials: { googlePalmApi: { id: 'cred-123', name: 'My Gemini' } },
+			},
+			isTrigger: false,
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.data?.node.credentials?.googlePalmApi?.id).toBe('cred-123');
+	});
+
+	it('rejects null id without __aiGatewayManaged: true', () => {
+		const result = workflowSetupNodeSchema.safeParse({
+			node: {
+				...baseNode,
+				credentials: { googlePalmApi: { id: null, name: 'My Cred' } },
+			},
+			isTrigger: false,
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('exports the shared AI Gateway-managed setup tag', () => {
+		expect(AI_GATEWAY_MANAGED_TAG).toBe('__AI_GATEWAY_MANAGED__');
 	});
 });
 
@@ -190,6 +304,14 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+				}),
+			),
+		).toBe(true);
 	});
 
 	it('does not treat credential flow metadata as displayable on its own', () => {
@@ -254,5 +376,72 @@ describe('isDisplayableConfirmationRequest', () => {
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
 		expect(Object.keys(handled)).toHaveLength(6);
+	});
+});
+
+describe('instance-ai launch schema', () => {
+	it('normalizes a known source', () => {
+		expect(normalizeInstanceAiThreadSource('template-view')).toBe('template-view');
+	});
+
+	it('falls back for an unknown source', () => {
+		expect(normalizeInstanceAiThreadSource('totally-made-up')).toBe(
+			INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+		);
+		expect(normalizeInstanceAiThreadSource(undefined)).toBe(INSTANCE_AI_THREAD_SOURCE_FALLBACK);
+	});
+
+	it('parses an ensure-thread request with launch fields', () => {
+		const parsed = new InstanceAiEnsureThreadRequest({
+			projectId: 'project-1',
+			origin: 'external',
+			source: 'website-template',
+			sourceContext: { templateId: '42' },
+		});
+		expect(parsed.origin).toBe('external');
+		expect(parsed.sourceContext).toEqual({ templateId: '42' });
+	});
+
+	it('rejects an oversized sourceContext', () => {
+		const big = { blob: 'x'.repeat(3000) };
+		expect(
+			() => new InstanceAiEnsureThreadRequest({ projectId: 'project-1', sourceContext: big }),
+		).toThrow();
+	});
+});
+
+describe('domain-access grant keys', () => {
+	it('builds and parses per-host grant keys round-trip', () => {
+		const key = buildFetchUrlGrantKey('example.com');
+		expect(key).toBe('fetch-url:example.com');
+
+		const parsed = parseDomainAccessGrants(new Set([key]));
+		expect(parsed.approvedDomains.has('example.com')).toBe(true);
+		expect(parsed.allDomainsApproved).toBe(false);
+		expect(parsed.webSearchApproved).toBe(false);
+	});
+
+	it('parses the blanket allow-all and web-search keys', () => {
+		const parsed = parseDomainAccessGrants(
+			new Set([FETCH_URL_ALLOW_ALL_GRANT_KEY, WEB_SEARCH_GRANT_KEY]),
+		);
+		expect(parsed.allDomainsApproved).toBe(true);
+		expect(parsed.webSearchApproved).toBe(true);
+		expect(parsed.approvedDomains.size).toBe(0);
+	});
+
+	it('ignores unrelated grant keys (e.g. executions:run)', () => {
+		const parsed = parseDomainAccessGrants(
+			new Set([buildFetchUrlGrantKey('a.com'), 'executions:run:wf-1']),
+		);
+		expect(parsed.approvedDomains).toEqual(new Set(['a.com']));
+		expect(parsed.allDomainsApproved).toBe(false);
+		expect(parsed.webSearchApproved).toBe(false);
+	});
+
+	it('does not treat the allow-all key as a host', () => {
+		const parsed = parseDomainAccessGrants(new Set([FETCH_URL_ALLOW_ALL_GRANT_KEY]));
+		expect(parsed.approvedDomains.size).toBe(0);
+		expect(parsed.allDomainsApproved).toBe(true);
 	});
 });

@@ -8,6 +8,18 @@ export function targetTasksSkill(): RuntimeSkill {
 		name: 'Agent Builder Target Tasks',
 		description:
 			'Use when the user wants the target agent to run something on a recurring schedule (a "task"): a daily/weekly/hourly objective the agent carries out on its own with create_task. Not for one-off requests, chat/event triggers, or config/tool/skill/model edits.',
+		recommendedTools: ['create_task', 'ask_questions', 'read_config', 'patch_config'],
+		allowedTools: [
+			'create_task',
+			'ask_questions',
+			'read_config',
+			'patch_config',
+			'write_config',
+			'list_workflows',
+			'search_nodes',
+			'get_node_types',
+			'ask_credential',
+		],
 		instructions: `\
 ## Purpose
 
@@ -44,9 +56,9 @@ Do NOT call \`create_task\` until BOTH of these are true:
 2. The schedule is concrete — how often and at what time it should run.
 
 If any section would be empty or a guess, ask the user clarifying questions (use
-\`ask_question\` — discrete options for choices, or empty options for open-ended)
-until you can complete the whole template and pin down the cadence. Never create a placeholder
-or "refine-it-later" task.
+\`ask_questions\`, batching multiple questions into one call — discrete options for
+choices, or \`type: "text"\` for open-ended) until you can complete the whole
+template and pin down the cadence. Never create a placeholder or "refine-it-later" task.
 
 ## Workflow
 

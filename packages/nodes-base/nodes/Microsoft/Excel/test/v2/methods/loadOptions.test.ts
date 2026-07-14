@@ -1,20 +1,19 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getWorksheetColumnRow } from '../../../v2/methods/loadOptions';
 import { microsoftApiRequest } from '../../../v2/transport';
+import type { MockedFunction } from 'vitest';
 
 // Mock the transport module
-jest.mock('../../../v2/transport', () => ({
-	microsoftApiRequest: jest.fn(),
+vi.mock('../../../v2/transport', () => ({
+	microsoftApiRequest: vi.fn(),
 }));
 
 describe('Microsoft Excel V2 - loadOptions', () => {
 	let mockContext: ILoadOptionsFunctions;
-	const mockMicrosoftApiRequest = microsoftApiRequest as jest.MockedFunction<
-		typeof microsoftApiRequest
-	>;
-	const mockGetNodeParameter = jest.fn();
+	const mockMicrosoftApiRequest = microsoftApiRequest as MockedFunction<typeof microsoftApiRequest>;
+	const mockGetNodeParameter = vi.fn();
 
 	beforeEach(() => {
 		mockContext = mock<ILoadOptionsFunctions>({

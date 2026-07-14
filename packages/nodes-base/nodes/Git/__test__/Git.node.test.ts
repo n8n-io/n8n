@@ -1,29 +1,30 @@
 import { DeploymentConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import type { SimpleGit } from 'simple-git';
 import simpleGit from 'simple-git';
 
 import { Git } from '../Git.node';
+import type { Mock, Mocked, MockedFunction } from 'vitest';
 
 const mockGit = {
-	log: jest.fn(),
-	env: jest.fn().mockReturnThis(),
+	log: vi.fn(),
+	env: vi.fn().mockReturnThis(),
 };
 
-jest.mock('simple-git');
-const mockSimpleGit = simpleGit as jest.MockedFunction<typeof simpleGit>;
+vi.mock('simple-git');
+const mockSimpleGit = simpleGit as MockedFunction<typeof simpleGit>;
 mockSimpleGit.mockReturnValue(mockGit as unknown as SimpleGit);
 
 describe('Git Node', () => {
 	let gitNode: Git;
-	let executeFunctions: jest.Mocked<IExecuteFunctions>;
-	let deploymentConfig: jest.Mocked<DeploymentConfig>;
-	let securityConfig: jest.Mocked<SecurityConfig>;
+	let executeFunctions: Mocked<IExecuteFunctions>;
+	let deploymentConfig: Mocked<DeploymentConfig>;
+	let securityConfig: Mocked<SecurityConfig>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		deploymentConfig = mock<DeploymentConfig>({
 			type: 'default',
@@ -36,11 +37,11 @@ describe('Git Node', () => {
 		Container.set(SecurityConfig, securityConfig);
 
 		executeFunctions = mock<IExecuteFunctions>({
-			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-			getNodeParameter: jest.fn(),
+			getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+			getNodeParameter: vi.fn(),
 			helpers: {
-				isFilePathBlocked: jest.fn(),
-				returnJsonArray: jest
+				isFilePathBlocked: vi.fn(),
+				returnJsonArray: vi
 					.fn()
 					.mockImplementation((data: unknown[]) => data.map((item: unknown) => ({ json: item }))),
 			},
@@ -166,8 +167,8 @@ describe('Git Node', () => {
 
 	describe('Restricted file paths', () => {
 		it('should throw an error if the repository path is blocked', async () => {
-			(executeFunctions.helpers.isFilePathBlocked as jest.Mock).mockReturnValue(true);
-			(executeFunctions.helpers.resolvePath as jest.Mock).mockResolvedValue('/tmp/test-repo');
+			(executeFunctions.helpers.isFilePathBlocked as Mock).mockReturnValue(true);
+			(executeFunctions.helpers.resolvePath as Mock).mockResolvedValue('/tmp/test-repo');
 
 			await expect(gitNode.execute.call(executeFunctions)).rejects.toThrow(
 				'Access to the repository path is not allowed',
@@ -191,8 +192,8 @@ describe('Git Node', () => {
 				}
 			});
 
-			(executeFunctions.helpers.resolvePath as jest.Mock).mockResolvedValue(resolvedPath);
-			(executeFunctions.helpers.isFilePathBlocked as jest.Mock).mockReturnValue(false);
+			(executeFunctions.helpers.resolvePath as Mock).mockResolvedValue(resolvedPath);
+			(executeFunctions.helpers.isFilePathBlocked as Mock).mockReturnValue(false);
 
 			await gitNode.execute.call(executeFunctions);
 

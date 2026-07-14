@@ -1,5 +1,5 @@
 import type { ObservationLogEntry, ObservationLogMarker } from '../../types/sdk/observation-log';
-import { renderObservationLog } from '../observation-log-renderer';
+import { renderObservationLog } from '../memory/observation-log-renderer';
 
 function entry(overrides: Partial<ObservationLogEntry> = {}): ObservationLogEntry {
 	const marker: ObservationLogMarker = overrides.marker ?? 'important';

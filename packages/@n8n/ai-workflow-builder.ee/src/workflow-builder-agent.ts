@@ -9,8 +9,8 @@ import { Command, GraphRecursionError } from '@langchain/langgraph';
 import type { SelectedNodeContext } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
-	ApplicationError,
 	OperationalError,
+	UserError,
 	type INodeTypeDescription,
 	type IRunExecutionData,
 	type ITelemetryTrackProperties,
@@ -645,12 +645,12 @@ export class WorkflowBuilderAgent {
 
 		// If it's not an abort error, check for GraphRecursionError
 		if (error instanceof GraphRecursionError) {
-			throw new ApplicationError(WORKFLOW_TOO_COMPLEX_ERROR);
+			throw new UserError(WORKFLOW_TOO_COMPLEX_ERROR);
 		}
 
 		// Check for 401 expired token errors (typically from long-running generations)
 		if (this.isTokenExpiredError(error)) {
-			throw new ApplicationError(WORKFLOW_TOO_COMPLEX_ERROR);
+			throw new UserError(WORKFLOW_TOO_COMPLEX_ERROR);
 		}
 
 		// Re-throw any other errors

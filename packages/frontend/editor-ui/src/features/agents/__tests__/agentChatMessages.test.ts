@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
+	ASK_QUESTIONS_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
 	type AgentPersistedMessageContentPart,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -12,50 +12,33 @@ import {
 	applyOpenSuspensions,
 	convertDbMessages,
 	rebuildInteractiveFromHistory,
-	isGroupable,
-	type ChatMessage,
-} from '../composables/agentChatMessages';
+} from '@/features/ai/shared/agentsChat/messageMappers';
+import { buildDisplayGroups, isGroupable } from '@/features/ai/shared/agentsChat/displayGroups';
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+
+/** A full `credentialSuspendPayloadSchema`-shaped input, for fixtures that construct `InteractivePayload` literals directly (bypassing `rebuildInteractiveFromHistory`'s raw-args fallback). */
+function credentialSuspendInput(credentialType: string, reason: string) {
+	return {
+		requestId: 'req-1',
+		message: reason,
+		severity: 'info' as const,
+		credentialRequests: [{ credentialType, reason, existingCredentials: [] }],
+		credentialFlow: { stage: 'generic' as const },
+	};
+}
+
+/** A full `questionsSuspendPayloadSchema`-shaped input, for fixtures that construct `InteractivePayload` literals directly. */
+function questionsSuspendInput(question: string) {
+	return {
+		requestId: 'req-q1',
+		message: question,
+		severity: 'info' as const,
+		inputType: 'questions' as const,
+		questions: [{ id: 'q1', question, type: 'text' as const }],
+	};
+}
 
 describe('rebuildInteractiveFromHistory', () => {
-	it('rebuilds an OPEN ask_llm card when output is missing', () => {
-		const result = rebuildInteractiveFromHistory({
-			tool: ASK_LLM_TOOL_NAME,
-			toolCallId: 'call-1',
-			input: { purpose: 'pick a model' },
-			state: 'suspended',
-		});
-
-		expect(result).toBeTruthy();
-		expect(result?.toolName).toBe(ASK_LLM_TOOL_NAME);
-		expect(result?.resolvedAt).toBeUndefined();
-		expect(result?.resolvedValue).toBeUndefined();
-		// runId is the sidecar's responsibility — raw history doesn't carry it.
-		expect(result?.runId).toBeUndefined();
-	});
-
-	it('rebuilds a RESOLVED ask_llm card when output is present', () => {
-		const result = rebuildInteractiveFromHistory({
-			tool: ASK_LLM_TOOL_NAME,
-			toolCallId: 'call-1',
-			input: { purpose: 'pick a model' },
-			output: {
-				provider: 'anthropic',
-				model: 'claude-sonnet-4',
-				credentialId: 'cred-1',
-				credentialName: 'My Anthropic',
-			},
-			state: 'done',
-		});
-
-		expect(result?.resolvedAt).toBeGreaterThan(0);
-		expect(result?.resolvedValue).toEqual({
-			provider: 'anthropic',
-			model: 'claude-sonnet-4',
-			credentialId: 'cred-1',
-			credentialName: 'My Anthropic',
-		});
-	});
-
 	it('rebuilds an ask_credential card with skipped resolved value', () => {
 		const result = rebuildInteractiveFromHistory({
 			tool: ASK_CREDENTIAL_TOOL_NAME,
@@ -137,9 +120,11 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: ASK_LLM_TOOL_NAME,
-						toolCallId: 'call-llm-1',
-						input: { purpose: 'main' },
+						toolName: ASK_QUESTIONS_TOOL_NAME,
+						toolCallId: 'call-q-1',
+						input: {
+							questions: [{ id: 'q1', question: 'Which model?', type: 'text' }],
+						},
 						state: 'pending',
 					},
 				],
@@ -151,7 +136,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		const assistant = chat[1];
 		expect(assistant.role).toBe('assistant');
 		expect(assistant.status).toBe('awaitingUser');
-		expect(assistant.interactive?.toolName).toBe(ASK_LLM_TOOL_NAME);
+		expect(assistant.interactive?.toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
 		expect(assistant.interactive?.resolvedAt).toBeUndefined();
 		expect(assistant.toolCalls?.[0].state).toBe('suspended');
 	});
@@ -164,17 +149,20 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: ASK_QUESTION_TOOL_NAME,
+						toolName: ASK_QUESTIONS_TOOL_NAME,
 						toolCallId: 'q-1',
 						input: {
-							question: 'Where to post?',
-							options: [
-								{ label: 'Slack', value: 'slack' },
-								{ label: 'Discord', value: 'discord' },
+							questions: [
+								{
+									id: 'q1',
+									question: 'Where to post?',
+									type: 'single',
+									options: ['Slack', 'Discord'],
+								},
 							],
 						},
 						state: 'resolved',
-						output: { values: ['slack'] },
+						output: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['Slack'] }] },
 					},
 				],
 			},
@@ -184,10 +172,113 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(chat).toHaveLength(1);
 		const assistant = chat[0];
 		expect(assistant.toolCalls?.[0].state).toBe('done');
-		expect(assistant.toolCalls?.[0].output).toEqual({ values: ['slack'] });
-		expect(assistant.interactive?.toolName).toBe(ASK_QUESTION_TOOL_NAME);
+		expect(assistant.toolCalls?.[0].output).toEqual({
+			answered: true,
+			answers: [{ questionId: 'q1', selectedOptions: ['Slack'] }],
+		});
+		expect(assistant.interactive?.toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
 		expect(assistant.interactive?.resolvedAt).toBeDefined();
-		expect(assistant.interactive?.resolvedValue).toEqual({ values: ['slack'] });
+		expect(assistant.interactive?.resolvedValue).toEqual({
+			answered: true,
+			answers: [{ questionId: 'q1', selectedOptions: ['Slack'] }],
+		});
+	});
+
+	it('preserves multiple resolved n8n chat cards from one persisted assistant message', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-1',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									card: {
+										title: 'First card',
+										components: [{ type: 'fields', fields: [{ label: 'Status', value: 'Ready' }] }],
+									},
+								},
+							},
+						},
+						state: 'resolved',
+						output: { ok: true },
+					},
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-2',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									card: {
+										title: 'Second card',
+										components: [{ type: 'fields', fields: [{ label: 'Owner', value: 'Sales' }] }],
+									},
+								},
+							},
+						},
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		const assistant = chat[0];
+
+		expect(assistant.toolCalls).toHaveLength(2);
+		expect(assistant.interactives).toHaveLength(2);
+		expect(assistant.interactives?.map((payload) => payload.toolCallId)).toEqual([
+			'card-1',
+			'card-2',
+		]);
+	});
+
+	it('preserves text and n8n chat card render order from persisted content', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: 'Before the card.' },
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-1',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									card: {
+										title: 'Account snapshot',
+										components: [{ type: 'fields', fields: [{ label: 'ARR', value: '$1m' }] }],
+									},
+								},
+							},
+						},
+						state: 'resolved',
+						output: { ok: true },
+					},
+					{ type: 'text', text: 'After the card.' },
+				],
+			},
+		];
+
+		const [assistant] = convertDbMessages(dbMessages);
+
+		expect(assistant.content).toBe('Before the card.After the card.');
+		expect(assistant.renderParts).toEqual([
+			{ type: 'text', text: 'Before the card.' },
+			{ type: 'interactive', toolCallId: 'card-1' },
+			{ type: 'text', text: 'After the card.' },
+		]);
 	});
 
 	it('sets state:error when tool-call block is rejected', () => {
@@ -352,11 +443,11 @@ describe('isGroupable', () => {
 			id: 'm1',
 			role: 'assistant',
 			content: '',
-			toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c1', state: 'suspended' }],
+			toolCalls: [{ tool: ASK_QUESTIONS_TOOL_NAME, toolCallId: 'c1', state: 'suspended' }],
 			interactive: {
-				toolName: ASK_LLM_TOOL_NAME,
+				toolName: ASK_QUESTIONS_TOOL_NAME,
 				toolCallId: 'c1',
-				input: {},
+				input: questionsSuspendInput('Which model?'),
 			},
 			status: 'awaitingUser',
 		});
@@ -376,25 +467,22 @@ describe('isGroupable', () => {
 });
 
 describe('buildDisplayGroups — interactive payloads', () => {
-	it('collects interactive payloads from each grouped message into the toolRun group', async () => {
-		const { buildDisplayGroups } = await import('../composables/agentChatMessages');
+	it('collects interactive payloads from each grouped message into the toolRun group', () => {
 		const groups = buildDisplayGroups([
-			// First grouped turn: a resolved ask_llm card
+			// First grouped turn: a resolved ask_questions card
 			{
 				id: 'm1',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c1', state: 'done' }],
+				toolCalls: [{ tool: ASK_QUESTIONS_TOOL_NAME, toolCallId: 'c1', state: 'done' }],
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: ASK_QUESTIONS_TOOL_NAME,
 					toolCallId: 'c1',
-					input: {},
+					input: questionsSuspendInput('Which model?'),
 					resolvedAt: 1,
 					resolvedValue: {
-						provider: 'a',
-						model: 'b',
-						credentialId: 'x',
-						credentialName: 'y',
+						answered: true,
+						answers: [{ questionId: 'q1', selectedOptions: ['gpt-4'] }],
 					},
 				},
 				status: 'success',
@@ -416,7 +504,7 @@ describe('buildDisplayGroups — interactive payloads', () => {
 				interactive: {
 					toolName: ASK_CREDENTIAL_TOOL_NAME,
 					toolCallId: 'c3',
-					input: { purpose: 'Slack', credentialType: 'slackApi' },
+					input: credentialSuspendInput('slackApi', 'Slack'),
 				},
 				status: 'awaitingUser',
 			},
@@ -428,10 +516,104 @@ describe('buildDisplayGroups — interactive payloads', () => {
 		if (grouped.kind !== 'toolRun') return;
 		expect(grouped.toolCalls).toHaveLength(3);
 		expect(grouped.interactives).toHaveLength(2);
-		expect(grouped.interactives[0].toolName).toBe(ASK_LLM_TOOL_NAME);
+		expect(grouped.interactives[0].toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
 		expect(grouped.interactives[0].resolvedAt).toBeDefined();
 		expect(grouped.interactives[1].toolName).toBe(ASK_CREDENTIAL_TOOL_NAME);
 		expect(grouped.interactives[1].resolvedAt).toBeUndefined();
+	});
+
+	it('collects multiple interactive payloads from one grouped message', () => {
+		const groups = buildDisplayGroups([
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-1', state: 'done' },
+					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-2', state: 'done' },
+				],
+				interactives: [
+					{
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-1',
+						input: { card: { title: 'First card', components: [] } },
+						resolvedAt: 1,
+					},
+					{
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-2',
+						input: { card: { title: 'Second card', components: [] } },
+						resolvedAt: 1,
+					},
+				],
+				status: 'success',
+			},
+		]);
+
+		expect(groups).toHaveLength(1);
+		const grouped = groups[0];
+		expect(grouped.kind).toBe('toolRun');
+		if (grouped.kind !== 'toolRun') return;
+		expect(grouped.interactives.map((payload) => payload.toolCallId)).toEqual(['card-1', 'card-2']);
+	});
+
+	it('merges duplicate persisted tool calls by id and keeps the resolved one', () => {
+		const chat = convertDbMessages([
+			{
+				id: 'user-1',
+				role: 'user',
+				content: [{ type: 'text', text: 'Can you fetch this page?' }],
+			},
+			{
+				id: 'assistant-pending',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'notion_notion-fetch',
+						toolCallId: 'toolu_1',
+						input: { id: 'https://app.notion.com/p/example' },
+						startTime: 1_000,
+					},
+				],
+			},
+			{
+				id: 'assistant-resolved',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'notion_notion-fetch',
+						toolCallId: 'toolu_1',
+						state: 'resolved',
+						output: { content: [{ type: 'text', text: 'Page contents' }] },
+						startTime: 2_000,
+						endTime: 2_000,
+					},
+					{ type: 'text', text: 'Here is the page I fetched.' },
+				],
+			},
+		]);
+
+		const groups = buildDisplayGroups(chat);
+
+		expect(groups).toHaveLength(2);
+		const toolRun = groups[1];
+		expect(toolRun.kind).toBe('toolRun');
+		if (toolRun.kind !== 'toolRun') return;
+		expect(toolRun.toolCalls).toHaveLength(1);
+		expect(toolRun.toolCalls[0]).toEqual(
+			expect.objectContaining({
+				tool: 'notion_notion-fetch',
+				toolCallId: 'toolu_1',
+				state: 'done',
+				input: { id: 'https://app.notion.com/p/example' },
+				output: { content: [{ type: 'text', text: 'Page contents' }] },
+				startTime: 1_000,
+				endTime: 2_000,
+			}),
+		);
+		expect(toolRun.finalMessage?.content).toBe('Here is the page I fetched.');
 	});
 });
 
@@ -446,7 +628,7 @@ describe('applyOpenSuspensions', () => {
 				interactive: {
 					toolName: ASK_CREDENTIAL_TOOL_NAME,
 					toolCallId: 'c-open',
-					input: { purpose: 'Slack', credentialType: 'slackApi' },
+					input: credentialSuspendInput('slackApi', 'Slack'),
 				},
 				status: 'awaitingUser',
 			},
@@ -454,17 +636,15 @@ describe('applyOpenSuspensions', () => {
 				id: 'm2',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c-resolved', state: 'done' }],
+				toolCalls: [{ tool: ASK_QUESTIONS_TOOL_NAME, toolCallId: 'c-resolved', state: 'done' }],
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: ASK_QUESTIONS_TOOL_NAME,
 					toolCallId: 'c-resolved',
-					input: { purpose: 'main' },
+					input: questionsSuspendInput('Which model?'),
 					resolvedAt: 1,
 					resolvedValue: {
-						provider: 'a',
-						model: 'b',
-						credentialId: 'x',
-						credentialName: 'y',
+						answered: true,
+						answers: [{ questionId: 'q1', selectedOptions: ['gpt-4'] }],
 					},
 				},
 				status: 'success',
@@ -485,9 +665,9 @@ describe('applyOpenSuspensions', () => {
 				role: 'assistant',
 				content: '',
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: ASK_QUESTIONS_TOOL_NAME,
 					toolCallId: 'c1',
-					input: { purpose: 'main' },
+					input: questionsSuspendInput('Which model?'),
 				},
 			},
 		];
@@ -503,9 +683,9 @@ describe('applyOpenSuspensions', () => {
 				role: 'assistant',
 				content: '',
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: ASK_QUESTIONS_TOOL_NAME,
 					toolCallId: 'c1',
-					input: { purpose: 'main' },
+					input: questionsSuspendInput('Which model?'),
 				},
 			},
 		];

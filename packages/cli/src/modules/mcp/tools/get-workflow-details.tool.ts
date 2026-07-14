@@ -1,21 +1,21 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { RoleService } from '@/services/role.service';
+import type { Telemetry } from '@/telemetry';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type {
 	ToolDefinition,
 	WorkflowDetailsResult,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
-import { workflowDetailsOutputSchema } from './schemas';
+import { toTagSummary, workflowDetailsOutputSchema } from './schemas';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
-
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to retrieve'),
@@ -37,6 +37,7 @@ export const createWorkflowDetailsTool = (
 	telemetry: Telemetry,
 	roleService: RoleService,
 	projectService: ProjectService,
+	testBaseWebhookUrl: string = baseWebhookUrl,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'get_workflow_details',
@@ -70,6 +71,7 @@ export const createWorkflowDetailsTool = (
 					roleService,
 					projectService,
 					{ workflowId },
+					testBaseWebhookUrl,
 				);
 
 				// Track successful execution
@@ -110,13 +112,14 @@ export async function getWorkflowDetails(
 	roleService: RoleService,
 	projectService: ProjectService,
 	{ workflowId }: { workflowId: string },
+	testBaseWebhookUrl: string = baseWebhookUrl,
 ): Promise<WorkflowDetailsResult> {
 	const workflow = await getMcpWorkflow(
 		workflowId,
 		user,
 		['workflow:read'],
 		workflowFinderService,
-		{ includeActiveVersion: true },
+		{ includeActiveVersion: true, includeTags: true },
 	);
 
 	// Compute user scopes for this workflow
@@ -134,6 +137,7 @@ export async function getWorkflowDetails(
 						({ credentials: _credentials, ...node }) => node,
 					),
 					connections: workflow.activeVersion.connections ?? {},
+					nodeGroups: workflow.activeVersion.nodeGroups ?? [],
 				}
 			: null;
 
@@ -148,6 +152,8 @@ export async function getWorkflowDetails(
 		baseWebhookUrl,
 		credentialsService,
 		endpoints,
+		workflow.id,
+		testBaseWebhookUrl,
 	);
 
 	const sanitizedWorkflow: WorkflowDetailsResult['workflow'] = {
@@ -163,8 +169,9 @@ export async function getWorkflowDetails(
 		settings: workflow.settings ?? null,
 		connections,
 		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
+		nodeGroups: workflow.nodeGroups ?? [],
 		activeVersion,
-		tags: (workflow.tags ?? []).map((tag) => ({ id: tag.id, name: tag.name })),
+		tags: toTagSummary(workflow.tags),
 		meta: workflow.meta ?? null,
 		parentFolderId: workflow.parentFolder?.id ?? null,
 		description: workflow.description ?? undefined,

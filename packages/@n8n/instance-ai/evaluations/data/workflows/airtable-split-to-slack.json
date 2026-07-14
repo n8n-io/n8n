@@ -22,10 +22,8 @@
 		}
 	],
 	"messageBudget": 6,
-	"buildExpectations": [
-		"Before building, the agent asked which Airtable table and which Slack channel to use.",
-		"Before building, the agent also asked what each Slack message should contain.",
-		"The agent honored the user's explicit instruction to fetch the tasks via an HTTP Request node with Bearer auth, not the dedicated Airtable node.",
+	"outcomeExpectations": [
+		"The agent honored the user's explicit instruction to fetch the tasks via an HTTP Request node, not the dedicated Airtable node. Authenticating that HTTP Request with either generic Bearer auth or the predefined Airtable credential type (airtableTokenApi, which sends the token as a Bearer header) satisfies the user's Bearer-auth request.",
 		"The final workflow reflects the user's follow-up that Airtable returns a `{records: [...]}` envelope, splitting it into individual items (e.g. a Split Out node) before posting to Slack."
 	],
 	"complexity": "medium",

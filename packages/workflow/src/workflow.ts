@@ -612,9 +612,8 @@ export class Workflow {
 		nodeName: string,
 		connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
-		checkedNodesIncoming?: string[],
 	): string[] {
-		return getConnectedNodes(connections, nodeName, connectionType, depth, checkedNodesIncoming);
+		return getConnectedNodes(connections, nodeName, connectionType, depth);
 	}
 
 	/**

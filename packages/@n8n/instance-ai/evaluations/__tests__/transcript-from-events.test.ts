@@ -182,12 +182,24 @@ describe('buildTranscriptFromEvents', () => {
 	});
 
 	describe('setup wizard routing', () => {
-		it('renders the outcome from tool-result and skips the confirmation-request twin', () => {
+		it('renders the setup-card ask and the setup-wizard outcome', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
 					evt('confirmation-request', {
-						payload: { requestId: 'r1', setupRequests: [{ nodeName: 'Slack' }] },
+						payload: {
+							requestId: 'r1',
+							setupRequests: [
+								{
+									node: { name: 'Slack' },
+									credentialType: 'slackApi',
+									editableParameters: [
+										{ name: 'channel', displayName: 'Channel', type: 'resourceLocator' },
+									],
+									parameterIssues: { text: ['Text is required'] },
+								},
+							],
+						},
 					}),
 					evt('tool-result', {
 						payload: {
@@ -201,12 +213,57 @@ describe('buildTranscriptFromEvents', () => {
 				],
 			});
 			const interactions = turns[0].steps;
-			expect(interactions).toHaveLength(1);
+			expect(interactions).toHaveLength(2);
+			// The confirmation-request renders as the setup-card (what the agent asked for)...
 			expect(interactions[0]).toMatchObject({
+				kind: 'setup-card',
+				requests: [{ nodeName: 'Slack', credentialType: 'slackApi', params: ['channel', 'text'] }],
+			});
+			// ...and the tool-result renders as the setup-wizard outcome (what was configured/skipped).
+			expect(interactions[1]).toMatchObject({
 				kind: 'setup-wizard',
 				completedNodes: [{ nodeName: 'Schedule', parametersSet: ['cron'] }],
 				skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
 			});
+		});
+
+		it('redacts secret values the proxy filled into a setup card', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('confirmation-request', {
+						payload: {
+							requestId: 'r1',
+							setupRequests: [{ node: { name: 'HTTP' }, editableParameters: [] }],
+						},
+					}),
+				],
+				proxyResponses: new Map([
+					[
+						'r1',
+						{
+							kind: 'setupWorkflowApply' as const,
+							nodeCredentials: {},
+							nodeParameters: {
+								HTTP: {
+									apiKey: 'sk-live-supersecret',
+									authorization: 'Bearer abc123token',
+									channel: '#general',
+								},
+							},
+						},
+					],
+				]),
+			});
+			const card = turns[0].steps.find((s) => s.kind === 'setup-card');
+			expect(card).toMatchObject({ kind: 'setup-card', outcome: 'filled' });
+			const filled = card?.kind === 'setup-card' ? (card.filled ?? []) : [];
+			// Secret-shaped key → value masked; benign param survives.
+			expect(filled).toContain('apiKey=[REDACTED]');
+			expect(filled).toContain('authorization=[REDACTED]');
+			expect(filled).toContain('channel=#general');
+			expect(filled.join(' ')).not.toContain('sk-live-supersecret');
+			expect(filled.join(' ')).not.toContain('abc123token');
 		});
 	});
 
@@ -226,6 +283,32 @@ describe('buildTranscriptFromEvents', () => {
 				toolName: 'create-tasks',
 				resumeReason: 'approval',
 				approved: false,
+			});
+		});
+
+		it('captures the feedback sent with a plan rejection', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('confirmation-request', {
+						payload: { requestId: 'r1', toolName: 'submit-plan' },
+					}),
+				],
+				proxyResponses: new Map([
+					[
+						'r1',
+						{
+							kind: 'approval' as const,
+							approved: false,
+							userInput: 'Use #engineering, not #news',
+						},
+					],
+				]),
+			});
+			expect(turns[0].steps[0]).toMatchObject({
+				kind: 'confirmation',
+				approved: false,
+				feedback: 'Use #engineering, not #news',
 			});
 		});
 	});

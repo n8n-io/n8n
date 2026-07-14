@@ -1,6 +1,6 @@
 {
   "name": "@n8n/agents",
-  "version": "0.11.0",
+  "version": "0.16.0",
   "description": "AI agent SDK for n8n's code-first execution engine",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -15,6 +15,18 @@
       ],
       "sandbox": [
         "dist/workspace/sandbox/index.d.ts"
+      ],
+      "vector-stores/postgres": [
+        "dist/vector-stores/postgres.d.ts"
+      ],
+      "vector-stores/pinecone": [
+        "dist/vector-stores/pinecone.d.ts"
+      ],
+      "vector-stores/qdrant": [
+        "dist/vector-stores/qdrant.d.ts"
+      ],
+      "vector-stores/supabase": [
+        "dist/vector-stores/supabase.d.ts"
       ]
     }
   },
@@ -35,6 +47,22 @@
     "./sandbox": {
       "types": "./dist/workspace/sandbox/index.d.ts",
       "default": "./dist/workspace/sandbox/index.js"
+    },
+    "./vector-stores/postgres": {
+      "types": "./dist/vector-stores/postgres.d.ts",
+      "default": "./dist/vector-stores/postgres.js"
+    },
+    "./vector-stores/pinecone": {
+      "types": "./dist/vector-stores/pinecone.d.ts",
+      "default": "./dist/vector-stores/pinecone.js"
+    },
+    "./vector-stores/qdrant": {
+      "types": "./dist/vector-stores/qdrant.d.ts",
+      "default": "./dist/vector-stores/qdrant.js"
+    },
+    "./vector-stores/supabase": {
+      "types": "./dist/vector-stores/supabase.d.ts",
+      "default": "./dist/vector-stores/supabase.js"
     }
   },
   "files": [
@@ -54,7 +82,10 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
-    "test:integration": "vitest run --config vitest.integration.config.mjs"
+    "test:integration": "vitest run --config vitest.integration.config.mjs",
+    "test:integration:replay": "cross-env CI=1 vitest run --config vitest.integration.config.mjs",
+    "test:integration:record": "cross-env VCR_MODE=record vitest run --config vitest.integration.config.mjs",
+    "fixtures:generate": "tsx src/__tests__/fixtures/generate-bulk-vector-fixture.ts"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "catalog:",
@@ -70,22 +101,28 @@
     "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
     "@ai-sdk/xai": "catalog:",
-    "@daytonaio/sdk": "catalog:",
+    "@daytona/sdk": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
-    "@n8n/sandbox-client": "0.0.4",
     "@n8n/ai-utilities": "workspace:*",
+    "@n8n/sandbox-client": "0.0.4",
     "@n8n/utils": "workspace:*",
     "@openrouter/ai-sdk-provider": "catalog:",
-    "ai": "^6.0.197",
-    "ajv": "^8.18.0",
-    "yaml": "catalog:",
-    "zod": "catalog:"
-  },
-  "peerDependencies": {
     "@opentelemetry/exporter-trace-otlp-http": ">=0.50.0",
     "@opentelemetry/sdk-trace-base": ">=1.0.0",
     "@opentelemetry/sdk-trace-node": ">=1.0.0",
-    "langsmith": "catalog:"
+    "ai": "catalog:",
+    "ajv": "^8.18.0",
+    "langsmith": "catalog:",
+    "undici": "catalog:undici-v7",
+    "yaml": "catalog:",
+    "zod-to-json-schema": "catalog:"
+  },
+  "peerDependencies": {
+    "@pinecone-database/pinecone": "catalog:",
+    "@qdrant/js-client-rest": "catalog:",
+    "@supabase/supabase-js": "catalog:",
+    "pg": "catalog:",
+    "zod": "catalog:"
   },
   "peerDependenciesMeta": {
     "langsmith": {
@@ -99,15 +136,39 @@
     },
     "@opentelemetry/exporter-trace-otlp-http": {
       "optional": true
+    },
+    "pg": {
+      "optional": true
+    },
+    "@pinecone-database/pinecone": {
+      "optional": true
+    },
+    "@qdrant/js-client-rest": {
+      "optional": true
+    },
+    "@supabase/supabase-js": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@types/json-schema": "^7.0.15",
+    "@pinecone-database/pinecone": "catalog:",
+    "@qdrant/js-client-rest": "catalog:",
+    "@supabase/supabase-js": "catalog:",
+    "@types/json-schema": "catalog:",
+    "@types/pg": "^8.15.6",
     "@vitest/coverage-v8": "catalog:",
+    "dotenv": "catalog:",
+    "cross-env": "catalog:",
+    "nock": "catalog:",
+    "pg": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

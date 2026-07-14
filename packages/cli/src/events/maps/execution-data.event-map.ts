@@ -21,5 +21,6 @@ export type ExecutionDataEventMap = {
 		mode: ExecutionDataStorageLocation;
 		durationMs: number;
 		success: boolean;
+		jsonSizeBytes: number;
 	};
 };

@@ -1,4 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
 import type {
 	ITriggerFunctions,
 	IDataObject,
@@ -6,6 +5,7 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { configurePostgres } from './transport';
 import type { PgpDatabase, PostgresNodeCredentials } from './v2/helpers/interfaces';
@@ -28,7 +28,7 @@ export function prepareNames(id: string, mode: string, additionalFields: IDataOb
 	const channelName = (additionalFields.channelName as string) || `n8n_channel_${suffix}`;
 
 	if (channelName.includes('-')) {
-		throw new ApplicationError('Channel name cannot contain hyphens (-)', { level: 'warning' });
+		throw new UserError('Channel name cannot contain hyphens (-)', { level: 'warning' });
 	}
 
 	return { functionName, triggerName, channelName };
@@ -65,7 +65,7 @@ export async function pgTriggerFunction(
 	const whichData = firesOn === 'DELETE' ? 'old' : 'new';
 
 	if (channelName.includes('-')) {
-		throw new ApplicationError('Channel name cannot contain hyphens (-)', { level: 'warning' });
+		throw new UserError('Channel name cannot contain hyphens (-)', { level: 'warning' });
 	}
 
 	const replaceIfExists = additionalFields.replaceIfExists ?? false;
@@ -80,7 +80,7 @@ export async function pgTriggerFunction(
 		await db.any(trigger, [target, functionName, firesOn, triggerName]);
 	} catch (error) {
 		if ((error as Error).message.includes('near "-"')) {
-			throw new ApplicationError('Names cannot contain hyphens (-)', { level: 'warning' });
+			throw new UserError('Names cannot contain hyphens (-)', { level: 'warning' });
 		}
 		throw error;
 	}
@@ -115,7 +115,7 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 			[schema.value],
 		);
 	} catch (error) {
-		throw new ApplicationError(error as string);
+		throw new OperationalError(error as string);
 	}
 	const results: INodeListSearchItems[] = (tableList as IDataObject[]).map((s) => ({
 		name: s.table_name as string,

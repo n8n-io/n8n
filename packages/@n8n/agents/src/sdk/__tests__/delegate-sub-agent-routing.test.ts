@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type * as AgentRuntimeModule from '../../runtime/agent-runtime';
+import type * as AgentRuntimeModule from '../../runtime/loop/agent-runtime';
 import {
 	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 	DELEGATE_SUB_AGENT_TOOL_NAME,
@@ -9,7 +9,7 @@ import {
 	getInlineDelegateSubAgentToolOptions,
 	type DelegateSubAgentRunner,
 	type DelegateSubAgentRunnerHelpers,
-} from '../../runtime/delegate-sub-agent-tool';
+} from '../../runtime/tools/delegate-sub-agent-tool';
 import type {
 	BuiltTool,
 	GenerateResult,
@@ -29,7 +29,7 @@ const mockState = (): SerializableAgentState => ({
 	pendingToolCalls: {},
 });
 
-vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
+vi.mock('../../runtime/loop/agent-runtime', async (importOriginal) => {
 	const actual = await importOriginal<typeof AgentRuntimeModule>();
 	return {
 		...actual,
@@ -210,6 +210,28 @@ describe('delegate sub-agent routing', () => {
 			{ runId: 'parent-run-1' },
 		);
 		expect(runtimeConfigs[0]?.model).toBe('openai/gpt-4o-mini');
+	});
+
+	it("passes the parent's promptCaching config to the inline sub-agent runtime", async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.promptCaching({ openai: { promptCacheRetention: '24h' } })
+			.tool(createDelegateSubAgentTool())
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		expect(delegateTool).toBeDefined();
+
+		await delegateTool?.handler?.(delegateInput, { runId: 'parent-run-1' });
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.promptCaching).toEqual({
+			openai: { promptCacheRetention: '24h' },
+		});
 	});
 
 	it('passes the parent execution counter to inline child generate options', async () => {

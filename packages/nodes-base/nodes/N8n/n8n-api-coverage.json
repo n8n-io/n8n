@@ -142,6 +142,21 @@
 		"PUT /workflows/{id}/tags": {
 			"status": "gap"
 		},
+		"GET /workflows/{id}/test-runs": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/test-runs": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/test-runs/{runId}/cancel": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}/test-cases": {
+			"status": "gap"
+		},
 		"GET /users": {
 			"status": "gap"
 		},
@@ -158,6 +173,12 @@
 			"status": "gap"
 		},
 		"POST /source-control/pull": {
+			"status": "gap"
+		},
+		"GET /settings/security-policy": {
+			"status": "gap"
+		},
+		"PUT /settings/security-policy": {
 			"status": "gap"
 		},
 		"POST /variables": {
@@ -200,6 +221,9 @@
 			"status": "gap"
 		},
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
+			"status": "gap"
+		},
+		"DELETE /data-tables/{dataTableId}/rows/clear": {
 			"status": "gap"
 		},
 		"GET /data-tables/{dataTableId}/columns": {

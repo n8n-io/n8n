@@ -61,6 +61,10 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
+vi.mock('@/app/composables/useWorkflowPublicationStatusSync', () => ({
+	useWorkflowPublicationStatusSync: vi.fn().mockReturnValue({ refetch: vi.fn() }),
+}));
+
 const initialState = {
 	[STORES.SETTINGS]: {
 		settings: {
@@ -713,6 +717,192 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { container } = renderComponent();
 			expect(container).toBeInTheDocument();
+		});
+
+		it('should disable the menu button when workflow is new', () => {
+			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.NamedVersions]: false,
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					isNewWorkflow: true,
+				},
+			});
+
+			const versionMenuButton = getByTestId('version-menu-button');
+			expect(versionMenuButton).toBeDisabled();
+		});
+	});
+
+	describe('Publication service states (flag on)', () => {
+		let settingsStore: ReturnType<typeof useSettingsStore>;
+
+		beforeEach(() => {
+			settingsStore = useSettingsStore();
+			// Enable the publication service flag
+			settingsStore.$patch((state) => {
+				state.settings = {
+					...state.settings,
+					useWorkflowPublicationService: true,
+				};
+			});
+			// Set up an active version so the workflow is considered published
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
+			workflowDocumentStore.setNodes([triggerNode]);
+			uiStore.markStateClean();
+		});
+
+		it('should show "Publishing…" text alongside an inline spinner, and be disabled when status is publishing', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+
+			const { getByTestId, getByText } = renderComponent();
+
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).toBeDisabled();
+			// Text and spinner coexist — text visible alongside the spinner
+			expect(getByText('Publishing…')).toBeInTheDocument();
+			expect(getByTestId('publishing-spinner')).toBeInTheDocument();
+		});
+
+		it('should show publish button enabled with error indicator when status is partial', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'partial',
+				failures: [{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Failed' }],
+			});
+
+			const { getByTestId } = renderComponent();
+
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).not.toBeDisabled();
+			expect(publishButton).toHaveTextContent('Publish');
+
+			const indicator = getByTestId('workflow-active-version-indicator');
+			expect(indicator).toBeInTheDocument();
+		});
+
+		it('should show publish button enabled with error indicator when status is failed', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'failed' });
+
+			const { getByTestId } = renderComponent();
+
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).not.toBeDisabled();
+			expect(publishButton).toHaveTextContent('Publish');
+
+			const indicator = getByTestId('workflow-active-version-indicator');
+			expect(indicator).toBeInTheDocument();
+		});
+
+		it('should enable publish button for partial status even with no diff (re-attempt)', () => {
+			// versions match and state is clean — no diff, but partial overrides
+			workflowDocumentStore.setPublicationStatus({ status: 'partial' });
+			uiStore.markStateClean();
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+		});
+
+		it('should enable publish button for failed status even with no diff (re-attempt)', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'failed' });
+			uiStore.markStateClean();
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+		});
+
+		it('should fall through to existing logic when flag is off and status is partial', () => {
+			// Disable the flag
+			settingsStore.$patch((state) => {
+				state.settings = {
+					...state.settings,
+					useWorkflowPublicationService: false,
+				};
+			});
+			workflowDocumentStore.setPublicationStatus({ status: 'partial' });
+			// versions match, no diff → published-no-changes → button disabled
+			uiStore.markStateClean();
+
+			const { getByTestId } = renderComponent();
+
+			// Should be disabled because flag is off and no changes
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
+
+		it('should use partial indicator class (not error) when status is partial', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'partial',
+				failures: [{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Connection refused' }],
+			});
+
+			const { getByTestId } = renderComponent();
+
+			const indicator = getByTestId('workflow-active-version-indicator');
+			expect(indicator.className).toMatch(/indicatorPartial/);
+			expect(indicator.className).not.toMatch(/indicatorIssues/);
+		});
+
+		it('should use error indicator class when status is failed', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'failed' });
+
+			const { getByTestId } = renderComponent();
+
+			const indicator = getByTestId('workflow-active-version-indicator');
+			expect(indicator.className).toMatch(/indicatorIssues/);
+			expect(indicator.className).not.toMatch(/indicatorPartial/);
+		});
+
+		it('should show non-empty tooltip text when publishing', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+
+			const { getByText } = renderComponent();
+			// The N8nTooltip stub renders the content slot unconditionally — assert the
+			// informative text is actually present in the DOM.
+			expect(getByText('Activating triggers — this can take a moment.')).toBeInTheDocument();
+		});
+
+		it('should show partial tooltip message in button tooltip when status is partial', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'partial',
+				failures: [{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Connection refused' }],
+			});
+
+			const { getByText, queryByText } = renderComponent();
+
+			// Tooltip message should be present
+			expect(
+				getByText(
+					/The workflow is partially published, but some triggers failed to activate\. Publish again to retry\./,
+				),
+			).toBeInTheDocument();
+			// Node name should be present
+			expect(getByText('Webhook')).toBeInTheDocument();
+			// Error message should NOT be present in the tooltip
+			expect(queryByText('Connection refused')).not.toBeInTheDocument();
+		});
+
+		it('should show failed tooltip message in button tooltip when status is failed', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'failed',
+				failures: [{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Auth failed' }],
+			});
+
+			const { getByText, queryByText } = renderComponent();
+
+			// Tooltip message should be present
+			expect(
+				getByText(/This workflow isn't running\. Publish again to retry\./),
+			).toBeInTheDocument();
+			// Node name should be present
+			expect(getByText('Webhook')).toBeInTheDocument();
+			// Error message should NOT be present in the tooltip
+			expect(queryByText('Auth failed')).not.toBeInTheDocument();
 		});
 	});
 });

@@ -5,14 +5,14 @@ import { onUnmounted, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { type WorkflowPreviewSuggestion } from '../suggestions';
 
-const PREVIEW_HOVER_DELAY_MS = 300;
+const PREVIEW_HOVER_DELAY_MS = 30;
 
 const props = defineProps<{
 	suggestions: readonly WorkflowPreviewSuggestion[];
 	disabled: boolean;
 }>();
 
-interface SubmitSuggestionPayload {
+interface InsertSuggestionPayload {
 	promptKey: BaseTextKey;
 	suggestionId: string;
 	suggestionKind: 'prompt';
@@ -21,7 +21,7 @@ interface SubmitSuggestionPayload {
 
 const emit = defineEmits<{
 	'preview-change': [promptKey: BaseTextKey | null];
-	'submit-suggestion': [payload: SubmitSuggestionPayload];
+	'insert-suggestion': [payload: InsertSuggestionPayload];
 	'workflow-preview': [workflowFile: string | null];
 }>();
 
@@ -88,7 +88,7 @@ function handleSuggestionClick(suggestion: WorkflowPreviewSuggestion) {
 	});
 
 	clearPreview();
-	emit('submit-suggestion', {
+	emit('insert-suggestion', {
 		promptKey: suggestion.promptKey,
 		suggestionId: suggestion.id,
 		suggestionKind: 'prompt',

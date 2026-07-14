@@ -5,7 +5,10 @@ import {
 	type WorkspaceSandbox,
 } from '@n8n/agents';
 
-import { createLazyRuntimeWorkspace } from '../lazy-runtime-workspace';
+import {
+	INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST,
+	createLazyRuntimeWorkspace,
+} from '../lazy-runtime-workspace';
 
 function createMockWorkspace() {
 	const executeCommand = vi.fn<
@@ -88,8 +91,11 @@ describe('createLazyRuntimeWorkspace', () => {
 		lazyWorkspace.getInstructions();
 
 		expect(ensureWorkspace).not.toHaveBeenCalled();
-		expect(tools.some((tool) => tool.name === 'workspace_read_file')).toBe(true);
-		expect(tools.some((tool) => tool.name === 'workspace_execute_command')).toBe(true);
+		expect(tools.map((tool) => tool.name).sort()).toEqual(
+			[...INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST].sort(),
+		);
+		expect(tools.some((tool) => tool.name === 'workspace_list_files')).toBe(false);
+		expect(tools.some((tool) => tool.name === 'workspace_append_file')).toBe(false);
 
 		const readFile = tools.find((tool) => tool.name === 'workspace_read_file');
 		await readFile?.handler?.({ path: '/workspace/report.md' }, {});
@@ -168,6 +174,32 @@ describe('createLazyRuntimeWorkspace', () => {
 		expect(lazyWorkspace.sandbox?.status).toBe('running');
 		expect(lazyWorkspace.getInstructions()).toContain('Real sandbox instructions.');
 		expect(lazyWorkspace.getInstructions()).toContain('Real filesystem instructions.');
+	});
+
+	it('returns stable sandbox and filesystem instructions regardless of resolution', async () => {
+		const { workspace } = createMockWorkspace();
+		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
+		const lazyWorkspace = createLazyRuntimeWorkspace({
+			ensureWorkspace,
+			sandboxInstructions: 'Stable sandbox instructions.',
+			filesystemInstructions: 'Stable filesystem instructions.',
+		});
+
+		// Before resolution: the stable text, not the "on first use" fallback.
+		const sandboxBefore = lazyWorkspace.sandbox?.getInstructions?.();
+		const filesystemBefore = lazyWorkspace.filesystem?.getInstructions?.();
+		expect(sandboxBefore).toBe('Stable sandbox instructions.');
+		expect(filesystemBefore).toBe('Stable filesystem instructions.');
+
+		await lazyWorkspace.filesystem?.readFile('/workspace/report.md');
+
+		// After resolution: byte-identical — the live resolved text must not leak
+		// in, since that would shift the agent's cached prompt prefix on resume.
+		expect(lazyWorkspace.sandbox?.status).toBe('running');
+		expect(lazyWorkspace.sandbox?.getInstructions?.()).toBe(sandboxBefore);
+		expect(lazyWorkspace.filesystem?.getInstructions?.()).toBe(filesystemBefore);
+		expect(lazyWorkspace.getInstructions()).not.toContain('Real sandbox instructions.');
+		expect(lazyWorkspace.getInstructions()).not.toContain('Real filesystem instructions.');
 	});
 
 	it('destroys the resolved workspace when the lazy workspace is destroyed', async () => {

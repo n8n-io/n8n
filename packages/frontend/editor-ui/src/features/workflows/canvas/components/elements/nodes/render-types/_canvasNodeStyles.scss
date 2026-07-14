@@ -2,8 +2,99 @@
 
 @mixin canvas-node-border-defaults {
 	--canvas-node--border-width: 1.5px;
-	--canvas-node--border-color: light-dark(
-		oklch(from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity-light, 0.1)),
-		oklch(from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity-dark, 0.15))
+}
+
+// The color default must stay a var() fallback — defining it on the element
+// would mask --canvas-node--border-color set by ancestors (e.g. diff views).
+@mixin canvas-node-border($line-style: solid) {
+	border: var(--canvas-node--border-width) $line-style
+		var(
+			--canvas-node--border-color,
+			light-dark(
+				oklch(
+					from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity-light, 0.1)
+				),
+				oklch(
+					from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity-dark, 0.15)
+				)
+			)
+		);
+}
+
+@mixin canvas-node-selected-ring {
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
+		var(--canvas--color--selected-transparent);
+}
+
+@mixin status-success {
+	--canvas-node--border-width: 2px;
+	--canvas-node--border-color: var(--color-canvas-node-success-border-color, var(--color--success));
+}
+
+@mixin status-error {
+	--canvas-node--border-color: var(--canvas-node--border-color--error, var(--color--danger));
+}
+
+@mixin status-warning {
+	--canvas-node--border-width: 2px;
+	--canvas-node--border-color: var(--color--warning);
+}
+
+@mixin status-running-border {
+	border-color: transparent;
+	--canvas-node--border-color: var(
+		--color-canvas-node-running-border-color,
+		var(--node--border-color--running)
 	);
+}
+
+@mixin status-waiting-border {
+	--canvas-node--border-color: transparent;
+}
+
+@mixin status-animated-after {
+	content: '';
+	position: absolute;
+	inset: -3px;
+	border-radius: 10px;
+	z-index: -1;
+	background: conic-gradient(
+		from var(--node--gradient-angle),
+		rgba(255, 109, 90, 1),
+		rgba(255, 109, 90, 1) 20%,
+		rgba(255, 109, 90, 0.2) 35%,
+		rgba(255, 109, 90, 0.2) 65%,
+		rgba(255, 109, 90, 1) 90%,
+		rgba(255, 109, 90, 1)
+	);
+}
+
+@mixin status-running-animation {
+	animation: border-rotate 1.5s linear infinite;
+}
+
+@mixin status-waiting-animation {
+	animation: border-rotate 4.5s linear infinite;
+}
+
+// @keyframes names are scoped per CSS module, so every module that uses the
+// running/waiting animation mixins must include this once at the top level.
+@mixin status-animation-definitions {
+	/* stylelint-disable */
+	@property --node--gradient-angle {
+		syntax: '<angle>';
+		initial-value: 0deg;
+		inherits: false;
+	}
+
+	@keyframes border-rotate {
+		from {
+			--node--gradient-angle: 0deg;
+		}
+		to {
+			--node--gradient-angle: 360deg;
+		}
+	}
+	/* stylelint-enable */
 }

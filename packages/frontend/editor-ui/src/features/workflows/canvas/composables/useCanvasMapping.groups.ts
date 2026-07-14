@@ -1,12 +1,27 @@
-import type { IWorkflowGroup } from 'n8n-workflow';
+import type { ExecutionStatus, IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type { CanvasGroupNode, CanvasGroupNodeData } from '../canvas.types';
-import { CANVAS_NODE_GROUP_ID_PREFIX, CANVAS_NODE_GROUP_TYPE } from '../canvas.types';
+import type {
+	BoundingBox,
+	CanvasConnection,
+	CanvasGroupNode,
+	CanvasGroupNodeData,
+	GroupExecutionStatus,
+	NodeExecutionSnapshot,
+} from '../canvas.types';
+import {
+	CANVAS_NODE_GROUP_HANDLE_LEFT,
+	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CANVAS_NODE_GROUP_TYPE,
+	createCanvasGroupNodeId,
+} from '../canvas.types';
 import {
 	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_PADDING_X,
+	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
+import { applyOffset, createCanvasConnectionId } from '../canvas.utils';
 import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
@@ -46,28 +61,53 @@ function resolveNodeDimensions(
 }
 
 /**
- * Title bar position + width derived from the group's nodes-bounding rect.
- * Snaps the position to the canvas grid; if it didn't, VueFlow's
- * `snap-to-grid` would shift the title bar on the first drag.
+ * Collapsed (chip) and expanded frame rects for a group, in unsnapped store
+ * space. Expanded width is floored at the chip width so a tight cluster never
+ * shrinks the frame below it.
  */
-export function titleBarFromNodesRect(nodesRect: NodesRect): {
-	position: { x: number; y: number };
-	width: number;
+export function computeGroupFrameRects(nodesRect: NodesRect): {
+	collapsed: BoundingBox;
+	expanded: BoundingBox;
 } {
-	const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
+	const x = nodesRect.x - GROUP_PADDING_X;
+	const y = nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT;
 	return {
-		position: {
-			x: snap(nodesRect.x - GROUP_PADDING_X),
-			y: snap(nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
+		collapsed: { x, y, width: GROUP_HEADER_WIDTH_COLLAPSED, height: GROUP_HEADER_HEIGHT },
+		expanded: {
+			x,
+			y,
+			width: Math.max(nodesRect.width + 2 * GROUP_PADDING_X, GROUP_HEADER_WIDTH_COLLAPSED),
+			height: GROUP_HEADER_HEIGHT + nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
 		},
-		width: nodesRect.width + 2 * GROUP_PADDING_X,
 	};
 }
 
 /**
- * Bounding rect of a group's nodes — used to size and position
- * the group's title bar and frame. Reads from workflow store positions (canonical)
- * rather than VueFlow runtime, which can lag or be uninitialized.
+ * Title bar layout (position + width) for the VueFlow group node. Snaps the
+ * position to the canvas grid, otherwise VueFlow's `snap-to-grid`
+ * would shift the title bar on the first drag.
+ */
+export function titleBarFromNodesRect(
+	nodesRect: NodesRect,
+	collapsed: boolean,
+): {
+	position: { x: number; y: number };
+	width: number;
+} {
+	const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
+	const { collapsed: collapsedRect, expanded: expandedRect } = computeGroupFrameRects(nodesRect);
+	const rect = collapsed ? collapsedRect : expandedRect;
+	return {
+		position: { x: snap(rect.x), y: snap(rect.y) },
+		width: rect.width,
+	};
+}
+
+/**
+ * Bounding rect of a group's nodes — used to size and position the title
+ * bar and frame. Reads from workflow store positions (canonical) rather than
+ * VueFlow runtime, which can lag, be uninitialized, or be hidden when the
+ * owning group is collapsed.
  *
  * `positionOverrides` lets the drag-time sync substitute live positions for
  * dragged nodes (whose store position lags until drag-stop).
@@ -108,11 +148,63 @@ export function computeNodesRectFromStore(
 	};
 }
 
+// Highest priority first. `success` is resolved separately.
+const GROUP_STATUS_PRIORITY: readonly GroupExecutionStatus[] = [
+	'waiting',
+	'running',
+	'error',
+	'issues',
+	'warning',
+];
+
+const IDLE_STATUSES: readonly ExecutionStatus[] = ['new', 'unknown', 'canceled'];
+
+/**
+ * Classify a single member for the group rollup by this priority:
+ * waiting > running > error > issues > warning > success > idle.
+ * Validation issues are kept distinct from execution errors.
+ * Other is an active-but-unhandled status that must block a misleading success.
+ * Idle statuses return undefined (they neither paint nor veto).
+ */
+function classifyNodeForGroup(
+	snapshot: NodeExecutionSnapshot,
+): GroupExecutionStatus | 'other' | undefined {
+	const { status } = snapshot;
+	if (snapshot.waiting || status === 'waiting') return 'waiting';
+	if (snapshot.running || snapshot.waitingForNext) return 'running';
+	if (snapshot.hasExecutionError) return 'error';
+	if (snapshot.hasValidationError) return 'issues';
+	if (snapshot.dirty) return 'warning';
+	if (status === 'success') return 'success';
+	if (status === undefined || IDLE_STATUSES.includes(status)) return undefined;
+	return 'other';
+}
+
+/** Reduce a group's per-node state into one dominant status. */
+export function aggregateGroupExecution(
+	nodeIds: string[],
+	getNodeExecutionSnapshot: (id: string) => NodeExecutionSnapshot,
+): GroupExecutionStatus | undefined {
+	const seen = new Set<GroupExecutionStatus | 'other' | undefined>();
+	for (const id of nodeIds) {
+		seen.add(classifyNodeForGroup(getNodeExecutionSnapshot(id)));
+	}
+
+	for (const status of GROUP_STATUS_PRIORITY) {
+		if (seen.has(status)) return status;
+	}
+	// success is the only status that speaks for every member
+	return seen.has('success') && !seen.has('other') ? 'success' : undefined;
+}
+
 export interface MapGroupsToVueFlowNodesInputs {
 	allGroups: IWorkflowGroup[];
 	getNodeById: (id: string) => INodeUi | undefined;
 	getNodeDisplaySize?: GetNodeDisplaySize;
+	getGroupVisualOffset?: (id: string) => { x: number; y: number };
+	isGroupCollapsed: (id: string) => boolean;
 	readOnly: boolean;
+	getNodeExecutionSnapshot: (id: string) => NodeExecutionSnapshot;
 }
 
 /**
@@ -123,7 +215,10 @@ export function mapGroupsToVueFlowNodes({
 	allGroups,
 	getNodeById,
 	getNodeDisplaySize,
+	getGroupVisualOffset,
+	isGroupCollapsed,
 	readOnly,
+	getNodeExecutionSnapshot,
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
 	const out: CanvasGroupNode[] = [];
 	for (const group of allGroups) {
@@ -133,21 +228,33 @@ export function mapGroupsToVueFlowNodes({
 		if (!hasNode) continue;
 
 		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
-
+		const collapsed = isGroupCollapsed(group.id);
+		const memberNodes = group.nodeIds
+			.map(getNodeById)
+			.filter((node): node is INodeUi => node !== undefined);
 		const data: CanvasGroupNodeData = {
 			group,
 			nodesRect,
+			isCollapsed: collapsed,
+			executionStatus: aggregateGroupExecution(group.nodeIds, getNodeExecutionSnapshot),
+			// The hasNode guard above keeps memberNodes non-empty, so `every`
+			// can't be vacuously true here.
+			allNodesDisabled: memberNodes.every((node) => node.disabled === true),
 		};
 
-		const titleBar = titleBarFromNodesRect(nodesRect);
+		const id = createCanvasGroupNodeId(group.id);
+		const titleBar = titleBarFromNodesRect(nodesRect, collapsed);
+		const offset = getGroupVisualOffset?.(id) ?? { x: 0, y: 0 };
 		out.push({
-			id: `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`,
+			id,
 			type: CANVAS_NODE_GROUP_TYPE,
-			position: titleBar.position,
+			position: applyOffset(titleBar.position, offset),
 			width: titleBar.width,
 			height: GROUP_HEADER_HEIGHT,
 			draggable: !readOnly,
-			selectable: false,
+			// The title bar stands in for the whole group: selecting it selects
+			// every member node (see useCanvasNodeGroupSelection).
+			selectable: true,
 			connectable: false,
 			// Behind the group's nodes so the expanded frame doesn't overlap them.
 			zIndex: -1,
@@ -155,4 +262,93 @@ export function mapGroupsToVueFlowNodes({
 		});
 	}
 	return out;
+}
+
+/**
+ * Reverse index: hidden node id → its collapsed group.
+ */
+export function buildCollapsedGroupByNodeId(
+	allGroups: IWorkflowGroup[],
+	isGroupCollapsed: (id: string) => boolean,
+): Map<string, IWorkflowGroup> {
+	const result = new Map<string, IWorkflowGroup>();
+	for (const group of allGroups) {
+		if (!isGroupCollapsed(group.id)) continue;
+		for (const nodeId of group.nodeIds) {
+			result.set(nodeId, group);
+		}
+	}
+	return result;
+}
+
+/**
+ * Visually remap collapsed-group connections to the group header handles
+ * (left / right) so VueFlow can draw them while the member nodes are hidden.
+ * Connections fully inside a collapsed group are dropped.
+ * External-only connections pass through unchanged.
+ *
+ * Edges that remap to the same endpoints (e.g. two grouped nodes feeding
+ * the same external port) are merged into one, since VueFlow's behavior on
+ * duplicate edge ids is undefined. The merged edge keeps every underlying
+ * connection's endpoints in `data.canonicals` so consumers can resolve or
+ * aggregate over all of them.
+ */
+export function remapCollapsedGroupConnections(
+	connections: CanvasConnection[],
+	collapsedGroupByNodeId: Map<string, IWorkflowGroup>,
+): CanvasConnection[] {
+	if (collapsedGroupByNodeId.size === 0) return connections;
+
+	const result: CanvasConnection[] = [];
+	const emittedById = new Map<string, CanvasConnection>();
+
+	for (const conn of connections) {
+		const sourceGroup = collapsedGroupByNodeId.get(conn.source);
+		const targetGroup = collapsedGroupByNodeId.get(conn.target);
+
+		// Both endpoints inside the same collapsed group → drop entirely.
+		if (sourceGroup && targetGroup && sourceGroup.id === targetGroup.id) {
+			continue;
+		}
+
+		if (!sourceGroup && !targetGroup) {
+			// External-only connection — keep as-is.
+			result.push(conn);
+			continue;
+		}
+
+		const remapped = {
+			source: sourceGroup ? createCanvasGroupNodeId(sourceGroup.id) : conn.source,
+			sourceHandle: sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle,
+			target: targetGroup ? createCanvasGroupNodeId(targetGroup.id) : conn.target,
+			targetHandle: targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle,
+		};
+
+		const id = createCanvasConnectionId(remapped);
+
+		// Stash the canonical endpoints so connection mutations can resolve back to real workflow nodes
+		const canonical = {
+			source: conn.source,
+			target: conn.target,
+			sourceHandle: conn.sourceHandle,
+			targetHandle: conn.targetHandle,
+		};
+
+		const existing = emittedById.get(id);
+		if (existing) {
+			existing.data?.canonicals?.push(canonical);
+			continue;
+		}
+
+		const emitted: CanvasConnection = {
+			...conn,
+			id,
+			...remapped,
+			data: conn.data ? { ...conn.data, canonicals: [canonical] } : undefined,
+		};
+		emittedById.set(id, emitted);
+		result.push(emitted);
+	}
+
+	return result;
 }

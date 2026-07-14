@@ -2,7 +2,7 @@
 
 All tools the Instance AI agent has access to. Tools are organized into
 orchestration tools (used by the orchestrator for loop control) and domain tools
-(used by the orchestrator directly or delegated to sub-agents). Each tool defines
+(used by the orchestrator directly). Each tool defines
 its input/output schema via Zod.
 
 ## Orchestration Tools
@@ -14,13 +14,14 @@ them. Some are conditional on context availability.
 
 Persist a dependency-aware task plan for detached multi-step execution. For
 initial plan-worthy work, the orchestrator loads the `planning` skill, performs
-discovery with normal domain tools, then calls `create-tasks` with
+discovery with normal domain tools, loads `create-tasks` via `load_tool`, then
+calls `create-tasks` with
 `planningContext.source: "planning-skill"`. For
 `<planned-task-follow-up type="replan">` turns, use
 `planningContext.source: "replan"` when multiple dependent tasks still need
 scheduling. Clear single-workflow builds, including new and one-off workflows,
-use `workflow-builder` plus `build-workflow` directly. The plan is shown to the
-user for approval before execution starts.
+use `workflow-builder`, workspace file tools, and `build-workflow` directly.
+The plan is shown to the user for approval before execution starts.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -33,11 +34,10 @@ user for approval before execution starts.
 {
   id: string;          // Stable identifier used by dependency edges
   title: string;       // Short user-facing task title
-  kind: 'delegate' | 'build-workflow' | 'checkpoint';
+  kind: 'build-workflow' | 'checkpoint';
   spec: string;        // Detailed executor briefing for this task
   deps: string[];      // Task IDs that must succeed before this task can start
-  tools?: string[];    // Required tool subset for delegate tasks
-  workflowId?: string; // Existing workflow ID to modify (build-workflow tasks only)
+  workflowId?: string; // Existing workflow ID for the builder to hydrate before saving
   isSupportingWorkflow?: boolean; // Build task completes after saving a supporting sub-workflow
 }
 ```
@@ -53,7 +53,6 @@ user for approval before execution starts.
 
 **Task kinds** map to executors:
 - `build-workflow` → orchestrator follow-up run using the workflow-builder skill
-- `delegate` → custom sub-agent with orchestrator-specified tool subset
 - `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
 
 Standalone data-table work is handled directly by the orchestrator with the
@@ -61,31 +60,6 @@ Standalone data-table work is handled directly by the orchestrator with the
 workflow-local table requirements belong in the builder task spec; plan only
 when the table schema is shared, independently durable, or creates real
 dependency coordination.
-
-### `delegate`
-
-Spawn a dynamically composed sub-agent to handle a focused subtask. The
-orchestrator specifies the role, instructions, and tool subset — there is no
-fixed taxonomy of sub-agent types.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `role` | string | yes | Free-form role description (e.g., "workflow builder") |
-| `instructions` | string | yes | Task-specific system prompt for the sub-agent |
-| `tools` | string[] | yes | Subset of registered native domain tool names |
-| `briefing` | string | yes | The specific task to accomplish |
-| `artifacts` | object | no | Relevant IDs, data, or context (workflow IDs, etc.) |
-| `conversationContext` | string | no | Summary of what was discussed so far — prevents repeating what user already knows |
-
-**Returns**: `{ result: string }` — the sub-agent's synthesized answer.
-
-**Behavior**:
-- Validates `tools` against registered native domain tool names
-- Forbids orchestration tools (`create-tasks`, `delegate`) and MCP tools
-- Creates a fresh agent with specified tools and low `maxSteps` (default 10)
-- Sub-agent publishes events directly to the event bus
-- Sub-agent has no memory — receives context only via the briefing
-- Past failed attempts from `iterationLog` are appended to the briefing (if available)
 
 ### `update-tasks`
 
@@ -132,7 +106,20 @@ Send a course correction to a running background task.
 
 ### `verify-built-workflow` *(conditional)*
 
-Run a built workflow with sidecar pin data for verification (never persisted).
+Run a built workflow with per-execution pin data for verification (never
+persisted to the workflow). Destructive and user-action nodes — write
+operations, nodes with mocked credentials, mid-workflow Form pages, Wait
+nodes — are **simulated**: the build outcome carries a per-node
+execute-vs-simulate plan (`nodeSimulationPlan`, produced by a deterministic
+classifier plus an LLM pass at submit time) and LLM-generated mock output
+(`simulationFixtures`). Simulated nodes are pinned with their fixture, so
+verification never sends messages, writes rows, deletes data, or parks in
+`waiting`. The tool output marks simulated nodes (`simulatedNodes`,
+`nodePreviews[].simulated`, `simulationNote`), and the saved execution
+carries `resultData.simulation` so the editor can label simulated outputs.
+For build outcomes that carry a plan, a `waiting` result is a failure (an
+unsimulated user-action node); only legacy plan-less outcomes keep the
+waiting-with-output-as-success fallback.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -183,9 +170,9 @@ Atomically apply real credentials to previously-mocked workflow nodes.
 
 **Returns**: `{ updatedNodes: string[] }`
 
-## Workflow Tools (9–13)
+## Workflow Tools (10–14)
 
-Core count is 9; up to 4 more are conditionally registered based on license.
+Core count is 10; up to 4 more are conditionally registered based on license.
 
 ### `list-workflows`
 
@@ -215,8 +202,11 @@ Get full workflow definition including nodes, connections, and settings.
 
 ### `get-workflow-as-code`
 
-Get a workflow as TypeScript SDK code. Used by the builder agent to load an
-existing workflow for modification.
+Get a workflow as TypeScript SDK code. Used by the builder agent to inspect an
+existing workflow when no workspace source file is already available. Existing
+workflow modifications should write the returned code to a workspace source file
+and call `build-workflow` with both `filePath` and the real n8n `workflowId`
+once; subsequent repairs can reuse only `filePath`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -226,19 +216,30 @@ existing workflow for modification.
 
 ### `build-workflow`
 
-Submit workflow code (TypeScript SDK) for parsing, validation, and saving. Two
-modes: full code submission or `str_replace` patches against the last-submitted
-code.
+Compile, validate, and save a workspace workflow source file. Inline source and
+string patches are not accepted; edit the workspace file first and then call
+this tool with `filePath`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `code` | string | conditional | Full TypeScript SDK code |
-| `patches` | array | conditional | `str_replace` patches against last-submitted code |
+| `filePath` | string | yes | Workspace path to the `.workflow.ts` or WorkflowJSON source file |
+| `workflowId` | string | no | Existing n8n workflow ID to bind to this file on the first update |
+| `projectId` | string | no | Project ID to create the workflow in |
+| `name` | string | no | Workflow name override for new workflows |
+| `workItemId` | string | no | Work item hint for workflow-loop reporting |
+| `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
 
-**Returns**: `{ workflowId, nodes, errors? }`
+**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, remediation?, errors?, warnings? }`
 
-**Behavior**: Validates TypeScript SDK code via `parseAndValidate()`, generates
-workflow JSON, applies layout engine positioning, resolves credentials.
+**Behavior**: Reads the source file from the runtime workspace, compiles
+TypeScript sources through the sandbox `tsx` runner or parses WorkflowJSON
+directly, validates the resulting workflow JSON server-side, resolves
+credentials, saves by the workflow ID bound to the source file, and persists the
+latest source hash and workflow version in thread metadata. If the file has no
+saved workflow ID, the build creates a new workflow unless `workflowId` is
+provided to bind the file to an existing workflow. If the bound workflow no
+longer exists, the tool returns blocked remediation rather than creating a
+replacement.
 
 ### `delete-workflow`
 
@@ -672,6 +673,43 @@ sandbox) to consult these before planning or building non-trivial workflows.
 
 ---
 
+## Agent Builder Tool
+
+### `build-agent` *(orchestration tool — requires the `agents` backend module)*
+
+Delegates agent building to the agents-module builder chat
+(`AgentsBuilderService`) running as an embedded, **non-interactive** sub-agent:
+one conversational turn per call. Registered in `createOrchestrationTools`
+only when the host provides `builderDelegate` (agents module active). The
+builder's own prompt and tools drive the build, but its interactive tools
+(`ask_questions`, `ask_credential`, `ask_embedding_credential`,
+`configure_channel`) are excluded from this session — the builder cannot
+suspend mid-turn and must complete every call, reporting any open questions as
+plain text at the end of its reply (`builderReply`). Builder session state is
+keyed to instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and
+never appears in the agents-module builder UI.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
+| `name` | string | no | Name for a NEW agent (first call only) |
+| `agentId` | string | no | Existing agent id to edit (first call only) |
+| `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
+
+**Returns**: `{ ok: true, builderReply, configUpdated }` on success, or
+`{ ok: false, error }`.
+
+**Relaying open questions:** since the builder cannot ask the user directly,
+any decision it needs (missing credential, channel setup, ambiguous model
+choice) comes back as text at the end of `builderReply`. The calling assistant
+is responsible for surfacing those questions to the user (via its own
+question tool/card if available) and sending the answers back through another
+`build-agent` call.
+
+**Targeting:** the first call must pass `name` (new agent) or `agentId`
+(existing agent); the binding is then persisted to thread metadata so
+follow-up calls keep editing the same agent without repeating `name`/`agentId`.
+
 ## Other Domain Tools
 
 | Tool | Description |
@@ -682,24 +720,27 @@ sandbox) to consult these before planning or building non-trivial workflows.
 
 ## Tool Distribution
 
-Not all tools are available to all agents. The orchestrator has access to
-everything; sub-agents receive only what they need.
+The orchestrator has access to the full native and orchestration surface.
+Specialized background agents (for example `eval-setup-with-agent`) receive
+only the domain tools wired into that agent.
 
-| Tool Category | Orchestrator | Sub-Agents (delegate) | Background Agents |
-|---------------|:---:|:---:|:---:|
-| Orchestration tools (`create-tasks`, `delegate`, etc.) | ✅ | ❌ | ❌ |
-| Workflow tools | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Execution tools | ✅ (direct use) | ✅ (via delegate) | ❌ |
-| Credential tools | ✅ | ✅ (via delegate) | ✅ (builder — setup only) |
-| Node discovery tools | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Data table tools | ✅ (direct, via `data-table-manager` skill) | ✅ (via delegate) | ❌ |
-| Workspace tools | ✅ | ✅ (via delegate) | ❌ |
-| Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
-| Web research tools | ✅ | ✅ (via delegate) | ❌ |
-| Knowledge base (best practices & templates via workspace) | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-sandbox-file`) | ❌ | ❌ | ✅ (builder only) |
-| MCP tools | ✅ | ❌ | ❌ |
-| Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ | ❌ |
+| Tool Category | Orchestrator | Specialized background agents |
+|---------------|:---:|:---:|
+| Orchestration tools (`create-tasks`, etc.) | ✅ | ❌ |
+| Docs search (`n8n-docs`) | ✅ (search/load) | ❌ |
+| Eval tools (`evals`) | ✅ (search/load) | ❌ |
+| Workflow tools | ✅ | ✅ (eval-setup) |
+| Execution tools | ✅ | ❌ |
+| Credential tools | ✅ | ✅ (eval-setup — setup only) |
+| Node discovery tools | ✅ | ✅ (eval-setup) |
+| Data table tools | ✅ (direct, via `data-table-manager` skill) | ✅ (eval-setup) |
+| Workspace tools | ✅ | ❌ |
+| Filesystem tools | ✅ (conditional) | ❌ |
+| Web research tools | ✅ | ❌ |
+| Knowledge base (best practices & templates via workspace) | ✅ | ✅ (eval-setup) |
+| Sandbox-backed internals (`build-workflow` TypeScript compilation, `materialize-node-type`) | ✅ | ❌ |
+| MCP tools | ✅ | ❌ |
+| Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ |
 
 ---
 
@@ -707,11 +748,10 @@ everything; sub-agents receive only what they need.
 
 1. Create a file in `src/tools/<domain>/` following the naming convention `<verb>-<noun>.tool.ts`
 2. Define input/output schemas with Zod (`.describe()` on fields — these are the LLM's parameter docs)
-3. Export a factory function that takes the service context and returns a Mastra tool
+3. Export a factory function that takes the service context and returns an `@n8n/agents` tool
 4. Register the tool in `src/tools/index.ts` (in `createAllTools` or `createOrchestrationTools`)
 5. If the tool requires a new service method, add it to the interface in `src/types.ts`
    and implement it in the backend adapter
-6. New native domain tools are automatically available for delegation — the
-   orchestrator can include them in sub-agent tool subsets via `delegate`
-7. For HITL tools, define `suspendSchema` and `resumeSchema` — Mastra handles
+6. New native domain tools registered in `createAllTools` are available to the orchestrator immediately
+7. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles
    the suspension/resume lifecycle automatically

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/mcp-browser-extension",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "private": true,
   "description": "Chrome extension that lets n8n AI control browser tabs via CDP",
   "scripts": {
@@ -22,12 +22,14 @@
     "vue": "catalog:frontend"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "catalog:",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/chrome": "0.0.300",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/test-utils": "catalog:frontend",
     "unplugin-icons": "catalog:frontend",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:"

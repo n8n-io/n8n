@@ -9,6 +9,15 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
+
 const renderComponent = createComponentRenderer(TestCaseForm);
 
 describe('TestCaseForm', () => {

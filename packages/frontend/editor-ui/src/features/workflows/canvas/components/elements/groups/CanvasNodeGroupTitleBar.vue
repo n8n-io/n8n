@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import {
-	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
-	GROUP_PADDING_Y_BOTTOM as PADDING_Y_BOTTOM,
-	GROUP_PADDING_Y_TOP as PADDING_Y_TOP,
-} from '../../../stores/canvasNodeGroups.constants';
+import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
+import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
+import { GROUP_HEADER_HEIGHT as HEADER_HEIGHT } from '../../../stores/canvasNodeGroups.constants';
+import { computeGroupFrameRects } from '../../../composables/useCanvasMapping.groups';
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	createCanvasGroupNodeId,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
 
@@ -26,11 +26,13 @@ const props = withDefaults(
 		data: CanvasGroupNodeData;
 		autofocusGroupId?: string | null;
 		dimensions?: { width: number; height: number };
+		selected?: boolean;
 		readOnly?: boolean;
 	}>(),
 	{
 		autofocusGroupId: null,
 		readOnly: false,
+		selected: false,
 	},
 );
 
@@ -38,9 +40,12 @@ const emit = defineEmits<{
 	'update:name': [id: string, name: string];
 	'title:focused': [id: string];
 	ungroup: [id: string];
+	toggle: [id: string];
+	'open:contextmenu': [id: string, event: MouseEvent];
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 const titleText = useTemplateRef<HTMLElement>('titleText');
 
@@ -48,11 +53,43 @@ const group = computed(() => props.data.group);
 const isAutofocusReady = computed(
 	() => !props.dimensions || (props.dimensions.width > 0 && props.dimensions.height > 0),
 );
+const isCollapsed = computed(() => props.data.isCollapsed);
+const executionStatus = computed(() => props.data.executionStatus);
+const allNodesDisabled = computed(() => props.data.allNodesDisabled ?? false);
 
-const frameStyle = computed(() => ({
-	top: `${HEADER_HEIGHT}px`,
-	height: `${props.data.nodesRect.height + PADDING_Y_TOP + PADDING_Y_BOTTOM}px`,
-}));
+// Statuses rendered as a status mark; running/waiting render as the animated border.
+const MARK_STATUSES = ['success', 'error', 'warning'] as const;
+const markStatus = computed(() => MARK_STATUSES.find((status) => status === executionStatus.value));
+
+const wrapperClasses = computed(() => [
+	$style.wrapper,
+	{
+		[$style.collapsed]: isCollapsed.value,
+		[$style.selected]: props.selected,
+		[$style.deactivated]: allNodesDisabled.value,
+		[$style.success]: executionStatus.value === 'success',
+		[$style.error]: executionStatus.value === 'error',
+		[$style.warning]: executionStatus.value === 'warning',
+		[$style.running]: executionStatus.value === 'running',
+		[$style.waiting]: executionStatus.value === 'waiting',
+	},
+]);
+
+const frameStyle = computed(() => {
+	// Frame sits below the header, so exclude the header height
+	const { expanded } = computeGroupFrameRects(props.data.nodesRect);
+	return {
+		top: `${HEADER_HEIGHT}px`,
+		height: `${expanded.height - HEADER_HEIGHT}px`,
+	};
+});
+
+// An expanded selected group shows one ring around header + frame; the
+// title bar ring alone would read as only the header being selected.
+const selectionRingStyle = computed(() => {
+	const { expanded } = computeGroupFrameRects(props.data.nodesRect);
+	return { height: `${expanded.height}px` };
+});
 
 const isTitleTruncated = ref(false);
 
@@ -66,7 +103,7 @@ function updateTruncated() {
 }
 
 watch(
-	() => [group.value.name, props.data.nodesRect.width],
+	() => [group.value.name, props.data.nodesRect.width, isCollapsed.value],
 	async () => {
 		await nextTick();
 		updateTruncated();
@@ -80,6 +117,29 @@ function onTitleUpdate(value: string) {
 
 function onUngroupClick() {
 	emit('ungroup', group.value.id);
+}
+
+function onToggleClick() {
+	emit('toggle', group.value.id);
+}
+
+function onOpenContextMenu(event: MouseEvent) {
+	// While the title is being edited, the native text menu (copy/paste,
+	// spellcheck) must win over the group menu. Other interactive children
+	// (chevron, ungroup button, title preview) still get the group menu.
+	const target = event.target as HTMLElement | null;
+	if (target?.closest('input, textarea, [contenteditable]')) return;
+
+	emit('open:contextmenu', group.value.id, event);
+}
+
+// Toggle collapse on double clicking
+function onWrapperDblClick(event: MouseEvent) {
+	const target = event.target as HTMLElement | null;
+	// if happened inside an element with its own click behavior, do nothing
+	if (target?.closest('.nodrag')) return;
+
+	emit('toggle', group.value.id);
 }
 
 async function focusTitleEdit() {
@@ -101,30 +161,55 @@ watch(
 	},
 );
 
-const { getSelectedNodes, removeSelectedNodes } = useVueFlow();
+const toggleLabel = computed(() =>
+	isCollapsed.value
+		? i18n.baseText('canvas.nodeGroup.expand')
+		: i18n.baseText('canvas.nodeGroup.collapse'),
+);
 
-// Clear any pre-existing selection before VueFlow snapshots which nodes to
-// drag — otherwise those nodes ride along with the group drag.
+const { getSelectedNodes, removeSelectedNodes, viewport } = useVueFlow();
+
+// Match the zoom-adjusted border opacity normal nodes use
+const { calculateNodeBorderOpacityStyle } = useZoomAdjustedValues(viewport);
+const nodeBorderOpacityStyle = calculateNodeBorderOpacityStyle();
+
+// Clear unrelated pre-existing selection before VueFlow snapshots which
+// nodes to drag — otherwise those nodes ride along with the group drag.
+// Preserve the selection when this title bar is itself part of it
+// (intentional multi-select drag).
 function onWrapperPointerDown(event: PointerEvent) {
 	// Clicks on .nodrag children (chevron, title edit, ungroup) aren't drag intent.
 	const target = event.target as HTMLElement | null;
 	if (target?.closest('.nodrag')) return;
 
+	// Modifier-clicks add to the selection instead of replacing it.
+	if (event.ctrlKey || event.metaKey) return;
+
 	const selected = getSelectedNodes.value;
-	if (selected.length > 0) removeSelectedNodes(selected);
+	if (selected.length === 0) return;
+
+	// Multi-select drag that includes this title bar → preserve the selection.
+	const myVueFlowId = createCanvasGroupNodeId(group.value.id);
+	const isPartOfSelection = selected.some((n) => n.id === myVueFlowId);
+	if (isPartOfSelection) return;
+
+	removeSelectedNodes(selected);
 }
 </script>
 
 <template>
 	<div
-		:class="$style.wrapper"
+		:class="wrapperClasses"
 		:style="{
 			width: '100%',
 			height: `${HEADER_HEIGHT}px`,
+			...nodeBorderOpacityStyle,
 		}"
 		data-test-id="canvas-node-group"
 		:data-group-id="group.id"
 		@pointerdown="onWrapperPointerDown"
+		@dblclick.stop="onWrapperDblClick"
+		@contextmenu="onOpenContextMenu"
 	>
 		<div :class="$style.titleBar">
 			<Handle
@@ -166,6 +251,17 @@ function onWrapperPointerDown(event: PointerEvent) {
 			</div>
 
 			<div :class="$style.content" data-test-id="canvas-node-group-header">
+				<N8nIconButton
+					class="nodrag"
+					:class="$style.toggle"
+					variant="ghost"
+					size="large"
+					:icon="isCollapsed ? 'chevrons-up-down' : 'chevrons-down-up'"
+					:aria-label="toggleLabel"
+					:aria-expanded="!isCollapsed"
+					data-test-id="canvas-node-group-toggle"
+					@click.stop="onToggleClick"
+				/>
 				<div :class="$style.title" data-test-id="canvas-node-group-title">
 					<N8nTooltip
 						:content="group.name"
@@ -176,7 +272,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 						<div ref="titleText" :class="$style.titleText">
 							<N8nInlineTextEdit
 								ref="titleEdit"
-								class="nodrag"
+								:class="['nodrag', $style.inlineEdit]"
 								:model-value="group.name"
 								:read-only="readOnly"
 								:min-width="0"
@@ -184,13 +280,46 @@ function onWrapperPointerDown(event: PointerEvent) {
 								:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
 								@update:model-value="onTitleUpdate"
 							/>
+							<div
+								v-if="allNodesDisabled"
+								:class="$style.deactivatedLabel"
+								data-test-id="canvas-node-group-deactivated-label"
+							>
+								({{ i18n.baseText('node.disabled') }})
+							</div>
 						</div>
 					</N8nTooltip>
+				</div>
+				<div
+					v-if="isCollapsed && markStatus"
+					:class="$style.statusIcons"
+					:data-test-id="`canvas-node-group-status-${markStatus}`"
+				>
+					<CanvasNodeStatusMark :status="markStatus" />
+				</div>
+				<div
+					v-else-if="isCollapsed && executionStatus === 'issues'"
+					:class="[$style.statusIcons, $style.issues]"
+					data-test-id="canvas-node-group-status-issues"
+				>
+					<N8nIcon icon="node-validation-error" size="large" />
 				</div>
 			</div>
 		</div>
 
-		<div :class="$style.frame" :style="frameStyle" data-test-id="canvas-node-group-frame" />
+		<div
+			v-if="!isCollapsed"
+			:class="$style.frame"
+			:style="frameStyle"
+			data-test-id="canvas-node-group-frame"
+		/>
+
+		<div
+			v-if="!isCollapsed && selected"
+			:class="$style.selectionRing"
+			:style="selectionRingStyle"
+			data-test-id="canvas-node-group-selection-ring"
+		/>
 	</div>
 </template>
 
@@ -210,18 +339,70 @@ function onWrapperPointerDown(event: PointerEvent) {
 	height: 100%;
 	background: var(--background--surface);
 	background-clip: padding-box;
-	border: var(--canvas-node--border-width) solid var(--canvas-node--border-color);
+	@include styles.canvas-node-border;
 	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	box-sizing: border-box;
+	.wrapper.collapsed & {
+		border-radius: var(--radius--lg);
+	}
+
+	// When expanded, the selection ring is drawn by .selectionRing around the
+	// whole group instead.
+	.wrapper.collapsed.selected & {
+		@include styles.canvas-node-selected-ring;
+	}
+
+	// Status only manifests when the group is collapsed — when expanded
+	// the nodes render their own outlines.
+	.wrapper.collapsed.success & {
+		@include styles.status-success;
+	}
+	.wrapper.collapsed.error & {
+		@include styles.status-error;
+	}
+	.wrapper.collapsed.warning & {
+		@include styles.status-warning;
+	}
+	.wrapper.collapsed.running & {
+		@include styles.status-running-border;
+	}
+	.wrapper.collapsed.waiting & {
+		@include styles.status-waiting-border;
+	}
 }
+
+/* stylelint-disable */
+.wrapper.collapsed.running .titleBar::after,
+.wrapper.collapsed.waiting .titleBar::after {
+	@include styles.status-animated-after;
+	border-radius: var(--radius--lg);
+}
+.wrapper.collapsed.running .titleBar::after {
+	@include styles.status-running-animation;
+}
+.wrapper.collapsed.waiting .titleBar::after {
+	@include styles.status-waiting-animation;
+}
+
+@include styles.status-animation-definitions;
+/* stylelint-enable */
 
 .content {
 	display: flex;
 	align-items: center;
-	gap: 0;
+	gap: var(--spacing--2xs);
 	height: 100%;
-	padding: 0 var(--spacing--sm);
+	padding: var(--spacing--lg);
 	overflow: hidden;
+}
+
+.toggle {
+	flex-shrink: 0;
+}
+
+/*  Don't render the aria-expanded toggle as "pressed" while inactive */
+.toggle[aria-expanded='true']:not(:hover):not(:active) {
+	background-color: transparent;
 }
 
 .title {
@@ -230,17 +411,45 @@ function onWrapperPointerDown(event: PointerEvent) {
 	flex: 1;
 	min-width: 0;
 	height: 100%;
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--medium);
 }
 
+.wrapper.deactivated .title {
+	color: var(--text-color--subtler);
+}
+
 .titleText {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	width: 100%;
 	min-width: 0;
 	max-width: 100%;
 	overflow: clip;
 	overflow-clip-margin: var(--spacing--2xs);
+}
+
+.inlineEdit {
+	width: fit-content;
+	max-width: 100%;
+}
+
+.deactivatedLabel {
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+.statusIcons {
+	display: flex;
+	align-items: center;
+	margin-left: var(--spacing--xs);
+	flex-shrink: 0;
+}
+
+// Validation issues mirror the single node: red triangle, no status border.
+.issues {
+	color: var(--color--danger);
 }
 
 .toolbar {
@@ -270,8 +479,8 @@ function onWrapperPointerDown(event: PointerEvent) {
 	position: absolute;
 	left: 0;
 	width: 100%;
-	background: transparent;
-	border: var(--canvas-node--border-width, 1.5px) dashed var(--canvas-node--border-color);
+	background: var(--background--hover);
+	@include styles.canvas-node-border(dashed);
 	border-top: none;
 	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
 	pointer-events: none;
@@ -279,9 +488,17 @@ function onWrapperPointerDown(event: PointerEvent) {
 	z-index: 0;
 }
 
+.selectionRing {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	border-radius: var(--radius--lg);
+	pointer-events: none;
+	@include styles.canvas-node-selected-ring;
+}
+
 .handle {
-	top: 50%;
-	transform: translateY(-50%);
 	opacity: 0;
 	pointer-events: none;
 }

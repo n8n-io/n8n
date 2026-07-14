@@ -1,10 +1,11 @@
 import { describe, test, expect } from 'vitest';
+import { isReactive } from 'vue';
 import {
 	handleEvent,
 	findMessageByRunId,
 	findAgentNode,
 	getRenderHint,
-	rebuildRunStateFromTree,
+	createRunStateFromTree,
 } from '../instanceAi.reducer';
 import type { InstanceAiReducerState } from '../instanceAi.reducer';
 import type { InstanceAiEvent } from '@n8n/api-types';
@@ -17,8 +18,8 @@ function makeState(overrides?: Partial<InstanceAiReducerState>): InstanceAiReduc
 	return {
 		messages: [],
 		activeRunId: null,
-		runStateByGroupId: {},
-		groupIdByRunId: {},
+		runStateByGroupId: new Map(),
+		groupIdByRunId: new Map(),
 		...overrides,
 	};
 }
@@ -185,8 +186,10 @@ function stateWithRun(runId: string, agentId: string): InstanceAiReducerState {
 }
 
 function expectReducerMapsNotPolluted(state: InstanceAiReducerState): void {
-	expect(Object.getPrototypeOf(state.runStateByGroupId)).toBe(Object.prototype);
-	expect(Object.getPrototypeOf(state.groupIdByRunId)).toBe(Object.prototype);
+	// Maps can't be prototype-polluted; assert the guards skipped the unsafe id
+	// rather than storing it as an entry.
+	expect(state.runStateByGroupId.has('__proto__')).toBe(false);
+	expect(state.groupIdByRunId.has('__proto__')).toBe(false);
 }
 
 // ---------------------------------------------------------------------------
@@ -247,6 +250,20 @@ describe('instanceAi.reducer', () => {
 
 			expect(state.messages[0].agentTree!.status).toBe('error');
 		});
+
+		test('run-finish for an older run in the group does not clear activeRunId', () => {
+			const state = stateWithRun('run-active', 'agent-root');
+			state.groupIdByRunId.set('run-old', 'run-active');
+			state.messages[0].runIds = ['run-old', 'run-active'];
+
+			const newActiveRunId = handleEvent(
+				state,
+				makeRunFinishEvent('run-old', 'agent-root', 'completed'),
+			);
+
+			expect(newActiveRunId).toBe('run-active');
+			expect(state.messages[0].isStreaming).toBe(true);
+		});
 	});
 
 	// -----------------------------------------------------------------------
@@ -265,6 +282,69 @@ describe('instanceAi.reducer', () => {
 			expect(rootNode.timeline[0]).toBe(firstTimelineEntry);
 			expect(msg.agentTree!.textContent).toBe('Hello world');
 			expect(msg.content).toBe('Hello world');
+		});
+
+		test('text-block appends live and REPLACES its streamed segment on replay', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			// Live: two deltas of an open segment.
+			handleEvent(state, {
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				responseId: 'msg-open',
+				payload: { text: 'AAA' },
+			});
+			handleEvent(state, {
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				responseId: 'msg-open',
+				payload: { text: 'BBB' },
+			});
+			// Replayed coalesced block for the same segment: replaces, no duplication.
+			handleEvent(state, {
+				type: 'text-block',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				responseId: 'msg-open',
+				payload: { text: 'AAABBBCCC' },
+			});
+
+			const msg = state.messages[0];
+			expect(msg.agentTree!.textContent).toBe('AAABBBCCC');
+			expect(msg.content).toBe('AAABBBCCC');
+		});
+
+		test('a live text-block with a fresh responseId renders as appended text (durable outcome lines)', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, {
+				type: 'text-block',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				responseId: 'bg-outcome:run-1',
+				payload: { text: 'The background workflow-builder task was cancelled.' },
+			});
+
+			const msg = state.messages[0];
+			expect(msg.agentTree!.textContent).toBe(
+				'The background workflow-builder task was cancelled.',
+			);
+			expect(msg.content).toBe('The background workflow-builder task was cancelled.');
+		});
+
+		test('tool-interrupted resolves the call terminally', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'update-workflow'));
+			handleEvent(state, {
+				type: 'tool-interrupted',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', error: 'Interrupted by a process restart' },
+			});
+
+			const tc = state.messages[0].agentTree!.toolCalls[0];
+			expect(tc.isLoading).toBe(false);
+			expect(tc.error).toContain('Interrupted');
 		});
 
 		test('text-delta for sub-agent appends to sub-agent textContent only, not msg.content', () => {
@@ -333,7 +413,9 @@ describe('instanceAi.reducer', () => {
 			handleEvent(state, makeToolResultEvent('run-1', 'agent-root', 'tc-1', { ok: true }));
 
 			const tc = state.messages[0].agentTree!.toolCalls[0];
-			expect(tc).not.toBe(pendingToolCall);
+			// In-place update: the rendered tool call keeps its identity (reactivity
+			// tracks the mutated properties, not object replacement).
+			expect(tc).toBe(pendingToolCall);
 			expect(tc.isLoading).toBe(false);
 			expect(tc.result).toEqual({ ok: true });
 		});
@@ -454,6 +536,18 @@ describe('instanceAi.reducer', () => {
 			expect(state.messages[0].agentTree!.error).toContain('root fallback');
 		});
 
+		test('propagates a structured error code into errorDetails', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, {
+				type: 'error',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { content: 'Have reached end of quota', code: 'quota_exhausted' },
+			});
+
+			expect(state.messages[0].agentTree!.errorDetails?.code).toBe('quota_exhausted');
+		});
+
 		test('falls back to msg.content when no agentTree', () => {
 			const state = makeState({
 				messages: [
@@ -521,7 +615,7 @@ describe('instanceAi.reducer', () => {
 			});
 
 			expect(state.messages).toHaveLength(0);
-			expect(state.groupIdByRunId['run-safe']).toBeUndefined();
+			expect(state.groupIdByRunId.get('run-safe')).toBeUndefined();
 			expectReducerMapsNotPolluted(state);
 		});
 
@@ -553,8 +647,8 @@ describe('instanceAi.reducer', () => {
 			expectReducerMapsNotPolluted(state);
 		});
 
-		test('rebuildRunStateFromTree skips unsafe roots', () => {
-			const runState = rebuildRunStateFromTree({
+		test('createRunStateFromTree skips unsafe roots', () => {
+			const runState = createRunStateFromTree({
 				agentId: '__proto__',
 				role: 'orchestrator',
 				status: 'completed',
@@ -568,8 +662,8 @@ describe('instanceAi.reducer', () => {
 			expect(runState).toBeUndefined();
 		});
 
-		test('rebuildRunStateFromTree preserves planItems', () => {
-			const runState = rebuildRunStateFromTree({
+		test('createRunStateFromTree preserves planItems', () => {
+			const runState = createRunStateFromTree({
 				agentId: 'agent-root',
 				role: 'orchestrator',
 				status: 'completed',
@@ -648,8 +742,8 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('task-control')).toBe('tasks');
 		});
 
-		test('returns delegate for "delegate"', () => {
-			expect(getRenderHint('delegate')).toBe('delegate');
+		test('returns default for removed delegate tool', () => {
+			expect(getRenderHint('delegate')).toBe('default');
 		});
 
 		test('returns builder for workflow builder tool', () => {
@@ -853,6 +947,60 @@ describe('instanceAi.reducer', () => {
 			const node = findAgentNode(msg, 'grandchild');
 			expect(node).toBeDefined();
 			expect(node!.textContent).toBe('deep');
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// Live tree contract: msg.agentTree IS the run state's root node
+	// -----------------------------------------------------------------------
+	describe('live tree contract', () => {
+		test('msg.agentTree is the run state root and is reactive', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+
+			const msg = state.messages[0];
+			const runState = state.runStateByGroupId.get('run-1');
+			expect(runState).toBeDefined();
+			expect(msg.agentTree).toBe(runState!.agentsById['agent-root']);
+			// The run state is wrapped in reactive() so in-place reducer mutations
+			// trigger Vue updates on the rendered tree.
+			expect(isReactive(msg.agentTree)).toBe(true);
+		});
+
+		test('events keep mutating an adopted snapshot tree (session restore continuation)', () => {
+			const tree = {
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'active' as const,
+				textContent: 'restored',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [{ type: 'text' as const, content: 'restored' }],
+			};
+			const runState = createRunStateFromTree(tree)!;
+			const state = makeState({
+				messages: [
+					{
+						id: 'mg-1',
+						runId: 'run-1',
+						messageGroupId: 'mg-1',
+						role: 'assistant',
+						createdAt: new Date().toISOString(),
+						content: 'restored',
+						reasoning: '',
+						isStreaming: true,
+						agentTree: tree,
+					},
+				],
+				runStateByGroupId: new Map([['mg-1', runState]]),
+				groupIdByRunId: new Map([['run-1', 'mg-1']]),
+			});
+
+			handleEvent(state, makeTextDeltaEvent('run-1', 'agent-root', ' and continued'));
+
+			// The adopted tree — the exact object the message renders — was updated.
+			expect(tree.textContent).toBe('restored and continued');
+			expect(state.messages[0].content).toBe('restored and continued');
 		});
 	});
 });

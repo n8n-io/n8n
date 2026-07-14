@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
@@ -9,16 +9,14 @@ import type {
 import { getGoogleAccessToken } from '../../GenericFunctions';
 import { authenticateServiceAccount, searchProjects } from '../GenericFunctions';
 
-const requestOAuth2 = jest.fn();
-const httpRequest = jest.fn();
+const requestOAuth2 = vi.fn();
+const httpRequest = vi.fn();
 
-jest.mock('../../GenericFunctions', () => ({
-	getGoogleAccessToken: jest.fn(),
+vi.mock('../../GenericFunctions', () => ({
+	getGoogleAccessToken: vi.fn(),
 }));
 
-const getGoogleAccessTokenMock = getGoogleAccessToken as jest.MockedFunction<
-	typeof getGoogleAccessToken
->;
+const getGoogleAccessTokenMock = vi.mocked(getGoogleAccessToken);
 
 describe('Google Cloud Storage GenericFunctions', () => {
 	let mockContext: MockProxy<ILoadOptionsFunctions>;
@@ -29,7 +27,7 @@ describe('Google Cloud Storage GenericFunctions', () => {
 			requestOAuth2,
 			httpRequest,
 		} as unknown as typeof mockContext.helpers;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('searchProjects', () => {
@@ -205,7 +203,7 @@ describe('Google Cloud Storage GenericFunctions', () => {
 
 		beforeEach(() => {
 			ctx = mock<IExecuteSingleFunctions>();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('returns the request unchanged when authentication is oAuth2', async () => {

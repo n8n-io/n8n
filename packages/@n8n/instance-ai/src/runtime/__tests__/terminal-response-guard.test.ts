@@ -155,11 +155,46 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		});
 	});
 
+	it('tags the emitted error with a structured code when provided', () => {
+		const decision = guard().evaluateTerminal([runStart()], 'errored', {
+			errorMessage: "You've run out of AI credits.",
+			errorCode: 'quota_exhausted',
+		});
+
+		expect(decision.action).toBe('emit');
+		expect(decision.event).toMatchObject({
+			type: 'error',
+			payload: { content: "You've run out of AI credits.", code: 'quota_exhausted' },
+		});
+	});
+
+	it('does not emit a second error when a root error is already visible', () => {
+		const decision = guard().evaluateTerminal(
+			[runStart(), rootError('Have reached end of quota')],
+			'errored',
+			{
+				errorMessage: 'ignored fallback',
+			},
+		);
+
+		expect(decision.action).toBe('none');
+		expect(decision.visibilitySource).toBe('root-error');
+		expect(decision.reason).toBe('already-visible');
+	});
+
 	it('does not emit cancellation fallback when partial root text exists', () => {
 		const decision = guard().evaluateTerminal([runStart(), rootText('partial')], 'cancelled');
 
 		expect(decision.action).toBe('none');
 		expect(decision.visibilitySource).toBe('root-text');
+	});
+
+	it('emits no placeholder when a run is cancelled with no output', () => {
+		const decision = guard().evaluateTerminal([runStart()], 'cancelled');
+
+		expect(decision.action).toBe('none');
+		expect(decision.reason).toBe('cancelled-silent');
+		expect(decision.event).toBeUndefined();
 	});
 
 	it('logs root error then completed as already visible', () => {

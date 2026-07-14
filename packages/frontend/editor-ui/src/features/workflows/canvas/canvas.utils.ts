@@ -4,11 +4,12 @@ import type {
 	INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import type { Ref } from 'vue';
+import { computed, shallowReactive, type Ref } from 'vue';
 import type { INodeUi } from '@/Interface';
 import type {
 	BoundingBox,
 	CanvasConnection,
+	CanvasConnectionData,
 	CanvasConnectionPort,
 	CanvasNodeDefaultRender,
 	CanvasNodeDefaultRenderLabelSize,
@@ -28,6 +29,19 @@ import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocumen
  * `useWorkflowDocumentRenderData` and consumed by canvas components.
  */
 export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>;
+
+/**
+ * Adds an `{ x, y }` offset to a position (a `{ x, y }` or a `[x, y]` tuple),
+ * returning a new `{ x, y }`.
+ */
+export function applyOffset(
+	position: { x: number; y: number } | [number, number],
+	offset: { x: number; y: number },
+): { x: number; y: number } {
+	const x = Array.isArray(position) ? position[0] : position.x;
+	const y = Array.isArray(position) ? position[1] : position.y;
+	return { x: x + offset.x, y: y + offset.y };
+}
 
 /**
  * Display size for a node with `Default` render type — pulls port counts from
@@ -65,6 +79,49 @@ export function computeNodeDisplaySize(
  */
 export function injectCanvasRenderData(): Ref<CanvasRenderData> {
 	return injectStrict(CanvasRenderDataKey);
+}
+
+/**
+ * Builds an empty `CanvasRenderData` object.
+ *
+ * `CanvasRenderData` is a wide projection façade — production code populates
+ * it via `useWorkflowDocumentRenderData(documentId)`. This helper exists for
+ * the two cases that can't go through that path:
+ * - placeholder values before the underlying workflow document is hydrated
+ *   (e.g. the workflow-diff side panels' initial render);
+ * - test fixtures that only care about a few fields.
+ *
+ * Centralizing it here keeps the ~20+ consumers off the hook when new by-id
+ * projections land — they update one default at a time, not 20 mock literals.
+ */
+export function createEmptyCanvasRenderData(
+	overrides: Partial<CanvasRenderData> = {},
+): CanvasRenderData {
+	return {
+		nodeInputsByNodeId: shallowReactive(new Map()),
+		nodeOutputsByNodeId: shallowReactive(new Map()),
+		pinnedDataByNodeName: {},
+		pinnedDataByNodeId: shallowReactive(new Map()),
+		nodeTypeDescriptionByNodeId: shallowReactive(new Map()),
+		isTriggerByNodeId: shallowReactive(new Map()),
+		subtitleByNodeId: shallowReactive(new Map()),
+		simulatedNodeTypeDescriptionByNodeId: shallowReactive(new Map()),
+		validationErrorsByNodeId: shallowReactive(new Map()),
+		executionIssuesByNodeName: shallowReactive(new Map()),
+		executionPinDataByNodeName: {},
+		isExecutionDataDisplayed: false,
+		executionStatusByNodeId: shallowReactive(new Map()),
+		executionRunDataByNodeId: shallowReactive(new Map()),
+		executionRunDataOutputMapByNodeId: shallowReactive(new Map()),
+		executionWaitingByNodeId: shallowReactive(new Map()),
+		executionRunningByNodeId: shallowReactive(new Map()),
+		executionWaitingForNextByNodeId: shallowReactive(new Map()),
+		tooltipByNodeId: shallowReactive(new Map()),
+		hasIssuesByNodeId: shallowReactive(new Map()),
+		renderTypeByNodeId: shallowReactive(new Map()),
+		additionalPropertiesByNodeId: computed(() => ({})),
+		...overrides,
+	};
 }
 
 /**
@@ -212,6 +269,27 @@ export function createCanvasConnectionHandleString({
  */
 export function createCanvasConnectionId(connection: Connection) {
 	return `[${connection.source}/${connection.sourceHandle}][${connection.target}/${connection.targetHandle}]`;
+}
+
+/**
+ * Resolve a rendered canvas connection back to real workflow node endpoints.
+ * Collapsed-group remapping rewrites `source` / `target` for display only,
+ * while storing the canonical workflow ids and handles on `data.canonicals`.
+ * A merged edge represents several workflow connections - this returns the first,
+ * as we only allow groups with single input/output connections.
+ */
+export function resolveCanonicalConnection(
+	connection: Connection & { data?: CanvasConnectionData },
+): Connection {
+	const canonical = connection.data?.canonicals?.[0];
+	const { source, target, sourceHandle, targetHandle } = canonical ?? connection;
+
+	return {
+		source,
+		target,
+		sourceHandle,
+		targetHandle,
+	};
 }
 
 /**

@@ -1,15 +1,16 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { StorageConfig } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { DURATION_BUCKETS_SECONDS } from '../constant';
+import { DURATION_BUCKETS_SECONDS, SIZE_BUCKETS_BYTES } from '../constant';
 import { PrometheusExecutionDataMetricsService } from '../execution-data-metrics.service';
 
 import type { EventService } from '@/events/event.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusExecutionDataMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -19,9 +20,9 @@ describe('PrometheusExecutionDataMetricsService', () => {
 	const eventService = mock<EventService>();
 	const storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 	let service: PrometheusExecutionDataMetricsService;
-	let mockCounterInc: jest.Mock;
-	let mockGaugeSet: jest.Mock;
-	let mockHistogramObserve: jest.Mock;
+	let mockCounterInc: Mock;
+	let mockGaugeSet: Mock;
+	let mockHistogramObserve: Mock;
 
 	function getEventHandler(eventName: string) {
 		return eventService.on.mock.calls.find((c) => c[0] === eventName)?.[1];
@@ -31,16 +32,16 @@ describe('PrometheusExecutionDataMetricsService', () => {
 		Object.assign(config, { prefix: 'n8n_', includeExecutionDataMetrics: true });
 		Object.assign(storageConfig, { modeTag: 'db' });
 		service = new PrometheusExecutionDataMetricsService(config, eventService, storageConfig);
-		mockCounterInc = jest.fn();
+		mockCounterInc = vi.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
-		mockGaugeSet = jest.fn();
+		mockGaugeSet = vi.fn();
 		promClient.Gauge.prototype.set = mockGaugeSet;
-		mockHistogramObserve = jest.fn();
+		mockHistogramObserve = vi.fn();
 		promClient.Histogram.prototype.observe = mockHistogramObserve;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {
@@ -108,6 +109,17 @@ describe('PrometheusExecutionDataMetricsService', () => {
 			});
 		});
 
+		it('should create execution_data_write_size_bytes histogram with SIZE_BUCKETS_BYTES', () => {
+			service.init();
+
+			expect(promClient.Histogram).toHaveBeenCalledWith({
+				name: 'n8n_execution_data_write_size_bytes',
+				help: 'Logical byte size of the JSON execution data bundle written (excludes binary data).',
+				labelNames: ['mode'],
+				buckets: SIZE_BUCKETS_BYTES,
+			});
+		});
+
 		it('should create execution_data_storage_mode gauge', () => {
 			service.init();
 
@@ -125,6 +137,8 @@ describe('PrometheusExecutionDataMetricsService', () => {
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'db', result: 'failure' }, 0);
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs', result: 'success' }, 0);
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs', result: 'failure' }, 0);
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 's3', result: 'success' }, 0);
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 's3', result: 'failure' }, 0);
 		});
 
 		it('should seed unreadable bundles counter for each mode at 0', () => {
@@ -132,14 +146,16 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'db' }, 0);
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs' }, 0);
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 's3' }, 0);
 		});
 
-		it('should set storage mode gauge with db=0, fs=0, and configured modeTag=1', () => {
+		it('should set storage mode gauge with db=0, fs=0, s3=0, and configured modeTag=1', () => {
 			Object.assign(storageConfig, { modeTag: 'db' });
 			service.init();
 
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 's3' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 1);
 		});
 
@@ -150,6 +166,16 @@ describe('PrometheusExecutionDataMetricsService', () => {
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 0);
 			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 1);
+		});
+
+		it('should set storage mode gauge with s3=1 when modeTag is s3', () => {
+			Object.assign(storageConfig, { modeTag: 's3' });
+			service.init();
+
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'db' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 'fs' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 's3' }, 0);
+			expect(mockGaugeSet).toHaveBeenCalledWith({ mode: 's3' }, 1);
 		});
 	});
 
@@ -214,7 +240,7 @@ describe('PrometheusExecutionDataMetricsService', () => {
 			// Capture the handler before clearing mocks
 			const handler = getEventHandler('execution-data-read');
 			// Reset after seeding to isolate event handler behavior from seeding calls
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 
@@ -243,7 +269,7 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'db', durationMs: 100, success: true });
+			handler!({ mode: 'db', durationMs: 100, success: true, jsonSizeBytes: 2048 });
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'db', result: 'success' }, 1);
 		});
@@ -254,9 +280,20 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'db', durationMs: 100, success: true });
+			handler!({ mode: 'db', durationMs: 100, success: true, jsonSizeBytes: 2048 });
 
 			expect(mockHistogramObserve).toHaveBeenCalledWith({ mode: 'db' }, 0.1);
+		});
+
+		it('should observe write size histogram with jsonSizeBytes on success', () => {
+			service.init();
+			const handler = getEventHandler('execution-data-write');
+
+			expect(handler).toBeDefined();
+
+			handler!({ mode: 'db', durationMs: 100, success: true, jsonSizeBytes: 2048 });
+
+			expect(mockHistogramObserve).toHaveBeenCalledWith({ mode: 'db' }, 2048);
 		});
 
 		it('should increment writes counter with result:failure on failure', () => {
@@ -265,7 +302,7 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'fs', durationMs: 10, success: false });
+			handler!({ mode: 'fs', durationMs: 10, success: false, jsonSizeBytes: 0 });
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs', result: 'failure' }, 1);
 		});
@@ -276,7 +313,7 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'db', durationMs: 10, success: false });
+			handler!({ mode: 'db', durationMs: 10, success: false, jsonSizeBytes: 0 });
 
 			expect(mockHistogramObserve).not.toHaveBeenCalled();
 		});

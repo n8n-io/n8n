@@ -93,10 +93,17 @@ export interface SlackAgentAppManifestResponse {
 	manifest: SlackAgentAppManifest;
 }
 
+export interface AgentSkillReference {
+	path: string;
+	content: string;
+}
+
 export interface AgentSkill {
 	name: string;
 	description: string;
 	instructions: string;
+	allowedTools?: string[];
+	references?: AgentSkillReference[];
 }
 
 export interface AgentSkillMutationResponse {
@@ -128,6 +135,55 @@ export interface AgentVersionListItemDto {
 	updatedAt: string;
 	author: string;
 	isActive: boolean;
+}
+
+/**
+ * Lightweight capability metadata for the AI Agent node card.
+ */
+export interface AgentCapabilityModel {
+	/** Provider prefix of the model id, e.g. 'anthropic'. Empty when the id has no prefix. */
+	provider: string;
+	/** Model name, e.g. 'claude-sonnet-4-5'. */
+	model: string;
+}
+
+export interface AgentCapabilityChannel {
+	/** Integration platform, e.g. 'slack' | 'telegram' | 'linear'. */
+	type: string;
+}
+
+export interface AgentCapabilityTool {
+	type: 'custom' | 'workflow' | 'node';
+	name: string;
+	/**
+	 * Node type + version for `type: 'node'` tools. Lets the card resolve the
+	 * node's display name and group same-node-type tools.
+	 * Absent for custom/workflow tools.
+	 */
+	nodeType?: string;
+	nodeTypeVersion?: number;
+}
+
+export interface AgentCapabilitySkill {
+	id: string;
+	name: string;
+}
+
+export interface AgentCapabilityTask {
+	id: string;
+	name: string;
+	enabled: boolean;
+}
+
+export interface AgentCapabilitySummary {
+	id: string;
+	name: string;
+	/** Null when no model is configured yet. */
+	model: AgentCapabilityModel | null;
+	channels: AgentCapabilityChannel[];
+	tools: AgentCapabilityTool[];
+	skills: AgentCapabilitySkill[];
+	tasks: AgentCapabilityTask[];
 }
 
 export interface AgentPersistedMessageContentPart {
@@ -193,3 +249,15 @@ export interface AgentBuilderMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
 }
+
+/**
+ * Internal integration type for the in-app chat channel. Injected per-run for
+ * `/chat` executions — never persisted in an agent's `integrations` array.
+ */
+export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
+/** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
+export const N8N_CHAT_ACTION_TOOL_NAME = 'chat_action' as const;
+export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;
+
+/** Chat history envelope — same contract as {@link AgentBuilderMessagesResponse}. */
+export type AgentChatMessagesResponse = AgentBuilderMessagesResponse;

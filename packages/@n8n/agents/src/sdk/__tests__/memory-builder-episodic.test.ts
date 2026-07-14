@@ -1,10 +1,10 @@
-import type { AgentRuntimeConfig } from '../../runtime/agent-runtime';
+import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
 import {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
-} from '../../runtime/episodic-memory-defaults';
-import { InMemoryMemory } from '../../runtime/memory-store';
+} from '../../runtime/memory/episodic-memory-defaults';
+import { InMemoryMemory } from '../../runtime/memory/memory-store';
 import type { BuiltMemory, EpisodicMemoryConfig } from '../../types';
 import { Agent } from '../agent';
 import {

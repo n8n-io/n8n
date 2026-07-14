@@ -1,11 +1,18 @@
 import { z, type ZodError } from 'zod';
 
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+/**
+ * Regex for valid custom tool ids. Shared with the backend service layer
+ * so validation stays in sync with the JSON config schema.
+ */
+export const CUSTOM_TOOL_ID_REGEX = /^[A-Za-z0-9_]+$/;
 import {
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from './sub-agent.schema';
+
+export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
 export const AgentModelSchema = z
 	.string()
@@ -20,9 +27,15 @@ export const AgentModelSchema = z
 		'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
 	);
 
+const CredentialIdSchema = z.string().trim();
+const EpisodicMemoryCredentialSchema = z.union([
+	z.literal(MANAGED_CREDENTIAL_TOKEN),
+	CredentialIdSchema,
+]);
+
 const MemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
-	credential: z.string().trim(),
+	credential: CredentialIdSchema,
 });
 
 const ObservationalMemoryConfigSchema = z.object({
@@ -42,7 +55,7 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	}),
 	z.object({
 		enabled: z.literal(true),
-		credential: z.string().trim(),
+		credential: EpisodicMemoryCredentialSchema,
 		extractorModel: MemoryWorkerModelSchema.optional(),
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
@@ -63,15 +76,69 @@ const ThinkingConfigSchema = z.object({
 	reasoningEffort: z.string().optional(),
 });
 
+// Mandatory for supporting providers (the user cannot disable it). Anthropic
+// exposes a cache-breakpoint TTL; OpenAI has no sub-config.
+export const PromptCachingConfigSchema = z.object({
+	enabled: z.boolean(),
+	anthropic: z.object({ ttl: z.enum(['5m', '1h']).optional() }).optional(),
+});
+
 const WebSearchConfigSchema = z.object({
 	enabled: z.boolean(),
 	provider: z.enum(['auto', 'native', 'brave', 'searxng']).optional(),
 	credential: z.string().optional(),
 });
 
-const SubAgentConfigSchema = z.object({
-	agentId: z.string().trim().min(1),
-});
+const HexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
+
+export const DEFAULT_AGENT_PERSONALISATION = {
+	icon: 'bot',
+	gradient: {
+		from: '#FF1500',
+		to: '#FF6900',
+		angle: 135,
+		fromStop: 0,
+		toStop: 100,
+	},
+} as const;
+
+const AgentPersonalisationGradientSchema = z
+	.object({
+		from: HexColorSchema,
+		to: HexColorSchema,
+		angle: z.number().int().min(0).max(359).default(DEFAULT_AGENT_PERSONALISATION.gradient.angle),
+		fromStop: z
+			.number()
+			.int()
+			.min(0)
+			.max(45)
+			.default(DEFAULT_AGENT_PERSONALISATION.gradient.fromStop),
+		toStop: z
+			.number()
+			.int()
+			.min(55)
+			.max(100)
+			.default(DEFAULT_AGENT_PERSONALISATION.gradient.toStop),
+	})
+	.strict();
+
+const AgentPersonalisationConfigSchema = z
+	.object({
+		icon: z.string().trim().min(1).max(64),
+		gradient: AgentPersonalisationGradientSchema.default(() => ({
+			...DEFAULT_AGENT_PERSONALISATION.gradient,
+		})),
+	})
+	.strict();
+
+export const SUB_AGENT_USE_WHEN_MAX_LENGTH = 512;
+
+const SubAgentConfigSchema = z
+	.object({
+		agentId: z.string().trim().min(1),
+		useWhen: z.string().trim().max(SUB_AGENT_USE_WHEN_MAX_LENGTH).optional(),
+	})
+	.strict();
 
 export const SUB_AGENT_TASK_DIFFICULTIES = ['low', 'medium', 'high'] as const;
 const SubAgentTaskDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
@@ -232,13 +299,75 @@ export const McpServerConfigSchema = z
 	})
 	.strict();
 
+export const AGENT_VECTOR_STORE_PROVIDERS = ['pinecone', 'supabase', 'qdrant', 'postgres'] as const;
+
+/** n8n credential type each vector store provider's connection credential must have. */
+export const AGENT_VECTOR_STORE_CREDENTIAL_TYPES = {
+	pinecone: 'pineconeApi',
+	supabase: 'supabaseApi',
+	qdrant: 'qdrantApi',
+	postgres: 'postgres',
+} as const satisfies Record<AgentVectorStoreProvider, string>;
+
+export const VECTOR_STORE_USE_WHEN_MAX_LENGTH = 512;
+export const VECTOR_STORE_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
+
+const VectorStoreEmbeddingSchema = z
+	.object({
+		model: AgentModelSchema,
+		credential: CredentialIdSchema,
+	})
+	.strict();
+
+const VectorStoreBaseShape = {
+	name: z
+		.string()
+		.min(1)
+		.max(64)
+		.regex(VECTOR_STORE_NAME_REGEX)
+		.describe('Unique connection name, also used as the SDK tool-name suffix: search_<name>'),
+	credential: CredentialIdSchema,
+	useWhen: z.string().trim().min(1).max(VECTOR_STORE_USE_WHEN_MAX_LENGTH),
+	embedding: VectorStoreEmbeddingSchema,
+};
+
+export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
+	z
+		.object({
+			provider: z.literal('pinecone'),
+			...VectorStoreBaseShape,
+			indexName: z.string().min(1),
+			namespace: z.string().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			provider: z.literal('qdrant'),
+			...VectorStoreBaseShape,
+			collectionName: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			provider: z.literal('supabase'),
+			...VectorStoreBaseShape,
+			tableName: z.string().min(1),
+			queryName: z.string().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			provider: z.literal('postgres'),
+			...VectorStoreBaseShape,
+			tableName: z.string().min(1),
+		})
+		.strict(),
+]);
+
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('custom'),
-		id: z
-			.string()
-			.min(1)
-			.regex(/^[A-Za-z0-9_-]+$/),
+		id: z.string().min(1).regex(CUSTOM_TOOL_ID_REGEX),
 		requireApproval: z.boolean().optional(),
 	}),
 	z
@@ -268,14 +397,43 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 
 export const AgentJsonConfigSchema = z.object({
 	name: z.string().min(1).max(128),
-	description: z.string().max(512).optional(),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	instructions: z.string(),
+	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),
 	subAgents: SubAgentsConfigSchema.optional(),
-	tools: z.array(AgentJsonToolConfigSchema).optional(),
-	skills: z.array(AgentJsonSkillConfigSchema).optional(),
+	tools: z
+		.array(AgentJsonToolConfigSchema)
+		.superRefine((tools, ctx) => {
+			const customIds = tools.filter((t) => t.type === 'custom').map((t) => t.id);
+			const seen = new Set<string>();
+			for (const id of customIds) {
+				if (seen.has(id)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `Duplicate custom tool id: "${id}"`,
+					});
+				}
+				seen.add(id);
+			}
+		})
+		.optional(),
+	skills: z
+		.array(AgentJsonSkillConfigSchema)
+		.superRefine((skills, ctx) => {
+			const seen = new Set<string>();
+			for (const skill of skills) {
+				if (seen.has(skill.id)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `Duplicate skill id: "${skill.id}"`,
+					});
+				}
+				seen.add(skill.id);
+			}
+		})
+		.optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	integrations: z.array(AgentIntegrationConfigSchema).optional(),
@@ -286,11 +444,22 @@ export const AgentJsonConfigSchema = z.object({
 			message: 'MCP server names must be unique within an agent',
 		})
 		.optional(),
+	vectorStores: z
+		.array(AgentVectorStoreConfigSchema)
+		.max(20)
+		// The SDK's asTool() sanitizes '-' to '_' when deriving the search_<name>
+		// tool name, so uniqueness must be checked on the sanitized form.
+		.refine(
+			(stores) => new Set(stores.map((s) => s.name.replace(/-/g, '_'))).size === stores.length,
+			{ message: 'Vector store names must be unique within an agent' },
+		)
+		.optional(),
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
+			promptCaching: PromptCachingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
-			toolCallConcurrency: z.number().int().min(1).max(20).optional(),
+			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
 			maxIterations: z
 				.number()
 				.int()
@@ -300,11 +469,6 @@ export const AgentJsonConfigSchema = z.object({
 				.describe(
 					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
 				),
-			nodeTools: z
-				.object({
-					enabled: z.boolean(),
-				})
-				.optional(),
 		})
 		.optional(),
 });
@@ -327,10 +491,13 @@ export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'cu
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
 export type AgentJsonTaskConfig = z.infer<typeof AgentJsonTaskConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
+export type AgentPersonalisationConfig = z.infer<typeof AgentPersonalisationConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
 export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;
+export type AgentVectorStoreProvider = (typeof AGENT_VECTOR_STORE_PROVIDERS)[number];
+export type AgentJsonVectorStoreConfig = z.infer<typeof AgentVectorStoreConfigSchema>;
 
 export interface ConfigValidationError {
 	path: string;
@@ -350,6 +517,37 @@ export function tryParseConfigJson(
 	}
 }
 
+/**
+ * Vector stores register a `search_<sanitized-name>` tool at runtime (see
+ * `@n8n/agents`' `VectorStore.asTool()`). The `vectorStores` array refine
+ * above only catches vector-store-vs-vector-store name collisions; this also
+ * catches a vector store colliding with a configured tool, which would
+ * otherwise only surface as a runtime "tool name collision" error once the
+ * agent is built. Returns the colliding `search_<name>` tool names, if any.
+ */
+export function findVectorStoreToolNameCollisions(
+	config: Pick<AgentJsonConfig, 'tools' | 'vectorStores'>,
+): string[] {
+	if (!config.vectorStores?.length) return [];
+
+	const toolNames = new Set(
+		(config.tools ?? []).map((tool) => {
+			switch (tool.type) {
+				case 'custom':
+					return tool.id;
+				case 'workflow':
+					return tool.name ?? tool.workflow;
+				case 'node':
+					return tool.name;
+			}
+		}),
+	);
+
+	return config.vectorStores
+		.map((store) => `search_${store.name.replace(/-/g, '_')}`)
+		.filter((toolName) => toolNames.has(toolName));
+}
+
 export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 	return error.issues.map((issue) => ({
 		path: issue.path.join('.') || '(root)',
@@ -357,8 +555,4 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 		expected: 'expected' in issue ? String(issue.expected) : undefined,
 		received: 'received' in issue ? String(issue.received) : undefined,
 	}));
-}
-
-export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
-	return config?.nodeTools?.enabled === true;
 }

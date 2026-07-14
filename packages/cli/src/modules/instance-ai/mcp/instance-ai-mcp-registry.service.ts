@@ -1,10 +1,18 @@
+import { type BuiltTool, McpClient } from '@n8n/agents';
+import type {
+	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpUpdateConnectionRequestDto,
+} from '@n8n/api-types';
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
+import type { CustomFetch } from '@n8n/backend-network';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
 import { QueryFailedError } from '@n8n/typeorm';
-import { randomUUID } from 'node:crypto';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -17,9 +25,13 @@ import type {
 	McpRegistryServer,
 } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
-import { createAuthFetch } from '@/utils/auth-fetch';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
+import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
 
-import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
+import type {
+	InstanceAiMcpRegistryConnection,
+	InstanceAiMcpToolFilter,
+} from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
 type Transport = 'sse' | 'streamableHttp';
@@ -27,7 +39,7 @@ type Transport = 'sse' | 'streamableHttp';
 interface ResolvedRegistryServer {
 	serverSlug: string;
 	credentialId: string;
-	authType: string;
+	authType: McpRegistryServer['authType'];
 	endpointUrl: string;
 	transport: Transport;
 }
@@ -36,6 +48,7 @@ interface OAuth2FetchContext {
 	credentialId: string;
 	accessToken: string;
 	projectId: string;
+	credentialData: ICredentialDataDecryptedObject;
 }
 
 function readString(data: Record<string, unknown>, key: string): string | undefined {
@@ -84,6 +97,46 @@ function buildServerName(serverSlug: string, sequence: number): string {
 	return `${baseName.slice(0, maxBaseLength)}${suffix}`;
 }
 
+function normalizeTools(tools: string[] | undefined): string[] {
+	if (!tools) {
+		return [];
+	}
+
+	return [...new Set(tools.filter((tool) => tool.length > 0))];
+}
+
+function resolveToolFilter(
+	payload: InstanceAiMcpUpdateConnectionRequestDto,
+	current: InstanceAiMcpToolFilter | null,
+): InstanceAiMcpToolFilter | null {
+	if (payload.inclusionMode === undefined) {
+		return current;
+	}
+
+	if (payload.inclusionMode === 'all') {
+		return null;
+	}
+
+	if (payload.inclusionMode === 'selected') {
+		return { mode: 'allow', tools: normalizeTools(payload.selectedTools) };
+	}
+
+	return { mode: 'exclude', tools: normalizeTools(payload.excludedTools) };
+}
+
+function stripMcpServerPrefix(toolName: string, serverName: string): string {
+	const prefix = `${serverName}_`;
+	return toolName.startsWith(prefix) ? toolName.slice(prefix.length) : toolName;
+}
+
+function toToolResponse(tool: BuiltTool, serverName: string): InstanceAiMcpConnectionToolResponse {
+	const response: InstanceAiMcpConnectionToolResponse = {
+		name: stripMcpServerPrefix(tool.name, serverName),
+	};
+	if (tool.description) response.description = tool.description;
+	return response;
+}
+
 @Service()
 export class InstanceAiMcpRegistryService {
 	private readonly logger: Logger;
@@ -96,6 +149,9 @@ export class InstanceAiMcpRegistryService {
 		private readonly credentialsService: CredentialsService,
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
+		private readonly outboundHttp: OutboundHttp,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -177,6 +233,84 @@ export class InstanceAiMcpRegistryService {
 		});
 	}
 
+	async updateConnection(
+		user: User,
+		id: string,
+		payload: InstanceAiMcpUpdateConnectionRequestDto,
+	): Promise<InstanceAiMcpRegistryConnection> {
+		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		if (!connection) {
+			throw new NotFoundError('MCP registry connection not found');
+		}
+
+		if (payload.credentialId) {
+			await this.swapCredential(user, connection, payload.credentialId);
+		}
+
+		connection.toolFilter = resolveToolFilter(payload, connection.toolFilter);
+		return await this.connectionRepository.save(connection);
+	}
+
+	async listConnectionTools(
+		user: User,
+		id: string,
+	): Promise<InstanceAiMcpConnectionToolResponse[]> {
+		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		if (!connection) {
+			throw new NotFoundError('MCP registry connection not found');
+		}
+
+		const server = await this.mcpRegistryService.get(connection.serverSlug);
+		if (!server) {
+			throw new NotFoundError(`Unknown MCP registry server: ${connection.serverSlug}`);
+		}
+
+		const resolvedServer = this.resolveRegistryServer(
+			connection.id,
+			connection.serverSlug,
+			connection.credentialId,
+			server.authType,
+			server.remotes,
+		);
+		if (!resolvedServer) return [];
+
+		const aiMcpFetch = createAiMcpFetch(
+			this.outboundHttp,
+			this.ssrfConfig,
+			this.ssrfProtectionService,
+		);
+		const requestFetch = await this.buildRegistryServerFetch(
+			resolvedServer,
+			user,
+			connection.id,
+			aiMcpFetch,
+		);
+		if (!requestFetch) return [];
+
+		const serverName = buildServerName(resolvedServer.serverSlug, 1);
+		const client = new McpClient([
+			{
+				name: serverName,
+				url: resolvedServer.endpointUrl,
+				transport: resolvedServer.transport,
+				fetch: requestFetch,
+				connectionTimeoutMs: 10_000,
+			},
+		]);
+
+		try {
+			return (await client.listTools()).map((tool) => toToolResponse(tool, serverName));
+		} finally {
+			await client.close().catch((error: unknown) => {
+				this.logger.warn('Failed to close MCP client after listing tools', {
+					connectionId: connection.id,
+					serverSlug: connection.serverSlug,
+					error,
+				});
+			});
+		}
+	}
+
 	async getRegistryMcpServers(user: User): Promise<McpServerConfig[]> {
 		const connections = await this.connectionRepository.findBy({ userId: user.id });
 		if (connections.length === 0) {
@@ -188,6 +322,13 @@ export class InstanceAiMcpRegistryService {
 		const servers = await this.mcpRegistryService.getBySlugs(slugs);
 		const serverBySlug = new Map(servers.map((server) => [server.slug, server]));
 		const slugCounts = new Map<string, number>();
+
+		// One proxy-aware, SSRF-protected transport shared across all resolved MCP connections.
+		const aiMcpFetch = createAiMcpFetch(
+			this.outboundHttp,
+			this.ssrfConfig,
+			this.ssrfProtectionService,
+		);
 
 		const resolved: McpServerConfig[] = [];
 		for (const connection of sortedConnections) {
@@ -219,6 +360,8 @@ export class InstanceAiMcpRegistryService {
 				url: resolvedServer.endpointUrl,
 				transport: resolvedServer.transport,
 				cacheKey: `registry-connection:${connection.id}`,
+				toolFilter: connection.toolFilter ?? undefined,
+				metadata: { serverSlug: resolvedServer.serverSlug, userId: user.id },
 			};
 
 			if (resolvedServer.authType === 'oauth2') {
@@ -231,19 +374,17 @@ export class InstanceAiMcpRegistryService {
 					continue;
 				}
 
-				serverConfig.fetch = createAuthFetch({
-					initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
-					onUnauthorized: async () => {
-						if (!oauth2FetchContext.projectId) {
-							return null;
-						}
+				const requestFetch = await this.buildRegistryServerFetch(
+					resolvedServer,
+					user,
+					connection.id,
+					aiMcpFetch,
+				);
+				if (!requestFetch) {
+					continue;
+				}
 
-						return await this.oauthService.refreshOAuth2CredentialById(
-							oauth2FetchContext.credentialId,
-							oauth2FetchContext.projectId,
-						);
-					},
-				});
+				serverConfig.fetch = requestFetch;
 			}
 
 			resolved.push(serverConfig);
@@ -256,7 +397,7 @@ export class InstanceAiMcpRegistryService {
 		connectionId: string,
 		serverSlug: string,
 		credentialId: string,
-		authType: string,
+		authType: McpRegistryServer['authType'],
 		remotes: McpRegistryRemote[],
 	): ResolvedRegistryServer | null {
 		const remote = getPreferredRemote(remotes);
@@ -276,6 +417,38 @@ export class InstanceAiMcpRegistryService {
 			endpointUrl: remote.endpointUrl,
 			transport: remote.transport,
 		};
+	}
+
+	private async buildRegistryServerFetch(
+		config: ResolvedRegistryServer,
+		user: User,
+		connectionId: string,
+		baseFetch: CustomFetch,
+	): Promise<CustomFetch | null> {
+		if (config.authType !== 'oauth2') {
+			return baseFetch;
+		}
+
+		const oauth2FetchContext = await this.buildOAuth2FetchContext(config, user, connectionId);
+		if (!oauth2FetchContext) {
+			return null;
+		}
+
+		return createAuthFetch({
+			baseFetch,
+			initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
+			onUnauthorized: async () => {
+				if (!oauth2FetchContext.projectId) {
+					return null;
+				}
+
+				return await this.oauthService.refreshOAuth2CredentialById(
+					oauth2FetchContext.credentialId,
+					oauth2FetchContext.projectId,
+				);
+			},
+			allowedDomains: resolveAllowedDomains(oauth2FetchContext.credentialData),
+		});
 	}
 
 	private async buildOAuth2FetchContext(
@@ -327,6 +500,7 @@ export class InstanceAiMcpRegistryService {
 			credentialId: config.credentialId,
 			accessToken,
 			projectId,
+			credentialData: credentialWithData.data,
 		};
 	}
 
@@ -349,6 +523,36 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		return { credential, data };
+	}
+
+	private async swapCredential(
+		user: User,
+		connection: InstanceAiMcpRegistryConnection,
+		newCredentialId: string,
+	) {
+		const currentCredential = await this.credentialsFinderService.findCredentialForUser(
+			connection.credentialId,
+			user,
+			['credential:read'],
+		);
+		if (!currentCredential) {
+			throw new NotFoundError('Credential not found or not accessible');
+		}
+
+		const newCredential = await this.credentialsFinderService.findCredentialForUser(
+			newCredentialId,
+			user,
+			['credential:read'],
+		);
+		if (!newCredential) {
+			throw new NotFoundError('Credential not found or not accessible');
+		}
+
+		if (currentCredential.type !== newCredential.type) {
+			throw new ConflictError('Cannot change credential to a different type');
+		}
+
+		connection.credentialId = newCredentialId;
 	}
 }
 

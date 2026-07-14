@@ -5,17 +5,19 @@ import {
 	type StreamChunk,
 	type StreamResult,
 } from '@n8n/agents';
-import type { Logger } from '@n8n/backend-common';
 import type {
 	ResolvedSubAgentSource,
 	RunnableAgentJsonConfig,
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
+import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
@@ -23,7 +25,6 @@ import type {
 } from '../sub-agent-source-resolver';
 
 const projectId = 'project-1';
-const userId = 'user-1';
 const parentThreadId = 'parent-thread-1';
 const parentAgentId = 'parent-agent-1';
 
@@ -93,16 +94,16 @@ const defaultStreamChunks: StreamChunk[] = [
 ];
 
 describe('SubAgentForegroundRunner', () => {
-	let sourceResolver: jest.Mocked<SubAgentSourceResolver>;
-	let reconstructionService: jest.Mocked<AgentRuntimeReconstructionService>;
+	let sourceResolver: Mocked<SubAgentSourceResolver>;
+	let reconstructionService: Mocked<AgentRuntimeReconstructionService>;
 	let runner: SubAgentForegroundRunner;
-	let childAgent: jest.Mocked<BuiltAgent>;
-	let agentExecutionService: jest.Mocked<AgentExecutionService>;
-	let logger: jest.Mocked<Logger>;
-	let credentialProvider: jest.Mocked<CredentialProvider>;
+	let childAgent: Mocked<BuiltAgent>;
+	let agentExecutionService: Mocked<AgentExecutionService>;
+	let logger: Mocked<Logger>;
+	let credentialProvider: Mocked<CredentialProvider>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 		sourceResolver = mock<SubAgentSourceResolver>();
 		sourceResolver.resolveForRuntime.mockResolvedValue(runtimeSource);
@@ -126,7 +127,6 @@ describe('SubAgentForegroundRunner', () => {
 	it('resolves reconstruction from the container at run time', async () => {
 		await runner.runForeground(spawnRequest, {
 			projectId,
-			userId,
 			credentialProvider,
 		});
 
@@ -136,7 +136,6 @@ describe('SubAgentForegroundRunner', () => {
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
 		const result = await runner.runForeground(spawnRequest, {
 			projectId,
-			userId,
 			credentialProvider,
 		});
 
@@ -158,9 +157,9 @@ describe('SubAgentForegroundRunner', () => {
 			toolDescriptors: runtimeSource.toolDescriptors,
 			toolCodeByName: runtimeSource.toolCodeByName,
 			skills: runtimeSource.skills,
-			userId,
 			runtimeProfile: 'sub-agent',
 			parentAgentIdForDelegation: undefined,
+			user: undefined,
 		});
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 		expect(childAgent.stream).toHaveBeenCalledWith(
@@ -180,7 +179,27 @@ describe('SubAgentForegroundRunner', () => {
 				threadId: result.threadId,
 				agentId: 'agent-1',
 				source: 'subagent',
+				telemetry: {
+					runType: 'production',
+					configuration: expect.objectContaining({
+						model: 'anthropic/claude-sonnet-4-5',
+					}),
+				},
 			}),
+		);
+	});
+
+	it('filters sub-agent tools by the delegating user access when the parent run has a user', async () => {
+		const user = mock<User>({ id: 'user-1' });
+
+		await runner.runForeground(spawnRequest, {
+			projectId,
+			credentialProvider,
+			user,
+		});
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.objectContaining({ user }),
 		);
 	});
 
@@ -189,7 +208,6 @@ describe('SubAgentForegroundRunner', () => {
 			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },
 			{
 				projectId,
-				userId,
 				credentialProvider,
 			},
 		);
@@ -226,7 +244,6 @@ describe('SubAgentForegroundRunner', () => {
 			},
 			{
 				projectId,
-				userId,
 				parentAgentId,
 				credentialProvider,
 			},
@@ -235,7 +252,6 @@ describe('SubAgentForegroundRunner', () => {
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
 			expect.objectContaining({
 				memoryOwnerAgentId: 'agent-2',
-				userId,
 				runtimeProfile: 'sub-agent',
 				parentAgentIdForDelegation: parentAgentId,
 			}),
@@ -281,7 +297,6 @@ describe('SubAgentForegroundRunner', () => {
 		await expect(
 			runner.runForeground(spawnRequest, {
 				projectId,
-				userId,
 				credentialProvider,
 			}),
 		).resolves.toMatchObject({
@@ -306,7 +321,6 @@ describe('SubAgentForegroundRunner', () => {
 		await expect(
 			runner.runForeground(spawnRequest, {
 				projectId,
-				userId,
 				credentialProvider,
 			}),
 		).resolves.toMatchObject({
@@ -334,7 +348,6 @@ describe('SubAgentForegroundRunner', () => {
 
 		const run = runner.runForeground(spawnRequest, {
 			projectId,
-			userId,
 			credentialProvider,
 			abortSignal: parentAbort.signal,
 		});

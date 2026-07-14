@@ -6,9 +6,11 @@ import type {
 	Role,
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/settings/users/users.types';
+import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
+import type { ModalState } from '@n8n/frontend-module-sdk';
 import type {
 	GenericValue,
 	IConnections,
@@ -475,7 +477,7 @@ export interface SubcategoryItemProps {
 	subcategory?: string;
 	defaults?: INodeParameters;
 	forceIncludeNodes?: string[];
-	sections?: string[];
+	sections?: string[] | NodeViewItemSection[];
 	items?: INodeCreateElement[];
 	new?: boolean;
 	hideActions?: boolean;
@@ -563,6 +565,11 @@ export interface SectionCreateElement extends CreateElementBase {
 	 * Whether to render the section without its category header
 	 */
 	hideHeader?: boolean;
+	/**
+	 * Extra element rendered at the trailing edge of the section header.
+	 * Identifies what to render; the renderer maps it to a component.
+	 */
+	trailing?: 'creditsBalance';
 }
 
 export interface ViewCreateElement extends CreateElementBase {
@@ -639,14 +646,9 @@ export type Modals = {
 
 export type ModalKey = keyof Modals;
 
-export type ModalState = {
-	open: boolean;
-	mode?: string | null;
-	data?: Record<string, unknown>;
-	activeId?: string | null;
-	curlCommand?: string;
-	httpNodeParameters?: string;
-};
+// `ModalState` is owned by `@n8n/frontend-module-sdk`; re-exported here so existing
+// `@/Interface` importers stay unchanged.
+export type { ModalState };
 
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
@@ -657,6 +659,20 @@ export interface NewCredentialsModal extends ModalState {
 	nodeName?: string;
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
+	appendToBody?: boolean;
+	/** Behavior for the Instance AI credential setup-help button, supplied by the
+	 * surface that opened the modal (an editor capability, or the credentials list).
+	 * Resolves to whether the credential modal should close (false keeps it open for
+	 * a new-tab hand-off; true closes it for an in-thread append). */
+	instanceAiCredentialHelp?: (credential: {
+		credentialType: string;
+		displayName: string;
+		nodeName?: string;
+		nodeType?: string;
+		id?: string;
+		documentationUrl?: string;
+		oauthRedirectUrl?: string;
+	}) => Promise<boolean>;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
@@ -700,7 +716,8 @@ export type NodeCreatorOpenSource =
 	| 'notice_error_message'
 	| 'add_node_button'
 	| 'add_evaluation_node_button'
-	| 'templates_callout';
+	| 'templates_callout'
+	| 'instance_ai';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
@@ -971,7 +988,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'Provisioning'
 	| 'PersonalSpacePolicy'
 	| 'CustomRoles'
-	| 'DataRedaction';
+	| 'DataRedaction'
+	| 'WorkflowReviews';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

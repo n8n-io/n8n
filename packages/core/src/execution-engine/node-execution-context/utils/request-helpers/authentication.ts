@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
+import { httpRequest, removeEmptyBody } from '@n8n/backend-network';
 import type {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
@@ -15,7 +16,6 @@ import { ExecutionBaseError, NodeApiError, NodeOperationError } from 'n8n-workfl
 
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
-import { httpRequest, removeEmptyBody } from './http-request';
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { requestOAuth1, requestOAuth2 } from './oauth';
 

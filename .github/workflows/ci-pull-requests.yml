@@ -70,6 +70,11 @@ jobs:
               !**/*.spec.ts
               !packages/testing/playwright/**
               !packages/frontend/@n8n/storybook/**
+              !scripts/agent-setup.mjs
+              !scripts/backend-module/**
+              !scripts/licenses/**
+              !scripts/mutation-health/**
+              !scripts/sync-agent-skill-links.mjs
             unit:
               **
               !packages/@n8n/task-runner-python/**
@@ -78,6 +83,11 @@ jobs:
               !**/*.md
               !**/LICENSE
               !**/CHANGELOG.md
+              !scripts/agent-setup.mjs
+              !scripts/backend-module/**
+              !scripts/licenses/**
+              !scripts/mutation-health/**
+              !scripts/sync-agent-skill-links.mjs
             e2e:
               .github/workflows/test-e2e-*.yml
               .github/workflows/prepare-docker-reusable.yml
@@ -98,6 +108,7 @@ jobs:
             workflow-scripts:
               .github/scripts/**
               scripts/licenses/**
+              scripts/mutation-health/**
             performance:
               packages/testing/performance/**
               packages/workflow/src/**
@@ -124,15 +135,15 @@ jobs:
               packages/cli/test/shared/db/**
               packages/cli/test/setup-testcontainers.js
               packages/cli/test/teardown-testcontainers.js
-              packages/cli/jest.config.integration.js
-              packages/cli/jest.config.integration.testcontainers.js
-              packages/cli/jest.config.migration.js
-              packages/cli/jest.config.migration.testcontainers.js
               packages/@n8n/db/**
               packages/@n8n/backend-test-utils/**
+              packages/@n8n/scheduler/src/**
               packages/cli/**/__tests__/**
               packages/testing/containers/services/postgres.ts
               .github/workflows/test-db-reusable.yml
+              docs/generated/**
+              .tbls.sqlite.yml
+              .tbls.postgres.yml
 
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
@@ -400,7 +411,9 @@ jobs:
   post-qa-metrics-comment:
     name: QA Metrics
     needs: [required-checks, e2e-performance]
-    if: always()
+    # Only post when the perf suite actually measured this PR, otherwise the
+    # comment fires on trivial PRs and flags master drift/noise that isn't theirs.
+    if: always() && needs.e2e-performance.result == 'success'
     uses: ./.github/workflows/util-qa-metrics-comment-reusable.yml
     with:
       metrics: memory-heap-used-baseline,memory-rss-baseline,instance-ai-heap-used-baseline,instance-ai-rss-baseline,agents-heap-used-baseline,agents-rss-baseline,docker-image-size-n8n,docker-image-size-runners,canvas-cold-load-S-ms,canvas-cold-load-M-ms,canvas-cold-load-L-ms,canvas-server-heap-M-mb,canvas-server-heap-L-mb,canvas-browser-heap-M-mb,canvas-browser-heap-L-mb,canvas-pan-frame-p95-M-ms,canvas-pan-frame-p95-L-ms,canvas-tidy-up-M-ms,canvas-tidy-up-L-ms,canvas-exec-heavy-M-ms,canvas-exec-heavy-L-ms

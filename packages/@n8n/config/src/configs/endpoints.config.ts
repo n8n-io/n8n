@@ -60,6 +60,14 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_QUEUE_METRICS_INTERVAL')
 	queueMetricsInterval: number = 20;
 
+	/** Whether to include Durable Scheduler metrics (queue depth, scheduling lag, dispatches, retries, dead-letters). */
+	@Env('N8N_METRICS_INCLUDE_SCHEDULER_METRICS')
+	includeSchedulerMetrics: boolean = false;
+
+	/** How often (in seconds) the scheduler gauge queries are refreshed (cache TTL). */
+	@Env('N8N_METRICS_SCHEDULER_INTERVAL')
+	schedulerMetricsInterval: number = 20;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
@@ -83,6 +91,42 @@ export class PrometheusMetricsConfig {
 	/** Whether to include metrics for execution data reads and writes. */
 	@Env('N8N_METRICS_INCLUDE_EXECUTION_DATA_METRICS')
 	includeExecutionDataMetrics: boolean = false;
+
+	/** Whether to include metrics for SSRF protection checks. */
+	@Env('N8N_METRICS_INCLUDE_SSRF_METRICS')
+	includeSsrfMetrics: boolean = false;
+
+	/** Whether to include metrics for the DNS cache (currently only used by SSRF protection). */
+	@Env('N8N_METRICS_INCLUDE_DNS_CACHE_METRICS')
+	includeDnsCacheMetrics: boolean = false;
+
+	/** Whether to include a duration histogram metric for webhook requests. */
+	@Env('N8N_METRICS_INCLUDE_WEBHOOK_METRICS')
+	includeWebhookMetrics: boolean = false;
+
+	/** Whether to include a duration histogram metric for form submissions. */
+	@Env('N8N_METRICS_INCLUDE_FORM_METRICS')
+	includeFormMetrics: boolean = false;
+
+	/** Whether to include a gauge mapping workflow IDs to their human-readable names. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_INFO')
+	includeWorkflowInfoMetrics: boolean = false;
+
+	/** How often (in seconds) to refresh the workflow info metric cache. */
+	@Env('N8N_METRICS_WORKFLOW_INFO_METRIC_INTERVAL')
+	workflowInfoMetricInterval: number = 60;
+
+	/** Whether to include metrics for the database connection pool (size, usage, wait queue, acquire latency). */
+	@Env('N8N_METRICS_INCLUDE_DB_POOL_METRICS')
+	includeDbPoolMetrics: boolean = false;
+
+	/** Whether to include metrics for the workflow publication service (main instances only). */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_PUBLICATION_METRICS')
+	includeWorkflowPublicationMetrics: boolean = false;
+
+	/** How often (in seconds) to refresh the cached workflow publication outbox gauges. */
+	@Env('N8N_METRICS_WORKFLOW_PUBLICATION_METRIC_INTERVAL')
+	workflowPublicationMetricInterval: number = 60;
 }
 
 @Config

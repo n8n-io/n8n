@@ -35,6 +35,9 @@ export class ModuleRegistry {
 		'external-secrets',
 		'community-packages',
 		'data-table',
+		// oauth-server precedes mcp: the mcp module registers its protected
+		// resource with the oauth-server module's registry on init.
+		'oauth-server',
 		'mcp',
 		'provisioning',
 		'breaking-changes',
@@ -100,10 +103,10 @@ export class ModuleRegistry {
 
 		for (const moduleName of modules ?? this.eligibleModules) {
 			try {
-				await import(`${modulesDir}/${moduleName}/${moduleName}.module`);
+				await import(`${modulesDir}/${moduleName}/${moduleName}.module.js`);
 			} catch (primaryError) {
 				try {
-					await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module`);
+					await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module.js`);
 				} catch (error) {
 					const loggedError =
 						primaryError instanceof Error &&

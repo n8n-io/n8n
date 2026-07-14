@@ -5,11 +5,13 @@ import { useI18n } from '@n8n/i18n';
 import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type { AgentJsonConfig } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
+import { AGENT_BUILDER_PROMPT_MAX_LENGTH } from '../constants';
 
 const props = withDefaults(
 	defineProps<{
@@ -43,6 +45,7 @@ const emit = defineEmits<{
 	codeUpdated: [];
 	codeDelta: [delta: string];
 	configUpdated: [];
+	buildDone: [];
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'continue-loaded': [count: number];
@@ -86,6 +89,7 @@ const {
 	onCodeUpdated: () => emit('codeUpdated'),
 	onCodeDelta: (d) => emit('codeDelta', d),
 	onConfigUpdated: () => emit('configUpdated'),
+	onBuildDone: () => emit('buildDone'),
 	onHistoryLoaded: (count) => {
 		if (props.continueSessionId) emit('continue-loaded', count);
 	},
@@ -111,15 +115,14 @@ const missingFields = computed(() => {
 	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
 
-const openInteractive = computed(
-	() =>
-		messages.value.find((message) => message.interactive && !message.interactive.resolvedAt)
-			?.interactive,
-);
+const openInteractive = computed(() => findOpenInteractive(messages.value));
 const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
 const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value,
+);
+const areConfigurationActionsDisabled = computed(
+	() => isStreaming.value || isPreparingToSend.value || hasOpenInteraction.value,
 );
 
 const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.canEditAgent);
@@ -299,7 +302,7 @@ onBeforeUnmount(() => {
 		/>
 
 		<div :class="$style.inputArea">
-			<slot name="above-input" />
+			<slot name="above-input" :disabled="areConfigurationActionsDisabled" />
 			<ChatInputBase
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
@@ -317,6 +320,7 @@ onBeforeUnmount(() => {
 					isPreparingToSend ||
 					(isStreaming && messagingState !== 'receiving')
 				"
+				:max-length="endpoint === 'build' ? AGENT_BUILDER_PROMPT_MAX_LENGTH : undefined"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"

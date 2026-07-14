@@ -25,13 +25,13 @@ import type {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
-vi.mock('@/features/resolvers/composables/useDynamicCredentials', () => ({
-	useDynamicCredentials: vi.fn(),
+vi.mock('@/features/resolvers/composables/usePrivateCredentials', () => ({
+	usePrivateCredentials: vi.fn(),
 }));
 
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 
-const mockedUseDynamicCredentials = vi.mocked(useDynamicCredentials);
+const mockedUseDynamicCredentials = vi.mocked(usePrivateCredentials);
 
 const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
 
@@ -58,6 +58,22 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 	};
 });
 
+const mockInjectedRunData = { value: null as IRunData | null };
+
+vi.mock('@/app/stores/workflowExecutionState.store', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		injectWorkflowExecutionStateStore: vi.fn(() => ({
+			// Plain accessor (not `computed`) so per-test reassignment of the
+			// non-reactive holder is always picked up.
+			get value() {
+				return { activeExecutionRunData: mockInjectedRunData.value };
+			},
+		})),
+	};
+});
+
 describe('useNodeHelpers()', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
@@ -67,11 +83,12 @@ describe('useNodeHelpers()', () => {
 	beforeEach(() => {
 		mockedUseDynamicCredentials.mockReturnValue({
 			isEnabled: computed(() => true),
-		} as ReturnType<typeof useDynamicCredentials>);
+		} as ReturnType<typeof usePrivateCredentials>);
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockInjectedRunData.value = null;
 		// Clear mock document store state
 		for (const key of Object.keys(mockDocumentStoreUsedCredentials)) {
 			delete mockDocumentStoreUsedCredentials[key];
@@ -372,7 +389,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return an empty array when runData is not available', () => {
-			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
+			mockInjectedRunData.value = null;
 			const { getNodeInputData } = useNodeHelpers();
 			const node = createTestNode({
 				name: 'test',
@@ -385,7 +402,7 @@ describe('useNodeHelpers()', () => {
 
 		it('should return an empty array when taskData is unavailable', () => {
 			const nodeName = 'Code';
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [],
 			});
 			const { getNodeInputData } = useNodeHelpers();
@@ -400,7 +417,7 @@ describe('useNodeHelpers()', () => {
 
 		it('should return an empty array when taskData.data is unavailable', () => {
 			const nodeName = 'Code';
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [{ data: undefined }],
 			});
 			const { getNodeInputData } = useNodeHelpers();
@@ -416,7 +433,7 @@ describe('useNodeHelpers()', () => {
 		it('should return input data from inputOverride', () => {
 			const nodeName = 'Code';
 			const data = [{ json: { hello: 'world' } }];
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [
 					{
 						inputOverride: {
@@ -439,7 +456,7 @@ describe('useNodeHelpers()', () => {
 			'should return input data for "%s" node name, with given connection type and output index',
 			(nodeName) => {
 				const data = [{ json: { hello: 'world' } }];
-				mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+				mockInjectedRunData.value = mock<IRunData>({
 					[nodeName]: [{ data: { main: [data] } }],
 				});
 				const { getNodeInputData } = useNodeHelpers();
@@ -460,7 +477,7 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [{ data: { main: [mockData] } }, { data: { main: [mockData] } }],
 			});
 			expect(getLastRunIndexWithData(nodeName)).toEqual(1);
@@ -470,7 +487,7 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [],
 			});
 			expect(getLastRunIndexWithData(nodeName)).toEqual(-1);
@@ -480,7 +497,7 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
+			mockInjectedRunData.value = null;
 			expect(getLastRunIndexWithData(nodeName)).toEqual(-1);
 		});
 
@@ -488,7 +505,7 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [
 					{ data: { main: [mockData, []] } },
 					{ data: { main: [mockData, []] } },
@@ -504,7 +521,7 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [
 					{ data: { main: [mockData], ai_tool: [mockData] } },
 					{ data: { ai_tool: [mockData] } },
@@ -518,7 +535,7 @@ describe('useNodeHelpers()', () => {
 	describe('hasNodeExecuted()', () => {
 		it('should return false when runData is not available', () => {
 			const nodeName = 'Test Node';
-			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
+			mockInjectedRunData.value = null;
 			const { hasNodeExecuted } = useNodeHelpers();
 			expect(hasNodeExecuted(nodeName)).toBe(false);
 		});
@@ -532,7 +549,7 @@ describe('useNodeHelpers()', () => {
 		])('should return $expected when execution status is $status', ({ status, expected }) => {
 			const nodeName = 'Test Node';
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [{ executionStatus: status }],
 			});
 			const { hasNodeExecuted } = useNodeHelpers();
@@ -808,7 +825,9 @@ describe('useNodeHelpers()', () => {
 		const MANUAL_TRIGGER = 'n8n-nodes-base.manualTrigger';
 		const MANUAL_CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 		const CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.chatTrigger';
+		const MCP_TRIGGER = '@n8n/n8n-nodes-langchain.mcpTrigger';
 		const WEBHOOK_TRIGGER = 'n8n-nodes-base.webhook';
+		const EXECUTE_WORKFLOW_TRIGGER = 'n8n-nodes-base.executeWorkflowTrigger';
 
 		const notionNodeType: INodeTypeDescription = {
 			displayName: 'Notion',
@@ -856,7 +875,22 @@ describe('useNodeHelpers()', () => {
 			createTestNode({ type, ...overrides });
 
 		beforeEach(() => {
-			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(notionNodeType);
+			// Type-aware so the trigger node resolves to its own display name (used to
+			// interpolate {triggerName} in the incompatible-trigger issue), while the
+			// node under test still resolves to notionNodeType (which carries creds).
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn((type: string) => {
+				if (type === WEBHOOK_TRIGGER) {
+					return { ...notionNodeType, name: WEBHOOK_TRIGGER, displayName: 'Webhook' };
+				}
+				if (type === 'n8n-nodes-base.scheduleTrigger') {
+					return {
+						...notionNodeType,
+						name: 'n8n-nodes-base.scheduleTrigger',
+						displayName: 'Schedule Trigger',
+					};
+				}
+				return notionNodeType;
+			});
 		});
 
 		afterEach(() => {
@@ -962,7 +996,7 @@ describe('useNodeHelpers()', () => {
 			it('emits no issue when dynamic credentials feature is disabled', () => {
 				mockedUseDynamicCredentials.mockReturnValue({
 					isEnabled: computed(() => false),
-				} as ReturnType<typeof useDynamicCredentials>);
+				} as ReturnType<typeof usePrivateCredentials>);
 
 				const cred = makePrivateCred({ connectedByMe: false });
 				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
@@ -1017,6 +1051,16 @@ describe('useNodeHelpers()', () => {
 				expect(result).toBeNull();
 			});
 
+			it('does not warn when a private credential is used under an execute workflow trigger', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(EXECUTE_WORKFLOW_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
 			it('warns when a private credential is used under a non-manual trigger', () => {
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
@@ -1025,8 +1069,50 @@ describe('useNodeHelpers()', () => {
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
 				expect(result?.credentials?.[NOTION_API]).toEqual([
-					'Private credentials only work in manually triggered workflows. Change the trigger to a Manual trigger, or switch this credential to Static.',
+					"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, Webhook, or MCP server trigger, or switch this credential to Fixed.",
 				]);
+			});
+
+			it('does not warn when a private credential is used under an MCP trigger', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(MCP_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('does not warn when a private credential is used under a Chat Trigger with availableInChat', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(CHAT_TRIGGER, { parameters: { availableInChat: true } }),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('warns when a private credential is used under a trigger with only an identity extractor', () => {
+				// A context-establishment hook provides an external identity, not the n8n
+				// user identity the system resolver needs — so private creds still warn,
+				// matching the backend's system-resolver publish check.
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(WEBHOOK_TRIGGER, {
+						parameters: {
+							executionsHooksVersion: 1,
+							contextEstablishmentHooks: { hooks: [{ hookName: 'credentials.bearerToken' }] },
+						},
+					}),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result?.credentials?.[NOTION_API]).toBeDefined();
 			});
 
 			it('does not warn when a static (non-resolvable) credential is used under a non-manual trigger', () => {
@@ -1062,7 +1148,9 @@ describe('useNodeHelpers()', () => {
 				expect(result).toBeNull();
 			});
 
-			it('warns when any trigger in a multi-trigger workflow is non-manual', () => {
+			it('does not warn when at least one trigger in a multi-trigger workflow is compatible', () => {
+				// Mirrors the backend: the workflow is compatible as long as one trigger
+				// establishes the n8n user identity, even if others do not.
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [
 					buildTriggerNode(MANUAL_TRIGGER),
@@ -1072,15 +1160,28 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
+				expect(result).toBeNull();
+			});
+
+			it('warns when no trigger in a multi-trigger workflow is compatible', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(WEBHOOK_TRIGGER),
+					buildTriggerNode('n8n-nodes-base.scheduleTrigger'),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
 				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
-					'Private credentials only work in manually triggered workflows',
+					"End-user credentials aren't supported with the Webhook trigger",
 				);
 			});
 
 			it('does not warn when dynamic credentials feature is disabled', () => {
 				mockedUseDynamicCredentials.mockReturnValue({
 					isEnabled: computed(() => false),
-				} as ReturnType<typeof useDynamicCredentials>);
+				} as ReturnType<typeof usePrivateCredentials>);
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
 
@@ -1148,9 +1249,11 @@ describe('useNodeHelpers()', () => {
 						.mockReturnValue({ name: OAUTH2_API, displayName: 'OAuth2 API' });
 					credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([cred as never]);
 					credentialsStore.getCredentialById = vi.fn().mockReturnValue(cred as never);
-					mockedStore(useNodeTypesStore).getNodeType = vi
-						.fn()
-						.mockReturnValue(httpRequestWithSslAuth);
+					mockedStore(useNodeTypesStore).getNodeType = vi.fn((type: string) =>
+						type === WEBHOOK_TRIGGER
+							? ({ ...httpRequestWithSslAuth, displayName: 'Webhook' } as never)
+							: (httpRequestWithSslAuth as never),
+					);
 				};
 
 				it('warns when a private credential is bound via genericCredentialType under a non-manual trigger', () => {
@@ -1161,7 +1264,7 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildGenericAuthNode(), httpRequestWithSslAuth);
 
 					expect(result?.credentials?.[OAUTH2_API]).toEqual([
-						'Private credentials only work in manually triggered workflows. Change the trigger to a Manual trigger, or switch this credential to Static.',
+						"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, Webhook, or MCP server trigger, or switch this credential to Fixed.",
 					]);
 				});
 
@@ -1193,7 +1296,7 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildPredefinedAuthNode(), httpRequestWithSslAuth);
 
 					expect(result?.credentials?.[OAUTH2_API]).toEqual([
-						'Private credentials only work in manually triggered workflows. Change the trigger to a Manual trigger, or switch this credential to Static.',
+						"End-user credentials aren't supported with the Webhook trigger. Use a Manual, Chat, Webhook, or MCP server trigger, or switch this credential to Fixed.",
 					]);
 				});
 
@@ -1210,7 +1313,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		describe('precedence', () => {
-			it('emits no issue for a not-connected private credential even under an incompatible trigger', () => {
+			it('warns for a not-connected private credential under an incompatible trigger', () => {
 				const cred = makePrivateCred({ connectedByMe: false });
 				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
 				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
@@ -1219,9 +1322,11 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-				// The not-connected state is surfaced as a UI warning; the manual-trigger
-				// requirement only applies once the user has connected their account.
-				expect(result).toBeNull();
+				// Trigger incompatibility blocks publish regardless of who connected the
+				// credential, so the editor warns even when the user did not connect it.
+				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
+					"End-user credentials aren't supported with the Webhook trigger",
+				);
 			});
 		});
 	});

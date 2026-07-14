@@ -1,13 +1,13 @@
+import { UnexpectedError, UserError } from 'n8n-workflow';
+
 import { classifyHttpError } from '@/errors/http-error-classifier';
 import {
 	serializeInternalRestError,
 	serializePublicApiError,
 } from '@/errors/http-error-serializers';
-import { toCredentialResolutionFailedError } from '@/modules/n8n-packages/entities/credential/credential-resolution-error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
 
 describe('http-error-serializers', () => {
 	it('serializePublicApiError: minimal message for ResponseError', () => {
@@ -49,56 +49,42 @@ describe('http-error-serializers', () => {
 		});
 	});
 
-	it('serializePublicApiError: spreads meta for credential resolution failures', () => {
-		const descriptor = classifyHttpError(
-			toCredentialResolutionFailedError([
-				{
-					kind: 'not_found',
-					sourceId: 'cred-1',
-					usedByWorkflows: ['wf-1'],
-				},
-			]),
-		);
-		expect(serializePublicApiError(descriptor)).toEqual({
-			status: 422,
-			body: {
-				message: '1 credential reference could not be resolved.',
-				failures: [
-					{
-						kind: 'not_found',
-						sourceId: 'cred-1',
-						usedByWorkflows: ['wf-1'],
-					},
-				],
+	it('serializePublicApiError: 422 with issues when only credentials are unresolved', () => {
+		const issues = [
+			{
+				type: 'credential-unresolved' as const,
+				kind: 'not_found' as const,
+				sourceId: 'cred-1',
+				usedByWorkflows: ['wf-1'],
 			},
-		});
+		];
+		const descriptor = classifyHttpError(toImportBlockedError(issues));
+
+		const result = serializePublicApiError(descriptor);
+		expect(result.status).toBe(422);
+		expect(result.body).toEqual({ message: expect.stringContaining('Import blocked'), issues });
 	});
 
-	it('serializePublicApiError: exposes workflow conflict metadata', () => {
-		const conflicts = [
-			{ sourceWorkflowId: 'wf-1', existingWorkflowId: 'local-1', name: 'Existing' },
-		];
-		const descriptor = classifyHttpError(
-			new ConflictError(
-				'Import blocked: 1 workflow(s) already exist in the target project',
-				undefined,
-				{
-					code: 'WORKFLOW_CONFLICT',
-					conflicts,
-				},
-			),
-		);
-		expect(serializePublicApiError(descriptor)).toEqual({
-			status: 409,
-			body: {
-				code: 409,
-				message: 'Import blocked: 1 workflow(s) already exist in the target project',
-				meta: {
-					code: 'WORKFLOW_CONFLICT',
-					conflicts,
-				},
+	it('serializePublicApiError: 409 with issues when a workflow conflicts', () => {
+		const issues = [
+			{
+				type: 'workflow-conflict' as const,
+				sourceWorkflowId: 'wf-1',
+				existingWorkflowId: 'local-1',
+				name: 'Existing',
 			},
-		});
+			{
+				type: 'credential-unresolved' as const,
+				kind: 'not_found' as const,
+				sourceId: 'cred-1',
+				usedByWorkflows: ['wf-1'],
+			},
+		];
+		const descriptor = classifyHttpError(toImportBlockedError(issues));
+
+		const result = serializePublicApiError(descriptor);
+		expect(result.status).toBe(409);
+		expect(result.body).toEqual({ message: expect.stringContaining('Import blocked'), issues });
 	});
 
 	it('both serializers map UserError to 400', () => {

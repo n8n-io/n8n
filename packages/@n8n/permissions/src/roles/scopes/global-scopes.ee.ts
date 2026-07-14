@@ -27,6 +27,8 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'credential:unshare',
 	'credential:shareGlobally',
 	'credential:move',
+	'credential:connect',
+	'credential:createEndUser',
 	'community:register',
 	'communityPackage:install',
 	'communityPackage:uninstall',
@@ -102,6 +104,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'project:read',
 	'project:update',
 	'project:delete',
+	'project:export',
 	'insights:list',
 	'insights:read',
 	'folder:move',
@@ -123,6 +126,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'dataTable:readColumn',
 	'dataTable:writeColumn',
 	'role:manage',
+	'role:read',
 	'mcp:manage',
 	'mcp:oauth',
 	'mcpApiKey:create',
@@ -150,11 +154,13 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'instanceAi:message',
 	'instanceAi:manage',
 	'instanceAi:gateway',
+	'instanceAi:eval',
 	'roleMappingRule:create',
 	'roleMappingRule:read',
 	'roleMappingRule:update',
 	'roleMappingRule:delete',
 	'roleMappingRule:list',
+	'otel:manage',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();

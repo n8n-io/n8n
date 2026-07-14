@@ -1,11 +1,9 @@
-import { inTest, Logger } from '@n8n/backend-common';
+import { inTest, Logger, TypedEmitter } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Debounce } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
 import type { Cluster, ClusterOptions, RedisOptions } from 'ioredis';
-
-import { TypedEmitter } from '@/typed-emitter';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';
 
@@ -156,6 +154,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			password,
 			db,
 			tls,
+			tlsConfig,
 			dualStack,
 			keepAlive,
 			keepAliveDelay,
@@ -185,7 +184,11 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (dualStack) options.family = 0;
 
-		if (tls) options.tls = {}; // enable TLS with default Node.js settings
+		if (tls)
+			options.tls = {
+				servername: tlsConfig.serverName || undefined, // empty string → undefined so ioredis defaults to host-based SNI
+				rejectUnauthorized: tlsConfig.rejectUnauthorized,
+			};
 
 		// Add keep-alive configuration
 		if (keepAlive) {

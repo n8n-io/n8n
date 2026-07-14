@@ -12,6 +12,7 @@ export * from './agents/index';
 export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
+export * from './workflow-reviews-policy';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -65,6 +66,7 @@ export {
 	suggestedPromptsSchema,
 	type MessageChunk,
 	UpdateChatSettingsRequest,
+	UpdateChatEnabledRequest,
 	ChatHubSemanticSearchSettings,
 	type ChatProviderSettingsDto,
 	type ChatSendMessageResponse,
@@ -199,6 +201,7 @@ export {
 	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
+	dataTableColumnTypeSchema,
 	dataTableIdSchema,
 } from './schemas/data-table.schema';
 
@@ -219,6 +222,11 @@ export {
 	WorkflowExecutionStatusSchema,
 	type WorkflowExecutionStatus,
 } from './schemas/workflow-execution-status.schema';
+
+export {
+	WorkflowPublicationStatusSchema,
+	type WorkflowPublicationStatus,
+} from './schemas/workflow-publication-status.schema';
 
 export type { UsageState } from './schemas/usage.schema';
 
@@ -269,7 +277,13 @@ export {
 } from './schemas/credential-response.schema';
 
 export {
+	buildRunWorkflowSessionGrantKey,
+	buildFetchUrlGrantKey,
+	FETCH_URL_ALLOW_ALL_GRANT_KEY,
+	WEB_SEARCH_GRANT_KEY,
+	parseDomainAccessGrants,
 	instanceAiEventTypeSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	instanceAiRunStatusSchema,
 	instanceAiConfirmationSeveritySchema,
 	instanceAiAgentStatusSchema,
@@ -289,6 +303,7 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	confirmationInputTypeSchema,
+	channelConfigSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
@@ -302,10 +317,14 @@ export {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	UNLIMITED_CREDITS,
 	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
+	CONFIG_EVALUATIONS_FLAG,
+	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
+	instanceAiCredentialHandoffContextSchema,
+	instanceAiHandoffContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
@@ -314,11 +333,18 @@ export {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalCredentialAllowlistRequest,
+	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
+	AI_GATEWAY_MANAGED_TAG,
+	InstanceAiEvalRestoreThreadRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
+	instanceAiAttachmentSchema,
+	instanceAiFileAttachmentSchema,
+	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
@@ -326,6 +352,13 @@ export {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	applyBranchReadOnlyOverrides,
+	normalizeInstanceAiThreadSource,
+} from './schemas/instance-ai.schema';
+
+export type {
+	InstanceAiThreadSource,
+	InstanceAiThreadSourcePersisted,
+	InstanceAiThreadOrigin,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -337,6 +370,7 @@ export type {
 	InstanceAiRunStatus,
 	InstanceAiConfirmation,
 	InstanceAiConfirmationInputType,
+	InstanceAiChannelConfig,
 	InstanceAiConfirmationRequestPayload,
 	InstanceAiConfirmationSeverity,
 	InstanceAiCredentialRequest,
@@ -376,23 +410,41 @@ export type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiStoredMessage,
 	InstanceAiThreadMessagesResponse,
+	InstanceAiRunDebugSummary,
+	InstanceAiRunDebugStep,
+	InstanceAiRunDebugWorkflowCodeSnapshot,
+	InstanceAiRunDebugResponse,
+	InstanceAiThreadDebugRunsResponse,
 	InstanceAiRichMessagesResponse,
+	InstanceAiMemoryTaskKind,
+	InstanceAiMemoryTaskStatus,
+	InstanceAiMemoryTaskSnapshot,
 	InstanceAiThreadStatusResponse,
+	InstanceAiConfirmResponse,
 	InstanceAiAdminSettingsResponse,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiModelCredential,
 	InstanceAiSandboxProvider,
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolFilterResponse,
+	InstanceAiMcpConnectionToolResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
+	InstanceAiFileAttachment,
+	InstanceAiWorkflowAttachment,
 	DomainAccessAction,
+	DomainAccessGrants,
 	DomainAccessMeta,
 	WebSearchMeta,
 	InstanceAiCredentialFlow,
+	InstanceAiCredentialHandoffContext,
+	InstanceAiHandoffContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
 	InstanceGatewayResourceDecision,
+	InstanceAiBrowserCreateLinkResponse,
+	InstanceAiBrowserStatusResponse,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 	PlannedTaskArg,
@@ -403,6 +455,8 @@ export type {
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSeedWorkflow,
+	InstanceAiEvalSeedDataTable,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -417,9 +471,26 @@ export {
 	reduceEvent,
 	findAgent,
 	toAgentTree,
+	stateFromAgentTree,
+	normalizeLegacyReasoningTimeline,
+	normalizeAgentTree,
 } from './schemas/agent-run-reducer';
 
-export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
+export type { AgentRunState } from './schemas/agent-run-reducer';
+
+export {
+	formatDebugJson,
+	summarizeJsonValue,
+	parseSystemPromptForDisplay,
+	parseMessageBlocks,
+	parseUsageSummary,
+	parseInputExtras,
+	parseOutputDisplayBlocks,
+	parseOutputExtras,
+	parseStepSummary,
+} from './schemas/llm-step-display';
+
+export type { ReadableContentBlock, ReadableSegment } from './schemas/llm-step-display';
 
 export {
 	startTestRunPayloadSchema,

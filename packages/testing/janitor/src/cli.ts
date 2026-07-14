@@ -8,7 +8,7 @@
  *   janitor impact                         # Show impact of changes
  *   janitor tcr                            # TCR workflow
  *   janitor affected-packages              # List workspace packages affected by changed files
- *   janitor scope                          # Compute per-package jest/vitest scope list
+ *   janitor scope                          # Compute per-package vitest scope list
  *   janitor --help                         # Show help
  *
  * The `affected-packages` and `scope` subcommands are workspace-wide utilities
@@ -16,7 +16,13 @@
  * invoked from any package via `pnpm exec janitor ...`.
  */
 
-import { encodeImpactMap, buildImpactMap, distributeShards, selectTests } from '@n8n/test-impact';
+import {
+	encodeImpactMap,
+	buildImpactMap,
+	distributeShards,
+	selectTests,
+	changedRuntimeDepsFromManifests,
+} from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -72,6 +78,8 @@ import {
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
+import { readLockfileImporters } from './core/read-lockfile-importers.js';
+import { readManifestDiffs } from './core/read-manifest-diffs.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
@@ -602,10 +610,14 @@ function readChangedFiles(options: CliOptions): string[] | null {
 	const env = process.env.CHANGED_FILES;
 	if (flag === undefined && env === undefined) return null;
 	const raw = flag ?? env ?? '';
-	return raw
+	const files = raw
 		.split(/[\n,]+/)
 		.map((s) => s.trim())
 		.filter((s) => s.length > 0);
+	// An empty value is "no signal", not "nothing changed". ci-filter emits an
+	// empty list on huge change sets (too large to pass through env/argv); a [] return
+	// would SKIP every package — a false green — so collapse it to null (run full).
+	return files.length > 0 ? files : null;
 }
 
 function runAffectedPackages(options: CliOptions): void {
@@ -617,35 +629,22 @@ function runAffectedPackages(options: CliOptions): void {
 }
 
 function runTestScopedCmd(options: CliOptions): void {
-	if (!options.runner) {
-		console.error('Error: --runner=jest|vitest is required');
-		process.exit(1);
-	}
 	const packageDir = options.packageDir ?? process.cwd();
 	const changedFiles = readChangedFiles(options);
 	const exitCode = runTestScoped({
-		runner: options.runner,
 		packageDir,
 		rootDir: findWorkspaceRoot(process.cwd()),
 		changedFiles,
 		passthroughArgs: options.passthroughArgs,
-		jestVariant: options.jestVariant,
 	});
 	process.exit(exitCode);
 }
 
 function runScope(options: CliOptions): void {
-	if (!options.runner) {
-		console.error('Error: --runner=jest|vitest is required');
-		process.exit(1);
-	}
-
 	const result = computeScope({
-		runner: options.runner,
 		packageDir: options.packageDir ?? process.cwd(),
 		changedFiles: readChangedFiles(options),
 		rootDir: findWorkspaceRoot(process.cwd()),
-		jestVariant: options.jestVariant,
 	});
 	console.log(formatScope(result));
 }
@@ -682,10 +681,24 @@ function runMergeCoverage(options: CliOptions): void {
 /** select: changed files + impact map → spec list (JSON). I/O wrapper
  *  around {@link selectTests}, where the fail-open safety contract lives. */
 function runSelect(options: CliOptions): void {
+	const changedFiles = readChangedFiles(options) ?? [];
+	// With a base ref, read each changed package.json before/after so the
+	// devDependency-only classifier can drop a devDep-only lockfile change.
+	// No base (local dev) → omit manifests → conservative (keep lockfile broad).
+	const manifests = options.baseRef ? readManifestDiffs(changedFiles, options.baseRef) : undefined;
+	// Only parse the (large) lockfile when a RUNTIME dependency actually changed —
+	// the only case the dep-graph selector (389) acts on. A devDep-only manifest
+	// change would parse it for nothing.
+	const lockfileImporters =
+		manifests && changedRuntimeDepsFromManifests(manifests).length > 0
+			? readLockfileImporters()
+			: undefined;
 	const result = selectTests({
-		changedFiles: readChangedFiles(options) ?? [],
+		changedFiles,
 		mapFile: options.mapFile,
 		allSpecsFile: options.allSpecsFile,
+		manifests,
+		lockfileImporters,
 	});
 	console.log(JSON.stringify(result));
 }

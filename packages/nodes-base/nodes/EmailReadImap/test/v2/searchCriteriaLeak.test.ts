@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode, INodeTypeBaseDescription, ITriggerFunctions, IDataObject } from 'n8n-workflow';
 
 import { type ICredentialsDataImap } from '@credentials/Imap.credentials';
@@ -10,25 +10,23 @@ let capturedOnMail: ((numEmails: number) => Promise<void>) | undefined;
 let capturedSearchCriteria: unknown[][] = [];
 
 const mockConnection = Object.assign(new EventEmitter(), {
-	openBox: jest.fn().mockResolvedValue({}),
-	closeBox: jest.fn().mockResolvedValue(undefined),
-	end: jest.fn(),
-	search: jest.fn().mockResolvedValue([]),
-	getPartData: jest.fn(),
-	addFlags: jest.fn().mockResolvedValue(undefined),
+	openBox: vi.fn().mockResolvedValue({}),
+	closeBox: vi.fn().mockResolvedValue(undefined),
+	end: vi.fn(),
+	search: vi.fn().mockResolvedValue([]),
+	getPartData: vi.fn(),
+	addFlags: vi.fn().mockResolvedValue(undefined),
 });
 
-jest.mock('@n8n/imap', () => ({
-	connect: jest
-		.fn()
-		.mockImplementation(async (config: { onMail?: (n: number) => Promise<void> }) => {
-			capturedOnMail = config.onMail;
-			return mockConnection;
-		}),
+vi.mock('@n8n/imap', () => ({
+	connect: vi.fn().mockImplementation(async (config: { onMail?: (n: number) => Promise<void> }) => {
+		capturedOnMail = config.onMail;
+		return mockConnection;
+	}),
 }));
 
-jest.mock('../../v2/utils', () => ({
-	getNewEmails: jest.fn().mockImplementation(async function (
+vi.mock('../../v2/utils', () => ({
+	getNewEmails: vi.fn().mockImplementation(async function (
 		this: ITriggerFunctions,
 		opts: { searchCriteria: unknown[] },
 	) {
@@ -47,7 +45,7 @@ describe('searchCriteria leak on repeated onMail calls', () => {
 
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers: {
-			createDeferredPromise: jest.fn().mockImplementation(() => {
+			createDeferredPromise: vi.fn().mockImplementation(() => {
 				let resolve: () => void;
 				let reject: (e: Error) => void;
 				const promise = new Promise<void>((res, rej) => {
@@ -92,11 +90,11 @@ describe('searchCriteria leak on repeated onMail calls', () => {
 			return values[param];
 		}) as typeof triggerFunctions.getNodeParameter);
 		triggerFunctions.getWorkflowStaticData.calledWith('node').mockReturnValue(staticData);
-		triggerFunctions.logger.debug = jest.fn();
-		triggerFunctions.logger.error = jest.fn();
+		triggerFunctions.logger.debug = vi.fn();
+		triggerFunctions.logger.error = vi.fn();
 	});
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	it('should not accumulate UID entries in searchCriteria across onMail calls', async () => {
 		const node = new EmailReadImapV2(baseDescription);

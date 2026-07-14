@@ -1,17 +1,17 @@
 import { z } from 'zod';
 
-import type * as AgentRuntimeModule from '../../runtime/agent-runtime';
+import type * as AgentRuntimeModule from '../../runtime/loop/agent-runtime';
+import { RECALL_MEMORY_TOOL_NAME } from '../../runtime/memory/episodic-memory';
 import type {
 	DelegateSubAgentRequest,
 	InlineSubAgentProviderToolsResolver,
-} from '../../runtime/delegate-sub-agent-tool';
+} from '../../runtime/tools/delegate-sub-agent-tool';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
-} from '../../runtime/delegate-sub-agent-tool';
-import { RECALL_MEMORY_TOOL_NAME } from '../../runtime/episodic-memory';
-import { WRITE_TODOS_TOOL_NAME } from '../../runtime/write-todos-tool';
+} from '../../runtime/tools/delegate-sub-agent-tool';
+import { WRITE_TODOS_TOOL_NAME } from '../../runtime/tools/write-todos-tool';
 import type { BuiltProviderTool, BuiltTool } from '../../types';
 import { Agent, filterInlineSubAgentTools } from '../agent';
 
@@ -33,7 +33,7 @@ function makeGenerateSuccess(): Record<string, unknown> {
 	};
 }
 
-vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
+vi.mock('../../runtime/loop/agent-runtime', async (importOriginal) => {
 	const actual = await importOriginal<typeof AgentRuntimeModule>();
 	return {
 		...actual,
@@ -130,6 +130,12 @@ describe('inline sub-agent tool filtering', () => {
 			name: 'blocks host-supplied tool names when configured',
 			tools: [makeTool('host_tool'), makeTool('lookup')],
 			blockedTools: ['host_tool'],
+			expected: ['lookup'],
+		},
+		{
+			name: 'blocks a renamed delegate tool by metadata, not by tool name',
+			tools: [createDelegateSubAgentTool({ name: 'agent' }), makeTool('lookup')],
+			blockedTools: undefined,
 			expected: ['lookup'],
 		},
 	])('$name', ({ tools, blockedTools, expected }) => {

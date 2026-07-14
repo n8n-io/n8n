@@ -3,9 +3,16 @@ import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import { validateWorkflowCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
-import { sanitizeSkillsUsed } from './skills-used';
+import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import {
+	buildCreateVersionMetadata,
+	resolveVersionMetadata,
+	versionDescriptionInputSchema,
+	versionNameInputSchema,
+} from './version-metadata';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
@@ -20,18 +27,27 @@ import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
+
+function normalizeWorkflowDescription(description?: string) {
+	if (!description) return { description: undefined, truncated: false };
+	if (description.length <= MAX_WORKFLOW_DESCRIPTION_LENGTH) {
+		return { description, truncated: false };
+	}
+
+	return {
+		description: description.slice(0, MAX_WORKFLOW_DESCRIPTION_LENGTH),
+		truncated: true,
+	};
+}
+
 const inputSchema = {
 	code: z
 		.string()
 		.describe(
 			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
 		),
-	skillsUsed: z
-		.array(z.string())
-		.optional()
-		.describe(
-			'Names of n8n skills (lowercase kebab-case identifiers) used by the MCP client to produce this workflow create call. Server-side normalization will trim, lowercase, dedupe, and drop entries that are not valid skill identifiers.',
-		),
+	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	name: z
 		.string()
 		.max(128)
@@ -39,11 +55,14 @@ const inputSchema = {
 		.describe('Optional workflow name. If not provided, uses the name from the code.'),
 	description: z
 		.string()
-		.max(255)
 		.optional()
-		.describe(
-			'Short workflow description summarizing what it does (1-2 sentences, max 255 chars).',
-		),
+		.describe('Workflow description. Longer text is shortened to 255 chars before saving.'),
+	versionName: versionNameInputSchema.describe(
+		'Short summary of this initial version, shown in the workflow\'s version history (e.g. "Initial Slack notification workflow"). Always provide it.',
+	),
+	versionDescription: versionDescriptionInputSchema.describe(
+		'Longer description of what this version does, shown in the version history alongside the version name.',
+	),
 	projectId: z
 		.string()
 		.optional()
@@ -58,11 +77,18 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
+// The MCP SDK publishes this schema with `additionalProperties: false` and
+// validates `structuredContent` against it on every response. Success returns
+// the full payload below; the error path returns only `{ error }` (optionally
+// with `hint`). To keep both shapes valid under strict clients, the success
+// fields are optional and `error` is a declared, optional property — otherwise
+// a thrown handler error surfaces as an opaque `-32602` schema mismatch
+// instead of the real message.
 const outputSchema = {
-	workflowId: z.string().describe('The ID of the created workflow'),
-	name: z.string().describe('The name of the created workflow'),
-	nodeCount: z.number().describe('The number of nodes in the workflow'),
-	url: z.string().describe('The URL to open the workflow in n8n'),
+	workflowId: z.string().optional().describe('The ID of the created workflow'),
+	name: z.string().optional().describe('The name of the created workflow'),
+	nodeCount: z.number().optional().describe('The number of nodes in the workflow'),
+	url: z.string().optional().describe('The URL to open the workflow in n8n'),
 	autoAssignedCredentials: z
 		.array(
 			z.object({
@@ -71,6 +97,7 @@ const outputSchema = {
 				credentialType: z.string().describe('The credential type that was auto-assigned'),
 			}),
 		)
+		.optional()
 		.describe('List of credentials that were automatically assigned to nodes'),
 	targetProject: z
 		.object({
@@ -80,6 +107,7 @@ const outputSchema = {
 				.enum(['personal', 'team'])
 				.describe('Whether the workflow landed in a personal or team project'),
 		})
+		.optional()
 		.describe('The project the workflow was actually created in.'),
 	note: z
 		.string()
@@ -93,6 +121,26 @@ const outputSchema = {
 		.describe(
 			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
 		),
+	warnings: z
+		.array(
+			z.object({
+				code: z.string().describe('The warning code identifying the type of warning'),
+				message: z.string().describe('The warning message'),
+				nodeName: z.string().optional().describe('The node that triggered the warning'),
+				parameterPath: z
+					.string()
+					.optional()
+					.describe('The parameter path that triggered the warning'),
+			}),
+		)
+		.optional()
+		.describe(
+			'Validation warnings emitted while parsing the submitted code. Surface these to the user so they can correct the workflow.',
+		),
+	error: z
+		.string()
+		.optional()
+		.describe('Error message explaining why the creation failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -128,6 +176,8 @@ export const createCreateWorkflowFromCodeTool = (
 		skillsUsed,
 		name,
 		description,
+		versionName,
+		versionDescription,
 		projectId,
 		folderId,
 	}: {
@@ -135,6 +185,8 @@ export const createCreateWorkflowFromCodeTool = (
 		skillsUsed?: string[];
 		name?: string;
 		description?: string;
+		versionName?: string;
+		versionDescription?: string;
 		projectId?: string;
 		folderId?: string;
 	}) => {
@@ -148,6 +200,8 @@ export const createCreateWorkflowFromCodeTool = (
 				hasName: !!name,
 				hasProjectId: !!projectId,
 				hasFolderId: !!folderId,
+				hasVersionName: !!versionName,
+				hasVersionDescription: !!versionDescription,
 			},
 		};
 
@@ -170,11 +224,16 @@ export const createCreateWorkflowFromCodeTool = (
 				'@n8n/ai-workflow-builder'
 			);
 
-			const handler = new ParseValidateHandler({ generatePinData: false });
+			const handler = new ParseValidateHandler({
+				generatePinData: false,
+				nodeTypesProvider: nodeTypes,
+			});
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
 
 			const workflowJson = result.workflow;
+			const { description: workflowDescription, truncated: descriptionTruncated } =
+				normalizeWorkflowDescription(description);
 
 			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
 				workflowJson,
@@ -188,7 +247,7 @@ export const createCreateWorkflowFromCodeTool = (
 			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
 				name: name ?? workflowJson.name ?? 'Untitled Workflow',
-				...(description ? { description } : {}),
+				...(workflowDescription ? { description: workflowDescription } : {}),
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
@@ -228,10 +287,32 @@ export const createCreateWorkflowFromCodeTool = (
 					effectiveProjectId,
 				);
 
+			// Explicit credential ids in the generated code bypass auto-assignment,
+			// so verify they're reachable from the target project. This matches the
+			// runtime permission gate and prevents persisting a cross-project id that
+			// would only fail at execution time.
+			const credentialCheck = await validateWorkflowCredentialReferences(
+				newWorkflow.nodes,
+				user,
+				credentialsService,
+				nodeTypes,
+				effectiveProjectId,
+			);
+			if (!credentialCheck.ok) {
+				throw new Error(credentialCheck.error);
+			}
+
+			const versionMetadata = resolveVersionMetadata(
+				{ versionName, versionDescription },
+				buildCreateVersionMetadata(newWorkflow.nodes),
+			);
+
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
 				projectId: effectiveProjectId,
 				parentFolderId: folderId,
 				source: 'n8n-mcp',
+				versionName: versionMetadata.name,
+				versionDescription: versionMetadata.description,
 			});
 
 			const baseUrl = urlService.getInstanceBaseUrl();
@@ -246,7 +327,16 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = {
+			const notes = [
+				descriptionTruncated
+					? `Workflow description was shortened to ${MAX_WORKFLOW_DESCRIPTION_LENGTH} characters.`
+					: undefined,
+				skippedHttpNodes.length
+					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
+					: undefined,
+			].filter((note): note is string => note !== undefined);
+
+			const baseOutput = {
 				workflowId: savedWorkflow.id,
 				name: savedWorkflow.name,
 				nodeCount: savedWorkflow.nodes.length,
@@ -257,10 +347,10 @@ export const createCreateWorkflowFromCodeTool = (
 					name: landingProject.name,
 					type: landingProject.type,
 				},
-				note: skippedHttpNodes.length
-					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
-					: undefined,
+				note: notes.length ? notes.join(' ') : undefined,
 			};
+			const output =
+				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

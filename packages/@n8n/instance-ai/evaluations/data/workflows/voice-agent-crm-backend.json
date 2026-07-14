@@ -1,0 +1,77 @@
+{
+	"description": "Voice-agent backend: two live webhook tools for an external voice provider — save_lead scores Hot/Warm/Cold, upserts CRM rows in Google Sheets, emails sales on Hot leads; book_appointment creates Google Calendar slots and returns tool-call confirmations.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a backend for our phone-based sales voice agent. During live calls, the voice platform should call n8n webhooks to qualify callers, save leads to Google Sheets with Hot/Warm/Cold scoring, email my sales team for hot leads, and book discovery calls in Google Calendar."
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: n8n sits behind the voice provider (it handles the call; n8n is the backend). I'll expose two POST webhook tools the platform can invoke mid-conversation — save_lead (parse tool-call payload → score lead → upsert Leads sheet on phone → if Hot, Gmail alert sales team → respond to the caller) and book_appointment (parse tool-call payload → map Morning/Afternoon/Evening to calendar times → Google Calendar event + invite → respond to the caller). Which voice provider, CRM store, and sales-team email should I wire up?"
+		},
+		{
+			"role": "user",
+			"text": [
+				"For every HITL step during the build — keep the run moving without stalling. Allow all permissions. Use any of the existing credentials or skip.",
+				"Use live tool calls during the call (not a single end-of-call webhook). Store leads in Google Sheets. Notify the sales team by email for Hot leads and book appointments in Google Calendar. Don't block the build asking for the Leads spreadsheet, calendar, or sales-team email — leave those as placeholders I can fill in later."
+			]
+		},
+		{
+			"role": "assistant",
+			"text": "I'll wire two webhook tools: save_lead → normalize & score → Google Sheets upsert → Hot check → Gmail alert on Hot → tool-call JSON response; and book_appointment → build slot from date + time of day → Google Calendar create → tool-call JSON response. Placeholders for the sheet, calendar, and sales email. Ready for me to build it?"
+		},
+		{
+			"role": "user",
+			"text": "Yes, go ahead."
+		}
+	],
+	"messageBudget": 12,
+	"complexity": "complex",
+	"tags": [
+		"build",
+		"webhook",
+		"voice-agent",
+		"google-sheets",
+		"gmail",
+		"google-calendar",
+		"lead-scoring",
+		"conditional",
+		"code"
+	],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"processExpectations": [
+		"The agent did not stall the build waiting for the Leads spreadsheet, Google Calendar, or sales-team email — it continued with placeholders/deferred setup instead of blocking on HITL or setup cards for those values.",
+		"The agent built both save_lead and book_appointment paths with Google Sheets, Gmail (Hot branch), and Google Calendar nodes — deferring resource selection rather than omitting those integrations."
+	],
+	"outcomeExpectations": [
+		"The workflow exposes two separate Webhook trigger nodes (or equivalent) for live voice-platform tool calls — one for saving/scoring a lead and one for booking an appointment.",
+		"A Code node (or equivalent) parses the incoming voice-platform tool-call payload (nested toolCalls with function arguments, or an equivalent structure) from each webhook and normalizes lead or appointment fields.",
+		"Lead scoring assigns Hot, Warm, or Cold based on budget, timeline, and urgency signals (e.g. higher budget band, near-term start, or explicit quote request → Hot).",
+		"A Google Sheets node upserts the full CRM record (name, business, location, service interest, budget, timeline, phone, email, preferred contact channel, appointment preference, lead score, notes) keyed on phone so repeat callers do not duplicate rows.",
+		"A decision node (If, Filter, or equivalent) branches on Hot lead score; the Hot branch sends a Gmail notification to the sales team with the lead details.",
+		"Non-Hot leads still save to Google Sheets but do not trigger the sales-team Gmail alert.",
+		"Each save-lead path ends with a Respond to Webhook node returning a tool-call confirmation payload (e.g. a results array with toolCallId and a human-readable result message).",
+		"The book-appointment path maps date plus Morning/Afternoon/Evening (or equivalent) to concrete calendar start/end times, creates a Google Calendar event (inviting the caller), and responds with a tool-call confirmation payload."
+	],
+	"executionScenarios": [
+		{
+			"name": "hot-lead-save-tool",
+			"description": "save_lead tool call with a high-intent lead scores Hot and alerts sales",
+			"dataSetup": "The save-lead webhook receives a POST body with message.toolCalls[0].function.arguments for name 'Alex Morgan', business_name 'Harbor Roasters', city 'Portland', service 'Web Redesign', budget '$15,000 to $30,000', timeline 'Within 2 weeks', phone '+15551234567', email 'alex.morgan@example.com', preferred_contact 'Email', appointment_time 'Morning', and notes 'Needs proposal this month'. Lead scoring marks the lead Hot. Google Sheets appendOrUpdate returns success. The Hot-branch Gmail send returns success. The Respond to Webhook node returns success.",
+			"successCriteria": "The workflow executes without errors on the save-lead Hot path only: save-lead webhook → parse/normalize & score → Google Sheets upsert → Hot branch → Gmail sales alert → Respond to Webhook. The sheet row includes lead_score Hot and the caller's CRM fields. A sales-team email is sent about the hot lead. The webhook response includes a tool-call confirmation payload referencing the tool call id and confirming the lead was saved/scored. Nodes on the book-appointment path are not executed. Leads spreadsheet and sales-team Gmail recipient may be unset or placeholder when the user deferred setup — that alone is not a build failure. When dataSetup says Google Sheets appendOrUpdate and the Hot-branch Gmail send succeed, treat them as successful in mock execution. Do not fail solely because resource IDs or the sales email were left for later user setup; column mappings, scoring, Hot branching, and webhook responses must still be correct."
+		},
+		{
+			"name": "cold-lead-save-tool",
+			"description": "save_lead tool call with a low-intent lead saves to CRM but skips sales email",
+			"dataSetup": "The save-lead webhook receives arguments for name 'Sam Rivera', business_name 'Rivera Consulting', service 'Brand Strategy', budget '$5,000 to $15,000', timeline 'Just researching', phone '+15559876543', email 'sam.rivera@example.com', and minimal notes. Lead scoring marks the lead Cold or Warm (not Hot). Google Sheets appendOrUpdate returns success. The non-Hot branch is taken. The Respond to Webhook node returns success.",
+			"successCriteria": "The workflow executes without errors on the save-lead non-Hot path only: save-lead webhook → parse/normalize & score → Google Sheets upsert → non-Hot branch → Respond to Webhook. A CRM row is written with lead_score Cold or Warm. No Gmail sales alert is sent. The webhook response confirms the lead was saved. The Gmail alert node on the Hot branch and all book-appointment nodes are not executed. Leads spreadsheet may be unset or placeholder when the user deferred setup — that alone is not a build failure. When dataSetup says Google Sheets appendOrUpdate succeeds, treat the upsert as successful in mock execution. Do not fail solely because the spreadsheet was left for later user setup; column mappings, scoring, non-Hot branching, and webhook responses must still be correct."
+		},
+		{
+			"name": "book-appointment-tool",
+			"description": "book_appointment tool call creates a calendar slot and confirms back to the voice agent",
+			"dataSetup": "The book-appointment webhook receives message.toolCalls[0].function.arguments for name 'Alex Morgan', business_name 'Harbor Roasters', email 'alex.morgan@example.com', phone '+15551234567', service 'Web Redesign', date '2026-07-15', and time_of_day 'Morning'. The slot-building logic maps Morning to a morning start time on that date. Google Calendar event create returns success with a confirmed event. The Respond to Webhook node returns success.",
+			"successCriteria": "The workflow executes without errors on the book-appointment path only: book-appointment webhook → build appointment slot from date and time_of_day → Google Calendar create event (with attendee invite) → Respond to Webhook. A discovery-call event is created for the requested date and morning slot. The webhook response includes a tool-call confirmation payload stating the appointment was booked. Nodes on the save-lead path are not executed. Google Calendar may be unset or placeholder when the user deferred setup — that alone is not a build failure. When dataSetup says Google Calendar event create succeeds, treat it as successful in mock execution. Do not fail solely because the calendar was left for later user setup; slot mapping and webhook responses must still be correct."
+		}
+	]
+}
