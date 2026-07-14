@@ -1,4 +1,6 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+
+import { odooApiRequest } from '../transport';
 
 export function recordRLC(
 	displayName: string,
@@ -66,8 +68,7 @@ export interface IOdooFilters {
 
 export function odooGetDBName(databaseName: string | undefined, url: string): string {
 	if (databaseName) return databaseName;
-	const odooURL = new URL(url);
-	const hostname = odooURL.hostname;
+	const { hostname } = new URL(url);
 	if (!hostname) return '';
 	return hostname.split('.')[0];
 }
@@ -81,6 +82,51 @@ const LIST_OPERATORS = new Set(['in', 'notIn']);
  * For `in` / `not in` operators Odoo requires a list value, not a scalar.
  * Users enter comma-separated values which are split and coerced here.
  */
+export type OdooFieldSchema = Record<string, { type: string }>;
+
+/**
+ * Fetches Odoo field type metadata for a model. Call once before the items
+ * loop so every item reuses the same schema without extra API calls.
+ */
+export async function getModelSchema(
+	ctx: IExecuteFunctions,
+	model: string,
+): Promise<OdooFieldSchema> {
+	return (await odooApiRequest.call(ctx, model, 'fields_get', {
+		attributes: ['type'],
+	})) as OdooFieldSchema;
+}
+
+// n8n's resource mapper emits ISO 8601 strings with timezone for dateTime fields,
+// e.g. "2026-07-14T12:00:00.000+02:00". Odoo expects "YYYY-MM-DD HH:MM:SS" (UTC)
+// for datetime and "YYYY-MM-DD" for date fields.
+const ISO_8601_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/;
+
+/**
+ * Converts ISO 8601 datetime/date strings in `fields` to the formats Odoo
+ * expects, using the model schema to identify which fields need conversion.
+ * Values already in Odoo format (e.g. "2026-07-14 12:00:00") are left as-is.
+ */
+export function formatOdooDateFields(fields: IDataObject, schema: OdooFieldSchema): IDataObject {
+	const result = { ...fields };
+	for (const [key, value] of Object.entries(result)) {
+		if (typeof value !== 'string' || !(key in schema) || !ISO_8601_RE.test(value)) continue;
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) continue;
+		const odooType = schema[key].type;
+		if (odooType === 'datetime') {
+			// Odoo stores datetime in UTC; strip timezone and milliseconds
+			result[key] = date
+				.toISOString()
+				.replace('T', ' ')
+				.replace(/\.\d+Z$/, '');
+		} else if (odooType === 'date') {
+			result[key] = date.toISOString().split('T')[0];
+		}
+	}
+	return result;
+}
+
 export function buildDomain(filters: IOdooFilters | undefined): unknown[][] {
 	if (!filters?.filter?.length) return [];
 	return filters.filter.map(({ fieldName, operator, value }) => {
