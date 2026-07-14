@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(36) NOT NULL, "status" varchar(50) NOT NULL DEFAULT ('pending'), "title" varchar(512) NOT NULL, "description" text, "createdById" varchar, "updatedById" varchar, "archivedById" varchar, "archivedAt" datetime(3), "publishError" text, "publishErrorAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_review_request_status" CHECK ("status" IN ('pending', 'changes_requested', 'approved')), CONSTRAINT "FK_c218d1df94adc3b169dee3cc06c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_21d5f5a831d2e38960030bb4f60" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_2817c3a0245197b498818c447cb" FOREIGN KEY ("updatedById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_eeec335aaf638c3832fb60ad405" FOREIGN KEY ("archivedById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(36) NOT NULL, "state" varchar(16) NOT NULL DEFAULT ('open'), "decision" varchar(50) NOT NULL DEFAULT ('pending'), "title" varchar(512) NOT NULL, "description" text, "createdById" varchar, "updatedById" varchar, "closedById" varchar, "closedAt" datetime(3), "approvedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_review_request_state" CHECK ("state" IN ('open', 'closed')), CONSTRAINT "CHK_workflow_review_request_decision" CHECK ("decision" IN ('pending', 'changes_requested', 'approved')), CONSTRAINT "FK_c218d1df94adc3b169dee3cc06c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_21d5f5a831d2e38960030bb4f60" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_2817c3a0245197b498818c447cb" FOREIGN KEY ("updatedById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_d53ef208e6055f328dd7b897e51" FOREIGN KEY ("closedById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -15,16 +15,16 @@ CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| archivedAt | datetime(3) |  | true |  |  |  |
-| archivedById | varchar |  | true |  | [user](user.md) |  |
+| approvedAt | datetime(3) |  | true |  |  |  |
+| closedAt | datetime(3) |  | true |  |  |  |
+| closedById | varchar |  | true |  | [user](user.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | createdById | varchar |  | true |  | [user](user.md) |  |
+| decision | varchar(50) | 'pending' | false |  |  |  |
 | description | TEXT |  | true |  |  |  |
 | id | varchar(36) |  | false | [workflow_review_request_authors](workflow_review_request_authors.md) [workflow_review_request_reviewers](workflow_review_request_reviewers.md) [workflow_review_request_workflow](workflow_review_request_workflow.md) |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
-| publishError | TEXT |  | true |  |  |  |
-| publishErrorAt | datetime(3) |  | true |  |  |  |
-| status | varchar(50) | 'pending' | false |  |  |  |
+| state | varchar(16) | 'open' | false |  |  |  |
 | title | varchar(512) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedById | varchar |  | true |  | [user](user.md) |  |
@@ -33,8 +33,9 @@ CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("status" IN ('pending', 'changes_requested', 'approved')) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (archivedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - | CHECK | CHECK ("state" IN ('open', 'closed')) |
+| - | CHECK | CHECK ("decision" IN ('pending', 'changes_requested', 'approved')) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (closedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 3) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
@@ -45,8 +46,7 @@ CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_review_request_open_project_created | CREATE INDEX "IDX_workflow_review_request_open_project_created"<br />			ON "workflow_review_request"("projectId", "createdAt" DESC)<br />			WHERE "status" IN ('pending', 'changes_requested') AND "archivedAt" IS NULL |
-| IDX_workflow_review_request_project_status_created | CREATE INDEX "IDX_workflow_review_request_project_status_created"<br />			ON "workflow_review_request"("projectId", "status", "createdAt" DESC) |
+| IDX_workflow_review_request_project_state_decision_created | CREATE INDEX "IDX_workflow_review_request_project_state_decision_created"<br />			ON "workflow_review_request"("projectId", "state", "decision", "createdAt" DESC) |
 | sqlite_autoindex_workflow_review_request_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -54,7 +54,7 @@ CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "
 ```mermaid
 erDiagram
 
-"workflow_review_request" }o--o| "user" : "FOREIGN KEY (archivedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_request" }o--o| "user" : "FOREIGN KEY (closedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request_authors" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_reviewers" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -63,16 +63,16 @@ erDiagram
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "workflow_review_request" {
-  datetime_3_ archivedAt
-  varchar archivedById FK
+  datetime_3_ approvedAt
+  datetime_3_ closedAt
+  varchar closedById FK
   datetime_3_ createdAt
   varchar createdById FK
+  varchar_50_ decision
   TEXT description
   varchar_36_ id PK
   varchar_36_ projectId FK
-  TEXT publishError
-  datetime_3_ publishErrorAt
-  varchar_50_ status
+  varchar_16_ state
   varchar_512_ title
   datetime_3_ updatedAt
   varchar updatedById FK

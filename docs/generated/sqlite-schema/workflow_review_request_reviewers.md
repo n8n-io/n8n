@@ -32,8 +32,7 @@ CREATE TABLE "workflow_review_request_reviewers" ("id" varchar(36) PRIMARY KEY N
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_review_request_reviewers_request_user | CREATE UNIQUE INDEX "IDX_workflow_review_request_reviewers_request_user"<br />			ON "workflow_review_request_reviewers"("workflowReviewRequestId", "userId") |
-| IDX_workflow_review_request_reviewers_user_id | CREATE INDEX "IDX_workflow_review_request_reviewers_user_id"<br />			ON "workflow_review_request_reviewers"("userId") |
+| UQ_workflow_review_request_reviewers_request_user | CREATE UNIQUE INDEX "UQ_workflow_review_request_reviewers_request_user"<br />			ON "workflow_review_request_reviewers"("workflowReviewRequestId", "userId") |
 | sqlite_autoindex_workflow_review_request_reviewers_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -67,16 +66,16 @@ erDiagram
   datetime_3_ updatedAt
 }
 "workflow_review_request" {
-  datetime_3_ archivedAt
-  varchar archivedById FK
+  datetime_3_ approvedAt
+  datetime_3_ closedAt
+  varchar closedById FK
   datetime_3_ createdAt
   varchar createdById FK
+  varchar_50_ decision
   TEXT description
   varchar_36_ id PK
   varchar_36_ projectId FK
-  TEXT publishError
-  datetime_3_ publishErrorAt
-  varchar_50_ status
+  varchar_16_ state
   varchar_512_ title
   datetime_3_ updatedAt
   varchar updatedById FK

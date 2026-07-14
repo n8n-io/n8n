@@ -10,15 +10,13 @@ const USER_TABLE = 'user';
 const WORKFLOW_ENTITY_TABLE = 'workflow_entity';
 const WORKFLOW_HISTORY_TABLE = 'workflow_history';
 
-const IDX_REQUEST_PROJECT_STATUS_CREATED = 'workflow_review_request_project_status_created';
-const IDX_REQUEST_OPEN_PROJECT_CREATED = 'workflow_review_request_open_project_created';
-const IDX_WORKFLOW_REQUEST_WORKFLOW_UNIQUE = 'workflow_review_request_workflow_request_workflow';
+const IDX_REQUEST_PROJECT_STATE_DECISION_CREATED =
+	'workflow_review_request_project_state_decision_created';
+const UQ_WORKFLOW_REQUEST_WORKFLOW = 'workflow_review_request_workflow_request_workflow';
 const IDX_WORKFLOW_REQUEST_WORKFLOW_VERSION = 'workflow_review_request_workflow_workflow_version';
 const IDX_WORKFLOW_REQUEST_WORKFLOW_WORKFLOW_ID = 'workflow_review_request_workflow_workflow_id';
-const IDX_WORKFLOW_REQUEST_REVIEWERS_UNIQUE = 'workflow_review_request_reviewers_request_user';
-const IDX_WORKFLOW_REQUEST_REVIEWERS_USER_ID = 'workflow_review_request_reviewers_user_id';
-const IDX_WORKFLOW_REQUEST_AUTHORS_UNIQUE = 'workflow_review_request_authors_request_user';
-const IDX_WORKFLOW_REQUEST_AUTHORS_USER_ID = 'workflow_review_request_authors_user_id';
+const UQ_WORKFLOW_REQUEST_REVIEWERS = 'workflow_review_request_reviewers_request_user';
+const UQ_WORKFLOW_REQUEST_AUTHORS = 'workflow_review_request_authors_request_user';
 
 export class CreateWorkflowReviewRequestTables1784000000046 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -27,19 +25,15 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 		await this.createReviewerJunctionTable(context);
 		await this.createAuthorJunctionTable(context);
 		await this.createRequestIndexes(context);
-		await this.createChildReviewerAndAuthorIndexes(context);
+		await this.createChildWorkflowAndJunctionIndexes(context);
 	}
 
-	async down({ schemaBuilder: { dropTable }, runQuery, escape }: MigrationContext) {
+	async down({ schemaBuilder: { dropTable }, runQuery, escape, tablePrefix }: MigrationContext) {
 		await runQuery(
-			`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_AUTHORS_USER_ID)}`,
-		);
-		await runQuery(`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_AUTHORS_UNIQUE)}`);
-		await runQuery(
-			`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_REVIEWERS_USER_ID)}`,
+			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_AUTHORS)}`,
 		);
 		await runQuery(
-			`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_REVIEWERS_UNIQUE)}`,
+			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_REVIEWERS)}`,
 		);
 		await runQuery(
 			`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_WORKFLOW_ID)}`,
@@ -48,11 +42,12 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 			`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_VERSION)}`,
 		);
 		await runQuery(
-			`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_UNIQUE)}`,
+			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_WORKFLOW)}`,
 		);
 
-		await runQuery(`DROP INDEX IF EXISTS ${escape.indexName(IDX_REQUEST_OPEN_PROJECT_CREATED)}`);
-		await runQuery(`DROP INDEX IF EXISTS ${escape.indexName(IDX_REQUEST_PROJECT_STATUS_CREATED)}`);
+		await runQuery(
+			`DROP INDEX IF EXISTS ${escape.indexName(IDX_REQUEST_PROJECT_STATE_DECISION_CREATED)}`,
+		);
 
 		await dropTable(AUTHOR_TABLE);
 		await dropTable(REVIEWER_TABLE);
@@ -60,26 +55,32 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 		await dropTable(REQUEST_TABLE);
 	}
 
+	private uniqueIndexName(tablePrefix: string, name: string): string {
+		return `"UQ_${tablePrefix}${name}"`;
+	}
+
 	private async createRequestTable({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(REQUEST_TABLE)
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
 				column('projectId').varchar(36).notNull,
-				column('status')
+				column('state')
+					.varchar(16)
+					.notNull.default("'open'")
+					.withEnumCheck(['open', 'closed'])
+					.comment('Review lifecycle: open reviews accept actions; closed reviews are done'),
+				column('decision')
 					.varchar(50)
 					.notNull.default("'pending'")
 					.withEnumCheck(['pending', 'changes_requested', 'approved'])
-					.comment('Review lifecycle status'),
+					.comment('Latest review outcome while the request is open'),
 				column('title').varchar(512).notNull,
 				column('description').text,
 				column('createdById').uuid,
 				column('updatedById').uuid,
-				column('archivedById').uuid,
-				column('archivedAt').timestampTimezone(),
-				column('publishError').text.comment('Last auto-publish failure message'),
-				column('publishErrorAt')
-					.timestampTimezone()
-					.comment('When publishError was set; cleared on success'),
+				column('closedById').uuid,
+				column('closedAt').timestampTimezone(),
+				column('approvedAt').timestampTimezone(),
 			)
 			.withTimestamps.withForeignKey('projectId', {
 				tableName: PROJECT_TABLE,
@@ -96,7 +97,7 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
-			.withForeignKey('archivedById', {
+			.withForeignKey('closedById', {
 				tableName: USER_TABLE,
 				columnName: 'id',
 				onDelete: 'SET NULL',
@@ -174,7 +175,11 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 			});
 	}
 
-	private async createChildReviewerAndAuthorIndexes({ runQuery, escape }: MigrationContext) {
+	private async createChildWorkflowAndJunctionIndexes({
+		runQuery,
+		escape,
+		tablePrefix,
+	}: MigrationContext) {
 		const workflowTable = escape.tableName(WORKFLOW_TABLE);
 		const reviewerTable = escape.tableName(REVIEWER_TABLE);
 		const authorTable = escape.tableName(AUTHOR_TABLE);
@@ -184,7 +189,7 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 		const userIdColumn = escape.columnName('userId');
 
 		await runQuery(
-			`CREATE UNIQUE INDEX IF NOT EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_UNIQUE)}
+			`CREATE UNIQUE INDEX IF NOT EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_WORKFLOW)}
 			ON ${workflowTable}(${requestIdColumn}, ${workflowIdColumn})`,
 		);
 		await runQuery(
@@ -197,39 +202,25 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 			ON ${workflowTable}(${workflowIdColumn})`,
 		);
 		await runQuery(
-			`CREATE UNIQUE INDEX IF NOT EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_REVIEWERS_UNIQUE)}
+			`CREATE UNIQUE INDEX IF NOT EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_REVIEWERS)}
 			ON ${reviewerTable}(${requestIdColumn}, ${userIdColumn})`,
 		);
 		await runQuery(
-			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_REVIEWERS_USER_ID)}
-			ON ${reviewerTable}(${userIdColumn})`,
-		);
-		await runQuery(
-			`CREATE UNIQUE INDEX IF NOT EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_AUTHORS_UNIQUE)}
+			`CREATE UNIQUE INDEX IF NOT EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_AUTHORS)}
 			ON ${authorTable}(${requestIdColumn}, ${userIdColumn})`,
-		);
-		await runQuery(
-			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_AUTHORS_USER_ID)}
-			ON ${authorTable}(${userIdColumn})`,
 		);
 	}
 
 	private async createRequestIndexes({ runQuery, escape }: MigrationContext) {
 		const requestTable = escape.tableName(REQUEST_TABLE);
 		const projectIdColumn = escape.columnName('projectId');
-		const statusColumn = escape.columnName('status');
+		const stateColumn = escape.columnName('state');
+		const decisionColumn = escape.columnName('decision');
 		const createdAtColumn = escape.columnName('createdAt');
-		const archivedAtColumn = escape.columnName('archivedAt');
 
 		await runQuery(
-			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_REQUEST_PROJECT_STATUS_CREATED)}
-			ON ${requestTable}(${projectIdColumn}, ${statusColumn}, ${createdAtColumn} DESC)`,
-		);
-
-		await runQuery(
-			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_REQUEST_OPEN_PROJECT_CREATED)}
-			ON ${requestTable}(${projectIdColumn}, ${createdAtColumn} DESC)
-			WHERE ${statusColumn} IN ('pending', 'changes_requested') AND ${archivedAtColumn} IS NULL`,
+			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_REQUEST_PROJECT_STATE_DECISION_CREATED)}
+			ON ${requestTable}(${projectIdColumn}, ${stateColumn}, ${decisionColumn}, ${createdAtColumn} DESC)`,
 		);
 	}
 }

@@ -2,28 +2,38 @@ import { Column, Entity, Index } from '@n8n/typeorm';
 
 import { DateTimeColumn, WithTimestampsAndStringId } from './abstract-entity';
 
-export const WorkflowReviewRequestStatus = {
+export const WorkflowReviewRequestState = {
+	Open: 'open',
+	Closed: 'closed',
+} as const;
+
+export type WorkflowReviewRequestState =
+	(typeof WorkflowReviewRequestState)[keyof typeof WorkflowReviewRequestState];
+
+export const WorkflowReviewRequestStateList = Object.values(WorkflowReviewRequestState);
+
+export const WorkflowReviewRequestDecision = {
 	Pending: 'pending',
 	ChangesRequested: 'changes_requested',
 	Approved: 'approved',
 } as const;
 
-export type WorkflowReviewRequestStatus =
-	(typeof WorkflowReviewRequestStatus)[keyof typeof WorkflowReviewRequestStatus];
+export type WorkflowReviewRequestDecision =
+	(typeof WorkflowReviewRequestDecision)[keyof typeof WorkflowReviewRequestDecision];
 
-export const WorkflowReviewRequestStatusList = Object.values(WorkflowReviewRequestStatus);
+export const WorkflowReviewRequestDecisionList = Object.values(WorkflowReviewRequestDecision);
 
 @Entity({ name: 'workflow_review_request' })
-@Index(['projectId', 'status', 'createdAt'])
-@Index('IDX_workflow_review_request_open_project_created', ['projectId', 'createdAt'], {
-	where: `status IN ('${WorkflowReviewRequestStatus.Pending}', '${WorkflowReviewRequestStatus.ChangesRequested}') AND "archivedAt" IS NULL`,
-})
+@Index(['projectId', 'state', 'decision', 'createdAt'])
 export class WorkflowReviewRequest extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36 })
 	projectId: string;
 
+	@Column({ type: 'varchar', length: 16 })
+	state: WorkflowReviewRequestState;
+
 	@Column({ type: 'varchar', length: 50 })
-	status: WorkflowReviewRequestStatus;
+	decision: WorkflowReviewRequestDecision;
 
 	@Column({ type: 'varchar', length: 512 })
 	title: string;
@@ -38,14 +48,11 @@ export class WorkflowReviewRequest extends WithTimestampsAndStringId {
 	updatedById: string | null;
 
 	@Column({ type: 'uuid', nullable: true })
-	archivedById: string | null;
+	closedById: string | null;
 
 	@DateTimeColumn({ nullable: true })
-	archivedAt: Date | null;
-
-	@Column({ type: 'text', nullable: true })
-	publishError: string | null;
+	closedAt: Date | null;
 
 	@DateTimeColumn({ nullable: true })
-	publishErrorAt: Date | null;
+	approvedAt: Date | null;
 }

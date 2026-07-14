@@ -1,15 +1,12 @@
-import { Column, Entity, Index } from '@n8n/typeorm';
+import { Column, Entity, Index, Unique } from '@n8n/typeorm';
 
 import { WithStringId } from './abstract-entity';
 
 @Entity({ name: 'workflow_review_request_workflow' })
-@Index(
-	'IDX_workflow_review_request_workflow_request_workflow',
-	['workflowReviewRequestId', 'workflowId'],
-	{
-		unique: true,
-	},
-)
+@Unique('UQ_workflow_review_request_workflow_request_workflow', [
+	'workflowReviewRequestId',
+	'workflowId',
+])
 @Index(
 	'IDX_workflow_review_request_workflow_workflow_version',
 	['workflowId', 'workflowVersionId'],
