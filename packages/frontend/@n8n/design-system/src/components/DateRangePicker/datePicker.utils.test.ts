@@ -1,13 +1,10 @@
 import { CalendarDate, CalendarDateTime } from '@internationalized/date';
 
 import {
-	applyActiveFieldSelection,
 	formatDateRangeValue,
 	formatDateValue,
 	formatMonthYearHeading,
 	formatTimeValue,
-	formatWeekdayTwoLetters,
-	getNextActiveFieldAfterSelection,
 	mergeDatePreservingTime,
 	parseDateValue,
 	parseTimeValue,
@@ -87,13 +84,6 @@ describe('datePicker.utils', () => {
 		});
 	});
 
-	describe('formatWeekdayTwoLetters', () => {
-		it('returns the first two letters of a weekday label', () => {
-			expect(formatWeekdayTwoLetters('Mon')).toBe('Mo');
-			expect(formatWeekdayTwoLetters('Wednesday')).toBe('We');
-		});
-	});
-
 	describe('createTodayRange', () => {
 		it('returns today for both start and end', () => {
 			const range = createTodayRange();
@@ -109,48 +99,6 @@ describe('datePicker.utils', () => {
 			expect(formatMonthYearHeading([new CalendarDate(2025, 12, 1)], 'en-GB')).toMatch(
 				/^Dec 2025$/,
 			);
-		});
-	});
-
-	describe('applyActiveFieldSelection', () => {
-		it('sets the end date when the end field is active', () => {
-			const start = new CalendarDate(2025, 6, 10);
-			const end = new CalendarDate(2025, 6, 20);
-
-			const result = applyActiveFieldSelection('end', end, { start });
-
-			expect(result.start?.compare(start)).toBe(0);
-			expect(result.end?.compare(end)).toBe(0);
-		});
-
-		it('swaps the range when the end field is active and the date is before start', () => {
-			const start = new CalendarDate(2025, 6, 20);
-			const selected = new CalendarDate(2025, 6, 10);
-
-			const result = applyActiveFieldSelection('end', selected, { start });
-
-			expect(result.start?.compare(selected)).toBe(0);
-			expect(result.end?.compare(start)).toBe(0);
-		});
-
-		it('updates the start date when the start field is active', () => {
-			const start = new CalendarDate(2025, 6, 5);
-			const end = new CalendarDate(2025, 6, 20);
-
-			const result = applyActiveFieldSelection('start', start, { start: end, end });
-
-			expect(result.start?.compare(start)).toBe(0);
-			expect(result.end?.compare(end)).toBe(0);
-		});
-	});
-
-	describe('getNextActiveFieldAfterSelection', () => {
-		it('moves to end after selecting start', () => {
-			expect(getNextActiveFieldAfterSelection('start')).toBe('end');
-		});
-
-		it('moves to start after selecting end', () => {
-			expect(getNextActiveFieldAfterSelection('end')).toBe('start');
 		});
 	});
 
@@ -170,7 +118,7 @@ describe('datePicker.utils', () => {
 			expect(result.nextActiveField).toBe('start');
 		});
 
-		it('applies the active field and flips to the next one', () => {
+		it('sets the end date when the end field is active', () => {
 			const start = new CalendarDate(2025, 6, 10);
 			const selected = new CalendarDate(2025, 6, 20);
 
@@ -183,6 +131,36 @@ describe('datePicker.utils', () => {
 			expect(result.range.start?.compare(start)).toBe(0);
 			expect(result.range.end?.compare(selected)).toBe(0);
 			expect(result.nextActiveField).toBe('start');
+		});
+
+		it('swaps the range when the end field is active and the date is before start', () => {
+			const start = new CalendarDate(2025, 6, 20);
+			const selected = new CalendarDate(2025, 6, 10);
+
+			const result = resolveDateSelection({
+				selected,
+				range: { start },
+				activeField: 'end',
+			});
+
+			expect(result.range.start?.compare(selected)).toBe(0);
+			expect(result.range.end?.compare(start)).toBe(0);
+			expect(result.nextActiveField).toBe('start');
+		});
+
+		it('updates the start date when the start field is active', () => {
+			const start = new CalendarDate(2025, 6, 5);
+			const end = new CalendarDate(2025, 6, 20);
+
+			const result = resolveDateSelection({
+				selected: start,
+				range: { start: end, end },
+				activeField: 'start',
+			});
+
+			expect(result.range.start?.compare(start)).toBe(0);
+			expect(result.range.end?.compare(end)).toBe(0);
+			expect(result.nextActiveField).toBe('end');
 		});
 
 		it('preserves time when requested', () => {
