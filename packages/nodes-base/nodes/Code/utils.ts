@@ -66,6 +66,14 @@ Error.prepareStackTrace = (err, structuredStackTrace) => {
 };
 `;
 
+export function resolveExternalModule(moduleName: string) {
+	try {
+		return require.resolve(moduleName);
+	} catch {
+		return undefined;
+	}
+}
+
 export function generateScript(jsCode: string) {
 	return new VMScript(
 		`module.exports = async function() {${jsCode}\n}() ${PREPARE_STACKTRACE}`,

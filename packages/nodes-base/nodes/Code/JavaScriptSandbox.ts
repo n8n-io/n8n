@@ -10,7 +10,7 @@ import {
 import type { SandboxContext } from './Sandbox';
 import { Sandbox } from './Sandbox';
 import { ValidationError } from './ValidationError';
-import { generateScript } from './utils';
+import { generateScript, resolveExternalModule } from './utils';
 
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;
@@ -23,6 +23,7 @@ export const vmResolver = makeResolverFromLegacyOptions({
 			}
 		: false,
 	builtin: builtIn?.split(',') ?? [],
+	resolve: resolveExternalModule,
 });
 
 export class JavaScriptSandbox extends Sandbox {
