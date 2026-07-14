@@ -1,5 +1,18 @@
 import type { INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeError, NodeOperationError } from 'n8n-workflow';
+
+/**
+ * Stamps `context.itemIndex` on a `NodeError` that does not carry one yet, so a
+ * per-item failure (e.g. a bad Service Principal target resolved at item N) is
+ * attributed to the right item. Never overwrites an existing index. Returns the
+ * error for the caller to (re)throw.
+ */
+export function stampItemIndexOnError(error: unknown, itemIndex: number): unknown {
+	if (error instanceof NodeError && error.context?.itemIndex === undefined) {
+		error.context = { ...error.context, itemIndex };
+	}
+	return error;
+}
 
 /**
  * Overridable throw-site copy for {@link validateUserTargetId}. Messages are static

@@ -1121,6 +1121,31 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
+	describe('resource attachment auto-open', () => {
+		test('opens attached agent when no active tab is set', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-1', 'Support Agent', 'proj-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'agent-1',
+							name: 'Support Agent',
+							projectId: 'proj-1',
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('agent-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+	});
+
 	describe('isPreviewVisible', () => {
 		test('is true when workflow is active', () => {
 			const ctx = setup();

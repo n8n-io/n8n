@@ -85,7 +85,7 @@ export class WorkflowSettingsModal extends BasePage {
 	}
 
 	getSaveButton(): Locator {
-		return this.page.getByTestId('workflow-settings-save-button').getByRole('button');
+		return this.container.getByTestId('workflow-settings-save-button').getByRole('button');
 	}
 
 	async open(): Promise<void> {

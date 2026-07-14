@@ -303,18 +303,26 @@ function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void
 }
 
 /**
- * Register workflow attachments on a (user) message as produced artifacts —
- * e.g. the editor hand-off attaches the current workflow, which then shows as
- * an artifact tab even before the agent acts on it.
+ * Register resource attachments on a (user) message as produced artifacts —
+ * e.g. the editor hand-off attaches the current workflow or agent, which then
+ * shows as an artifact tab even before the agent acts on it.
  */
 function collectFromMessageAttachments(message: InstanceAiMessage, col: Collections): void {
 	for (const attachment of message.attachments ?? []) {
-		if (attachment.type !== 'workflow') continue;
-		recordProduced(col, {
-			type: 'workflow',
-			id: attachment.id,
-			name: attachment.name ?? 'Untitled',
-		});
+		if (attachment.type === 'workflow') {
+			recordProduced(col, {
+				type: 'workflow',
+				id: attachment.id,
+				name: attachment.name ?? 'Untitled',
+			});
+		} else if (attachment.type === 'agent') {
+			recordProduced(col, {
+				type: 'agent',
+				id: attachment.id,
+				name: attachment.name ?? 'Untitled',
+				projectId: attachment.projectId,
+			});
+		}
 	}
 }
 

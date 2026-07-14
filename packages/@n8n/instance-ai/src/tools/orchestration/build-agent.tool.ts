@@ -3,22 +3,37 @@
  * (`AgentsBuilderService`) as an embedded sub-agent, one conversational turn
  * per invocation.
  *
- * This is the non-interactive contract: the delegate session excludes every
- * interactive builder tool (`ask_questions`, `ask_credential`,
- * `ask_embedding_credential`, `configure_channel` — see
- * `NON_INTERACTIVE_EXCLUDED_TOOL_NAMES` in the cli delegate adapter), so the
- * builder cannot suspend mid-turn and must complete, error, or be cancelled
- * on every call. Any open questions the builder still has come back as plain
- * text at the end of its reply — the calling assistant relays those to the
- * user and sends the answers back through another `build-agent` call.
+ * This is the interactive contract: the delegate session includes the
+ * builder's full standard toolset, so it may suspend on `ask_questions`,
+ * `ask_credential`, `ask_embedding_credential`, or `configure_channel`. When
+ * it does, this tool cascades the suspension through its own `ctx.suspend()`
+ * — using payloads derived from the shared interaction contract in
+ * `@n8n/api-types` — so the question renders as a card in the calling
+ * assistant's chat and the orchestrator's own checkpoint survives a process
+ * restart. On resume, the target agent and the builder's open suspension are
+ * both re-derived from persistence (no in-memory state carried across the
+ * suspend boundary) and checked for identity against the `builderCheckpoint`
+ * ref persisted in the cascaded payload before the answer is routed back.
+ * If the user abandons a cascaded question (cancel, steering message, or
+ * confirmation timeout), the builder-side checkpoint is not cleaned up
+ * eagerly — it expires via the agents module's checkpoint TTL pruning.
  *
  * The builder session is keyed to an instance-AI-scoped thread id
  * (`ia-builder:<threadId>:<agentId>`) so nothing appears in the agents-module
  * builder UI — it is a private sub-agent conversation.
  */
+import type { InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents';
-import { BUILDER_NOT_CONFIGURED_CODE, CONFIG_MUTATION_TOOL_NAMES } from '@n8n/api-types';
+import {
+	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
+	BUILDER_NOT_CONFIGURED_CODE,
+	CONFIG_MUTATION_TOOL_NAMES,
+	channelSuspendPayloadSchema,
+	credentialSuspendPayloadSchema,
+	questionsSuspendPayloadSchema,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import {
@@ -31,11 +46,29 @@ import {
 	type ConsumeStreamCascadingResult,
 } from '../../stream/consume-with-hitl';
 import type { WorkSummary } from '../../stream/work-summary-accumulator';
-import type { OrchestrationContext, SessionWorkflowRef } from '../../types';
+import type {
+	BuilderTurnStream,
+	InstanceAiBuilderDelegate,
+	InstanceAiContext,
+	OrchestrationContext,
+	SessionWorkflowRef,
+} from '../../types';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 function isBuilderNotConfiguredError(error: unknown): boolean {
 	return isRecord(error) && error.code === BUILDER_NOT_CONFIGURED_CODE;
+}
+
+/** `AgentsBuilderService.resumeBuild` throws `BuilderCheckpointUnavailableError`
+ *  (stable `code`, shared via `@n8n/api-types`) when the checkpoint being
+ *  resumed has expired or no longer exists. */
+function isBuilderCheckpointUnavailableError(error: unknown): boolean {
+	return isRecord(error) && error.code === BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
+}
+
+/** Either friendly-mappable failure this tool recognizes mid-stream. */
+function isFriendlyMappableBuilderError(error: unknown): boolean {
+	return isBuilderNotConfiguredError(error) || isBuilderCheckpointUnavailableError(error);
 }
 
 function didUpdateConfig(workSummary: WorkSummary): boolean {
@@ -61,6 +94,16 @@ function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): s
 function buildOutboundMessage(message: string, workflowContext?: SessionWorkflowRef[]): string {
 	if (!workflowContext || workflowContext.length === 0) return message;
 	return `${message}\n\n${formatWorkflowContextEnvelope(workflowContext)}`;
+}
+
+/** Builder sessions are keyed per assistant thread + target agent; the resume
+ *  leg must reconstruct this byte-identically after a restart. */
+function builderSessionFor(context: OrchestrationContext, agentId: string) {
+	return { threadId: `ia-builder:${context.threadId}:${agentId}`, modelConfig: context.modelId };
+}
+
+function builderAgentIdFor(agentId: string): string {
+	return `agent-builder:${agentId}`;
 }
 
 const buildAgentInputSchema = z.object({
@@ -89,11 +132,54 @@ const buildAgentOutputSchema = z.object({
 
 type BuildAgentOutput = z.infer<typeof buildAgentOutputSchema>;
 
+/** Durable reference to the builder's own suspended checkpoint, carried inside the
+ *  cascaded suspend payload (persisted in the orchestrator's checkpoint) so the resume
+ *  leg can verify it resumes the same suspension it cascaded. */
+const builderCheckpointRefSchema = z.object({
+	runId: z.string(),
+	toolCallId: z.string(),
+	/** Whether any builder pass before this suspension already mutated the agent config. */
+	configUpdated: z.boolean(),
+});
+
+/** Envelope derived from the shared interaction contract (agent-interaction.schema.ts):
+ *  only payloads the assistant FE can render may cascade. */
+const builderSuspendPayloadSchema = z.union([
+	questionsSuspendPayloadSchema,
+	credentialSuspendPayloadSchema,
+	channelSuspendPayloadSchema,
+]);
+
+const buildAgentSuspendSchema = z.union([
+	questionsSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
+	credentialSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
+	channelSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
+]);
+
+/**
+ * Resume data is NOT semantically validated at this level — it passes through
+ * byte-for-byte to the builder's suspended interactive tool, which validates
+ * it against its own shared-contract resume schema (`agent-interaction.schema.ts`).
+ * A zod union of the shared resume schemas would be wrong here: its first
+ * member (`questionsResumeSchema`) is all-optional, so it matches any object
+ * and the SDK's resume validation would strip every non-questions field
+ * (e.g. a `credentials` map) before the handler sees it.
+ */
+const buildAgentResumeSchema = z.object({}).passthrough();
+
+type BuildAgentSuspendPayload = z.infer<typeof buildAgentSuspendSchema>;
+type BuildAgentResumeData = z.infer<typeof buildAgentResumeSchema>;
+type BuildAgentToolContext = InterruptibleToolContext<
+	BuildAgentSuspendPayload,
+	BuildAgentResumeData
+>;
+
 /**
  * Publish the `agent-spawned` event announcing the builder sub-agent to the FE.
- * Called once per invocation — there is no resume leg to republish from in
- * this non-interactive version, so the FE's agent-spawned handler only ever
- * sees this once per builder target per run.
+ * Published on the first call that constructs the builder session, and
+ * republished (idempotently) on resume — the FE may have lost the builder
+ * node across a page reload or process restart, so the resume leg re-sends it
+ * defensively.
  */
 function publishAgentSpawned(
 	context: OrchestrationContext,
@@ -147,10 +233,11 @@ async function finishTurn(
 	context: OrchestrationContext,
 	builderAgentId: string,
 	result: Extract<ConsumeStreamCascadingResult, { status: 'completed' | 'cancelled' | 'errored' }>,
+	carriedConfigUpdated: boolean,
 ): Promise<BuildAgentOutput> {
 	if (result.status === 'completed') {
 		const text = await result.text;
-		const configUpdated = didUpdateConfig(result.workSummary);
+		const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
 		context.eventBus.publish(context.threadId, {
 			type: 'agent-completed',
 			runId: context.runId,
@@ -161,13 +248,189 @@ async function finishTurn(
 	}
 
 	const error = `The agent builder run ${result.status}.`;
+	const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
 	context.eventBus.publish(context.threadId, {
 		type: 'agent-completed',
 		runId: context.runId,
 		agentId: builderAgentId,
 		payload: { role: 'agent-builder', result: '', error },
 	});
-	return { ok: false, error };
+	return { ok: false, error, configUpdated };
+}
+
+/**
+ * Consume a builder turn stream to completion or suspension, and either
+ * finish the tool call or cascade the suspension through `ctx.suspend()`.
+ * Shared by the first-call and resume legs of the handler.
+ */
+async function runBuilderConsumeLoop(params: {
+	context: OrchestrationContext;
+	delegate: InstanceAiBuilderDelegate;
+	ctx: BuildAgentToolContext;
+	target: AgentBuilderTarget;
+	builderAgentId: string;
+	turn: BuilderTurnStream;
+	/** configUpdated already accumulated by passes before this one (false on the first leg; carried from the suspend payload on resume). */
+	carriedConfigUpdated: boolean;
+	/** Runs once the stream settles (any status) — used to persist a deferred agentId-path bind. */
+	onSettled?: () => Promise<void>;
+}): Promise<BuildAgentOutput> {
+	const { context, delegate, ctx, target, builderAgentId, turn, carriedConfigUpdated, onSettled } =
+		params;
+
+	let result: ConsumeStreamCascadingResult;
+	try {
+		result = await consumeStreamCascading({
+			agent: undefined,
+			stream: turn,
+			runId: context.runId,
+			agentId: builderAgentId,
+			eventBus: context.eventBus,
+			logger: context.logger,
+			threadId: context.threadId,
+			abortSignal: context.abortSignal,
+		});
+	} catch (error) {
+		// `buildAgent`/`resumeBuild` on the delegate are async generators: calling
+		// them never throws, so errors from their bodies (builder-not-configured,
+		// an expired/missing checkpoint) only surface here, during consumption —
+		// not from the `delegate.streamBuild`/`resumeBuild` call sites.
+		const message = publishAgentBuilderFailure(context, builderAgentId, error);
+		if (isFriendlyMappableBuilderError(error)) {
+			return { ok: false, error: message, configUpdated: carriedConfigUpdated };
+		}
+		throw error;
+	}
+
+	// Reaching a settled stream result (any status, including suspended) means
+	// the builder agent was constructed — scope check and existence check both
+	// passed — so a deferred agentId-path bind is now safe to persist.
+	await onSettled?.();
+
+	if (result.status !== 'suspended') {
+		return await finishTurn(context, builderAgentId, result, carriedConfigUpdated);
+	}
+
+	const configUpdatedSoFar = carriedConfigUpdated || didUpdateConfig(result.workSummary);
+	const builderRunId = result.suspension.runId;
+	const parsedSuspendPayload = builderRunId
+		? builderSuspendPayloadSchema.safeParse(result.suspension.suspendPayload)
+		: undefined;
+
+	if (!builderRunId || !parsedSuspendPayload?.success) {
+		if (builderRunId) {
+			try {
+				await delegate.cancelOpenSuspension(target.agentId, builderRunId);
+			} catch (error) {
+				context.logger.warn('Failed to cancel orphaned builder checkpoint', {
+					builderRunId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+		const message =
+			"The agent builder's confirmation request could not be shown in this chat; the build turn was cancelled.";
+		publishAgentBuilderFailure(context, builderAgentId, new Error(message));
+		return { ok: false, error: message, configUpdated: configUpdatedSoFar };
+	}
+
+	// The builder-level requestId must not leak up: the FE confirms against the
+	// orchestrator's own suspension, so a fresh one is minted here.
+	return await ctx.suspend({
+		...parsedSuspendPayload.data,
+		requestId: nanoid(),
+		builderCheckpoint: {
+			runId: builderRunId,
+			toolCallId: result.suspension.toolCallId,
+			configUpdated: configUpdatedSoFar,
+		},
+	});
+}
+
+/**
+ * Resume leg: re-derive the target agent and the builder's open suspension
+ * from persistence, verify they match the `builderCheckpoint` ref carried in
+ * the cascaded suspend payload, then resume the builder with the user's
+ * answer passed through unchanged.
+ */
+async function handleResume(
+	context: OrchestrationContext,
+	domainContext: InstanceAiContext,
+	delegate: InstanceAiBuilderDelegate,
+	ctx: BuildAgentToolContext,
+): Promise<BuildAgentOutput> {
+	const refParse = z
+		.object({ builderCheckpoint: builderCheckpointRefSchema })
+		.safeParse(ctx.suspendPayload);
+	if (!refParse.success) {
+		return {
+			ok: false,
+			error:
+				'The suspended build state is missing its builder checkpoint reference; the answer cannot be routed. Start a new build-agent call.',
+		};
+	}
+	const ref = refParse.data.builderCheckpoint;
+
+	const target = await resolveAgentBuilderTarget(domainContext);
+	if (!target) {
+		return {
+			ok: false,
+			error: 'No agent build in progress for this conversation.',
+			configUpdated: ref.configUpdated,
+		};
+	}
+
+	const session = builderSessionFor(context, target.agentId);
+
+	const openSuspensions = await delegate.findOpenSuspensions(target.agentId, session);
+	if (openSuspensions.length === 0) {
+		return {
+			ok: false,
+			error: 'The builder question this answer belongs to is no longer open.',
+			configUpdated: ref.configUpdated,
+		};
+	}
+
+	const matches = openSuspensions.some(
+		(open) => open.runId === ref.runId && open.toolCallId === ref.toolCallId,
+	);
+	if (!matches) {
+		return {
+			ok: false,
+			error:
+				"The answer does not match the builder's open question (stale or superseded suspension). Ask the user again with a fresh build-agent call.",
+			configUpdated: ref.configUpdated,
+		};
+	}
+
+	const builderAgentId = builderAgentIdFor(target.agentId);
+	let turn: BuilderTurnStream;
+	try {
+		turn = await delegate.resumeBuild(
+			target.agentId,
+			{ runId: ref.runId, toolCallId: ref.toolCallId, resumeData: ctx.resumeData },
+			session,
+		);
+	} catch (error) {
+		// Only genuinely call-time-reachable errors land here (e.g. the scope
+		// check in the delegate adapter) — see the comment in
+		// `runBuilderConsumeLoop`'s catch for why builder-not-configured/expired-
+		// checkpoint errors can't surface at this call site.
+		publishAgentBuilderFailure(context, builderAgentId, error);
+		throw error;
+	}
+
+	publishAgentSpawned(context, builderAgentId, target);
+
+	return await runBuilderConsumeLoop({
+		context,
+		delegate,
+		ctx,
+		target,
+		builderAgentId,
+		turn,
+		carriedConfigUpdated: ref.configUpdated,
+	});
 }
 
 export function createBuildAgentTool(context: OrchestrationContext) {
@@ -175,16 +438,25 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 		.description(
 			'Delegate agent building to the agents-module builder, running as a sub-agent. ' +
 				'Pass `name` to start a new agent or `agentId` to edit an existing one on the first ' +
-				'call; subsequent calls keep editing the same agent. Returns the builder’s reply and ' +
-				'whether it updated the agent config.',
+				'call; subsequent calls keep editing the same agent. When the builder needs user ' +
+				'input (a choice, a credential, or a chat channel), it surfaces automatically as an ' +
+				'interactive card in this chat — do not relay those questions yourself; this tool ' +
+				'call resumes with the user’s answer and returns the builder’s reply. Returns the ' +
+				'builder’s reply and whether it updated the agent config.',
 		)
 		.input(buildAgentInputSchema)
 		.output(buildAgentOutputSchema)
-		.handler(async (input: z.infer<typeof buildAgentInputSchema>) => {
+		.suspend(buildAgentSuspendSchema)
+		.resume(buildAgentResumeSchema)
+		.handler(async (input: z.infer<typeof buildAgentInputSchema>, ctx: BuildAgentToolContext) => {
 			const domainContext = context.domainContext;
 			const delegate = domainContext?.builderDelegate;
 			if (!domainContext || !delegate) {
 				return { ok: false, error: 'Agent building is not available on this instance.' };
+			}
+
+			if (ctx.resumeData !== undefined && ctx.resumeData !== null) {
+				return await handleResume(context, domainContext, delegate, ctx);
 			}
 
 			let target = await resolveAgentBuilderTarget(domainContext);
@@ -216,62 +488,41 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 					};
 				}
 			}
+			const boundTarget: AgentBuilderTarget = target;
 
-			const session = {
-				threadId: `ia-builder:${context.threadId}:${target.agentId}`,
-				modelConfig: context.modelId,
-			};
+			const session = builderSessionFor(context, boundTarget.agentId);
 			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext);
-			const builderAgentId = `agent-builder:${target.agentId}`;
+			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 
-			publishAgentSpawned(context, builderAgentId, target);
+			publishAgentSpawned(context, builderAgentId, boundTarget);
 
-			let turn;
+			let turn: BuilderTurnStream;
 			try {
-				turn = await delegate.streamBuild(target.agentId, outboundMessage, session);
+				turn = await delegate.streamBuild(boundTarget.agentId, outboundMessage, session);
 			} catch (error) {
-				const message = publishAgentBuilderFailure(context, builderAgentId, error);
-				if (isBuilderNotConfiguredError(error)) {
-					return { ok: false, error: message };
-				}
-				throw error;
-			}
-
-			let result: ConsumeStreamCascadingResult;
-			try {
-				result = await consumeStreamCascading({
-					agent: undefined,
-					stream: turn,
-					runId: context.runId,
-					agentId: builderAgentId,
-					eventBus: context.eventBus,
-					logger: context.logger,
-					threadId: context.threadId,
-					abortSignal: context.abortSignal,
-				});
-			} catch (error) {
+				// Only genuinely call-time-reachable errors land here (e.g. the scope
+				// check in the delegate adapter) — see the comment in
+				// `runBuilderConsumeLoop`'s catch for why builder-not-configured/expired-
+				// checkpoint errors can't surface at this call site.
 				publishAgentBuilderFailure(context, builderAgentId, error);
 				throw error;
 			}
 
-			// Reaching a settled stream result (any status, including the
-			// defensive `suspended` case below) means the builder agent was
-			// constructed — scope check and existence check both passed — so the
-			// deferred agentId-path bind is now safe to persist.
-			if (bindAfterTurn) {
-				domainContext.agentBuilderTarget = target;
-				await saveAgentBuilderTarget(domainContext, target);
-			}
-
-			if (result.status !== 'suspended') return await finishTurn(context, builderAgentId, result);
-
-			// Unreachable in practice — interactive tools are excluded from the
-			// builder's session, so it cannot suspend. Handled defensively rather
-			// than throwing out of the tool handler.
-			const message =
-				'The agent builder run suspended unexpectedly; interactive tools are not available in this chat.';
-			publishAgentBuilderFailure(context, builderAgentId, new Error(message));
-			return { ok: false, error: message };
+			return await runBuilderConsumeLoop({
+				context,
+				delegate,
+				ctx,
+				target: boundTarget,
+				builderAgentId,
+				turn,
+				carriedConfigUpdated: false,
+				onSettled: bindAfterTurn
+					? async () => {
+							domainContext.agentBuilderTarget = boundTarget;
+							await saveAgentBuilderTarget(domainContext, boundTarget);
+						}
+					: undefined,
+			});
 		})
 		.build();
 }

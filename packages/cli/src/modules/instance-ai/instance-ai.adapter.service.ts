@@ -359,7 +359,10 @@ export class InstanceAiAdapterService {
 		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
 		try {
 			return Container.get(InstanceAiBuilderDelegateAdapterService);
-		} catch {
+		} catch (error) {
+			this.logger.warn('Failed to resolve builder delegate adapter; agent building disabled', {
+				error: error instanceof Error ? error.message : String(error),
+			});
 			return null;
 		}
 	}
