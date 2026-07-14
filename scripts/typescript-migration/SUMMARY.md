@@ -1,6 +1,6 @@
 # TypeScript 6 → 7 migration benchmarks
 
-Generated 2026-07-14T12:13:46.648Z from `scripts/typescript-migration/results/`.
+Generated 2026-07-14T13:18:27.416Z from `scripts/typescript-migration/results/`.
 
 | Package | typecheck Δ | build Δ |
 | --- | --- | --- |
@@ -17,7 +17,7 @@ Generated 2026-07-14T12:13:46.648Z from `scripts/typescript-migration/results/`.
 | `@n8n/codemirror-lang-sql` | -42.7% | -39.2% |
 | `@n8n/instance-ai` | -70.0% | -40.3% |
 | `@n8n/typeorm` | -37.9% | -68.7% |
-| `n8n` | -77.9% | -24.4% |
+| `n8n` | -75.5% | -71.3% |
 
 ```
 === @n8n/agents — median times (Δ vs "before") ===
@@ -175,11 +175,11 @@ build:
 === n8n — median times (Δ vs "before") ===
 
 typecheck:
-  before              20.07s
-  after                4.43s  -15640ms (-77.9%)
+  before              20.87s
+  after                5.12s  -15750ms (-75.5%)
 
 build:
-  before              17.55s
-  after               13.27s  -4276ms (-24.4%)
+  before              12.86s
+  after                3.69s  -9172ms (-71.3%)
 ```
 
