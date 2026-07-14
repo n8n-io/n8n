@@ -5,17 +5,25 @@
  * that was simulated only because its credentials were mocked goes stale the
  * moment a real credential is assigned — via the setup flow, the
  * apply-workflow-credentials tool, or a manual selection in the editor — since
- * none of those paths rebuild the workflow. This module re-derives the plan
- * for exactly those nodes from the live workflow so verification stops
- * replaying the build-time mock.
+ * none of those paths rebuild the workflow. The same applies to AI roots
+ * simulated because their language-model sub-node had no credentials. This
+ * module re-derives the plan for exactly those nodes from the live workflow
+ * so verification stops replaying the build-time mock.
  */
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { classifyNodesForSimulation } from './classify-node-destructiveness.service';
 import { isAiGatewayManagedCredential } from './credential-utils';
+import {
+	CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
+	findCredentiallessAiRoots,
+} from './plan-verification-simulation';
 import type { CredentialMap } from './resolve-credentials';
-import type { WorkflowBuildOutcome } from '../../workflow-loop/workflow-loop-state';
+import type {
+	NodeSimulationVerdict,
+	WorkflowBuildOutcome,
+} from '../../workflow-loop/workflow-loop-state';
 
 export type SimulationPlanPatch = Pick<
 	WorkflowBuildOutcome,
@@ -60,6 +68,9 @@ function nodeCredentials(
  * for real. Verdicts of untouched nodes — including build-time LLM decisions
  * and declared-output overrides — are preserved as-is.
  */
+const AI_ROOT_CREDENTIALS_RESTORED_REASON =
+	'Language model sub-node now has configured credentials — node executes during verification';
+
 export async function reconcileSimulationPlan(args: {
 	buildOutcome: WorkflowBuildOutcome;
 	workflow: WorkflowJSON;
@@ -68,8 +79,6 @@ export async function reconcileSimulationPlan(args: {
 	const { buildOutcome, workflow, availableCredentials } = args;
 
 	const mockedEntries = Object.entries(buildOutcome.mockedCredentialsByNode ?? {});
-	if (mockedEntries.length === 0) return undefined;
-
 	const satisfiedNames = new Set(
 		mockedEntries
 			.filter(([nodeName, mockedTypes]) => {
@@ -85,39 +94,85 @@ export async function reconcileSimulationPlan(args: {
 			})
 			.map(([nodeName]) => nodeName),
 	);
-	if (satisfiedNames.size === 0) return undefined;
 
 	const remainingEntries = mockedEntries.filter(([nodeName]) => !satisfiedNames.has(nodeName));
 	const remainingMockedNames = (
 		buildOutcome.mockedNodeNames ?? mockedEntries.map(([nodeName]) => nodeName)
 	).filter((nodeName) => !satisfiedNames.has(nodeName));
 
+	// The credentialless-AI-root override sits on the ROOT but derives from the
+	// MODEL sub-node's credentials. Sub-nodes are not main-flow, so the scoped
+	// re-classification below never refreshes it — re-derive the set from the
+	// live workflow instead, and flip roots whose model is credentialed now.
+	const credentiallessRoots = findCredentiallessAiRoots(workflow, new Set(remainingMockedNames));
+	const restoredAiRoots = new Set(
+		(buildOutcome.nodeSimulationPlan ?? [])
+			.filter(
+				(verdict) =>
+					verdict.verdict === 'simulate' &&
+					verdict.reason === CREDENTIALLESS_AI_ROOT_SIMULATION_REASON &&
+					!credentiallessRoots.has(verdict.nodeName),
+			)
+			.map((verdict) => verdict.nodeName),
+	);
+
+	if (satisfiedNames.size === 0 && restoredAiRoots.size === 0) return undefined;
+
 	// Scope classification to the satisfied nodes so the ambiguous-node LLM
 	// pass never re-judges the rest of the workflow.
-	const scopedWorkflow: WorkflowJSON = {
-		...workflow,
-		nodes: (workflow.nodes ?? []).filter(
-			(node) => typeof node.name === 'string' && satisfiedNames.has(node.name),
-		),
-	};
-	const freshVerdicts = await classifyNodesForSimulation({
-		workflow: scopedWorkflow,
-		mockedNodeNames: remainingMockedNames,
-	});
-	const freshVerdictByName = new Map(freshVerdicts.map((verdict) => [verdict.nodeName, verdict]));
+	let freshVerdictByName = new Map<string, NodeSimulationVerdict>();
+	if (satisfiedNames.size > 0) {
+		const scopedWorkflow: WorkflowJSON = {
+			...workflow,
+			nodes: (workflow.nodes ?? []).filter(
+				(node) => typeof node.name === 'string' && satisfiedNames.has(node.name),
+			),
+		};
+		const freshVerdicts = await classifyNodesForSimulation({
+			workflow: scopedWorkflow,
+			mockedNodeNames: remainingMockedNames,
+		});
+		freshVerdictByName = new Map(freshVerdicts.map((verdict) => [verdict.nodeName, verdict]));
+	}
 
 	// A satisfied node without a fresh verdict (e.g. no longer on the main
 	// flow) keeps its stored verdict — losing coverage is worse than an extra
-	// simulation.
-	const nodeSimulationPlan = buildOutcome.nodeSimulationPlan?.map((verdict) =>
-		satisfiedNames.has(verdict.nodeName)
-			? (freshVerdictByName.get(verdict.nodeName) ?? verdict)
-			: verdict,
-	);
+	// simulation. Restored AI roots are deterministically safe by type, so
+	// flipping straight to execute matches what a rebuild would classify.
+	const nodeSimulationPlan = buildOutcome.nodeSimulationPlan?.map((verdict) => {
+		if (satisfiedNames.has(verdict.nodeName)) {
+			return freshVerdictByName.get(verdict.nodeName) ?? verdict;
+		}
+		if (restoredAiRoots.has(verdict.nodeName)) {
+			return {
+				...verdict,
+				verdict: 'execute' as const,
+				reason: AI_ROOT_CREDENTIALS_RESTORED_REASON,
+				confidence: 'high' as const,
+				source: 'deterministic' as const,
+			};
+		}
+		return verdict;
+	});
 
 	const retainedFixtureEntries = Object.entries(buildOutcome.simulationFixtures ?? {}).filter(
-		([nodeName]) => freshVerdictByName.get(nodeName)?.verdict !== 'execute',
+		([nodeName]) =>
+			freshVerdictByName.get(nodeName)?.verdict !== 'execute' && !restoredAiRoots.has(nodeName),
 	);
+	const simulationFixtures =
+		retainedFixtureEntries.length > 0 ? Object.fromEntries(retainedFixtureEntries) : undefined;
+
+	// Mocked-credential bookkeeping only changes when a mock was satisfied; an
+	// AI-root-only refresh must not wipe it.
+	if (satisfiedNames.size === 0) {
+		return {
+			mockedNodeNames: buildOutcome.mockedNodeNames,
+			mockedCredentialTypes: buildOutcome.mockedCredentialTypes,
+			mockedCredentialsByNode: buildOutcome.mockedCredentialsByNode,
+			nodeSimulationPlan,
+			simulationFixtures,
+		};
+	}
 
 	const hasRemainingMocks = remainingEntries.length > 0;
 	const patch: SimulationPlanPatch = {
@@ -127,8 +182,7 @@ export async function reconcileSimulationPlan(args: {
 			: undefined,
 		mockedCredentialsByNode: hasRemainingMocks ? Object.fromEntries(remainingEntries) : undefined,
 		nodeSimulationPlan,
-		simulationFixtures:
-			retainedFixtureEntries.length > 0 ? Object.fromEntries(retainedFixtureEntries) : undefined,
+		simulationFixtures,
 	};
 
 	// The mocked-credentials requirement is settled; complete-checkpoint
