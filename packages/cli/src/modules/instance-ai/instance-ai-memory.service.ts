@@ -23,9 +23,11 @@ import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
+	messageParserStats,
 	parseStoredMessages,
 } from './message-parser';
 import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
@@ -96,6 +98,7 @@ export class InstanceAiMemoryService {
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly checkpointRepository: InstanceAiCheckpointRepository,
 		private readonly pendingConfirmationRepository: InstanceAiPendingConfirmationRepository,
+		private readonly durableLogMetrics: DurableLogMetrics,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -244,7 +247,11 @@ export class InstanceAiMemoryService {
 		const checkpointMessages = await this.loadInFlightCheckpointMessages(threadId);
 		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
 
+		const fallbacksBefore = messageParserStats.fallbackActivations;
 		const messages = parseStoredMessages(storedMessages, snapshots);
+		this.durableLogMetrics.notifyParserFallbacks(
+			messageParserStats.fallbackActivations - fallbacksBefore,
+		);
 		await this.flagExpiredConfirmations(messages);
 
 		const projectId = await this.agentMemory.getThreadProjectId(threadId);
