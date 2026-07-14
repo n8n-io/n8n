@@ -99,8 +99,6 @@ function createNdvStub(overrides: NdvOverrides = {}) {
 		onOpenAddToolModal: vi.fn(),
 		onOpenToolFromList: vi.fn(),
 		onRemoveTool: vi.fn(),
-		onQuickActionAddTool: vi.fn(),
-		onQuickActionAddMcpServers: vi.fn(),
 		onOpenAddSkillModal: vi.fn(),
 		onOpenSkillFromList: vi.fn(),
 		onRemoveSkill: vi.fn(),

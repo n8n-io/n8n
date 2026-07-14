@@ -7,6 +7,9 @@ import {
 	parseN8nChatActionInput,
 } from '../n8nChatInteraction';
 import { convertDbMessages, rebuildInteractiveFromHistory } from '../messageMappers';
+import type { SummaryI18n } from '../interactiveSummary';
+
+const i18n = { baseText: (key: string) => key } as SummaryI18n;
 
 const cardInput = {
 	action: 'respond',
@@ -214,7 +217,7 @@ describe('convertDbMessages — open-card-preference regression', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages);
+		const chat = convertDbMessages(dbMessages, i18n);
 		const msg = chat[0];
 
 		expect(msg.interactive?.toolCallId).toBe('open-tc');

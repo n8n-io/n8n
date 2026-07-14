@@ -141,7 +141,6 @@ async function onSubmit() {
 		);
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
-			mode: 'test',
 			status: props.agentStatus,
 			agentConfig: fingerprint,
 		});
@@ -198,7 +197,6 @@ onBeforeUnmount(() => {
 			:messages="messages"
 			:messaging-state="messagingState"
 			:project-id="projectId"
-			:agent-id="agentId"
 			@resume="resume"
 		/>
 

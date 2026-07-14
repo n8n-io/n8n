@@ -11,21 +11,9 @@ import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
 import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
 import type { NodeCatalogService } from '@/node-catalog';
 
-import { AgentsBuilderService, resolveBuilderThreadId } from '../agents-builder.service';
+import { AgentsBuilderService } from '../agents-builder.service';
 import type { AgentsBuilderSettingsService } from '../agents-builder-settings.service';
 import type { AgentsBuilderToolsService } from '../agents-builder-tools.service';
-
-describe('resolveBuilderThreadId', () => {
-	it('defaults to the builder thread prefix', () => {
-		expect(resolveBuilderThreadId('agent-1')).toBe('builder:agent-1');
-	});
-
-	it('uses the override when provided', () => {
-		expect(resolveBuilderThreadId('agent-1', 'ia-builder:thread-9:agent-1')).toBe(
-			'ia-builder:thread-9:agent-1',
-		);
-	});
-});
 
 // The `Agent`/`Memory` SDK classes are dynamically imported inside
 // `createBuilderAgent` (`await import('@n8n/agents')`). Stubbing them here lets
@@ -198,6 +186,8 @@ function setup(
 	};
 }
 
+const baseSession = { threadId: 'ia-builder:t:agent-1' };
+
 describe('AgentsBuilderService session isolation', () => {
 	beforeEach(() => {
 		agentsSdkMocks.streamCalls.length = 0;
@@ -207,13 +197,11 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.skillsCalls.length = 0;
 	});
 
-	it('uses the session threadId override for stream persistence when a session is provided', async () => {
+	it('uses the session threadId for stream persistence', async () => {
 		const { service, user, credentialProvider } = setup();
 
 		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				threadId: 'ia-builder:t:agent-1',
-			}),
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
 		);
 
 		expect(agentsSdkMocks.streamCalls).toHaveLength(1);
@@ -222,36 +210,12 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 	});
 
-	it('defaults stream persistence to builder:<agentId> without a session', async () => {
-		const { service, user, credentialProvider } = setup();
-
-		await drain(service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user));
-
-		expect(agentsSdkMocks.streamCalls).toHaveLength(1);
-		expect(agentsSdkMocks.streamCalls[0]?.options.persistence.threadId).toBe('builder:agent-1');
-	});
-
-	it('reads agents-UI builder chat history from builder:<agentId> regardless of prior instance-AI session usage', async () => {
-		const { service, memoryImplementation, user, credentialProvider } = setup();
-
-		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				threadId: 'ia-builder:t:agent-1',
-			}),
-		);
-
-		await service.getBuilderMessages('agent-1');
-
-		expect(memoryImplementation.getMessages).toHaveBeenCalledWith('builder:agent-1');
-		expect(memoryImplementation.getMessages).not.toHaveBeenCalledWith('ia-builder:t:agent-1');
-	});
-
 	it('appends the session instructionsAddendum to the built prompt when provided', async () => {
 		const { service, user, credentialProvider } = setup();
 
 		await drain(
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				threadId: 'ia-builder:t:agent-1',
+				...baseSession,
 				instructionsAddendum: 'Extra sub-agent rules go here.',
 			}),
 		);
@@ -264,7 +228,9 @@ describe('AgentsBuilderService session isolation', () => {
 	it('does not append anything to the prompt when instructionsAddendum is absent', async () => {
 		const { service, user, credentialProvider } = setup();
 
-		await drain(service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user));
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+		);
 
 		expect(agentsSdkMocks.instructionsCalls).toHaveLength(1);
 		expect(agentsSdkMocks.instructionsCalls[0]).not.toContain('Extra sub-agent rules');
@@ -276,59 +242,29 @@ describe('AgentsBuilderService session isolation', () => {
 			shared: [fakeTool('ask_credential')],
 		});
 
-		await drain(service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user));
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+		);
 
 		expect(agentsSdkMocks.registeredToolNames).toEqual(
 			expect.arrayContaining(['resolve_llm', 'read_config', 'ask_credential']),
 		);
 	});
 
-	it('omits standard tools named in session.excludeTools while still registering the rest', async () => {
-		const { service, user, credentialProvider } = setup({
-			json: [fakeTool('ask_questions'), fakeTool('read_config')],
-			shared: [fakeTool('ask_credential')],
-		});
-
-		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				threadId: 'ia-builder:t:agent-1',
-				excludeTools: ['ask_questions'],
-			}),
-		);
-
-		expect(agentsSdkMocks.registeredToolNames).not.toContain('ask_questions');
-		expect(agentsSdkMocks.registeredToolNames).toEqual(
-			expect.arrayContaining(['read_config', 'ask_credential']),
-		);
-	});
-
-	it('omits the integrations skill when session.excludeTools excludes configure_channel', async () => {
-		const { service, user, credentialProvider } = setup();
-
-		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				threadId: 'ia-builder:t:agent-1',
-				excludeTools: ['configure_channel'],
-			}),
-		);
-
-		expect(agentsSdkMocks.skillsCalls).toHaveLength(1);
-		const skills = agentsSdkMocks.skillsCalls[0] as Array<{ id: string }>;
-		expect(skills.some((skill) => skill.id === 'agent-builder-integrations')).toBe(false);
-	});
-
-	it('cancelCheckpoint delegates to n8nCheckpointStorage.delete', async () => {
+	it('cancelCheckpoint expires the checkpoint scoped to the agent', async () => {
 		const { service, n8nCheckpointStorage } = setup();
 
-		await service.cancelCheckpoint('run-1');
+		await service.cancelCheckpoint('agent-1', 'run-1');
 
-		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1');
+		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
 	});
 
-	it('includes the integrations skill without a session', async () => {
+	it('includes the integrations skill', async () => {
 		const { service, user, credentialProvider } = setup();
 
-		await drain(service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user));
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+		);
 
 		const skills = agentsSdkMocks.skillsCalls[0] as Array<{ id: string }>;
 		expect(skills.some((skill) => skill.id === 'agent-builder-integrations')).toBe(true);
@@ -339,7 +275,7 @@ describe('AgentsBuilderService session isolation', () => {
 
 		await drain(
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				threadId: 'ia-builder:t:agent-1',
+				...baseSession,
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 			}),
 		);
@@ -351,7 +287,9 @@ describe('AgentsBuilderService session isolation', () => {
 	it('falls back to resolveModelConfig when session.modelConfig is absent', async () => {
 		const { service, user, credentialProvider, builderSettings } = setup();
 
-		await drain(service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user));
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+		);
 
 		expect(agentsSdkMocks.modelCalls).toEqual(['anthropic/claude-3-5-haiku']);
 		expect(builderSettings.resolveModelConfig).toHaveBeenCalledWith(user);

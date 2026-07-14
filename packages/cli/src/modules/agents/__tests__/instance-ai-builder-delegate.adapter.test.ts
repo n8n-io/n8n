@@ -243,13 +243,13 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 	});
 
 	describe('cancelOpenSuspension', () => {
-		it('calls agentsBuilderService.cancelCheckpoint(runId)', async () => {
+		it('calls agentsBuilderService.cancelCheckpoint(agentId, runId)', async () => {
 			const { delegate, agentsBuilderService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 
 			await delegate.cancelOpenSuspension('agent-1', 'run-1');
 
-			expect(agentsBuilderService.cancelCheckpoint).toHaveBeenCalledWith('run-1');
+			expect(agentsBuilderService.cancelCheckpoint).toHaveBeenCalledWith('agent-1', 'run-1');
 		});
 
 		it('rejects when the user lacks agent:update scope', async () => {

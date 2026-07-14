@@ -14,6 +14,9 @@
  * both re-derived from persistence (no in-memory state carried across the
  * suspend boundary) and checked for identity against the `builderCheckpoint`
  * ref persisted in the cascaded payload before the answer is routed back.
+ * If the user abandons a cascaded question (cancel, steering message, or
+ * confirmation timeout), the builder-side checkpoint is not cleaned up
+ * eagerly — it expires via the agents module's checkpoint TTL pruning.
  *
  * The builder session is keyed to an instance-AI-scoped thread id
  * (`ia-builder:<threadId>:<agentId>`) so nothing appears in the agents-module
@@ -22,6 +25,7 @@
 import type { InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents';
 import {
+	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	BUILDER_NOT_CONFIGURED_CODE,
 	CONFIG_MUTATION_TOOL_NAMES,
 	channelSuspendPayloadSchema,
@@ -55,6 +59,18 @@ function isBuilderNotConfiguredError(error: unknown): boolean {
 	return isRecord(error) && error.code === BUILDER_NOT_CONFIGURED_CODE;
 }
 
+/** `AgentsBuilderService.resumeBuild` throws `BuilderCheckpointUnavailableError`
+ *  (stable `code`, shared via `@n8n/api-types`) when the checkpoint being
+ *  resumed has expired or no longer exists. */
+function isBuilderCheckpointUnavailableError(error: unknown): boolean {
+	return isRecord(error) && error.code === BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
+}
+
+/** Either friendly-mappable failure this tool recognizes mid-stream. */
+function isFriendlyMappableBuilderError(error: unknown): boolean {
+	return isBuilderNotConfiguredError(error) || isBuilderCheckpointUnavailableError(error);
+}
+
 function didUpdateConfig(workSummary: WorkSummary): boolean {
 	const mutationToolNames = new Set<string>(CONFIG_MUTATION_TOOL_NAMES);
 	return workSummary.toolCalls.some(
@@ -78,6 +94,16 @@ function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): s
 function buildOutboundMessage(message: string, workflowContext?: SessionWorkflowRef[]): string {
 	if (!workflowContext || workflowContext.length === 0) return message;
 	return `${message}\n\n${formatWorkflowContextEnvelope(workflowContext)}`;
+}
+
+/** Builder sessions are keyed per assistant thread + target agent; the resume
+ *  leg must reconstruct this byte-identically after a restart. */
+function builderSessionFor(context: OrchestrationContext, agentId: string) {
+	return { threadId: `ia-builder:${context.threadId}:${agentId}`, modelConfig: context.modelId };
+}
+
+function builderAgentIdFor(agentId: string): string {
+	return `agent-builder:${agentId}`;
 }
 
 const buildAgentInputSchema = z.object({
@@ -222,13 +248,14 @@ async function finishTurn(
 	}
 
 	const error = `The agent builder run ${result.status}.`;
+	const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
 	context.eventBus.publish(context.threadId, {
 		type: 'agent-completed',
 		runId: context.runId,
 		agentId: builderAgentId,
 		payload: { role: 'agent-builder', result: '', error },
 	});
-	return { ok: false, error };
+	return { ok: false, error, configUpdated };
 }
 
 /**
@@ -264,7 +291,14 @@ async function runBuilderConsumeLoop(params: {
 			abortSignal: context.abortSignal,
 		});
 	} catch (error) {
-		publishAgentBuilderFailure(context, builderAgentId, error);
+		// `buildAgent`/`resumeBuild` on the delegate are async generators: calling
+		// them never throws, so errors from their bodies (builder-not-configured,
+		// an expired/missing checkpoint) only surface here, during consumption —
+		// not from the `delegate.streamBuild`/`resumeBuild` call sites.
+		const message = publishAgentBuilderFailure(context, builderAgentId, error);
+		if (isFriendlyMappableBuilderError(error)) {
+			return { ok: false, error: message, configUpdated: carriedConfigUpdated };
+		}
 		throw error;
 	}
 
@@ -297,7 +331,7 @@ async function runBuilderConsumeLoop(params: {
 		const message =
 			"The agent builder's confirmation request could not be shown in this chat; the build turn was cancelled.";
 		publishAgentBuilderFailure(context, builderAgentId, new Error(message));
-		return { ok: false, error: message };
+		return { ok: false, error: message, configUpdated: configUpdatedSoFar };
 	}
 
 	// The builder-level requestId must not leak up: the FE confirms against the
@@ -339,17 +373,22 @@ async function handleResume(
 
 	const target = await resolveAgentBuilderTarget(domainContext);
 	if (!target) {
-		return { ok: false, error: 'No agent build in progress for this conversation.' };
+		return {
+			ok: false,
+			error: 'No agent build in progress for this conversation.',
+			configUpdated: ref.configUpdated,
+		};
 	}
 
-	const session = {
-		threadId: `ia-builder:${context.threadId}:${target.agentId}`,
-		modelConfig: context.modelId,
-	};
+	const session = builderSessionFor(context, target.agentId);
 
 	const openSuspensions = await delegate.findOpenSuspensions(target.agentId, session);
 	if (openSuspensions.length === 0) {
-		return { ok: false, error: 'The builder question this answer belongs to is no longer open.' };
+		return {
+			ok: false,
+			error: 'The builder question this answer belongs to is no longer open.',
+			configUpdated: ref.configUpdated,
+		};
 	}
 
 	const matches = openSuspensions.some(
@@ -360,10 +399,11 @@ async function handleResume(
 			ok: false,
 			error:
 				"The answer does not match the builder's open question (stale or superseded suspension). Ask the user again with a fresh build-agent call.",
+			configUpdated: ref.configUpdated,
 		};
 	}
 
-	const builderAgentId = `agent-builder:${target.agentId}`;
+	const builderAgentId = builderAgentIdFor(target.agentId);
 	let turn: BuilderTurnStream;
 	try {
 		turn = await delegate.resumeBuild(
@@ -372,10 +412,11 @@ async function handleResume(
 			session,
 		);
 	} catch (error) {
-		const message = publishAgentBuilderFailure(context, builderAgentId, error);
-		if (isBuilderNotConfiguredError(error)) {
-			return { ok: false, error: message };
-		}
+		// Only genuinely call-time-reachable errors land here (e.g. the scope
+		// check in the delegate adapter) — see the comment in
+		// `runBuilderConsumeLoop`'s catch for why builder-not-configured/expired-
+		// checkpoint errors can't surface at this call site.
+		publishAgentBuilderFailure(context, builderAgentId, error);
 		throw error;
 	}
 
@@ -449,12 +490,9 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			}
 			const boundTarget: AgentBuilderTarget = target;
 
-			const session = {
-				threadId: `ia-builder:${context.threadId}:${boundTarget.agentId}`,
-				modelConfig: context.modelId,
-			};
+			const session = builderSessionFor(context, boundTarget.agentId);
 			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext);
-			const builderAgentId = `agent-builder:${boundTarget.agentId}`;
+			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 
 			publishAgentSpawned(context, builderAgentId, boundTarget);
 
@@ -462,10 +500,11 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			try {
 				turn = await delegate.streamBuild(boundTarget.agentId, outboundMessage, session);
 			} catch (error) {
-				const message = publishAgentBuilderFailure(context, builderAgentId, error);
-				if (isBuilderNotConfiguredError(error)) {
-					return { ok: false, error: message };
-				}
+				// Only genuinely call-time-reachable errors land here (e.g. the scope
+				// check in the delegate adapter) — see the comment in
+				// `runBuilderConsumeLoop`'s catch for why builder-not-configured/expired-
+				// checkpoint errors can't surface at this call site.
+				publishAgentBuilderFailure(context, builderAgentId, error);
 				throw error;
 			}
 

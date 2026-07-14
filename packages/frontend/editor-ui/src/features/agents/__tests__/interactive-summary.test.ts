@@ -1,84 +1,64 @@
 import { describe, expect, it } from 'vitest';
+import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import {
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_QUESTIONS_TOOL_NAME,
-	CONFIGURE_CHANNEL_TOOL_NAME,
-	N8N_CHAT_ACTION_TOOL_NAME,
-} from '@n8n/api-types';
-import {
-	summariseInteractiveOutput,
 	summariseToolCall,
+	type SummaryI18n,
 } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
-describe('summariseInteractiveOutput', () => {
+function createSummaryI18n(): SummaryI18n {
+	return {
+		baseText: (key: string) => key,
+	} as SummaryI18n;
+}
+
+describe('summariseToolCall', () => {
+	const i18n = createSummaryI18n();
+
 	it('returns undefined for non-interactive tool names', () => {
-		expect(summariseInteractiveOutput('search_nodes', { foo: 'bar' })).toBeUndefined();
+		expect(summariseToolCall('search_nodes', { foo: 'bar' }, i18n)).toBeUndefined();
 	});
 
 	it('returns undefined when output is missing', () => {
-		expect(summariseInteractiveOutput(ASK_QUESTIONS_TOOL_NAME, undefined)).toBeUndefined();
+		expect(summariseToolCall(N8N_CHAT_ACTION_TOOL_NAME, undefined, i18n)).toBeUndefined();
 	});
 
 	it.each([null, 'oops', 42, true, ['x']])(
 		'returns undefined for non-object output (%p)',
 		(value) => {
-			expect(summariseInteractiveOutput(ASK_CREDENTIAL_TOOL_NAME, value)).toBeUndefined();
-			expect(summariseInteractiveOutput(ASK_QUESTIONS_TOOL_NAME, value)).toBeUndefined();
+			expect(summariseToolCall(N8N_CHAT_ACTION_TOOL_NAME, value, i18n)).toBeUndefined();
 		},
 	);
 
-	it('joins ask_questions answer labels when output is present', () => {
-		const output = {
-			answered: true,
-			answers: [
-				{ questionId: 'q1', selectedOptions: ['Slack', 'Discord'] },
-				{ questionId: 'q2', selectedOptions: [], skipped: true },
-			],
-		};
-		expect(summariseInteractiveOutput(ASK_QUESTIONS_TOOL_NAME, output)).toBe('Slack, Discord');
-	});
-
-	it('returns undefined when every ask_questions answer was skipped', () => {
-		const output = {
-			answered: false,
-			answers: [{ questionId: 'q1', selectedOptions: [], skipped: true }],
-		};
-		expect(summariseInteractiveOutput(ASK_QUESTIONS_TOOL_NAME, output)).toBeUndefined();
-	});
-
-	it('renders ask_credential credential name', () => {
+	it('does not summarise delegate_subagent; AgentChatToolSteps owns the i18n summary', () => {
 		expect(
-			summariseInteractiveOutput(ASK_CREDENTIAL_TOOL_NAME, {
-				credentialId: 'c1',
-				credentialName: 'My Slack',
-			}),
-		).toBe('My Slack');
+			summariseToolCall(
+				DELEGATE_SUB_AGENT_TOOL_NAME,
+				{ status: 'completed', answer: 'Done', model: 'anthropic/claude-haiku-4-5' },
+				i18n,
+				{ subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+			),
+		).toBeUndefined();
 	});
 
-	it('renders ask_credential skip', () => {
-		expect(summariseInteractiveOutput(ASK_CREDENTIAL_TOOL_NAME, { skipped: true })).toBe('Skipped');
-	});
-
-	it('renders the optimistic resume shape as Selected before the real output arrives', () => {
+	it('does not summarise write_todos; AgentChatToolSteps owns the i18n summary', () => {
 		expect(
-			summariseToolCall(ASK_CREDENTIAL_TOOL_NAME, { credentials: { slackApi: 'cred-1' } }),
-		).toBe('Selected');
-		expect(summariseToolCall(ASK_CREDENTIAL_TOOL_NAME, { credentials: {} })).toBeUndefined();
-	});
-
-	it('renders configure_channel connected/skipped', () => {
-		expect(summariseInteractiveOutput(CONFIGURE_CHANNEL_TOOL_NAME, { connected: true })).toBe(
-			'Connected',
-		);
-		expect(summariseInteractiveOutput(CONFIGURE_CHANNEL_TOOL_NAME, { connected: false })).toBe(
-			'Skipped',
-		);
+			summariseToolCall(
+				WRITE_TODOS_TOOL_NAME,
+				{
+					status: 'ok',
+					todoCount: 2,
+					todos: [],
+				},
+				i18n,
+			),
+		).toBeUndefined();
 	});
 });
 
-describe('summariseInteractiveOutput — n8n_chat_action', () => {
+describe('summariseToolCall — n8n_chat_action', () => {
+	const i18n = createSummaryI18n();
 	const cardInput = {
 		action: 'respond',
 		input: {
@@ -99,9 +79,10 @@ describe('summariseInteractiveOutput — n8n_chat_action', () => {
 
 	it('resolves the clicked button to its label', () => {
 		expect(
-			summariseInteractiveOutput(
+			summariseToolCall(
 				N8N_CHAT_ACTION_TOOL_NAME,
 				{ type: 'button', value: 'approve_send' },
+				i18n,
 				cardInput,
 			),
 		).toBe('Approve & Send');
@@ -117,9 +98,10 @@ describe('summariseInteractiveOutput — n8n_chat_action', () => {
 			},
 		};
 		expect(
-			summariseInteractiveOutput(
+			summariseToolCall(
 				N8N_CHAT_ACTION_TOOL_NAME,
 				{ type: 'button', value: 'confirm' },
+				i18n,
 				textButtonInput,
 			),
 		).toBe('Confirm & Send');
@@ -127,9 +109,10 @@ describe('summariseInteractiveOutput — n8n_chat_action', () => {
 
 	it('resolves a selected option to its label', () => {
 		expect(
-			summariseInteractiveOutput(
+			summariseToolCall(
 				N8N_CHAT_ACTION_TOOL_NAME,
 				{ type: 'select', id: 'next_step', value: 'call' },
+				i18n,
 				cardInput,
 			),
 		).toBe('Schedule a call');
@@ -137,9 +120,10 @@ describe('summariseInteractiveOutput — n8n_chat_action', () => {
 
 	it('falls back to the raw value when no component matches', () => {
 		expect(
-			summariseInteractiveOutput(
+			summariseToolCall(
 				N8N_CHAT_ACTION_TOOL_NAME,
 				{ type: 'button', value: 'unknown' },
+				i18n,
 				cardInput,
 			),
 		).toBe('unknown');
@@ -147,29 +131,7 @@ describe('summariseInteractiveOutput — n8n_chat_action', () => {
 
 	it('returns undefined for display-only action results', () => {
 		expect(
-			summariseInteractiveOutput(N8N_CHAT_ACTION_TOOL_NAME, { ok: true }, cardInput),
-		).toBeUndefined();
-	});
-});
-
-describe('summariseToolCall', () => {
-	it('does not summarise delegate_subagent; AgentChatToolSteps owns the i18n summary', () => {
-		expect(
-			summariseToolCall(
-				DELEGATE_SUB_AGENT_TOOL_NAME,
-				{ status: 'completed', answer: 'Done', model: 'anthropic/claude-haiku-4-5' },
-				{ subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
-			),
-		).toBeUndefined();
-	});
-
-	it('does not summarise write_todos; AgentChatToolSteps owns the i18n summary', () => {
-		expect(
-			summariseToolCall(WRITE_TODOS_TOOL_NAME, {
-				status: 'ok',
-				todoCount: 2,
-				todos: [],
-			}),
+			summariseToolCall(N8N_CHAT_ACTION_TOOL_NAME, { ok: true }, i18n, cardInput),
 		).toBeUndefined();
 	});
 });

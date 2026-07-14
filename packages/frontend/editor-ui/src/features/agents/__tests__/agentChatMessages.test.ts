@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_QUESTIONS_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	type AgentPersistedMessageContentPart,
@@ -14,44 +12,12 @@ import {
 	rebuildInteractiveFromHistory,
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import { buildDisplayGroups, isGroupable } from '@/features/ai/shared/agentsChat/displayGroups';
+import type { SummaryI18n } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
-/** A full `credentialSuspendPayloadSchema`-shaped input, for fixtures that construct `InteractivePayload` literals directly (bypassing `rebuildInteractiveFromHistory`'s raw-args fallback). */
-function credentialSuspendInput(credentialType: string, reason: string) {
-	return {
-		requestId: 'req-1',
-		message: reason,
-		severity: 'info' as const,
-		credentialRequests: [{ credentialType, reason, existingCredentials: [] }],
-		credentialFlow: { stage: 'generic' as const },
-	};
-}
-
-/** A full `questionsSuspendPayloadSchema`-shaped input, for fixtures that construct `InteractivePayload` literals directly. */
-function questionsSuspendInput(question: string) {
-	return {
-		requestId: 'req-q1',
-		message: question,
-		severity: 'info' as const,
-		inputType: 'questions' as const,
-		questions: [{ id: 'q1', question, type: 'text' as const }],
-	};
-}
+const i18n = { baseText: (key: string) => key } as SummaryI18n;
 
 describe('rebuildInteractiveFromHistory', () => {
-	it('rebuilds an ask_credential card with skipped resolved value', () => {
-		const result = rebuildInteractiveFromHistory({
-			tool: ASK_CREDENTIAL_TOOL_NAME,
-			toolCallId: 'call-2',
-			input: { purpose: 'slack', credentialType: 'slackApi' },
-			output: { skipped: true },
-			state: 'done',
-		});
-
-		expect(result?.toolName).toBe(ASK_CREDENTIAL_TOOL_NAME);
-		expect(result?.resolvedValue).toEqual({ skipped: true });
-	});
-
 	it('returns undefined for non-interactive tool names', () => {
 		const result = rebuildInteractiveFromHistory({
 			tool: 'write_config',
@@ -107,83 +73,6 @@ describe('rebuildInteractiveFromHistory', () => {
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {
-	it('reconstructs an OPEN interactive card when tool-call block has state:pending', () => {
-		const dbMessages: AgentPersistedMessageDto[] = [
-			{
-				id: 'm1',
-				role: 'user',
-				content: [{ type: 'text', text: 'Build me an agent' }],
-			},
-			{
-				id: 'm2',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: ASK_QUESTIONS_TOOL_NAME,
-						toolCallId: 'call-q-1',
-						input: {
-							questions: [{ id: 'q1', question: 'Which model?', type: 'text' }],
-						},
-						state: 'pending',
-					},
-				],
-			},
-		];
-
-		const chat = convertDbMessages(dbMessages);
-		expect(chat).toHaveLength(2);
-		const assistant = chat[1];
-		expect(assistant.role).toBe('assistant');
-		expect(assistant.status).toBe('awaitingUser');
-		expect(assistant.interactive?.toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
-		expect(assistant.interactive?.resolvedAt).toBeUndefined();
-		expect(assistant.toolCalls?.[0].state).toBe('suspended');
-	});
-
-	it('reconstructs a RESOLVED interactive card when tool-call block has state:resolved', () => {
-		const dbMessages: AgentPersistedMessageDto[] = [
-			{
-				id: 'm1',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: ASK_QUESTIONS_TOOL_NAME,
-						toolCallId: 'q-1',
-						input: {
-							questions: [
-								{
-									id: 'q1',
-									question: 'Where to post?',
-									type: 'single',
-									options: ['Slack', 'Discord'],
-								},
-							],
-						},
-						state: 'resolved',
-						output: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['Slack'] }] },
-					},
-				],
-			},
-		];
-
-		const chat = convertDbMessages(dbMessages);
-		expect(chat).toHaveLength(1);
-		const assistant = chat[0];
-		expect(assistant.toolCalls?.[0].state).toBe('done');
-		expect(assistant.toolCalls?.[0].output).toEqual({
-			answered: true,
-			answers: [{ questionId: 'q1', selectedOptions: ['Slack'] }],
-		});
-		expect(assistant.interactive?.toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
-		expect(assistant.interactive?.resolvedAt).toBeDefined();
-		expect(assistant.interactive?.resolvedValue).toEqual({
-			answered: true,
-			answers: [{ questionId: 'q1', selectedOptions: ['Slack'] }],
-		});
-	});
-
 	it('preserves multiple resolved n8n chat cards from one persisted assistant message', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{
@@ -230,7 +119,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages);
+		const chat = convertDbMessages(dbMessages, i18n);
 		const assistant = chat[0];
 
 		expect(assistant.toolCalls).toHaveLength(2);
@@ -271,7 +160,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const [assistant] = convertDbMessages(dbMessages);
+		const [assistant] = convertDbMessages(dbMessages, i18n);
 
 		expect(assistant.content).toBe('Before the card.After the card.');
 		expect(assistant.renderParts).toEqual([
@@ -299,7 +188,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages);
+		const chat = convertDbMessages(dbMessages, i18n);
 		expect(chat).toHaveLength(1);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('error');
@@ -324,7 +213,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages);
+		const chat = convertDbMessages(dbMessages, i18n);
 		expect(chat).toHaveLength(1);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('done');
@@ -350,7 +239,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages);
+		const chat = convertDbMessages(dbMessages, i18n);
 		expect(chat).toHaveLength(1);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('cancelled');
@@ -376,7 +265,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages);
+		const chat = convertDbMessages(dbMessages, i18n);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('error');
 		expect(tc?.output).toEqual({ status: 'failed', answer: '', error: 'child failed' });
@@ -400,7 +289,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages);
+		const chat = convertDbMessages(dbMessages, i18n);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('done');
 	});
@@ -427,7 +316,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages);
+		const chat = convertDbMessages(dbMessages, i18n);
 		expect(chat[0].toolCalls?.[0].displaySummary).toBeUndefined();
 		expect(chat[0].toolCalls?.[0].input).toEqual({
 			subAgentId: 'inline',
@@ -443,11 +332,11 @@ describe('isGroupable', () => {
 			id: 'm1',
 			role: 'assistant',
 			content: '',
-			toolCalls: [{ tool: ASK_QUESTIONS_TOOL_NAME, toolCallId: 'c1', state: 'suspended' }],
+			toolCalls: [{ tool: 'calculator', toolCallId: 'c1', state: 'suspended' }],
 			interactive: {
-				toolName: ASK_QUESTIONS_TOOL_NAME,
+				toolName: APPROVAL_TOOL_NAME,
 				toolCallId: 'c1',
-				input: questionsSuspendInput('Which model?'),
+				input: { type: 'approval', toolName: 'calculator', args: {} },
 			},
 			status: 'awaitingUser',
 		});
@@ -468,47 +357,47 @@ describe('isGroupable', () => {
 
 describe('buildDisplayGroups — interactive payloads', () => {
 	it('collects interactive payloads from each grouped message into the toolRun group', () => {
-		const groups = buildDisplayGroups([
-			// First grouped turn: a resolved ask_questions card
-			{
-				id: 'm1',
-				role: 'assistant',
-				content: '',
-				toolCalls: [{ tool: ASK_QUESTIONS_TOOL_NAME, toolCallId: 'c1', state: 'done' }],
-				interactive: {
-					toolName: ASK_QUESTIONS_TOOL_NAME,
-					toolCallId: 'c1',
-					input: questionsSuspendInput('Which model?'),
-					resolvedAt: 1,
-					resolvedValue: {
-						answered: true,
-						answers: [{ questionId: 'q1', selectedOptions: ['gpt-4'] }],
+		const groups = buildDisplayGroups(
+			[
+				// First grouped turn: a resolved approval card
+				{
+					id: 'm1',
+					role: 'assistant',
+					content: '',
+					toolCalls: [{ tool: 'tool_a', toolCallId: 'c1', state: 'done' }],
+					interactive: {
+						toolName: APPROVAL_TOOL_NAME,
+						toolCallId: 'c1',
+						input: { type: 'approval', toolName: 'tool_a', args: {} },
+						resolvedAt: 1,
+						resolvedValue: { approved: true },
 					},
+					status: 'success',
 				},
-				status: 'success',
-			},
-			// Second grouped turn: a normal tool call (no interactive)
-			{
-				id: 'm2',
-				role: 'assistant',
-				content: '',
-				toolCalls: [{ tool: 'search_nodes', toolCallId: 'c2', state: 'done' }],
-				status: 'success',
-			},
-			// Third grouped turn: an open ask_credential card
-			{
-				id: 'm3',
-				role: 'assistant',
-				content: '',
-				toolCalls: [{ tool: ASK_CREDENTIAL_TOOL_NAME, toolCallId: 'c3', state: 'suspended' }],
-				interactive: {
-					toolName: ASK_CREDENTIAL_TOOL_NAME,
-					toolCallId: 'c3',
-					input: credentialSuspendInput('slackApi', 'Slack'),
+				// Second grouped turn: a normal tool call (no interactive)
+				{
+					id: 'm2',
+					role: 'assistant',
+					content: '',
+					toolCalls: [{ tool: 'search_nodes', toolCallId: 'c2', state: 'done' }],
+					status: 'success',
 				},
-				status: 'awaitingUser',
-			},
-		]);
+				// Third grouped turn: an open approval card
+				{
+					id: 'm3',
+					role: 'assistant',
+					content: '',
+					toolCalls: [{ tool: 'tool_b', toolCallId: 'c3', state: 'suspended' }],
+					interactive: {
+						toolName: APPROVAL_TOOL_NAME,
+						toolCallId: 'c3',
+						input: { type: 'approval', toolName: 'tool_b', args: {} },
+					},
+					status: 'awaitingUser',
+				},
+			],
+			i18n,
+		);
 
 		expect(groups).toHaveLength(1);
 		const grouped = groups[0];
@@ -516,39 +405,42 @@ describe('buildDisplayGroups — interactive payloads', () => {
 		if (grouped.kind !== 'toolRun') return;
 		expect(grouped.toolCalls).toHaveLength(3);
 		expect(grouped.interactives).toHaveLength(2);
-		expect(grouped.interactives[0].toolName).toBe(ASK_QUESTIONS_TOOL_NAME);
+		expect(grouped.interactives[0].input).toMatchObject({ toolName: 'tool_a' });
 		expect(grouped.interactives[0].resolvedAt).toBeDefined();
-		expect(grouped.interactives[1].toolName).toBe(ASK_CREDENTIAL_TOOL_NAME);
+		expect(grouped.interactives[1].input).toMatchObject({ toolName: 'tool_b' });
 		expect(grouped.interactives[1].resolvedAt).toBeUndefined();
 	});
 
 	it('collects multiple interactive payloads from one grouped message', () => {
-		const groups = buildDisplayGroups([
-			{
-				id: 'm1',
-				role: 'assistant',
-				content: '',
-				toolCalls: [
-					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-1', state: 'done' },
-					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-2', state: 'done' },
-				],
-				interactives: [
-					{
-						toolName: N8N_CHAT_ACTION_TOOL_NAME,
-						toolCallId: 'card-1',
-						input: { card: { title: 'First card', components: [] } },
-						resolvedAt: 1,
-					},
-					{
-						toolName: N8N_CHAT_ACTION_TOOL_NAME,
-						toolCallId: 'card-2',
-						input: { card: { title: 'Second card', components: [] } },
-						resolvedAt: 1,
-					},
-				],
-				status: 'success',
-			},
-		]);
+		const groups = buildDisplayGroups(
+			[
+				{
+					id: 'm1',
+					role: 'assistant',
+					content: '',
+					toolCalls: [
+						{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-1', state: 'done' },
+						{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-2', state: 'done' },
+					],
+					interactives: [
+						{
+							toolName: N8N_CHAT_ACTION_TOOL_NAME,
+							toolCallId: 'card-1',
+							input: { card: { title: 'First card', components: [] } },
+							resolvedAt: 1,
+						},
+						{
+							toolName: N8N_CHAT_ACTION_TOOL_NAME,
+							toolCallId: 'card-2',
+							input: { card: { title: 'Second card', components: [] } },
+							resolvedAt: 1,
+						},
+					],
+					status: 'success',
+				},
+			],
+			i18n,
+		);
 
 		expect(groups).toHaveLength(1);
 		const grouped = groups[0];
@@ -558,44 +450,47 @@ describe('buildDisplayGroups — interactive payloads', () => {
 	});
 
 	it('merges duplicate persisted tool calls by id and keeps the resolved one', () => {
-		const chat = convertDbMessages([
-			{
-				id: 'user-1',
-				role: 'user',
-				content: [{ type: 'text', text: 'Can you fetch this page?' }],
-			},
-			{
-				id: 'assistant-pending',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'notion_notion-fetch',
-						toolCallId: 'toolu_1',
-						input: { id: 'https://app.notion.com/p/example' },
-						startTime: 1_000,
-					},
-				],
-			},
-			{
-				id: 'assistant-resolved',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'notion_notion-fetch',
-						toolCallId: 'toolu_1',
-						state: 'resolved',
-						output: { content: [{ type: 'text', text: 'Page contents' }] },
-						startTime: 2_000,
-						endTime: 2_000,
-					},
-					{ type: 'text', text: 'Here is the page I fetched.' },
-				],
-			},
-		]);
+		const chat = convertDbMessages(
+			[
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'Can you fetch this page?' }],
+				},
+				{
+					id: 'assistant-pending',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: 'notion_notion-fetch',
+							toolCallId: 'toolu_1',
+							input: { id: 'https://app.notion.com/p/example' },
+							startTime: 1_000,
+						},
+					],
+				},
+				{
+					id: 'assistant-resolved',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: 'notion_notion-fetch',
+							toolCallId: 'toolu_1',
+							state: 'resolved',
+							output: { content: [{ type: 'text', text: 'Page contents' }] },
+							startTime: 2_000,
+							endTime: 2_000,
+						},
+						{ type: 'text', text: 'Here is the page I fetched.' },
+					],
+				},
+			],
+			i18n,
+		);
 
-		const groups = buildDisplayGroups(chat);
+		const groups = buildDisplayGroups(chat, i18n);
 
 		expect(groups).toHaveLength(2);
 		const toolRun = groups[1];
@@ -624,11 +519,11 @@ describe('applyOpenSuspensions', () => {
 				id: 'm1',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: ASK_CREDENTIAL_TOOL_NAME, toolCallId: 'c-open', state: 'suspended' }],
+				toolCalls: [{ tool: 'tool_a', toolCallId: 'c-open', state: 'suspended' }],
 				interactive: {
-					toolName: ASK_CREDENTIAL_TOOL_NAME,
+					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'c-open',
-					input: credentialSuspendInput('slackApi', 'Slack'),
+					input: { type: 'approval', toolName: 'tool_a', args: {} },
 				},
 				status: 'awaitingUser',
 			},
@@ -636,16 +531,13 @@ describe('applyOpenSuspensions', () => {
 				id: 'm2',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: ASK_QUESTIONS_TOOL_NAME, toolCallId: 'c-resolved', state: 'done' }],
+				toolCalls: [{ tool: 'tool_b', toolCallId: 'c-resolved', state: 'done' }],
 				interactive: {
-					toolName: ASK_QUESTIONS_TOOL_NAME,
+					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'c-resolved',
-					input: questionsSuspendInput('Which model?'),
+					input: { type: 'approval', toolName: 'tool_b', args: {} },
 					resolvedAt: 1,
-					resolvedValue: {
-						answered: true,
-						answers: [{ questionId: 'q1', selectedOptions: ['gpt-4'] }],
-					},
+					resolvedValue: { approved: true },
 				},
 				status: 'success',
 			},
@@ -665,9 +557,9 @@ describe('applyOpenSuspensions', () => {
 				role: 'assistant',
 				content: '',
 				interactive: {
-					toolName: ASK_QUESTIONS_TOOL_NAME,
+					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'c1',
-					input: questionsSuspendInput('Which model?'),
+					input: { type: 'approval', toolName: 'tool_a', args: {} },
 				},
 			},
 		];
@@ -683,9 +575,9 @@ describe('applyOpenSuspensions', () => {
 				role: 'assistant',
 				content: '',
 				interactive: {
-					toolName: ASK_QUESTIONS_TOOL_NAME,
+					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'c1',
-					input: questionsSuspendInput('Which model?'),
+					input: { type: 'approval', toolName: 'tool_a', args: {} },
 				},
 			},
 		];

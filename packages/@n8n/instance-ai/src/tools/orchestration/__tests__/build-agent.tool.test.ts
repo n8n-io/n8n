@@ -1,4 +1,5 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
+import { BUILDER_CHECKPOINT_UNAVAILABLE_CODE, type InstanceAiEvent } from '@n8n/api-types';
+import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';
@@ -12,15 +13,16 @@ import type {
 	OrchestrationContext,
 } from '../../../types';
 import type * as AgentTargetBindingModule from '../agent-target-binding';
-import { saveAgentBuilderTarget } from '../agent-target-binding';
+import { resolveAgentBuilderTarget, saveAgentBuilderTarget } from '../agent-target-binding';
 import { createBuildAgentTool } from '../build-agent.tool';
 
 vi.mock('../agent-target-binding', async () => {
 	const actual = await vi.importActual<typeof AgentTargetBindingModule>('../agent-target-binding');
 	return {
 		...actual,
-		resolveAgentBuilderTarget: async (ctx: InstanceAiContext) =>
-			await Promise.resolve(ctx.agentBuilderTarget),
+		resolveAgentBuilderTarget: vi.fn(
+			async (ctx: InstanceAiContext) => await Promise.resolve(ctx.agentBuilderTarget),
+		),
 		saveAgentBuilderTarget: vi.fn(),
 	};
 });
@@ -271,18 +273,24 @@ describe('build-agent tool', () => {
 		expect(delegate.streamBuild).not.toHaveBeenCalled();
 	});
 
-	it('maps a thrown builder-not-configured error to a friendly message and publishes agent-completed', async () => {
+	it('maps a builder-not-configured error thrown mid-stream (during first-call streaming) to a friendly message and publishes agent-completed', async () => {
+		// The real delegate's `streamBuild`/`resumeBuild` are async generators: the call
+		// itself never rejects — errors from their bodies only surface once the returned
+		// stream is consumed. A call-time rejection (as this test used to simulate) cannot
+		// happen in production; see build-agent.tool.ts's `runBuilderConsumeLoop` catch.
 		const { context, delegate, publishedEvents } = makeContext();
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
-		vi.mocked(delegate.streamBuild).mockRejectedValue(
-			Object.assign(new Error('not configured'), { code: 'BUILDER_NOT_CONFIGURED' }),
+		vi.mocked(delegate.streamBuild).mockResolvedValue(
+			throwingStream(
+				Object.assign(new Error('not configured'), { code: 'BUILDER_NOT_CONFIGURED' }),
+			),
 		);
 		const friendlyMessage =
 			'The agent builder model is not configured. Set it up in the agents module settings.';
 
 		const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
 
-		expect(result).toEqual({ ok: false, error: friendlyMessage });
+		expect(result).toEqual({ ok: false, error: friendlyMessage, configUpdated: false });
 		expect(publishedEvents.map((event) => event.type)).toEqual([
 			'agent-spawned',
 			'agent-completed',
@@ -634,6 +642,7 @@ describe('build-agent tool', () => {
 			expect(suspend).not.toHaveBeenCalled();
 			expect(result.ok).toBe(false);
 			expect(result.error).toContain('could not be shown');
+			expect(result.configUpdated).toBe(false);
 			expect(delegate.cancelOpenSuspension).toHaveBeenCalledWith('agent-1', 'builder-run-1');
 			const last = publishedEvents.at(-1);
 			expect(last).toMatchObject({ type: 'agent-completed' });
@@ -650,6 +659,10 @@ describe('build-agent tool', () => {
 	});
 
 	describe('resume', () => {
+		class FakeBuilderCheckpointUnavailableError extends UserError {
+			readonly code = BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
+		}
+
 		function suspendPayloadWithCheckpoint(
 			overrides: Partial<{ runId: string; toolCallId: string; configUpdated: boolean }> = {},
 		) {
@@ -753,6 +766,27 @@ describe('build-agent tool', () => {
 			expect(delegate.resumeBuild).not.toHaveBeenCalled();
 		});
 
+		it('carries configUpdated forward when no builder suspension is open on resume', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([]);
+
+			const result = await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint({ configUpdated: true }),
+				},
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				error: 'The builder question this answer belongs to is no longer open.',
+				configUpdated: true,
+			});
+		});
+
 		it('fails when the persisted suspend payload lacks the builderCheckpoint ref', async () => {
 			const { context, delegate } = makeContext();
 
@@ -814,6 +848,29 @@ describe('build-agent tool', () => {
 			expect(result.configUpdated).toBe(true);
 		});
 
+		it('reports carried configUpdated when the resumed pass errors', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(
+				fakeStream([{ type: 'error', error: 'boom' }], ''),
+			);
+
+			const result = await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint({ configUpdated: true }),
+				},
+			);
+
+			expect(result.ok).toBe(false);
+			expect(result.configUpdated).toBe(true);
+		});
+
 		it('republishes agent-spawned on resume', async () => {
 			const { context, delegate, publishedEvents } = makeContext();
 			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
@@ -832,6 +889,85 @@ describe('build-agent tool', () => {
 				type: 'agent-spawned',
 				agentId: 'agent-builder:agent-1',
 			});
+		});
+
+		it('maps a builder-not-configured error thrown mid-stream (during resume streaming) to a friendly message', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(
+				throwingStream(
+					Object.assign(new Error('not configured'), { code: 'BUILDER_NOT_CONFIGURED' }),
+				),
+			);
+
+			const result = await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{ resumeData: { approved: true }, suspendPayload: suspendPayloadWithCheckpoint() },
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				error:
+					'The agent builder model is not configured. Set it up in the agents module settings.',
+				configUpdated: false,
+			});
+		});
+
+		it.each([false, true])(
+			'friendly-maps a checkpoint-unavailable error thrown mid-stream on resume (carried configUpdated: %s)',
+			async (carriedConfigUpdated) => {
+				const { context, delegate } = makeContext();
+				context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+				vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+					{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+				]);
+				vi.mocked(delegate.resumeBuild).mockResolvedValue(
+					throwingStream(
+						new FakeBuilderCheckpointUnavailableError(
+							'The builder question this answer belongs to has expired and can no longer be resumed.',
+						),
+					),
+				);
+
+				const result = await runToolWithCtx(
+					context,
+					{ message: 'Build it', name: 'New Agent' },
+					{
+						resumeData: { approved: true },
+						suspendPayload: suspendPayloadWithCheckpoint({ configUpdated: carriedConfigUpdated }),
+					},
+				);
+
+				expect(result).toEqual({
+					ok: false,
+					error:
+						'The builder question this answer belongs to has expired and can no longer be resumed.',
+					configUpdated: carriedConfigUpdated,
+				});
+			},
+		);
+
+		it('still rethrows an unrelated error thrown mid-stream during resume', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(
+				throwingStream(new Error('boom mid-resume')),
+			);
+
+			await expect(
+				runToolWithCtx(
+					context,
+					{ message: 'Build it', name: 'New Agent' },
+					{ resumeData: { approved: true }, suspendPayload: suspendPayloadWithCheckpoint() },
+				),
+			).rejects.toThrow('boom mid-resume');
 		});
 	});
 });

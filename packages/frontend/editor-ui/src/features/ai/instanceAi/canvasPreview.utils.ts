@@ -424,8 +424,8 @@ function walkAgentArtifact(
 		const result = tc.result as Record<string, unknown>;
 		const args = tc.args as Record<string, unknown> | undefined;
 
-		if (tc.toolName === 'build-agent' && result.ok === true && callTarget) {
-			if (typeof args?.name === 'string') {
+		if (tc.toolName === 'build-agent' && callTarget) {
+			if (result.ok === true && typeof args?.name === 'string') {
 				return {
 					result: { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' },
 					target: callTarget,

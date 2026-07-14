@@ -1,4 +1,4 @@
-import { summariseToolCall } from './interactiveSummary';
+import { summariseToolCall, type SummaryI18n } from './interactiveSummary';
 import { getMessageInteractives } from './messageMappers';
 import type { AgentsChatMessage, InteractivePayload, ToolCall } from './types';
 
@@ -41,7 +41,7 @@ export function isGroupable(message: AgentsChatMessage): boolean {
  * toolCallId twice (open, then resolved). Ported from master's undrained-stream
  * fix (#32119).
  */
-function mergeToolCall(previous: ToolCall, next: ToolCall): ToolCall {
+function mergeToolCall(previous: ToolCall, next: ToolCall, i18n: SummaryI18n): ToolCall {
 	const merged: ToolCall = {
 		...previous,
 		...next,
@@ -52,11 +52,11 @@ function mergeToolCall(previous: ToolCall, next: ToolCall): ToolCall {
 	};
 	return {
 		...merged,
-		displaySummary: summariseToolCall(merged.tool, merged.output, merged.input),
+		displaySummary: summariseToolCall(merged.tool, merged.output, i18n, merged.input),
 	};
 }
 
-function appendToolCalls(existing: ToolCall[], next: ToolCall[]): ToolCall[] {
+function appendToolCalls(existing: ToolCall[], next: ToolCall[], i18n: SummaryI18n): ToolCall[] {
 	const merged = [...existing];
 	const indexByToolCallId = new Map<string, number>();
 	for (const [index, toolCall] of merged.entries()) {
@@ -74,7 +74,7 @@ function appendToolCalls(existing: ToolCall[], next: ToolCall[]): ToolCall[] {
 			merged.push(toolCall);
 			continue;
 		}
-		merged[index] = mergeToolCall(merged[index], toolCall);
+		merged[index] = mergeToolCall(merged[index], toolCall, i18n);
 	}
 	return merged;
 }
@@ -97,13 +97,16 @@ function appendInteractivePayloads(
 	return merged;
 }
 
-export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[] {
+export function buildDisplayGroups(
+	messages: AgentsChatMessage[],
+	i18n: SummaryI18n,
+): DisplayGroup[] {
 	const groups: DisplayGroup[] = [];
 	for (const message of messages) {
 		if (isGroupable(message)) {
 			const last = groups[groups.length - 1];
 			if (last && last.kind === 'toolRun' && !last.finalMessage) {
-				last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls ?? []);
+				last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls ?? [], i18n);
 				if (message.thinking) {
 					last.thinking = last.thinking
 						? `${last.thinking}\n\n${message.thinking}`
@@ -135,7 +138,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 						: message.thinking;
 				}
 				if (message.toolCalls?.length) {
-					last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls);
+					last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls, i18n);
 				}
 				last.interactives = appendInteractivePayloads(
 					last.interactives,

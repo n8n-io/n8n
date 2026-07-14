@@ -148,13 +148,6 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 	}),
 }));
 
-vi.mock('../composables/useAgentBuilderStatus', () => ({
-	useAgentBuilderStatus: () => ({
-		isBuilderConfigured: ref(true),
-		fetchStatus: vi.fn().mockResolvedValue(undefined),
-	}),
-}));
-
 vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => agentPermissionsMock,
 }));
@@ -275,11 +268,6 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 
 const baseTextFn = (key: string) => {
 	const map: Record<string, string> = {
-		'agents.builder.chatMode.build': 'Build',
-		'agents.builder.chatMode.test': 'Test',
-		'agents.builder.chatMode.ariaLabel': 'Switch chat mode',
-		'agents.builder.chat.hide.ariaLabel': 'Hide builder',
-		'agents.builder.chat.show.ariaLabel': 'Show builder',
 		'agents.builder.preview.button': 'Preview',
 		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
@@ -384,20 +372,6 @@ const commonStubs = {
 		props: ['config'],
 		emits: ['update:config'],
 	},
-	AgentChatQuickActions: {
-		name: 'AgentChatQuickActions',
-		template: '<div data-testid="stub-agent-chat-quick-actions" />',
-		props: [
-			'tools',
-			'mcpServers',
-			'projectId',
-			'agentId',
-			'connectedTriggers',
-			'isPublished',
-			'disabled',
-		],
-		emits: ['update:tools', 'update:connected-triggers', 'trigger-added'],
-	},
 	AgentBuilderHeader: {
 		name: 'AgentBuilderHeader',
 		template:
@@ -476,10 +450,6 @@ const commonStubs = {
 		name: 'AgentSessionsListView',
 		template: '<div data-testid="stub-agent-sessions-list-view" />',
 		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab'],
-	},
-	AgentBuilderUnconfiguredEmptyState: {
-		name: 'AgentBuilderUnconfiguredEmptyState',
-		template: '<div data-testid="stub-agent-builder-unconfigured-empty-state" />',
 	},
 	N8nButton: {
 		template:

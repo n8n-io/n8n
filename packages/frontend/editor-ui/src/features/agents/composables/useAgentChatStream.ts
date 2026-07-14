@@ -17,7 +17,6 @@ import {
 	getMessageInteractive,
 	getMessageInteractives,
 	isApprovalSuspendInput,
-	isInteractiveToolName,
 	rebuildInteractiveFromHistory,
 	setMessageInteractives,
 	upsertMessageInteractive,
@@ -105,9 +104,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				openSuspensions = envelope.openSuspensions;
 			}
 			if (dbMessages.length > 0) {
-				const context = { agentId: params.agentId.value, projectId: params.projectId.value };
 				messages.value = applyOpenSuspensions(
-					convertDbMessages(dbMessages, context),
+					convertDbMessages(dbMessages, locale),
 					openSuspensions,
 				);
 			}
@@ -257,8 +255,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'tool-input-delta':
-				// Streaming tool input — `code-delta` handles the build-tool case.
-				// No ToolCall state mutation here.
+				// Streaming tool input isn't rendered incrementally; the full
+				// input arrives on `tool-call`. No ToolCall state mutation here.
 				break;
 			case 'tool-call': {
 				// LLM finalized the call. Update input on the existing entry,
@@ -272,13 +270,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						toolCallId: event.toolCallId,
 						input: event.input,
 						state: TOOL_CALL_STATE.PENDING,
-						displaySummary: summariseToolCall(event.toolName, undefined, event.input),
+						displaySummary: summariseToolCall(event.toolName, undefined, locale, event.input),
 					});
 				} else {
 					existing.input = event.input;
 					existing.displaySummary = summariseToolCall(
 						existing.tool,
 						existing.output,
+						locale,
 						existing.input,
 					);
 					if (
@@ -338,7 +337,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							? TOOL_CALL_STATE.CANCELLED
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
-					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
+					found.tc.displaySummary = summariseToolCall(
+						found.tc.tool,
+						event.output,
+						locale,
+						found.tc.input,
+					);
 					// If this was an interactive tool call, the result IS the user's
 					// resume payload — refresh the matching card so it flips to its
 					// resolved (disabled) state immediately. Display-only n8n chat
@@ -353,11 +357,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-call-suspended': {
 				const { payload } = event;
 				const found = findToolCallById(payload.toolCallId);
-				// Builder interactive tools (ask_* / approval) suspend with their
-				// renderable input; integration actions suspend with a sidecar —
-				// keep the card-bearing tool input and store the sidecar separately.
-				const suspendIsRenderableInput =
-					isInteractiveToolName(payload.toolName) || isApprovalSuspendInput(payload.input);
+				// The approval tool suspends with its renderable input; integration
+				// actions suspend with a sidecar — keep the card-bearing tool input
+				// and store the sidecar separately.
+				const suspendIsRenderableInput = isApprovalSuspendInput(payload.input);
 				let msg: ChatMessage;
 				let tc: ToolCall;
 				if (found) {
@@ -536,11 +539,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	/**
-	 * Resume a suspended interaction. Build-mode interactions post to
-	 * build/resume; preview chat approval prompts post to chat/resume. Both
-	 * paths re-enter the same SSE handler. The `runId` is required — it comes
-	 * from the original `tool-call-suspended` chunk (live) or from the
-	 * `openSuspensions` sidecar applied during history reload.
+	 * Resume a suspended interaction via `chat/resume`, re-entering the same
+	 * SSE handler. The `runId` is required — it comes from the original
+	 * `tool-call-suspended` chunk (live) or from the `openSuspensions` sidecar
+	 * applied during history reload.
 	 *
 	 * The UI updates optimistically, then restores the previous card state if
 	 * the resume POST or SSE stream fails.
@@ -585,6 +587,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				found.tc.displaySummary = summariseToolCall(
 					found.tc.tool,
 					payload.resumeData,
+					locale,
 					found.tc.input,
 				);
 				const updated = rebuildInteractiveFromHistory(found.tc);

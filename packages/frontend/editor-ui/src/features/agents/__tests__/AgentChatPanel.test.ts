@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { computed, h, ref } from 'vue';
-import {
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_QUESTIONS_TOOL_NAME,
-	type InteractiveToolName,
-} from '@n8n/api-types';
+import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 
@@ -98,46 +94,41 @@ describe('AgentChatPanel', () => {
 		});
 	}
 
-	function openInteractiveMessage(
-		toolName: InteractiveToolName = ASK_QUESTIONS_TOOL_NAME,
-	): ChatMessage {
+	/**
+	 * A non-approval interactive card (`chat_action`) — these put the chat
+	 * input into cancel-and-steer mode rather than blocking it outright,
+	 * unlike an open approval card.
+	 */
+	function openInteractiveMessage(): ChatMessage {
 		return {
 			id: 'assistant-1',
 			role: 'assistant',
 			content: '',
 			status: 'awaitingUser',
-			interactive:
-				toolName === ASK_QUESTIONS_TOOL_NAME
-					? {
-							toolName: ASK_QUESTIONS_TOOL_NAME,
-							toolCallId: 'tc-1',
-							runId: 'run-1',
-							input: {
-								requestId: 'req-1',
-								message: 'Pick one',
-								severity: 'info',
-								inputType: 'questions',
-								questions: [{ id: 'q1', question: 'Pick one', type: 'single', options: ['slack'] }],
-							},
-						}
-					: {
-							toolName: ASK_CREDENTIAL_TOOL_NAME,
-							toolCallId: 'tc-1',
-							runId: 'run-1',
-							input: {
-								requestId: 'req-1',
-								message: 'Choose Slack credentials',
-								severity: 'info',
-								credentialRequests: [
-									{
-										credentialType: 'slackApi',
-										reason: 'Choose Slack credentials',
-										existingCredentials: [],
-									},
-								],
-								credentialFlow: { stage: 'generic' },
-							},
-						},
+			interactive: {
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				toolCallId: 'tc-1',
+				runId: 'run-1',
+				input: {
+					card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
+				},
+			},
+		};
+	}
+
+	function resolvedInteractiveMessage(): ChatMessage {
+		return {
+			...openInteractiveMessage(),
+			status: 'success',
+			interactive: {
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				toolCallId: 'tc-1',
+				resolvedAt: 1,
+				input: {
+					card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
+				},
+				resolvedValue: { type: 'button', value: 'slack' },
+			},
 		};
 	}
 
@@ -228,28 +219,7 @@ describe('AgentChatPanel', () => {
 	});
 
 	it('keeps above-input actions enabled when the interactive card is resolved', () => {
-		messagesMock.value = [
-			{
-				...openInteractiveMessage(),
-				status: 'success',
-				interactive: {
-					toolName: ASK_QUESTIONS_TOOL_NAME,
-					toolCallId: 'tc-1',
-					resolvedAt: 1,
-					input: {
-						requestId: 'req-1',
-						message: 'Pick one',
-						severity: 'info',
-						inputType: 'questions',
-						questions: [{ id: 'q1', question: 'Pick one', type: 'single', options: ['slack'] }],
-					},
-					resolvedValue: {
-						answered: true,
-						answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
-					},
-				},
-			},
-		];
+		messagesMock.value = [resolvedInteractiveMessage()];
 
 		const wrapper = mount(AgentChatPanel, {
 			props: {
@@ -297,20 +267,11 @@ describe('AgentChatPanel', () => {
 				...openInteractiveMessage(),
 				status: 'success',
 				interactive: {
-					toolName: ASK_QUESTIONS_TOOL_NAME,
+					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'tc-1',
 					resolvedAt: 1,
-					input: {
-						requestId: 'req-1',
-						message: 'Pick one',
-						severity: 'info',
-						inputType: 'questions',
-						questions: [{ id: 'q1', question: 'Pick one', type: 'single', options: ['slack'] }],
-					},
-					resolvedValue: {
-						answered: true,
-						answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
-					},
+					input: { type: 'approval', toolName: 'send_message', args: {} },
+					resolvedValue: { approved: true },
 				},
 			},
 		];
@@ -322,18 +283,15 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('placeholder')).toBe('agents.chat.input.placeholder');
 	});
 
-	it.each([ASK_QUESTIONS_TOOL_NAME, ASK_CREDENTIAL_TOOL_NAME])(
-		'enables chat input while %s is unresolved (cancel-and-steer mode)',
-		(toolName) => {
-			messagesMock.value = [openInteractiveMessage(toolName)];
+	it('enables chat input while an interactive card is unresolved (cancel-and-steer mode)', () => {
+		messagesMock.value = [openInteractiveMessage()];
 
-			const wrapper = mountPanel();
-			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-			// Input should be enabled — the user can cancel and steer
-			expect(chatInput.props('disabled')).toBe(false);
-		},
-	);
+		// Input should be enabled — the user can cancel and steer
+		expect(chatInput.props('disabled')).toBe(false);
+	});
 
 	it('does not apply a build-specific character limit', () => {
 		const wrapper = mountPanel();

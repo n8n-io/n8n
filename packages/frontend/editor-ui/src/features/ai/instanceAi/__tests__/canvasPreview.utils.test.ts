@@ -407,6 +407,28 @@ describe('getLatestAgentArtifactResult', () => {
 		});
 	});
 
+	test('mutates on a failed turn that still updated the config', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-mutate-fail',
+					toolName: 'build-agent',
+					args: { message: 'add a skill' },
+					result: { ok: false, error: 'The agent builder run errored.', configUpdated: true },
+				}),
+			],
+		});
+
+		expect(
+			getLatestAgentArtifactResult(orchestrator, { agentId: 'agent-1', projectId: 'project-1' }),
+		).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-mutate-fail',
+			kind: 'mutated',
+		});
+	});
+
 	test('returns undefined for a reply-only turn (ok but no name and no configUpdated)', () => {
 		const orchestrator = makeAgentNode({
 			toolCalls: [

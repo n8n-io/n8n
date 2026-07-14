@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildDisplayGroups, isGroupable } from '../displayGroups';
+import type { SummaryI18n } from '../interactiveSummary';
 import type { AgentsChatMessage } from '../types';
+
+const i18n = { baseText: (key: string) => key } as SummaryI18n;
 
 describe('shared agents chat display groups', () => {
 	it('folds consecutive assistant tool-only messages into one tool run', () => {
@@ -22,7 +25,7 @@ describe('shared agents chat display groups', () => {
 			{ id: 'a3', role: 'assistant', content: 'finished' },
 		];
 
-		const groups = buildDisplayGroups(messages);
+		const groups = buildDisplayGroups(messages, i18n);
 
 		expect(groups).toHaveLength(2);
 		expect(groups[1].kind).toBe('toolRun');

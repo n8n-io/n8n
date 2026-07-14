@@ -20,10 +20,8 @@ export {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
-	interactiveToolNameSchema,
 	askCredentialInputSchema,
 	cancellationResumeSchema,
-	type InteractiveToolName,
 	type AskCredentialInput,
 	type CancellationResumeData,
 } from '../agent-builder-interactive';

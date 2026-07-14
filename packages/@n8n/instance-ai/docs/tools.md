@@ -695,7 +695,8 @@ appears in the agents-module builder UI.
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
 **Returns**: `{ ok: true, builderReply, configUpdated }` on success, or
-`{ ok: false, error }`.
+`{ ok: false, error, configUpdated }` on failure (`configUpdated` still reports
+mutations from passes that ran before the failure).
 
 **Interactive questions:** when the builder suspends on one of its interactive
 tools (batched questions, a credential picker, or channel setup), this tool

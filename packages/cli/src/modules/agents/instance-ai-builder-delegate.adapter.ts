@@ -143,9 +143,9 @@ export class InstanceAiBuilderDelegateAdapterService {
 					.map((tc) => ({ runId: tc.runId, toolCallId: tc.toolCallId }));
 			},
 
-			cancelOpenSuspension: async (_agentId, runId) => {
+			cancelOpenSuspension: async (agentId, runId) => {
 				await assertProjectScope('agent:update');
-				await this.agentsBuilderService.cancelCheckpoint(runId);
+				await this.agentsBuilderService.cancelCheckpoint(agentId, runId);
 			},
 		};
 	}

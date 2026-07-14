@@ -43,7 +43,6 @@ import type {
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
-import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
@@ -99,7 +98,6 @@ const favoritesStore = useFavoritesStore();
 const isKnowledgeBaseEnabled = computed(() => settingsStore.isAgentsKnowledgeBaseFeatureEnabled);
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
-const { fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 // Artifact mode reuses this route shell inside Instance AI. It still relies on
@@ -161,7 +159,7 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
-/** Bumped on builder config-updated so the Tasks panel reloads (e.g. after create_task). */
+/** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
@@ -580,8 +578,7 @@ const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	onSaved: () => {
 		builderTelemetry.flushConfigEdits();
 		// Diff the saved capability lists against the last baseline. No-op when
-		// nothing new landed, so calling on every save also handles the build-chat
-		// path (which has already advanced both baselines via `onConfigUpdated`).
+		// nothing new landed since the last check.
 		builderTelemetry.trackToolsAdded();
 		builderTelemetry.trackSkillsAdded();
 		builderTelemetry.trackTasksChanged();
@@ -931,12 +928,6 @@ async function initialize() {
 		agentFilesLoading.value = false;
 		agentFilesUploading.value = false;
 		deletingAgentFileId.value = null;
-
-		// Refresh builder readiness so the empty-state CTA reflects the latest
-		// admin configuration. Never blocks the rest of the load.
-		void fetchBuilderStatus().catch((error: unknown) => {
-			showError(error, locale.baseText('settings.agentBuilder.loadError'));
-		});
 
 		await Promise.all([
 			fetchAgent(),

@@ -88,9 +88,10 @@ const handleReadyToRunClick = async () => {
 };
 
 const handleBuildAgentClick = () => {
-	if (!builderProjectId.value) return;
 	agentTelemetry.trackClickedNewAgent('card');
-	void router.push(instanceAiCreateAgentRoute(builderProjectId.value));
+	void router.push(
+		instanceAiCreateAgentRoute(builderProjectId.value ?? projectsStore.personalProject?.id ?? ''),
+	);
 };
 
 const containerStyle = computed(() => ({

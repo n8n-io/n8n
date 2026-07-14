@@ -39,7 +39,7 @@ vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 	default: {
 		template:
 			'<div data-testid="interactive-card-stub" :data-tool-call-id="payload.toolCallId" :data-run-id="payload.runId || \'\'" />',
-		props: ['payload', 'projectId', 'agentId'],
+		props: ['payload'],
 	},
 }));
 
