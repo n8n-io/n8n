@@ -24,8 +24,7 @@ export type InstanceAiEventMap = {
 	/** A getRichMessages read derived agent trees by folding the durable log. */
 	'instance-ai-history-folded': {
 		latencyMs: number;
-		snapshotTreesReplaced: number;
-		treesSynthesized: number;
+		trees: number;
 	};
 	/** History rendered from the message-derived fallback ladder instead of a renderable snapshot tree. */
 	'instance-ai-parser-fallback': {

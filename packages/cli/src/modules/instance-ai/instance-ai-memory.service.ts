@@ -90,6 +90,80 @@ function mergeMessagesById(stored: AgentDbMessage[], extras: AgentDbMessage[]): 
 	return [...byId.values()].sort((a, b) => messageCreatedAtMs(a) - messageCreatedAtMs(b));
 }
 
+type LogRun = { events: InstanceAiEvent[]; messageGroupId?: string; lastAt: Date };
+
+/** Group a thread's log rows (already in seq order) by run: the run's events,
+ *  its message group (from run-start), and its last-write time (mimics the
+ *  snapshot row's write-at-run-end timestamp, which the parser aligns
+ *  messages by). */
+function indexLogRuns(
+	rows: Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>,
+): Map<string, LogRun> {
+	const runs = new Map<string, LogRun>();
+	for (const row of rows) {
+		if (!row.runId) continue;
+		let run = runs.get(row.runId);
+		if (!run) {
+			run = { events: [], lastAt: row.createdAt };
+			runs.set(row.runId, run);
+		}
+		run.events.push(row.event);
+		run.lastAt = row.createdAt;
+		if (row.event.type === 'run-start') {
+			const groupId = row.event.payload.messageGroupId;
+			if (typeof groupId === 'string' && groupId) run.messageGroupId = groupId;
+		}
+	}
+	return runs;
+}
+
+/** Snapshot-shaped entries derived from the log, grouped the way the snapshot
+ *  writer groups its rows: by run-start messageGroupId, else one entry per
+ *  run. The parser pairs these to assistant messages positionally, so the
+ *  entry's createdAt is the run's last fact time (≈ the write-at-run-end
+ *  timestamp a stored snapshot would carry). */
+function buildLogDerivedSnapshots(
+	runs: Map<string, LogRun>,
+	skipRunIds: Set<string>,
+): AgentTreeSnapshot[] {
+	type Group = {
+		runIds: string[];
+		events: InstanceAiEvent[];
+		messageGroupId?: string;
+		lastAt: Date;
+	};
+	const groups = new Map<string, Group>();
+	for (const [runId, run] of runs) {
+		if (skipRunIds.has(runId)) continue;
+		const key = run.messageGroupId ?? runId;
+		let group = groups.get(key);
+		if (!group) {
+			group = { runIds: [], events: [], messageGroupId: run.messageGroupId, lastAt: run.lastAt };
+			groups.set(key, group);
+		}
+		group.runIds.push(runId);
+		group.events.push(...run.events);
+		if (run.lastAt > group.lastAt) group.lastAt = run.lastAt;
+	}
+
+	const entries: AgentTreeSnapshot[] = [];
+	for (const group of groups.values()) {
+		// Nothing renderable beyond the run lifecycle — skip, matching today's
+		// behavior of not surfacing empty orphan cards.
+		const hasContent = group.events.some((e) => e.type !== 'run-start' && e.type !== 'run-finish');
+		if (!hasContent) continue;
+		entries.push({
+			tree: buildAgentTreeFromEvents(group.events),
+			runId: group.runIds[group.runIds.length - 1],
+			messageGroupId: group.messageGroupId,
+			runIds: group.runIds,
+			createdAt: group.lastAt,
+			updatedAt: group.lastAt,
+		});
+	}
+	return entries;
+}
+
 @Service()
 export class InstanceAiMemoryService {
 	private readonly instanceAiConfig: InstanceAiConfig;
@@ -241,12 +315,11 @@ export class InstanceAiMemoryService {
 			snapshots = snapshots.filter((s) => !excluded.has(s.runId));
 		}
 
-		// Durable-log flag (fold-on-read): for post-log threads, the agent tree
-		// is derived by folding the durable event log — the persisted snapshot
-		// tree is written but no longer read. Pre-log threads (no log rows) keep
-		// the legacy snapshot path untouched until the Gate B backfill (INS-851).
+		// Durable-log flag (fold-on-read): history trees derive from the event
+		// log; the stored snapshots above only serve as the pre-log/failure
+		// fallback (they remain the flag-off and rollback path).
 		if (this.instanceAiConfig.durableLog) {
-			snapshots = await this.overlayLogDerivedTrees(threadId, snapshots, options?.excludeRunIds);
+			snapshots = await this.foldSnapshotsFromLog(threadId, snapshots, options?.excludeRunIds);
 		}
 
 		// Surface the in-flight messages from any suspended checkpoint. The
@@ -271,17 +344,15 @@ export class InstanceAiMemoryService {
 	}
 
 	/**
-	 * Durable-log fold-on-read: supersede each snapshot's stored tree with a
-	 * fold of the durable log over the snapshot's runIds, and synthesize
-	 * snapshot entries for runs that have log rows but no snapshot row at all
-	 * (e.g. the snapshot write failed or the process died first). Snapshot rows
-	 * keep providing the message alignment metadata
-	 * (createdAt/messageGroupId/runIds); only the tree content is derived.
-	 * Threads with no log rows are returned unchanged (legacy path).
+	 * Durable-log fold-on-read: with the flag on, history agent trees derive
+	 * from the event log. Stored snapshot rows keep being written (they are the
+	 * flag-off and rollback path) but are not read here; they only serve as the
+	 * fallback when the thread has no log rows or the read fails/derives
+	 * nothing.
 	 */
-	private async overlayLogDerivedTrees(
+	private async foldSnapshotsFromLog(
 		threadId: string,
-		snapshots: AgentTreeSnapshot[],
+		storedSnapshots: AgentTreeSnapshot[],
 		excludeRunIds?: string[],
 	): Promise<AgentTreeSnapshot[]> {
 		const start = Date.now();
@@ -293,83 +364,19 @@ export class InstanceAiMemoryService {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return snapshots;
+			return storedSnapshots;
 		}
-		if (rows.length === 0) return snapshots;
+		// Pre-log thread (instance ran before the flag): stored snapshots still
+		// render. Production flips the flag together with the backfill migration
+		// (INS-851), so this branch is a dev-instance safety, not a design.
+		if (rows.length === 0) return storedSnapshots;
 
-		// Per-run bookkeeping in seq order: events, group id (from run-start),
-		// and last-write time (mimics the snapshot row's write-at-run-finish
-		// timestamp, which the parser aligns messages by).
-		const runs = new Map<
-			string,
-			{ events: InstanceAiEvent[]; messageGroupId?: string; lastAt: Date }
-		>();
-		for (const row of rows) {
-			if (!row.runId) continue;
-			let run = runs.get(row.runId);
-			if (!run) {
-				run = { events: [], lastAt: row.createdAt };
-				runs.set(row.runId, run);
-			}
-			run.events.push(row.event);
-			run.lastAt = row.createdAt;
-			if (row.event.type === 'run-start') {
-				const groupId = row.event.payload.messageGroupId;
-				if (typeof groupId === 'string' && groupId) run.messageGroupId = groupId;
-			}
-		}
+		const entries = buildLogDerivedSnapshots(indexLogRuns(rows), new Set(excludeRunIds ?? []));
+		if (entries.length === 0) return storedSnapshots;
+		entries.sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
 
-		let replaced = 0;
-		const covered = new Set<string>();
-		const result = snapshots.map((snapshot) => {
-			const runIds = snapshot.runIds?.length ? snapshot.runIds : [snapshot.runId];
-			const events = runIds.flatMap((runId) => runs.get(runId)?.events ?? []);
-			for (const runId of runIds) covered.add(runId);
-			if (events.length === 0) return snapshot; // pre-log run — legacy tree
-			replaced++;
-			return { ...snapshot, tree: buildAgentTreeFromEvents(events) };
-		});
-
-		// Runs recorded in the log but never snapshotted: group them the way the
-		// snapshot writer would have (by run-start messageGroupId, else alone).
-		const excluded = new Set(excludeRunIds ?? []);
-		const groups = new Map<string, { runIds: string[]; events: InstanceAiEvent[]; lastAt: Date }>();
-		for (const [runId, run] of runs) {
-			if (covered.has(runId) || excluded.has(runId)) continue;
-			const key = run.messageGroupId ?? runId;
-			let group = groups.get(key);
-			if (!group) {
-				group = { runIds: [], events: [], lastAt: run.lastAt };
-				groups.set(key, group);
-			}
-			group.runIds.push(runId);
-			group.events.push(...run.events);
-			if (run.lastAt > group.lastAt) group.lastAt = run.lastAt;
-		}
-
-		let synthesized = 0;
-		for (const [key, group] of groups) {
-			// Nothing renderable beyond the run lifecycle — skip, matching today's
-			// behavior of not surfacing empty orphan cards.
-			const hasContent = group.events.some(
-				(e) => e.type !== 'run-start' && e.type !== 'run-finish',
-			);
-			if (!hasContent) continue;
-			synthesized++;
-			const lastRunId = group.runIds[group.runIds.length - 1];
-			result.push({
-				tree: buildAgentTreeFromEvents(group.events),
-				runId: lastRunId,
-				messageGroupId: key === lastRunId ? undefined : key,
-				runIds: group.runIds,
-				createdAt: group.lastAt,
-				updatedAt: group.lastAt,
-			});
-		}
-		result.sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
-
-		this.durableLogMetrics.recordFoldRead(Date.now() - start, replaced, synthesized);
-		return result;
+		this.durableLogMetrics.recordFoldRead(Date.now() - start, entries.length);
+		return entries;
 	}
 
 	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`

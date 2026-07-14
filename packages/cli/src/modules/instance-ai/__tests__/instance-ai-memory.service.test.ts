@@ -402,7 +402,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			'tool-3',
 		]);
 		expect(assistant.agentTree?.status).toBe('completed');
-		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1, 0);
+		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
 	});
 
 	it('synthesizes a tree for a run that has log rows but no snapshot', async () => {
@@ -435,7 +435,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(assistant.agentTree).toBeDefined();
 		expect(assistant.agentTree?.toolCalls).toHaveLength(1);
 		expect(assistant.runId).toBe('run_abc');
-		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 0, 1);
+		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
 	});
 
 	it('keeps the stored snapshot tree for pre-log threads (no log rows)', async () => {
@@ -464,13 +464,13 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(result.messages[1].agentTree).toStrictEqual(tree);
 	});
 
-	it('does not synthesize entries for lifecycle-only runs', async () => {
+	it('falls back to stored snapshots when the log derives nothing renderable', async () => {
 		const tree = makeTree();
 		mockDbSnapshotStorage.getAll.mockResolvedValue([
 			{ tree, runId: 'run_abc', createdAt: at, updatedAt: at },
 		]);
-		// A second run left only its lifecycle facts — no renderable work, so no
-		// orphan card is synthesized (matches today's behavior).
+		// The log holds only lifecycle facts — no renderable work, so no orphan
+		// card is derived and the stored snapshots keep rendering.
 		mockEventLogRepository.getForThread.mockResolvedValue([
 			eventRow(
 				{
@@ -493,9 +493,10 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		]);
 
 		const service = createService({ durableLog: true });
-		await service.getRichMessages('user-1', 'thread-1');
+		const result = await service.getRichMessages('user-1', 'thread-1');
 
-		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 0, 0);
+		expect(result.messages[1].agentTree).toStrictEqual(tree);
+		expect(mockDurableLogMetrics.recordFoldRead).not.toHaveBeenCalled();
 	});
 
 	it('never reads the log when the flag is off', async () => {
