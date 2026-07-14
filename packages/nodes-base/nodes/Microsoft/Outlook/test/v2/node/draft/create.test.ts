@@ -204,6 +204,10 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 					],
 				}),
 				{},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 
 			expect(result).toEqual([
@@ -243,7 +247,9 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 
 			microsoftApiRequestSpy.mockResolvedValue({});
 
-			await execute.call(mockExecuteFunctions, 0, [{ json: {} }]);
+			// Non-zero index: pins that the operation forwards the PASSED index (not a
+			// hardcoded 0). The getNodeParameter mock is index-insensitive.
+			await execute.call(mockExecuteFunctions, 2, [{ json: {} }]);
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
@@ -258,6 +264,10 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 					],
 				}),
 				{},
+				undefined,
+				undefined,
+				undefined,
+				2,
 			);
 		});
 
@@ -309,6 +319,10 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 					]),
 				}),
 				{},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 		});
 	});

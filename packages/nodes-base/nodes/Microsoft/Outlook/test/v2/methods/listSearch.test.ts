@@ -54,6 +54,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 					$select: 'id,displayName',
 					$top: 100,
 				},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -82,6 +86,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 					$top: 100,
 					$filter: "contains(displayName, 'John')",
 				},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 			expect(result).toEqual({
 				results: [{ name: 'John Doe', value: 'contact1' }],
@@ -105,6 +113,9 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 				undefined,
 				undefined,
 				paginationToken,
+				undefined,
+				undefined,
+				0,
 			);
 		});
 	});
@@ -130,6 +141,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 					$select: 'id,name',
 					$top: 100,
 				},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -167,6 +182,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 					$top: 100,
 					$filter: 'isDraft eq true',
 				},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -205,6 +224,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 					$top: 100,
 					$filter: "isDraft eq true AND contains(subject, 'Important')",
 				},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 		});
 
@@ -253,6 +276,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 					$select: 'id,subject,bodyPreview,webLink',
 					$top: 100,
 				},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -291,6 +318,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 					$top: 100,
 					$filter: "contains(subject, 'Meeting')",
 				},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 		});
 	});
@@ -332,6 +363,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 					$select: 'id,subject,bodyPreview',
 					$top: 100,
 				},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -371,6 +406,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 					$top: 100,
 					$filter: "contains(subject, 'Project')",
 				},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 		});
 	});
@@ -405,8 +444,12 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 				{
 					$top: 100,
 				},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
-			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse.value, true);
+			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse.value, true, 0);
 			expect(result).toEqual({
 				results: [
 					{
@@ -511,6 +554,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 					$select: 'id,name',
 					$top: 100,
 				},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -540,6 +587,9 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 				undefined,
 				undefined,
 				paginationToken,
+				undefined,
+				undefined,
+				0,
 			);
 		});
 	});

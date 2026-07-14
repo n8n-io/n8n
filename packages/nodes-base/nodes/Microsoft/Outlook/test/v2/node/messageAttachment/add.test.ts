@@ -96,6 +96,10 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 					contentBytes: 'SGVsbG8gV29ybGQ=',
 				},
 				{},
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 
 			expect(result).toEqual([
@@ -132,7 +136,9 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 
 			microsoftApiRequestSpy.mockResolvedValue({});
 
-			await execute.call(mockExecuteFunctions, 0, [{ json: {} }]);
+			// Non-zero index: pins that the operation forwards the PASSED index (not a
+			// hardcoded 0). The getNodeParameter mock is index-insensitive.
+			await execute.call(mockExecuteFunctions, 2, [{ json: {} }]);
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
@@ -143,6 +149,10 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 					contentBytes: 'JVBERi0xLjQK',
 				},
 				{},
+				undefined,
+				undefined,
+				undefined,
+				2,
 			);
 		});
 
@@ -229,6 +239,11 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 						size: 4 * 1024 * 1024,
 					},
 				},
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 
 			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledWith(
