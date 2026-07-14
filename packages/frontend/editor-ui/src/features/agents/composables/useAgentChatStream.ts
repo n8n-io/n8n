@@ -104,10 +104,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				openSuspensions = envelope.openSuspensions;
 			}
 			if (dbMessages.length > 0) {
-				messages.value = applyOpenSuspensions(
-					convertDbMessages(dbMessages, locale),
-					openSuspensions,
-				);
+				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
 			}
 			params.onHistoryLoaded?.(messages.value.length);
 		} catch (error) {
@@ -270,14 +267,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						toolCallId: event.toolCallId,
 						input: event.input,
 						state: TOOL_CALL_STATE.PENDING,
-						displaySummary: summariseToolCall(event.toolName, undefined, locale, event.input),
+						displaySummary: summariseToolCall(event.toolName, undefined, event.input),
 					});
 				} else {
 					existing.input = event.input;
 					existing.displaySummary = summariseToolCall(
 						existing.tool,
 						existing.output,
-						locale,
 						existing.input,
 					);
 					if (
@@ -337,12 +333,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							? TOOL_CALL_STATE.CANCELLED
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
-					found.tc.displaySummary = summariseToolCall(
-						found.tc.tool,
-						event.output,
-						locale,
-						found.tc.input,
-					);
+					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					// If this was an interactive tool call, the result IS the user's
 					// resume payload — refresh the matching card so it flips to its
 					// resolved (disabled) state immediately. Display-only n8n chat
@@ -587,7 +578,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				found.tc.displaySummary = summariseToolCall(
 					found.tc.tool,
 					payload.resumeData,
-					locale,
 					found.tc.input,
 				);
 				const updated = rebuildInteractiveFromHistory(found.tc);

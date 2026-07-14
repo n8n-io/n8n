@@ -121,7 +121,7 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
-const displayGroups = computed(() => buildDisplayGroups(props.messages, i18n));
+const displayGroups = computed(() => buildDisplayGroups(props.messages));
 
 function getAssistantGroupContent(group: DisplayGroup): string {
 	if (group.kind === 'toolRun') {

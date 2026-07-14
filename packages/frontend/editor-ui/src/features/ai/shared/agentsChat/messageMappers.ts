@@ -14,7 +14,7 @@ import {
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
 import type { ToolCallState } from './constants';
 import { isFailedDelegateOutput } from './delegateTool';
-import { summariseToolCall, type SummaryI18n } from './interactiveSummary';
+import { summariseToolCall } from './interactiveSummary';
 import type {
 	ApprovalInput,
 	ChatMessage,
@@ -161,10 +161,7 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
  * `InteractivePayload` so the UI re-renders the card in either its open
  * (awaiting user) or resolved (disabled) state.
  */
-export function convertDbMessages(
-	dbMessages: AgentPersistedMessageDto[],
-	i18n: SummaryI18n,
-): ChatMessage[] {
+export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatMessage[] {
 	const result: ChatMessage[] = [];
 
 	for (const msg of dbMessages) {
@@ -217,7 +214,7 @@ export function convertDbMessages(
 					state,
 					...(part.startTime !== undefined && { startTime: part.startTime }),
 					...(part.endTime !== undefined && { endTime: part.endTime }),
-					displaySummary: summariseToolCall(part.toolName, output, i18n, part.input),
+					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				};
 				toolCalls.push(toolCall);
 

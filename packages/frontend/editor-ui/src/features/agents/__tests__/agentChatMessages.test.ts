@@ -12,10 +12,7 @@ import {
 	rebuildInteractiveFromHistory,
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import { buildDisplayGroups, isGroupable } from '@/features/ai/shared/agentsChat/displayGroups';
-import type { SummaryI18n } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
-
-const i18n = { baseText: (key: string) => key } as SummaryI18n;
 
 describe('rebuildInteractiveFromHistory', () => {
 	it('returns undefined for non-interactive tool names', () => {
@@ -119,7 +116,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages, i18n);
+		const chat = convertDbMessages(dbMessages);
 		const assistant = chat[0];
 
 		expect(assistant.toolCalls).toHaveLength(2);
@@ -160,7 +157,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const [assistant] = convertDbMessages(dbMessages, i18n);
+		const [assistant] = convertDbMessages(dbMessages);
 
 		expect(assistant.content).toBe('Before the card.After the card.');
 		expect(assistant.renderParts).toEqual([
@@ -188,7 +185,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages, i18n);
+		const chat = convertDbMessages(dbMessages);
 		expect(chat).toHaveLength(1);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('error');
@@ -213,7 +210,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages, i18n);
+		const chat = convertDbMessages(dbMessages);
 		expect(chat).toHaveLength(1);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('done');
@@ -239,7 +236,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages, i18n);
+		const chat = convertDbMessages(dbMessages);
 		expect(chat).toHaveLength(1);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('cancelled');
@@ -265,7 +262,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages, i18n);
+		const chat = convertDbMessages(dbMessages);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('error');
 		expect(tc?.output).toEqual({ status: 'failed', answer: '', error: 'child failed' });
@@ -289,7 +286,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages, i18n);
+		const chat = convertDbMessages(dbMessages);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('done');
 	});
@@ -316,7 +313,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const chat = convertDbMessages(dbMessages, i18n);
+		const chat = convertDbMessages(dbMessages);
 		expect(chat[0].toolCalls?.[0].displaySummary).toBeUndefined();
 		expect(chat[0].toolCalls?.[0].input).toEqual({
 			subAgentId: 'inline',
@@ -357,48 +354,44 @@ describe('isGroupable', () => {
 
 describe('buildDisplayGroups — interactive payloads', () => {
 	it('collects interactive payloads from each grouped message into the toolRun group', () => {
-		const groups = buildDisplayGroups(
-			[
-				// First grouped turn: a resolved approval card
-				{
-					id: 'm1',
-					role: 'assistant',
-					content: '',
-					toolCalls: [{ tool: 'tool_a', toolCallId: 'c1', state: 'done' }],
-					interactive: {
-						toolName: APPROVAL_TOOL_NAME,
-						toolCallId: 'c1',
-						input: { type: 'approval', toolName: 'tool_a', args: {} },
-						resolvedAt: 1,
-						resolvedValue: { approved: true },
-					},
-					status: 'success',
+		const groups = buildDisplayGroups([
+			// First grouped turn: a resolved approval card
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'tool_a', toolCallId: 'c1', state: 'done' }],
+				interactive: {
+					toolName: APPROVAL_TOOL_NAME,
+					toolCallId: 'c1',
+					input: { type: 'approval', toolName: 'tool_a', args: {} },
+					resolvedAt: 1,
+					resolvedValue: { approved: true },
 				},
-				// Second grouped turn: a normal tool call (no interactive)
-				{
-					id: 'm2',
-					role: 'assistant',
-					content: '',
-					toolCalls: [{ tool: 'search_nodes', toolCallId: 'c2', state: 'done' }],
-					status: 'success',
+				status: 'success',
+			},
+			// Second grouped turn: a normal tool call (no interactive)
+			{
+				id: 'm2',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'search_nodes', toolCallId: 'c2', state: 'done' }],
+				status: 'success',
+			},
+			// Third grouped turn: an open approval card
+			{
+				id: 'm3',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'tool_b', toolCallId: 'c3', state: 'suspended' }],
+				interactive: {
+					toolName: APPROVAL_TOOL_NAME,
+					toolCallId: 'c3',
+					input: { type: 'approval', toolName: 'tool_b', args: {} },
 				},
-				// Third grouped turn: an open approval card
-				{
-					id: 'm3',
-					role: 'assistant',
-					content: '',
-					toolCalls: [{ tool: 'tool_b', toolCallId: 'c3', state: 'suspended' }],
-					interactive: {
-						toolName: APPROVAL_TOOL_NAME,
-						toolCallId: 'c3',
-						input: { type: 'approval', toolName: 'tool_b', args: {} },
-					},
-					status: 'awaitingUser',
-				},
-			],
-			i18n,
-		);
-
+				status: 'awaitingUser',
+			},
+		]);
 		expect(groups).toHaveLength(1);
 		const grouped = groups[0];
 		expect(grouped.kind).toBe('toolRun');
@@ -412,35 +405,32 @@ describe('buildDisplayGroups — interactive payloads', () => {
 	});
 
 	it('collects multiple interactive payloads from one grouped message', () => {
-		const groups = buildDisplayGroups(
-			[
-				{
-					id: 'm1',
-					role: 'assistant',
-					content: '',
-					toolCalls: [
-						{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-1', state: 'done' },
-						{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-2', state: 'done' },
-					],
-					interactives: [
-						{
-							toolName: N8N_CHAT_ACTION_TOOL_NAME,
-							toolCallId: 'card-1',
-							input: { card: { title: 'First card', components: [] } },
-							resolvedAt: 1,
-						},
-						{
-							toolName: N8N_CHAT_ACTION_TOOL_NAME,
-							toolCallId: 'card-2',
-							input: { card: { title: 'Second card', components: [] } },
-							resolvedAt: 1,
-						},
-					],
-					status: 'success',
-				},
-			],
-			i18n,
-		);
+		const groups = buildDisplayGroups([
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-1', state: 'done' },
+					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-2', state: 'done' },
+				],
+				interactives: [
+					{
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-1',
+						input: { card: { title: 'First card', components: [] } },
+						resolvedAt: 1,
+					},
+					{
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-2',
+						input: { card: { title: 'Second card', components: [] } },
+						resolvedAt: 1,
+					},
+				],
+				status: 'success',
+			},
+		]);
 
 		expect(groups).toHaveLength(1);
 		const grouped = groups[0];
@@ -450,47 +440,44 @@ describe('buildDisplayGroups — interactive payloads', () => {
 	});
 
 	it('merges duplicate persisted tool calls by id and keeps the resolved one', () => {
-		const chat = convertDbMessages(
-			[
-				{
-					id: 'user-1',
-					role: 'user',
-					content: [{ type: 'text', text: 'Can you fetch this page?' }],
-				},
-				{
-					id: 'assistant-pending',
-					role: 'assistant',
-					content: [
-						{
-							type: 'tool-call',
-							toolName: 'notion_notion-fetch',
-							toolCallId: 'toolu_1',
-							input: { id: 'https://app.notion.com/p/example' },
-							startTime: 1_000,
-						},
-					],
-				},
-				{
-					id: 'assistant-resolved',
-					role: 'assistant',
-					content: [
-						{
-							type: 'tool-call',
-							toolName: 'notion_notion-fetch',
-							toolCallId: 'toolu_1',
-							state: 'resolved',
-							output: { content: [{ type: 'text', text: 'Page contents' }] },
-							startTime: 2_000,
-							endTime: 2_000,
-						},
-						{ type: 'text', text: 'Here is the page I fetched.' },
-					],
-				},
-			],
-			i18n,
-		);
+		const chat = convertDbMessages([
+			{
+				id: 'user-1',
+				role: 'user',
+				content: [{ type: 'text', text: 'Can you fetch this page?' }],
+			},
+			{
+				id: 'assistant-pending',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'notion_notion-fetch',
+						toolCallId: 'toolu_1',
+						input: { id: 'https://app.notion.com/p/example' },
+						startTime: 1_000,
+					},
+				],
+			},
+			{
+				id: 'assistant-resolved',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'notion_notion-fetch',
+						toolCallId: 'toolu_1',
+						state: 'resolved',
+						output: { content: [{ type: 'text', text: 'Page contents' }] },
+						startTime: 2_000,
+						endTime: 2_000,
+					},
+					{ type: 'text', text: 'Here is the page I fetched.' },
+				],
+			},
+		]);
 
-		const groups = buildDisplayGroups(chat, i18n);
+		const groups = buildDisplayGroups(chat);
 
 		expect(groups).toHaveLength(2);
 		const toolRun = groups[1];

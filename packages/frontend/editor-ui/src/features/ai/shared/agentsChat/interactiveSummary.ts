@@ -1,4 +1,3 @@
-import type { useI18n } from '@n8n/i18n';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 
 import {
@@ -6,9 +5,6 @@ import {
 	n8nChatResumeValueSchema,
 	parseN8nChatActionInput,
 } from './n8nChatInteraction';
-
-/** Threaded from the calling Vue component/composable — see `write-todos-tool.ts` for the established pattern. */
-export type SummaryI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
 
 /**
  * Build a one-line human-readable label for a resolved interactive tool call.
@@ -26,7 +22,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 export function summariseToolCall(
 	toolName: string,
 	output: unknown,
-	i18n: SummaryI18n,
 	input?: unknown,
 ): string | undefined {
 	// Output comes off the wire as `unknown`; treat anything non-object-shaped

@@ -361,40 +361,6 @@ describe('AgentChatMessageList', () => {
 		expect(cards[0].attributes('data-run-id')).toBe('run-active');
 	});
 
-	it('collapses resolved builder cards into the tool-step summary (no card)', () => {
-		const wrapper = mount(AgentChatMessageList, {
-			props: {
-				messages: [
-					{
-						id: 'assistant-resolved-question',
-						role: 'assistant',
-						content: 'Thanks!',
-						interactive: {
-							toolName: 'ask_questions',
-							toolCallId: 'tc-q',
-							resolvedAt: 1,
-							input: {
-								requestId: 'req-1',
-								message: 'Pick one',
-								severity: 'info',
-								inputType: 'questions',
-								questions: [{ id: 'q1', question: 'Pick one', type: 'single', options: ['a'] }],
-							},
-							resolvedValue: {
-								answered: true,
-								answers: [{ questionId: 'q1', selectedOptions: ['a'] }],
-							},
-						},
-						status: 'success',
-					} satisfies ChatMessage,
-				],
-				messagingState: 'idle',
-			},
-		});
-
-		expect(wrapper.find('[data-testid="interactive-card-stub"]').exists()).toBe(false);
-	});
-
 	it('does not render external-wait notice for suspended chat_action tool (toolRun path)', () => {
 		// isGroupable: role=assistant, toolCalls.length>0, content is empty → toolRun group
 		const wrapper = mount(AgentChatMessageList, {

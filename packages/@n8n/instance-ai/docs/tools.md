@@ -695,8 +695,13 @@ appears in the agents-module builder UI.
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
 **Returns**: `{ ok: true, builderReply, configUpdated }` on success, or
-`{ ok: false, error, configUpdated }` on failure (`configUpdated` still reports
-mutations from passes that ran before the failure).
+`{ ok: false, error, configUpdated? }` on failure. `configUpdated` is optional:
+it's included (reporting mutations from passes that already ran) once a
+builder turn has actually been dispatched — mid-turn failures and resume
+failures that still carry a prior checkpoint ref — but omitted for
+precondition failures before any turn starts (agents module not configured,
+missing `name`/`agentId`, no project context to bind `agentId`, or a resume
+whose suspend payload has no checkpoint ref to carry).
 
 **Interactive questions:** when the builder suspends on one of its interactive
 tools (batched questions, a credential picker, or channel setup), this tool
