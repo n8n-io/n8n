@@ -77,6 +77,7 @@ export class DurableScheduler implements Scheduler {
 							globalConfig.database.type === 'postgresdb' ? 'concurrent' : 'sequential',
 						maxConcurrentPasses: config.maxConcurrentPasses,
 					},
+					now: async () => await tasks.readDbTime(),
 					onEvent: ({ level, message, context }) => logger[level](message, context),
 					tracer,
 				})

@@ -18,6 +18,14 @@ export type {
 export { computeFirstRunAt, computeNextRunAt } from './recurrence/next-run';
 export { validateSchedule } from './recurrence/validate';
 
+export {
+	CLOCK_SKEW_WARN_THRESHOLD_MS,
+	DEFAULT_CLOCK_SKEW_OPTIONS,
+	isClockSkewSignificant,
+	measureClockSkew,
+} from './clock-skew';
+export type { ClockSkew, ClockSkewOptions } from './clock-skew';
+
 export { provision, deprovision, createJobProvisioner, scheduleFingerprint } from './provisioning';
 export type {
 	JobProvisioner,

@@ -7,7 +7,7 @@ import type { SchedulerMetrics } from '../../observability/metrics';
 import { SpanStatus, type Span, type Tracer } from '../../observability/tracer';
 import { InvalidLifecycleOptionsError } from '../errors';
 import { createScheduler } from '../factory';
-import type { SchedulerDeps, SchedulerTaskStore } from '../factory';
+import type { SchedulerDeps, SchedulerEvent, SchedulerTaskStore } from '../factory';
 import { PASS_TIMED_OUT } from '../lifecycle';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
@@ -36,7 +36,7 @@ const makeTracer = () => {
 /** Compose a scheduler over mocks, with non-default retention windows. */
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
 	const taskStore = mock<SchedulerTaskStore>();
-	const onEvent = vi.fn();
+	const onEvent = vi.fn<(event: SchedulerEvent) => void>();
 	const materializerTransaction: RunInTransaction = vi.fn();
 	const scheduler = createScheduler({
 		hostId: 'main-test',
@@ -496,6 +496,94 @@ describe('createScheduler lifecycle', () => {
 
 		// The loops are one-shot; a restart claim over dead loops would be a lie.
 		expect(onEvent).not.toHaveBeenCalled();
+	});
+});
+
+describe('createScheduler clock skew', () => {
+	const CLOCK_DIFFERENCE_WARNING =
+		'Scheduler detected a clock difference between this instance and the clock it coordinates on; scheduled tasks may fire slightly early or late. Synchronise this instance clock (e.g. via NTP).';
+
+	/** The events the sink received, filtered by level. */
+	const eventsAt = (
+		onEvent: ReturnType<typeof makeScheduler>['onEvent'],
+		level: SchedulerEvent['level'],
+	) => onEvent.mock.calls.map((call) => call[0]).filter((event) => event.level === level);
+
+	it('warns through the event sink when the instance and coordination clocks differ', async () => {
+		// The coordination clock reads 5s ahead of the instance, far past the threshold.
+		const now = vi.fn<() => Promise<Date>>().mockResolvedValue(new Date(Date.now() + 5_000));
+		const { scheduler, onEvent } = makeScheduler({ now });
+
+		scheduler.start();
+
+		// The check is detached from start; wait for it to report.
+		await vi.waitFor(() => {
+			expect(onEvent).toHaveBeenCalledWith(
+				expect.objectContaining({ level: 'warn', message: CLOCK_DIFFERENCE_WARNING }),
+			);
+		});
+		expect(now).toHaveBeenCalledTimes(1);
+		const [warning] = eventsAt(onEvent, 'warn');
+		expect(typeof warning.context.offsetMs).toBe('number');
+		expect(typeof warning.context.roundTripMs).toBe('number');
+
+		await scheduler.stop();
+	});
+
+	it('stays silent when the clocks are in sync', async () => {
+		const now = vi.fn<() => Promise<Date>>().mockResolvedValue(new Date());
+		const { scheduler, onEvent } = makeScheduler({ now });
+
+		scheduler.start();
+		await vi.waitFor(() => expect(now).toHaveBeenCalledTimes(1));
+
+		expect(eventsAt(onEvent, 'warn')).toHaveLength(0);
+
+		await scheduler.stop();
+	});
+
+	it('reports a failed clock read at debug and never breaks start', async () => {
+		const now = vi.fn<() => Promise<Date>>().mockRejectedValue(new Error('clock unavailable'));
+		const { scheduler, onEvent } = makeScheduler({ now });
+
+		scheduler.start();
+
+		await vi.waitFor(() => {
+			expect(onEvent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'debug',
+					message: 'Scheduler could not check the clock difference',
+					context: { error: 'clock unavailable' },
+				}),
+			);
+		});
+
+		await scheduler.stop();
+	});
+
+	it('honours a custom warn threshold', async () => {
+		// A 5s offset would warn at the default threshold; a 10s threshold silences it.
+		const now = vi.fn<() => Promise<Date>>().mockResolvedValue(new Date(Date.now() + 5_000));
+		const { scheduler, onEvent } = makeScheduler({ now, clockSkew: { warnThresholdMs: 10_000 } });
+
+		scheduler.start();
+		await vi.waitFor(() => expect(now).toHaveBeenCalledTimes(1));
+
+		expect(eventsAt(onEvent, 'warn')).toHaveLength(0);
+
+		await scheduler.stop();
+	});
+
+	it('skips the check when no clock reader is supplied', async () => {
+		const { scheduler, onEvent } = makeScheduler();
+
+		scheduler.start();
+		// Let any detached work run.
+		await Promise.resolve();
+
+		expect(eventsAt(onEvent, 'warn')).toHaveLength(0);
+
+		await scheduler.stop();
 	});
 });
 

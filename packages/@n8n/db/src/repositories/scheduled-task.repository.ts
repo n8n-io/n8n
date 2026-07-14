@@ -425,6 +425,16 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
+	 * @returns database clock.
+	 */
+	async readDbTime(): Promise<Date> {
+		const [row]: Array<{ dbNow: Date | string }> = await this.query(
+			`SELECT ${dbNowLiteral(this.isPostgres)} AS "dbNow"`,
+		);
+		return parseDbTime(row.dbNow);
+	}
+
+	/**
 	 * Reaper reclaim: an expired-lease `running` task back to `pending`, counting the
 	 * attempt, pushing `runAt` out by the backoff, and bumping the lease epoch.
 	 * Clears the claim and lease. Guarded on the epoch read during the sweep and a
