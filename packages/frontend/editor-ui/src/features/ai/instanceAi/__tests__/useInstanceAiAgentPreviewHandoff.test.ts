@@ -1,18 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed } from 'vue';
 
-const startThreadMock = vi.fn();
+const openThreadWithContextMock = vi.fn();
 const trackMock = vi.fn();
 let instanceAiAvailable = true;
-
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (key: string) =>
-			key === 'agents.builder.preview.sendToAssistant.message'
-				? 'Please review this preview session and improve the agent based on how it behaved.'
-				: key,
-	}),
-}));
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
@@ -23,8 +14,6 @@ vi.mock('../composables/useInstanceAiAvailability', () => ({
 }));
 
 vi.mock('../composables/useInstanceAiHandoff', () => ({
-	buildInstanceAiAgentPreviewQuestion: () =>
-		'Please review this preview session and improve the agent based on how it behaved.',
 	buildInstanceAiAgentPreviewHandoffContext: ({
 		agentId,
 		threadId,
@@ -36,7 +25,7 @@ vi.mock('../composables/useInstanceAiHandoff', () => ({
 		agentId,
 		threadId,
 	}),
-	useInstanceAiHandoff: () => ({ startThread: startThreadMock }),
+	useInstanceAiHandoff: () => ({ openThreadWithContext: openThreadWithContextMock }),
 }));
 
 describe('useInstanceAiAgentPreviewHandoff', () => {
@@ -56,19 +45,14 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 			threadId: 'thread-1',
 		});
 
-		expect(startThreadMock).toHaveBeenCalledWith(
+		expect(openThreadWithContextMock).toHaveBeenCalledWith(
 			'project-1',
-			'Please review this preview session and improve the agent based on how it behaved.',
-			undefined,
-			undefined,
 			{
-				newTab: true,
-				context: {
-					source: 'agent-preview',
-					agentId: 'agent-1',
-					threadId: 'thread-1',
-				},
+				source: 'agent-preview',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
 			},
+			{ newTab: true },
 		);
 		expect(trackMock).toHaveBeenCalledWith('Instance AI opened from agent preview', {
 			agent_id: 'agent-1',
@@ -88,7 +72,7 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 			threadId: 'thread-1',
 		});
 
-		expect(startThreadMock).not.toHaveBeenCalled();
+		expect(openThreadWithContextMock).not.toHaveBeenCalled();
 		expect(trackMock).not.toHaveBeenCalled();
 	});
 });

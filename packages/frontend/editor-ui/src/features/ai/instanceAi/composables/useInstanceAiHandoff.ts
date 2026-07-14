@@ -41,11 +41,9 @@ export function buildInstanceAiArtifactCredentialQuestion(
 	return `How do I set up the credentials for ${credential.displayName}?${node}${existingCredentialNote(credential)}`;
 }
 
-export function buildInstanceAiAgentPreviewQuestion(): string {
-	return 'Please review this preview session and improve the agent based on how it behaved.';
-}
-
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
+const pendingHandoffContextKey = (threadId: string) =>
+	`n8n-instance-ai-handoff-context:${threadId}`;
 
 export interface PendingFirstMessage {
 	message: string;
@@ -112,6 +110,24 @@ export function consumePendingFirstMessage(threadId: string): PendingFirstMessag
 	}
 }
 
+export function stashPendingHandoffContext(
+	threadId: string,
+	context: InstanceAiHandoffContext,
+): void {
+	localStorage.setItem(pendingHandoffContextKey(threadId), JSON.stringify(context));
+}
+
+export function consumePendingHandoffContext(threadId: string): InstanceAiHandoffContext | null {
+	const raw = localStorage.getItem(pendingHandoffContextKey(threadId));
+	if (!raw) return null;
+	localStorage.removeItem(pendingHandoffContextKey(threadId));
+	try {
+		return JSON.parse(raw) as InstanceAiHandoffContext;
+	} catch {
+		return null;
+	}
+}
+
 /** Resolve the personal project a launched thread binds to, loading it on first use. */
 export async function ensurePersonalProjectId(): Promise<string | null> {
 	const projectsStore = useProjectsStore();
@@ -146,6 +162,21 @@ export async function provisionLaunchedThread(
 	return threadId;
 }
 
+export async function provisionContextOnlyThread(
+	projectId: string,
+	context: InstanceAiHandoffContext,
+	launch?: InstanceAiThreadLaunch,
+): Promise<string | null> {
+	const threadId = uuidv4();
+	try {
+		await useInstanceAiStore().syncThread(threadId, projectId, launch);
+	} catch {
+		return null;
+	}
+	stashPendingHandoffContext(threadId, context);
+	return threadId;
+}
+
 // One hand-off at a time across all entry points (module-level to share the guard).
 let handoffInFlight = false;
 
@@ -158,6 +189,35 @@ export function useInstanceAiHandoff() {
 	const rootStore = useRootStore();
 	const router = useRouter();
 	const toast = useToast();
+
+	async function openThreadWithContext(
+		projectId: string,
+		context: InstanceAiHandoffContext,
+		options?: {
+			newTab?: boolean;
+			launch?: InstanceAiThreadLaunch;
+		},
+	): Promise<void> {
+		if (handoffInFlight) return;
+		handoffInFlight = true;
+		try {
+			const tab = options?.newTab ? window.open('', '_blank') : null;
+			const threadId = await provisionContextOnlyThread(projectId, context, options?.launch);
+			if (!threadId) {
+				tab?.close();
+				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				return;
+			}
+			const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
+			if (tab) {
+				tab.location.href = router.resolve(route).href;
+			} else {
+				await router.push(route);
+			}
+		} finally {
+			handoffInFlight = false;
+		}
+	}
 
 	async function startThread(
 		projectId: string,
@@ -211,5 +271,5 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
-	return { startThread };
+	return { startThread, openThreadWithContext };
 }

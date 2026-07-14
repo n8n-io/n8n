@@ -635,7 +635,6 @@
 	"chatHub.message.actions.readAloud": "Read aloud",
 	"chatHub.message.actions.stopReading": "Stop reading",
 	"agents.builder.preview.sendToAssistant": "Send to assistant",
-	"agents.builder.preview.sendToAssistant.message": "Please review this preview session and improve the agent based on how it behaved.",
 	"chatHub.message.actions.edit": "Edit",
 	"chatHub.message.actions.regenerate": "Regenerate",
 	"chatHub.message.actions.executionId": "Execution ID",
