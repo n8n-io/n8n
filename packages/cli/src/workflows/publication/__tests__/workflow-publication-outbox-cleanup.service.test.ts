@@ -4,9 +4,9 @@ import type { WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, Span, Tracing } from 'n8n-core';
 
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@/events/event.service.js';
 
-import { WorkflowPublicationOutboxCleanupService } from '../workflow-publication-outbox-cleanup.service';
+import { WorkflowPublicationOutboxCleanupService } from '../workflow-publication-outbox-cleanup.service.js';
 
 const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 const config = mock<WorkflowsConfig>({

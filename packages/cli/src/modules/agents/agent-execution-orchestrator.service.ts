@@ -19,27 +19,30 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import { Telemetry } from '@/telemetry';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import type {
+	AgentRunTelemetryType,
+	IAgentConfigurationTelemetryProperties,
+} from '@/interfaces.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { buildAgentConfigurationTelemetry } from './agent-telemetry';
-import { AgentExecutionService } from './agent-execution.service';
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
-import type { Agent } from './entities/agent.entity';
-import { ExecutionRecorder } from './execution-recorder';
-import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
-import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { AgentRepository } from './repositories/agent.repository';
-import type { ToolRegistry } from './tool-registry';
-import { createInputDataTool } from './tools/input-data-tool';
-import { createWorkflowContextTool } from './tools/workflow-context-tool';
-import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { streamAgentChunks } from './utils/agent-stream';
-import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
-import { describeStructuredOutputError } from './utils/structured-output-error';
+import { buildAgentConfigurationTelemetry } from './agent-telemetry.js';
+import { AgentExecutionService } from './agent-execution.service.js';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service.js';
+import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service.js';
+import type { Agent } from './entities/agent.entity.js';
+import { ExecutionRecorder } from './execution-recorder.js';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service.js';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage.js';
+import { AgentRepository } from './repositories/agent.repository.js';
+import type { ToolRegistry } from './tool-registry.js';
+import { createInputDataTool } from './tools/input-data-tool.js';
+import { createWorkflowContextTool } from './tools/workflow-context-tool.js';
+import { createAgentCredentialProvider } from './utils/agent-credential-provider.js';
+import { streamAgentChunks } from './utils/agent-stream.js';
+import { executionsToMessagesDto } from './utils/execution-to-message-mapper.js';
+import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot.js';
+import { describeStructuredOutputError } from './utils/structured-output-error.js';
 
 export interface AgentMemoryScope {
 	threadId: string;

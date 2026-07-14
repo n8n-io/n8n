@@ -1,15 +1,15 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
+import type { CollaborationService } from '@/collaboration/collaboration.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { MCP_ARCHIVE_WORKFLOW_TOOL } from './constants';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { getMcpWorkflow } from '../workflow-validation.utils';
+import { MCP_ARCHIVE_WORKFLOW_TOOL } from './constants.js';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
+import { getMcpWorkflow } from '../workflow-validation.utils.js';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to archive'),

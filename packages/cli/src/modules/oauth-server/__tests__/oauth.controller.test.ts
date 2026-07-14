@@ -1,4 +1,4 @@
-import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -6,11 +6,11 @@ import { mock } from 'vitest-mock-extended';
 import type {
 	ProtectedResource,
 	ProtectedResourceRegistry,
-} from '@/services/protected-resource.registry';
-import type { UrlService } from '@/services/url.service';
+} from '@/services/protected-resource.registry.js';
+import type { UrlService } from '@/services/url.service.js';
 
-import { OAuthServerService } from '../oauth-server.service';
-import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
+import { OAuthServerService } from '../oauth-server.service.js';
+import type { OAuthController as OAuthControllerClass } from '../oauth.controller.js';
 
 // The controller module resolves `OAuthServerService` at import time, which
 // constructs TypeORM repositories (needs a live DataSource). Register a mock for
@@ -22,7 +22,7 @@ beforeAll(async () => {
 	// The SDK's `clientRegistrationHandler` validates `clientsStore.registerClient`
 	// when the module builds its routers, so the mock needs a real store.
 	mockInstance(OAuthServerService, { clientsStore: mock<OAuthRegisteredClientsStore>() });
-	({ OAuthController } = await import('../oauth.controller'));
+	({ OAuthController } = await import('../oauth.controller.js'));
 });
 
 const urlService = mock<UrlService>();

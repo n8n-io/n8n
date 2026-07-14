@@ -6,7 +6,7 @@ import {
 	IContextEstablishmentHook,
 } from '@n8n/decorators';
 
-import { RuntimeCredentialsService } from './runtime-credentials.service';
+import { RuntimeCredentialsService } from './runtime-credentials.service.js';
 
 @ContextEstablishmentHook({
 	alwaysExecute: true,

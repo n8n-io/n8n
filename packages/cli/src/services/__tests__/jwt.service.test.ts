@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@/services/jwt.service.js';
 
 const getJwtSecret = (svc: JwtService) => (svc as unknown as { jwtSecret: string }).jwtSecret;
 

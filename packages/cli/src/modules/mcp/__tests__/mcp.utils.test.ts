@@ -2,7 +2,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Request } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { getClientInfo, getToolName, getToolArguments } from '../mcp.utils';
+import { getClientInfo, getToolName, getToolArguments } from '../mcp.utils.js';
 
 describe('mcp.utils', () => {
 	describe('getClientInfo', () => {

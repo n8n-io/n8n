@@ -10,16 +10,16 @@ import {
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { createFolder } from '@test-integration/db/folders';
-import { createMember, createOwner } from '@test-integration/db/users';
+import { EventService } from '@/events/event.service.js';
+import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
+import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers.js';
+import { DataTableService } from '@/modules/data-table/data-table.service.js';
+import { createFolder } from '@test-integration/db/folders.js';
+import { createMember, createOwner } from '@test-integration/db/users.js';
 
-import { N8nPackagesService } from '../n8n-packages.service';
-import { readExport } from './utils/tar-support';
-import { buildWorkflowReferencingDataTables } from './utils/test-builders';
+import { N8nPackagesService } from '../n8n-packages.service.js';
+import { readExport } from './utils/tar-support.js';
+import { buildWorkflowReferencingDataTables } from './utils/test-builders.js';
 
 let service: N8nPackagesService;
 let dataTableService: DataTableService;

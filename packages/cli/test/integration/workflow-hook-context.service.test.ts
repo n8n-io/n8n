@@ -1,9 +1,9 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
-import { WorkflowHookContextService } from '@/workflow-hook-context.service';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service.js';
 
-import { createTag } from './shared/db/tags';
+import { createTag } from './shared/db/tags.js';
 
 describe('WorkflowHookContextService', () => {
 	let service: WorkflowHookContextService;

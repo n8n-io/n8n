@@ -8,7 +8,7 @@ import {
 	queryItems,
 	ITEM_SHAPE_HINT,
 	QUERY_WHEN_TRUNCATED_HINT,
-} from './agent-data-utils';
+} from './agent-data-utils.js';
 
 const DESCRIPTION =
 	'Read the data passed into this agent step. ' +

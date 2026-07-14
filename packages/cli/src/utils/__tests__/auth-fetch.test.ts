@@ -1,7 +1,7 @@
 import type { CustomFetch } from '@n8n/backend-network';
 import { UserError } from 'n8n-workflow';
 
-import { createAuthFetch } from '@/utils/auth-fetch';
+import { createAuthFetch } from '@/utils/auth-fetch.js';
 
 const baseFetchMock = vi.fn();
 const baseFetch = ((...args: unknown[]) => baseFetchMock(...args)) as unknown as CustomFetch;

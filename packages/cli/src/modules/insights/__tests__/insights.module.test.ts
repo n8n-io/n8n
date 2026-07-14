@@ -6,10 +6,10 @@ import { InstanceSettings } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import { InsightsCollectionService } from '../insights-collection.service';
-import { InsightsModule } from '../insights.module';
-import { InsightsService } from '../insights.service';
+import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository.js';
+import { InsightsCollectionService } from '../insights-collection.service.js';
+import { InsightsModule } from '../insights.module.js';
+import { InsightsService } from '../insights.service.js';
 
 describe('InsightsModule', () => {
 	let insightsModule: InsightsModule;

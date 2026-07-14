@@ -2,11 +2,11 @@ import type { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
-import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
-import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
-import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
-import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
+import { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error.js';
+import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service.js';
+import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events.js';
+import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js.js';
+import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector.js';
 
 describe('TaskRunnerProcessRestartLoopDetector', () => {
 	const mockLogger = mock<Logger>();

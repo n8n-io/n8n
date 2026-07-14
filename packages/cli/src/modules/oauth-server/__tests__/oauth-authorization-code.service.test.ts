@@ -3,9 +3,9 @@ import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 
-import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
-import { AuthorizationCodeRepository } from '../database/repositories/oauth-authorization-code.repository';
-import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
+import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity.js';
+import { AuthorizationCodeRepository } from '../database/repositories/oauth-authorization-code.repository.js';
+import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service.js';
 
 let authorizationCodeRepository: Mocked<AuthorizationCodeRepository>;
 let service: OAuthAuthorizationCodeService;

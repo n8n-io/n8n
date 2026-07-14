@@ -1,8 +1,8 @@
-import { AgentBuilderController } from '../agent-builder.controller';
+import { AgentBuilderController } from '../agent-builder.controller.js';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
-} from './test-utils/controller-route-metadata';
+} from './test-utils/controller-route-metadata.js';
 
 describe('AgentBuilderController route access scopes', () => {
 	expectProjectScopedAgentRoutes(AgentBuilderController);

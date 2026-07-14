@@ -28,7 +28,7 @@ vi.mock('@n8n/instance-ai', () => ({
 
 import type { InstanceAiTraceContext } from '@n8n/instance-ai';
 
-import { TraceReplayState } from '../trace-replay-state';
+import { TraceReplayState } from '../trace-replay-state.js';
 
 describe('TraceReplayState', () => {
 	const originalEnv = process.env;

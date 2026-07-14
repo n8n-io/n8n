@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
-import { mockEntityManager } from '@test/mocking';
+import { mockEntityManager } from '@test/mocking.js';
 
-import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
-import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { AgentCheckpoint } from '../entities/agent-checkpoint.entity.js';
+import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository.js';
 
 const entityManager = mockEntityManager(AgentCheckpoint);
 const mockDataSource = { manager: entityManager };

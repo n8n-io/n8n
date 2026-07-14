@@ -3,9 +3,9 @@ import { CredentialsRepository, MoreThanOrEqual } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { CREDENTIALS_REPORT } from '@/security-audit/constants';
-import type { RiskReporter, Risk } from '@/security-audit/types';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { CREDENTIALS_REPORT } from '@/security-audit/constants.js';
+import type { RiskReporter, Risk } from '@/security-audit/types.js';
 
 @Service()
 export class CredentialsRiskReporter implements RiskReporter {

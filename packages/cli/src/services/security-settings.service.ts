@@ -12,10 +12,10 @@ import {
 } from '@n8n/permissions';
 import type { DistributiveOmit } from '@n8n/utils/types';
 
-import { EventService } from '@/events/event.service';
-import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
-import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { RoleService } from '@/services/role.service';
+import { EventService } from '@/events/event.service.js';
+import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map.js';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service.js';
+import { RoleService } from '@/services/role.service.js';
 
 /**
  * The writable subset of the security policy shared by the internal controller

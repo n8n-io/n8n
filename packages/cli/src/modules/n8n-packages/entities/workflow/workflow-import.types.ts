@@ -1,11 +1,11 @@
 import type { WorkflowEntity } from '@n8n/db';
 
-import type { WorkflowIdConflict } from './workflow-import-match.service';
+import type { WorkflowIdConflict } from './workflow-import-match.service.js';
 import type {
 	WorkflowPublishingOutcome,
 	WorkflowPublishingPolicy,
-} from './workflow-publishing-policy.types';
-import type { ImportContext } from '../../n8n-packages.types';
+} from './workflow-publishing-policy.types.js';
+import type { ImportContext } from '../../n8n-packages.types.js';
 
 /** Apply-time context for the workflow importer: the resolved import target plus apply-only inputs. */
 export interface WorkflowImportContext extends ImportContext {

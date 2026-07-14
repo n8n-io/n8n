@@ -8,13 +8,13 @@ import { AssertionError } from 'node:assert';
 import * as http from 'node:http';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsOverwrites } from '@/credentials-overwrites';
-import type { ExternalHooks } from '@/external-hooks';
-import type { PrometheusMetricsService } from '@/metrics/prometheus';
-import { bodyParser, rawBodyReader } from '@/middlewares';
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import type { ExternalHooks } from '@/external-hooks.js';
+import type { PrometheusMetricsService } from '@/metrics/prometheus/index.js';
+import { bodyParser, rawBodyReader } from '@/middlewares/index.js';
+import type { RedisClientService } from '@/services/redis-client.service.js';
 
-import { WorkerServer } from '../worker-server';
+import { WorkerServer } from '../worker-server.js';
 
 const app = mock<express.Application>();
 

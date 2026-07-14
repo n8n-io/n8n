@@ -6,7 +6,7 @@ import { DateTime } from 'luxon';
 import { assert } from 'n8n-workflow';
 import promClient, { Gauge } from 'prom-client';
 
-import type { PrometheusMetricsCollector } from './base';
+import type { PrometheusMetricsCollector } from './base.js';
 
 /**
  * Instruments Express routes with `express-prom-bundle` for HTTP request duration metrics,

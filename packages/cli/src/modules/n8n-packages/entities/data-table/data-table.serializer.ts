@@ -1,11 +1,11 @@
 import { Service } from '@n8n/di';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
+import type { DataTable } from '@/modules/data-table/data-table.entity.js';
 
 import {
 	serializedDataTableSchema,
 	type SerializedDataTable,
-} from '../../spec/serialized/data-table.schema';
+} from '../../spec/serialized/data-table.schema.js';
 
 @Service()
 export class DataTableSerializer {

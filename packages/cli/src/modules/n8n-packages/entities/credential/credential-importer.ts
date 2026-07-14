@@ -1,17 +1,17 @@
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsService } from '@/credentials/credentials.service.js';
 
-import { CredentialMatcherFactory } from './credential-matcher-factory';
-import { credentialBlockingFailures, canStubNotFoundFailure } from './credential-missing-mode';
+import { CredentialMatcherFactory } from './credential-matcher-factory.js';
+import { credentialBlockingFailures, canStubNotFoundFailure } from './credential-missing-mode.js';
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
 	CredentialResolution,
 	CredentialResolutionFailure,
-} from './credential.types';
-import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types';
+} from './credential.types.js';
+import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types.js';
 
 @Service()
 export class CredentialImporter {

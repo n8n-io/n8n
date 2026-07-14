@@ -3,15 +3,15 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonStringify } from 'n8n-workflow';
 import z from 'zod';
 
-import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
+import type { CollaborationService } from '@/collaboration/collaboration.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { WorkflowAccessError } from '../mcp.errors';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { getMcpWorkflow } from './workflow-validation.utils';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import { WorkflowAccessError } from '../mcp.errors.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types.js';
+import { getMcpWorkflow } from './workflow-validation.utils.js';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to unpublish'),

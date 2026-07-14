@@ -7,15 +7,15 @@ import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
+import { EventService } from '@/events/event.service.js';
 import type {
 	PublicationOutcomeReason,
 	PublicationOutcomeResult,
-} from '@/events/maps/workflow-publication-metrics.event-map';
-import type { PublicationResult } from '@/workflows/publication/publication-result';
-import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
-import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
-import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
+} from '@/events/maps/workflow-publication-metrics.event-map.js';
+import type { PublicationResult } from '@/workflows/publication/publication-result.js';
+import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter.js';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock.js';
+import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier.js';
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It owns the

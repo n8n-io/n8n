@@ -12,19 +12,19 @@ import type { Cipher, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { CacheService } from '@/services/cache/cache.service';
-import type { UrlService } from '@/services/url.service';
-import * as ssoHelpers from '@/sso.ee/sso-helpers';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { CacheService } from '@/services/cache/cache.service.js';
+import type { UrlService } from '@/services/url.service.js';
+import * as ssoHelpers from '@/sso.ee/sso-helpers.js';
 
-import { SAML_PREFERENCES_DB_KEY } from '../constants';
-import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';
-import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error';
-import * as samlHelpers from '../saml-helpers';
-import { SamlValidator } from '../saml-validator';
-import { SamlService } from '../saml.service.ee';
+import { SAML_PREFERENCES_DB_KEY } from '../constants.js';
+import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error.js';
+import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error.js';
+import * as samlHelpers from '../saml-helpers.js';
+import { SamlValidator } from '../saml-validator.js';
+import { SamlService } from '../saml.service.ee.js';
 
 const InvalidSamlSetting: Settings = {
 	loadOnStartup: true,
@@ -153,7 +153,7 @@ import {
 	RSA_MISMATCHED_CERTIFICATE,
 	RSA_TEST_CERTIFICATE,
 	RSA_TEST_PRIVATE_KEY,
-} from './saml-signing-test-fixtures';
+} from './saml-signing-test-fixtures.js';
 
 describe('SamlService', () => {
 	let samlService: SamlService;

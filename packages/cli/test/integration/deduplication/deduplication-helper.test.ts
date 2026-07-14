@@ -8,10 +8,10 @@ import type {
 } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
-import { getDataDeduplicationService } from '@/deduplication';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
-import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
+import { getDataDeduplicationService } from '@/deduplication/index.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { NodeTypes } from '@/node-types.js';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data.js';
 
 let workflow: Workflow;
 

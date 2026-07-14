@@ -6,8 +6,8 @@ import {
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
 
-import { MfaService } from '@/mfa/mfa.service';
-import { SecuritySettingsService } from '@/services/security-settings.service';
+import { MfaService } from '@/mfa/mfa.service.js';
+import { SecuritySettingsService } from '@/services/security-settings.service.js';
 
 @Service()
 export class SecurityPolicyInstanceSettingsLoader {

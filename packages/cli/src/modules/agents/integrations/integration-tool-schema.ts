@@ -6,7 +6,7 @@ import type {
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
 	IntegrationToolOperationDefinition,
-} from './integration-tool-types';
+} from './integration-tool-types.js';
 
 export interface RawContextToolOperation {
 	query: IntegrationContextQuery;

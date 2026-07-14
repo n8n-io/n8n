@@ -14,12 +14,12 @@ import type {
 	WorkflowOpenedMessage,
 	WriteAccessRequestedMessage,
 	WriteAccessReleaseRequestedMessage,
-} from '@/collaboration/collaboration.message';
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { CollaborationState } from '@/collaboration/collaboration.state';
-import { Push } from '@/push';
-import { CacheService } from '@/services/cache/cache.service';
-import { createMember, createOwner } from '@test-integration/db/users';
+} from '@/collaboration/collaboration.message.js';
+import { CollaborationService } from '@/collaboration/collaboration.service.js';
+import { CollaborationState } from '@/collaboration/collaboration.state.js';
+import { Push } from '@/push/index.js';
+import { CacheService } from '@/services/cache/cache.service.js';
+import { createMember, createOwner } from '@test-integration/db/users.js';
 
 describe('CollaborationService', () => {
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));

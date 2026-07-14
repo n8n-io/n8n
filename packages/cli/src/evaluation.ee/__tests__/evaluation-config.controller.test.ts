@@ -2,14 +2,14 @@ import type { Mocked } from 'vitest';
 import type { AuthenticatedRequest, EvaluationConfig, User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { EvaluationApiError } from '../evaluation-api-error';
-import { EvaluationConfigController } from '../evaluation-config.controller';
-import type { EvaluationConfigService } from '../evaluation-config.service';
-import type { EvaluationDatasetService } from '../evaluation-dataset.service';
+import { EvaluationApiError } from '../evaluation-api-error.js';
+import { EvaluationConfigController } from '../evaluation-config.controller.js';
+import type { EvaluationConfigService } from '../evaluation-config.service.js';
+import type { EvaluationDatasetService } from '../evaluation-dataset.service.js';
 
 describe('EvaluationConfigController', () => {
 	let controller: EvaluationConfigController;

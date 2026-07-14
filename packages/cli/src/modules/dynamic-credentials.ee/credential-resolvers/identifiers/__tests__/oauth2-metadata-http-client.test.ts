@@ -4,10 +4,10 @@ import type { SsrfProtectionConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
-import { IdentifierValidationError } from '../identifier-interface';
-import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client';
+import { IdentifierValidationError } from '../identifier-interface.js';
+import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client.js';
 
 describe('OAuth2MetadataHttpClient', () => {
 	const logger = mockLogger();

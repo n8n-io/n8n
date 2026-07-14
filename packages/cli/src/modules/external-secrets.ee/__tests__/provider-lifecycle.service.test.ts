@@ -5,9 +5,9 @@ import {
 	ErrorProvider,
 	FailedProvider,
 	MockProviders,
-} from '@test/external-secrets/utils';
+} from '@test/external-secrets/utils.js';
 
-import { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
+import { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service.js';
 
 describe('ProviderLifecycle', () => {
 	let lifecycle: ExternalSecretsProviderLifecycle;

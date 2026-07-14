@@ -12,10 +12,10 @@ import {
 import type { Mocked, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { NodeTypes } from '@/node-types';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { NodeTypes } from '@/node-types.js';
 
-import { extractResolvedNodeParameters } from '../extract-resolved-node-parameters';
+import { extractResolvedNodeParameters } from '../extract-resolved-node-parameters.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

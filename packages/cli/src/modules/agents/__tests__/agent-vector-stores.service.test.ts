@@ -4,11 +4,11 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
 
-import { AgentVectorStoresService } from '../agent-vector-stores.service';
-import { resolveEmbeddingProviderOptionsFromCredential } from '../json-config/embedding-credential';
-import { buildVectorStoreBackend } from '../json-config/vector-store-factory';
+import { AgentVectorStoresService } from '../agent-vector-stores.service.js';
+import { resolveEmbeddingProviderOptionsFromCredential } from '../json-config/embedding-credential.js';
+import { buildVectorStoreBackend } from '../json-config/vector-store-factory.js';
 
 vi.mock('../json-config/vector-store-factory', () => ({
 	buildVectorStoreBackend: vi.fn(),

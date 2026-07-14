@@ -2,8 +2,8 @@ import type {
 	ImportBindingMap,
 	CredentialMatchingMode,
 	CredentialMissingMode,
-} from '../../n8n-packages.types';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+} from '../../n8n-packages.types.js';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema.js';
 
 export interface WorkflowCredentialRequirement {
 	workflowId: string;

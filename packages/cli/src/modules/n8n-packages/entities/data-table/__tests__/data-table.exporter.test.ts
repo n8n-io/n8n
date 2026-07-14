@@ -2,13 +2,13 @@ import type { User } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTable } from '@/modules/data-table/data-table.entity.js';
+import type { DataTableService } from '@/modules/data-table/data-table.service.js';
 
-import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
-import { DataTableExporter } from '../data-table.exporter';
-import { DataTableSerializer } from '../data-table.serializer';
-import type { WorkflowDataTableRequirement } from '../data-table.types';
+import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer.js';
+import { DataTableExporter } from '../data-table.exporter.js';
+import { DataTableSerializer } from '../data-table.serializer.js';
+import type { WorkflowDataTableRequirement } from '../data-table.types.js';
 
 const user = mock<User>({ id: 'user-1' });
 

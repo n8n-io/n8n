@@ -6,11 +6,11 @@ import type { SchedulerMetrics } from '@n8n/scheduler';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@/services/cache/cache.service.js';
 
-import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQuery } from './cached-metric-query';
-import { DURATION_BUCKETS_SECONDS } from './constant';
+import type { PrometheusMetricsCollector } from './base.js';
+import { CachedMetricQuery } from './cached-metric-query.js';
+import { DURATION_BUCKETS_SECONDS } from './constant.js';
 
 const SNAPSHOT_CACHE_KEY = 'metrics:scheduler:snapshot:v1';
 

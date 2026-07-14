@@ -5,13 +5,13 @@ import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { NodeTypes } from '@/node-types';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { NodeTypes } from '@/node-types.js';
 
-import type { ChatHubTool } from '../chat-hub-tool.entity';
-import type { ChatHubToolRepository } from '../chat-hub-tool.repository';
-import { ChatHubToolService } from '../chat-hub-tool.service';
+import type { ChatHubTool } from '../chat-hub-tool.entity.js';
+import type { ChatHubToolRepository } from '../chat-hub-tool.repository.js';
+import { ChatHubToolService } from '../chat-hub-tool.service.js';
 
 const mockDefinition: INode = {
 	parameters: {

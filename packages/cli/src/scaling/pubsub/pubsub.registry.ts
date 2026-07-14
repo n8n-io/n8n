@@ -3,7 +3,7 @@ import { PubSubEventName, PubSubMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { PubSubEventBus } from './pubsub.eventbus';
+import { PubSubEventBus } from './pubsub.eventbus.js';
 
 @Service()
 export class PubSubRegistry {

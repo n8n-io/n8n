@@ -6,8 +6,8 @@ import { staticRolesWithScope } from '@n8n/permissions';
 import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
-import { RoleCacheService } from '@/services/role-cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
+import { RoleCacheService } from '@/services/role-cache.service.js';
 
 // Mock static function
 vi.mock('@n8n/permissions', async () => ({

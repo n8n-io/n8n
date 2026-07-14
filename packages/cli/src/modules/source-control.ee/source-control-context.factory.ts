@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In, type FindOptionsWhere } from '@n8n/typeorm';
 
-import { SourceControlContext } from './types/source-control-context';
+import { SourceControlContext } from './types/source-control-context.js';
 
 @Service()
 export class SourceControlContextFactory {

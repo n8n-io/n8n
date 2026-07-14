@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
-import { SlidingWindow } from './sliding-window';
+import { SlidingWindow } from './sliding-window.js';
 
 type CircuitBreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 

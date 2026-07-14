@@ -1,4 +1,4 @@
-import { decideMatchedFolder } from '../folder-conflict-policy';
+import { decideMatchedFolder } from '../folder-conflict-policy.js';
 
 describe('decideMatchedFolder', () => {
 	it('does not block under merge', () => {

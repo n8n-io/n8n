@@ -9,11 +9,11 @@ import {
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { NodeTypes } from '@/node-types';
-import type { OwnershipService } from '@/services/ownership.service';
-import type { ProjectService } from '@/services/project.service.ee';
+import type { NodeTypes } from '@/node-types.js';
+import type { OwnershipService } from '@/services/ownership.service.js';
+import type { ProjectService } from '@/services/project.service.ee.js';
 
-import { CredentialsPermissionChecker } from '../credentials-permission-checker';
+import { CredentialsPermissionChecker } from '../credentials-permission-checker.js';
 
 describe('CredentialsPermissionChecker', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();

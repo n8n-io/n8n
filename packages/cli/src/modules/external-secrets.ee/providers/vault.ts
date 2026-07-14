@@ -13,15 +13,15 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE } from '../constants';
+import { DOCS_HELP_NOTICE } from '../constants.js';
 import {
 	buildHttpProviderErrorContext,
 	logSecretsProviderOperationFailure,
 	type SecretsProviderOperationFailureParams,
-} from '../errors/secrets-provider-errors';
-import { ExternalSecretsConfig } from '../external-secrets.config';
-import type { SecretsProviderSettings } from '../types';
-import { SecretsProvider } from '../types';
+} from '../errors/secrets-provider-errors.js';
+import { ExternalSecretsConfig } from '../external-secrets.config.js';
+import type { SecretsProviderSettings } from '../types.js';
+import { SecretsProvider } from '../types.js';
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
 

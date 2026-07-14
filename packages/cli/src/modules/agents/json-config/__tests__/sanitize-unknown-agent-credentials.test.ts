@@ -1,4 +1,4 @@
-import { sanitizeUnknownAgentCredentials } from '../sanitize-unknown-agent-credentials';
+import { sanitizeUnknownAgentCredentials } from '../sanitize-unknown-agent-credentials.js';
 
 describe('sanitizeUnknownAgentCredentials', () => {
 	const accessibleCredentialIds = new Set(['known-cred', 'nested-cred']);

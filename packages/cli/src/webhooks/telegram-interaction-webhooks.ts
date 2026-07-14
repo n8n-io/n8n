@@ -5,8 +5,8 @@ import type { ParsedHitlCallbackReference } from 'n8n-core';
 import { parseHitlCallbackReference, verifyHitlCallbackReference } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
-import { WaitingWebhooks } from './waiting-webhooks';
-import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
+import { WaitingWebhooks } from './waiting-webhooks.js';
+import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types.js';
 
 interface TelegramCallbackUpdate {
 	callback_query?: {

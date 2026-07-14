@@ -4,7 +4,7 @@ import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import {
 	CHAT_NODE_TYPE,
 	CHAT_TOOL_NODE_TYPE,
@@ -13,13 +13,13 @@ import {
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowRunner } from '@/workflow-runner';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
 
-import { NodeTypes } from '../../node-types';
-import { OwnershipService } from '../../services/ownership.service';
-import { ChatExecutionManager } from '../chat-execution-manager';
-import type { ChatMessage } from '../chat-service.types';
+import { NodeTypes } from '../../node-types.js';
+import { OwnershipService } from '../../services/ownership.service.js';
+import { ChatExecutionManager } from '../chat-execution-manager.js';
+import type { ChatMessage } from '../chat-service.types.js';
 
 describe('ChatExecutionManager', () => {
 	const executionRepository = mockInstance(ExecutionRepository);

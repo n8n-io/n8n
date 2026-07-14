@@ -1,7 +1,7 @@
 import { Time } from '@n8n/constants';
 import { UserError } from 'n8n-workflow';
 
-import type { WorkflowNotFoundReason } from './mcp.types';
+import type { WorkflowNotFoundReason } from './mcp.types.js';
 
 /**
  * Error thrown when MCP workflow execution times out

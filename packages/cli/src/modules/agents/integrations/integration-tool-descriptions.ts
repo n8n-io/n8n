@@ -1,5 +1,5 @@
-import { MAX_BATCH_OPERATIONS } from './integration-tool-schema';
-import type { IntegrationToolConnectionDescriptor } from './integration-tool-types';
+import { MAX_BATCH_OPERATIONS } from './integration-tool-schema.js';
+import type { IntegrationToolConnectionDescriptor } from './integration-tool-types.js';
 
 export function buildContextToolDescription(
 	descriptor: IntegrationToolConnectionDescriptor,

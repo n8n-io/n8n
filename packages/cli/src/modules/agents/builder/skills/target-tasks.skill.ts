@@ -1,6 +1,6 @@
 import type { RuntimeSkill } from '@n8n/agents';
 
-import { TASK_OBJECTIVE_FORMAT_RULE, TASK_OBJECTIVE_TEMPLATE } from '../task-objective-template';
+import { TASK_OBJECTIVE_FORMAT_RULE, TASK_OBJECTIVE_TEMPLATE } from '../task-objective-template.js';
 
 export function targetTasksSkill(): RuntimeSkill {
 	return {

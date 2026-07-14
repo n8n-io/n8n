@@ -16,7 +16,7 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { NodeTypes } from '@/node-types';
+import { NodeTypes } from '@/node-types.js';
 
 import {
 	AGENT_PROVIDER_NODE_WHITELIST,
@@ -24,7 +24,7 @@ import {
 	EphemeralNodeExecutor,
 	isAgentProviderNode,
 	isUsableAsAgentTool,
-} from '../ephemeral-node-executor';
+} from '../ephemeral-node-executor.js';
 
 // vitest-mock-extended's recursive DeepPartial narrows nested objects (e.g. `defaults`),
 // so a full INodeTypeDescription isn't assignable to the partial. Cast through this helper.

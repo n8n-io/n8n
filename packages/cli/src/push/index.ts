@@ -11,23 +11,23 @@ import { InstanceSettings } from 'n8n-core';
 import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
-import { AuthService } from '@/auth/auth.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { AuthService } from '@/auth/auth.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import { validateOriginHeaders } from './origin-validator';
-import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
-import { PushConfig } from './push.config';
-import { SSEPush } from './sse.push';
+import { validateOriginHeaders } from './origin-validator.js';
+import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers.js';
+import { PushConfig } from './push.config.js';
+import { SSEPush } from './sse.push.js';
 import {
 	type OnPushMessage,
 	type PushResponse,
 	type SSEPushRequest,
 	type WebSocketPushRequest,
-} from './types';
-import { WebSocketPush } from './websocket.push';
+} from './types.js';
+import { WebSocketPush } from './websocket.push.js';
 
 type PushEvents = {
 	editorUiConnected: string;

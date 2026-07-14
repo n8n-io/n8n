@@ -1,8 +1,8 @@
 import type { MockedFunction } from 'vitest';
 
-import { paginatedRequest } from '@/utils/strapi-utils';
+import { paginatedRequest } from '@/utils/strapi-utils.js';
 
-import { McpRegistryApiClient } from '../mcp-registry-api.client';
+import { McpRegistryApiClient } from '../mcp-registry-api.client.js';
 
 vi.mock('@/utils/strapi-utils', () => ({
 	paginatedRequest: vi.fn(),

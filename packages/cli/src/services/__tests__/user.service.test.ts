@@ -16,18 +16,18 @@ import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UrlService } from '@/services/url.service';
-import { UserService } from '@/services/user.service';
-import type { UserManagementMailer } from '@/user-management/email';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { UrlService } from '@/services/url.service.js';
+import { UserService } from '@/services/user.service.js';
+import type { UserManagementMailer } from '@/user-management/email/index.js';
 
-import type { OwnershipService } from '../ownership.service';
-import type { ProjectService } from '../project.service.ee';
-import type { PublicApiKeyService } from '../public-api-key.service';
-import type { RoleService } from '../role.service';
-import { JwtService } from '../jwt.service';
+import type { OwnershipService } from '../ownership.service.js';
+import type { ProjectService } from '../project.service.ee.js';
+import type { PublicApiKeyService } from '../public-api-key.service.js';
+import type { RoleService } from '../role.service.js';
+import { JwtService } from '../jwt.service.js';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {

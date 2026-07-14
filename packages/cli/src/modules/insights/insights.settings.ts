@@ -1,8 +1,8 @@
 import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { INSIGHTS_DATE_RANGE_KEYS, keyRangeToDays } from './insights.constants';
-import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
+import { INSIGHTS_DATE_RANGE_KEYS, keyRangeToDays } from './insights.constants.js';
+import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository.js';
 
 @Service()
 export class InsightsSettings {

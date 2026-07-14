@@ -11,7 +11,7 @@ import {
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { BaseCommand } from '../base-command';
+import { BaseCommand } from '../base-command.js';
 
 const defaultUserProps = {
 	firstName: null,

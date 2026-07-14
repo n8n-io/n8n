@@ -1,6 +1,6 @@
 import type { InstanceAiConfig } from '@n8n/config';
 
-import { resolveOutputRedaction } from '../output-redaction-config';
+import { resolveOutputRedaction } from '../output-redaction-config.js';
 
 function config(overrides: Partial<InstanceAiConfig> = {}): InstanceAiConfig {
 	return {

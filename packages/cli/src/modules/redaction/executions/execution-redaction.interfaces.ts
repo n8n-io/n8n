@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 
-import type { RedactableExecution } from '@/executions/execution-redaction';
+import type { RedactableExecution } from '@/executions/execution-redaction.js';
 
 /**
  * Context passed to every redaction strategy by the orchestrator.

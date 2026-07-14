@@ -2,12 +2,12 @@ import type { Logger } from '@n8n/backend-common';
 import type { NextFunction, Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import * as responseHelper from '@/response-helper';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import * as responseHelper from '@/response-helper.js';
 
-import { ExternalSecretsConfig } from '../external-secrets.config';
-import { SecretProvidersConnectionsController } from '../secrets-providers-connections.controller.ee';
-import type { SecretsProvidersConnectionsService } from '../secrets-providers-connections.service.ee';
+import { ExternalSecretsConfig } from '../external-secrets.config.js';
+import { SecretProvidersConnectionsController } from '../secrets-providers-connections.controller.ee.js';
+import type { SecretsProvidersConnectionsService } from '../secrets-providers-connections.service.ee.js';
 
 vi.mock('@/response-helper', () => ({
 	sendErrorResponse: vi.fn(),

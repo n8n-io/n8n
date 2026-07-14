@@ -4,11 +4,11 @@ import { Container } from '@n8n/di';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
 
-import { createOwner } from './shared/db/users';
-import * as utils from './shared/utils';
-import { loadNodesFromDist } from './shared/utils/node-types-data';
+import { createOwner } from './shared/db/users.js';
+import * as utils from './shared/utils/index.js';
+import { loadNodesFromDist } from './shared/utils/node-types-data.js';
 
 const SUB_ERROR_MESSAGE = 'Error from sub-workflow after webhook resume';
 
@@ -161,7 +161,7 @@ describe('sub-workflow error propagation to parent after Wait resume', () => {
 		// changes the module evaluation order and trips a circular import — WorkflowRunner
 		// is still undefined when DI constructs WorkflowExecutionService, and
 		// `executeManually` then fails with "Cannot read properties of undefined (reading 'run')".
-		const { WaitTracker } = await import('@/wait-tracker');
+		const { WaitTracker } = await import('@/wait-tracker.js');
 		await Container.get(WaitTracker).startExecution(subExecution.id);
 
 		// The sub-workflow errors

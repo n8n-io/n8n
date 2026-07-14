@@ -10,21 +10,21 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
 
-import { ProjectController } from '@/controllers/project.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type { PaginatedRequest } from '@/public-api/types';
-import { ProjectService } from '@/services/project.service.ee';
+import { ProjectController } from '@/controllers/project.controller.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
+import type { PaginatedRequest } from '@/public-api/types.js';
+import { ProjectService } from '@/services/project.service.ee.js';
 
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
 	validCursor,
-} from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
+} from '../../shared/middlewares/global.middleware.js';
+import { encodeNextCursor } from '../../shared/services/pagination.service.js';
 
 type GetAll = PaginatedRequest;
 type GetProjectUsersRequest = AuthenticatedRequest<{ projectId: string }> & GetAll;

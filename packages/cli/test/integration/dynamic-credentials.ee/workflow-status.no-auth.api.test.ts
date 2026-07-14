@@ -14,14 +14,14 @@ import { v4 as uuid } from 'uuid';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
-import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
-import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
-import { Telemetry } from '@/telemetry';
+import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config.js';
+import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service.js';
+import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { createCredentials } from '../shared/db/credentials';
-import { createUser } from '../shared/db/users';
-import * as utils from '../shared/utils';
+import { createCredentials } from '../shared/db/credentials.js';
+import { createUser } from '../shared/db/users.js';
+import * as utils from '../shared/utils/index.js';
 
 mockInstance(Telemetry);
 

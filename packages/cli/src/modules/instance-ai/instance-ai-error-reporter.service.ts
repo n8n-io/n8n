@@ -5,7 +5,7 @@ import { ErrorReporter } from 'n8n-core';
 import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
-} from './observability';
+} from './observability.js';
 
 export type InstanceAiErrorReportContext = { component: string } & InstanceAiObservabilityContext;
 

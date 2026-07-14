@@ -1,9 +1,9 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, ProjectScope, RestController } from '@n8n/decorators';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { AgentExecutionService } from './agent-execution.service';
+import { AgentExecutionService } from './agent-execution.service.js';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentThreadsController {

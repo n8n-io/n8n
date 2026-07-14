@@ -2,7 +2,7 @@ import type { INode, Workflow } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { objectToError } from '../object-to-error';
+import { objectToError } from '../object-to-error.js';
 
 describe('objectToError', () => {
 	describe('node error handling', () => {

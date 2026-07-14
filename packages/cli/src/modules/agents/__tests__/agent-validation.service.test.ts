@@ -2,12 +2,12 @@ import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
-import type { AiService } from '@/services/ai.service';
+import type { AiService } from '@/services/ai.service.js';
 
-import type { AgentSkillsService } from '../agent-skills.service';
-import { AgentValidationService } from '../agent-validation.service';
-import type { Agent } from '../entities/agent.entity';
-import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentSkillsService } from '../agent-skills.service.js';
+import { AgentValidationService } from '../agent-validation.service.js';
+import type { Agent } from '../entities/agent.entity.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

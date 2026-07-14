@@ -6,12 +6,12 @@ import {
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import type { Agent } from './entities/agent.entity';
-import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { AgentRepository } from './repositories/agent.repository';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service.js';
+import type { Agent } from './entities/agent.entity.js';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration.js';
+import { ChatIntegrationService } from './integrations/chat-integration.service.js';
+import { AgentRepository } from './repositories/agent.repository.js';
+import { markAgentDraftDirty } from './utils/agent-draft.utils.js';
 
 export interface SaveCredentialIntegrationOptions {
 	broadcast?: boolean;

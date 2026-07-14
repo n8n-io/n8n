@@ -68,9 +68,9 @@ vi.mock('../esm-loader', () => {
 	};
 });
 
-import { ComponentMapper } from '../component-mapper';
-import { ChatIntegrationRegistry } from '../agent-chat-integration';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { ComponentMapper } from '../component-mapper.js';
+import { ChatIntegrationRegistry } from '../agent-chat-integration.js';
+import { SlackIntegration } from '../platforms/slack-integration.js';
 import { Container } from '@n8n/di';
 
 describe('ComponentMapper', () => {

@@ -7,11 +7,11 @@ import {
 } from '@n8n/workflow-sdk/prompts/best-practices';
 import z from 'zod';
 
-import type { Telemetry } from '@/telemetry';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL } from './constants';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL } from './constants.js';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
 
 const LIST_SENTINEL = 'list';
 

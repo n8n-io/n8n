@@ -1,7 +1,7 @@
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service.js';
 
-import { createTelemetry, user } from './test-utils';
-import { createSearchDataTablesTool } from '../../tools/data-table';
+import { createTelemetry, user } from './test-utils.js';
+import { createSearchDataTablesTool } from '../../tools/data-table/index.js';
 
 const createMocks = (overrides?: {
 	data?: Array<{

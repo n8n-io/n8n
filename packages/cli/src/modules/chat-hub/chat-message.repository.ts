@@ -10,9 +10,9 @@ import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError, type IBinaryData } from 'n8n-workflow';
 
-import { ChatHubMessage } from './chat-hub-message.entity';
-import { EditMessagePayload, HumanMessagePayload } from './chat-hub.types';
-import { ChatHubSessionRepository } from './chat-session.repository';
+import { ChatHubMessage } from './chat-hub-message.entity.js';
+import { EditMessagePayload, HumanMessagePayload } from './chat-hub.types.js';
+import { ChatHubSessionRepository } from './chat-session.repository.js';
 
 @Service()
 export class ChatHubMessageRepository extends Repository<ChatHubMessage> {

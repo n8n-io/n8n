@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { createScheduler } from '@n8n/scheduler';
 import type { ClaimedTask, Scheduler, SchedulerPasses } from '@n8n/scheduler';
 
-import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler.js';
 
 /**
  * The composed path against a real database: the storage bindings

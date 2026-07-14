@@ -11,13 +11,13 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
 
-import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
+import { UserFavoriteRepository } from './database/repositories/user-favorite.repository.js';
 
-import { AgentRepository } from '../agents/repositories/agent.repository';
+import { AgentRepository } from '../agents/repositories/agent.repository.js';
 
 type ResourceMeta = { name: string; projectId: string };
 

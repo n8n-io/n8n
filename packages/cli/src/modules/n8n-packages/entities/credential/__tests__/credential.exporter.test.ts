@@ -2,12 +2,12 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
 
-import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
-import { CredentialExporter } from '../credential.exporter';
-import { CredentialSerializer } from '../credential.serializer';
-import type { WorkflowCredentialRequirement } from '../credential.types';
+import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer.js';
+import { CredentialExporter } from '../credential.exporter.js';
+import { CredentialSerializer } from '../credential.serializer.js';
+import type { WorkflowCredentialRequirement } from '../credential.types.js';
 
 const user = mock<User>({ id: 'user-1' });
 

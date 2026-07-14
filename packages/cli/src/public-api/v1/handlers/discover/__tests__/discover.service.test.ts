@@ -1,7 +1,7 @@
 import type { ApiKeyScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 
-import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
+import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware.js';
 
 // Mock middleware factories before any handler is loaded via require()
 // The tagged wrapper must still have __apiKeyScope for introspection
@@ -36,7 +36,7 @@ let buildDiscoverResponse: typeof import('../discover.service').buildDiscoverRes
 let _resetCache: typeof import('../discover.service')._resetCache;
 
 beforeAll(async () => {
-	({ buildDiscoverResponse, _resetCache } = await import('../discover.service'));
+	({ buildDiscoverResponse, _resetCache } = await import('../discover.service.js'));
 	// Warm the registry once. The first call cold-loads and transforms all
 	// handler modules (and their transitive graph) through Vite, which can
 	// approach the default 5s test timeout. Paying it here in the hook keeps

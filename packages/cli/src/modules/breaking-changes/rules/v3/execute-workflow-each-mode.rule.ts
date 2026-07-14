@@ -7,8 +7,8 @@ import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
 	WorkflowDetectionReport,
-} from '../../types';
-import { BreakingChangeCategory } from '../../types';
+} from '../../types/index.js';
+import { BreakingChangeCategory } from '../../types/index.js';
 
 const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 

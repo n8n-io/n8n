@@ -11,8 +11,8 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
-import { buildDateAnchors } from './date-anchors';
-import { extractNodeConfig } from './node-config';
+import { buildDateAnchors } from './date-anchors.js';
+import { extractNodeConfig } from './node-config.js';
 
 /**
  * AI root node types — lets the typo guard accept a no-sub-node Agent.

@@ -2,7 +2,7 @@ import {
 	WorkflowPublishingPolicy,
 	type PublishingAction,
 	type WorkflowPublishingContext,
-} from './workflow-publishing-policy.types';
+} from './workflow-publishing-policy.types.js';
 
 /**
  * Decides whether to publish, unpublish, or leave publishing unchanged for one

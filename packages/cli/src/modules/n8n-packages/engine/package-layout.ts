@@ -1,6 +1,6 @@
 import { UserError } from 'n8n-workflow';
 
-import type { ManifestEntry } from '../spec/manifest.schema';
+import type { ManifestEntry } from '../spec/manifest.schema.js';
 
 export function foldersInScope(
 	entries: ManifestEntry[] | undefined,

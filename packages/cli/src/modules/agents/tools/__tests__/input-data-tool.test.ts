@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 
-import { createInputDataTool } from '../input-data-tool';
+import { createInputDataTool } from '../input-data-tool.js';
 
 function makeCtx() {
 	return { parentTelemetry: undefined };

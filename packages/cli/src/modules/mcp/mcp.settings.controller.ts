@@ -4,16 +4,16 @@ import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { listQueryMiddleware } from '@/middlewares';
-import type { ListQuery } from '@/requests';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { listQueryMiddleware } from '@/middlewares/index.js';
+import type { ListQuery } from '@/requests.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { UpdateAllowedRedirectUrisDto } from './dto/update-allowed-redirect-uris.dto';
-import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
-import { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto';
-import { McpServerApiKeyService } from './mcp-api-key.service';
-import { McpSettingsService } from './mcp.settings.service';
+import { UpdateAllowedRedirectUrisDto } from './dto/update-allowed-redirect-uris.dto.js';
+import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto.js';
+import { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto.js';
+import { McpServerApiKeyService } from './mcp-api-key.service.js';
+import { McpSettingsService } from './mcp.settings.service.js';
 
 @RestController('/mcp')
 export class McpSettingsController {

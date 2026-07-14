@@ -4,13 +4,13 @@ import type { User, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IConnections, INode } from 'n8n-workflow';
 
-import { ProjectService } from '@/services/project.service.ee';
-import { createOwner, createUser } from '@test-integration/db/users';
-import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
-import { createWorkflowPublishHistoryItem } from '@test-integration/db/workflow-publish-history';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { createOwner, createUser } from '@test-integration/db/users.js';
+import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history.js';
+import { createWorkflowPublishHistoryItem } from '@test-integration/db/workflow-publish-history.js';
 
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils/';
+import type { SuperAgentTest } from './shared/types.js';
+import * as utils from './shared/utils//index.js';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;

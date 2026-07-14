@@ -13,7 +13,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/credential-types';
+import { CredentialTypes } from '@/credential-types.js';
 
 // Build merged properties from credential hierarchy
 function getExtendedProps(

@@ -24,4 +24,4 @@ writeFileSync(
 // This is needed to ensure that `process.env` overrides in tests
 // are set before any of the config classes are instantiated.
 // TODO: delete this after we are done migrating everything to config classes
-import '@/config';
+import '@/config/index.js';

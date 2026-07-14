@@ -3979,7 +3979,7 @@ importers:
         version: 5.1.2
       '@qdrant/js-client-rest':
         specifier: 'catalog:'
-        version: 1.16.2(typescript@6.0.2)
+        version: 1.16.2(typescript@7.0.2)
       '@rudderstack/rudder-sdk-node':
         specifier: 'catalog:'
         version: 3.0.5
@@ -4424,13 +4424,13 @@ importers:
         version: 7.1.1
       ts-essentials:
         specifier: ^7.0.3
-        version: 7.0.3(typescript@6.0.2)
+        version: 7.0.3(typescript@7.0.2)
       tsconfig-paths:
         specifier: ^4.2.0
         version: 4.2.0
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -4439,7 +4439,7 @@ importers:
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
-        version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+        version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
 
   packages/core:
     dependencies:
@@ -40015,9 +40015,9 @@ snapshots:
     optionalDependencies:
       typescript: 7.0.2
 
-  ts-essentials@7.0.3(typescript@6.0.2):
+  ts-essentials@7.0.3(typescript@7.0.2):
     dependencies:
-      typescript: 6.0.2
+      typescript: 7.0.2
 
   ts-graphviz@2.1.6:
     dependencies:

@@ -14,25 +14,25 @@ import { QueryFailedError } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
 import type {
 	McpRegistryRemote,
 	McpRegistryServer,
-} from '@/modules/mcp-registry/registry/mcp-registry.types';
-import { OauthService } from '@/oauth/oauth.service';
-import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
-import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
+} from '@/modules/mcp-registry/registry/mcp-registry.types.js';
+import { OauthService } from '@/oauth/oauth.service.js';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch.js';
+import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch.js';
 
 import type {
 	InstanceAiMcpRegistryConnection,
 	InstanceAiMcpToolFilter,
-} from '../entities/instance-ai-mcp-registry-connection.entity';
-import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
+} from '../entities/instance-ai-mcp-registry-connection.entity.js';
+import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository.js';
 
 type Transport = 'sse' | 'streamableHttp';
 

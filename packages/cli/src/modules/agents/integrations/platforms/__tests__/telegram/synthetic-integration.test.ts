@@ -1,14 +1,14 @@
 import {
 	createTelegramReplayContext,
 	getTelegramInlineCallbackData,
-} from '../../../__tests__/helpers/telegram/replay-test-context';
+} from '../../../__tests__/helpers/telegram/replay-test-context.js';
 import {
 	telegramCallbackQueryUpdate,
 	telegramGroupChat,
 	telegramMessageUpdate,
 	telegramReplayFixtures,
 	telegramUser,
-} from '../../../__tests__/helpers/telegram/synthetic-fixtures';
+} from '../../../__tests__/helpers/telegram/synthetic-fixtures.js';
 
 // The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
 // `new Function()` hack to dodge the CJS transform, which can't run under vitest;

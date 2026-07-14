@@ -21,12 +21,15 @@ import { randomString } from 'n8n-workflow';
 import validator from 'validator';
 import { mock } from 'vitest-mock-extended';
 
-import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
-import { CredentialsTester } from '@/services/credentials-tester.service';
-import { JwtService } from '@/services/jwt.service';
-import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
-import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
-import { createTag } from '@test-integration/db/tags';
+import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types.js';
+import { CredentialsTester } from '@/services/credentials-tester.service.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials.js';
+import {
+	createErrorExecution,
+	createSuccessfulExecution,
+} from '@test-integration/db/executions.js';
+import { createTag } from '@test-integration/db/tags.js';
 import {
 	createAdminWithApiKey,
 	createMember,
@@ -34,12 +37,12 @@ import {
 	createOwnerWithApiKey,
 	createUser,
 	getUserById,
-} from '@test-integration/db/users';
-import { createVariable, getVariableByIdOrFail } from '@test-integration/db/variables';
-import type { SaveCredentialFunction } from '@test-integration/types';
-import { setupTestServer } from '@test-integration/utils';
+} from '@test-integration/db/users.js';
+import { createVariable, getVariableByIdOrFail } from '@test-integration/db/variables.js';
+import type { SaveCredentialFunction } from '@test-integration/types.js';
+import { setupTestServer } from '@test-integration/utils/index.js';
 
-import * as utils from '../shared/utils';
+import * as utils from '../shared/utils/index.js';
 
 let saveCredential: SaveCredentialFunction;
 
@@ -78,9 +81,9 @@ describe('Public API endpoints with API key scopes', () => {
 		// N8N_ENV_FEAT_TOKEN_EXCHANGE env flag. We register it directly here to test
 		// the auth layer in isolation without triggering the full module boot.
 		const { ScopedJwtStrategy } = await import(
-			'@/modules/token-exchange/services/scoped-jwt.strategy'
+			'@/modules/token-exchange/services/scoped-jwt.strategy.js'
 		);
-		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry');
+		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
 		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	});
 

@@ -5,14 +5,14 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonStringify, replaceCircularReferences } from 'n8n-workflow';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { WorkflowAccessError } from '../mcp.errors';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { getMcpWorkflow } from './workflow-validation.utils';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import { WorkflowAccessError } from '../mcp.errors.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types.js';
+import { getMcpWorkflow } from './workflow-validation.utils.js';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow the execution belongs to'),

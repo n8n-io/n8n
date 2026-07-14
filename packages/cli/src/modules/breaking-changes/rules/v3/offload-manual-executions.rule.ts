@@ -5,8 +5,8 @@ import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
 	InstanceDetectionReport,
-} from '../../types';
-import { BreakingChangeCategory } from '../../types';
+} from '../../types/index.js';
+import { BreakingChangeCategory } from '../../types/index.js';
 
 @BreakingChangeRule({ version: 'v3' })
 export class OffloadManualExecutionsRule implements IBreakingChangeInstanceRule {

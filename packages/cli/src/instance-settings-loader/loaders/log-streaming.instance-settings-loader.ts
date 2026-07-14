@@ -12,10 +12,10 @@ import {
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
-import { EventDestinations } from '@/modules/log-streaming.ee/database/entities';
-import { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
+import { EventDestinations } from '@/modules/log-streaming.ee/database/entities/index.js';
+import { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository.js';
 
-import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
+import { InstanceBootstrappingError } from '../instance-bootstrapping.error.js';
 
 // Env var format reuses the canonical destination DTOs from `n8n-workflow`,
 // with three deliberate adjustments per variant:

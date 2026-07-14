@@ -13,71 +13,71 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
-import { AbstractServer } from '@/abstract-server';
-import { AuthService } from '@/auth/auth.service';
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
-import { ControllerRegistry } from '@/controller.registry';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
-import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
-import type { ICredentialsOverwrite } from '@/interfaces';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
-import { PostHogClient } from '@/posthog';
-import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
-import { Push } from '@/push';
-import * as ResponseHelper from '@/response-helper';
-import type { FrontendService } from '@/services/frontend.service';
-import { Telemetry } from '@/telemetry';
+import { AbstractServer } from '@/abstract-server.js';
+import { AuthService } from '@/auth/auth.service.js';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants.js';
+import { ControllerRegistry } from '@/controller.registry.js';
+import { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { EventService } from '@/events/event.service.js';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay.js';
+import type { ICredentialsOverwrite } from '@/interfaces.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers.js';
+import { PostHogClient } from '@/posthog/index.js';
+import { isApiEnabled, loadPublicApiVersions } from '@/public-api/index.js';
+import { Push } from '@/push/index.js';
+import * as ResponseHelper from '@/response-helper.js';
+import type { FrontendService } from '@/services/frontend.service.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import '@/controllers/active-workflows.controller';
-import '@/controllers/annotation-tags.controller.ee';
-import '@/controllers/auth.controller';
-import '@/controllers/binary-data.controller';
-import '@/controllers/ai.controller';
-import '@/controllers/dynamic-node-parameters.controller';
-import '@/controllers/dynamic-templates.controller';
-import '@/controllers/instance-ai-examples.controller';
-import '@/controllers/invitation.controller';
-import '@/controllers/me.controller';
-import '@/controllers/node-types.controller';
-import '@/controllers/oauth/oauth1-credential.controller';
-import '@/controllers/oauth/oauth2-credential.controller';
-import '@/controllers/orchestration.controller';
-import '@/controllers/owner.controller';
-import '@/controllers/password-reset.controller';
-import '@/controllers/project.controller';
-import '@/controllers/role.controller';
-import '@/controllers/tags.controller';
-import '@/controllers/translation.controller';
-import '@/controllers/folder.controller';
-import '@/controllers/users.controller';
-import '@/controllers/user-settings.controller';
-import '@/controllers/workflow-statistics.controller';
-import '@/controllers/api-keys.controller';
-import '@/controllers/security-settings.controller';
-import '@/credentials/credentials.controller';
-import '@/events/events.controller';
-import '@/executions/executions.controller';
-import '@/node-execution/ephemeral-node-executor';
-import '@/license/license.controller';
-import '@/evaluation.ee/test-runs.controller.ee';
-import '@/evaluation.ee/evaluation-config.controller';
-import '@/evaluation.ee/evaluation-collections.controller.ee';
-import '@/evaluation.ee/insights/eval-insights.controller.ee';
-import '@/workflows/workflow-history/workflow-history.controller';
-import '@/workflows/workflows.controller';
-import '@/modules/workflow-index/workflow-dependency.controller';
-import '@/webhooks/test-webhooks.controller';
-import '@/webhooks/webhooks.controller';
+import '@/controllers/active-workflows.controller.js';
+import '@/controllers/annotation-tags.controller.ee.js';
+import '@/controllers/auth.controller.js';
+import '@/controllers/binary-data.controller.js';
+import '@/controllers/ai.controller.js';
+import '@/controllers/dynamic-node-parameters.controller.js';
+import '@/controllers/dynamic-templates.controller.js';
+import '@/controllers/instance-ai-examples.controller.js';
+import '@/controllers/invitation.controller.js';
+import '@/controllers/me.controller.js';
+import '@/controllers/node-types.controller.js';
+import '@/controllers/oauth/oauth1-credential.controller.js';
+import '@/controllers/oauth/oauth2-credential.controller.js';
+import '@/controllers/orchestration.controller.js';
+import '@/controllers/owner.controller.js';
+import '@/controllers/password-reset.controller.js';
+import '@/controllers/project.controller.js';
+import '@/controllers/role.controller.js';
+import '@/controllers/tags.controller.js';
+import '@/controllers/translation.controller.js';
+import '@/controllers/folder.controller.js';
+import '@/controllers/users.controller.js';
+import '@/controllers/user-settings.controller.js';
+import '@/controllers/workflow-statistics.controller.js';
+import '@/controllers/api-keys.controller.js';
+import '@/controllers/security-settings.controller.js';
+import '@/credentials/credentials.controller.js';
+import '@/events/events.controller.js';
+import '@/executions/executions.controller.js';
+import '@/node-execution/ephemeral-node-executor.js';
+import '@/license/license.controller.js';
+import '@/evaluation.ee/test-runs.controller.ee.js';
+import '@/evaluation.ee/evaluation-config.controller.js';
+import '@/evaluation.ee/evaluation-collections.controller.ee.js';
+import '@/evaluation.ee/insights/eval-insights.controller.ee.js';
+import '@/workflows/workflow-history/workflow-history.controller.js';
+import '@/workflows/workflows.controller.js';
+import '@/modules/workflow-index/workflow-dependency.controller.js';
+import '@/webhooks/test-webhooks.controller.js';
+import '@/webhooks/webhooks.controller.js';
 
-import { ChatServer } from './chat/chat-server';
-import { MfaService } from './mfa/mfa.service';
-import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
-import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
-import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from './services/auth-strategy.registry';
+import { ChatServer } from './chat/chat-server.js';
+import { MfaService } from './mfa/mfa.service.js';
+import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server.js';
+import { PubSubRegistry } from './scaling/pubsub/pubsub.registry.js';
+import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy.js';
+import { AuthStrategyRegistry } from './services/auth-strategy.registry.js';
 
 @Service()
 export class Server extends AbstractServer {
@@ -101,10 +101,10 @@ export class Server extends AbstractServer {
 
 	async start() {
 		if (!this.globalConfig.endpoints.disableUi) {
-			const { FrontendService } = await import('@/services/frontend.service');
+			const { FrontendService } = await import('@/services/frontend.service.js');
 			this.frontendService = Container.get(FrontendService);
-			await import('@/controllers/module-settings.controller');
-			await import('@/controllers/third-party-licenses.controller');
+			await import('@/controllers/module-settings.controller.js');
+			await import('@/controllers/third-party-licenses.controller.js');
 		}
 
 		this.presetCredentialsLoaded = false;
@@ -125,29 +125,29 @@ export class Server extends AbstractServer {
 
 	private async registerAdditionalControllers() {
 		if (!inProduction && this.instanceSettings.isMultiMain) {
-			await import('@/controllers/debug.controller');
+			await import('@/controllers/debug.controller.js');
 		}
 
 		if (inE2ETests) {
-			await import('@/controllers/e2e.controller');
+			await import('@/controllers/e2e.controller.js');
 		}
 
 		if (isMfaFeatureEnabled()) {
 			await Container.get(MfaService).init();
-			await import('@/controllers/mfa.controller');
+			await import('@/controllers/mfa.controller.js');
 		}
 
 		if (!this.globalConfig.endpoints.disableUi) {
-			await import('@/controllers/cta.controller');
+			await import('@/controllers/cta.controller.js');
 		}
 
 		if (!this.globalConfig.tags.disabled) {
-			await import('@/controllers/tags.controller');
+			await import('@/controllers/tags.controller.js');
 		}
 
 		if (this.globalConfig.diagnostics.enabled) {
-			await import('@/controllers/telemetry.controller');
-			await import('@/controllers/posthog.controller');
+			await import('@/controllers/telemetry.controller.js');
+			await import('@/controllers/posthog.controller.js');
 		}
 
 		// ----------------------------------------
@@ -155,7 +155,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		try {
-			await import('@/environments.ee/variables/variables.controller.ee');
+			await import('@/environments.ee/variables/variables.controller.ee.js');
 		} catch (error) {
 			this.logger.warn(`Variables initialization failed: ${(error as Error).message}`);
 		}
@@ -163,7 +163,7 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (this.globalConfig.endpoints.metrics.enable) {
-			const { PrometheusMetricsService } = await import('@/metrics/prometheus');
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 			Container.get(PrometheusMetricsService).init(this.app);
 		}
 
@@ -216,7 +216,7 @@ export class Server extends AbstractServer {
 		push.setupPushHandler(restEndpoint, app);
 
 		if (push.isBidirectional) {
-			const { CollaborationService } = await import('@/collaboration/collaboration.service');
+			const { CollaborationService } = await import('@/collaboration/collaboration.service.js');
 
 			const collaborationService = Container.get(CollaborationService);
 			collaborationService.init();
@@ -227,7 +227,7 @@ export class Server extends AbstractServer {
 		}
 
 		if (this.globalConfig.executions.mode === 'queue') {
-			const { ScalingService } = await import('@/scaling/scaling.service');
+			const { ScalingService } = await import('@/scaling/scaling.service.js');
 			await Container.get(ScalingService).setupQueue();
 		}
 
@@ -503,7 +503,7 @@ export class Server extends AbstractServer {
 
 	private async initializeWorkflowIndexing() {
 		const { WorkflowIndexService } = await import(
-			'@/modules/workflow-index/workflow-index.service'
+			'@/modules/workflow-index/workflow-index.service.js'
 		);
 		Container.get(WorkflowIndexService).init();
 	}

@@ -1,8 +1,8 @@
 import type { DataSource, DeleteResult, EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import type { UserFavorite } from '../database/entities/user-favorite.entity';
-import { UserFavoriteRepository } from '../database/repositories/user-favorite.repository';
+import type { UserFavorite } from '../database/entities/user-favorite.entity.js';
+import { UserFavoriteRepository } from '../database/repositories/user-favorite.repository.js';
 
 const makeEntity = (overrides: Partial<UserFavorite> = {}): UserFavorite => ({
 	id: 1,

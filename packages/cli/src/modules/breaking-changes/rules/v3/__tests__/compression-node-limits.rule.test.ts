@@ -1,4 +1,4 @@
-import { CompressionNodeLimitsRule } from '../compression-node-limits.rule';
+import { CompressionNodeLimitsRule } from '../compression-node-limits.rule.js';
 
 describe('CompressionNodeLimitsRule', () => {
 	let rule: CompressionNodeLimitsRule;

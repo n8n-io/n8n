@@ -12,25 +12,25 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
-import { WebhookService } from './webhook.service';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer.js';
+import { WebhookService } from './webhook.service.js';
 import type {
 	IWebhookManager,
 	IWebhookResponseCallbackData,
 	WaitingWebhookRequest,
-} from './webhook.types';
+} from './webhook.types.js';
 
-import { EventService } from '@/events/event.service';
+import { EventService } from '@/events/event.service.js';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
-import { NodeTypes } from '@/node-types';
-import { applyCors } from '@/utils/cors.util';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { preserveInputOverride } from '@/workflow-helpers';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils.js';
+import { NodeTypes } from '@/node-types.js';
+import { applyCors } from '@/utils/cors.util.js';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import { preserveInputOverride } from '@/workflow-helpers.js';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the

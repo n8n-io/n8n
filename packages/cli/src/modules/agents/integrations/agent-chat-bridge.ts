@@ -3,24 +3,24 @@ import { Container } from '@n8n/di';
 import type { Author, Chat, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
-import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
-import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service.js';
+import { integrationMemoryResourceId } from '../utils/agent-memory-scope.js';
 import type {
 	AgentChatIntegration,
 	BridgeExecutionContext,
 	PlatformAgentContext,
-} from './agent-chat-integration';
-import { ChatIntegrationRegistry } from './agent-chat-integration';
-import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
-import { AgentChatMessageContextBridge } from './agent-chat-message-context';
-import { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
-import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
-import { CallbackStore } from './callback-store';
-import type { ComponentMapper, ShortenCallback } from './component-mapper';
-import { IntegrationMessageContextService } from './integration-message-context.service';
+} from './agent-chat-integration.js';
+import { ChatIntegrationRegistry } from './agent-chat-integration.js';
+import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler.js';
+import { AgentChatMessageContextBridge } from './agent-chat-message-context.js';
+import { AgentChatStreamConsumer } from './agent-chat-stream-consumer.js';
+import { buildSuspendCardPayload } from './agent-chat-suspension-cards.js';
+import { CallbackStore } from './callback-store.js';
+import type { ComponentMapper, ShortenCallback } from './component-mapper.js';
+import { IntegrationMessageContextService } from './integration-message-context.service.js';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
-import { type InternalThread, toInternalThreadId } from './types';
+import { type InternalThread, toInternalThreadId } from './types.js';
 
 interface AgentExecutor {
 	executeForChatPublished(config: {

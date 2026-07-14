@@ -3,10 +3,10 @@ import type { AuthenticatedRequest, User, ApiKey } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
-import { PublicApiKeyService } from '@/services/public-api-key.service';
+import { EventService } from '@/events/event.service.js';
+import { PublicApiKeyService } from '@/services/public-api-key.service.js';
 
-import { ApiKeysController } from '../api-keys.controller';
+import { ApiKeysController } from '../api-keys.controller.js';
 
 describe('ApiKeysController', () => {
 	const publicApiKeyService = mockInstance(PublicApiKeyService);

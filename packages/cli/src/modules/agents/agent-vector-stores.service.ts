@@ -3,11 +3,11 @@ import type { AgentJsonVectorStoreConfig, VectorStoreTestResult } from '@n8n/api
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsService } from '@/credentials/credentials.service.js';
 
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import { resolveEmbeddingProviderOptionsFromCredential } from './json-config/embedding-credential';
-import { buildVectorStoreBackend } from './json-config/vector-store-factory';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider.js';
+import { resolveEmbeddingProviderOptionsFromCredential } from './json-config/embedding-credential.js';
+import { buildVectorStoreBackend } from './json-config/vector-store-factory.js';
 
 const TEST_QUERY = 'n8n connection test';
 const TEST_TIMEOUT_MS = 15_000;

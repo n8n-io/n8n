@@ -4,9 +4,9 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Patch, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
 
-import { ProvisioningService } from './provisioning.service.ee';
+import { ProvisioningService } from './provisioning.service.ee.js';
 
 @RestController('/sso/provisioning')
 export class ProvisioningController {

@@ -22,12 +22,12 @@ import { v4 as uuid } from 'uuid';
 import type { Mock } from 'vitest';
 import { captor, mock } from 'vitest-mock-extended';
 
-import { ActiveExecutions } from '@/active-executions';
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import type { EventService } from '@/events/event.service';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { License } from '@/license';
-import type { Telemetry } from '@/telemetry';
+import { ActiveExecutions } from '@/active-executions.js';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
+import type { EventService } from '@/events/event.service.js';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { License } from '@/license.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
 vi.mock('n8n-workflow', async () => ({
 	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),

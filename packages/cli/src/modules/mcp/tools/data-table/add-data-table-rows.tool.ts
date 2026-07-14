@@ -1,12 +1,12 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { Telemetry } from '@/telemetry';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { dataTableProjectIdSchema } from '../schemas';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
+import { dataTableProjectIdSchema } from '../schemas.js';
 
 const ADD_ROWS_MAX = 1000;
 

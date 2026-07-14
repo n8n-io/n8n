@@ -2,7 +2,7 @@ import { type AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
-import type { Agent } from '../entities/agent.entity';
+import type { Agent } from '../entities/agent.entity.js';
 
 /**
  * Reconcile chat platform connections after the builder writes a new
@@ -23,7 +23,7 @@ export async function syncAgentIntegrations(
 ): Promise<void> {
 	try {
 		// eslint-disable-next-line import-x/no-cycle
-		const { ChatIntegrationService } = await import('./chat-integration.service');
+		const { ChatIntegrationService } = await import('./chat-integration.service.js');
 		await Container.get(ChatIntegrationService).syncToConfig(agent, previous, next);
 	} catch (error) {
 		logger.warn('Failed to sync chat integrations', {

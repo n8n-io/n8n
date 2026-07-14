@@ -1,9 +1,9 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search.js';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
 
-import { buildSearchMcpServersTool } from '../search-mcp-servers.tool';
+import { buildSearchMcpServersTool } from '../search-mcp-servers.tool.js';
 
 const ctx = {
 	resumeData: undefined,

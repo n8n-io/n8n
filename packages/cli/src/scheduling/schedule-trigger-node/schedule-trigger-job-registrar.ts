@@ -7,9 +7,9 @@ import { computeFirstRunAt, scheduleFingerprint, validateSchedule } from '@n8n/s
 import type { Cron, INode, SchedulingFunctions, Workflow } from 'n8n-workflow';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import { DurableJobProvisioner } from '../durable-job-provisioner';
-import type { ScheduleTriggerTaskPayload } from './schedule-trigger-task';
-import { SCHEDULE_TRIGGER_TASK_TYPE } from './schedule-trigger-task';
+import { DurableJobProvisioner } from '../durable-job-provisioner.js';
+import type { ScheduleTriggerTaskPayload } from './schedule-trigger-task.js';
+import { SCHEDULE_TRIGGER_TASK_TYPE } from './schedule-trigger-task.js';
 
 /** One rule of a Schedule Trigger node, ready to persist as a durable job. */
 interface CollectedSchedule {

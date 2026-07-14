@@ -15,16 +15,19 @@ import { InstanceSettings } from 'n8n-core';
 import { createEmptyRunExecutionData, sleep } from 'n8n-workflow';
 import { ExecutionStatus, type IRun, type ITaskData } from 'n8n-workflow';
 
-import { ARTIFICIAL_TASK_DATA } from '@/constants';
-import { NodeCrashedError } from '@/errors/node-crashed.error';
-import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
-import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { Push } from '@/push';
-import { OwnershipService } from '@/services/ownership.service';
-import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+import { ARTIFICIAL_TASK_DATA } from '@/constants.js';
+import { NodeCrashedError } from '@/errors/node-crashed.error.js';
+import { WorkflowCrashedError } from '@/errors/workflow-crashed.error.js';
+import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { Push } from '@/push/index.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { UserManagementMailer } from '@/user-management/email/user-management-mailer.js';
 
-import { isNodeEventMessage, type EventMessageTypes } from '../eventbus/event-message-classes';
+import {
+	isNodeEventMessage,
+	type EventMessageTypes,
+} from '../eventbus/event-message-classes/index.js';
 
 /**
  * Service for recovering key properties in executions.

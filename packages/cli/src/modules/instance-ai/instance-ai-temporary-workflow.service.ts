@@ -2,8 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { InstanceAiAdapterService } from './instance-ai.adapter.service';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
+import { InstanceAiAdapterService } from './instance-ai.adapter.service.js';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository.js';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);

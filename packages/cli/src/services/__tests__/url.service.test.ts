@@ -1,7 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import { UrlService } from '../url.service';
+import { UrlService } from '../url.service.js';
 
 describe('UrlService', () => {
 	beforeEach(() => {

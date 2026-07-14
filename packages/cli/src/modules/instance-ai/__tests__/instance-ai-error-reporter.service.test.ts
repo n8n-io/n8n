@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest';
 
-import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
+import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service.js';
 
 describe('InstanceAiErrorReporterService', () => {
 	function createService(): {

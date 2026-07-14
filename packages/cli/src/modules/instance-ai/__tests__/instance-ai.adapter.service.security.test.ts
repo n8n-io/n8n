@@ -33,32 +33,32 @@ import type {
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
-import type { FolderService } from '@/services/folder.service';
-import type { ProjectService } from '@/services/project.service.ee';
-import type { TagService } from '@/services/tag.service';
+import type { ActiveExecutions } from '@/active-executions.js';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service.js';
+import type { FolderService } from '@/services/folder.service.js';
+import type { ProjectService } from '@/services/project.service.ee.js';
+import type { TagService } from '@/services/tag.service.js';
 
-import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import type { InstanceAiSettingsService } from '../instance-ai-settings.service.js';
 
-import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { EventService } from '@/events/event.service';
-import type { License } from '@/license';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import type { NodeTypes } from '@/node-types';
-import type { RoleService } from '@/services/role.service';
+import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee.js';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { EventService } from '@/events/event.service.js';
+import type { License } from '@/license.js';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
+import type { DataTableService } from '@/modules/data-table/data-table.service.js';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
+import type { NodeTypes } from '@/node-types.js';
+import type { RoleService } from '@/services/role.service.js';
 import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowTemplatesService } from '../workflow-templates.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowTemplatesService } from '../workflow-templates.service.js';
 
 vi.mock('@/permissions.ee/check-access');
 vi.mock('@/workflow-execute-additional-data', () => ({
@@ -68,12 +68,12 @@ vi.mock('node:fs/promises', () => ({
 	readFile: vi.fn().mockResolvedValue('[]'),
 }));
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
+import { InstanceAiAdapterService } from '../instance-ai.adapter.service.js';
 
 const userHasScopesMock = vi.mocked(userHasScopes);
 

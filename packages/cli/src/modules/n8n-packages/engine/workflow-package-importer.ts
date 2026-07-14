@@ -4,28 +4,28 @@ import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { FolderService } from '@/services/folder.service';
-import { ProjectService } from '@/services/project.service.ee';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import { FolderService } from '@/services/folder.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
 
-import type { CredentialBindingRequest } from '../entities/credential/credential.types';
+import type { CredentialBindingRequest } from '../entities/credential/credential.types.js';
 import type {
 	PreparedWorkflow,
 	WorkflowImportOutcome,
-} from '../entities/workflow/workflow-import.types';
-import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
-import type { PackageReader } from '../io/package-reader';
-import type { PackageManifest } from '../spec/manifest.schema';
-import type { PackageCredentialRequirement } from '../spec/requirements.schema';
-import { ImportOrchestrator, type ImportOrchestrationResult } from './import-orchestrator';
+} from '../entities/workflow/workflow-import.types.js';
+import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types.js';
+import type { PackageReader } from '../io/package-reader.js';
+import type { PackageManifest } from '../spec/manifest.schema.js';
+import type { PackageCredentialRequirement } from '../spec/requirements.schema.js';
+import { ImportOrchestrator, type ImportOrchestrationResult } from './import-orchestrator.js';
 import {
 	assertPackageImportApiKeyScopes,
 	buildImportResult,
 	toPackageSummary,
-} from './import-result';
-import { N8nPackageParser } from './n8n-package-parser';
+} from './import-result.js';
+import { N8nPackageParser } from './n8n-package-parser.js';
 
 /**
  * Imports loose top-level workflows, their folder shells, and credential deps into a target project.

@@ -6,8 +6,8 @@ import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
 	InstanceDetectionReport,
-} from '../../types';
-import { BreakingChangeCategory } from '../../types';
+} from '../../types/index.js';
+import { BreakingChangeCategory } from '../../types/index.js';
 
 @BreakingChangeRule({ version: 'v2' })
 export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {

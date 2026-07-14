@@ -1,4 +1,8 @@
-import type { FolderConflict, FolderConflictPolicy, ImportContext } from '../../n8n-packages.types';
+import type {
+	FolderConflict,
+	FolderConflictPolicy,
+	ImportContext,
+} from '../../n8n-packages.types.js';
 
 export interface PreparedFolder {
 	sourceFolderId: string;

@@ -1,13 +1,13 @@
 import type { User } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { WorkflowAccessError } from '../mcp.errors';
+import { WorkflowAccessError } from '../mcp.errors.js';
 import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	MCP_GET_SDK_REFERENCE_TOOL,
-} from './workflow-builder/constants';
+} from './workflow-builder/constants.js';
 
 type SdkReferenceHintOptions = {
 	afterReference?: string;

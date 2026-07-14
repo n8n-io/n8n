@@ -2,7 +2,7 @@ import RefParser from '@apidevtools/json-schema-ref-parser';
 import { API_KEY_RESOURCES, type ApiKeyScope } from '@n8n/permissions';
 import path from 'node:path';
 
-import type { ScopeTaggedMiddleware } from '../shared/middlewares/global.middleware';
+import type { ScopeTaggedMiddleware } from '../shared/middlewares/global.middleware.js';
 
 vi.unmock('node:fs');
 

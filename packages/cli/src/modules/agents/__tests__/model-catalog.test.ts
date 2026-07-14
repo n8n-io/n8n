@@ -1,6 +1,6 @@
 import { AGENT_MODEL_PROVIDERS } from '@n8n/api-types';
 
-import { filterOfferedAgentModelProviders } from '../model-catalog';
+import { filterOfferedAgentModelProviders } from '../model-catalog.js';
 
 describe('filterOfferedAgentModelProviders', () => {
 	it('keeps only providers offered by the agents UI', () => {

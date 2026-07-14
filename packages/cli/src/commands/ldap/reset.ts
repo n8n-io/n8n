@@ -17,12 +17,12 @@ import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { UM_FIX_INSTRUCTION } from '@/constants';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { OwnershipTransferService } from '@/services/ownership-transfer/ownership-transfer.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { UM_FIX_INSTRUCTION } from '@/constants.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { OwnershipTransferService } from '@/services/ownership-transfer/ownership-transfer.service.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { BaseCommand } from '../base-command';
+import { BaseCommand } from '../base-command.js';
 
 const wrongFlagsError =
 	'You must use exactly one of `--userId`, `--projectId` or `--deleteWorkflowsAndCredentials`.';

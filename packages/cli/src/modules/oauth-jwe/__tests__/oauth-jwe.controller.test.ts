@@ -5,10 +5,10 @@ import type { Response } from 'express';
 import type { JWK } from 'jose';
 import { mock } from 'vitest-mock-extended';
 
-import type { AuthlessRequest } from '@/requests';
+import type { AuthlessRequest } from '@/requests.js';
 
-import { OAuthJweKeyService } from '../oauth-jwe-key.service';
-import { OAuthJweController } from '../oauth-jwe.controller';
+import { OAuthJweKeyService } from '../oauth-jwe-key.service.js';
+import { OAuthJweController } from '../oauth-jwe.controller.js';
 
 const validRsaJwk: JWK = {
 	kty: 'RSA',

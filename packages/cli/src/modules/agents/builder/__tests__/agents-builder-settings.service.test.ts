@@ -3,13 +3,13 @@ import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-netw
 import type { CredentialsEntity, SettingsRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { AiService } from '@/services/ai.service';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
+import type { AiService } from '@/services/ai.service.js';
 
-import { AgentsBuilderSettingsService } from '../agents-builder-settings.service';
-import { BUILDER_NOT_CONFIGURED_CODE, BuilderNotConfiguredError } from '../errors';
+import { AgentsBuilderSettingsService } from '../agents-builder-settings.service.js';
+import { BUILDER_NOT_CONFIGURED_CODE, BuilderNotConfiguredError } from '../errors.js';
 
 const ENV_KEYS = ['N8N_AI_ANTHROPIC_KEY', 'ANTHROPIC_API_KEY'] as const;
 

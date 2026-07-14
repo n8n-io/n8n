@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import type { IBreakingChangeRule } from './types';
+import type { IBreakingChangeRule } from './types/index.js';
 
 @Service()
 export class RuleRegistry {

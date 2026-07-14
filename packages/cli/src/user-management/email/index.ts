@@ -1,3 +1,3 @@
-import { UserManagementMailer } from './user-management-mailer';
+import { UserManagementMailer } from './user-management-mailer.js';
 
 export { UserManagementMailer };

@@ -2,8 +2,8 @@ import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DATA_TABLE_NODE_TYPES } from 'n8n-workflow';
 
-import type { WorkflowDataTableRequirement } from './data-table.types';
-import type { RequirementsExtractor } from '../requirements-extractor';
+import type { WorkflowDataTableRequirement } from './data-table.types.js';
+import type { RequirementsExtractor } from '../requirements-extractor.js';
 
 @Service()
 export class DataTableRequirementsExtractor

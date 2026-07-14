@@ -5,10 +5,10 @@ import { mock } from 'vitest-mock-extended';
 import type { StorageConfig } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { DURATION_BUCKETS_SECONDS, SIZE_BUCKETS_BYTES } from '../constant';
-import { PrometheusExecutionDataMetricsService } from '../execution-data-metrics.service';
+import { DURATION_BUCKETS_SECONDS, SIZE_BUCKETS_BYTES } from '../constant.js';
+import { PrometheusExecutionDataMetricsService } from '../execution-data-metrics.service.js';
 
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@/events/event.service.js';
 
 vi.mock('prom-client');
 

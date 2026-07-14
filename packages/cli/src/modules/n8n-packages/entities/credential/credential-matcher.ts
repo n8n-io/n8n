@@ -1,15 +1,15 @@
 import type { User } from '@n8n/db';
 
-import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialTypes } from '@/credential-types.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
 
 import {
 	createFailure,
 	type CredentialResolution,
 	type CredentialResolutionFailure,
-} from './credential.types';
-import type { ImportBindingMap } from '../../n8n-packages.types';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+} from './credential.types.js';
+import type { ImportBindingMap } from '../../n8n-packages.types.js';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema.js';
 
 export interface CredentialMatcherContext {
 	projectId: string;

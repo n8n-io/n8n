@@ -1,21 +1,21 @@
 import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { FolderFinderService } from '@/services/folder-finder.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { FolderFinderService } from '@/services/folder-finder.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { ProjectSerializer } from './project.serializer';
-import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import { FolderExporter } from '../folder/folder.exporter';
-import type { FolderExportResult } from '../folder/folder.exporter';
-import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
-import { mergeRequirements } from '../requirements.types';
-import type { WorkflowExportRequirements } from '../requirements.types';
-import { WorkflowExporter } from '../workflow/workflow.exporter';
-import type { WorkflowExportResult } from '../workflow/workflow.exporter';
+import { ProjectSerializer } from './project.serializer.js';
+import type { PackageWriter } from '../../io/package-writer.js';
+import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator.js';
+import type { ManifestEntry } from '../../spec/manifest.schema.js';
+import { FolderExporter } from '../folder/folder.exporter.js';
+import type { FolderExportResult } from '../folder/folder.exporter.js';
+import { assertEveryRequestedEntityAccessible } from '../package-export.errors.js';
+import { mergeRequirements } from '../requirements.types.js';
+import type { WorkflowExportRequirements } from '../requirements.types.js';
+import { WorkflowExporter } from '../workflow/workflow.exporter.js';
+import type { WorkflowExportResult } from '../workflow/workflow.exporter.js';
 
 export interface ProjectExportRequest {
 	user: User;

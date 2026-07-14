@@ -8,7 +8,7 @@ import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 
-import { License } from '@/license';
+import { License } from '@/license.js';
 
 import {
 	createMember,
@@ -16,9 +16,9 @@ import {
 	createOwnerWithApiKey,
 	createUser,
 	createUserShell,
-} from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
+} from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils//index.js';
 
 mockInstance(License, {
 	getUsersLimit: vi.fn().mockReturnValue(-1),

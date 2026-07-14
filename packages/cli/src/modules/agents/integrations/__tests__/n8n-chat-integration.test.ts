@@ -1,16 +1,16 @@
 import type { UserRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ChatIntegrationRegistry } from '../agent-chat-integration';
-import { ChatIntegrationActionExecutor } from '../integration-action-executor';
-import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
-import type { ChatIntegrationService } from '../chat-integration.service';
-import { createIntegrationActionTool } from '../integration-tools';
+import { ChatIntegrationRegistry } from '../agent-chat-integration.js';
+import { ChatIntegrationActionExecutor } from '../integration-action-executor.js';
+import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor.js';
+import type { ChatIntegrationService } from '../chat-integration.service.js';
+import { createIntegrationActionTool } from '../integration-tools.js';
 import type {
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
-} from '../integration-tools';
-import { N8nChatIntegration } from '../platforms/n8n-chat-integration';
+} from '../integration-tools.js';
+import { N8nChatIntegration } from '../platforms/n8n-chat-integration.js';
 
 const makeContext = (): IntegrationMessageContext => ({
 	integrationConnectionId: 'n8n_chat',

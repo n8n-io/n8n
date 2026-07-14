@@ -4,7 +4,7 @@ import type { LocalMcpServer } from '@n8n/instance-ai';
 import {
 	CompositeLocalMcpServer,
 	composeLocalMcpServers,
-} from '../browser/composite-local-mcp-server';
+} from '../browser/composite-local-mcp-server.js';
 
 function tool(name: string, category = 'browser'): McpTool {
 	return {

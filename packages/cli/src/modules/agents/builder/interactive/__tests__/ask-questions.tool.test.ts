@@ -1,7 +1,7 @@
 import type { InterruptibleToolContext } from '@n8n/agents';
 import type { Mock } from 'vitest';
 
-import { buildAskQuestionsTool } from '../ask-questions.tool';
+import { buildAskQuestionsTool } from '../ask-questions.tool.js';
 
 interface TestCtx {
 	resumeData?: unknown;

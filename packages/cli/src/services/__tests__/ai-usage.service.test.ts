@@ -2,9 +2,9 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { Settings } from '@n8n/db';
 import { SettingsRepository } from '@n8n/db';
 
-import config from '@/config';
-import { AiUsageService } from '@/services/ai-usage.service';
-import { CacheService } from '@/services/cache/cache.service';
+import config from '@/config/index.js';
+import { AiUsageService } from '@/services/ai-usage.service.js';
+import { CacheService } from '@/services/cache/cache.service.js';
 
 vi.mock('@/config', () => ({ default: { set: vi.fn() } }));
 

@@ -2,10 +2,10 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Role } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import type { RoleService } from '@/services/role.service';
+import type { EventService } from '@/events/event.service.js';
+import type { RoleService } from '@/services/role.service.js';
 
-import { RoleController } from '../role.controller';
+import { RoleController } from '../role.controller.js';
 
 describe('RoleController', () => {
 	const eventService = mock<EventService>();

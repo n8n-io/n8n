@@ -4,9 +4,9 @@ import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { compressFolder } from '@/utils/compression.util';
+import { compressFolder } from '@/utils/compression.util.js';
 
-import { ExportService } from '../export.service';
+import { ExportService } from '../export.service.js';
 
 // Mock fs/promises with proper implementations
 vi.mock('fs/promises', () => ({

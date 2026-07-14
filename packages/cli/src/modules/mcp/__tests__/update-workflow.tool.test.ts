@@ -10,20 +10,20 @@ import {
 import type { Mock } from 'vitest';
 import { z } from 'zod';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
-import { NodeTypes } from '@/node-types';
-import { TagService } from '@/services/tag.service';
-import { UrlService } from '@/services/url.service';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { CollaborationService } from '@/collaboration/collaboration.service.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error.js';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker.js';
+import { NodeTypes } from '@/node-types.js';
+import { TagService } from '@/services/tag.service.js';
+import { UrlService } from '@/services/url.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
+import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool.js';
 
 const mockAutoPopulateNodeCredentials = vi.fn();
 vi.mock('../tools/workflow-builder/credentials-auto-assign', () => ({

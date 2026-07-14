@@ -1,6 +1,12 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import { trimItems, runQuery, queryItems, MAX_ITEMS, MAX_OUTPUT_CHARS } from '../agent-data-utils';
+import {
+	trimItems,
+	runQuery,
+	queryItems,
+	MAX_ITEMS,
+	MAX_OUTPUT_CHARS,
+} from '../agent-data-utils.js';
 
 const item = (json: IDataObject): INodeExecutionData => ({ json });
 

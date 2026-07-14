@@ -7,10 +7,10 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { PrometheusWorkflowPublicationMetricsService } from '../workflow-publication-metrics.service';
+import { PrometheusWorkflowPublicationMetricsService } from '../workflow-publication-metrics.service.js';
 
-import type { EventService } from '@/events/event.service';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { EventService } from '@/events/event.service.js';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
 vi.mock('prom-client');
 

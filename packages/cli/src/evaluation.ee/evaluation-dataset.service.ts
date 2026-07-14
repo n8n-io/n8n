@@ -18,14 +18,14 @@ import type {
 	JsonValue,
 } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity.js';
+import { DataTableService } from '@/modules/data-table/data-table.service.js';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
 
 /** First-item `json` of a node's last run output, keyed by field name. */
 type FieldMap = IDataObject;

@@ -2,11 +2,11 @@ import type { User } from '@n8n/db';
 import type { INode, INodeTypeDescription, INodeCredentialDescription } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
-import { validateWorkflowCredentialReferences } from '../tools/workflow-builder/credential-validation';
+import { validateWorkflowCredentialReferences } from '../tools/workflow-builder/credential-validation.js';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { NodeTypes } from '@/node-types';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { NodeTypes } from '@/node-types.js';
 
 const user = { id: 'user-1' } as User;
 const projectId = 'project-1';

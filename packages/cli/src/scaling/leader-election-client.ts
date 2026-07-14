@@ -5,7 +5,7 @@ import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { type Result, createResultOk, createResultError } from '@n8n/utils/result';
 
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@/services/redis-client.service.js';
 
 const COMMAND_TIMEOUT_MS = 5_000;
 

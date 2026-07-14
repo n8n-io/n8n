@@ -4,10 +4,10 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@/events/event.service.js';
 
-import { DURATION_BUCKETS_SECONDS } from '../constant';
-import { PrometheusWorkflowExecutionDurationMetricsService } from '../workflow-execution-duration-metrics.service';
+import { DURATION_BUCKETS_SECONDS } from '../constant.js';
+import { PrometheusWorkflowExecutionDurationMetricsService } from '../workflow-execution-duration-metrics.service.js';
 
 vi.mock('prom-client');
 

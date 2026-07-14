@@ -5,16 +5,16 @@ import type { EvaluationConfigRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { IConnections, IRunData } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity.js';
+import type { DataTableService } from '@/modules/data-table/data-table.service.js';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
 
-import { EvaluationDatasetService } from '../evaluation-dataset.service';
+import { EvaluationDatasetService } from '../evaluation-dataset.service.js';
 
 vi.mock('@/permissions.ee/check-access');
 const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;

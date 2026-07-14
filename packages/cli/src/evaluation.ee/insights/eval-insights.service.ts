@@ -5,10 +5,10 @@ import type { TestRun, User } from '@n8n/db';
 import { EvaluationCollectionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { Telemetry } from '@/telemetry';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { Telemetry } from '@/telemetry/index.js';
 
 /**
  * Identifier reported in telemetry + the `modelUsed` field of the response

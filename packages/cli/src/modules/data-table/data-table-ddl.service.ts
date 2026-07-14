@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { DataSource, DataSourceOptions, EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { DataTableColumn } from './data-table-column.entity';
+import { DataTableColumn } from './data-table-column.entity.js';
 import {
 	addColumnQuery,
 	deleteColumnQuery,
@@ -12,7 +12,7 @@ import {
 	renameTableQuery,
 	toDslColumns,
 	toTableName,
-} from './utils/sql-utils';
+} from './utils/sql-utils.js';
 
 /**
  * Manages database schema operations for data tables (DDL).

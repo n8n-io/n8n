@@ -1,4 +1,4 @@
-import { serializedFolderSchema } from '../folder.schema';
+import { serializedFolderSchema } from '../folder.schema.js';
 
 describe('serializedFolderSchema', () => {
 	it('accepts a folder shell with a null parentFolderId (re-rooted folder)', () => {

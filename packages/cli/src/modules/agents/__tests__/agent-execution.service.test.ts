@@ -2,15 +2,15 @@ import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 
-import type { Telemetry } from '@/telemetry';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { AgentExecutionService } from '../agent-execution.service';
-import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
-import type { AgentExecution } from '../entities/agent-execution.entity';
-import type { MessageRecord } from '../execution-recorder';
-import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
-import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import { AgentExecutionService } from '../agent-execution.service.js';
+import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity.js';
+import type { AgentExecution } from '../entities/agent-execution.entity.js';
+import type { MessageRecord } from '../execution-recorder.js';
+import type { N8nMemory } from '../integrations/n8n-memory.js';
+import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository.js';
+import type { AgentExecutionRepository } from '../repositories/agent-execution.repository.js';
 
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 

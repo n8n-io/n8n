@@ -13,12 +13,12 @@ import {
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee.js';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
 
-import { MockProviders, createDummyProvider } from '../../shared/external-secrets/utils';
-import { createMember, createOwner } from '../shared/db/users';
-import { setupTestServer } from '../shared/utils';
+import { MockProviders, createDummyProvider } from '../../shared/external-secrets/utils.js';
+import { createMember, createOwner } from '../shared/db/users.js';
+import { setupTestServer } from '../shared/utils/index.js';
 
 const mockProvidersInstance = new MockProviders();
 mockProvidersInstance.setProviders({

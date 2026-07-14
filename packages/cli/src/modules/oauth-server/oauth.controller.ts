@@ -15,12 +15,12 @@ import {
 import { Container } from '@n8n/di';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry.js';
+import { UrlService } from '@/services/url.service.js';
 
-import { OAuthServerConfig } from './oauth-server.config';
-import { OAuthServerService } from './oauth-server.service';
-import { buildOAuthClientLimitReachedMessage } from './oauth.errors';
+import { OAuthServerConfig } from './oauth-server.config.js';
+import { OAuthServerService } from './oauth-server.service.js';
+import { buildOAuthClientLimitReachedMessage } from './oauth.errors.js';
 
 const oauthServerService = Container.get(OAuthServerService);
 const globalConfig = Container.get(GlobalConfig);

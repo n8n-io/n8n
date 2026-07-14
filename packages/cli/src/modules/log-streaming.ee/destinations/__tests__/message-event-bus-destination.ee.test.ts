@@ -3,13 +3,13 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic.js';
 import type {
 	MessageEventBus,
 	MessageWithCallback,
-} from '@/eventbus/message-event-bus/message-event-bus';
+} from '@/eventbus/message-event-bus/message-event-bus.js';
 
-import { MessageEventBusDestination } from '../message-event-bus-destination.ee';
+import { MessageEventBusDestination } from '../message-event-bus-destination.ee.js';
 
 // Create a concrete implementation for testing
 class TestDestination extends MessageEventBusDestination {

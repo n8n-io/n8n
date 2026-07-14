@@ -8,18 +8,18 @@ import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflo
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Telemetry } from '@/telemetry';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
-import type { AgentExecutionService } from '../agent-execution.service';
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
-import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import type { Agent } from '../entities/agent.entity';
-import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type { AgentRepository } from '../repositories/agent.repository';
-import type { ToolRegistry } from '../tool-registry';
+import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service.js';
+import type { AgentExecutionService } from '../agent-execution.service.js';
+import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service.js';
+import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service.js';
+import type { Agent } from '../entities/agent.entity.js';
+import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service.js';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
+import type { ToolRegistry } from '../tool-registry.js';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

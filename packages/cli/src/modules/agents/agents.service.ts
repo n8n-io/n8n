@@ -10,17 +10,17 @@ import { In, ProjectRelationRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { AgentKnowledgeService } from './agent-knowledge.service';
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { AgentTestChatService } from './agent-test-chat.service';
-import { Agent } from './entities/agent.entity';
-import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { AgentTaskRepository } from './repositories/agent-task.repository';
-import { AgentRepository } from './repositories/agent.repository';
-import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
-import { EventService } from '@/events/event.service';
+import { AgentKnowledgeService } from './agent-knowledge.service.js';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service.js';
+import { AgentTestChatService } from './agent-test-chat.service.js';
+import { Agent } from './entities/agent.entity.js';
+import { ChatIntegrationService } from './integrations/chat-integration.service.js';
+import { AgentTaskRepository } from './repositories/agent-task.repository.js';
+import { AgentRepository } from './repositories/agent.repository.js';
+import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service.js';
+import { EventService } from '@/events/event.service.js';
 
 @Service()
 export class AgentsService {
@@ -216,7 +216,7 @@ export class AgentsService {
 		this.eventService.emit('agent-deleted', { agentId, projectId });
 
 		try {
-			const { AgentTaskService } = await import('./agent-task.service');
+			const { AgentTaskService } = await import('./agent-task.service.js');
 			await Container.get(AgentTaskService).requestReconcile(agentId);
 		} catch (error) {
 			this.logger.warn('Failed to stop tasks on agent delete', {

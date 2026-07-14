@@ -2,11 +2,11 @@ import type { ICredentialType, INodeType, IWorkflowExecuteAdditionalData } from 
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsHelper } from '@/credentials-helper';
-import type { NodeTypes } from '@/node-types';
-import { CredentialsTester } from '@/services/credentials-tester.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { CredentialTypes } from '@/credential-types.js';
+import type { CredentialsHelper } from '@/credentials-helper.js';
+import type { NodeTypes } from '@/node-types.js';
+import { CredentialsTester } from '@/services/credentials-tester.service.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
 
 describe('CredentialsTester', () => {
 	const credentialTypes = mock<CredentialTypes>();

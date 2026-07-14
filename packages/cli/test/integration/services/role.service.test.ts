@@ -6,13 +6,13 @@ import { RoleMappingRuleRepository, RoleRepository, UserRepository } from '@n8n/
 import { Container } from '@n8n/di';
 import { ALL_ROLES } from '@n8n/permissions';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { License } from '@/license';
-import { ProvisioningRoleDeletionChecker } from '@/modules/provisioning.ee/role-deletion-checker.ee';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
-import { RoleService } from '@/services/role.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { License } from '@/license.js';
+import { ProvisioningRoleDeletionChecker } from '@/modules/provisioning.ee/role-deletion-checker.ee.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service.js';
+import { RoleService } from '@/services/role.service.js';
 
 import {
 	createRole,
@@ -20,8 +20,8 @@ import {
 	createCustomRoleWithScopes,
 	createTestScopes,
 	cleanupRolesAndScopes,
-} from '../shared/db/roles';
-import { createMember, createUser } from '../shared/db/users';
+} from '../shared/db/roles.js';
+import { createMember, createUser } from '../shared/db/users.js';
 
 let roleService: RoleService;
 let roleRepository: RoleRepository;

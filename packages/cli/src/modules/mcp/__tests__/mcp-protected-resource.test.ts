@@ -1,10 +1,10 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { McpConfig } from '../mcp.config';
-import type { McpSettingsService } from '../mcp.settings.service';
-import type { UrlService } from '@/services/url.service';
+import type { McpConfig } from '../mcp.config.js';
+import type { McpSettingsService } from '../mcp.settings.service.js';
+import type { UrlService } from '@/services/url.service.js';
 
-import { McpProtectedResource } from '../mcp-protected-resource';
+import { McpProtectedResource } from '../mcp-protected-resource.js';
 
 describe('McpProtectedResource', () => {
 	const urlService = mock<UrlService>();

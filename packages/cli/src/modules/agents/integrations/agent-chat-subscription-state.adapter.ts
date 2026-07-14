@@ -1,12 +1,12 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Lock, QueueEntry, StateAdapter } from 'chat';
 
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map.js';
 
 import {
 	type AgentChatSubscriptionRepository,
 	type AgentChatSubscriptionScope,
-} from '../repositories/agent-chat-subscription.repository';
+} from '../repositories/agent-chat-subscription.repository.js';
 
 export type SubscriptionAction = PubSubCommandMap['agent-chat-subscription-changed']['action'];
 

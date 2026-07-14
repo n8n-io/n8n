@@ -1,12 +1,12 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { Telemetry } from '@/telemetry';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { MCP_GET_SDK_REFERENCE_TOOL } from './constants';
-import { getSdkReferenceContent, type SdkReferenceSection } from './sdk-reference-content';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { MCP_GET_SDK_REFERENCE_TOOL } from './constants.js';
+import { getSdkReferenceContent, type SdkReferenceSection } from './sdk-reference-content.js';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
 
 const VALID_SECTIONS: SdkReferenceSection[] = [
 	'patterns',

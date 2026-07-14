@@ -1,21 +1,21 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { ProjectService } from '@/services/project.service.ee.js';
+import type { RoleService } from '@/services/role.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
 import type {
 	ToolDefinition,
 	WorkflowDetailsResult,
 	UserCalledMCPToolEventPayload,
-} from '../mcp.types';
-import { toTagSummary, workflowDetailsOutputSchema } from './schemas';
-import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
-import { getMcpWorkflow } from './workflow-validation.utils';
+} from '../mcp.types.js';
+import { toTagSummary, workflowDetailsOutputSchema } from './schemas.js';
+import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils.js';
+import { getMcpWorkflow } from './workflow-validation.utils.js';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to retrieve'),

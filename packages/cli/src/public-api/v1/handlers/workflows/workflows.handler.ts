@@ -8,24 +8,24 @@ import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import { z } from 'zod';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee.js';
 
-import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service';
-import type { WorkflowRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service.js';
+import type { WorkflowRequest } from '../../../types.js';
+import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
 import {
 	publicApiScope,
 	projectScope,
 	validCursor,
-} from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
+} from '../../shared/middlewares/global.middleware.js';
+import { encodeNextCursor } from '../../shared/services/pagination.service.js';
 
 const handleError = (error: unknown) => {
 	if (error instanceof ResponseError) {

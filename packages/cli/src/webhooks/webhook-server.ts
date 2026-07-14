@@ -1,14 +1,14 @@
 import { Container, Service } from '@n8n/di';
 
-import { AbstractServer } from '@/abstract-server';
-import { ChatServer } from '@/chat/chat-server';
+import { AbstractServer } from '@/abstract-server.js';
+import { ChatServer } from '@/chat/chat-server.js';
 
 @Service()
 export class WebhookServer extends AbstractServer {
 	/** Mounts `/metrics` so dedicated webhook procs are scrapeable. */
 	async configure(): Promise<void> {
 		if (this.globalConfig.endpoints.metrics.enable) {
-			const { PrometheusMetricsService } = await import('@/metrics/prometheus');
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 			Container.get(PrometheusMetricsService).init(this.app);
 		}
 	}

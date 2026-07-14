@@ -1,4 +1,4 @@
-import { LRUCache } from '../cache';
+import { LRUCache } from '../cache.js';
 
 describe('LRUCache', () => {
 	it('returns undefined for missing keys', () => {

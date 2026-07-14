@@ -1,4 +1,4 @@
-import { TaskRunnerDisconnectedError } from '../task-runner-disconnected-error';
+import { TaskRunnerDisconnectedError } from '../task-runner-disconnected-error.js';
 
 describe('TaskRunnerDisconnectedError', () => {
 	it('should have the correct default error message', () => {

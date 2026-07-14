@@ -1,13 +1,13 @@
 import type { Folder, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { FolderFinderService } from '@/services/folder-finder.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { FolderFinderService } from '@/services/folder-finder.service.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
-import type { WorkflowExporter } from '../../workflow/workflow.exporter';
-import { FolderExporter } from '../folder.exporter';
-import { FolderSerializer } from '../folder.serializer';
+import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer.js';
+import type { WorkflowExporter } from '../../workflow/workflow.exporter.js';
+import { FolderExporter } from '../folder.exporter.js';
+import { FolderSerializer } from '../folder.serializer.js';
 
 const user = mock<User>({ id: 'user-1' });
 

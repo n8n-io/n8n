@@ -9,14 +9,14 @@ import {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import type { RoleService } from '@/services/role.service';
-import type { UserService } from '@/services/user.service';
+import type { EventService } from '@/events/event.service.js';
+import type { RoleService } from '@/services/role.service.js';
+import type { UserService } from '@/services/user.service.js';
 
-import { TokenExchangeAuthError } from '../../token-exchange.errors';
-import type { ExternalTokenClaims } from '../../token-exchange.schemas';
-import { IdentityResolutionService } from '../identity-resolution.service';
-import type { TrustedKeyService } from '../trusted-key.service';
+import { TokenExchangeAuthError } from '../../token-exchange.errors.js';
+import type { ExternalTokenClaims } from '../../token-exchange.schemas.js';
+import { IdentityResolutionService } from '../identity-resolution.service.js';
+import type { TrustedKeyService } from '../trusted-key.service.js';
 
 const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 const entityManager = mock<EntityManager>();

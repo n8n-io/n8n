@@ -9,14 +9,14 @@ import type { INode, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-w
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import type { EventService } from '@/events/event.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
-import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error.js';
+import type { EventService } from '@/events/event.service.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory.js';
+import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
 
-import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-task';
-import { ScheduleTriggerTaskHandler } from '../schedule-trigger-task-handler';
+import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-task.js';
+import { ScheduleTriggerTaskHandler } from '../schedule-trigger-task-handler.js';
 
 describe('ScheduleTriggerTaskHandler', () => {
 	const errorReporter = mock<ErrorReporter>();

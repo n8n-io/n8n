@@ -20,34 +20,34 @@ import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
 import { z } from 'zod';
 
-import { ActiveExecutions } from '@/active-executions';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import config from '@/config';
-import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { DeprecationService } from '@/deprecation/deprecation.service';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
-import { ExecutionService } from '@/executions/execution.service';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
-import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
-import { DurableScheduler } from '@/scheduling/durable-scheduler';
-import { Server } from '@/server';
-import { JwtService } from '@/services/jwt.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
-import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
-import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
-import { UrlService } from '@/services/url.service';
-import { WaitTracker } from '@/wait-tracker';
-import { WorkflowRunner } from '@/workflow-runner';
+import { ActiveExecutions } from '@/active-executions.js';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import config from '@/config/index.js';
+import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants.js';
+import { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import { DeprecationService } from '@/deprecation/deprecation.service.js';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { EventService } from '@/events/event.service.js';
+import { ExecutionService } from '@/executions/execution.service.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage.js';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry.js';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service.js';
+import { DurableScheduler } from '@/scheduling/durable-scheduler.js';
+import { Server } from '@/server.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service.js';
+import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service.js';
+import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service.js';
+import { UrlService } from '@/services/url.service.js';
+import { WaitTracker } from '@/wait-tracker.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
 
-import { BaseCommand } from './base-command';
+import { BaseCommand } from './base-command.js';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -284,7 +284,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// Initialize auth handler registry after modules are loaded
-		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry');
+		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry.js');
 		await Container.get(AuthHandlerRegistry).init();
 
 		if (this.instanceSettings.isMultiMain) {
@@ -297,7 +297,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	private async initInstanceSettingsLoader(): Promise<void> {
 		const { InstanceSettingsLoaderService } = await import(
-			'@/instance-settings-loader/instance-settings-loader.service'
+			'@/instance-settings-loader/instance-settings-loader.service.js'
 		);
 		await Container.get(InstanceSettingsLoaderService).init();
 	}
@@ -411,18 +411,18 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// Start to get active workflows and run their triggers
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			const { PublishedWorkflowEnqueuer } = await import(
-				'@/workflows/publication/published-workflow-enqueuer'
+				'@/workflows/publication/published-workflow-enqueuer.js'
 			);
 			const { WorkflowPublicationOutboxConsumer } = await import(
-				'@/workflows/publication/workflow-publication-outbox-consumer'
+				'@/workflows/publication/workflow-publication-outbox-consumer.js'
 			);
 			const { WorkflowPublicationOutboxCleanupService } = await import(
-				'@/workflows/publication/workflow-publication-outbox-cleanup.service'
+				'@/workflows/publication/workflow-publication-outbox-cleanup.service.js'
 			);
 
 			// Import for its side effect: registering the trigger deactivator's
 			// @OnLeaderStepdown and @OnShutdown handlers. Nothing else loads this module.
-			await import('@/workflows/publication/published-workflow-trigger-deactivator');
+			await import('@/workflows/publication/published-workflow-trigger-deactivator.js');
 
 			// Enqueue needs to happen before outbox consumer init, so it can activate
 			// everything on the first drain

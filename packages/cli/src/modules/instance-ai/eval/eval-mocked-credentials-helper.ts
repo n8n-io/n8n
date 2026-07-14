@@ -21,7 +21,7 @@ import type {
 } from 'n8n-workflow';
 import { ICredentialsHelper } from 'n8n-workflow';
 
-import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error.js';
 
 const MOCK_MARKER = '__evalMockedCredential' as const;
 

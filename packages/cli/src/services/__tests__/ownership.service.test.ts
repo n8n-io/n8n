@@ -18,13 +18,13 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { EventService } from '@/events/event.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { PasswordUtility } from '@/services/password.utility';
-import { mockCredential, mockProject } from '@test/mock-objects';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { EventService } from '@/events/event.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { PasswordUtility } from '@/services/password.utility.js';
+import { mockCredential, mockProject } from '@test/mock-objects.js';
 
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '../cache/cache.service.js';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);

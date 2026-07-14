@@ -14,19 +14,19 @@ import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
 import {
 	buildKnowledgeFileLocation,
 	storageFileNameForOriginalFileName,
 	toAgentFileDto,
-} from './agent-knowledge-storage';
-import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
-import type { AgentFile } from './entities/agent-file.entity';
-import type { Agent } from './entities/agent.entity';
-import { AgentFileRepository } from './repositories/agent-file.repository';
-import { AgentRepository } from './repositories/agent.repository';
+} from './agent-knowledge-storage.js';
+import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service.js';
+import type { AgentFile } from './entities/agent-file.entity.js';
+import type { Agent } from './entities/agent.entity.js';
+import { AgentFileRepository } from './repositories/agent-file.repository.js';
+import { AgentRepository } from './repositories/agent.repository.js';
 
 const MAX_AGENT_FILE_METADATA_LENGTH = 255;
 

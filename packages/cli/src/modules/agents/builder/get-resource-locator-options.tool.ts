@@ -16,11 +16,11 @@ import type { User } from '@n8n/db';
 import type { INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { NodeTypes } from '@/node-types';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
+import type { NodeTypes } from '@/node-types.js';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import { getBase } from '@/workflow-execute-additional-data.js';
 
-import { BUILDER_TOOLS } from './builder-tool-names';
+import { BUILDER_TOOLS } from './builder-tool-names.js';
 
 const nodeCredentialSchema = z.object({
 	id: z.string(),

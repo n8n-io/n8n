@@ -40,12 +40,12 @@ import {
 } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { isUniqueConstraintError } from '@/response-helper';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { isUniqueConstraintError } from '@/response-helper.js';
 
-import { RoleCacheService } from './role-cache.service';
-import { RoleDeletionCheckProxy } from './role-deletion-check-proxy.service';
+import { RoleCacheService } from './role-cache.service.js';
+import { RoleDeletionCheckProxy } from './role-deletion-check-proxy.service.js';
 
 @Service()
 export class RoleService {

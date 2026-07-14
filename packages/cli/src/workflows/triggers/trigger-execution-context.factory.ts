@@ -23,16 +23,16 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions';
-import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import { EventService } from '@/events/event.service';
-import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
-import { ExecutionService } from '@/executions/execution.service';
-import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
-import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { ActiveExecutions } from '@/active-executions.js';
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error.js';
+import { EventService } from '@/events/event.service.js';
+import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow.js';
+import { ExecutionService } from '@/executions/execution.service.js';
+import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.js';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.js';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
 
 export type TriggerFailureHandler = (opts: {
 	error: Error;

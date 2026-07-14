@@ -2,14 +2,14 @@ import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { JwtService } from '@/services/jwt.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { createOwner, createMember } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
+import { JwtService } from '@/services/jwt.service.js';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry.js';
+import { createOwner, createMember } from '@test-integration/db/users.js';
+import { setupTestServer } from '@test-integration/utils/index.js';
 
-import type { OAuthClient } from '../database/entities/oauth-client.entity';
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
-import type { OAuthSessionPayload } from '../oauth-session.service';
+import type { OAuthClient } from '../database/entities/oauth-client.entity.js';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository.js';
+import type { OAuthSessionPayload } from '../oauth-session.service.js';
 
 const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-server', 'mcp'] });
 
@@ -402,7 +402,7 @@ describe('POST /rest/consent/approve', () => {
 		expect(response.statusCode).toBe(200);
 
 		const { UserConsentRepository } = await import(
-			'../database/repositories/oauth-user-consent.repository'
+			'../database/repositories/oauth-user-consent.repository.js'
 		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({
@@ -425,7 +425,7 @@ describe('POST /rest/consent/approve', () => {
 		expect(response.statusCode).toBe(200);
 
 		const { UserConsentRepository } = await import(
-			'../database/repositories/oauth-user-consent.repository'
+			'../database/repositories/oauth-user-consent.repository.js'
 		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({

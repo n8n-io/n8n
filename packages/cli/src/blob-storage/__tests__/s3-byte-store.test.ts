@@ -4,8 +4,8 @@ import type { ObjectStoreService } from 'n8n-core';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import { S3ByteStore } from '../s3-byte-store.ee';
-import { body, s3NotFoundError, s3NoSuchBucketError, s3ThrottledError } from './mocks';
+import { S3ByteStore } from '../s3-byte-store.ee.js';
+import { body, s3NotFoundError, s3NoSuchBucketError, s3ThrottledError } from './mocks.js';
 
 let objectStoreService: ReturnType<typeof mock<ObjectStoreService>>;
 let store: S3ByteStore;

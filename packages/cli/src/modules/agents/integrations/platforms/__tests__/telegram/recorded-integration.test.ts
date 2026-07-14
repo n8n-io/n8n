@@ -2,13 +2,13 @@ import { readFileSync } from 'fs';
 import { jsonParse } from 'n8n-workflow';
 import { join } from 'path';
 
-import type { TelegramReplayFixtures } from '../../../__tests__/helpers/telegram/replay-test-context';
+import type { TelegramReplayFixtures } from '../../../__tests__/helpers/telegram/replay-test-context.js';
 import {
 	callbackPayloadWithData,
 	createTelegramReplayContext,
 	getTelegramInlineCallbackData,
-} from '../../../__tests__/helpers/telegram/replay-test-context';
-import type { ChannelIntegrationRecord } from '../../../recording/channel-integration-recorder';
+} from '../../../__tests__/helpers/telegram/replay-test-context.js';
+import type { ChannelIntegrationRecord } from '../../../recording/channel-integration-recorder.js';
 
 // The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
 // `new Function()` hack to dodge the CJS transform, which can't run under vitest;

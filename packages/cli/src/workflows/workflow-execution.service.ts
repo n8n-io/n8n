@@ -30,18 +30,18 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { FailedRunFactory } from '@/executions/failed-run-factory';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
-import type { IWorkflowErrorData } from '@/interfaces';
-import { NodeTypes } from '@/node-types';
-import { OwnershipService } from '@/services/ownership.service';
-import { TestWebhooks } from '@/webhooks/test-webhooks';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import type { WorkflowRequest } from '@/workflows/workflow.request';
+import { EventService } from '@/events/event.service.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { FailedRunFactory } from '@/executions/failed-run-factory.js';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/index.js';
+import type { IWorkflowErrorData } from '@/interfaces.js';
+import { NodeTypes } from '@/node-types.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { TestWebhooks } from '@/webhooks/test-webhooks.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
+import type { WorkflowRequest } from '@/workflows/workflow.request.js';
 
 @Service()
 export class WorkflowExecutionService {

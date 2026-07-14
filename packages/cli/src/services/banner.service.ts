@@ -3,7 +3,7 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 
-import config from '@/config';
+import config from '@/config/index.js';
 
 @Service()
 export class BannerService {

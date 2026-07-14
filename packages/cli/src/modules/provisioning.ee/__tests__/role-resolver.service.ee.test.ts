@@ -7,8 +7,8 @@ import type {
 	RoleMappingConfig,
 	RoleMappingRule,
 	RoleResolverContext,
-} from '../role-resolver-types';
-import { RoleResolverService } from '../role-resolver.service.ee';
+} from '../role-resolver-types.js';
+import { RoleResolverService } from '../role-resolver.service.ee.js';
 
 const logger = mock<Logger>();
 const projectRepository = mock<ProjectRepository>();

@@ -1,12 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 
-import { SecuritySettingsService } from '@/services/security-settings.service';
-import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
+import { SecuritySettingsService } from '@/services/security-settings.service.js';
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service.js';
 
-import { createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { createOwner } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import { setupTestServer } from '../shared/utils/index.js';
 
 describe('SecuritySettingsController', () => {
 	const securitySettingsService = mockInstance(SecuritySettingsService);

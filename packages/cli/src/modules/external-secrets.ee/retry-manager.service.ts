@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { LogMetadata } from 'n8n-workflow';
 
-import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
+import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants.js';
 
 type RetryOperation = () => Promise<{ success: boolean; error?: Error }>;
 type LogMethod = (message: string, metadata?: LogMetadata) => void;

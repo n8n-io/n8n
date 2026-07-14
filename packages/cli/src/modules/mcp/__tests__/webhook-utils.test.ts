@@ -9,9 +9,9 @@ import type {
 } from 'n8n-workflow';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
-import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsService } from '@/credentials/credentials.service.js';
 
-import { getWebhookDetails } from '../tools/webhook-utils';
+import { getWebhookDetails } from '../tools/webhook-utils.js';
 
 const mockCredentialsService = (
 	impl: (id: string) => ICredentialDataDecryptedObject | Promise<ICredentialDataDecryptedObject>,

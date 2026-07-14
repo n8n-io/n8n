@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { createScheduler } from '@n8n/scheduler';
 import type { SchedulerDeps } from '@n8n/scheduler';
 
-import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler.js';
 
 describe('scheduler retention', () => {
 	let jobRepo: ScheduledJobRepository;

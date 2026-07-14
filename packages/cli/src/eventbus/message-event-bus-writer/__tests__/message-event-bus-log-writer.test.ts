@@ -9,8 +9,8 @@ import { join } from 'node:path';
 import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventMessageTypes } from '../../event-message-classes';
-import { MessageEventBusLogWriter } from '../message-event-bus-log-writer';
+import type { EventMessageTypes } from '../../event-message-classes/index.js';
+import { MessageEventBusLogWriter } from '../message-event-bus-log-writer.js';
 
 vi.unmock('node:fs');
 vi.unmock('node:fs/promises');

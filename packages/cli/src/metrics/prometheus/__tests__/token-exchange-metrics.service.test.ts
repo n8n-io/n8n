@@ -4,9 +4,9 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
-import { PrometheusTokenExchangeMetricsService } from '../token-exchange-metrics.service';
+import { PrometheusTokenExchangeMetricsService } from '../token-exchange-metrics.service.js';
 
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@/events/event.service.js';
 
 vi.mock('prom-client');
 

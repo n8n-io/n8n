@@ -2,15 +2,15 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTable } from '@/modules/data-table/data-table.entity.js';
+import { DataTableService } from '@/modules/data-table/data-table.service.js';
 
-import { DataTableSerializer } from './data-table.serializer';
-import type { WorkflowDataTableRequirement } from './data-table.types';
-import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
+import { DataTableSerializer } from './data-table.serializer.js';
+import type { WorkflowDataTableRequirement } from './data-table.types.js';
+import type { PackageWriter } from '../../io/package-writer.js';
+import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator.js';
+import type { ManifestEntry } from '../../spec/manifest.schema.js';
+import type { PackageDataTableRequirement } from '../../spec/requirements.schema.js';
 
 export interface DataTableExportRequest {
 	user: User;

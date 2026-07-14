@@ -1,7 +1,7 @@
 import type { CredentialProvider } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
-import { resolveEmbeddingProviderOptionsFromCredential } from '../embedding-credential';
+import { resolveEmbeddingProviderOptionsFromCredential } from '../embedding-credential.js';
 
 describe('resolveEmbeddingProviderOptionsFromCredential', () => {
 	it('maps an OpenAI-style credential to apiKey/baseURL', async () => {

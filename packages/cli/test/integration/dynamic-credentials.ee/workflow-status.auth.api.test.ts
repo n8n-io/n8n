@@ -15,14 +15,14 @@ import nock from 'nock';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
 
-import * as utils from '../shared/utils';
-import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
-import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
-import { Telemetry } from '@/telemetry';
-import { createCredentials } from '../shared/db/credentials';
-import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
+import * as utils from '../shared/utils/index.js';
+import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service.js';
+import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { createCredentials } from '../shared/db/credentials.js';
+import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config.js';
 
-import { createUser } from '../shared/db/users';
+import { createUser } from '../shared/db/users.js';
 
 mockInstance(Telemetry);
 

@@ -2,10 +2,10 @@ import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-netw
 import type { CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
 
-import { BuilderModelLiveLookupService } from '../builder-model-live-lookup.service';
+import { BuilderModelLiveLookupService } from '../builder-model-live-lookup.service.js';
 
 const listModelsForProvider = vi.fn();
 vi.mock('@n8n/ai-utilities/model-discovery', () => ({

@@ -13,10 +13,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NodeTypes } from '@/node-types';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { NodeTypes } from '@/node-types.js';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import { getBase } from '@/workflow-execute-additional-data.js';
 
 /**
  * Looks up dynamic resource locator and load-options values for a node on

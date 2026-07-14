@@ -3,16 +3,16 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { type IConnections, type IWorkflowGroup } from 'n8n-workflow';
 import z from 'zod';
 
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { WorkflowAccessError } from '../mcp.errors';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { connectionsSchema, nodeGroupSchema, nodeSchema } from './schemas';
-import { getMcpWorkflowVersion } from './workflow-history.utils';
-import { getMcpWorkflow } from './workflow-validation.utils';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import { WorkflowAccessError } from '../mcp.errors.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types.js';
+import { connectionsSchema, nodeGroupSchema, nodeSchema } from './schemas.js';
+import { getMcpWorkflowVersion } from './workflow-history.utils.js';
+import { getMcpWorkflow } from './workflow-validation.utils.js';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow the version belongs to'),

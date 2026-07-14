@@ -2,10 +2,10 @@ import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
-import type { Mcpauth_type } from '@/services/oauth-token-verifier-proxy.service';
+import type { Mcpauth_type } from '@/services/oauth-token-verifier-proxy.service.js';
 
-import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
-import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
+import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants.js';
+import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool.js';
 
 export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	name: string;

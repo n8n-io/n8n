@@ -33,18 +33,18 @@ import PCancelable from 'p-cancelable';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ActiveExecutions } from '@/active-executions';
-import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
-import { ManualExecutionService } from '@/manual-execution.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { Telemetry } from '@/telemetry';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowRunner } from '@/workflow-runner';
-import { createExecution } from '@test-integration/db/executions';
-import { createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
+import { ActiveExecutions } from '@/active-executions.js';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error.js';
+import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks.js';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/index.js';
+import { ManualExecutionService } from '@/manual-execution.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
+import { createExecution } from '@test-integration/db/executions.js';
+import { createUser } from '@test-integration/db/users.js';
+import { setupTestServer } from '@test-integration/utils/index.js';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
 // Define the mock at module top-level so the `vi.mock` factory (hoisted) can

@@ -1,14 +1,14 @@
 import { Service } from '@n8n/di';
 
-import { CredentialTypes } from '@/credential-types';
-import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialTypes } from '@/credential-types.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
 
 import {
 	CredentialMatcher,
 	type ResolvedCredentialMatch,
 	type UsableCredential,
-} from './credential-matcher';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+} from './credential-matcher.js';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema.js';
 
 @Service()
 export class IdBasedCredentialMatcher extends CredentialMatcher {

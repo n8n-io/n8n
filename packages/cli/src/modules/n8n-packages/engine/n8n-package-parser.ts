@@ -3,20 +3,20 @@ import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import * as WorkflowHelpers from '@/workflow-helpers';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import * as WorkflowHelpers from '@/workflow-helpers.js';
 
-import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
-import type { PreparedFolder } from '../entities/folder/folder-import.types';
-import type { PreparedProject } from '../entities/project/project-import.types';
-import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
-import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
-import type { PackageReader } from '../io/package-reader';
-import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
-import { packageManifestSchema } from '../spec/manifest.schema';
-import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
-import { serializedProjectSchema } from '../spec/serialized/project.schema';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
+import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout.js';
+import type { PreparedFolder } from '../entities/folder/folder-import.types.js';
+import type { PreparedProject } from '../entities/project/project-import.types.js';
+import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types.js';
+import { WorkflowSerializer } from '../entities/workflow/workflow.serializer.js';
+import type { PackageReader } from '../io/package-reader.js';
+import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema.js';
+import { packageManifestSchema } from '../spec/manifest.schema.js';
+import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema.js';
+import { serializedProjectSchema } from '../spec/serialized/project.schema.js';
+import type { SerializedWorkflow } from '../spec/serialized/workflow.schema.js';
 
 /**
  * Parses the typed entities out of a `.n8np` package — the read-side counterpart

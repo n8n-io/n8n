@@ -20,22 +20,22 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, WorkflowActivationError } from 'n8n-workflow';
 
-import { ActivationErrorsService } from '@/activation-errors.service';
-import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
-import { EventService } from '@/events/event.service';
+import { ActivationErrorsService } from '@/activation-errors.service.js';
+import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants.js';
+import { EventService } from '@/events/event.service.js';
 import type {
 	PublicationOperationResult,
 	PublicationTriggerOperation,
-} from '@/events/maps/workflow-publication-metrics.event-map';
-import { NodeTypes } from '@/node-types';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { PreparedNonWebhookTriggerRegistration } from '@/workflows/triggers/non-webhook-trigger-registrar';
-import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
-import { retryTriggerActivation } from '@/workflows/triggers/trigger-activation-retry';
-import { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
-import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
-import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+} from '@/events/maps/workflow-publication-metrics.event-map.js';
+import { NodeTypes } from '@/node-types.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import type { PreparedNonWebhookTriggerRegistration } from '@/workflows/triggers/non-webhook-trigger-registrar.js';
+import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar.js';
+import { retryTriggerActivation } from '@/workflows/triggers/trigger-activation-retry.js';
+import { TriggerCountService } from '@/workflows/triggers/trigger-count.service.js';
+import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory.js';
+import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar.js';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
 
 export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections };
 

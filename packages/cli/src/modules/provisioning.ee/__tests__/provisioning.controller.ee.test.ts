@@ -5,9 +5,9 @@ import { type AuthenticatedRequest } from '@n8n/db';
 import { type Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
 
-import { ProvisioningController } from '../provisioning.controller.ee';
+import { ProvisioningController } from '../provisioning.controller.ee.js';
 
 const provisioningService = mock<ProvisioningService>();
 const licenseState = mock<LicenseState>();

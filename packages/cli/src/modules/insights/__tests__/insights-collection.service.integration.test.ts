@@ -15,12 +15,12 @@ import { type ExecutionStatus, type IRun, type WorkflowExecuteMode } from 'n8n-w
 import assert from 'node:assert';
 import { mock } from 'vitest-mock-extended';
 
-import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
-import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
-import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
+import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared.js';
+import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository.js';
+import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository.js';
 
-import { InsightsCollectionService } from '../insights-collection.service';
-import { InsightsConfig } from '../insights.config';
+import { InsightsCollectionService } from '../insights-collection.service.js';
+import { InsightsConfig } from '../insights.config.js';
 
 beforeAll(async () => {
 	await testModules.loadModules(['insights']);

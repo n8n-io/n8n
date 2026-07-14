@@ -1,34 +1,34 @@
 // Import zod alias support before importing Start command
-import '@/zod-alias-support';
+import '@/zod-alias-support.js';
 
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
 
-import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import { Start } from '../start';
-import { WaitTracker } from '@/wait-tracker';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee.js';
+import { Start } from '../start.js';
+import { WaitTracker } from '@/wait-tracker.js';
 import { mock } from 'vitest-mock-extended';
 
-import type { AbstractServer } from '@/abstract-server';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { DeprecationService } from '@/deprecation/deprecation.service';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
-import { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
-import { JwtService } from '@/services/jwt.service';
-import { ShutdownService } from '@/shutdown/shutdown.service';
-import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import type { AbstractServer } from '@/abstract-server.js';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry.js';
+import { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import { DeprecationService } from '@/deprecation/deprecation.service.js';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay.js';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay.js';
+import { License } from '@/license.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config.js';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service.js';
+import { NodeTypes } from '@/node-types.js';
+import { PostHogClient } from '@/posthog/index.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { ShutdownService } from '@/shutdown/shutdown.service.js';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module.js';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);

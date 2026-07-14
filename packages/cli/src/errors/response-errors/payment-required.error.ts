@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error';
+import { ResponseError } from './abstract/response.error.js';
 
 export class PaymentRequiredError extends ResponseError {
 	constructor(message = 'Payment required', hint?: string) {

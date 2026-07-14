@@ -6,13 +6,13 @@ import { type Scope } from '@n8n/permissions';
 import express from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
-import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
-import { listQueryMiddleware } from '@/middlewares';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee.js';
+import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee.js';
+import { listQueryMiddleware } from '@/middlewares/index.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 @RestController('/workflows')
 export class TestRunsController {

@@ -15,12 +15,12 @@ import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { AgentExecutionService } from '../agent-execution.service';
-import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
-import type { MessageRecord } from '../execution-recorder';
-import { ExecutionRecorder } from '../execution-recorder';
-import { streamAgentChunks } from '../utils/agent-stream';
-import { SubAgentSourceResolver } from './sub-agent-source-resolver';
+import { AgentExecutionService } from '../agent-execution.service.js';
+import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry.js';
+import type { MessageRecord } from '../execution-recorder.js';
+import { ExecutionRecorder } from '../execution-recorder.js';
+import { streamAgentChunks } from '../utils/agent-stream.js';
+import { SubAgentSourceResolver } from './sub-agent-source-resolver.js';
 
 export interface SubAgentForegroundRunContext {
 	projectId: string;
@@ -240,7 +240,7 @@ export class SubAgentForegroundRunner {
 async function getReconstructionService() {
 	// eslint-disable-next-line import-x/no-cycle
 	const { AgentRuntimeReconstructionService } = await import(
-		'../agent-runtime-reconstruction.service'
+		'../agent-runtime-reconstruction.service.js'
 	);
 	return Container.get(AgentRuntimeReconstructionService);
 }

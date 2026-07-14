@@ -4,8 +4,8 @@ import type { TagEntity, TagRepository } from '@n8n/db';
 import { FindOperator, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExternalHooks } from '@/external-hooks';
-import { TagService } from '@/services/tag.service';
+import type { ExternalHooks } from '@/external-hooks.js';
+import { TagService } from '@/services/tag.service.js';
 
 const makeTag = (overrides: Partial<TagEntity> = {}): TagEntity =>
 	({

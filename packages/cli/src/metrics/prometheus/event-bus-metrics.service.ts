@@ -3,10 +3,10 @@ import { Service } from '@n8n/di';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient, { Counter } from 'prom-client';
 
-import { EventMessageTypes } from '@/eventbus';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { EventMessageTypes } from '@/eventbus/index.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
 
-import type { PrometheusMetricsCollector } from './base';
+import type { PrometheusMetricsCollector } from './base.js';
 
 /**
  * Creates per-event Prometheus counters driven by MessageEventBus events.

@@ -17,8 +17,8 @@ import {
 import {
 	SlackSignatureIdentifier,
 	SlackSignatureOptionsSchema,
-} from './identifiers/slack-signature-identifier';
-import { DynamicCredentialEntryStorage } from './storage/dynamic-credential-entry-storage';
+} from './identifiers/slack-signature-identifier.js';
+import { DynamicCredentialEntryStorage } from './storage/dynamic-credential-entry-storage.js';
 
 const SlackCredentialResolverOptionsSchema = SlackSignatureOptionsSchema;
 

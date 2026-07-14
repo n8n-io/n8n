@@ -1,6 +1,6 @@
 import type { WorkflowEntity } from '@n8n/db';
 
-import { CredentialRequirementsExtractor } from '../credential-requirements.extractor';
+import { CredentialRequirementsExtractor } from '../credential-requirements.extractor.js';
 
 function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	return {

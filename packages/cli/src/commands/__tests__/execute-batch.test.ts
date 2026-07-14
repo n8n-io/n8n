@@ -8,22 +8,22 @@ import { type SelectQueryBuilder } from '@n8n/typeorm';
 import type { IRun } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ActiveExecutions } from '@/active-executions';
-import { DeprecationService } from '@/deprecation/deprecation.service';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
-import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { PostHogClient } from '@/posthog';
-import { OwnershipService } from '@/services/ownership.service';
-import { ShutdownService } from '@/shutdown/shutdown.service';
-import { TaskRunnerModule } from '@/task-runners/task-runner-module';
-import { WorkflowRunner } from '@/workflow-runner';
+import { ActiveExecutions } from '@/active-executions.js';
+import { DeprecationService } from '@/deprecation/deprecation.service.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay.js';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { License } from '@/license.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service.js';
+import { PostHogClient } from '@/posthog/index.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { ShutdownService } from '@/shutdown/shutdown.service.js';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
 
-import { ExecuteBatch } from '../execute-batch';
+import { ExecuteBatch } from '../execute-batch.js';
 
 const taskRunnerModule = mockInstance(TaskRunnerModule);
 const workflowRepository = mockInstance(WorkflowRepository);

@@ -18,10 +18,10 @@ import type {
 	WorkflowId,
 } from 'n8n-workflow';
 
-import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
-import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
-import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-execution-context.factory';
-import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
+import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.js';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.js';
+import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-execution-context.factory.js';
+import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory.js';
 
 export interface NonWebhookTriggerRegistrationContext {
 	activationMode: WorkflowActivateMode;

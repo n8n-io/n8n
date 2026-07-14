@@ -11,11 +11,11 @@ import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
 
-import { InsightsService } from './insights.service';
+import { InsightsService } from './insights.service.js';
 
 @RestController('/insights')
 export class InsightsController {

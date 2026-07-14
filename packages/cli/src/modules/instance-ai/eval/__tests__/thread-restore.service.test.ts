@@ -1,11 +1,11 @@
 import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { DataTable } from '@/modules/data-table/data-table.entity.js';
+import type { DataTableService } from '@/modules/data-table/data-table.service.js';
 
-import { EvalThreadRestoreService } from '../thread-restore.service';
+import { EvalThreadRestoreService } from '../thread-restore.service.js';
 
 function makeNode(overrides: Record<string, unknown> = {}): Record<string, unknown> {
 	return {

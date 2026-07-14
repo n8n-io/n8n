@@ -4,18 +4,18 @@ import type { ExecutionRepository } from '@n8n/db';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service.js';
 import {
 	CLOUD_TEMP_PRODUCTION_LIMIT,
 	CLOUD_TEMP_REPORTABLE_THRESHOLDS,
 	ConcurrencyControlService,
-} from '@/concurrency/concurrency-control.service';
-import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
-import type { EventService } from '@/events/event.service';
-import type { License } from '@/license';
-import type { Telemetry } from '@/telemetry';
+} from '@/concurrency/concurrency-control.service.js';
+import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error.js';
+import type { EventService } from '@/events/event.service.js';
+import type { License } from '@/license.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { ConcurrencyQueue } from '../concurrency-queue';
+import { ConcurrencyQueue } from '../concurrency-queue.js';
 
 describe('ConcurrencyControlService', () => {
 	const logger = mockLogger();

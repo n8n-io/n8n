@@ -3,9 +3,9 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import type {
 	AgentTelemetryMemoryType,
 	IAgentConfigurationTelemetryProperties,
-} from '@/interfaces';
+} from '@/interfaces.js';
 
-import type { Agent } from './entities/agent.entity';
+import type { Agent } from './entities/agent.entity.js';
 
 export function buildAgentConfigurationTelemetry(
 	agent: Agent,

@@ -7,8 +7,8 @@ import { DateTime } from 'luxon';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
 
-import { createExecution } from '@test-integration/db/executions';
-import { createOwner } from '@test-integration/db/users';
+import { createExecution } from '@test-integration/db/executions.js';
+import { createOwner } from '@test-integration/db/users.js';
 
 describe('UserRepository', () => {
 	let executionRepository: ExecutionRepository;

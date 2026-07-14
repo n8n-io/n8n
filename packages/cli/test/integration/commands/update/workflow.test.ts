@@ -8,9 +8,9 @@ import {
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { UpdateWorkflowCommand } from '@/commands/update/workflow';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { setupTestCommand } from '@test-integration/utils/test-command';
+import { UpdateWorkflowCommand } from '@/commands/update/workflow.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { setupTestCommand } from '@test-integration/utils/test-command.js';
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(UpdateWorkflowCommand);

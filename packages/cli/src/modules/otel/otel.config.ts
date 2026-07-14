@@ -1,6 +1,6 @@
 import { Config, Env } from '@n8n/config';
 
-import { OTEL_ENV_VARS } from './otel.constants';
+import { OTEL_ENV_VARS } from './otel.constants.js';
 
 @Config
 export class OtelConfig {

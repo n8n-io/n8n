@@ -2,8 +2,8 @@ import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import type { PrometheusMetricsCollector } from './base';
-import { DURATION_BUCKETS_SECONDS } from './constant';
+import type { PrometheusMetricsCollector } from './base.js';
+import { DURATION_BUCKETS_SECONDS } from './constant.js';
 import { SsrfProtectionService } from '@n8n/backend-network';
 
 /**

@@ -21,13 +21,13 @@ import type {
 } from 'n8n-workflow';
 import { isTerminalExecutionStatus, NodeConnectionTypes } from 'n8n-workflow';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
 
-import { saveCredential } from '../shared/db/credentials';
-import { createOwner } from '../shared/db/users';
-import * as utils from '../shared/utils';
-import { loadNodesFromDist } from '../shared/utils/node-types-data';
+import { saveCredential } from '../shared/db/credentials.js';
+import { createOwner } from '../shared/db/users.js';
+import * as utils from '../shared/utils/index.js';
+import { loadNodesFromDist } from '../shared/utils/node-types-data.js';
 
 const SECRET_VALUE = 'top-secret-value-xyz-789';
 const SECRET_NAME = 'mySecret';

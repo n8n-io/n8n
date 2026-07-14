@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { TraceContextService } from '../tracing-context';
+import { TraceContextService } from '../tracing-context.js';
 
 describe('TraceContextService', () => {
 	describe('persist', () => {

@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { McpConfig } from '../mcp.config';
+import { McpConfig } from '../mcp.config.js';
 
 describe('McpConfig', () => {
 	beforeEach(() => {

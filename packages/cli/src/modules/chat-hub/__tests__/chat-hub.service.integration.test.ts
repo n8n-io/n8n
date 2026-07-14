@@ -18,20 +18,20 @@ import {
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { saveCredential } from '@test-integration/db/credentials';
-import { createAdmin, createMember } from '@test-integration/db/users';
-import { retryUntil } from '@test-integration/retry-until';
+import { saveCredential } from '@test-integration/db/credentials.js';
+import { createAdmin, createMember } from '@test-integration/db/users.js';
+import { retryUntil } from '@test-integration/retry-until.js';
 
-import { ActiveExecutions } from '../../../active-executions';
-import { ChatExecutionManager } from '../../../chat/chat-execution-manager';
-import { ExecutionPersistence } from '../../../executions/execution-persistence';
-import { Push } from '../../../push';
-import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
-import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
-import { ChatHubExecutionWatcherService } from '../chat-hub-execution-watcher.service';
-import { ChatHubService } from '../chat-hub.service';
-import { ChatHubMessageRepository } from '../chat-message.repository';
-import { ChatHubSessionRepository } from '../chat-session.repository';
+import { ActiveExecutions } from '../../../active-executions.js';
+import { ChatExecutionManager } from '../../../chat/chat-execution-manager.js';
+import { ExecutionPersistence } from '../../../executions/execution-persistence.js';
+import { Push } from '../../../push/index.js';
+import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service.js';
+import { ChatHubAgentRepository } from '../chat-hub-agent.repository.js';
+import { ChatHubExecutionWatcherService } from '../chat-hub-execution-watcher.service.js';
+import { ChatHubService } from '../chat-hub.service.js';
+import { ChatHubMessageRepository } from '../chat-message.repository.js';
+import { ChatHubSessionRepository } from '../chat-session.repository.js';
 
 mockInstance(BinaryDataService);
 mockInstance(WorkflowExecutionService);

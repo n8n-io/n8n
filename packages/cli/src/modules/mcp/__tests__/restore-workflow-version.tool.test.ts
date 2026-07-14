@@ -3,15 +3,15 @@ import { User, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { CollaborationService } from '@/collaboration/collaboration.service.js';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
-import { createRestoreWorkflowVersionTool } from '../tools/workflow-builder/restore-workflow-version.tool';
+import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils.js';
+import { createRestoreWorkflowVersionTool } from '../tools/workflow-builder/restore-workflow-version.tool.js';
 
 const versionNodes: INode[] = [
 	{

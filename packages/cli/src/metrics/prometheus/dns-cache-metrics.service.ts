@@ -3,7 +3,7 @@ import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import type { PrometheusMetricsCollector } from './base';
+import type { PrometheusMetricsCollector } from './base.js';
 
 /**
  * Tracks DNS cache performance as counters and a gauge.

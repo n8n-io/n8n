@@ -8,13 +8,13 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import * as AdditionalData from '@/workflow-execute-additional-data';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import * as AdditionalData from '@/workflow-execute-additional-data.js';
 
-import { saveCredential } from '../shared/db/credentials';
-import { createMember, createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { saveCredential } from '../shared/db/credentials.js';
+import { createMember, createOwner } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import { setupTestServer } from '../shared/utils/index.js';
 
 describe('DynamicNodeParametersController', () => {
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();

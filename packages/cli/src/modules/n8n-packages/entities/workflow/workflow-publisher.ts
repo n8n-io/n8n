@@ -4,18 +4,18 @@ import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ProjectService } from '@/services/project.service.ee';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
-import type { PersistedWorkflowPlanItem } from './workflow-import.types';
-import { decideWorkflowPublishingAction } from './workflow-publishing-policy';
+import type { PersistedWorkflowPlanItem } from './workflow-import.types.js';
+import { decideWorkflowPublishingAction } from './workflow-publishing-policy.js';
 import {
 	WorkflowPublishingPolicy,
 	type WorkflowPublishingContext,
 	type WorkflowPublishingOutcome,
-} from './workflow-publishing-policy.types';
+} from './workflow-publishing-policy.types.js';
 
 export interface WorkflowPublishingResult {
 	workflow: WorkflowEntity;

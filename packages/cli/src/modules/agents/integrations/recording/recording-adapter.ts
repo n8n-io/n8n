@@ -1,7 +1,7 @@
 import {
 	channelIntegrationRecorder,
 	type ChannelIntegrationRecorder,
-} from './channel-integration-recorder';
+} from './channel-integration-recorder.js';
 
 const METHODS_BY_PLATFORM: Record<string, string[]> = {
 	slack: [

@@ -5,8 +5,8 @@ import { join } from 'path';
 import {
 	createSlackReplayContext,
 	type SlackReplayFixtures,
-} from '../../../__tests__/helpers/slack/replay-test-context';
-import type { ChannelIntegrationRecord } from '../../../recording/channel-integration-recorder';
+} from '../../../__tests__/helpers/slack/replay-test-context.js';
+import type { ChannelIntegrationRecord } from '../../../recording/channel-integration-recorder.js';
 
 const recordedSession = jsonParse<ChannelIntegrationRecord[]>(
 	readFileSync(join(__dirname, '../../../__tests__/fixtures/slack/recorded-session.json'), 'utf8'),

@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { readFileSync } from 'node:fs';
 import promClient from 'prom-client';
 
-import type { PrometheusMetricsCollector } from './base';
+import type { PrometheusMetricsCollector } from './base.js';
 
 /**
  * Exposes `n8n_process_pss_bytes` — Proportional Set Size, a fairer memory metric than RSS

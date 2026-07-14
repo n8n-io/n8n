@@ -1,7 +1,7 @@
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service.js';
 
-import { createTelemetry, user } from './test-utils';
-import { createAddDataTableColumnTool } from '../../tools/data-table';
+import { createTelemetry, user } from './test-utils.js';
+import { createAddDataTableColumnTool } from '../../tools/data-table/index.js';
 
 const createMocks = (overrides?: { error?: Error }) => {
 	const dataTableOps = {

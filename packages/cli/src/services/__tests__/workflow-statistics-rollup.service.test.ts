@@ -6,8 +6,8 @@ import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
-import type { WorkflowStatisticsService } from '../workflow-statistics.service';
-import { WorkflowStatisticsRollupService } from '../workflow-statistics-rollup.service';
+import type { WorkflowStatisticsService } from '../workflow-statistics.service.js';
+import { WorkflowStatisticsRollupService } from '../workflow-statistics-rollup.service.js';
 
 type RollupResult = Awaited<ReturnType<WorkflowStatisticsRepository['rollupIncrements']>>;
 

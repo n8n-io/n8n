@@ -1,4 +1,4 @@
-import { BadRequestError } from './bad-request.error';
+import { BadRequestError } from './bad-request.error.js';
 
 /**
  * Error thrown when a workflow fails to activate due to a node-level error.

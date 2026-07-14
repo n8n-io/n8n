@@ -9,14 +9,14 @@ import { In } from '@n8n/typeorm';
 import { CREDENTIAL_BLANKING_VALUE, type IDataObject, type INodeProperties } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { EventService } from '@/events/event.service';
-import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
-import type { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
-import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
-import { SecretsProvidersConnectionsService } from '@/modules/external-secrets.ee/secrets-providers-connections.service.ee';
-import type { SecretsProvider } from '@/modules/external-secrets.ee/types';
+import type { CredentialDependencyService } from '@/credentials/credential-dependency.service.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { EventService } from '@/events/event.service.js';
+import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee.js';
+import type { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service.js';
+import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee.js';
+import { SecretsProvidersConnectionsService } from '@/modules/external-secrets.ee/secrets-providers-connections.service.ee.js';
+import type { SecretsProvider } from '@/modules/external-secrets.ee/types.js';
 describe('SecretsProvidersConnectionsService', () => {
 	const mockRepository = mock<SecretsProviderConnectionRepository>();
 	const mockProjectAccessRepository = mock<ProjectSecretsProviderAccessRepository>();

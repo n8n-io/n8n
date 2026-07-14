@@ -2,9 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { IRunExecutionData } from 'n8n-workflow';
-import { N8NOAuth2ExtractorMetadata } from './metadata';
-import { N8N_OAUTH_EXTRACTOR_NAME } from './n8n-oauth-extractor';
-import { TriggerAuthIdentitySeeder } from '@/services/trigger-auth-identity-seeder-proxy.service';
+import { N8NOAuth2ExtractorMetadata } from './metadata.js';
+import { N8N_OAUTH_EXTRACTOR_NAME } from './n8n-oauth-extractor.js';
+import { TriggerAuthIdentitySeeder } from '@/services/trigger-auth-identity-seeder-proxy.service.js';
 
 @Service()
 export class N8nOAuthIdentitySeeder implements TriggerAuthIdentitySeeder {

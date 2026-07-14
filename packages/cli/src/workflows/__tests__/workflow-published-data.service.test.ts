@@ -2,11 +2,11 @@ import type { Logger } from '@n8n/backend-common';
 import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
 import {
 	WorkflowPublishedDataService,
 	type PublishedWorkflowDataForExecution,
-} from '@/workflows/workflow-published-data.service';
+} from '@/workflows/workflow-published-data.service.js';
 
 describe('WorkflowPublishedDataService', () => {
 	const logger = mock<Logger>();

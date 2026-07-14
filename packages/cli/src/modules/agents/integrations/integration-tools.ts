@@ -1,3 +1,3 @@
-export * from './integration-tool-definitions';
-export * from './integration-tool-factory';
-export type * from './integration-tool-types';
+export * from './integration-tool-definitions.js';
+export * from './integration-tool-factory.js';
+export type * from './integration-tool-types.js';

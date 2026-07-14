@@ -13,9 +13,9 @@ import type { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION } from '@/constants.js';
 
-import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from '../sandbox-provider';
+import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from '../sandbox-provider.js';
 
 const SANDBOX_NAME_MAX_LEN = 63;
 const SANDBOX_LABEL_MAX_LEN = 63;

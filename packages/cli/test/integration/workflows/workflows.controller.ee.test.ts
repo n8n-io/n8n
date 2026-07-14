@@ -31,23 +31,23 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import config from '@/config';
-import { SecuritySettingsService } from '@/services/security-settings.service';
-import { UserManagementMailer } from '@/user-management/email';
-import { createFolder } from '@test-integration/db/folders';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import config from '@/config/index.js';
+import { SecuritySettingsService } from '@/services/security-settings.service.js';
+import { UserManagementMailer } from '@/user-management/email/index.js';
+import { createFolder } from '@test-integration/db/folders.js';
 
 import {
 	affixRoleToSaveCredential,
 	getCredentialSharings,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
-} from '../shared/db/credentials';
-import { createTag } from '../shared/db/tags';
-import { createAdmin, createOwner, createUser, createUserShell } from '../shared/db/users';
-import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
-import { makeWorkflow } from '../shared/utils/';
+} from '../shared/db/credentials.js';
+import { createTag } from '../shared/db/tags.js';
+import { createAdmin, createOwner, createUser, createUserShell } from '../shared/db/users.js';
+import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils//index.js';
+import { makeWorkflow } from '../shared/utils//index.js';
 
 let owner: User;
 let admin: User;

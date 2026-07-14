@@ -13,9 +13,9 @@ import { nanoid } from 'nanoid';
 import os from 'os';
 import path from 'path';
 
-import { ExportWorkflowsCommand } from '@/commands/export/workflow';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { setupTestCommand } from '@test-integration/utils/test-command';
+import { ExportWorkflowsCommand } from '@/commands/export/workflow.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { setupTestCommand } from '@test-integration/utils/test-command.js';
 
 mockInstance(LoadNodesAndCredentials);
 

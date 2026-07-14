@@ -2,17 +2,17 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
 import type {
 	IQuickConnectHandler,
 	IQuickConnectHandlerOption,
-} from './handlers/handler.interface';
-import { QuickConnectConfig } from './quick-connect.config';
-import { QuickConnectError } from './quick-connect.errors';
+} from './handlers/handler.interface.js';
+import { QuickConnectConfig } from './quick-connect.config.js';
+import { QuickConnectError } from './quick-connect.errors.js';
 
 const backendHandlers = {
-	firecrawl: async () => (await import('./handlers/firecrawl.handler')).FirecrawlHandler,
+	firecrawl: async () => (await import('./handlers/firecrawl.handler.js')).FirecrawlHandler,
 };
 
 @Service()

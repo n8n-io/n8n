@@ -4,14 +4,14 @@ import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
-import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
-import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service.js';
+import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity.js';
+import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware.js';
 
-import { mapToCommunityPackage, mapToCommunityPackageList } from '../community-packages.mapper';
+import { mapToCommunityPackage, mapToCommunityPackageList } from '../community-packages.mapper.js';
 
 const mockMiddleware = vi.fn(async (_req: unknown, _res: unknown, next: unknown) =>
 	(next as () => void)(),
@@ -23,7 +23,7 @@ vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
 
 beforeAll(async () => {
-	handler = (await import('../community-packages.handler')) as unknown as typeof handler;
+	handler = (await import('../community-packages.handler.js')) as unknown as typeof handler;
 });
 
 describe('CommunityPackages Handler', () => {

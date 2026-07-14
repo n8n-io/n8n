@@ -3,12 +3,12 @@ import { mockInstance, createWorkflow, createTeamProject, testDb } from '@n8n/ba
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { DateTime } from 'luxon';
 
-import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
-import { Telemetry } from '@/telemetry';
+import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { createUser } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils';
+import { createUser } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils/index.js';
 
 mockInstance(Telemetry);
 

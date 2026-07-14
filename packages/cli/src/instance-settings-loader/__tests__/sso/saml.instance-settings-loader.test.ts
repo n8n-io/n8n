@@ -3,7 +3,7 @@ import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { SettingsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { SamlInstanceSettingsLoader } from '../../loaders/sso/saml.instance-settings-loader';
+import { SamlInstanceSettingsLoader } from '../../loaders/sso/saml.instance-settings-loader.js';
 
 describe('SamlInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });

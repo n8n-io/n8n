@@ -8,14 +8,14 @@ import { createHmac } from 'crypto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import type { UrlService } from '@/services/url.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import type { UrlService } from '@/services/url.service.js';
 
-import type { Agent } from '../../../../entities/agent.entity';
-import type { AgentRepository } from '../../../../repositories/agent.repository';
-import type { AgentChatIntegrationContext } from '../../../agent-chat-integration';
-import { loadTelegramAdapter } from '../../../esm-loader';
-import { TelegramIntegration } from '../../telegram-integration';
+import type { Agent } from '../../../../entities/agent.entity.js';
+import type { AgentRepository } from '../../../../repositories/agent.repository.js';
+import type { AgentChatIntegrationContext } from '../../../agent-chat-integration.js';
+import { loadTelegramAdapter } from '../../../esm-loader.js';
+import { TelegramIntegration } from '../../telegram-integration.js';
 
 vi.mock('../../../esm-loader', () => ({
 	loadTelegramAdapter: vi.fn(),

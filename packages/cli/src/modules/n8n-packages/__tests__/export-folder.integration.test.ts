@@ -2,16 +2,16 @@ import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/bac
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { saveCredential } from '@test-integration/db/credentials';
-import { createFolder } from '@test-integration/db/folders';
-import { createMember, createOwner } from '@test-integration/db/users';
+import { EventService } from '@/events/event.service.js';
+import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
+import { saveCredential } from '@test-integration/db/credentials.js';
+import { createFolder } from '@test-integration/db/folders.js';
+import { createMember, createOwner } from '@test-integration/db/users.js';
 
-import { PackageEntityAccessDeniedError } from '../entities/package-export.errors';
-import { N8nPackagesService } from '../n8n-packages.service';
-import { readExport } from './utils/tar-support';
-import { buildWorkflowReferencingCredential } from './utils/test-builders';
+import { PackageEntityAccessDeniedError } from '../entities/package-export.errors.js';
+import { N8nPackagesService } from '../n8n-packages.service.js';
+import { readExport } from './utils/tar-support.js';
+import { buildWorkflowReferencingCredential } from './utils/test-builders.js';
 
 type ExportEntries = Awaited<ReturnType<typeof readExport>>['entries'];
 

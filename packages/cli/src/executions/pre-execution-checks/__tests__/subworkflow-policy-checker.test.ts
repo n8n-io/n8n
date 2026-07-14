@@ -8,12 +8,12 @@ import { mock } from 'vitest-mock-extended';
 import {
 	SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
 	SubworkflowPolicyDenialError,
-} from '@/errors/subworkflow-policy-denial.error';
-import type { AccessService } from '@/services/access.service';
-import { OwnershipService } from '@/services/ownership.service';
-import type { UrlService } from '@/services/url.service';
+} from '@/errors/subworkflow-policy-denial.error.js';
+import type { AccessService } from '@/services/access.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import type { UrlService } from '@/services/url.service.js';
 
-import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker';
+import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker.js';
 
 describe('SubworkflowPolicyChecker', () => {
 	const ownershipService = mockInstance(OwnershipService);

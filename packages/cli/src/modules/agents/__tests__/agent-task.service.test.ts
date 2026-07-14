@@ -5,22 +5,22 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
-import { AgentTaskService } from '../agent-task.service';
-import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
-import type { AgentTask } from '../entities/agent-task.entity';
-import type { Agent } from '../entities/agent.entity';
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service.js';
+import { AgentTaskService } from '../agent-task.service.js';
+import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity.js';
+import type { AgentTask } from '../entities/agent-task.entity.js';
+import type { Agent } from '../entities/agent.entity.js';
 import type {
 	AgentTaskRunLockHandle,
 	AgentTaskRunLockRepository,
-} from '../repositories/agent-task-run-lock.repository';
-import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
-import type { AgentTaskRepository } from '../repositories/agent-task.repository';
-import type { AgentRepository } from '../repositories/agent.repository';
+} from '../repositories/agent-task-run-lock.repository.js';
+import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository.js';
+import type { AgentTaskRepository } from '../repositories/agent-task.repository.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
 
 const AGENT_ID = 'agent-1';
 

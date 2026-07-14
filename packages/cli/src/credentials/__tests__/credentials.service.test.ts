@@ -21,24 +21,24 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialTypes } from '@/credential-types';
-import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
-import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import * as validation from '@/credentials/validation';
-import type { CredentialsHelper } from '@/credentials-helper';
-import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import type { ExternalHooks } from '@/external-hooks';
-import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import * as checkAccess from '@/permissions.ee/check-access';
-import type { CredentialsTester } from '@/services/credentials-tester.service';
-import type { OwnershipService } from '@/services/ownership.service';
-import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
+import type { CredentialTypes } from '@/credential-types.js';
+import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy.js';
+import type { CredentialDependencyService } from '@/credentials/credential-dependency.service.js';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import * as validation from '@/credentials/validation.js';
+import type { CredentialsHelper } from '@/credentials-helper.js';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error.js';
+import type { ExternalHooks } from '@/external-hooks.js';
+import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
+import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee.js';
+import * as checkAccess from '@/permissions.ee/check-access.js';
+import type { CredentialsTester } from '@/services/credentials-tester.service.js';
+import type { OwnershipService } from '@/services/ownership.service.js';
+import type { ProjectService } from '@/services/project.service.ee.js';
+import type { RoleService } from '@/services/role.service.js';
 
-import { mockExistingCredential } from './credentials.test-data';
+import { mockExistingCredential } from './credentials.test-data.js';
 
 const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });

@@ -1,4 +1,4 @@
-import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee.js';
 
 describe('ExternalSecretsProviders', () => {
 	const providers = new ExternalSecretsProviders();

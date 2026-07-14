@@ -2,8 +2,8 @@ import type { Mock } from 'vitest';
 import type { User } from '@n8n/db';
 import type { BuilderUsageItem } from '@n8n/instance-ai';
 
-import { InstanceAiCreditService } from '../instance-ai-credit.service';
-import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
+import { InstanceAiCreditService } from '../instance-ai-credit.service.js';
+import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository.js';
 
 // Skip the real backoff sleeps so retry tests run instantly.
 vi.mock('n8n-workflow', async () => ({

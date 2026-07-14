@@ -4,10 +4,10 @@ import { Container } from '@n8n/di';
 import { createScheduler } from '@n8n/scheduler';
 import type { ClaimedTask, Scheduler, SchedulerPasses } from '@n8n/scheduler';
 
-import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler.js';
 
-import { retryUntil } from '../shared/retry-until';
-import { createDueJobFactory } from './shared/job-factory';
+import { retryUntil } from '../shared/retry-until.js';
+import { createDueJobFactory } from './shared/job-factory.js';
 
 /**
  * Two mains driving materialize+execute+reap concurrently, round after round,

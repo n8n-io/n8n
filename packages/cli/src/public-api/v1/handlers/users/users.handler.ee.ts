@@ -2,23 +2,23 @@ import { InviteUsersRequestDto, RoleChangeRequestDto } from '@n8n/api-types';
 import { ProjectRelationRepository, type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { InvitationController } from '@/controllers/invitation.controller';
-import { UsersController } from '@/controllers/users.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import type { UserRequest } from '@/requests';
-import { UserService } from '@/services/user.service';
+import { InvitationController } from '@/controllers/invitation.controller.js';
+import { UsersController } from '@/controllers/users.controller.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import type { UserRequest } from '@/requests.js';
+import { UserService } from '@/services/user.service.js';
 
-import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { clean, getAllUsersAndCount, getUser } from './users.service.ee.js';
+import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
 	validCursor,
 	validLicenseWithUserQuota,
-} from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
+} from '../../shared/middlewares/global.middleware.js';
+import { encodeNextCursor } from '../../shared/services/pagination.service.js';
 
 type Create = AuthenticatedRequest<{}, {}, InviteUsersRequestDto>;
 type Delete = UserRequest.Delete;

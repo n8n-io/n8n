@@ -4,8 +4,8 @@ import { Service } from '@n8n/di';
 import { jsonParse, type IConnections, type INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { DataTableService } from '@/modules/data-table/data-table.service.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);

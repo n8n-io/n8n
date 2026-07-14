@@ -1,7 +1,7 @@
 import { access } from 'node:fs/promises';
 import type { Mock } from 'vitest';
 
-import { DotenvUpgradeRule } from '../dotenv-upgrade.rule';
+import { DotenvUpgradeRule } from '../dotenv-upgrade.rule.js';
 
 vi.mock('node:fs/promises');
 

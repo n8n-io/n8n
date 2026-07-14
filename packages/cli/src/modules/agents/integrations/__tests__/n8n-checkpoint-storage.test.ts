@@ -5,9 +5,9 @@ import type { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentCheckpoint } from '../../entities/agent-checkpoint.entity';
-import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
-import { N8NCheckpointStorage } from '../n8n-checkpoint-storage';
+import type { AgentCheckpoint } from '../../entities/agent-checkpoint.entity.js';
+import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository.js';
+import { N8NCheckpointStorage } from '../n8n-checkpoint-storage.js';
 
 const suspendedState: SerializableAgentState = {
 	status: 'suspended',

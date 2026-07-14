@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
+import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity.js';
 
 @Service()
 export class AgentMemoryEntryRepository extends Repository<AgentMemoryEntryEntity> {

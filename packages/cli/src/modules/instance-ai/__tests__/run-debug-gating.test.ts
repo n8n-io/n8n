@@ -1,7 +1,7 @@
 import type { User } from '@n8n/db';
 import { RunDebugBuffer } from '@n8n/instance-ai';
 
-import { InstanceAiService } from '../instance-ai.service';
+import { InstanceAiService } from '../instance-ai.service.js';
 
 type RunDebugGatingInternals = {
 	instanceAiConfig: { runDebugEnabled: boolean };

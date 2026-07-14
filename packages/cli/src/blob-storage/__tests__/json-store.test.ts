@@ -2,8 +2,8 @@
 /* eslint-disable n8n-local-rules/no-uncaught-json-parse */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import { JsonStore } from '../json-store';
-import type { ByteStore, ByteStoreKey, StorageLocation } from '../types';
+import { JsonStore } from '../json-store.js';
+import type { ByteStore, ByteStoreKey, StorageLocation } from '../types.js';
 
 type TestRef = { id: string };
 type TestPayload = { value: string };

@@ -20,14 +20,14 @@ vi.mock('n8n-core', async () => {
 	};
 });
 
-import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
-import { WorkflowLoaderService } from '../workflow-loader.service';
+import { DynamicNodeParametersService } from '../dynamic-node-parameters.service.js';
+import { WorkflowLoaderService } from '../workflow-loader.service.js';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NodeTypes } from '@/node-types';
-import * as checkAccess from '@/permissions.ee/check-access';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NodeTypes } from '@/node-types.js';
+import * as checkAccess from '@/permissions.ee/check-access.js';
 
 describe('DynamicNodeParametersService', () => {
 	const logger = mockInstance(Logger);

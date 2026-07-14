@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { AgentObservationEntity } from '../entities/agent-observation.entity';
+import { AgentObservationEntity } from '../entities/agent-observation.entity.js';
 
 @Service()
 export class AgentObservationRepository extends Repository<AgentObservationEntity> {

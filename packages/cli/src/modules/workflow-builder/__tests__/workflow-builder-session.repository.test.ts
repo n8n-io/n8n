@@ -1,9 +1,9 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { mockClear } from 'vitest-mock-extended';
 
-import { mockEntityManager } from '@test/mocking';
+import { mockEntityManager } from '@test/mocking.js';
 
-import { WorkflowBuilderSession } from '../workflow-builder-session.entity';
+import { WorkflowBuilderSession } from '../workflow-builder-session.entity.js';
 
 // Mock the ai-workflow-builder module to avoid import chain issues
 vi.mock('@n8n/ai-workflow-builder', () => ({
@@ -22,7 +22,7 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 	ISessionStorage: {},
 }));
 
-import { WorkflowBuilderSessionRepository } from '../workflow-builder-session.repository';
+import { WorkflowBuilderSessionRepository } from '../workflow-builder-session.repository.js';
 
 describe('WorkflowBuilderSessionRepository', () => {
 	const entityManager = mockEntityManager(WorkflowBuilderSession);

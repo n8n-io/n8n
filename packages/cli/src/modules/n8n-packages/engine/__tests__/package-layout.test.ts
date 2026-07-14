@@ -1,5 +1,5 @@
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import { deriveParentFolderId, foldersInScope, workflowsInScope } from '../package-layout';
+import type { ManifestEntry } from '../../spec/manifest.schema.js';
+import { deriveParentFolderId, foldersInScope, workflowsInScope } from '../package-layout.js';
 
 const entry = (id: string, target: string): ManifestEntry => ({ id, name: id, target });
 

@@ -2,10 +2,10 @@ import type { Logger } from '@n8n/backend-common';
 import type { UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
-import type { UserManagementMailer } from '@/user-management/email';
+import { EventService } from '@/events/event.service.js';
+import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay.js';
+import type { UserManagementMailer } from '@/user-management/email/index.js';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 

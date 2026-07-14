@@ -2,10 +2,10 @@ import type { RedactionFloor } from '@n8n/api-types';
 import type { WorkflowSettings } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
 
-import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
-import { RedactionEnforcementService } from '../redaction-enforcement.service';
+import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service.js';
+import { RedactionEnforcementService } from '../redaction-enforcement.service.js';
 
 describe('RedactionEnforcementService', () => {
 	function createService(floor: RedactionFloor) {

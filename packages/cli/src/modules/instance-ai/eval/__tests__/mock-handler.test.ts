@@ -110,14 +110,14 @@ import { fileTypeFromBuffer } from 'file-type';
 import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import { fetchApiDocs } from '../api-docs';
+import { fetchApiDocs } from '../api-docs.js';
 import {
 	buildDateAnchors,
 	createLlmMockHandler,
 	extractDateFilterConstraints,
 	findDateFilterViolations,
-} from '../mock-handler';
-import { extractNodeConfig } from '../node-config';
+} from '../mock-handler.js';
+import { extractNodeConfig } from '../node-config.js';
 
 // `restoreMocks: true` in the root vi.config wipes `.mockImplementation` set
 // inside vi.mock factories before every test, so re-apply the mocks that
@@ -485,7 +485,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should cache node config across calls for the same node name', async () => {
-		const { extractNodeConfig } = (await import('../node-config')) as unknown as {
+		const { extractNodeConfig } = (await import('../node-config.js')) as unknown as {
 			extractNodeConfig: Mock;
 		};
 		extractNodeConfig.mockReturnValue('{"resource":"message"}');
@@ -534,7 +534,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should extract config separately for different node names', async () => {
-		const { extractNodeConfig } = (await import('../node-config')) as unknown as {
+		const { extractNodeConfig } = (await import('../node-config.js')) as unknown as {
 			extractNodeConfig: Mock;
 		};
 		extractNodeConfig.mockReturnValue('{}');

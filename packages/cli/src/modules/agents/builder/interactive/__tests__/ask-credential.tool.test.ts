@@ -1,7 +1,7 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
 import type { Mock } from 'vitest';
 
-import { buildAskCredentialTool, buildAskEmbeddingCredentialTool } from '../ask-credential.tool';
+import { buildAskCredentialTool, buildAskEmbeddingCredentialTool } from '../ask-credential.tool.js';
 
 interface TestCtx {
 	resumeData?: unknown;

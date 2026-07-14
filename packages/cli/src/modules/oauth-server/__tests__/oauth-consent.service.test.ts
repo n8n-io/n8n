@@ -1,21 +1,21 @@
 import type { Mocked } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
-import type { OAuthClient } from '../database/entities/oauth-client.entity';
+import type { OAuthClient } from '../database/entities/oauth-client.entity.js';
 import { mock } from 'vitest-mock-extended';
 
-import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
-import { OAuthConsentService } from '../oauth-consent.service';
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
-import { OAuthSessionService } from '../oauth-session.service';
-import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
+import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service.js';
+import { OAuthConsentService } from '../oauth-consent.service.js';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository.js';
+import { OAuthSessionService } from '../oauth-session.service.js';
+import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository.js';
 import {
 	ProtectedResourceRegistry,
 	type ProtectedResource,
-} from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+} from '@/services/protected-resource.registry.js';
+import { UrlService } from '@/services/url.service.js';
 import type { User } from '@n8n/db';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
 
 const issuer = 'https://n8n.example.com';
 

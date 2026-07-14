@@ -11,17 +11,17 @@ import type {
 	WorkflowSettings,
 } from 'n8n-workflow';
 
-import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service.js';
 import type {
 	ExportPackageEventCounts,
 	ImportAuditCredentialIds,
 	ImportPackageEventCounts,
 	ImportPackageEventOptions,
 	PackageFailureReason,
-} from '@/modules/n8n-packages/n8n-packages.types';
-import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
+} from '@/modules/n8n-packages/n8n-packages.types.js';
+import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types.js';
 
-import type { AiEventMap } from './ai.event-map';
+import type { AiEventMap } from './ai.event-map.js';
 
 export type WorkflowActionSource = 'ui' | 'api' | 'n8n-mcp' | 'n8n-ai' | 'import';
 

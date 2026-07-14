@@ -10,7 +10,7 @@ import {
 } from '@n8n/typeorm';
 import type { IBinaryData } from 'n8n-workflow';
 
-import type { ChatHubSession } from './chat-hub-session.entity';
+import type { ChatHubSession } from './chat-hub-session.entity.js';
 
 @Entity({ name: 'chat_hub_messages' })
 export class ChatHubMessage extends WithTimestamps {

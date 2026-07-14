@@ -6,7 +6,7 @@ import {
 	AI_REQUEST_TIMEOUT_MS,
 	createAiMcpFetch,
 	createAiProxyFetch,
-} from '@/utils/ai-proxy-fetch';
+} from '@/utils/ai-proxy-fetch.js';
 
 describe('AI outbound fetch helpers', () => {
 	it('creates model fetch with SSRF disabled', () => {

@@ -1,13 +1,13 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import { MCP_EXPLORE_NODE_RESOURCES_TOOL } from './constants';
+import { MCP_EXPLORE_NODE_RESOURCES_TOOL } from './constants.js';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
 
-import type { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
-import type { Telemetry } from '@/telemetry';
+import type { NodeResourceExplorerService } from '@/services/node-resource-explorer.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
 const inputSchema = {
 	nodeType: z

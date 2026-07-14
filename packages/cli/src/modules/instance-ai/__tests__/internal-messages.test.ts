@@ -3,7 +3,7 @@ import {
 	extractEditorContextWorkflowAttachments,
 	withCurrentDateTime,
 	AUTO_FOLLOW_UP_MESSAGE,
-} from '../internal-messages';
+} from '../internal-messages.js';
 
 /** Mirrors the marker the service writes in buildContextResourcesBlock. */
 function editorContextMarker(

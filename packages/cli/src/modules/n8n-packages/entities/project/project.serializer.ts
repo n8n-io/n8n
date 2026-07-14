@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import {
 	serializedProjectSchema,
 	type SerializedProject,
-} from '../../spec/serialized/project.schema';
+} from '../../spec/serialized/project.schema.js';
 
 @Service()
 export class ProjectSerializer {

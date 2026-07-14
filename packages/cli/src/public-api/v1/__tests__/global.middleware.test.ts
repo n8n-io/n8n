@@ -4,7 +4,7 @@ import type { NextFunction, Response } from 'express';
 import type { Mocked, MockedFunction } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import * as middlewares from '../shared/middlewares/global.middleware';
+import * as middlewares from '../shared/middlewares/global.middleware.js';
 
 function buildReq(tokenGrant?: TokenGrant): AuthenticatedRequest {
 	return { headers: {}, query: {}, params: {}, tokenGrant } as unknown as AuthenticatedRequest;

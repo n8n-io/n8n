@@ -1,5 +1,5 @@
-import type { WorkflowCredentialRequirement } from './credential/credential.types';
-import type { WorkflowDataTableRequirement } from './data-table/data-table.types';
+import type { WorkflowCredentialRequirement } from './credential/credential.types.js';
+import type { WorkflowDataTableRequirement } from './data-table/data-table.types.js';
 
 export interface WorkflowExportRequirements {
 	credentials: WorkflowCredentialRequirement[];

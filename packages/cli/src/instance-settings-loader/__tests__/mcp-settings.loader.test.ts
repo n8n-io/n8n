@@ -2,9 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service.js';
 
-import { McpSettingsLoader } from '../loaders/mcp-settings.loader';
+import { McpSettingsLoader } from '../loaders/mcp-settings.loader.js';
 
 describe('McpSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });

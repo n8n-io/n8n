@@ -2,11 +2,11 @@ import type { Mocked } from 'vitest';
 import { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { createExploreNodeResourcesTool } from '../tools/workflow-builder/explore-node-resources.tool';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import { createExploreNodeResourcesTool } from '../tools/workflow-builder/explore-node-resources.tool.js';
 
-import type { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
-import type { Telemetry } from '@/telemetry';
+import type { NodeResourceExplorerService } from '@/services/node-resource-explorer.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	CODE_BUILDER_SEARCH_NODES_TOOL: { toolName: 'search_nodes', displayTitle: 'Search' },

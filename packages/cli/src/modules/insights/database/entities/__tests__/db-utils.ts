@@ -4,12 +4,12 @@ import { Container } from '@n8n/di';
 import type { DateTime } from 'luxon';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { InsightsByPeriodRepository } from '../../repositories/insights-by-period.repository';
-import { InsightsMetadataRepository } from '../../repositories/insights-metadata.repository';
-import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
-import { InsightsByPeriod } from '../insights-by-period';
-import { InsightsMetadata } from '../insights-metadata';
-import { InsightsRaw } from '../insights-raw';
+import { InsightsByPeriodRepository } from '../../repositories/insights-by-period.repository.js';
+import { InsightsMetadataRepository } from '../../repositories/insights-metadata.repository.js';
+import { InsightsRawRepository } from '../../repositories/insights-raw.repository.js';
+import { InsightsByPeriod } from '../insights-by-period.js';
+import { InsightsMetadata } from '../insights-metadata.js';
+import { InsightsRaw } from '../insights-raw.js';
 
 async function getWorkflowSharing(workflow: IWorkflowBase) {
 	return await Container.get(SharedWorkflowRepository).find({

@@ -16,19 +16,19 @@ import assert from 'node:assert';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { ARTIFICIAL_TASK_DATA } from '@/constants';
-import { NodeCrashedError } from '@/errors/node-crashed.error';
-import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
-import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
-import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
-import { Push } from '@/push';
-import { OwnershipService } from '@/services/ownership.service';
-import { createExecution } from '@test-integration/db/executions';
+import { ARTIFICIAL_TASK_DATA } from '@/constants.js';
+import { NodeCrashedError } from '@/errors/node-crashed.error.js';
+import { WorkflowCrashedError } from '@/errors/workflow-crashed.error.js';
+import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes/index.js';
+import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service.js';
+import { Push } from '@/push/index.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { createExecution } from '@test-integration/db/executions.js';
 
-import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
-import { setupMessages } from './utils';
+import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants.js';
+import { setupMessages } from './utils.js';
 
 describe('ExecutionRecoveryService', () => {
 	const push = mockInstance(Push);

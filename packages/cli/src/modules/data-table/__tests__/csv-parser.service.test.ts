@@ -5,7 +5,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { mock } from 'vitest-mock-extended';
 
-import { CsvParserService } from '../csv-parser.service';
+import { CsvParserService } from '../csv-parser.service.js';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);

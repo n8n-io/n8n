@@ -4,12 +4,12 @@ import type { EvaluationCollection, EvaluationCollectionRepository, TestRun, Use
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { Telemetry } from '@/telemetry';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { DETERMINISTIC_MODEL_TAG, EvalInsightsService } from '../eval-insights.service';
+import { DETERMINISTIC_MODEL_TAG, EvalInsightsService } from '../eval-insights.service.js';
 
 const user = mock<User>({ id: 'user-1' });
 

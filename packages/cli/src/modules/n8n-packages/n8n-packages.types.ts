@@ -1,18 +1,18 @@
 import type { User } from '@n8n/db';
 
-import type { WorkflowIdConflict } from './entities/workflow/workflow-import-match.service';
+import type { WorkflowIdConflict } from './entities/workflow/workflow-import-match.service.js';
 import type {
 	WorkflowConflict,
 	WorkflowFolderConflict,
-} from './entities/workflow/workflow-import.types';
+} from './entities/workflow/workflow-import.types.js';
 import type {
 	WorkflowPublishingOutcome,
 	WorkflowPublishingPolicy,
-} from './entities/workflow/workflow-publishing-policy.types';
+} from './entities/workflow/workflow-publishing-policy.types.js';
 
-export type { CredentialResolution } from './entities/credential/credential.types';
-export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
-export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-publishing-policy.types';
+export type { CredentialResolution } from './entities/credential/credential.types.js';
+export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types.js';
+export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-publishing-policy.types.js';
 
 export type CredentialMatchingMode = 'id-only' | 'name-and-type' | 'type-only';
 export type CredentialMissingMode = 'must-preexist' | 'create-stub';

@@ -16,20 +16,20 @@ import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { Not } from '@n8n/typeorm';
 
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { JwtService } from '@/services/jwt.service';
-import { PasswordUtility } from '@/services/password.utility';
-import { UserManagementMailer } from '@/user-management/email';
+import { EventService } from '@/events/event.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { PasswordUtility } from '@/services/password.utility.js';
+import { UserManagementMailer } from '@/user-management/email/index.js';
 
 import {
 	assertReturnedUserProps,
 	assertStoredUserProps,
 	assertUserInviteResult,
-} from './assertions';
-import { createMember, createOwner, createUserShell } from '../../shared/db/users';
-import * as utils from '../../shared/utils';
-import type { UserInvitationResult } from '../../shared/utils/users';
+} from './assertions.js';
+import { createMember, createOwner, createUserShell } from '../../shared/db/users.js';
+import * as utils from '../../shared/utils/index.js';
+import type { UserInvitationResult } from '../../shared/utils/users.js';
 
 describe('InvitationController', () => {
 	const mailer = mockInstance(UserManagementMailer);

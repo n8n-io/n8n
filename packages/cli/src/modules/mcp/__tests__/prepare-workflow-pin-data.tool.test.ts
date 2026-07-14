@@ -9,17 +9,17 @@ import {
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { ExecutionService } from '@/executions/execution.service';
-import { NodeTypes } from '@/node-types';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ExecutionService } from '@/executions/execution.service.js';
+import { NodeTypes } from '@/node-types.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { createWorkflow } from './mock.utils';
-import { WorkflowAccessError } from '../mcp.errors';
+import { createWorkflow } from './mock.utils.js';
+import { WorkflowAccessError } from '../mcp.errors.js';
 import {
 	createPrepareTestPinDataTool,
 	preparePinData,
-} from '../tools/prepare-workflow-pin-data.tool';
+} from '../tools/prepare-workflow-pin-data.tool.js';
 
 // Mock @n8n/workflow-sdk functions — keep real implementations for shared utils
 // (needsPinData, normalizePinData), but mock functions that do file I/O or

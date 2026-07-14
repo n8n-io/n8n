@@ -10,14 +10,14 @@ import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
-import { EventService } from '@/events/event.service';
-import { License } from '@/license';
-import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { LastActiveAtService } from '@/services/last-active-at.service';
-import { UrlService } from '@/services/url.service';
+import { EventService } from '@/events/event.service.js';
+import { License } from '@/license.js';
+import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload.js';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry.js';
+import { LastActiveAtService } from '@/services/last-active-at.service.js';
+import { UrlService } from '@/services/url.service.js';
 
-import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
+import { sendPublicApiErrorResponse } from './v1/public-api-error-response.js';
 
 // Renders `x-required-scope` as a badge on each operation. swagger-ui-express
 // serializes this function's source into the page, so it must be self-contained:

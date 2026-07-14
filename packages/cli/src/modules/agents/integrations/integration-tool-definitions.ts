@@ -9,14 +9,14 @@ import { z } from 'zod';
 import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
-} from './platforms/linear-tool-definitions';
-import { SLACK_ACTION_TOOL_DEFINITIONS } from './platforms/slack-tool-definitions';
+} from './platforms/linear-tool-definitions.js';
+import { SLACK_ACTION_TOOL_DEFINITIONS } from './platforms/slack-tool-definitions.js';
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
-} from './integration-tool-types';
+} from './integration-tool-types.js';
 
 // Compile-time: the shared button styles must remain valid Chat SDK
 // `ButtonStyle` values (api-types cannot depend on the chat package).

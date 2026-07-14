@@ -6,7 +6,7 @@ import { FileNotFoundError } from 'n8n-core';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import { BinaryDataController } from '../binary-data.controller';
+import { BinaryDataController } from '../binary-data.controller.js';
 
 describe('BinaryDataController', () => {
 	const request = mock<Request>();

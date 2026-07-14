@@ -2,10 +2,10 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentRuntimeCacheService } from '../../agent-runtime-cache.service';
-import type { Agent } from '../../entities/agent.entity';
-import type { AgentRepository } from '../../repositories/agent.repository';
-import { SubAgentCleanupService } from '../sub-agent-cleanup.service';
+import type { AgentRuntimeCacheService } from '../../agent-runtime-cache.service.js';
+import type { Agent } from '../../entities/agent.entity.js';
+import type { AgentRepository } from '../../repositories/agent.repository.js';
+import { SubAgentCleanupService } from '../sub-agent-cleanup.service.js';
 
 const projectId = 'project-1';
 const childAgentId = 'child-1';

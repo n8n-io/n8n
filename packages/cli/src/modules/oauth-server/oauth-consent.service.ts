@@ -3,14 +3,14 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
-import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
-import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
-import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
-import { OAuthHelpers } from './oauth.helpers';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { OAuthClientRepository } from './database/repositories/oauth-client.repository.js';
+import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository.js';
+import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service.js';
+import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service.js';
+import { OAuthHelpers } from './oauth.helpers.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry.js';
+import { UrlService } from '@/services/url.service.js';
 
 type ConsentDetailsResult =
 	| { ok: true; clientName: string; clientId: string; resourceName?: string; redirectUri?: string }

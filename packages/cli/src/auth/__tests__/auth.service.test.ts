@@ -12,12 +12,12 @@ import type { NextFunction, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 
-import { AuthService } from '@/auth/auth.service';
-import { AUTH_COOKIE_NAME } from '@/constants';
-import type { License } from '@/license';
-import type { MfaService } from '@/mfa/mfa.service';
-import { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
+import { AuthService } from '@/auth/auth.service.js';
+import { AUTH_COOKIE_NAME } from '@/constants.js';
+import type { License } from '@/license.js';
+import type { MfaService } from '@/mfa/mfa.service.js';
+import { JwtService } from '@/services/jwt.service.js';
+import type { UrlService } from '@/services/url.service.js';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';

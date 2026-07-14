@@ -5,12 +5,12 @@ import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { WebhookPathTakenError, WorkflowExpression } from 'n8n-workflow';
 
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import type { WebhookService } from '@/webhooks/webhook.service';
-import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
-import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
+import type { WebhookService } from '@/webhooks/webhook.service.js';
+import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar.js';
+import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
 
-import { createWorkflow, logger, node } from './trigger-test-utils';
+import { createWorkflow, logger, node } from './trigger-test-utils.js';
 
 describe('WebhookTriggerRegistrar', () => {
 	const tracing = mock<Tracing>();

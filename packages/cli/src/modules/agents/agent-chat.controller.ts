@@ -8,20 +8,20 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import { randomUUID } from 'crypto';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
-import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
-import { messagesToDto } from './agent-message-mapper';
-import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
-import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
-import { AgentValidationService } from './agent-validation.service';
-import { AgentsService } from './agents.service';
-import { AgentsBuilderService } from './builder/agents-builder.service';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
-import { withOpenSuspensions } from './utils/messages-envelope';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider.js';
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service.js';
+import { AgentExecutionService, threadBelongsTo } from './agent-execution.service.js';
+import { messagesToDto } from './agent-message-mapper.js';
+import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream.js';
+import { AgentTestChatService, chatThreadId } from './agent-test-chat.service.js';
+import { AgentValidationService } from './agent-validation.service.js';
+import { AgentsService } from './agents.service.js';
+import { AgentsBuilderService } from './builder/agents-builder.service.js';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope.js';
+import { withOpenSuspensions } from './utils/messages-envelope.js';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {

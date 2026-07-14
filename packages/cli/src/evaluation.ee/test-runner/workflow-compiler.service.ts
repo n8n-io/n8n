@@ -17,8 +17,8 @@ import type {
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { isCoercibleBooleanExpression } from '../evaluation-config-validator';
-import { LlmJudgeProviderRegistry } from '../llm-judge-provider-registry';
+import { isCoercibleBooleanExpression } from '../evaluation-config-validator.js';
+import { LlmJudgeProviderRegistry } from '../llm-judge-provider-registry.js';
 
 const RESERVED_PREFIX = '__eval_';
 const TRIGGER_NAME = '__eval_trigger';

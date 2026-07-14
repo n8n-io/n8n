@@ -4,18 +4,18 @@ import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { CredentialTypes } from '@/credential-types';
-import { EventService } from '@/events/event.service';
+import { CredentialTypes } from '@/credential-types.js';
+import { EventService } from '@/events/event.service.js';
 import {
 	buildImportPackageBuffer,
 	serializedWorkflowWithCredential,
-} from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
-import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
-import { Telemetry } from '@/telemetry';
+} from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures.js';
+import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils//index.js';
 
 mockInstance(Telemetry);
 

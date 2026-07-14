@@ -1,5 +1,5 @@
-import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
-import { DisabledNodesRule } from '../disabled-nodes.rule';
+import { createNode, createWorkflow } from '../../../__tests__/test-helpers.js';
+import { DisabledNodesRule } from '../disabled-nodes.rule.js';
 
 describe('DisabledNodesRule', () => {
 	let rule: DisabledNodesRule;

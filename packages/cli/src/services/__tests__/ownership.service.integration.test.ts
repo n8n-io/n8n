@@ -2,9 +2,9 @@ import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { HooksService } from '@/services/hooks.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { createUserShell } from '@test-integration/db/users';
+import { HooksService } from '@/services/hooks.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { createUserShell } from '@test-integration/db/users.js';
 
 let hookService: HooksService;
 let ownershipService: OwnershipService;

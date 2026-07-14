@@ -2,7 +2,7 @@ import {
 	buildN8nObservationLogReflectorPrompt,
 	DEFAULT_REFLECTOR_PROMPT,
 	DEFAULT_REFLECTOR_THRESHOLD_TOKENS,
-} from '../observation-log-reflector';
+} from '../observation-log-reflector.js';
 
 describe('n8n observation-log reflector policy', () => {
 	it('uses the n8n reflector defaults', () => {

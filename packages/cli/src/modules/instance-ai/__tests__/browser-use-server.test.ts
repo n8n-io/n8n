@@ -4,12 +4,12 @@ import type { AddressInfo, Socket } from 'net';
 import { createServer, type Server as HttpServer, get as httpGet } from 'node:http';
 import { WebSocket } from 'ws';
 
-import { BrowserUseServer } from '../browser/browser-use-server';
+import { BrowserUseServer } from '../browser/browser-use-server.js';
 import {
 	CDP_TOKEN_HEADER,
 	type BrowserUseUpgradeRequest,
-} from '../browser/browser-use-ws.constants';
-import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
+} from '../browser/browser-use-ws.constants.js';
+import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service.js';
 
 describe('BrowserUseServer', () => {
 	const sessionService = mock<InstanceAiBrowserSessionService>();

@@ -9,13 +9,13 @@ import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { License } from '@/license';
-import { MfaService } from '@/mfa/mfa.service';
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants.js';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { License } from '@/license.js';
+import { MfaService } from '@/mfa/mfa.service.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { UrlService } from '@/services/url.service.js';
 
 interface AuthJwtPayload {
 	/** User Id */

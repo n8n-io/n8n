@@ -10,11 +10,11 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import type { IncomingHttpHeaders } from 'node:http';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
-import { IdentifierValidationError } from '../identifier-interface';
-import { OAuth2TokenIntrospectionIdentifier } from '../oauth2-introspection-identifier';
-import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client';
+import { IdentifierValidationError } from '../identifier-interface.js';
+import { OAuth2TokenIntrospectionIdentifier } from '../oauth2-introspection-identifier.js';
+import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client.js';
 
 interface CapturedRequest {
 	url: string;

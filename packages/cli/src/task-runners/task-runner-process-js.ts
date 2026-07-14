@@ -5,10 +5,10 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import * as process from 'node:process';
 
-import { NodeProcessOomDetector } from './node-process-oom-detector';
-import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
-import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
-import { ChildProcess, ExitReason, TaskRunnerProcessBase } from './task-runner-process-base';
+import { NodeProcessOomDetector } from './node-process-oom-detector.js';
+import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service.js';
+import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events.js';
+import { ChildProcess, ExitReason, TaskRunnerProcessBase } from './task-runner-process-base.js';
 
 /**
  * Responsible for managing a JavaScript task runner as a child process.

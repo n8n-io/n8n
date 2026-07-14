@@ -7,21 +7,21 @@ import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowSettings, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { CollaborationState } from '@/collaboration/collaboration.state';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { Push } from '@/push';
-import type { OnPushMessage } from '@/push/types';
-import { AccessService } from '@/services/access.service';
+import { CollaborationState } from '@/collaboration/collaboration.state.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { LockedError } from '@/errors/response-errors/locked.error.js';
+import { Push } from '@/push/index.js';
+import type { OnPushMessage } from '@/push/types.js';
+import { AccessService } from '@/services/access.service.js';
 
-import { parseWorkflowMessage } from './collaboration.message';
+import { parseWorkflowMessage } from './collaboration.message.js';
 import type {
 	WorkflowClosedMessage,
 	WorkflowOpenedMessage,
 	WriteAccessRequestedMessage,
 	WriteAccessReleaseRequestedMessage,
 	WriteAccessHeartbeatMessage,
-} from './collaboration.message';
+} from './collaboration.message.js';
 
 const OPEN_WORKFLOW_CHECK_BATCH_SIZE = 100;
 

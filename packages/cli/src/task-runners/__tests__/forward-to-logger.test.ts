@@ -1,7 +1,7 @@
 import type { Logger } from 'n8n-workflow';
 import { Readable } from 'stream';
 
-import { forwardToLogger } from '../forward-to-logger';
+import { forwardToLogger } from '../forward-to-logger.js';
 
 describe('forwardToLogger', () => {
 	let logger: Logger;

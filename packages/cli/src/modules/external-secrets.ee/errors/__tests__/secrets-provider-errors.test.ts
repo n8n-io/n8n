@@ -1,7 +1,7 @@
 import {
 	buildHttpProviderErrorContext,
 	buildFailureSummaryLogContext,
-} from '../secrets-provider-errors';
+} from '../secrets-provider-errors.js';
 
 describe('buildHttpProviderErrorContext', () => {
 	it('extracts statusCode without duplicating it in errorCode', () => {

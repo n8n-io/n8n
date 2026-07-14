@@ -1,4 +1,4 @@
-import { OAuthHelpers } from '../oauth.helpers';
+import { OAuthHelpers } from '../oauth.helpers.js';
 
 const issuer = 'https://n8n.example.com';
 

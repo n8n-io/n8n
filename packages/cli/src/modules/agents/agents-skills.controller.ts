@@ -12,7 +12,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { AgentSkillsService } from './agent-skills.service';
+import { AgentSkillsService } from './agent-skills.service.js';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsSkillsController {

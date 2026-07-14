@@ -46,29 +46,29 @@ import {
 	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions';
-import { CredentialsHelper } from '@/credentials-helper';
-import { EventService } from '@/events/event.service';
-import type { AiEventPayload } from '@/events/maps/ai.event-map';
-import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { isManualOrChatExecution } from '@/executions/execution.utils';
-import { FailedRunFactory } from '@/executions/failed-run-factory';
+import { ActiveExecutions } from '@/active-executions.js';
+import { CredentialsHelper } from '@/credentials-helper.js';
+import { EventService } from '@/events/event.service.js';
+import type { AiEventPayload } from '@/events/maps/ai.event-map.js';
+import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { isManualOrChatExecution } from '@/executions/execution.utils.js';
+import { FailedRunFactory } from '@/executions/failed-run-factory.js';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
-} from '@/executions/pre-execution-checks';
-import type { UpdateExecutionPayload } from '@/interfaces';
-import { NodeTypes } from '@/node-types';
-import { Push } from '@/push';
-import { UrlService } from '@/services/url.service';
-import { TaskRequester } from '@/task-runners/task-managers/task-requester';
-import { findSubworkflowStart } from '@/utils';
-import { objectToError } from '@/utils/object-to-error';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+} from '@/executions/pre-execution-checks/index.js';
+import type { UpdateExecutionPayload } from '@/interfaces.js';
+import { NodeTypes } from '@/node-types.js';
+import { Push } from '@/push/index.js';
+import { UrlService } from '@/services/url.service.js';
+import { TaskRequester } from '@/task-runners/task-managers/task-requester.js';
+import { findSubworkflowStart } from '@/utils.js';
+import { objectToError } from '@/utils/object-to-error.js';
+import * as WorkflowHelpers from '@/workflow-helpers.js';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
 
-import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
+import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service.js';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -361,7 +361,7 @@ export async function executeAgent(
 	// `webhooks/*`, `scaling/job-processor`). Resolve it from the workflow's
 	// owning project so the agent runs under the correct project scope.
 	if (!projectId && additionalData.workflowId) {
-		const { OwnershipService } = await import('@/services/ownership.service');
+		const { OwnershipService } = await import('@/services/ownership.service.js');
 		const ownershipService = Container.get(OwnershipService);
 		const project = await ownershipService.getWorkflowProjectCached(additionalData.workflowId);
 		projectId = project.id;
@@ -374,7 +374,7 @@ export async function executeAgent(
 	}
 
 	const { AgentExecutionOrchestratorService } = await import(
-		'@/modules/agents/agent-execution-orchestrator.service'
+		'@/modules/agents/agent-execution-orchestrator.service.js'
 	);
 	const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
 
@@ -394,7 +394,7 @@ export async function executeAgent(
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
-	const { AgentsService } = await import('@/modules/agents/agents.service');
+	const { AgentsService } = await import('@/modules/agents/agents.service.js');
 	const agentsService = Container.get(AgentsService);
 	// Only published agents are runnable from a published workflow.
 	// But unpublished agents may be called from manual workflow executions (e.g. during development), so they are included in the list as well.

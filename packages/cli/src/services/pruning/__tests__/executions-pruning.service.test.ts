@@ -4,7 +4,7 @@ import type { DbConnection } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionsPruningService } from '../executions-pruning.service';
+import { ExecutionsPruningService } from '../executions-pruning.service.js';
 
 describe('PruningService', () => {
 	const dbConnection = mock<DbConnection>({

@@ -1,8 +1,8 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { serverToNodeDescription } from '../node-description-transform';
-import { notionMockServer, linearMockServer } from '../registry/mock-servers';
-import { synthesizeNodeTypeDef } from '../synthesize-type-def';
+import { serverToNodeDescription } from '../node-description-transform.js';
+import { notionMockServer, linearMockServer } from '../registry/mock-servers.js';
+import { synthesizeNodeTypeDef } from '../synthesize-type-def.js';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client Tool',

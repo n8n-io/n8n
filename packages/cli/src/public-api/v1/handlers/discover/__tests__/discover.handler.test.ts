@@ -5,16 +5,16 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error.js';
 
-import * as discoverService from '../discover.service';
+import * as discoverService from '../discover.service.js';
 
 // Loaded dynamically (handler routes are arrays of middleware + handler) and
 // typed loosely so the suite can invoke individual entries by index.
 let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
 
 beforeAll(async () => {
-	handler = (await import('../discover.handler')) as unknown as typeof handler;
+	handler = (await import('../discover.handler.js')) as unknown as typeof handler;
 });
 
 describe('Discover Handler', () => {

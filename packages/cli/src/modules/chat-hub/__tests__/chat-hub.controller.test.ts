@@ -3,10 +3,10 @@ import type { ModuleSettings } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { sendErrorResponse } from '@/response-helper';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { sendErrorResponse } from '@/response-helper.js';
 
-import { ChatHubController } from '../chat-hub.controller';
+import { ChatHubController } from '../chat-hub.controller.js';
 
 vi.mock('@/response-helper');
 

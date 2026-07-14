@@ -6,7 +6,7 @@ import get from 'lodash/get';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 import { coerce } from 'semver';
 
-import { NodeTypes } from '@/node-types';
+import { NodeTypes } from '@/node-types.js';
 
 /**
  * Parse a node type identifier string (name@version) into name and version

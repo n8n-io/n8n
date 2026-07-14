@@ -2,17 +2,20 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { Push } from '@/push';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import type { Push } from '@/push/index.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import type { McpRegistryApiClient, McpRegistryServerMetadata } from '../mcp-registry-api.client';
-import type { McpRegistryServerEntity } from '../mcp-registry-server.entity';
-import type { McpRegistryServerRepository } from '../mcp-registry-server.repository';
-import { McpRegistryService } from '../mcp-registry.service';
-import type { McpRegistryServer } from '../mcp-registry.types';
-import { toEntity } from '../mcp-registry.types';
-import { linearMockServer, notionMockServer } from '../mock-servers';
+import type {
+	McpRegistryApiClient,
+	McpRegistryServerMetadata,
+} from '../mcp-registry-api.client.js';
+import type { McpRegistryServerEntity } from '../mcp-registry-server.entity.js';
+import type { McpRegistryServerRepository } from '../mcp-registry-server.repository.js';
+import { McpRegistryService } from '../mcp-registry.service.js';
+import type { McpRegistryServer } from '../mcp-registry.types.js';
+import { toEntity } from '../mcp-registry.types.js';
+import { linearMockServer, notionMockServer } from '../mock-servers.js';
 
 function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 	const now = new Date();

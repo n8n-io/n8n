@@ -4,11 +4,11 @@ import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
 import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@/services/redis-client.service.js';
 
-import type { PubSubEventBus } from '../pubsub.eventbus';
-import type { McpRelayMessage } from '../subscriber.service';
-import { Subscriber } from '../subscriber.service';
+import type { PubSubEventBus } from '../pubsub.eventbus.js';
+import type { McpRelayMessage } from '../subscriber.service.js';
+import { Subscriber } from '../subscriber.service.js';
 
 describe('Subscriber', () => {
 	beforeEach(() => {

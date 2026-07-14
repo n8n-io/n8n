@@ -4,11 +4,11 @@ import type { InstanceSettings } from 'n8n-core';
 import { buildHitlCallbackReference } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import { TelegramInteractionWebhooks } from '@/webhooks/telegram-interaction-webhooks';
-import type { WebhookService } from '@/webhooks/webhook.service';
-import type { WaitingWebhookRequest } from '@/webhooks/webhook.types';
+import type { EventService } from '@/events/event.service.js';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { TelegramInteractionWebhooks } from '@/webhooks/telegram-interaction-webhooks.js';
+import type { WebhookService } from '@/webhooks/webhook.service.js';
+import type { WaitingWebhookRequest } from '@/webhooks/webhook.types.js';
 
 const TEST_HMAC_SECRET = 'test-hmac-secret-key';
 

@@ -11,17 +11,17 @@ import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
+import { createOwner, createMember, createAdmin } from '@test-integration/db/users.js';
+import { setupTestServer } from '@test-integration/utils/index.js';
 
-import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
-import { JwtService } from '@/services/jwt.service';
+import { MCP_TRIGGER_NODE_TYPE } from '@/constants.js';
+import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service.js';
+import { CacheService } from '@/services/cache/cache.service.js';
+import { UrlService } from '@/services/url.service.js';
+import { JwtService } from '@/services/jwt.service.js';
 
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
-import type { OAuthSessionPayload } from '../oauth-session.service';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository.js';
+import type { OAuthSessionPayload } from '../oauth-session.service.js';
 
 /**
  * Authorization for OAuth-protected MCP Server Triggers. A workflow whose MCP

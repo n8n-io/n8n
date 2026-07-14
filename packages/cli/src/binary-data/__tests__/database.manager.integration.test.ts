@@ -10,7 +10,7 @@ import { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { DatabaseManager } from '@/binary-data/database.manager';
+import { DatabaseManager } from '@/binary-data/database.manager.js';
 
 vi.unmock('node:fs/promises');
 

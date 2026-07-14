@@ -4,12 +4,12 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole, type Scope } from '@n8n/permissions';
 
-import { License } from '@/license';
-import { ProjectService } from '@/services/project.service.ee';
-import { createRole } from '@test-integration/db/roles';
-import { LicenseMocker } from '@test-integration/license';
+import { License } from '@/license.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { createRole } from '@test-integration/db/roles.js';
+import { LicenseMocker } from '@test-integration/license.js';
 
-import { createMember } from '../shared/db/users';
+import { createMember } from '../shared/db/users.js';
 
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;

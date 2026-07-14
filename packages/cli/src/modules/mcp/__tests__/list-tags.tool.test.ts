@@ -2,10 +2,10 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { ITagWithCountDb } from '@n8n/db';
 import { User } from '@n8n/db';
 
-import { TagService } from '@/services/tag.service';
-import { Telemetry } from '@/telemetry';
+import { TagService } from '@/services/tag.service.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { createListTagsTool, listTags } from '../tools/list-tags.tool';
+import { createListTagsTool, listTags } from '../tools/list-tags.tool.js';
 
 const buildTag = (overrides: Partial<ITagWithCountDb> = {}): ITagWithCountDb =>
 	({

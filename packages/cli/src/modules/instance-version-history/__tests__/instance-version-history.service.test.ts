@@ -3,8 +3,8 @@ import type { InstanceSettings } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceVersionHistoryRepository } from '../database/repositories/instance-version-history.repository';
-import { InstanceVersionHistoryService } from '../instance-version-history.service';
+import type { InstanceVersionHistoryRepository } from '../database/repositories/instance-version-history.repository.js';
+import { InstanceVersionHistoryService } from '../instance-version-history.service.js';
 
 // Mock N8N_VERSION
 vi.mock('@/constants', () => ({

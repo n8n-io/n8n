@@ -1,8 +1,8 @@
 import { Service } from '@n8n/di';
 
-import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
-import { N8nMemory } from './integrations/n8n-memory';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names.js';
+import { N8nMemory } from './integrations/n8n-memory.js';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope.js';
 
 /** Derive a stable thread ID for the test-chat of a given agent and user. */
 export function chatThreadId(agentId: string, userId?: string): string {

@@ -1,12 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { CommunityPackagesInstanceSettingsLoader } from './loaders/community-packages.instance-settings-loader';
-import { LogStreamingInstanceSettingsLoader } from './loaders/log-streaming.instance-settings-loader';
-import { McpSettingsLoader } from './loaders/mcp-settings.loader';
-import { OwnerInstanceSettingsLoader } from './loaders/owner.instance-settings-loader';
-import { SecurityPolicyInstanceSettingsLoader } from './loaders/security-policy.instance-settings-loader';
-import { SsoInstanceSettingsLoader } from './loaders/sso/sso.instance-settings-loader';
+import { CommunityPackagesInstanceSettingsLoader } from './loaders/community-packages.instance-settings-loader.js';
+import { LogStreamingInstanceSettingsLoader } from './loaders/log-streaming.instance-settings-loader.js';
+import { McpSettingsLoader } from './loaders/mcp-settings.loader.js';
+import { OwnerInstanceSettingsLoader } from './loaders/owner.instance-settings-loader.js';
+import { SecurityPolicyInstanceSettingsLoader } from './loaders/security-policy.instance-settings-loader.js';
+import { SsoInstanceSettingsLoader } from './loaders/sso/sso.instance-settings-loader.js';
 
 type LoaderResult = 'created' | 'skipped';
 

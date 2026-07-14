@@ -2,8 +2,8 @@ import type { ModuleRegistry, Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ChatHubSettingsController } from '../chat-hub.settings.controller';
-import type { ChatHubSettingsService } from '../chat-hub.settings.service';
+import { ChatHubSettingsController } from '../chat-hub.settings.controller.js';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service.js';
 
 describe('ChatHubSettingsController', () => {
 	const settings = mock<ChatHubSettingsService>();

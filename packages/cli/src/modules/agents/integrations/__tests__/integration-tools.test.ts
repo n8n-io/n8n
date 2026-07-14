@@ -10,7 +10,7 @@ import {
 	type IntegrationActionExecutor,
 	type IntegrationContextQueryExecutor,
 	type IntegrationMessageContextStore,
-} from '../integration-tools';
+} from '../integration-tools.js';
 
 const slackA: AgentIntegrationConfig = {
 	type: 'slack',

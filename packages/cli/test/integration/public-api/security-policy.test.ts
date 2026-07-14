@@ -9,10 +9,10 @@ import {
 } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { CacheService } from '@/services/cache/cache.service';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
+import { CacheService } from '@/services/cache/cache.service.js';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users.js';
+import { setupTestServer } from '@test-integration/utils/index.js';
 
 // Mirrors the private key in InstanceRedactionEnforcementService so tests can reset stored state.
 const REDACTION_SETTING_KEY = 'redaction.enforcement';

@@ -15,21 +15,21 @@ import { Service } from '@n8n/di';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { N8N_VERSION } from '@/constants';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { AiService } from '@/services/ai.service';
-import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { N8N_VERSION } from '@/constants.js';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
+import { AiService } from '@/services/ai.service.js';
+import { ProxyTokenManager } from '@/services/proxy-token-manager.js';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch.js';
 
-import type { BuilderTelemetryProxyConfig } from '../tracing/builder-telemetry';
-import { BuilderNotConfiguredError } from './errors';
+import type { BuilderTelemetryProxyConfig } from '../tracing/builder-telemetry.js';
+import { BuilderNotConfiguredError } from './errors.js';
 import {
 	isSupportedAgentProvider,
 	mapCredentialForProvider,
 	SUPPORTED_AGENT_PROVIDERS,
-} from '../json-config/credential-field-mapping';
+} from '../json-config/credential-field-mapping.js';
 
 const SETTINGS_KEY = 'agentBuilder.settings';
 

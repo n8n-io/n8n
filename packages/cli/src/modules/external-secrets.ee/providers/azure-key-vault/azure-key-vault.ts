@@ -5,8 +5,8 @@ import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
-import type { AzureKeyVaultContext } from './types';
-import { DOCS_HELP_NOTICE } from '../../constants';
+import type { AzureKeyVaultContext } from './types.js';
+import { DOCS_HELP_NOTICE } from '../../constants.js';
 import {
 	buildFailureSummaryLogContext,
 	type HttpProviderErrorLogContext,
@@ -14,8 +14,8 @@ import {
 	logSecretsProviderOperationFailure,
 	type SafeContextValue,
 	type SecretsProviderOperationFailureParams,
-} from '../../errors/secrets-provider-errors';
-import { SecretsProvider } from '../../types';
+} from '../../errors/secrets-provider-errors.js';
+import { SecretsProvider } from '../../types.js';
 
 type AzureHttpLikeError = Error & {
 	statusCode?: number;

@@ -4,8 +4,8 @@ import {
 	IMPORTANT_SECTION,
 	INTERACTIVE_TOOLS_SECTION,
 	WORKFLOW_SECTION,
-} from '../agents-builder-prompts';
-import { getBuilderRuntimeSkills } from '../skills';
+} from '../agents-builder-prompts.js';
+import { getBuilderRuntimeSkills } from '../skills/index.js';
 
 describe('agents builder integrations prompt', () => {
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {

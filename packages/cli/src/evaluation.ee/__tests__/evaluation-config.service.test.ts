@@ -4,8 +4,8 @@ import type { EvaluationConfig, EvaluationConfigRepository, User, WorkflowEntity
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { EvaluationConfigValidator } from '../evaluation-config-validator';
-import { EvaluationConfigService } from '../evaluation-config.service';
+import type { EvaluationConfigValidator } from '../evaluation-config-validator.js';
+import { EvaluationConfigService } from '../evaluation-config.service.js';
 
 function makePayload(over: Partial<UpsertEvaluationConfigDto> = {}): UpsertEvaluationConfigDto {
 	return {

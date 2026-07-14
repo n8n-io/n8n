@@ -13,16 +13,16 @@ import {
 	type RelatedExecution,
 } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions';
-import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowRunner } from '@/workflow-runner';
+import { ActiveExecutions } from '@/active-executions.js';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
 
 import {
 	shouldRestartParentExecution,
 	updateParentExecutionWithChildResults,
-} from './workflow-helpers';
+} from './workflow-helpers.js';
 
 /** How many times each parent-resume step is attempted before giving up. */
 const MAX_PARENT_RESUME_ATTEMPTS = 3;

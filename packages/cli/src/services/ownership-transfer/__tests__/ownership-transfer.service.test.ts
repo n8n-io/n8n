@@ -2,14 +2,14 @@ import type { UserRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { FolderService } from '@/services/folder.service';
-import type { OwnershipService } from '@/services/ownership.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { FolderService } from '@/services/folder.service.js';
+import type { OwnershipService } from '@/services/ownership.service.js';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { OwnershipTransferHandlerRegistry } from '../ownership-transfer-handler.registry';
-import type { ProjectOwnershipTransferHandler } from '../ownership-transfer-handler.registry';
-import { OwnershipTransferService } from '../ownership-transfer.service';
+import { OwnershipTransferHandlerRegistry } from '../ownership-transfer-handler.registry.js';
+import type { ProjectOwnershipTransferHandler } from '../ownership-transfer-handler.registry.js';
+import { OwnershipTransferService } from '../ownership-transfer.service.js';
 
 describe('OwnershipTransferService', () => {
 	const trx = mock<EntityManager>();

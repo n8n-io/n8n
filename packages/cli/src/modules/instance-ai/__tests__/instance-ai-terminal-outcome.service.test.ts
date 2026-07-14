@@ -106,7 +106,7 @@ import type { ManagedBackgroundTask, TerminalOutcome } from '@n8n/instance-ai';
 import {
 	InstanceAiTerminalOutcomeService,
 	type InstanceAiTerminalOutcomeServiceOptions,
-} from '../instance-ai-terminal-outcome.service';
+} from '../instance-ai-terminal-outcome.service.js';
 
 type SnapshotRow = {
 	tree: InstanceAiAgentNode;

@@ -6,7 +6,7 @@ import promBundle from 'express-prom-bundle';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
-import { PrometheusRouteMetricsService } from '../route-metrics.service';
+import { PrometheusRouteMetricsService } from '../route-metrics.service.js';
 
 vi.mock('prom-client');
 vi.mock('express-prom-bundle', () => ({

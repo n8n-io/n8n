@@ -2,8 +2,8 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
-import { OtelConfig } from './otel.config';
-import { OTEL_ENV_VARS } from './otel.constants';
+import { OtelConfig } from './otel.config.js';
+import { OTEL_ENV_VARS } from './otel.constants.js';
 
 export const OTEL_SETTINGS_KEY = 'features.otel';
 

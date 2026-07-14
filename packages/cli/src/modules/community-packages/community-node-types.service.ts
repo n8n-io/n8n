@@ -5,16 +5,16 @@ import cloneDeep from 'lodash/cloneDeep';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isToolType, NodeConnectionTypes } from 'n8n-workflow';
 
-import { buildStrapiUpdateQuery } from '@/utils/strapi-utils';
+import { buildStrapiUpdateQuery } from '@/utils/strapi-utils.js';
 
 import {
 	getCommunityNodeTypes,
 	getCommunityNodesMetadata,
 	StrapiCommunityNodeType,
 	type CommunityNodesMetadata,
-} from './community-node-types-utils';
-import { CommunityPackagesConfig } from './community-packages.config';
-import { CommunityPackagesService } from './community-packages.service';
+} from './community-node-types-utils.js';
+import { CommunityPackagesConfig } from './community-packages.config.js';
+import { CommunityPackagesService } from './community-packages.service.js';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 const RETRY_INTERVAL = 5 * 60 * 1000;

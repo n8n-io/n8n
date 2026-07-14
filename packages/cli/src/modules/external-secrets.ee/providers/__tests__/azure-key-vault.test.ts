@@ -6,8 +6,8 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { AzureKeyVault } from '../azure-key-vault/azure-key-vault';
-import type { AzureKeyVaultContext } from '../azure-key-vault/types';
+import { AzureKeyVault } from '../azure-key-vault/azure-key-vault.js';
+import type { AzureKeyVaultContext } from '../azure-key-vault/types.js';
 
 vi.mock('@azure/identity');
 vi.mock('@azure/keyvault-secrets');

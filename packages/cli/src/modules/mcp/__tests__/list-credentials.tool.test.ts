@@ -3,10 +3,10 @@ import { User } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
 import type { Mock } from 'vitest';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { Telemetry } from '@/telemetry';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { createListCredentialsTool, listCredentials } from '../tools/list-credentials.tool';
+import { createListCredentialsTool, listCredentials } from '../tools/list-credentials.tool.js';
 
 type EnrichedCredential = Partial<CredentialsEntity> & {
 	scopes?: string[];

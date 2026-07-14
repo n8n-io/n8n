@@ -1,5 +1,5 @@
-import { searchMcpRegistryServers } from '../mcp-registry-search';
-import type { McpRegistryServer } from '../mcp-registry.types';
+import { searchMcpRegistryServers } from '../mcp-registry-search.js';
+import type { McpRegistryServer } from '../mcp-registry.types.js';
 
 function server(overrides: Partial<McpRegistryServer> = {}): McpRegistryServer {
 	return {

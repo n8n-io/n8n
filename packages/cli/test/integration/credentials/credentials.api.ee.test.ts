@@ -15,28 +15,28 @@ import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
-import config from '@/config';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleCacheService } from '@/services/role-cache.service';
-import { SecuritySettingsService } from '@/services/security-settings.service';
-import { UserManagementMailer } from '@/user-management/email';
+import config from '@/config/index.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { RoleCacheService } from '@/services/role-cache.service.js';
+import { SecuritySettingsService } from '@/services/security-settings.service.js';
+import { UserManagementMailer } from '@/user-management/email/index.js';
 
 import {
 	affixRoleToSaveCredential,
 	getCredentialSharings,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
-} from '../shared/db/credentials';
+} from '../shared/db/credentials.js';
 import {
 	createAdmin,
 	createManyUsers,
 	createOwner,
 	createUser,
 	createUserShell,
-} from '../shared/db/users';
-import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils';
+} from '../shared/db/users.js';
+import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils/index.js';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],

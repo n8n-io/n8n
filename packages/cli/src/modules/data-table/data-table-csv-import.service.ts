@@ -4,12 +4,12 @@ import { Service } from '@n8n/di';
 import type { DataTableRow } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
-import type { CsvColumnMetadata } from './csv-parser.service';
-import { CsvParserService } from './csv-parser.service';
-import type { DataTableColumn } from './data-table-column.entity';
-import { DataTableFileCleanupService } from './data-table-file-cleanup.service';
-import { FileUploadError } from './errors/data-table-file-upload.error';
-import { DataTableValidationError } from './errors/data-table-validation.error';
+import type { CsvColumnMetadata } from './csv-parser.service.js';
+import { CsvParserService } from './csv-parser.service.js';
+import type { DataTableColumn } from './data-table-column.entity.js';
+import { DataTableFileCleanupService } from './data-table-file-cleanup.service.js';
+import { FileUploadError } from './errors/data-table-file-upload.error.js';
+import { DataTableValidationError } from './errors/data-table-validation.error.js';
 
 @Service()
 export class DataTableCsvImportService {

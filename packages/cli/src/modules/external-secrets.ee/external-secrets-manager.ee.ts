@@ -6,19 +6,19 @@ import { Service } from '@n8n/di';
 import { Cipher, type IExternalSecretsManager } from 'n8n-core';
 import { jsonParse, UnexpectedError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import { ExternalSecretsProviders } from './external-secrets-providers.ee';
-import { ExternalSecretsConfig } from './external-secrets.config';
-import { ExternalSecretsProviderConnectionManager } from './external-secrets-provider-connection-manager.ee';
-import { ExternalSecretsProviderLifecycle } from './provider-lifecycle.service';
-import { ExternalSecretsProviderRegistry } from './provider-registry.service';
-import { ExternalSecretsRetryManager } from './retry-manager.service';
-import { ExternalSecretsSecretsCache } from './secrets-cache.service';
-import { ExternalSecretsSettingsStore } from './settings-store.service';
-import type { ExternalSecretsSettings, SecretsProvider, SecretsProviderSettings } from './types';
+import { ExternalSecretsProviders } from './external-secrets-providers.ee.js';
+import { ExternalSecretsConfig } from './external-secrets.config.js';
+import { ExternalSecretsProviderConnectionManager } from './external-secrets-provider-connection-manager.ee.js';
+import { ExternalSecretsProviderLifecycle } from './provider-lifecycle.service.js';
+import { ExternalSecretsProviderRegistry } from './provider-registry.service.js';
+import { ExternalSecretsRetryManager } from './retry-manager.service.js';
+import { ExternalSecretsSecretsCache } from './secrets-cache.service.js';
+import { ExternalSecretsSettingsStore } from './settings-store.service.js';
+import type { ExternalSecretsSettings, SecretsProvider, SecretsProviderSettings } from './types.js';
 
 /**
  * Orchestrates external secrets management

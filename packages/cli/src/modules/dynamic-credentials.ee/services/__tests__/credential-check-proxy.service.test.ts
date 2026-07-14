@@ -2,15 +2,15 @@ import type { Mocked } from 'vitest';
 import type { GlobalConfig } from '@n8n/config';
 import type { IExecutionContext, PlaintextExecutionContext } from 'n8n-workflow';
 
-import type { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import type { UrlService } from '@/services/url.service';
+import type { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee.js';
+import type { UrlService } from '@/services/url.service.js';
 import type { ExecutionContextService } from 'n8n-core';
 import { CredentialsEntity } from '@n8n/db';
 
-import type { AuthorizeIntentService } from '../authorize-intent.service';
-import type { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service';
-import { CredentialCheckProxyService } from '../credential-check-proxy.service';
-import type { DynamicCredentialService } from '../dynamic-credential.service';
+import type { AuthorizeIntentService } from '../authorize-intent.service.js';
+import type { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service.js';
+import { CredentialCheckProxyService } from '../credential-check-proxy.service.js';
+import type { DynamicCredentialService } from '../dynamic-credential.service.js';
 
 const createMockCredentialEntity = (
 	overrides: Partial<CredentialsEntity> = {},

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { IntegrationActionDefinition } from '../integration-tool-types';
+import type { IntegrationActionDefinition } from '../integration-tool-types.js';
 
 const addReactionActionInputSchema = z.object({
 	action: z.literal('add_reaction'),

@@ -1,10 +1,10 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
-import { DynamicCredentialEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-entry-storage';
+import { DynamicCredentialEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-entry-storage.js';
 
-import { createDynamicCredentialResolver } from './shared/db-helpers';
-import { createCredentials } from '../shared/db/credentials';
+import { createDynamicCredentialResolver } from './shared/db-helpers.js';
+import { createCredentials } from '../shared/db/credentials.js';
 
 describe('DynamicCredentialEntryStorage', () => {
 	let storage: DynamicCredentialEntryStorage;

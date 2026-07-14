@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
-import { isSecretKey, redactSecretKeys, truncateForLlm } from '../request-sanitizer';
+import { isSecretKey, redactSecretKeys, truncateForLlm } from '../request-sanitizer.js';
 
 // ---------------------------------------------------------------------------
 // Mock logger to verify warning behavior

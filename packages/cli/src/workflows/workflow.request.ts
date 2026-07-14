@@ -7,7 +7,7 @@ import type {
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { INode, IConnections, IWorkflowSettings } from 'n8n-workflow';
 
-import type { ListQuery } from '@/requests';
+import type { ListQuery } from '@/requests.js';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{

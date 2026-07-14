@@ -1,6 +1,6 @@
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import type { Risk } from '@/security-audit/types';
+import type { Risk } from '@/security-audit/types.js';
 
 type Node = IWorkflowBase['nodes'][number];
 

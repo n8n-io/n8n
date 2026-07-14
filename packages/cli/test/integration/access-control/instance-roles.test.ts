@@ -9,14 +9,14 @@ import { GLOBAL_MEMBER_ROLE, ScopeRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { SecuritySettingsService } from '@/services/security-settings.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service.js';
+import { SecuritySettingsService } from '@/services/security-settings.service.js';
 
-import { createGlobalRoleUser } from './shared-setup';
-import { saveCredential } from '../shared/db/credentials';
-import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared/db/roles';
-import { createOwner } from '../shared/db/users';
-import { initCredentialsTypes, setupTestServer } from '../shared/utils';
+import { createGlobalRoleUser } from './shared-setup.js';
+import { saveCredential } from '../shared/db/credentials.js';
+import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared/db/roles.js';
+import { createOwner } from '../shared/db/users.js';
+import { initCredentialsTypes, setupTestServer } from '../shared/utils/index.js';
 
 /**
  * Authorization safety net for *instance* (global) custom roles.

@@ -1,7 +1,7 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import { N8N_CHAT_ACTION_TOOL_NAME, type AgentPersistedMessageDto } from '@n8n/api-types';
 
-import { withOpenSuspensions } from '../utils/messages-envelope';
+import { withOpenSuspensions } from '../utils/messages-envelope.js';
 
 const persisted: AgentPersistedMessageDto[] = [
 	{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'hi' }] },

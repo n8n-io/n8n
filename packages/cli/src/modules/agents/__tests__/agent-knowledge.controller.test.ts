@@ -3,16 +3,16 @@ import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { AgentKnowledgeController } from '../agent-knowledge.controller';
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentKnowledgeController } from '../agent-knowledge.controller.js';
+import type { AgentKnowledgeService } from '../agent-knowledge.service.js';
+import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service.js';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
-} from './test-utils/controller-route-metadata';
+} from './test-utils/controller-route-metadata.js';
 
 function makeController({
 	agentKnowledgeService = mock<AgentKnowledgeService>(),

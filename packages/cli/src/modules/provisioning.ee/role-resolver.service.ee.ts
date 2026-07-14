@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { Expression, type IDataObject } from 'n8n-workflow';
 
-import { withProjectContext } from './claims-context.builder';
+import { withProjectContext } from './claims-context.builder.js';
 import type {
 	ProjectInfo,
 	ResolvedInstanceRole,
@@ -13,7 +13,7 @@ import type {
 	RoleMappingConfig,
 	RoleMappingRule,
 	RoleResolverContext,
-} from './role-resolver-types';
+} from './role-resolver-types.js';
 
 @Service()
 export class RoleResolverService {

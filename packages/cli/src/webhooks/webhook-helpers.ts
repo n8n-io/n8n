@@ -55,39 +55,39 @@ import {
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
 
-import { ActiveExecutions } from '@/active-executions';
-import { AuthService } from '@/auth/auth.service';
-import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { parseBody } from '@/middlewares';
+import { ActiveExecutions } from '@/active-executions.js';
+import { AuthService } from '@/auth/auth.service.js';
+import { MCP_TRIGGER_NODE_TYPE } from '@/constants.js';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import { parseBody } from '@/middlewares/index.js';
 import {
 	type AuthFailureReason,
 	OAuthTokenVerifierProxy,
-} from '@/services/oauth-token-verifier-proxy.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { WaitTracker } from '@/wait-tracker';
-import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
-import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
-import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor';
-import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor';
-import type { WebhookResponse } from '@/webhooks/webhook-response';
-import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-response';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { WorkflowRunner } from '@/workflow-runner';
+} from '@/services/oauth-token-verifier-proxy.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service.js';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service.js';
+import { WaitTracker } from '@/wait-tracker.js';
+import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context.js';
+import { createMultiFormDataParser } from '@/webhooks/webhook-form-data.js';
+import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor.js';
+import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor.js';
+import type { WebhookResponse } from '@/webhooks/webhook-response.js';
+import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-response.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import * as WorkflowHelpers from '@/workflow-helpers.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
 
-import { applySandboxCSP } from './webhook-response-headers';
+import { applySandboxCSP } from './webhook-response-headers.js';
 import {
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
-} from './webhook-response-headers';
-import { WebhookService } from './webhook.service';
-import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
+} from './webhook-response-headers.js';
+import { WebhookService } from './webhook.service.js';
+import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types.js';
 
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {
@@ -778,7 +778,7 @@ export async function executeWebhook(
 			const mcpListToolsRelayValue =
 				firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
 			if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
-				const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+				const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 				const publisher = Container.get(Publisher);
 				await publisher.publishMcpRelay({
 					sessionId: mcpListToolsRelayValue.sessionId,

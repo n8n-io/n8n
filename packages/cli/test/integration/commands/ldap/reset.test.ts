@@ -16,17 +16,17 @@ import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Reset } from '@/commands/ldap/reset';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { getLdapSynchronizations, saveLdapSynchronization } from '@/modules/ldap.ee/helpers.ee';
-import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
-import { Push } from '@/push';
-import { Telemetry } from '@/telemetry';
-import { setupTestCommand } from '@test-integration/utils/test-command';
+import { Reset } from '@/commands/ldap/reset.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { getLdapSynchronizations, saveLdapSynchronization } from '@/modules/ldap.ee/helpers.ee.js';
+import { LdapService } from '@/modules/ldap.ee/ldap.service.ee.js';
+import { Push } from '@/push/index.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { setupTestCommand } from '@test-integration/utils/test-command.js';
 
-import { saveCredential } from '../../shared/db/credentials';
-import { createLdapUser, createMember, getUserById } from '../../shared/db/users';
-import { createLdapConfig } from '../../shared/ldap';
+import { saveCredential } from '../../shared/db/credentials.js';
+import { createLdapUser, createMember, getUserById } from '../../shared/db/users.js';
+import { createLdapConfig } from '../../shared/ldap.js';
 
 mockInstance(Telemetry);
 

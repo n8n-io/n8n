@@ -7,17 +7,17 @@ import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import type { IncomingHttpHeaders } from 'node:http';
 
-import type { AuthService } from '@/auth/auth.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import type { CredentialsHelper } from '@/credentials-helper';
-import type { EventService } from '@/events/event.service';
-import type { ExternalHooks } from '@/external-hooks';
-import type { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
-import type { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
-import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
-import type { CacheService } from '@/services/cache/cache.service';
-import type { UrlService } from '@/services/url.service';
+import type { AuthService } from '@/auth/auth.service.js';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import type { CredentialsHelper } from '@/credentials-helper.js';
+import type { EventService } from '@/events/event.service.js';
+import type { ExternalHooks } from '@/external-hooks.js';
+import type { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service.js';
+import type { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy.js';
+import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service.js';
+import type { CacheService } from '@/services/cache/cache.service.js';
+import type { UrlService } from '@/services/url.service.js';
 
 interface Received {
 	method?: string;

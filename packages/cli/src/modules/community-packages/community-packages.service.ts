@@ -13,19 +13,26 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { valid } from 'semver';
 
-import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { toError } from '@/utils';
+import {
+	NODE_PACKAGE_PREFIX,
+	NPM_PACKAGE_STATUS_GOOD,
+	RESPONSE_ERROR_MESSAGES,
+} from '@/constants.js';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
+import { License } from '@/license.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import { toError } from '@/utils.js';
 
-import { getCommunityNodeTypes, type StrapiCommunityNodeType } from './community-node-types-utils';
-import { CommunityPackagesConfig } from './community-packages.config';
-import type { CommunityPackages } from './community-packages.types';
-import { InstalledPackages } from './installed-packages.entity';
-import { InstalledPackagesRepository } from './installed-packages.repository';
-import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from './npm-utils';
+import {
+	getCommunityNodeTypes,
+	type StrapiCommunityNodeType,
+} from './community-node-types-utils.js';
+import { CommunityPackagesConfig } from './community-packages.config.js';
+import type { CommunityPackages } from './community-packages.types.js';
+import { InstalledPackages } from './installed-packages.entity.js';
+import { InstalledPackagesRepository } from './installed-packages.repository.js';
+import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from './npm-utils.js';
 
 const asyncExecFile = promisify(execFile);
 

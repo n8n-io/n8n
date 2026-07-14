@@ -2,7 +2,7 @@ import { CredentialsEntity, CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { mockEntityManager } from '@test/mocking';
+import { mockEntityManager } from '@test/mocking.js';
 
 const entityManager = mockEntityManager(CredentialsEntity);
 const repository = Container.get(CredentialsRepository);

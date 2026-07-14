@@ -5,9 +5,9 @@ import { randomUUID } from 'crypto';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ApiKeyAudience } from 'n8n-workflow';
 
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { JwtService } from '@/services/jwt.service';
-import { UserWithContext } from '@/services/oauth-token-verifier-proxy.service';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { UserWithContext } from '@/services/oauth-token-verifier-proxy.service.js';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';

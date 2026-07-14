@@ -2,11 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IRedactedFieldMarker } from 'n8n-workflow';
 
-import type { RedactableExecution } from '@/executions/execution-redaction';
-import { NodeTypes } from '@/node-types';
+import type { RedactableExecution } from '@/executions/execution-redaction.js';
+import { NodeTypes } from '@/node-types.js';
 
-import type { RedactionContext } from '../../execution-redaction.interfaces';
-import { NodeDefinedFieldRedactionStrategy } from '../node-defined-field-redaction.strategy';
+import type { RedactionContext } from '../../execution-redaction.interfaces.js';
+import { NodeDefinedFieldRedactionStrategy } from '../node-defined-field-redaction.strategy.js';
 
 const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContext => ({
 	user: { id: 'user-1' } as RedactionContext['user'],

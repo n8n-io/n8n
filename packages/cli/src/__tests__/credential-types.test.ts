@@ -2,8 +2,8 @@ import { UnrecognizedCredentialTypeError } from 'n8n-core';
 import type { ICredentialType, LoadedClass } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialTypes } from '@/credential-types';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CredentialTypes } from '@/credential-types.js';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
 
 describe('CredentialTypes', () => {
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();

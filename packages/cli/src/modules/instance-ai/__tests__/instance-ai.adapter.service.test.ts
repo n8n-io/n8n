@@ -1,7 +1,7 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
 	const { WorkflowSaveConflictError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error'
+		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error.js'
 	);
 	return {
 		WorkflowSaveConflictError,
@@ -54,10 +54,10 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { NodeCatalogService } from '@/node-catalog';
-import type { NodeTypes } from '@/node-types';
-import type { PostHogClient } from '@/posthog';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { NodeCatalogService } from '@/node-catalog/index.js';
+import type { NodeTypes } from '@/node-types.js';
+import type { PostHogClient } from '@/posthog/index.js';
 
 import {
 	extractExecutionResult,
@@ -67,7 +67,7 @@ import {
 	resolveDataTableByIdOrName,
 	truncateNodeOutput,
 	truncateResultData,
-} from '../instance-ai.adapter.service';
+} from '../instance-ai.adapter.service.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1219,20 +1219,20 @@ import type {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
+import type { DataTableService } from '@/modules/data-table/data-table.service.js';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
-import type { WorkflowService } from '@/workflows/workflow.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import type { License } from '@/license';
-import type { RoleService } from '@/services/role.service';
+import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error.js';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import type { License } from '@/license.js';
+import type { RoleService } from '@/services/role.service.js';
 
 import type { OutboundHttp } from '@n8n/backend-network';
 
-import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { InstanceAiAdapterService } from '../instance-ai.adapter.service.js';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
 

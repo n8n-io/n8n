@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { AgentMemoryEntryCursorEntity } from '../entities/agent-memory-entry-cursor.entity';
+import { AgentMemoryEntryCursorEntity } from '../entities/agent-memory-entry-cursor.entity.js';
 
 @Service()
 export class AgentMemoryEntryCursorRepository extends Repository<AgentMemoryEntryCursorEntity> {

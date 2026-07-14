@@ -26,30 +26,30 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubExecutionService } from './chat-hub-execution.service';
-import { ChatHubAuthenticationMetadata } from './chat-hub-extractor';
-import type { ChatHubMessage } from './chat-hub-message.entity';
-import type { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
-import { ChatHubTitleService } from './chat-hub-title.service';
-import { ChatHubToolService } from './chat-hub-tool.service';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { ChatHubModelsService } from './chat-hub.models.service';
+import { ChatHubAgentService } from './chat-hub-agent.service.js';
+import { ChatHubExecutionService } from './chat-hub-execution.service.js';
+import { ChatHubAuthenticationMetadata } from './chat-hub-extractor.js';
+import type { ChatHubMessage } from './chat-hub-message.entity.js';
+import type { ChatHubSession, IChatHubSession } from './chat-hub-session.entity.js';
+import { ChatHubTitleService } from './chat-hub-title.service.js';
+import { ChatHubToolService } from './chat-hub-tool.service.js';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service.js';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service.js';
+import { ChatHubModelsService } from './chat-hub.models.service.js';
 import {
 	HumanMessagePayload,
 	RegenerateMessagePayload,
 	EditMessagePayload,
 	PreparedChatWorkflow,
-} from './chat-hub.types';
-import { ChatHubMessageRepository } from './chat-message.repository';
-import { ChatHubSessionRepository } from './chat-session.repository';
-import { ChatStreamService } from './chat-stream.service';
+} from './chat-hub.types.js';
+import { ChatHubMessageRepository } from './chat-message.repository.js';
+import { ChatHubSessionRepository } from './chat-session.repository.js';
+import { ChatStreamService } from './chat-stream.service.js';
 
 @Service()
 export class ChatHubService {

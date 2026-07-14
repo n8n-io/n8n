@@ -7,7 +7,7 @@ import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { DATA_TABLE_NODE_TYPES, INode, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
+import { EventService } from '@/events/event.service.js';
 
 // A safety limit to prevent infinite loops in indexing.
 const LOOP_LIMIT = 1_000_000_000;

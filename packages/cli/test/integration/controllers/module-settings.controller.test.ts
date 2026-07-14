@@ -1,11 +1,11 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ModuleSettings } from '@n8n/decorators';
 
-import { FrontendService } from '@/services/frontend.service';
+import { FrontendService } from '@/services/frontend.service.js';
 
-import { createMember, createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { createMember, createOwner } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import { setupTestServer } from '../shared/utils/index.js';
 
 describe('ModuleSettingsController', () => {
 	const frontendService = mockInstance(FrontendService);

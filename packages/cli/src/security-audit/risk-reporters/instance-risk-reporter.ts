@@ -7,17 +7,17 @@ import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { N8N_VERSION } from '@/constants';
-import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { isApiEnabled } from '@/public-api';
+import { N8N_VERSION } from '@/constants.js';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config.js';
+import { isApiEnabled } from '@/public-api/index.js';
 import {
 	ENV_VARS_DOCS_URL,
 	INSTANCE_REPORT,
 	WEBHOOK_NODE_TYPE,
 	WEBHOOK_VALIDATOR_NODE_TYPES,
-} from '@/security-audit/constants';
-import type { RiskReporter, Risk, n8n } from '@/security-audit/types';
-import { toFlaggedNode } from '@/security-audit/utils';
+} from '@/security-audit/constants.js';
+import type { RiskReporter, Risk, n8n } from '@/security-audit/types.js';
+import { toFlaggedNode } from '@/security-audit/utils.js';
 
 const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 

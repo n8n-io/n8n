@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { AgentChatSubscription } from '../entities/agent-chat-subscription.entity';
+import { AgentChatSubscription } from '../entities/agent-chat-subscription.entity.js';
 
 export interface AgentChatSubscriptionScope {
 	agentId: string;

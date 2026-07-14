@@ -1,10 +1,10 @@
 import { Container } from '@n8n/di';
 
-import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
-import { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
-import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
-import { retryUntil } from '@test-integration/retry-until';
-import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server.js';
+import { TaskBroker } from '@/task-runners/task-broker/task-broker.service.js';
+import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js.js';
+import { retryUntil } from '@test-integration/retry-until.js';
+import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server.js';
 
 describe('TaskRunnerProcess', () => {
 	// Restarting the runner spawns a fresh `node` child process and waits for the

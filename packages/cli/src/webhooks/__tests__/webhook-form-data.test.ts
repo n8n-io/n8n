@@ -5,10 +5,10 @@ import { createServer } from 'node:http';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent';
 
-import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
-import { rawBodyReader } from '@/middlewares';
+import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error.js';
+import { rawBodyReader } from '@/middlewares/index.js';
 
-import { createMultiFormDataParser } from '../webhook-form-data';
+import { createMultiFormDataParser } from '../webhook-form-data.js';
 
 // Formidable requires FS to store the uploaded files
 vi.unmock('node:fs');

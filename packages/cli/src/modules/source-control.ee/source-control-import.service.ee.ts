@@ -36,22 +36,22 @@ import { shouldAutoPublishWorkflow, jsonParse, UnexpectedError, UserError } from
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import type { IWorkflowToImport } from '@/interfaces';
-import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
-import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
-import { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
-import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
-import { isUniqueConstraintError } from '@/response-helper';
-import { TagService } from '@/services/tag.service';
-import { assertNever } from '@/utils';
-import { validateWorkflowNodeGroups } from '@/workflow-helpers';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import type { IWorkflowToImport } from '@/interfaces.js';
+import { DataTableColumn } from '@/modules/data-table/data-table-column.entity.js';
+import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository.js';
+import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service.js';
+import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service.js';
+import { DataTable } from '@/modules/data-table/data-table.entity.js';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
+import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils.js';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service.js';
+import { isUniqueConstraintError } from '@/response-helper.js';
+import { TagService } from '@/services/tag.service.js';
+import { assertNever } from '@/utils.js';
+import { validateWorkflowNodeGroups } from '@/workflow-helpers.js';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -63,8 +63,8 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
-} from './constants';
-import { SourceControlContextFactory } from './source-control-context.factory';
+} from './constants.js';
+import { SourceControlContextFactory } from './source-control-context.factory.js';
 import {
 	getCredentialExportPath,
 	getDataTableColumnKey,
@@ -75,29 +75,32 @@ import {
 	mapInBatches,
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
-} from './source-control-helper.ee';
-import { SourceControlScopedService } from './source-control-scoped.service';
+} from './source-control-helper.ee.js';
+import { SourceControlScopedService } from './source-control-scoped.service.js';
 import type {
 	ExportableCredential,
 	StatusExportableCredential,
-} from './types/exportable-credential';
+} from './types/exportable-credential.js';
 import type {
 	DataTableResourceOwner,
 	ExportableDataTable,
 	StatusExportableDataTable,
-} from './types/exportable-data-table';
-import type { ExportableFolder } from './types/exportable-folders';
-import type { ExportableProject, ExportableProjectWithFileName } from './types/exportable-project';
-import type { ExportableTags } from './types/exportable-tags';
-import { ExportableVariable } from './types/exportable-variable';
+} from './types/exportable-data-table.js';
+import type { ExportableFolder } from './types/exportable-folders.js';
+import type {
+	ExportableProject,
+	ExportableProjectWithFileName,
+} from './types/exportable-project.js';
+import type { ExportableTags } from './types/exportable-tags.js';
+import { ExportableVariable } from './types/exportable-variable.js';
 import type {
 	RemoteResourceOwner,
 	StatusResourceOwner,
 	TeamResourceOwner,
-} from './types/resource-owner';
-import { SourceControlContext } from './types/source-control-context';
-import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
+} from './types/resource-owner.js';
+import { SourceControlContext } from './types/source-control-context.js';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id.js';
+import { VariablesService } from '../../environments.ee/variables/variables.service.ee.js';
 
 const toStatusOwner = (project: Project | undefined): StatusResourceOwner | undefined => {
 	if (project?.type) {

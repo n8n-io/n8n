@@ -1,4 +1,4 @@
-import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock.js';
 
 const flushMacrotasks = async () => await new Promise((resolve) => setImmediate(resolve));
 

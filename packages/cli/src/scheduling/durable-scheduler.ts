@@ -7,10 +7,10 @@ import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
 import { createScheduler, executorLookaheadSeconds } from '@n8n/scheduler';
 import { InstanceSettings, Tracing } from 'n8n-core';
 
-import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
+import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service.js';
 
-import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
-import { createSchedulerTracer } from './scheduler-tracer';
+import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler.js';
+import { createSchedulerTracer } from './scheduler-tracer.js';
 
 /**
  * The database-backed {@link Scheduler} and its process lifecycle (the run side).

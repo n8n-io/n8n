@@ -8,17 +8,17 @@ import {
 import { Service } from '@n8n/di';
 import { v4 as uuidv4 } from 'uuid';
 
-import { ChatExecutionManager } from '@/chat/chat-execution-manager';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ChatExecutionManager } from '@/chat/chat-execution-manager.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
 import {
 	ChatHubExecutionStore,
 	type ChatHubExecutionContext,
-} from './chat-hub-execution-store.service';
-import { ChatHubExecutionService } from './chat-hub-execution.service';
-import { ChatHubMessageRepository } from './chat-message.repository';
-import { ChatStreamService } from './chat-stream.service';
-import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
+} from './chat-hub-execution-store.service.js';
+import { ChatHubExecutionService } from './chat-hub-execution.service.js';
+import { ChatHubMessageRepository } from './chat-message.repository.js';
+import { ChatStreamService } from './chat-stream.service.js';
+import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils.js';
 
 /**
  * Service responsible for handling execution lifecycle events for non-streaming

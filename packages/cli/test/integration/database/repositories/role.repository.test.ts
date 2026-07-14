@@ -7,8 +7,8 @@ import {
 	createSystemRole,
 	createCustomRoleWithScopes,
 	createTestScopes,
-} from '../../shared/db/roles';
-import { createUser } from '../../shared/db/users';
+} from '../../shared/db/roles.js';
+import { createUser } from '../../shared/db/users.js';
 
 describe('RoleRepository', () => {
 	let roleRepository: RoleRepository;

@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { DeepPartial } from '@n8n/typeorm';
 
-import type { InstanceAiPendingConfirmation } from './entities/instance-ai-pending-confirmation.entity';
+import type { InstanceAiPendingConfirmation } from './entities/instance-ai-pending-confirmation.entity.js';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);

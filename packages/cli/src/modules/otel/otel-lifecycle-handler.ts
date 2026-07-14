@@ -10,12 +10,12 @@ import type {
 import { Service } from '@n8n/di';
 import type { ICustomTelemetryTag, IWorkflowBase } from 'n8n-workflow';
 
-import { ExecutionLevelTracer } from './execution-level-tracer';
-import type { CustomAttributes } from './execution-level-tracer.types';
-import { OtelSettingsService } from './otel-settings.service';
-import { OtelService } from './otel.service';
-import { TraceContextService } from './tracing-context';
-import { OwnershipService } from '../../services/ownership.service';
+import { ExecutionLevelTracer } from './execution-level-tracer.js';
+import type { CustomAttributes } from './execution-level-tracer.types.js';
+import { OtelSettingsService } from './otel-settings.service.js';
+import { OtelService } from './otel.service.js';
+import { TraceContextService } from './tracing-context.js';
+import { OwnershipService } from '../../services/ownership.service.js';
 
 const isCustomTelemetryTag = (value: unknown): value is ICustomTelemetryTag =>
 	typeof value === 'object' &&

@@ -5,17 +5,17 @@ import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 
-import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ExternalHooks } from '@/external-hooks';
-import { MFA_ENFORCE_SETTING } from '@/mfa/constants';
-import { MFA_CACHE_KEY } from '@/mfa/mfa.service';
-import { TOTPService } from '@/mfa/totp.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { AuthService } from '@/auth/auth.service.js';
+import config from '@/config/index.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { MFA_ENFORCE_SETTING } from '@/mfa/constants.js';
+import { MFA_CACHE_KEY } from '@/mfa/mfa.service.js';
+import { TOTPService } from '@/mfa/totp.service.js';
+import { CacheService } from '@/services/cache/cache.service.js';
 
-import { createOwner, createUser, createUserWithMfaEnabled } from '../shared/db/users';
-import * as utils from '../shared/utils';
+import { createOwner, createUser, createUserWithMfaEnabled } from '../shared/db/users.js';
+import * as utils from '../shared/utils/index.js';
 
 vi.mock('@/telemetry');
 

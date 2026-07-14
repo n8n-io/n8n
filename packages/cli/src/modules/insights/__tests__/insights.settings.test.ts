@@ -2,8 +2,8 @@ import type { LicenseState } from '@n8n/backend-common';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import { InsightsSettings } from '../insights.settings';
+import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository.js';
+import { InsightsSettings } from '../insights.settings.js';
 
 describe('InsightsSettings', () => {
 	let licenseMock: Mocked<LicenseState>;

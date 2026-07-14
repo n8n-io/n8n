@@ -1,4 +1,4 @@
-import { decideWorkflowId } from '../workflow-id-policy';
+import { decideWorkflowId } from '../workflow-id-policy.js';
 
 describe('decideWorkflowId', () => {
 	describe('source', () => {

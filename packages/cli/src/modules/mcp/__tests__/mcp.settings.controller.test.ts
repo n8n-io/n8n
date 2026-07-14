@@ -5,17 +5,17 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { ListQuery } from '@/requests';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import type { ListQuery } from '@/requests.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { UpdateAllowedRedirectUrisDto } from '../dto/update-allowed-redirect-uris.dto';
-import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
-import { UpdateWorkflowsAvailabilityDto } from '../dto/update-workflows-availability.dto';
-import { McpServerApiKeyService } from '../mcp-api-key.service';
-import { McpSettingsController } from '../mcp.settings.controller';
-import { McpSettingsService } from '../mcp.settings.service';
-import { createWorkflow } from './mock.utils';
+import { UpdateAllowedRedirectUrisDto } from '../dto/update-allowed-redirect-uris.dto.js';
+import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto.js';
+import { UpdateWorkflowsAvailabilityDto } from '../dto/update-workflows-availability.dto.js';
+import { McpServerApiKeyService } from '../mcp-api-key.service.js';
+import { McpSettingsController } from '../mcp.settings.controller.js';
+import { McpSettingsService } from '../mcp.settings.service.js';
+import { createWorkflow } from './mock.utils.js';
 
 const createReq = (
 	body: unknown,

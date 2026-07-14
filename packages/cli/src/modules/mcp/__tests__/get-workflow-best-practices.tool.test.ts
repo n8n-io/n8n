@@ -7,10 +7,10 @@ import {
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { Telemetry } from '@/telemetry';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { createGetWorkflowBestPracticesTool } from '../tools/workflow-builder/get-workflow-best-practices.tool';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import { createGetWorkflowBestPracticesTool } from '../tools/workflow-builder/get-workflow-best-practices.tool.js';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL: {

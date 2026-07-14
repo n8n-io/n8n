@@ -1,8 +1,8 @@
 import type { MockedFunction } from 'vitest';
 
-import { createMember, createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { createMember, createOwner } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import { setupTestServer } from '../shared/utils/index.js';
 
 vi.mock('fs/promises', () => ({
 	readFile: vi.fn(),

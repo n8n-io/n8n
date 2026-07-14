@@ -5,13 +5,13 @@ import {
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 } from '@n8n/api-types';
 
-import type { NodeCatalogService } from '@/node-catalog';
+import type { NodeCatalogService } from '@/node-catalog/index.js';
 
 import {
 	isAgentToolNodeType,
 	isExecutableNodeType,
 	AgentsToolsService,
-} from '../agents-tools.service';
+} from '../agents-tools.service.js';
 
 const ctx = {
 	resumeData: undefined,

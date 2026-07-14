@@ -4,7 +4,7 @@ import {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
-} from '../episodic-memory';
+} from '../episodic-memory.js';
 
 describe('n8n episodic memory policy', () => {
 	it('uses the n8n episodic memory defaults', () => {

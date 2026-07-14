@@ -15,12 +15,12 @@ import {
 } from 'n8n-workflow';
 import { agent as testAgent } from 'supertest';
 
-import { createUser } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import { initActiveWorkflowManager } from './shared/utils';
+import { createUser } from './shared/db/users.js';
+import type { SuperAgentTest } from './shared/types.js';
+import { initActiveWorkflowManager } from './shared/utils/index.js';
 
-import { NodeTypes } from '@/node-types';
-import { WebhookServer } from '@/webhooks/webhook-server';
+import { NodeTypes } from '@/node-types.js';
+import { WebhookServer } from '@/webhooks/webhook-server.js';
 
 vi.unmock('node:fs');
 

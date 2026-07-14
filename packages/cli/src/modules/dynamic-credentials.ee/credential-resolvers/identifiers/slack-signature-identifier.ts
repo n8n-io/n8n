@@ -5,7 +5,7 @@ import type { ICredentialContext } from 'n8n-workflow';
 import { parse as parseQueryString } from 'querystring';
 import { z } from 'zod';
 
-import { IdentifierValidationError, type ITokenIdentifier } from './identifier-interface';
+import { IdentifierValidationError, type ITokenIdentifier } from './identifier-interface.js';
 
 const MAX_TIMESTAMP_AGE_SECONDS = 300; // 5 minutes — Slack's recommended window
 

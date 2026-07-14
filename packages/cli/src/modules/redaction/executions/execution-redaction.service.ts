@@ -7,21 +7,21 @@ import {
 	WorkflowSettings,
 } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
-import { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error.js';
+import { EventService } from '@/events/event.service.js';
 import type {
 	ExecutionRedaction,
 	ExecutionRedactionOptions,
 	RedactableExecution,
-} from '@/executions/execution-redaction';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+} from '@/executions/execution-redaction.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 import type {
 	IExecutionRedactionStrategy,
 	RedactionContext,
-} from './execution-redaction.interfaces';
-import { FullItemRedactionStrategy } from './strategies/full-item-redaction.strategy';
+} from './execution-redaction.interfaces.js';
+import { FullItemRedactionStrategy } from './strategies/full-item-redaction.strategy.js';
 
 const MANUAL_MODES: ReadonlySet<WorkflowExecuteMode> = new Set(['manual']);
 

@@ -8,7 +8,7 @@ import fs, { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { FsByteStore } from '../fs-byte-store';
+import { FsByteStore } from '../fs-byte-store.js';
 
 vi.unmock('node:fs/promises');
 

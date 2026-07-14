@@ -6,7 +6,7 @@ import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import { CommandRegistry } from '../command-registry';
+import { CommandRegistry } from '../command-registry.js';
 
 vi.mock('fast-glob');
 vi.mock('node:fs/promises', () => ({ access: vi.fn() }));

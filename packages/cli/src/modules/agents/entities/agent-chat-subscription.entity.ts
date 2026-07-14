@@ -1,7 +1,7 @@
 import { WithTimestamps } from '@n8n/db';
 import { Entity, JoinColumn, ManyToOne, PrimaryColumn, type Relation } from '@n8n/typeorm';
 
-import { Agent } from './agent.entity';
+import { Agent } from './agent.entity.js';
 
 /** Subscribed chat thread for an agent integration, shared by all main instances. */
 @Entity({ name: 'agent_chat_subscriptions' })

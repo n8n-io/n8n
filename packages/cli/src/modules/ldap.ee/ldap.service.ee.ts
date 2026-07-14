@@ -12,17 +12,17 @@ import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { EventService } from '@/events/event.service.js';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers';
+} from '@/sso.ee/sso-helpers.js';
 
-import { BINARY_AD_ATTRIBUTES } from './constants';
+import { BINARY_AD_ATTRIBUTES } from './constants.js';
 import {
 	createLdapUserOnLocalDb,
 	getUserByEmail,
@@ -44,7 +44,8 @@ import {
 	saveLdapSynchronization,
 	validateLdapConfigurationSchema,
 	getUserByLdapId,
-} from './helpers.ee';
+} from './helpers.ee.js';
+import { lazyImport } from '@n8n/utils/dist/lazy-import';
 
 @AuthHandler()
 export class LdapService implements IPasswordAuthHandler<User> {
@@ -184,7 +185,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		}
 		if (this.client === undefined) {
 			if (!this.ldapts) {
-				this.ldapts = await import('ldapts');
+				this.ldapts = await lazyImport(async () => await import('ldapts'));
 			}
 
 			const url = formatUrl(

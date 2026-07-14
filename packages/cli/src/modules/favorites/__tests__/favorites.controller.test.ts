@@ -1,11 +1,11 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import type { UserFavorite } from '../database/entities/user-favorite.entity';
-import { FavoritesController } from '../favorites.controller';
-import type { FavoritesService } from '../favorites.service';
+import type { UserFavorite } from '../database/entities/user-favorite.entity.js';
+import { FavoritesController } from '../favorites.controller.js';
+import type { FavoritesService } from '../favorites.service.js';
 
 describe('FavoritesController', () => {
 	const favoritesService = mock<FavoritesService>();

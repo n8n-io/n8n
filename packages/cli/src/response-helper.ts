@@ -9,9 +9,9 @@ import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
-import { classifyHttpError, isResponseError } from './errors/http-error-classifier';
-import { serializeInternalRestError } from './errors/http-error-serializers';
-import { ResponseError } from './errors/response-errors/abstract/response.error';
+import { classifyHttpError, isResponseError } from './errors/http-error-classifier.js';
+import { serializeInternalRestError } from './errors/http-error-serializers.js';
+import { ResponseError } from './errors/response-errors/abstract/response.error.js';
 
 export function sendSuccessResponse(
 	res: Response,

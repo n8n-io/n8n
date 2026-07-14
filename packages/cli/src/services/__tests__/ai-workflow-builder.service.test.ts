@@ -12,14 +12,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
-import type { Push } from '@/push';
-import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import type { UrlService } from '@/services/url.service';
-import type { Telemetry } from '@/telemetry';
+import type { License } from '@/license.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder/index.js';
+import type { Push } from '@/push/index.js';
+import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service.js';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import type { UrlService } from '@/services/url.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	AiWorkflowBuilderService: vi.fn(),

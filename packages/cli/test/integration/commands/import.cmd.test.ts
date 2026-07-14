@@ -11,15 +11,15 @@ import { Container } from '@n8n/di';
 import type { INodeType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import '@/zod-alias-support';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { ImportWorkflowsCommand } from '@/commands/import/workflow';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { setupTestCommand } from '@test-integration/utils/test-command';
+import '@/zod-alias-support.js';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { ImportWorkflowsCommand } from '@/commands/import/workflow.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { NodeTypes } from '@/node-types.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
+import { setupTestCommand } from '@test-integration/utils/test-command.js';
 
-import { createMember, createOwner } from '../shared/db/users';
+import { createMember, createOwner } from '../shared/db/users.js';
 
 mockInstance(LoadNodesAndCredentials);
 mockInstance(ActiveWorkflowManager);

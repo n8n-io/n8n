@@ -2,7 +2,7 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import type { PrometheusMetricsCollector } from './base';
+import type { PrometheusMetricsCollector } from './base.js';
 
 /** Registers prom-client default process metrics (CPU, memory, GC, etc.) under the configured prefix. */
 @Service()

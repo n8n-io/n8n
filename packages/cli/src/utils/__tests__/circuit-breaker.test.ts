@@ -1,4 +1,4 @@
-import { CircuitBreaker, CircuitBreakerOpen } from '../circuit-breaker';
+import { CircuitBreaker, CircuitBreakerOpen } from '../circuit-breaker.js';
 
 describe('CircuitBreaker', () => {
 	beforeEach(() => {

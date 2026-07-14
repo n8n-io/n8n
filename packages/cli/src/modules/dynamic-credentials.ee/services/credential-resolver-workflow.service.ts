@@ -4,13 +4,13 @@ import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { ICredentialContext, INode, isNodeWithWorkflowSelector, jsonParse } from 'n8n-workflow';
 
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service.js';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository.js';
 
 // Upper bound on distinct workflows traversed per status check. Bounds the number of sequential
 // DB loads on the unauthenticated execution-status endpoint regardless of tree shape (deep chains

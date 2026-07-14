@@ -4,8 +4,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
-import { AgentSandboxController } from '../agent-sandbox.controller';
+import type { AgentKnowledgeService } from '../agent-knowledge.service.js';
+import { AgentSandboxController } from '../agent-sandbox.controller.js';
 
 describe('AgentSandboxController', () => {
 	it('accepts knowledge sandbox warmup before files exist', async () => {

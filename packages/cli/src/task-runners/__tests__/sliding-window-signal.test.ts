@@ -1,6 +1,6 @@
 import { TypedEmitter } from '@n8n/backend-common';
 
-import { SlidingWindowSignal } from '../sliding-window-signal';
+import { SlidingWindowSignal } from '../sliding-window-signal.js';
 
 type TestEventMap = {
 	testEvent: string;

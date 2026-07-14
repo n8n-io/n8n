@@ -5,10 +5,10 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION } from '@/constants.js';
 
-import { REGISTRY_CONSTANTS } from './instance-registry.types';
-import type { InstanceStorage } from './storage/instance-storage.interface';
+import { REGISTRY_CONSTANTS } from './instance-registry.types.js';
+import type { InstanceStorage } from './storage/instance-storage.interface.js';
 
 /**
  * Core service for instance lifecycle management in the Instance Registry.
@@ -110,12 +110,12 @@ export class InstanceRegistryService {
 		const useRedis = this.instanceSettings.isMultiMain || this.executionsConfig.mode === 'queue';
 
 		if (useRedis) {
-			const { RedisInstanceStorage } = await import('./storage/redis-instance-storage');
+			const { RedisInstanceStorage } = await import('./storage/redis-instance-storage.js');
 			const { Container } = await import('@n8n/di');
 			return Container.get(RedisInstanceStorage);
 		}
 
-		const { MemoryInstanceStorage } = await import('./storage/memory-storage');
+		const { MemoryInstanceStorage } = await import('./storage/memory-storage.js');
 		return new MemoryInstanceStorage();
 	}
 

@@ -4,9 +4,9 @@ import type { DbConnection } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@/events/event.service.js';
 
-import { WorkflowHistoryCompactionService } from '../workflow-history-compaction.service';
+import { WorkflowHistoryCompactionService } from '../workflow-history-compaction.service.js';
 
 describe('WorkflowHistoryCompactionService', () => {
 	const dbConnection = mock<DbConnection>({

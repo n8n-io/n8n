@@ -4,10 +4,10 @@ import type { Project } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { type Workflow, type INode, type WorkflowSettings } from 'n8n-workflow';
 
-import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import { AccessService } from '@/services/access.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error.js';
+import { AccessService } from '@/services/access.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { UrlService } from '@/services/url.service.js';
 
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;

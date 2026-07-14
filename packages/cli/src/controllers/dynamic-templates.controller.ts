@@ -1,8 +1,8 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController } from '@n8n/decorators';
 
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { DynamicTemplatesService } from '@/services/dynamic-templates.service';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { DynamicTemplatesService } from '@/services/dynamic-templates.service.js';
 
 @RestController('/dynamic-templates')
 export class DynamicTemplatesController {

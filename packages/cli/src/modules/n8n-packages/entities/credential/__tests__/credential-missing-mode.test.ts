@@ -1,5 +1,5 @@
-import { credentialBlockingFailures } from '../credential-missing-mode';
-import { createFailure } from '../credential.types';
+import { credentialBlockingFailures } from '../credential-missing-mode.js';
+import { createFailure } from '../credential.types.js';
 
 describe('credentialBlockingFailures', () => {
 	describe('must-preexist', () => {

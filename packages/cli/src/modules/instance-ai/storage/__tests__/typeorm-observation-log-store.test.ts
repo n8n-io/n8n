@@ -1,12 +1,12 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
-import type { InstanceAiObservation } from '../../entities/instance-ai-observation.entity';
-import type { InstanceAiMessageRepository } from '../../repositories/instance-ai-message.repository';
-import type { InstanceAiObservationCursorRepository } from '../../repositories/instance-ai-observation-cursor.repository';
-import type { InstanceAiObservationLockRepository } from '../../repositories/instance-ai-observation-lock.repository';
-import type { InstanceAiObservationRepository } from '../../repositories/instance-ai-observation.repository';
-import { TypeORMObservationLogStore } from '../typeorm-observation-log-store';
+import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity.js';
+import type { InstanceAiObservation } from '../../entities/instance-ai-observation.entity.js';
+import type { InstanceAiMessageRepository } from '../../repositories/instance-ai-message.repository.js';
+import type { InstanceAiObservationCursorRepository } from '../../repositories/instance-ai-observation-cursor.repository.js';
+import type { InstanceAiObservationLockRepository } from '../../repositories/instance-ai-observation-lock.repository.js';
+import type { InstanceAiObservationRepository } from '../../repositories/instance-ai-observation.repository.js';
+import { TypeORMObservationLogStore } from '../typeorm-observation-log-store.js';
 
 function makeMessageRow(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMessage {
 	return {

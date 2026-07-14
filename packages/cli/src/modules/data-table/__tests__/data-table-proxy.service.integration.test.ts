@@ -13,13 +13,13 @@ import type {
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import * as checkAccess from '@/permissions.ee/check-access';
-import type { OwnershipService } from '@/services/ownership.service';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
+import * as checkAccess from '@/permissions.ee/check-access.js';
+import type { OwnershipService } from '@/services/ownership.service.js';
 
-import type { DataTableAggregateService } from '../data-table-aggregate.service';
-import { DataTableProxyService } from '../data-table-proxy.service';
-import type { DataTableService } from '../data-table.service';
+import type { DataTableAggregateService } from '../data-table-aggregate.service.js';
+import { DataTableProxyService } from '../data-table-proxy.service.js';
+import type { DataTableService } from '../data-table.service.js';
 
 const PROJECT_ID = 'project-id';
 

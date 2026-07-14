@@ -1,9 +1,9 @@
-import { AgentThreadsController } from '../agent-threads.controller';
+import { AgentThreadsController } from '../agent-threads.controller.js';
 import {
 	getControllerMetadata,
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
-} from './test-utils/controller-route-metadata';
+} from './test-utils/controller-route-metadata.js';
 
 describe('AgentThreadsController route access scopes', () => {
 	expectProjectScopedAgentRoutes(AgentThreadsController);

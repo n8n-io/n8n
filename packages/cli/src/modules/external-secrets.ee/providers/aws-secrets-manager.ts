@@ -4,14 +4,14 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { type INodeProperties } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE } from '../constants';
+import { DOCS_HELP_NOTICE } from '../constants.js';
 import {
 	logSecretsProviderOperationFailure,
 	type LogContext,
 	type SecretsProviderOperationFailureParams,
-} from '../errors/secrets-provider-errors';
-import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error';
-import { SecretsProvider, type SecretsProviderSettings } from '../types';
+} from '../errors/secrets-provider-errors.js';
+import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error.js';
+import { SecretsProvider, type SecretsProviderSettings } from '../types.js';
 
 export type Secret = {
 	secretName: string;

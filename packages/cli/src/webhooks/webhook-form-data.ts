@@ -1,7 +1,7 @@
 import formidable from 'formidable';
 import type { IncomingMessage } from 'http';
 
-import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
+import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error.js';
 
 // formidable flags "payload too large" conditions (a file too big, the total
 // upload too big, too many files/fields) with `httpCode: 413`. n8n's error

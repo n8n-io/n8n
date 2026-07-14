@@ -5,12 +5,12 @@ import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { type INodeTypeBaseDescription } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
+import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events.js';
 
-import { TaskRejectError } from '../errors/task-reject.error';
-import { TaskRunnerExecutionTimeoutError } from '../errors/task-runner-execution-timeout.error';
-import { TaskBroker } from '../task-broker.service';
-import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
+import { TaskRejectError } from '../errors/task-reject.error.js';
+import { TaskRunnerExecutionTimeoutError } from '../errors/task-runner-execution-timeout.error.js';
+import { TaskBroker } from '../task-broker.service.js';
+import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service.js';
 
 const createValidUntil = (ms: number) => process.hrtime.bigint() + BigInt(ms * 1_000_000);
 

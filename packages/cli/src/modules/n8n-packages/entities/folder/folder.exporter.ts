@@ -1,18 +1,18 @@
 import type { Folder, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { FolderFinderService } from '@/services/folder-finder.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { FolderFinderService } from '@/services/folder-finder.service.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { FolderSerializer } from './folder.serializer';
-import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
-import { mergeRequirements } from '../requirements.types';
-import type { WorkflowExportRequirements } from '../requirements.types';
-import { WorkflowExporter } from '../workflow/workflow.exporter';
-import type { WorkflowExportResult } from '../workflow/workflow.exporter';
+import { FolderSerializer } from './folder.serializer.js';
+import type { PackageWriter } from '../../io/package-writer.js';
+import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator.js';
+import type { ManifestEntry } from '../../spec/manifest.schema.js';
+import { assertEveryRequestedEntityAccessible } from '../package-export.errors.js';
+import { mergeRequirements } from '../requirements.types.js';
+import type { WorkflowExportRequirements } from '../requirements.types.js';
+import { WorkflowExporter } from '../workflow/workflow.exporter.js';
+import type { WorkflowExportResult } from '../workflow/workflow.exporter.js';
 
 export interface FolderExportRequest {
 	user: User;

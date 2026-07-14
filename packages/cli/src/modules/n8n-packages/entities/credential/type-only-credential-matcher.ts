@@ -1,16 +1,16 @@
 import { Service } from '@n8n/di';
 
-import { CredentialTypes } from '@/credential-types';
-import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialTypes } from '@/credential-types.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
 
 import {
 	CredentialMatcher,
 	type CredentialMatcherContext,
 	type ResolvedCredentialMatch,
 	type UsableCredential,
-} from './credential-matcher';
-import { resolveByCandidateFilter } from './credential-tier-selection';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+} from './credential-matcher.js';
+import { resolveByCandidateFilter } from './credential-tier-selection.js';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema.js';
 
 @Service()
 export class TypeOnlyCredentialMatcher extends CredentialMatcher {

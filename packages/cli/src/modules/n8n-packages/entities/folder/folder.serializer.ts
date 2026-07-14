@@ -1,7 +1,10 @@
 import type { Folder } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { serializedFolderSchema, type SerializedFolder } from '../../spec/serialized/folder.schema';
+import {
+	serializedFolderSchema,
+	type SerializedFolder,
+} from '../../spec/serialized/folder.schema.js';
 
 @Service()
 export class FolderSerializer {

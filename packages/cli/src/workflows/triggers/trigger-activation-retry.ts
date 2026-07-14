@@ -1,7 +1,10 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { WebhookPathTakenError, sleep } from 'n8n-workflow';
 
-import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from '@/constants';
+import {
+	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
+	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
+} from '@/constants.js';
 
 /**
  * Determines whether an activation error is transient, i.e. worth retrying

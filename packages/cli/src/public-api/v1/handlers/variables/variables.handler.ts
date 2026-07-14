@@ -2,18 +2,18 @@ import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-typ
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { VariablesRequest } from '@/requests';
+import { VariablesController } from '@/environments.ee/variables/variables.controller.ee.js';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { VariablesRequest } from '@/requests.js';
 
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
 	validCursor,
-} from '../../shared/middlewares/global.middleware';
-import { paginateArray } from '../../shared/services/pagination.service';
+} from '../../shared/middlewares/global.middleware.js';
+import { paginateArray } from '../../shared/services/pagination.service.js';
 
 type VariablesHandlers = {
 	createVariable: PublicAPIEndpoint<AuthenticatedRequest>;

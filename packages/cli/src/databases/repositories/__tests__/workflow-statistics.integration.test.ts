@@ -4,7 +4,7 @@ import { Container } from '@n8n/di';
 import { type InsertResult, QueryFailedError } from '@n8n/typeorm';
 import { mock, mockClear } from 'vitest-mock-extended';
 
-import { mockEntityManager } from '@test/mocking';
+import { mockEntityManager } from '@test/mocking.js';
 
 // `upsertWorkflowStatistics` is SQLite-only; on Postgres, recording goes through appendIncrement + rollup.
 const runOnSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';

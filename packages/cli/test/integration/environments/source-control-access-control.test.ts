@@ -5,14 +5,14 @@ import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
-import { Telemetry } from '@/telemetry';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { createUser } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils';
+import { createUser } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils/index.js';
 
 const PRIVATE_CONNECTION_MARKER = 'ghp_private_connection_marker';
 const REPO_URL_WITH_PRIVATE_DETAIL = `https://x-access-token:${PRIVATE_CONNECTION_MARKER}@github.com/acme/private-repo.git`;

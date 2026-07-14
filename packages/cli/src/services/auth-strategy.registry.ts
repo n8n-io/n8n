@@ -1,7 +1,7 @@
 import type { AuthenticatedRequest, TokenGrant } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
+import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types.js';
 
 /**
  * Ordered registry of AuthStrategy implementations for the public API.

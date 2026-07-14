@@ -14,17 +14,17 @@ import { randomString } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
-import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
-import { JwtService } from '@/services/jwt.service';
-import { PasswordUtility } from '@/services/password.utility';
-import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
-import { UserManagementMailer } from '@/user-management/email';
+import { AuthService } from '@/auth/auth.service.js';
+import config from '@/config/index.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { License } from '@/license.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { PasswordUtility } from '@/services/password.utility.js';
+import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers.js';
+import { UserManagementMailer } from '@/user-management/email/index.js';
 
-import { createUser } from './shared/db/users';
-import { getAuthToken, setupTestServer } from './shared/utils';
+import { createUser } from './shared/db/users.js';
+import { getAuthToken, setupTestServer } from './shared/utils/index.js';
 
 config.set('userManagement.jwtSecret', randomString(5, 10));
 

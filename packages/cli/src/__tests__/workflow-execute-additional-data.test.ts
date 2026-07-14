@@ -27,22 +27,22 @@ import type PCancelable from 'p-cancelable';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ActiveExecutions } from '@/active-executions';
-import { CredentialsHelper } from '@/credentials-helper';
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { EventService } from '@/events/event.service';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ActiveExecutions } from '@/active-executions.js';
+import { CredentialsHelper } from '@/credentials-helper.js';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee.js';
+import { EventService } from '@/events/event.service.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
-} from '@/executions/pre-execution-checks';
-import { ExternalHooks } from '@/external-hooks';
-import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { Telemetry } from '@/telemetry';
+} from '@/executions/pre-execution-checks/index.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service.js';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { UrlService } from '@/services/url.service.js';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service.js';
+import { Telemetry } from '@/telemetry/index.js';
 import {
 	executeAgent,
 	executeWorkflow,
@@ -52,10 +52,10 @@ import {
 	getPublishedWorkflowData,
 	buildSubWorkflowOutput,
 	triggerReturnsLastRunOnly,
-} from '@/workflow-execute-additional-data';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { WorkflowHookContextService } from '@/workflow-hook-context.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+} from '@/workflow-execute-additional-data.js';
+import * as WorkflowHelpers from '@/workflow-helpers.js';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service.js';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
 
 const EXECUTION_ID = '123';
 const LAST_NODE_EXECUTED = 'Last node executed';

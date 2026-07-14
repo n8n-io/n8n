@@ -2,10 +2,10 @@ import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, WorkflowEntity } from '@n8n/db';
 import type { User, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { ActivationErrorsService } from '@/activation-errors.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ActiveWorkflowsService } from '@/services/active-workflows.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { ActivationErrorsService } from '@/activation-errors.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ActiveWorkflowsService } from '@/services/active-workflows.service.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 describe('ActiveWorkflowsService', () => {
 	const user = mock<User>();

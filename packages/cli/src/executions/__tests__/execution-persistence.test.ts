@@ -14,13 +14,13 @@ import type { IBinaryData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow
 import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import type { EventService } from '@/events/event.service';
-import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error';
-import type { DbStore } from '@/executions/execution-data/db-store';
-import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
-import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error.js';
+import type { EventService } from '@/events/event.service.js';
+import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error.js';
+import type { DbStore } from '@/executions/execution-data/db-store.js';
+import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store.js';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
 describe('ExecutionPersistence', () => {
 	const executionRepository = mock<ExecutionRepository>();

@@ -31,24 +31,24 @@ import { In } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialsFinderService } from './credentials-finder.service';
-import { CredentialsService } from './credentials.service';
-import { EnterpriseCredentialsService } from './credentials.service.ee';
-import { getExternalSecretExpressionPaths } from './external-secrets.utils';
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy.js';
+import { CredentialsFinderService } from './credentials-finder.service.js';
+import { CredentialsService } from './credentials.service.js';
+import { EnterpriseCredentialsService } from './credentials.service.ee.js';
+import { getExternalSecretExpressionPaths } from './external-secrets.utils.js';
 
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { listQueryMiddleware } from '@/middlewares';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { CredentialRequest } from '@/requests';
-import { NamingService } from '@/services/naming.service';
-import { UserManagementMailer } from '@/user-management/email';
-import * as utils from '@/utils';
+import { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import { listQueryMiddleware } from '@/middlewares/index.js';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
+import { CredentialRequest } from '@/requests.js';
+import { NamingService } from '@/services/naming.service.js';
+import { UserManagementMailer } from '@/user-management/email/index.js';
+import * as utils from '@/utils.js';
 
 @RestController('/credentials')
 export class CredentialsController {

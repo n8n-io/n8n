@@ -26,12 +26,12 @@ import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { AUTH_COOKIE_NAME } from '@/constants';
-import { ExecutionService } from '@/executions/execution.service';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Push } from '@/push';
+import { AUTH_COOKIE_NAME } from '@/constants.js';
+import { ExecutionService } from '@/executions/execution.service.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { Push } from '@/push/index.js';
 
-export { setupTestServer } from './test-server';
+export { setupTestServer } from './test-server.js';
 
 // ----------------------------------
 //          initializers
@@ -49,7 +49,7 @@ export async function initActiveWorkflowManager() {
 
 	mockInstance(Push);
 	mockInstance(ExecutionService);
-	const { ActiveWorkflowManager } = await import('@/active-workflow-manager');
+	const { ActiveWorkflowManager } = await import('@/active-workflow-manager.js');
 	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 	await activeWorkflowManager.init();
 	return activeWorkflowManager;
@@ -181,7 +181,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 //           community nodes
 // ----------------------------------
 
-export * from './community-nodes';
+export * from './community-nodes.js';
 
 // ----------------------------------
 //           workflow

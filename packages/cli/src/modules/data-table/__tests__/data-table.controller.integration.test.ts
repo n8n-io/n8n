@@ -13,18 +13,18 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import type { DataTableRow } from 'n8n-workflow';
 
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
-import { createDataTable } from '@test-integration/db/data-tables';
-import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
-import type { SuperAgentTest } from '@test-integration/types';
-import * as utils from '@test-integration/utils';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences.js';
+import { createDataTable } from '@test-integration/db/data-tables.js';
+import { createOwner, createMember, createAdmin } from '@test-integration/db/users.js';
+import type { SuperAgentTest } from '@test-integration/types.js';
+import * as utils from '@test-integration/utils/index.js';
 
-import { DataTableColumnRepository } from '../data-table-column.repository';
-import { DataTableRowsRepository } from '../data-table-rows.repository';
-import type { DataTable } from '../data-table.entity';
-import { DataTableRepository } from '../data-table.repository';
-import { mockDataTableSizeValidator } from './test-helpers';
+import { DataTableColumnRepository } from '../data-table-column.repository.js';
+import { DataTableRowsRepository } from '../data-table-rows.repository.js';
+import type { DataTable } from '../data-table.entity.js';
+import { DataTableRepository } from '../data-table.repository.js';
+import { mockDataTableSizeValidator } from './test-helpers.js';
 
 let owner: User;
 let member: User;

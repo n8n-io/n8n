@@ -15,15 +15,15 @@ import {
 	type WorkSummary,
 } from '@n8n/instance-ai';
 
-import type { Telemetry } from '@/telemetry';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import type { InProcessEventBus } from './event-bus/in-process-event-bus';
-import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
-import type { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
+import type { InProcessEventBus } from './event-bus/in-process-event-bus.js';
+import type { DbSnapshotStorage } from './storage/db-snapshot-storage.js';
+import type { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service.js';
 import type {
 	InstanceAiTracingService,
 	MessageTraceFinalization,
-} from './tracing/instance-ai-tracing.service';
+} from './tracing/instance-ai-tracing.service.js';
 
 type InstanceAiErrorCode = NonNullable<InstanceAiErrorEvent['payload']['code']>;
 

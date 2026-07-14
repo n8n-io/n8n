@@ -1,4 +1,4 @@
-import type { SerializedProject } from '../../spec/serialized/project.schema';
+import type { SerializedProject } from '../../spec/serialized/project.schema.js';
 
 export interface PreparedProject {
 	sourceProjectId: string;

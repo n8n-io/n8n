@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import {
 	TEMPLATE_REQUEST_TIMEOUT_MS,
 	WorkflowTemplatesService,
-} from '../workflow-templates.service';
+} from '../workflow-templates.service.js';
 
 const request = vi.fn();
 const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));

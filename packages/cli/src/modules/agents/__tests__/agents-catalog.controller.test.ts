@@ -3,15 +3,15 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import type { AgentModelCatalogService } from '../agent-model-catalog.service';
-import { AgentsCatalogController } from '../agents-catalog.controller';
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service.js';
+import type { AgentModelCatalogService } from '../agent-model-catalog.service.js';
+import { AgentsCatalogController } from '../agents-catalog.controller.js';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
-} from './test-utils/controller-route-metadata';
+} from './test-utils/controller-route-metadata.js';
 
 describe('AgentsCatalogController route access scopes', () => {
 	expectProjectScopedAgentRoutes(AgentsCatalogController);

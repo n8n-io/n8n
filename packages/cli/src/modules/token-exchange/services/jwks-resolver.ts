@@ -7,8 +7,8 @@ import { createPublicKey } from 'node:crypto';
 import type crypto from 'node:crypto';
 import { z } from 'zod';
 
-import type { JwksKeySource } from '../token-exchange.schemas';
-import { JwtAlgorithmSchema } from '../token-exchange.schemas';
+import type { JwksKeySource } from '../token-exchange.schemas.js';
+import { JwtAlgorithmSchema } from '../token-exchange.schemas.js';
 
 /**
  * Superset of jsonwebtoken's Algorithm that includes EdDSA.

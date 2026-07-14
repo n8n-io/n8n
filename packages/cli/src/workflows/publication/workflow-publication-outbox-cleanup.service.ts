@@ -6,8 +6,8 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Service } from '@n8n/di';
 import { InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 
-import { EventService } from '@/events/event.service';
-import type { PublicationOperationResult } from '@/events/maps/workflow-publication-metrics.event-map';
+import { EventService } from '@/events/event.service.js';
+import type { PublicationOperationResult } from '@/events/maps/workflow-publication-metrics.event-map.js';
 
 /**
  * Periodically deletes terminal workflow publication outbox records on the leader

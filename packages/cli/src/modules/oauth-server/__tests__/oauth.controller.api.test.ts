@@ -4,14 +4,14 @@ import type { User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { createOwner } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
+import { createOwner } from '@test-integration/db/users.js';
+import { setupTestServer } from '@test-integration/utils/index.js';
 
-import { SUPPORTED_SCOPES } from '@/modules/mcp/mcp-protected-resource';
-import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { SUPPORTED_SCOPES } from '@/modules/mcp/mcp-protected-resource.js';
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service.js';
 
-import { OAuthServerConfig } from '../oauth-server.config';
-import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
+import { OAuthServerConfig } from '../oauth-server.config.js';
+import type { OAuthController as OAuthControllerClass } from '../oauth.controller.js';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 
@@ -298,7 +298,7 @@ describe('POST /mcp-oauth/register', () => {
 	});
 
 	test('should reject with descriptive server_error on the post-insert rollback (race path)', async () => {
-		const { OAuthServerService } = await import('../oauth-server.service');
+		const { OAuthServerService } = await import('../oauth-server.service.js');
 		const globalConfig = Container.get(GlobalConfig);
 		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
 		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
@@ -799,7 +799,7 @@ describe('IP rate limit configuration', () => {
 	let OAuthController: typeof OAuthControllerClass;
 
 	beforeAll(async () => {
-		({ OAuthController } = await import('../oauth.controller'));
+		({ OAuthController } = await import('../oauth.controller.js'));
 	});
 
 	test('applies the configured limits to the shared OAuth endpoints', () => {

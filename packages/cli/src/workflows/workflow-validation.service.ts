@@ -22,10 +22,10 @@ import type {
 	ICredentialType,
 } from 'n8n-workflow';
 
-import { STARTING_NODES } from '@/constants';
-import { CredentialTypes } from '@/credential-types';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import type { NodeTypes } from '@/node-types';
+import { STARTING_NODES } from '@/constants.js';
+import { CredentialTypes } from '@/credential-types.js';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import type { NodeTypes } from '@/node-types.js';
 
 export interface WorkflowValidationResult {
 	isValid: boolean;

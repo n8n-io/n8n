@@ -1,9 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
-import { AgentRepository } from '../repositories/agent.repository';
-import { markAgentDraftDirty } from '../utils/agent-draft.utils';
+import { AgentRuntimeCacheService } from '../agent-runtime-cache.service.js';
+import { AgentRepository } from '../repositories/agent.repository.js';
+import { markAgentDraftDirty } from '../utils/agent-draft.utils.js';
 
 @Service()
 export class SubAgentCleanupService {

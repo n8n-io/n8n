@@ -5,11 +5,11 @@ import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { JwtService } from '@/services/jwt.service';
-import { createMember, createOwner } from '@test-integration/db/users';
+import { JwtService } from '@/services/jwt.service.js';
+import { createMember, createOwner } from '@test-integration/db/users.js';
 
-import { TOKEN_EXCHANGE_ISSUER } from '../../token-exchange.types';
-import { ScopedJwtStrategy } from '../scoped-jwt.strategy';
+import { TOKEN_EXCHANGE_ISSUER } from '../../token-exchange.types.js';
+import { ScopedJwtStrategy } from '../scoped-jwt.strategy.js';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());

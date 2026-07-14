@@ -1,7 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 
-import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from '../constants';
-import { ExternalSecretsRetryManager } from '../retry-manager.service';
+import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from '../constants.js';
+import { ExternalSecretsRetryManager } from '../retry-manager.service.js';
 
 describe('RetryManager', () => {
 	vi.useFakeTimers();

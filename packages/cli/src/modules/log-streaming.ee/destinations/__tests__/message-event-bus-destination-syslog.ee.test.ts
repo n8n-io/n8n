@@ -4,7 +4,7 @@ import type { MessageEventBusDestinationSyslogOptions } from 'n8n-workflow';
 import {
 	MessageEventBusDestinationSyslog,
 	isMessageEventBusDestinationSyslogOptions,
-} from '../message-event-bus-destination-syslog.ee';
+} from '../message-event-bus-destination-syslog.ee.js';
 
 describe('MessageEventBusDestinationSyslog', () => {
 	describe('isMessageEventBusDestinationSyslogOptions', () => {

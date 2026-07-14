@@ -4,8 +4,8 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, QueryFailedError } from '@n8n/typeorm';
 
-import { ExternalHooks } from '@/external-hooks';
-import { validateEntity } from '@/generic-helpers';
+import { ExternalHooks } from '@/external-hooks.js';
+import { validateEntity } from '@/generic-helpers.js';
 
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
 

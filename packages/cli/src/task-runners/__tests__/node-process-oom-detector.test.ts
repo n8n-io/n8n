@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 
-import { NodeProcessOomDetector } from '../node-process-oom-detector';
+import { NodeProcessOomDetector } from '../node-process-oom-detector.js';
 
 describe('NodeProcessOomDetector', () => {
 	test('should detect an out-of-memory error in a monitored process', async () => {

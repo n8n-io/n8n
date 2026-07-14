@@ -40,35 +40,35 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/credential-types';
-import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
-import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExternalHooks } from '@/external-hooks';
-import { validateEntity } from '@/generic-helpers';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
-import type { CredentialRequest, ListQuery } from '@/requests';
-import { CredentialsTester } from '@/services/credentials-tester.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+import { CredentialTypes } from '@/credential-types.js';
+import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper.js';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { validateEntity } from '@/generic-helpers.js';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee.js';
+import { validateOAuthUrl } from '@/oauth/validate-oauth-url.js';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
+import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields.js';
+import type { CredentialRequest, ListQuery } from '@/requests.js';
+import { CredentialsTester } from '@/services/credentials-tester.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { RoleService } from '@/services/role.service.js';
 
-import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy.js';
 import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
-} from './credential-dependency.service';
-import { CredentialsFinderService } from './credentials-finder.service';
+} from './credential-dependency.service.js';
+import { CredentialsFinderService } from './credentials-finder.service.js';
 import {
 	validateAccessToReferencedSecretProviders,
 	validateExternalSecretsPermissions,
-} from './validation';
+} from './validation.js';
 
 /** Sentinel placed at every leaf of a redacted httpCustomAuth JSON shape */
 const CUSTOM_AUTH_JSON_REDACTED_VALUE = '***';

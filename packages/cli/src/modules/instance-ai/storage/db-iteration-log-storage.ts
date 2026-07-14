@@ -3,7 +3,7 @@ import type { IterationEntry, IterationLog } from '@n8n/instance-ai';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { jsonParse } from 'n8n-workflow';
 
-import { InstanceAiIterationLogRepository } from '../repositories/instance-ai-iteration-log.repository';
+import { InstanceAiIterationLogRepository } from '../repositories/instance-ai-iteration-log.repository.js';
 
 @Service()
 export class DbIterationLogStorage implements IterationLog {

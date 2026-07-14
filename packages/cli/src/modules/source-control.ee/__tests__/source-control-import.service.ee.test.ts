@@ -29,21 +29,21 @@ vi.mock('node:fs/promises');
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
-import type { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
+import type { VariablesService } from '@/environments.ee/variables/variables.service.ee.js';
+import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository.js';
+import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service.js';
+import type { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service.js';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
+import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service.js';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
 
-import type { SourceControlContextFactory } from '../source-control-context.factory';
-import { SourceControlImportService } from '../source-control-import.service.ee';
-import type { SourceControlScopedService } from '../source-control-scoped.service';
-import type { ExportableFolder } from '../types/exportable-folders';
-import type { ExportableProject } from '../types/exportable-project';
-import { SourceControlContext } from '../types/source-control-context';
+import type { SourceControlContextFactory } from '../source-control-context.factory.js';
+import { SourceControlImportService } from '../source-control-import.service.ee.js';
+import type { SourceControlScopedService } from '../source-control-scoped.service.js';
+import type { ExportableFolder } from '../types/exportable-folders.js';
+import type { ExportableProject } from '../types/exportable-project.js';
+import { SourceControlContext } from '../types/source-control-context.js';
 
 vi.mock('fast-glob');
 

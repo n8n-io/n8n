@@ -5,13 +5,13 @@ import type { Request, Response, NextFunction } from 'express';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { JwtService } from '@/services/jwt.service';
-import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
-import { Telemetry } from '@/telemetry';
+import { JwtService } from '@/services/jwt.service.js';
+import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { McpServerApiKeyService } from '../mcp-api-key.service';
-import { McpProtectedResource } from '../mcp-protected-resource';
-import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
+import { McpServerApiKeyService } from '../mcp-api-key.service.js';
+import { McpProtectedResource } from '../mcp-protected-resource.js';
+import { McpServerMiddlewareService } from '../mcp-server-middleware.service.js';
 
 const mockReqWith = (authHeader: string | undefined, body?: any) => {
 	const req = mockDeep<Request>();

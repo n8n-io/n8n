@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
+import { EventService } from '@/events/event.service.js';
 
-import { InstanceAiMemoryService } from './instance-ai-memory.service';
-import { InstanceAiMcpRegistryConnectionRepository } from './repositories/instance-ai-mcp-registry-connection.repository';
+import { InstanceAiMemoryService } from './instance-ai-memory.service.js';
+import { InstanceAiMcpRegistryConnectionRepository } from './repositories/instance-ai-mcp-registry-connection.repository.js';
 
 /**
  * Cleans up a user's Instance AI data when the user is deleted. Thread rows

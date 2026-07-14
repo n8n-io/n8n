@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { DateTime, Settings } from 'luxon';
 
-import { createGetEnvironmentTool } from '../environment-tool';
+import { createGetEnvironmentTool } from '../environment-tool.js';
 
 describe('createGetEnvironmentTool', () => {
 	const FIXED_NOW_MS = DateTime.fromISO('2026-05-05T14:32:11.000Z', { zone: 'utc' }).toMillis();

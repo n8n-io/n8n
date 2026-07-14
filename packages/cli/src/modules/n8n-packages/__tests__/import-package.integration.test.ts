@@ -18,41 +18,41 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { CredentialTypes } from '@/credential-types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { CredentialTypes } from '@/credential-types.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { EventService } from '@/events/event.service.js';
+import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
 import {
 	affixRoleToSaveCredential,
 	saveCredential,
 	shareCredentialWithProjects,
-} from '@test-integration/db/credentials';
-import { createFolder } from '@test-integration/db/folders';
-import { createMember, createOwner } from '@test-integration/db/users';
-import { LicenseMocker } from '@test-integration/license';
-import { initNodeTypes } from '@test-integration/utils';
+} from '@test-integration/db/credentials.js';
+import { createFolder } from '@test-integration/db/folders.js';
+import { createMember, createOwner } from '@test-integration/db/users.js';
+import { LicenseMocker } from '@test-integration/license.js';
+import { initNodeTypes } from '@test-integration/utils/index.js';
 
-import { TarPackageWriter } from '../io/tar/tar-package-writer';
-import { N8nPackagesService } from '../n8n-packages.service';
+import { TarPackageWriter } from '../io/tar/tar-package-writer.js';
+import { N8nPackagesService } from '../n8n-packages.service.js';
 import {
 	FolderConflictPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
 	type ImportPackageRequest,
-} from '../n8n-packages.types';
-import type { WorkflowPublishingPolicy as WorkflowPublishingPolicyValue } from '../entities/workflow/workflow-publishing-policy.types';
-import { FORMAT_VERSION } from '../spec/constants';
+} from '../n8n-packages.types.js';
+import type { WorkflowPublishingPolicy as WorkflowPublishingPolicyValue } from '../entities/workflow/workflow-publishing-policy.types.js';
+import { FORMAT_VERSION } from '../spec/constants.js';
 import {
 	buildImportPackageBuffer,
 	githubCredentialPayload,
 	PACKAGE_GITHUB_CREDENTIAL_TYPE,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
-} from './fixtures/package-fixtures';
-import { streamToBuffer } from './utils/tar-support';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
+} from './fixtures/package-fixtures.js';
+import { streamToBuffer } from './utils/tar-support.js';
+import type { SerializedWorkflow } from '../spec/serialized/workflow.schema.js';
 
 type ImportPackageParams = Omit<
 	ImportPackageRequest,

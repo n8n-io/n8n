@@ -4,9 +4,9 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
-import { PrometheusCacheMetricsService } from '../cache-metrics.service';
+import { PrometheusCacheMetricsService } from '../cache-metrics.service.js';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
 vi.mock('prom-client');
 

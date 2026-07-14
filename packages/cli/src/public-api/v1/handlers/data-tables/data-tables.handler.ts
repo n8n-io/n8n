@@ -6,26 +6,26 @@ import {
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
-import { ProjectService } from '@/services/project.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
+import { DataTableService } from '@/modules/data-table/data-table.service.js';
+import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error.js';
+import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error.js';
+import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error.js';
+import { ProjectService } from '@/services/project.service.ee.js';
 
-import { getDataTableListFilter, resolveProjectIdForCreate } from './data-tables.service';
-import type { DataTableRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { getDataTableListFilter, resolveProjectIdForCreate } from './data-tables.service.js';
+import type { DataTableRequest } from '../../../types.js';
+import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
 import {
 	publicApiScope,
 	projectScope,
 	validCursor,
-} from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
+} from '../../shared/middlewares/global.middleware.js';
+import { encodeNextCursor } from '../../shared/services/pagination.service.js';
 
 const handleError = (error: unknown) => {
 	if (error instanceof DataTableValidationError) {

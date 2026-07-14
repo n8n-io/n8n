@@ -43,8 +43,8 @@ import {
 	prepareExecutionData,
 	handleHostedChatResponse,
 	_privateGetWebhookErrorMessage,
-} from '../webhook-helpers';
-import type { IWebhookResponseCallbackData } from '../webhook.types';
+} from '../webhook-helpers.js';
+import type { IWebhookResponseCallbackData } from '../webhook.types.js';
 
 vi.mock('stream/promises', () => ({
 	finished: vi.fn(),

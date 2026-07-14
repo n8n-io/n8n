@@ -1,13 +1,13 @@
 import type { ListQueryDb, ScopesField, User } from '@n8n/db';
 import z from 'zod';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { ListQuery } from '@/requests';
-import type { Telemetry } from '@/telemetry';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { ListQuery } from '@/requests.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { createLimitSchema } from './schemas';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types.js';
+import { createLimitSchema } from './schemas.js';
 
 const MAX_RESULTS = 200;
 

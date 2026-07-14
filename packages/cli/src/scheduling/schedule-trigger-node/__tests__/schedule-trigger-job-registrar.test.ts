@@ -8,9 +8,9 @@ import type { Cron, CronExpression, INode, Workflow } from 'n8n-workflow';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { DurableJobProvisioner } from '../../durable-job-provisioner';
-import { ScheduleTriggerJobRegistrar } from '../schedule-trigger-job-registrar';
-import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-task';
+import type { DurableJobProvisioner } from '../../durable-job-provisioner.js';
+import { ScheduleTriggerJobRegistrar } from '../schedule-trigger-job-registrar.js';
+import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-task.js';
 
 // Monday. Deterministic clock so first-fire assertions are exact.
 const NOW = new Date('2026-01-05T00:00:00.000Z');

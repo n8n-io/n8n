@@ -11,23 +11,23 @@ import {
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookResponse,
-} from '../agent-chat-integration';
-import type { ChatInstance } from '../chat-integration.service';
-import { loadSlackAdapter } from '../esm-loader';
+} from '../agent-chat-integration.js';
+import type { ChatInstance } from '../chat-integration.service.js';
+import { loadSlackAdapter } from '../esm-loader.js';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
-} from '../integration-tool-definitions';
-import { connectionUnavailable } from '../integration-helpers';
-import type { IntegrationActionResult } from '../integration-tools';
+} from '../integration-tool-definitions.js';
+import { connectionUnavailable } from '../integration-helpers.js';
+import type { IntegrationActionResult } from '../integration-tools.js';
 import {
 	createSlackBridgeExecutionContext,
 	createSlackResumeExecutionContext,
 	getSlackPlatformAgentContext,
 	prepareSlackInboundText,
-} from './slack-bridge-behavior';
-import { executeSlackAction, executeSlackContextQuery } from './slack-operations';
-import { SLACK_ACTION_TOOL_DEFINITIONS } from './slack-tool-definitions';
+} from './slack-bridge-behavior.js';
+import { executeSlackAction, executeSlackContextQuery } from './slack-operations.js';
+import { SLACK_ACTION_TOOL_DEFINITIONS } from './slack-tool-definitions.js';
 
 /**
  * Slack platform integration.

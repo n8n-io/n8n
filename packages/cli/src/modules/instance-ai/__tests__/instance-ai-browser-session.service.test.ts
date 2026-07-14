@@ -4,16 +4,16 @@ import type { GlobalConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Push } from '@/push';
-import type { UrlService } from '@/services/url.service';
-import type { Telemetry } from '@/telemetry';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { Push } from '@/push/index.js';
+import type { UrlService } from '@/services/url.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
 import {
 	CDP_TOKEN_HEADER,
 	type BrowserUseUpgradeRequest,
-} from '../browser/browser-use-ws.constants';
-import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
+} from '../browser/browser-use-ws.constants.js';
+import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service.js';
 
 import * as mcpBrowser from '@n8n/mcp-browser';
 

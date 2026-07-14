@@ -14,22 +14,22 @@ import { type IBinaryData } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import { getBase } from '@/workflow-execute-additional-data.js';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
 
-import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
-import { ChatHubAgentRepository } from './chat-hub-agent.repository';
-import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import { ChatHubExecutionService } from './chat-hub-execution.service';
-import { ChatHubToolService } from './chat-hub-tool.service';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { getModelMetadata } from './chat-hub.constants';
-import { ChatHubSettingsService } from './chat-hub.settings.service';
-import type { SemanticSearchOptions } from './chat-hub.types';
+import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity.js';
+import { ChatHubAgentRepository } from './chat-hub-agent.repository.js';
+import { ChatHubCredentialsService } from './chat-hub-credentials.service.js';
+import { ChatHubExecutionService } from './chat-hub-execution.service.js';
+import { ChatHubToolService } from './chat-hub-tool.service.js';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service.js';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service.js';
+import { getModelMetadata } from './chat-hub.constants.js';
+import { ChatHubSettingsService } from './chat-hub.settings.service.js';
+import type { SemanticSearchOptions } from './chat-hub.types.js';
 
 @Service()
 export class ChatHubAgentService {

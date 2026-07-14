@@ -3,14 +3,14 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@/events/event.service.js';
 
-import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee';
+import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee.js';
 import type {
 	RoleMappingRuleListResponse,
 	RoleMappingRuleResponse,
 	RoleMappingRuleService,
-} from '../role-mapping-rule.service.ee';
+} from '../role-mapping-rule.service.ee.js';
 
 const roleMappingRuleService = mock<RoleMappingRuleService>();
 const licenseState = mock<LicenseState>();

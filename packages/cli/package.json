@@ -117,7 +117,7 @@
     "ts-essentials": "^7.0.3",
     "tsconfig-paths": "^4.2.0",
     "@vitest/coverage-v8": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

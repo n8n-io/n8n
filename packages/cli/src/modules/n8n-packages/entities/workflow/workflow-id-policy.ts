@@ -1,6 +1,6 @@
 import { generateNanoId } from '@n8n/db';
 
-import type { WorkflowIdPolicy } from '../../n8n-packages.types';
+import type { WorkflowIdPolicy } from '../../n8n-packages.types.js';
 
 /**
  * Decides the id a newly-created imported workflow gets. `new` mints a fresh id

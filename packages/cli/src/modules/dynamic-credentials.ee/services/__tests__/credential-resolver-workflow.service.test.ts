@@ -5,13 +5,13 @@ import type { ICredentialResolver } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
 import type { INode, NodeParameterValueType } from 'n8n-workflow';
 
-import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
-import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
-import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
-import { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service';
+import { DynamicCredentialResolver } from '../../database/entities/credential-resolver.js';
+import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository.js';
+import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service.js';
+import { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service.js';
 
 const createMockWorkflow = (overrides: Partial<WorkflowEntity> = {}): WorkflowEntity => {
 	const workflow = new WorkflowEntity();

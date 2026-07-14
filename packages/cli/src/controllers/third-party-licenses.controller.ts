@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 
-import { CLI_DIR } from '@/constants';
+import { CLI_DIR } from '@/constants.js';
 
 @RestController('/third-party-licenses')
 export class ThirdPartyLicensesController {

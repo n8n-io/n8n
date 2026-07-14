@@ -5,17 +5,17 @@ import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService, InstanceSettings } from 'n8n-core';
 
-import type { AiService } from '../../../services/ai.service';
+import type { AiService } from '../../../services/ai.service.js';
 
-import type { Agent } from '../entities/agent.entity';
-import type { AgentFile } from '../entities/agent-file.entity';
-import { KNOWLEDGE_MIRROR_FILES_DIR } from '../agent-knowledge-storage';
+import type { Agent } from '../entities/agent.entity.js';
+import type { AgentFile } from '../entities/agent-file.entity.js';
+import { KNOWLEDGE_MIRROR_FILES_DIR } from '../agent-knowledge-storage.js';
 import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
 	AgentKnowledgeSandboxService,
-} from '../agent-knowledge-sandbox.service';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
-import type { AgentRepository } from '../repositories/agent.repository';
+} from '../agent-knowledge-sandbox.service.js';
+import type { AgentFileRepository } from '../repositories/agent-file.repository.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
 
 interface MockFilesystem {
 	uploadFiles: Mock;

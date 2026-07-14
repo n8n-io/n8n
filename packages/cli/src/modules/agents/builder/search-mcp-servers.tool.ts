@@ -2,9 +2,9 @@ import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { z } from 'zod';
 
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
 
-import { BUILDER_TOOLS } from './builder-tool-names';
+import { BUILDER_TOOLS } from './builder-tool-names.js';
 
 export interface SearchMcpServersDeps {
 	mcpRegistryService: McpRegistryService;

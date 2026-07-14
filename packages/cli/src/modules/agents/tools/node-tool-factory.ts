@@ -8,8 +8,8 @@ import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { isToolType, nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { EphemeralNodeExecutor } from '@/node-execution';
-import { NodeTypes } from '@/node-types';
+import type { EphemeralNodeExecutor } from '@/node-execution/index.js';
+import { NodeTypes } from '@/node-types.js';
 
 type NodeToolInputSchema = JSONSchema7 | z.ZodType;
 

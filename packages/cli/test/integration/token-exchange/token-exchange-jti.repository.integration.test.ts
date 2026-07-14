@@ -1,7 +1,7 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
-import { TokenExchangeJtiRepository } from '@/modules/token-exchange/database/repositories/token-exchange-jti.repository';
+import { TokenExchangeJtiRepository } from '@/modules/token-exchange/database/repositories/token-exchange-jti.repository.js';
 
 describe('TokenExchangeJtiRepository', () => {
 	let repository: TokenExchangeJtiRepository;

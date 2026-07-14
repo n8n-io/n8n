@@ -6,14 +6,14 @@ import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { createOwner } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
+import { createOwner } from '@test-integration/db/users.js';
+import { setupTestServer } from '@test-integration/utils/index.js';
 
-import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { MCP_TRIGGER_NODE_TYPE } from '@/constants.js';
+import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service.js';
+import { CacheService } from '@/services/cache/cache.service.js';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry.js';
+import { UrlService } from '@/services/url.service.js';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 

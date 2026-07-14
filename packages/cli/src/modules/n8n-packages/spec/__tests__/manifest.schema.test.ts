@@ -1,4 +1,4 @@
-import { packageManifestSchema } from '../manifest.schema';
+import { packageManifestSchema } from '../manifest.schema.js';
 
 const validManifest = {
 	packageFormatVersion: '1',

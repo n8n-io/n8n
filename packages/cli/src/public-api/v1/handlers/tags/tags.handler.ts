@@ -5,17 +5,17 @@ import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindManyOptions } from '@n8n/typeorm';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { TagService } from '@/services/tag.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { TagService } from '@/services/tag.service.js';
 
-import type { TagRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import type { TagRequest } from '../../../types.js';
+import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	validCursor,
-} from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
+} from '../../shared/middlewares/global.middleware.js';
+import { encodeNextCursor } from '../../shared/services/pagination.service.js';
 
 type TagHandlers = {
 	createTag: PublicAPIEndpoint<TagRequest.Create>;

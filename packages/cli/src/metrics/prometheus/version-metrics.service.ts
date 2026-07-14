@@ -3,9 +3,9 @@ import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION } from '@/constants.js';
 
-import type { PrometheusMetricsCollector } from './base';
+import type { PrometheusMetricsCollector } from './base.js';
 
 /** Exposes `n8n_version_info` gauge labeled with semver components (major, minor, patch). */
 @Service()

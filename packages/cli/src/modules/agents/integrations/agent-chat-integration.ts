@@ -4,12 +4,12 @@ import type { Logger } from 'n8n-workflow';
 
 import { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
-import type { ChatInstance } from './chat-integration.service';
-import type { SuspendComponent } from './component-mapper';
+import type { ChatInstance } from './chat-integration.service.js';
+import type { SuspendComponent } from './component-mapper.js';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
-} from './integration-tool-definitions';
+} from './integration-tool-definitions.js';
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
@@ -18,7 +18,7 @@ import type {
 	IntegrationContextQueryDefinition,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
-} from './integration-tools';
+} from './integration-tools.js';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
 export interface AgentChatIntegrationContext {

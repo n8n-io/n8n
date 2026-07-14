@@ -4,16 +4,16 @@ import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service';
-import { EventService } from '@/events/event.service';
-import { AuthlessRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
-import { validateRedirectUrl } from '@/utils/validate-redirect-url';
+import { AuthService } from '@/auth/auth.service.js';
+import { EventService } from '@/events/event.service.js';
+import { AuthlessRequest } from '@/requests.js';
+import { UrlService } from '@/services/url.service.js';
+import { validateRedirectUrl } from '@/utils/validate-redirect-url.js';
 
-import { TokenExchangeService } from '../services/token-exchange.service';
-import { TokenExchangeConfig } from '../token-exchange.config';
-import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors';
-import { TokenExchangeFailureReason } from '../token-exchange.types';
+import { TokenExchangeService } from '../services/token-exchange.service.js';
+import { TokenExchangeConfig } from '../token-exchange.config.js';
+import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors.js';
+import { TokenExchangeFailureReason } from '../token-exchange.types.js';
 
 const configService = Container.get(TokenExchangeConfig);
 

@@ -3,7 +3,7 @@ import { AuthIdentity, GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } f
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 
-import { createMember, createOwner, createUserShell } from '../../shared/db/users';
+import { createMember, createOwner, createUserShell } from '../../shared/db/users.js';
 
 describe('ProjectRepository', () => {
 	beforeAll(async () => {

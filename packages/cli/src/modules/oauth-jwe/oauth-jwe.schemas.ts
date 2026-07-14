@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { JWE_EC_ALGORITHMS, JWE_KEY_USE, JWE_RSA_ALGORITHMS } from './oauth-jwe.constants';
+import { JWE_EC_ALGORITHMS, JWE_KEY_USE, JWE_RSA_ALGORITHMS } from './oauth-jwe.constants.js';
 
 /**
  * Public JWK for an RSA key (RFC 7518 §6.3.1). `.strict()` so any private

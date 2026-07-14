@@ -4,10 +4,10 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import type { Agent } from '../entities/agent.entity';
-import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
-import { AgentSkillsService } from '../agent-skills.service';
-import type { AgentRepository } from '../repositories/agent.repository';
+import type { Agent } from '../entities/agent.entity.js';
+import { AgentRuntimeCacheService } from '../agent-runtime-cache.service.js';
+import { AgentSkillsService } from '../agent-skills.service.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

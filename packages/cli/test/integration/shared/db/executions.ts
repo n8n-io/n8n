@@ -9,8 +9,8 @@ import {
 import { Container } from '@n8n/di';
 import type { AnnotationVote, ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
-import { ExecutionService } from '@/executions/execution.service';
-import { Telemetry } from '@/telemetry';
+import { ExecutionService } from '@/executions/execution.service.js';
+import { Telemetry } from '@/telemetry/index.js';
 
 mockInstance(Telemetry);
 

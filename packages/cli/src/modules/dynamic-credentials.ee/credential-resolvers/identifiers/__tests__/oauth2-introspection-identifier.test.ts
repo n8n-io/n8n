@@ -5,11 +5,11 @@ import { Time } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
-import { IdentifierValidationError } from '../identifier-interface';
-import { OAuth2TokenIntrospectionIdentifier } from '../oauth2-introspection-identifier';
-import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client';
+import { IdentifierValidationError } from '../identifier-interface.js';
+import { OAuth2TokenIntrospectionIdentifier } from '../oauth2-introspection-identifier.js';
+import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client.js';
 
 describe('OAuth2TokenIntrospectionIdentifier', () => {
 	const logger = mockLogger();

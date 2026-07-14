@@ -1,7 +1,7 @@
 import type { WorkflowEntity } from '@n8n/db';
 
-import type { WorkflowDecision } from './workflow-import.types';
-import type { WorkflowConflictPolicy } from '../../n8n-packages.types';
+import type { WorkflowDecision } from './workflow-import.types.js';
+import type { WorkflowConflictPolicy } from '../../n8n-packages.types.js';
 
 /**
  * Decides what to do with a single workflow given the pre-existing target-project

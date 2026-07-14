@@ -1,4 +1,4 @@
-import { SlidingWindow } from '../sliding-window';
+import { SlidingWindow } from '../sliding-window.js';
 
 describe('SlidingWindow', () => {
 	beforeEach(() => {

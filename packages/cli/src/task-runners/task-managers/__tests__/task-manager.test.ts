@@ -4,11 +4,11 @@ import set from 'lodash/set';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import type { NodeTypes } from '@/node-types';
-import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
-import type { Task } from '@/task-runners/task-managers/task-requester';
-import { TaskRequester } from '@/task-runners/task-managers/task-requester';
+import type { EventService } from '@/events/event.service.js';
+import type { NodeTypes } from '@/node-types.js';
+import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error.js';
+import type { Task } from '@/task-runners/task-managers/task-requester.js';
+import { TaskRequester } from '@/task-runners/task-managers/task-requester.js';
 
 class TestTaskRequester extends TaskRequester {
 	sentMessages: unknown[] = [];

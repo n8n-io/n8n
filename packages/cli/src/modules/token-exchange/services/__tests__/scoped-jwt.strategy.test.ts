@@ -4,10 +4,10 @@ import type { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@/services/jwt.service.js';
 
-import { TOKEN_EXCHANGE_ISSUER, type IssuedJwtPayload } from '../../token-exchange.types';
-import { ScopedJwtStrategy } from '../scoped-jwt.strategy';
+import { TOKEN_EXCHANGE_ISSUER, type IssuedJwtPayload } from '../../token-exchange.types.js';
+import { ScopedJwtStrategy } from '../scoped-jwt.strategy.js';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());

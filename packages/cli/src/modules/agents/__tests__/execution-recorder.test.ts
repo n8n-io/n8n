@@ -1,7 +1,7 @@
 import type { BuiltTool, StreamChunk } from '@n8n/agents';
 
-import { ExecutionRecorder } from '../execution-recorder';
-import { buildToolRegistry } from '../tool-registry';
+import { ExecutionRecorder } from '../execution-recorder.js';
+import { buildToolRegistry } from '../tool-registry.js';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
 	return { type: 'tool-call', toolCallId, toolName, input } satisfies StreamChunk;

@@ -1,11 +1,11 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { Telemetry } from '@/telemetry';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { CODE_BUILDER_VALIDATE_NODE_TOOL } from './constants';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { CODE_BUILDER_VALIDATE_NODE_TOOL } from './constants.js';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
 
 const nodeInputSchema = z.object({
 	name: z

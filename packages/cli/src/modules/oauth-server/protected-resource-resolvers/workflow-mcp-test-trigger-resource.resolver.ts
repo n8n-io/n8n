@@ -1,8 +1,8 @@
-import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
-import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { MCP_TRIGGER_NODE_TYPE } from '@/constants.js';
+import type { ProtectedResourceResolver } from '@/services/protected-resource.registry.js';
+import { UrlService } from '@/services/url.service.js';
+import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -12,7 +12,7 @@ import {
 	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
-} from './utils';
+} from './utils.js';
 import { User } from '@n8n/db';
 
 @Service()

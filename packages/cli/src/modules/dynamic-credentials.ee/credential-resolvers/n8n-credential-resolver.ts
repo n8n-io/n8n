@@ -9,8 +9,8 @@ import {
 import { Cipher } from 'n8n-core';
 import { ICredentialContext, ICredentialDataDecryptedObject, jsonParse } from 'n8n-workflow';
 
-import { N8NIdentifier } from './identifiers/n8n-identifier';
-import { DynamicCredentialUserEntryStorage } from './storage/dynamic-credential-user-entry-storage';
+import { N8NIdentifier } from './identifiers/n8n-identifier.js';
+import { DynamicCredentialUserEntryStorage } from './storage/dynamic-credential-user-entry-storage.js';
 
 /**
  * N8N JWT-based credential resolver.

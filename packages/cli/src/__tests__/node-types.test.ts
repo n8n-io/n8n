@@ -7,8 +7,8 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { NodeTypes } from '@/node-types.js';
 
 describe('NodeTypes', () => {
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();

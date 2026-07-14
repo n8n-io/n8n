@@ -1,7 +1,7 @@
 import { DateTimeColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
-import type { TrustedKeySourceStatus, TrustedKeySourceType } from '../../token-exchange.schemas';
+import type { TrustedKeySourceStatus, TrustedKeySourceType } from '../../token-exchange.schemas.js';
 
 @Entity('trusted_key_source')
 export class TrustedKeySourceEntity extends WithTimestamps {

@@ -4,12 +4,12 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, Middleware, Param, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { sendErrorResponse } from '@/response-helper';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { sendErrorResponse } from '@/response-helper.js';
 
-import { ExternalSecretsProviders } from './external-secrets-providers.ee';
-import { ExternalSecretsConfig } from './external-secrets.config';
+import { ExternalSecretsProviders } from './external-secrets-providers.ee.js';
+import { ExternalSecretsConfig } from './external-secrets.config.js';
 
 @RestController('/secret-providers/types')
 export class SecretProvidersTypesController {

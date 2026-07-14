@@ -2,7 +2,7 @@ import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { Response } from 'express';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@/services/jwt.service.js';
 
 export interface OAuthSessionPayload {
 	clientId: string;

@@ -2,10 +2,10 @@ import type { INode, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes, UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypes } from '@/node-types.js';
 
-import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
-import { AlwaysOutputDataMultiOutputRule } from '../always-output-data-multi-output.rule';
+import { createNode, createWorkflow } from '../../../__tests__/test-helpers.js';
+import { AlwaysOutputDataMultiOutputRule } from '../always-output-data-multi-output.rule.js';
 
 const NODE_TYPE_OUTPUTS: Record<string, INodeTypeDescription['outputs']> = {
 	'n8n-nodes-base.httpRequest': [NodeConnectionTypes.Main],

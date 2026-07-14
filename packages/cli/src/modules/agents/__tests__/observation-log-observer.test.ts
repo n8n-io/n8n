@@ -3,7 +3,7 @@ import {
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
 	DEFAULT_OBSERVER_THRESHOLD_TOKENS,
 	DEFAULT_OBSERVER_PROMPT,
-} from '../observation-log-observer';
+} from '../observation-log-observer.js';
 
 describe('n8n observation-log observer policy', () => {
 	it('uses the n8n observer defaults', () => {

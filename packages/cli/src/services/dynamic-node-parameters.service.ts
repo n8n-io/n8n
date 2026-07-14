@@ -29,14 +29,14 @@ import {
 	findDisplayedProperty,
 } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { withExpressionIsolate } from '@/utils';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NodeTypes } from '@/node-types.js';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
+import { withExpressionIsolate } from '@/utils.js';
 
-import { WorkflowLoaderService } from './workflow-loader.service';
+import { WorkflowLoaderService } from './workflow-loader.service.js';
 
 type LocalResourceMappingMethod = (
 	this: ILocalLoadOptionsFunctions,

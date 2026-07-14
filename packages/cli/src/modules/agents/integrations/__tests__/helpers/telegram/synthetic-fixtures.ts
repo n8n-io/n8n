@@ -4,7 +4,7 @@ import type {
 	TelegramReplayFixtures,
 	TelegramUpdateFixture,
 	TelegramUserFixture,
-} from './replay-test-context';
+} from './replay-test-context.js';
 
 const DEFAULT_DATE = 1_719_000_000;
 

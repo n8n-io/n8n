@@ -4,7 +4,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import * as helpers from '../helpers.ee';
+import * as helpers from '../helpers.ee.js';
 
 const userRepository = mockInstance(UserRepository);
 

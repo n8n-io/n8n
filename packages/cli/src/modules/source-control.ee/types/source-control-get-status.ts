@@ -1,13 +1,13 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
-import type { StatusExportableCredential } from './exportable-credential';
-import type { ExportableDataTable, StatusExportableDataTable } from './exportable-data-table';
-import type { ExportableFolder } from './exportable-folders';
-import type { ExportableProjectWithFileName } from './exportable-project';
-import type { ExportableTagEntity, ExportableWorkflowTagMapping } from './exportable-tags';
-import type { ExportableVariable } from './exportable-variable';
-import type { SourceControlWorkflowVersionId } from './source-control-workflow-version-id';
+import type { StatusExportableCredential } from './exportable-credential.js';
+import type { ExportableDataTable, StatusExportableDataTable } from './exportable-data-table.js';
+import type { ExportableFolder } from './exportable-folders.js';
+import type { ExportableProjectWithFileName } from './exportable-project.js';
+import type { ExportableTagEntity, ExportableWorkflowTagMapping } from './exportable-tags.js';
+import type { ExportableVariable } from './exportable-variable.js';
+import type { SourceControlWorkflowVersionId } from './source-control-workflow-version-id.js';
 
 export interface SourceControlGetStatusVerboseResult {
 	wfRemoteVersionIds: SourceControlWorkflowVersionId[];

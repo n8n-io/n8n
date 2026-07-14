@@ -1,6 +1,6 @@
 import { OperationalError } from 'n8n-workflow';
 
-import type { StorageLocation } from './types';
+import type { StorageLocation } from './types.js';
 
 export class SkippedEntryDeletionError extends OperationalError {
 	constructor(loc: StorageLocation, count: number) {

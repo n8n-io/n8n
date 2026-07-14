@@ -1,8 +1,8 @@
 import type { CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { CommunityNode } from '@/modules/community-packages/community-node.command';
-import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
+import { CommunityNode } from '@/modules/community-packages/community-node.command.js';
+import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity.js';
 
 describe('uninstallCredential', () => {
 	const userId = '1234';

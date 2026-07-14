@@ -4,7 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import Redis from 'ioredis';
 import type { Mock } from 'vitest';
 
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@/services/redis-client.service.js';
 
 type EventHandler = (...args: unknown[]) => void;
 

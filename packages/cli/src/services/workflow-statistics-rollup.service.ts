@@ -8,7 +8,7 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
-import { WorkflowStatisticsService } from './workflow-statistics.service';
+import { WorkflowStatisticsService } from './workflow-statistics.service.js';
 
 type RollupResult = Awaited<ReturnType<WorkflowStatisticsRepository['rollupIncrements']>>;
 

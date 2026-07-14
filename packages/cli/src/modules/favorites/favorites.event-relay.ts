@@ -1,9 +1,9 @@
 import { Service } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
-import { EventRelay } from '@/events/relays/event-relay';
+import { EventService } from '@/events/event.service.js';
+import { EventRelay } from '@/events/relays/event-relay.js';
 
-import { FavoritesService } from './favorites.service';
+import { FavoritesService } from './favorites.service.js';
 
 @Service()
 export class FavoritesEventRelay extends EventRelay {

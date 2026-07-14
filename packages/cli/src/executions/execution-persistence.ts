@@ -24,20 +24,20 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
-import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
-import { DbStore } from './execution-data/db-store';
-import { ExecutionDataJsonStore } from './execution-data/execution-data-json-store';
-import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
+import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error.js';
+import { DbStore } from './execution-data/db-store.js';
+import { ExecutionDataJsonStore } from './execution-data/execution-data-json-store.js';
+import { MissingExecutionDataError } from './execution-data/missing-execution-data.error.js';
 import type {
 	BlobStorageLocation,
 	BundleWorkflowSnapshot,
 	ExecutionDataPayload,
 	ExecutionRef,
 	WorkflowSnapshot,
-} from './execution-data/types';
-import { sumBinaryDataBytes } from './sum-binary-data-bytes';
-import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
-import { EventService } from '../events/event.service';
+} from './execution-data/types.js';
+import { sumBinaryDataBytes } from './sum-binary-data-bytes.js';
+import { DuplicateExecutionError } from '../errors/duplicate-execution.error.js';
+import { EventService } from '../events/event.service.js';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 

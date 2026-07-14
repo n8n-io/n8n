@@ -3,7 +3,7 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { AiService } from '@/services/ai.service';
+import type { AiService } from '@/services/ai.service.js';
 
 const capturedTokenGetters: Array<() => Promise<unknown>> = [];
 vi.mock('@/services/proxy-token-manager', () => ({
@@ -15,8 +15,8 @@ vi.mock('@/services/proxy-token-manager', () => ({
 	},
 }));
 
-import { InstanceAiModelService } from '../instance-ai-model.service';
-import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { InstanceAiModelService } from '../instance-ai-model.service.js';
+import type { InstanceAiSettingsService } from '../instance-ai-settings.service.js';
 
 const fakeUser = { id: 'user-1' } as User;
 

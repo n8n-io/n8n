@@ -39,19 +39,19 @@ import {
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { ActiveExecutions } from '@/active-executions';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
-import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { ActiveExecutions } from '@/active-executions.js';
+import { NodeTypes } from '@/node-types.js';
+import { PostHogClient } from '@/posthog/index.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
 
-import { createLlmCompletionMockHandler } from './llm-completion-mock';
-import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
-import { EvalTimings } from './eval-timings';
-import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
-import { createLlmMockHandler } from './mock-handler';
-import { generatePinData } from './pin-data-generator';
+import { createLlmCompletionMockHandler } from './llm-completion-mock.js';
+import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper.js';
+import { EvalTimings } from './eval-timings.js';
+import { type InterceptedTurn, LlmWireServer } from './llm-wire-server.js';
+import { createLlmMockHandler } from './mock-handler.js';
+import { generatePinData } from './pin-data-generator.js';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
@@ -62,7 +62,7 @@ import {
 	partitionAiRoots,
 	type TriggerBinaryRequirement,
 	type VendorLlmRouting,
-} from './workflow-analysis';
+} from './workflow-analysis.js';
 
 // ---------------------------------------------------------------------------
 // Constants

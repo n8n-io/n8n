@@ -1,12 +1,12 @@
 import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
-import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
-import type { Agent } from '../entities/agent.entity';
-import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import type { ChatIntegrationService } from '../integrations/chat-integration.service';
-import type { AgentRepository } from '../repositories/agent.repository';
+import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service.js';
+import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service.js';
+import type { Agent } from '../entities/agent.entity.js';
+import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration.js';
+import type { ChatIntegrationService } from '../integrations/chat-integration.service.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
 
 const agentId = 'agent-1';
 

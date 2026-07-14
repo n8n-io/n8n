@@ -6,11 +6,11 @@ import { readdir, readFile } from 'fs/promises';
 import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
-import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
+import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service.js';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service.js';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { ImportService } from '../import.service';
+import { ImportService } from '../import.service.js';
 
 // Mock fs/promises
 vi.mock('fs/promises');

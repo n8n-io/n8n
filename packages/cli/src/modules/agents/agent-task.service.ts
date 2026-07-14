@@ -9,25 +9,25 @@ import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import { InstanceSettings, ScheduledTaskManager, type ScheduledTaskGroup } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
-import { Agent } from './entities/agent.entity';
-import { AgentTask } from './entities/agent-task.entity';
-import { isValidCronExpression } from './integrations/cron-validation';
-import { AgentRepository } from './repositories/agent.repository';
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service.js';
+import { Agent } from './entities/agent.entity.js';
+import { AgentTask } from './entities/agent-task.entity.js';
+import { isValidCronExpression } from './integrations/cron-validation.js';
+import { AgentRepository } from './repositories/agent.repository.js';
 import {
 	type AgentTaskRunLockHandle,
 	AgentTaskRunLockRepository,
-} from './repositories/agent-task-run-lock.repository';
-import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
-import { AgentTaskRepository } from './repositories/agent-task.repository';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { taskRunMemoryResourceId } from './utils/agent-memory-scope';
-import { generateAgentResourceId } from './utils/agent-resource-id';
+} from './repositories/agent-task-run-lock.repository.js';
+import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository.js';
+import { AgentTaskRepository } from './repositories/agent-task.repository.js';
+import { markAgentDraftDirty } from './utils/agent-draft.utils.js';
+import { taskRunMemoryResourceId } from './utils/agent-memory-scope.js';
+import { generateAgentResourceId } from './utils/agent-resource-id.js';
 
 const TASK_RUN_LOCK_TTL_MS = 5 * 60 * 1000;
 const TASK_RUN_LOCK_RENEW_MS = 60 * 1000;

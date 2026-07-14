@@ -1,6 +1,6 @@
-import { AnotherDummyProvider, DummyProvider } from '@test/external-secrets/utils';
+import { AnotherDummyProvider, DummyProvider } from '@test/external-secrets/utils.js';
 
-import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
+import { ExternalSecretsProviderRegistry } from '../provider-registry.service.js';
 
 describe('ProviderRegistry', () => {
 	let registry: ExternalSecretsProviderRegistry;

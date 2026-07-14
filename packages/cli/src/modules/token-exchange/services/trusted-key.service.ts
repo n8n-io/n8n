@@ -11,11 +11,11 @@ import type { KeyObject } from 'node:crypto';
 import { createHash, createPublicKey } from 'node:crypto';
 import { z } from 'zod';
 
-import { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
-import { TrustedKeyEntity } from '../database/entities/trusted-key.entity';
-import { TrustedKeySourceRepository } from '../database/repositories/trusted-key-source.repository';
-import { TrustedKeyRepository } from '../database/repositories/trusted-key.repository';
-import { TokenExchangeConfig } from '../token-exchange.config';
+import { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity.js';
+import { TrustedKeyEntity } from '../database/entities/trusted-key.entity.js';
+import { TrustedKeySourceRepository } from '../database/repositories/trusted-key-source.repository.js';
+import { TrustedKeyRepository } from '../database/repositories/trusted-key.repository.js';
+import { TokenExchangeConfig } from '../token-exchange.config.js';
 import type {
 	JwksKeySource,
 	JwtAlgorithm,
@@ -23,9 +23,9 @@ import type {
 	StaticKeySource,
 	TrustedKeyData,
 	TrustedKeySource,
-} from '../token-exchange.schemas';
-import { TrustedKeyDataSchema, TrustedKeySourceSchema } from '../token-exchange.schemas';
-import { JwksResolverService } from './jwks-resolver';
+} from '../token-exchange.schemas.js';
+import { TrustedKeyDataSchema, TrustedKeySourceSchema } from '../token-exchange.schemas.js';
+import { JwksResolverService } from './jwks-resolver.js';
 
 type AlgorithmFamily = 'RSA' | 'EC' | 'EdDSA';
 

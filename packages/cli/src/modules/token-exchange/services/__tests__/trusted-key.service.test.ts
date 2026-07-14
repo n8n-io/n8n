@@ -4,14 +4,14 @@ import type { EntityManager } from '@n8n/typeorm';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity';
-import { TrustedKeyEntity } from '../../database/entities/trusted-key.entity';
-import type { TrustedKeySourceRepository } from '../../database/repositories/trusted-key-source.repository';
-import type { TrustedKeyRepository } from '../../database/repositories/trusted-key.repository';
-import type { TokenExchangeConfig } from '../../token-exchange.config';
-import type { TrustedKeyData } from '../../token-exchange.schemas';
-import type { JwksResolverService } from '../jwks-resolver';
-import { TrustedKeyService } from '../trusted-key.service';
+import { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity.js';
+import { TrustedKeyEntity } from '../../database/entities/trusted-key.entity.js';
+import type { TrustedKeySourceRepository } from '../../database/repositories/trusted-key-source.repository.js';
+import type { TrustedKeyRepository } from '../../database/repositories/trusted-key.repository.js';
+import type { TokenExchangeConfig } from '../../token-exchange.config.js';
+import type { TrustedKeyData } from '../../token-exchange.schemas.js';
+import type { JwksResolverService } from '../jwks-resolver.js';
+import { TrustedKeyService } from '../trusted-key.service.js';
 
 // ──────────────────────────────────────────────────────────────────────
 // Pre-generated PEM public keys (test-only, no secrets)

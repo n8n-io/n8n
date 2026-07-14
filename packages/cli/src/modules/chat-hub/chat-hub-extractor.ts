@@ -13,7 +13,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthService } from '@/auth/auth.service.js';
 
 const EncryptedMetadataSchema = z.object({
 	encryptedMetadata: z.string(),

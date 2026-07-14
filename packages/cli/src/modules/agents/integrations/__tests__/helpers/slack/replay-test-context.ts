@@ -3,13 +3,13 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import nock from 'nock';
 import type { Mock } from 'vitest';
 
-import type { ChatInstance } from '../../../chat-integration.service';
-import { ComponentMapper } from '../../../component-mapper';
+import type { ChatInstance } from '../../../chat-integration.service.js';
+import { ComponentMapper } from '../../../component-mapper.js';
 import type {
 	getIntegrationToolConnectionDescriptors,
 	IntegrationMessageContext,
-} from '../../../integration-tools';
-import { SlackIntegration } from '../../../platforms/slack-integration';
+} from '../../../integration-tools.js';
+import { SlackIntegration } from '../../../platforms/slack-integration.js';
 import {
 	createReplayContextSetup,
 	type MemoryMessageContextStore,
@@ -17,7 +17,7 @@ import {
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
 	sendJsonWebhook,
-} from '../replay-test-helpers';
+} from '../replay-test-helpers.js';
 
 export interface SlackUserFixture {
 	id: string;

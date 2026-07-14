@@ -15,10 +15,10 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { RoleService } from '@/services/role.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
+import { RoleService } from '@/services/role.service.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 interface RawDepMaps {
 	credMap: Map<string, Set<string>>;

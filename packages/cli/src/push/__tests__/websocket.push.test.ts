@@ -7,7 +7,7 @@ import { EventEmitter } from 'events';
 import type { Mocked } from 'vitest';
 import type WebSocket from 'ws';
 
-import { WebSocketPush } from '@/push/websocket.push';
+import { WebSocketPush } from '@/push/websocket.push.js';
 
 vi.useFakeTimers();
 

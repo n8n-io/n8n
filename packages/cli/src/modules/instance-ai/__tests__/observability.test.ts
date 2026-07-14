@@ -1,6 +1,6 @@
 import type { InstanceAiTraceContext } from '@n8n/instance-ai';
 
-import { buildInstanceAiObservabilityContext } from '../observability';
+import { buildInstanceAiObservabilityContext } from '../observability.js';
 
 describe('Instance AI observability', () => {
 	it('builds a flat correlation context from run and trace details', () => {

@@ -1,13 +1,13 @@
 import { randomCredentialPayload, type CredentialPayload } from '@n8n/backend-test-utils';
 
-import { TarPackageWriter } from '../../io/tar/tar-package-writer';
-import { FORMAT_VERSION } from '../../spec/constants';
-import type { PackageManifest } from '../../spec/manifest.schema';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
-import type { SerializedFolder } from '../../spec/serialized/folder.schema';
-import type { SerializedProject } from '../../spec/serialized/project.schema';
-import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
-import { streamToBuffer } from '../utils/tar-support';
+import { TarPackageWriter } from '../../io/tar/tar-package-writer.js';
+import { FORMAT_VERSION } from '../../spec/constants.js';
+import type { PackageManifest } from '../../spec/manifest.schema.js';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema.js';
+import type { SerializedFolder } from '../../spec/serialized/folder.schema.js';
+import type { SerializedProject } from '../../spec/serialized/project.schema.js';
+import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema.js';
+import { streamToBuffer } from '../utils/tar-support.js';
 
 /** Credential type used in package import integration tests (matches `randomCredentialPayload` default). */
 export const PACKAGE_GITHUB_CREDENTIAL_TYPE = 'githubApi';

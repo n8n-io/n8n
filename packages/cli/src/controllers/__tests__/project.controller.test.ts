@@ -4,11 +4,11 @@ import type { Response } from 'express';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ProjectController } from '@/controllers/project.controller';
-import type { EventService } from '@/events/event.service';
-import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type { ProjectService } from '@/services/project.service.ee';
-import type { UserManagementMailer } from '@/user-management/email';
+import { ProjectController } from '@/controllers/project.controller.js';
+import type { EventService } from '@/events/event.service.js';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
+import type { ProjectService } from '@/services/project.service.ee.js';
+import type { UserManagementMailer } from '@/user-management/email/index.js';
 
 describe('ProjectController', () => {
 	const eventService = mock<EventService>();

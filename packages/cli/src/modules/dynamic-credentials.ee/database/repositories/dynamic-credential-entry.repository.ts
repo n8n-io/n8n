@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { DynamicCredentialEntry } from '../entities/dynamic-credential-entry';
+import { DynamicCredentialEntry } from '../entities/dynamic-credential-entry.js';
 
 @Service()
 export class DynamicCredentialEntryRepository extends Repository<DynamicCredentialEntry> {

@@ -2,7 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import promClient from 'prom-client';
 
-import { PrometheusDefaultMetricsService } from '../default-metrics.service';
+import { PrometheusDefaultMetricsService } from '../default-metrics.service.js';
 
 vi.mock('prom-client');
 

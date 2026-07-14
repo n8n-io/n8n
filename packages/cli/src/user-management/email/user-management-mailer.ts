@@ -10,14 +10,14 @@ import Handlebars from 'handlebars';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 
-import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces';
-import { NodeMailer } from './node-mailer';
+import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces.js';
+import { NodeMailer } from './node-mailer.js';
 
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { UrlService } from '@/services/url.service';
-import { toError } from '@/utils';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { EventService } from '@/events/event.service.js';
+import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
+import { UrlService } from '@/services/url.service.js';
+import { toError } from '@/utils.js';
 
 const REVOKED_AT_FORMATTER = new Intl.DateTimeFormat('en-GB', {
 	day: 'numeric',

@@ -5,11 +5,11 @@ import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { InstanceRegistryService } from '../instance-registry.service';
-import { REGISTRY_CONSTANTS } from '../instance-registry.types';
-import type { InstanceStorage } from '../storage/instance-storage.interface';
-import type { MemoryInstanceStorage } from '../storage/memory-storage';
-import { RedisInstanceStorage } from '../storage/redis-instance-storage';
+import { InstanceRegistryService } from '../instance-registry.service.js';
+import { REGISTRY_CONSTANTS } from '../instance-registry.types.js';
+import type { InstanceStorage } from '../storage/instance-storage.interface.js';
+import type { MemoryInstanceStorage } from '../storage/memory-storage.js';
+import { RedisInstanceStorage } from '../storage/redis-instance-storage.js';
 
 vi.mock('../storage/redis-instance-storage', () => {
 	class MockRedisStorage implements InstanceStorage {

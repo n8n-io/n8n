@@ -4,11 +4,11 @@ import type { SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
-import { IdentifierValidationError } from '../identifier-interface';
-import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client';
-import { OAuth2UserInfoIdentifier } from '../oauth2-userinfo-identifier';
+import { IdentifierValidationError } from '../identifier-interface.js';
+import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client.js';
+import { OAuth2UserInfoIdentifier } from '../oauth2-userinfo-identifier.js';
 
 describe('OAuth2UserInfoIdentifier', () => {
 	const logger = mockLogger();

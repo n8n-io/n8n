@@ -2,7 +2,7 @@ import { SECRETS_PROVIDER_KEY_PATTERN } from '@n8n/api-types';
 import get from 'lodash/get';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { getAllKeyPaths } from '@/utils';
+import { getAllKeyPaths } from '@/utils.js';
 
 const SECRETS_REFERENCE_REGEX = /\$secrets\b/;
 

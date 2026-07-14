@@ -1,0 +1,61 @@
+{
+  "package": "n8n",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-14T10:08:14.018Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            20546,
+            20073,
+            18852
+          ],
+          "min": 18852,
+          "median": 20073,
+          "mean": 19824
+        },
+        "build": {
+          "runsMs": [
+            20451,
+            17441,
+            17549
+          ],
+          "min": 17441,
+          "median": 17549,
+          "mean": 18481
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-14T12:06:53.162Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            5072,
+            4433,
+            4320
+          ],
+          "min": 4320,
+          "median": 4433,
+          "mean": 4608
+        },
+        "build": {
+          "runsMs": [
+            12238,
+            15127,
+            13273
+          ],
+          "min": 12238,
+          "median": 13273,
+          "mean": 13546
+        }
+      }
+    }
+  }
+}

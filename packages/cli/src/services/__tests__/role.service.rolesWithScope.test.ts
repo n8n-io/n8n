@@ -4,9 +4,9 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { RoleRepository, ScopeRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { RoleCacheService } from '@/services/role-cache.service';
-import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
-import { RoleService } from '@/services/role.service';
+import { RoleCacheService } from '@/services/role-cache.service.js';
+import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service.js';
+import { RoleService } from '@/services/role.service.js';
 
 describe('RoleService.rolesWithScope', () => {
 	const licenseState = mock<LicenseState>();

@@ -9,8 +9,8 @@ import {
 	AgentIsolateSlot,
 	PoolDisposedError,
 	PoolExhaustedError,
-} from '../runtime/agent-isolate-pool';
-import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+} from '../runtime/agent-isolate-pool.js';
+import { AgentSecureRuntime } from '../runtime/agent-secure-runtime.js';
 
 // The runtime reads the library bundle from packages/cli/dist/agent-library-bundle.js.
 // Build it on demand so the test can run without a prior `pnpm build`.

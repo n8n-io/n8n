@@ -2,7 +2,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import chunk from 'lodash/chunk';
 import type { AzureBlobService } from 'n8n-core';
 
-import type { ByteStore, ByteStoreKey } from './types';
+import type { ByteStore, ByteStoreKey } from './types.js';
 
 const MAX_DELETE_CONCURRENCY = 50;
 

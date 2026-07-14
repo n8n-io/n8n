@@ -1,9 +1,9 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { AttachableWorkflowsService } from '../attachable-workflows.service';
+import { AttachableWorkflowsService } from '../attachable-workflows.service.js';
 
 type FoundWorkflow = WorkflowEntity & { projectId: string };
 

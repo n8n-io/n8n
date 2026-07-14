@@ -25,11 +25,11 @@ import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import type { AuthService } from '@/auth/auth.service';
-import { ControllerRegistry } from '@/controller.registry';
-import type { License } from '@/license';
-import type { LastActiveAtService } from '@/services/last-active-at.service';
-import { RateLimitService } from '@/services/rate-limit.service';
+import type { AuthService } from '@/auth/auth.service.js';
+import { ControllerRegistry } from '@/controller.registry.js';
+import type { License } from '@/license.js';
+import type { LastActiveAtService } from '@/services/last-active-at.service.js';
+import { RateLimitService } from '@/services/rate-limit.service.js';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();

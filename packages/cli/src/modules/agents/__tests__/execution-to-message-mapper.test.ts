@@ -1,8 +1,8 @@
-import type { AgentExecution } from '../entities/agent-execution.entity';
+import type { AgentExecution } from '../entities/agent-execution.entity.js';
 import {
 	executionToMessagesDto,
 	executionsToMessagesDto,
-} from '../utils/execution-to-message-mapper';
+} from '../utils/execution-to-message-mapper.js';
 
 function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 	return {

@@ -1,4 +1,4 @@
-import { NotFoundError } from './not-found.error';
+import { NotFoundError } from './not-found.error.js';
 
 export const webhookNotFoundErrorMessage = ({
 	path,

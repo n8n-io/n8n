@@ -4,13 +4,13 @@
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { FsByteStore } from '@/blob-storage/fs-byte-store';
+import type { FsByteStore } from '@/blob-storage/fs-byte-store.js';
 
-import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
-import { ExecutionDataJsonStore } from '../execution-data-json-store';
-import { ExecutionDataWriteError } from '../execution-data-write.error';
-import { createExecutionRef } from '../types';
-import { executionId, payload, ref, workflowId } from './mocks';
+import { CorruptedExecutionDataError } from '../corrupted-execution-data.error.js';
+import { ExecutionDataJsonStore } from '../execution-data-json-store.js';
+import { ExecutionDataWriteError } from '../execution-data-write.error.js';
+import { createExecutionRef } from '../types.js';
+import { executionId, payload, ref, workflowId } from './mocks.js';
 
 let fsByteStore: ReturnType<typeof mock<FsByteStore>>;
 let errorReporter: ReturnType<typeof mock<ErrorReporter>>;

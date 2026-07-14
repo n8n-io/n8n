@@ -1,8 +1,8 @@
 import { inProduction } from '@n8n/backend-common';
 import type { Mock } from 'vitest';
 
-import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils';
-import { CommunityNodeTypesService } from '../community-node-types.service';
+import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils.js';
+import { CommunityNodeTypesService } from '../community-node-types.service.js';
 
 vi.mock('@n8n/backend-common', async () => ({
 	...(await vi.importActual<typeof import('@n8n/backend-common')>('@n8n/backend-common')),

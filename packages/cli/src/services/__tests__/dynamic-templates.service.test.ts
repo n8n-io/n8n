@@ -3,7 +3,10 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import { DynamicTemplatesService, REQUEST_TIMEOUT_MS } from '@/services/dynamic-templates.service';
+import {
+	DynamicTemplatesService,
+	REQUEST_TIMEOUT_MS,
+} from '@/services/dynamic-templates.service.js';
 
 const MOCK_DYNAMIC_TEMPLATES_HOST = 'https://dynamic-templates.n8n.io/templates';
 

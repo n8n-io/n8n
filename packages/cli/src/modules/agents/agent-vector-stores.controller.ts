@@ -3,7 +3,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { AgentVectorStoresService } from './agent-vector-stores.service';
+import { AgentVectorStoresService } from './agent-vector-stores.service.js';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentVectorStoresController {

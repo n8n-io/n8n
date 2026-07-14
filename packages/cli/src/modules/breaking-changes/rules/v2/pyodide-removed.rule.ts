@@ -7,8 +7,8 @@ import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
 	WorkflowDetectionReport,
-} from '../../types';
-import { BreakingChangeCategory } from '../../types';
+} from '../../types/index.js';
+import { BreakingChangeCategory } from '../../types/index.js';
 
 @BreakingChangeRule({ version: 'v2' })
 export class PyodideRemovedRule implements IBreakingChangeWorkflowRule {

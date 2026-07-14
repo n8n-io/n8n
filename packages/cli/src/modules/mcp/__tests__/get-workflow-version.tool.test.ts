@@ -3,13 +3,13 @@ import { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
 
-import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
-import { createGetWorkflowVersionTool } from '../tools/get-workflow-version.tool';
+import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils.js';
+import { createGetWorkflowVersionTool } from '../tools/get-workflow-version.tool.js';
 
 const nodeWithCredentials: INode = {
 	id: 'node-1',

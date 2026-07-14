@@ -10,10 +10,10 @@ import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 
-import { License } from '@/license';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
+import { License } from '@/license.js';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.js';
 
-import { createManyWorkflowHistoryItems } from './shared/db/workflow-history';
+import { createManyWorkflowHistoryItems } from './shared/db/workflow-history.js';
 
 describe('Workflow History Manager', () => {
 	const license = mockInstance(License);

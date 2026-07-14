@@ -3,10 +3,10 @@ import { Get, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { EventService } from '@/events/event.service';
-import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
-import { OAuthRequest } from '@/requests';
+import { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import { EventService } from '@/events/event.service.js';
+import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service.js';
+import { OAuthRequest } from '@/requests.js';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {

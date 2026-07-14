@@ -9,8 +9,8 @@ import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { InstanceSettings } from 'n8n-core';
 import { assert, type IUser } from 'n8n-workflow';
 
-import { N8N_VERSION } from '../constants';
-import { License } from '../license';
+import { N8N_VERSION } from '../constants.js';
+import { License } from '../license.js';
 
 @Service()
 export class AiService {

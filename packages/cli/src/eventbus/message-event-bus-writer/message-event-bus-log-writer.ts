@@ -10,23 +10,23 @@ import { parse } from 'path';
 import readline from 'readline';
 import { Worker } from 'worker_threads';
 
-import type { EventMessageTypes } from '../event-message-classes';
-import { isEventMessageOptions } from '../event-message-classes/abstract-event-message';
-import type { AbstractEventMessageOptions } from '../event-message-classes/abstract-event-message-options';
-import type { EventMessageAuditOptions } from '../event-message-classes/event-message-audit';
-import { EventMessageAudit } from '../event-message-classes/event-message-audit';
-import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
+import type { EventMessageTypes } from '../event-message-classes/index.js';
+import { isEventMessageOptions } from '../event-message-classes/abstract-event-message.js';
+import type { AbstractEventMessageOptions } from '../event-message-classes/abstract-event-message-options.js';
+import type { EventMessageAuditOptions } from '../event-message-classes/event-message-audit.js';
+import { EventMessageAudit } from '../event-message-classes/event-message-audit.js';
+import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm.js';
 import {
 	EventMessageConfirm,
 	isEventMessageConfirm,
-} from '../event-message-classes/event-message-confirm';
-import type { EventMessageGenericOptions } from '../event-message-classes/event-message-generic';
-import { EventMessageGeneric } from '../event-message-classes/event-message-generic';
-import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
-import { EventMessageNode } from '../event-message-classes/event-message-node';
-import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
-import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
-import type { EventMessageReturnMode } from '../message-event-bus/message-event-bus';
+} from '../event-message-classes/event-message-confirm.js';
+import type { EventMessageGenericOptions } from '../event-message-classes/event-message-generic.js';
+import { EventMessageGeneric } from '../event-message-classes/event-message-generic.js';
+import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node.js';
+import { EventMessageNode } from '../event-message-classes/event-message-node.js';
+import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow.js';
+import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow.js';
+import type { EventMessageReturnMode } from '../message-event-bus/message-event-bus.js';
 
 interface MessageEventBusLogWriterConstructorOptions {
 	/** Resolved authoritative log file base path (without `.log`). When set,

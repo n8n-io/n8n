@@ -19,12 +19,12 @@ import {
 	ATTRIBUTE,
 	DURATION_BUCKETS_SECONDS,
 	TRACER_NAME,
-} from './expression-observability.constants';
+} from './expression-observability.constants.js';
 import {
 	normalizeAttributes,
 	normalizeAttributeValue,
 	toPromName,
-} from './expression-observability.formatters';
+} from './expression-observability.formatters.js';
 
 type TailSampleDecision = 'drop' | 'keep';
 

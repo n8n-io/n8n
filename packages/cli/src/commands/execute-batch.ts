@@ -11,19 +11,19 @@ import os from 'os';
 import { sep } from 'path';
 import { z } from 'zod';
 
-import { ActiveExecutions } from '@/active-executions';
-import { OwnershipService } from '@/services/ownership.service';
-import { findCliWorkflowStart } from '@/utils';
-import { WorkflowRunner } from '@/workflow-runner';
+import { ActiveExecutions } from '@/active-executions.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { findCliWorkflowStart } from '@/utils.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
 
-import { BaseCommand } from './base-command';
+import { BaseCommand } from './base-command.js';
 import type {
 	IExecutionResult,
 	INodeSpecialCase,
 	INodeSpecialCases,
 	IResult,
 	IWorkflowExecutionProgress,
-} from '../types/commands.types';
+} from '../types/commands.types.js';
 
 const re = /\d+/;
 

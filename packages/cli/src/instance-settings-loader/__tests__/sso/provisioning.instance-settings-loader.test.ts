@@ -5,7 +5,7 @@ import type { SettingsRepository } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ProvisioningInstanceSettingsLoader } from '../../loaders/sso/provisioning.instance-settings-loader';
+import { ProvisioningInstanceSettingsLoader } from '../../loaders/sso/provisioning.instance-settings-loader.js';
 
 describe('ProvisioningInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });

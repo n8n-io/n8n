@@ -5,15 +5,15 @@ import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
 import { jsonStringify, UserError } from 'n8n-workflow';
 
-import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
-import { REDIS_TTL_KEY_MISSING } from '@/services/cache/cache.constants';
+import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error.js';
+import { REDIS_TTL_KEY_MISSING } from '@/services/cache/cache.constants.js';
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
 	MaybeHash,
 	Hash,
-} from '@/services/cache/cache.types';
-import { isObject } from '@/utils';
+} from '@/services/cache/cache.types.js';
+import { isObject } from '@/utils.js';
 
 type CacheEvents = {
 	'metrics.cache.hit': never;
@@ -36,7 +36,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
 		if (useRedis) {
-			const { RedisClientService } = await import('../redis-client.service');
+			const { RedisClientService } = await import('../redis-client.service.js');
 			const redisClientService = Container.get(RedisClientService);
 
 			const prefixBase = this.globalConfig.redis.prefix;
@@ -52,7 +52,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 				extraOptions: { keyPrefix: prefix },
 			});
 
-			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager');
+			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager.js');
 			const redisStore = redisStoreUsingClient(redisClient, {
 				ttl: this.globalConfig.cache.redis.ttl,
 			});

@@ -11,10 +11,10 @@ import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { CREDENTIALS_REPORT } from '@/security-audit/constants';
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
+import { CREDENTIALS_REPORT } from '@/security-audit/constants.js';
+import { SecurityAuditService } from '@/security-audit/security-audit.service.js';
 
-import { getRiskSection } from './utils';
+import { getRiskSection } from './utils.js';
 
 let securityAuditService: SecurityAuditService;
 

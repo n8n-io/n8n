@@ -7,12 +7,12 @@ import type { ClaimedTask } from '@n8n/scheduler';
 import type { InstanceSettings } from 'n8n-core';
 import { Tracing } from 'n8n-core';
 
-import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
-import { DurableScheduler } from '@/scheduling/durable-scheduler';
-import { ScheduleTriggerTaskHandler } from '@/scheduling/schedule-trigger-node/schedule-trigger-task-handler';
+import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service.js';
+import { DurableScheduler } from '@/scheduling/durable-scheduler.js';
+import { ScheduleTriggerTaskHandler } from '@/scheduling/schedule-trigger-node/schedule-trigger-task-handler.js';
 
-import { retryUntil } from '../shared/retry-until';
-import { createDueJobFactory, seedDueTask } from './shared/job-factory';
+import { retryUntil } from '../shared/retry-until.js';
+import { createDueJobFactory, seedDueTask } from './shared/job-factory.js';
 
 /**
  * The process lifecycle wired in `start.ts`: `DurableScheduler.start()` driving

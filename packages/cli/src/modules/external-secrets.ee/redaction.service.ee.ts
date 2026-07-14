@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { CREDENTIAL_BLANKING_VALUE, deepCopy } from 'n8n-workflow';
 
-import { containsExpression } from '@/utils';
+import { containsExpression } from '@/utils.js';
 
 @Service()
 export class RedactionService {

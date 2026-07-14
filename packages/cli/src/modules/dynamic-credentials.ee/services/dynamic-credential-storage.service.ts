@@ -11,14 +11,14 @@ import {
 import type {
 	CredentialStoreMetadata,
 	IDynamicCredentialStorageProvider,
-} from '@/credentials/dynamic-credential-storage.interface';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+} from '@/credentials/dynamic-credential-storage.interface.js';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
 
-import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import { extractSharedFields } from './shared-fields';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import { CredentialStorageError } from '../errors/credential-storage.error';
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service.js';
+import { extractSharedFields } from './shared-fields.js';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository.js';
+import { CredentialStorageError } from '../errors/credential-storage.error.js';
 
 @Service()
 export class DynamicCredentialStorageService implements IDynamicCredentialStorageProvider {

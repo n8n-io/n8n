@@ -25,9 +25,9 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypes } from '@/node-types.js';
 
 /**
  * Maximum characters for a single resolved parameter leaf. Resolved parameter

@@ -3,11 +3,11 @@ import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { DbStore } from '../db-store';
-import { MissingExecutionDataError } from '../missing-execution-data.error';
-import { createExecutionRef } from '../types';
-import type { ExecutionDataPayload } from '../types';
-import { payload, workflowId } from './mocks';
+import { DbStore } from '../db-store.js';
+import { MissingExecutionDataError } from '../missing-execution-data.error.js';
+import { createExecutionRef } from '../types.js';
+import type { ExecutionDataPayload } from '../types.js';
+import { payload, workflowId } from './mocks.js';
 
 let dbStore: DbStore;
 let repository: ExecutionDataRepository;

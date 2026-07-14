@@ -2,17 +2,17 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsService } from '@/credentials/credentials.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import type { CredentialTypes } from '@/credential-types.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
 
-import type { ImportContext } from '../../../n8n-packages.types';
-import { CredentialImporter } from '../credential-importer';
-import { CredentialMatcherFactory } from '../credential-matcher-factory';
-import type { CredentialBindingRequest, CredentialResolutionFailure } from '../credential.types';
-import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
-import type { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher';
-import type { TypeOnlyCredentialMatcher } from '../type-only-credential-matcher';
+import type { ImportContext } from '../../../n8n-packages.types.js';
+import { CredentialImporter } from '../credential-importer.js';
+import { CredentialMatcherFactory } from '../credential-matcher-factory.js';
+import type { CredentialBindingRequest, CredentialResolutionFailure } from '../credential.types.js';
+import { IdBasedCredentialMatcher } from '../id-based-credential-matcher.js';
+import type { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher.js';
+import type { TypeOnlyCredentialMatcher } from '../type-only-credential-matcher.js';
 
 type UsableCredential = Awaited<
 	ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>

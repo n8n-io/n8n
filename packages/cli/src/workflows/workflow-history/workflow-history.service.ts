@@ -17,12 +17,12 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
-import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
-import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
+import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error.js';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import type { WorkflowActionSource } from '@/events/maps/relay.event-map.js';
 
-import { WorkflowFinderService } from '../workflow-finder.service';
+import { WorkflowFinderService } from '../workflow-finder.service.js';
 
 @Service()
 export class WorkflowHistoryService {

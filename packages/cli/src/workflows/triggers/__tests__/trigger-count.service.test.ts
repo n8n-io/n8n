@@ -1,10 +1,10 @@
 import { mock } from 'vitest-mock-extended';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
+import { TriggerCountService } from '@/workflows/triggers/trigger-count.service.js';
 
-import { createWorkflow, node } from './trigger-test-utils';
+import { createWorkflow, node } from './trigger-test-utils.js';
 
 describe('TriggerCountService', () => {
 	beforeEach(() => {

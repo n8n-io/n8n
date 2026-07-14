@@ -2,7 +2,7 @@ import {
 	extractProviderKeysFromCredentialData,
 	extractProviderKeysFromExpression,
 	getExternalSecretExpressionPaths,
-} from '../external-secrets.utils';
+} from '../external-secrets.utils.js';
 
 describe('External secrets utils', () => {
 	describe('extractProviderKeysFromExpression', () => {

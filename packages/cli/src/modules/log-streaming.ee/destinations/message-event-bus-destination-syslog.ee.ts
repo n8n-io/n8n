@@ -9,13 +9,13 @@ import type {
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import { eventMessageGenericDestinationTestEvent } from '@/eventbus/event-message-classes/event-message-generic';
+import { eventMessageGenericDestinationTestEvent } from '@/eventbus/event-message-classes/event-message-generic.js';
 import type {
 	MessageEventBus,
 	MessageWithCallback,
-} from '@/eventbus/message-event-bus/message-event-bus';
+} from '@/eventbus/message-event-bus/message-event-bus.js';
 
-import { MessageEventBusDestination } from './message-event-bus-destination.ee';
+import { MessageEventBusDestination } from './message-event-bus-destination.ee.js';
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,
 ): candidate is MessageEventBusDestinationSyslogOptions => {

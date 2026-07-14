@@ -2,7 +2,7 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import type { PrometheusMetricsCollector } from './base';
+import type { PrometheusMetricsCollector } from './base.js';
 
 /**
  * Observes webhook request duration (`n8n_webhook_request_duration_seconds`)

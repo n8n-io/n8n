@@ -28,10 +28,10 @@ import {
 } from '@n8n/decorators';
 import { hasGlobalScope, Role as RoleDTO, RoleNamespace } from '@n8n/permissions';
 
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service.js';
+import { RoleService } from '@/services/role.service.js';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
 
 @RestController('/roles')
 export class RoleController {

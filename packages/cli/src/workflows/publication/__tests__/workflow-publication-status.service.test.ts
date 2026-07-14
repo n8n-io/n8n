@@ -6,7 +6,7 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service.js';
 
 describe('WorkflowPublicationStatusService', () => {
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();

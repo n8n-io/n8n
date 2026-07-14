@@ -3,10 +3,10 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
-import { OAuthConsentService } from './oauth-consent.service';
-import { OAuthSessionService } from './oauth-session.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto.js';
+import { OAuthConsentService } from './oauth-consent.service.js';
+import { OAuthSessionService } from './oauth-session.service.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
 
 @RestController('/consent')
 export class OAuthConsentController {

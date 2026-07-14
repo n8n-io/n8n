@@ -2,10 +2,10 @@ import { SecurityConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
-import config from '@/config';
-import { RISK_CATEGORIES } from '@/security-audit/constants';
-import type { Risk, RiskReporter } from '@/security-audit/types';
-import { toReportTitle } from '@/security-audit/utils';
+import config from '@/config/index.js';
+import { RISK_CATEGORIES } from '@/security-audit/constants.js';
+import type { Risk, RiskReporter } from '@/security-audit/types.js';
+import { toReportTitle } from '@/security-audit/utils.js';
 
 @Service()
 export class SecurityAuditService {

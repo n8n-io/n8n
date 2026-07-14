@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { sanitizeWebhookRequest } from '@/webhooks/webhook-request-sanitizer';
+import { sanitizeWebhookRequest } from '@/webhooks/webhook-request-sanitizer.js';
 
 describe('webhookRequestSanitizer', () => {
 	let mockRequest: Request;

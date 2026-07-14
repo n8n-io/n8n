@@ -2,13 +2,13 @@ import type { Mock, Mocked } from 'vitest';
 import type { TestCaseExecutionRepository, TestRun, TestRunRepository, User } from '@n8n/db';
 import type express from 'express';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
-import { TestRunsController } from '@/evaluation.ee/test-runs.controller.ee';
-import type { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee.js';
+import { TestRunsController } from '@/evaluation.ee/test-runs.controller.ee.js';
+import type { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee.js';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 vi.mock('@/evaluation.ee/test-runner/test-runner.service.ee');
 

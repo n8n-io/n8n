@@ -1,15 +1,15 @@
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { decideWorkflowConflictAction } from './workflow-conflict-policy';
-import { decideWorkflowId } from './workflow-id-policy';
+import { decideWorkflowConflictAction } from './workflow-conflict-policy.js';
+import { decideWorkflowId } from './workflow-id-policy.js';
 import {
 	WorkflowImportMatchService,
 	type WorkflowIdConflict,
-} from './workflow-import-match.service';
+} from './workflow-import-match.service.js';
 import type {
 	PersistedWorkflowPlanItem,
 	PreparedWorkflow,
@@ -20,14 +20,14 @@ import type {
 	WorkflowImportPlan,
 	WorkflowPlanItem,
 	WorkflowPlannedAction,
-} from './workflow-import.types';
-import { WorkflowPublisher } from './workflow-publisher';
+} from './workflow-import.types.js';
+import { WorkflowPublisher } from './workflow-publisher.js';
 import type {
 	ImportContext,
 	ImportWorkflowProperties,
 	PackageImportBindings,
 	WorkflowIdPolicy,
-} from '../../n8n-packages.types';
+} from '../../n8n-packages.types.js';
 
 export interface WorkflowImportResult {
 	outcomes: WorkflowImportOutcome[];

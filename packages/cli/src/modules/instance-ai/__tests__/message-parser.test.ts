@@ -4,8 +4,8 @@ import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
 	parseStoredMessages,
-} from '../message-parser';
-import type { StoredAgentMessage } from '../message-parser';
+} from '../message-parser.js';
+import type { StoredAgentMessage } from '../message-parser.js';
 
 const BASE_DATE_MS = Date.UTC(2026, 0, 1);
 

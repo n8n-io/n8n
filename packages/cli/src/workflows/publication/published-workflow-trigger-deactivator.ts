@@ -6,8 +6,8 @@ import { Service } from '@n8n/di';
 import { ActiveWorkflowTriggers, ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
-import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock.js';
+import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer.js';
 
 /**
  * How long teardown waits for an in-flight publication record to finish before

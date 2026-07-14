@@ -7,21 +7,21 @@ import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow'
 import { WebhookPathTakenError, WorkflowActivationError, WorkflowExpression } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import type { ActivationErrorsService } from '@/activation-errors.service';
-import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
-import type { EventService } from '@/events/event.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { ActivationErrorsService } from '@/activation-errors.service.js';
+import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants.js';
+import type { EventService } from '@/events/event.service.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
 import type {
 	NonWebhookTriggerRegistrar,
 	PreparedNonWebhookTriggerRegistration,
-} from '@/workflows/triggers/non-webhook-trigger-registrar';
-import type { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
-import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
-import type { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
-import { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
-import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+} from '@/workflows/triggers/non-webhook-trigger-registrar.js';
+import type { TriggerCountService } from '@/workflows/triggers/trigger-count.service.js';
+import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory.js';
+import type { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar.js';
+import { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator.js';
+import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
 
-import { createNodeTypes, logger, node } from './trigger-test-utils';
+import { createNodeTypes, logger, node } from './trigger-test-utils.js';
 
 vi.mock('n8n-workflow', async () => ({
 	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),

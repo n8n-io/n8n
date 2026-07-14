@@ -3,27 +3,27 @@ import { Service } from '@n8n/di';
 import type { SentMessage } from 'chat';
 import { z } from 'zod';
 
-import { ChatIntegrationRegistry } from './agent-chat-integration';
-import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';
+import { ChatIntegrationRegistry } from './agent-chat-integration.js';
+import { ChatIntegrationService, type ChatInstance } from './chat-integration.service.js';
 import {
 	ComponentMapper,
 	INTERACTIVE_CARD_RESUME_JSON_SCHEMA,
 	type ShortenCallback,
-} from './component-mapper';
-import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
+} from './component-mapper.js';
+import { INTEGRATION_ERROR_CODES } from './integration-error-codes.js';
 import {
 	connectionUnavailable,
 	integrationError,
 	normalizePlatformId,
-} from './integration-helpers';
+} from './integration-helpers.js';
 import type {
 	IntegrationAction,
 	IntegrationActionExecutor,
 	IntegrationActionResult,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
-} from './integration-tools';
-import { subscribeSlackThread } from './platforms/slack-operations';
+} from './integration-tools.js';
+import { subscribeSlackThread } from './platforms/slack-operations.js';
 
 // The shared wire schema from @n8n/api-types — the same definition the tool
 // boundary validates against and the editor-ui renderer parses with.

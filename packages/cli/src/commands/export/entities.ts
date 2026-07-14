@@ -3,9 +3,9 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
-import { ExportService } from '@/services/export.service';
+import { ExportService } from '@/services/export.service.js';
 
-import { BaseCommand } from '../base-command';
+import { BaseCommand } from '../base-command.js';
 
 const flagsSchema = z.object({
 	outputDir: z

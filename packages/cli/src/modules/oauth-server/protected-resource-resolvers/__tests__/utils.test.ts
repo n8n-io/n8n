@@ -1,4 +1,4 @@
-import { resourceUrlToWebhookPath, trimSlashes, trimTrailingSlash } from '../utils';
+import { resourceUrlToWebhookPath, trimSlashes, trimTrailingSlash } from '../utils.js';
 
 describe('resourceUrlToWebhookPath', () => {
 	test('should return the path for a URL under a root-mounted base URL', () => {

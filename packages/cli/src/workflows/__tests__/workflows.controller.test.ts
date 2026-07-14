@@ -8,12 +8,12 @@ import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { WorkflowsController } from '../workflows.controller';
+import { WorkflowsController } from '../workflows.controller.js';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { ExecutionService } from '@/executions/execution.service';
-import type { ProjectService } from '@/services/project.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import type { ExecutionService } from '@/executions/execution.service.js';
+import type { ProjectService } from '@/services/project.service.ee.js';
 
 describe('WorkflowsController', () => {
 	const controller = Object.create(WorkflowsController.prototype);

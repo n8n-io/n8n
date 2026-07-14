@@ -3,11 +3,11 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Post, Put, RestController } from '@n8n/decorators';
 
-import { OtelLifecycleHandler } from './otel-lifecycle-handler';
-import { OtelSettingsService } from './otel-settings.service';
-import { OtelService } from './otel.service';
+import { OtelLifecycleHandler } from './otel-lifecycle-handler.js';
+import { OtelSettingsService } from './otel-settings.service.js';
+import { OtelService } from './otel.service.js';
 
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
 @RestController('/otel')
 export class OtelSettingsController {

@@ -2,15 +2,15 @@ import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import z from 'zod';
 
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { WorkflowAccessError } from '../mcp.errors';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { createLimitSchema } from './schemas';
-import { getMcpWorkflow } from './workflow-validation.utils';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import { WorkflowAccessError } from '../mcp.errors.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types.js';
+import { createLimitSchema } from './schemas.js';
+import { getMcpWorkflow } from './workflow-validation.utils.js';
 
 const MAX_RESULTS = 50;
 

@@ -2,8 +2,8 @@ import { WorkflowRepository } from '@n8n/db';
 import { Get, RestController } from '@n8n/decorators';
 import { InstanceSettings } from 'n8n-core';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee.js';
 
 @RestController('/debug')
 export class DebugController {

@@ -6,14 +6,14 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError } from 'n8n-workflow';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
-import type { Agent } from '../entities/agent.entity';
-import type { AgentRepository } from '../repositories/agent.repository';
-import type { ToolRegistry } from '../tool-registry';
+import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service.js';
+import { AgentRuntimeCacheService } from '../agent-runtime-cache.service.js';
+import type { Agent } from '../entities/agent.entity.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
+import type { ToolRegistry } from '../tool-registry.js';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

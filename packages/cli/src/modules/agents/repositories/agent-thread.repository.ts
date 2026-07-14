@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { AgentThreadEntity } from '../entities/agent-thread.entity';
+import { AgentThreadEntity } from '../entities/agent-thread.entity.js';
 
 @Service()
 export class AgentThreadRepository extends Repository<AgentThreadEntity> {

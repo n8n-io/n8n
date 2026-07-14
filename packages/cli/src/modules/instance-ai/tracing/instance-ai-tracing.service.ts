@@ -14,17 +14,17 @@ import {
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import type { AiService } from '@/services/ai.service';
-import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants.js';
+import type { AiService } from '@/services/ai.service.js';
+import { ProxyTokenManager } from '@/services/proxy-token-manager.js';
 
-import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
+import type { InProcessEventBus } from '../event-bus/in-process-event-bus.js';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
-} from '../run-trace-metadata';
-import type { DbSnapshotStorage } from '../storage/db-snapshot-storage';
-import { TraceReplayState } from '../trace-replay-state';
+} from '../run-trace-metadata.js';
+import type { DbSnapshotStorage } from '../storage/db-snapshot-storage.js';
+import { TraceReplayState } from '../trace-replay-state.js';
 
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
 // (key, responseId) pair twice produces the same feedback UUID so LangSmith

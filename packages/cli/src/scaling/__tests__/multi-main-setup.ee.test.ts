@@ -7,9 +7,9 @@ import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { createResultOk, createResultError } from '@n8n/utils/result';
 
-import type { LeaderElectionClient } from '@/scaling/leader-election-client';
+import type { LeaderElectionClient } from '@/scaling/leader-election-client.js';
 
-import { MultiMainSetup } from '../multi-main-setup.ee';
+import { MultiMainSetup } from '../multi-main-setup.ee.js';
 
 function createInstanceSettings(hostId: string) {
 	let isLeader = false;

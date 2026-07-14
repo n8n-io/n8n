@@ -7,8 +7,8 @@ import { Server as WSServer } from 'ws';
 import {
 	BROWSER_USE_WS_NAMESPACE,
 	type BrowserUseUpgradeRequest,
-} from './browser-use-ws.constants';
-import { InstanceAiBrowserSessionService } from './instance-ai-browser-session.service';
+} from './browser-use-ws.constants.js';
+import { InstanceAiBrowserSessionService } from './instance-ai-browser-session.service.js';
 
 /**
  * Serves the Browser Use relay WebSockets (`/browser-use/extension/:sessionId`

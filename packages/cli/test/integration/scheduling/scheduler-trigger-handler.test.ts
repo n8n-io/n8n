@@ -12,14 +12,14 @@ import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
-import { SCHEDULE_TRIGGER_TASK_TYPE } from '@/scheduling/schedule-trigger-node/schedule-trigger-task';
-import { ScheduleTriggerTaskHandler } from '@/scheduling/schedule-trigger-node/schedule-trigger-task-handler';
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler.js';
+import { SCHEDULE_TRIGGER_TASK_TYPE } from '@/scheduling/schedule-trigger-node/schedule-trigger-task.js';
+import { ScheduleTriggerTaskHandler } from '@/scheduling/schedule-trigger-node/schedule-trigger-task-handler.js';
 
-import { createOwner } from '../shared/db/users';
-import { retryUntil } from '../shared/retry-until';
-import * as utils from '../shared/utils';
-import { loadNodesFromDist } from '../shared/utils/node-types-data';
+import { createOwner } from '../shared/db/users.js';
+import { retryUntil } from '../shared/retry-until.js';
+import * as utils from '../shared/utils/index.js';
+import { loadNodesFromDist } from '../shared/utils/node-types-data.js';
 
 /**
  * The whole schedule-trigger path against a real database and the real engine:

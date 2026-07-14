@@ -10,17 +10,17 @@ import { Cipher } from 'n8n-core';
 import type { Response } from 'superagent';
 import { mock } from 'vitest-mock-extended';
 
-import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee.js';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
 
 import {
 	DummyProvider,
 	MockProviders,
 	createDummyProvider,
-} from '../../shared/external-secrets/utils';
-import { createAdmin, createMember, createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+} from '../../shared/external-secrets/utils.js';
+import { createAdmin, createMember, createOwner } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import { setupTestServer } from '../shared/utils/index.js';
 
 const mockProvidersInstance = new MockProviders();
 mockProvidersInstance.setProviders({
@@ -641,7 +641,7 @@ describe('Secret Providers Project API', () => {
 
 		beforeAll(async () => {
 			agents = { owner: ownerAgent, admin: adminAgent, member: memberAgent };
-			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			const { DummyProvider } = await import('../../shared/external-secrets/utils.js');
 			mockProvidersInstance.setProviders({
 				dummy: DummyProvider,
 				awsSecretsManager: DummyProvider,
@@ -664,7 +664,7 @@ describe('Secret Providers Project API', () => {
 			await createProviderConnection('test-conn', [teamProject1.id]);
 
 			const { ExternalSecretsManager } = await import(
-				'@/modules/external-secrets.ee/external-secrets-manager.ee'
+				'@/modules/external-secrets.ee/external-secrets-manager.ee.js'
 			);
 			await Container.get(ExternalSecretsManager).reloadAllProviders();
 
@@ -708,7 +708,7 @@ describe('Secret Providers Project API', () => {
 					await createProviderConnection(`test-auth-${role}`, [teamProject1.id]);
 
 					const { ExternalSecretsManager } = await import(
-						'@/modules/external-secrets.ee/external-secrets-manager.ee'
+						'@/modules/external-secrets.ee/external-secrets-manager.ee.js'
 					);
 					await Container.get(ExternalSecretsManager).reloadAllProviders();
 

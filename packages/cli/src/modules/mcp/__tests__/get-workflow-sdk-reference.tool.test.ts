@@ -5,10 +5,10 @@ import {
 	WORKFLOW_SDK_PATTERNS,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
-import { Telemetry } from '@/telemetry';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { createGetWorkflowSdkReferenceTool } from '../tools/workflow-builder/get-workflow-sdk-reference.tool';
-import { getSdkReferenceContent } from '../tools/workflow-builder/sdk-reference-content';
+import { createGetWorkflowSdkReferenceTool } from '../tools/workflow-builder/get-workflow-sdk-reference.tool.js';
+import { getSdkReferenceContent } from '../tools/workflow-builder/sdk-reference-content.js';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	SDK_IMPORT_STATEMENT: "import { workflow } from '@n8n/workflow-sdk';",

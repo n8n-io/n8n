@@ -3,9 +3,12 @@ import { mock } from 'vitest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
-import { determineFinalExecutionStatus, updateExistingExecution } from '../shared-hook-functions';
+import {
+	determineFinalExecutionStatus,
+	updateExistingExecution,
+} from '../shared-hook-functions.js';
 
 describe('determineFinalExecutionStatus', () => {
 	describe('When waitTill is not set', () => {

@@ -5,17 +5,20 @@ import type { Logger } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentChatBridge } from '../../agent-chat-bridge';
-import { ChatIntegrationRegistry, type AgentChatIntegration } from '../../agent-chat-integration';
-import type { ChatIntegrationService, ChatInstance } from '../../chat-integration.service';
-import type { ComponentMapper } from '../../component-mapper';
-import { ChatIntegrationActionExecutor } from '../../integration-action-executor';
-import type { IntegrationMessageContextService } from '../../integration-message-context.service';
+import { AgentChatBridge } from '../../agent-chat-bridge.js';
+import {
+	ChatIntegrationRegistry,
+	type AgentChatIntegration,
+} from '../../agent-chat-integration.js';
+import type { ChatIntegrationService, ChatInstance } from '../../chat-integration.service.js';
+import type { ComponentMapper } from '../../component-mapper.js';
+import { ChatIntegrationActionExecutor } from '../../integration-action-executor.js';
+import type { IntegrationMessageContextService } from '../../integration-message-context.service.js';
 import type {
 	IntegrationMessageContext,
 	IntegrationMessageContextStore,
-} from '../../integration-tools';
-import { getIntegrationToolConnectionDescriptors } from '../../integration-tools';
+} from '../../integration-tools.js';
+import { getIntegrationToolConnectionDescriptors } from '../../integration-tools.js';
 
 type AgentExecutorLike = ConstructorParameters<typeof AgentChatBridge>[2];
 

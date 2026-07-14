@@ -1,4 +1,4 @@
-import { WorkflowImportUrlRemovedRule } from '../workflow-import-url-removed.rule';
+import { WorkflowImportUrlRemovedRule } from '../workflow-import-url-removed.rule.js';
 
 describe('WorkflowImportUrlRemovedRule', () => {
 	let rule: WorkflowImportUrlRemovedRule;

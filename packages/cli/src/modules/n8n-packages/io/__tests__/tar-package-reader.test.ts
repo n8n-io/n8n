@@ -1,9 +1,9 @@
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import { streamToBuffer } from '../../__tests__/utils/tar-support';
-import { TarPackageReader, type TarReaderLimits } from '../tar/tar-package-reader';
-import { TarPackageWriter } from '../tar/tar-package-writer';
-import { buildRawTar } from './utils/raw-tar-builder';
+import { streamToBuffer } from '../../__tests__/utils/tar-support.js';
+import { TarPackageReader, type TarReaderLimits } from '../tar/tar-package-reader.js';
+import { TarPackageWriter } from '../tar/tar-package-writer.js';
+import { buildRawTar } from './utils/raw-tar-builder.js';
 
 const MiB = 1024 * 1024;
 

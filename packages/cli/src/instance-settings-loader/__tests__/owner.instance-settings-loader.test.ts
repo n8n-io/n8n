@@ -2,9 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import type { OwnershipService } from '@/services/ownership.service';
+import type { OwnershipService } from '@/services/ownership.service.js';
 
-import { OwnerInstanceSettingsLoader } from '../loaders/owner.instance-settings-loader';
+import { OwnerInstanceSettingsLoader } from '../loaders/owner.instance-settings-loader.js';
 
 describe('OwnerInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });

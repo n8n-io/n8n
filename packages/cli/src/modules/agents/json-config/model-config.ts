@@ -1,7 +1,7 @@
 import type { CredentialProvider, ModelConfig } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 
-import { mapCredentialForProvider } from './credential-field-mapping';
+import { mapCredentialForProvider } from './credential-field-mapping.js';
 
 export async function resolveCredentialAwareModelConfig(
 	model: string,

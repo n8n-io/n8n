@@ -3,7 +3,7 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
-import { WORKFLOW_REVIEW_POLICY_SETTINGS_KEY } from '@/constants/workflow-reviews';
+import { WORKFLOW_REVIEW_POLICY_SETTINGS_KEY } from '@/constants/workflow-reviews.js';
 
 const DEFAULT_POLICY = { enabled: false };
 

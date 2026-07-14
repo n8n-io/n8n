@@ -16,13 +16,13 @@ import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentExecutionService } from '../../agent-execution.service';
-import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
-import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
+import type { AgentExecutionService } from '../../agent-execution.service.js';
+import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service.js';
+import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner.js';
 import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
-} from '../sub-agent-source-resolver';
+} from '../sub-agent-source-resolver.js';
 
 const projectId = 'project-1';
 const parentThreadId = 'parent-thread-1';

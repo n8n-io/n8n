@@ -18,7 +18,7 @@ import {
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	partitionAiRoots,
-} from '../workflow-analysis';
+} from '../workflow-analysis.js';
 
 const mockedCreateEvalAgent = vi.mocked(createEvalAgent);
 const mockedExtractText = vi.mocked(extractText);

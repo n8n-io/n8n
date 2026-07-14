@@ -12,9 +12,9 @@ import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
-import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
-import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier.js';
+import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator.js';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
 
 describe('WorkflowPublicationApplier', () => {
 	const logger = mock<Logger>();

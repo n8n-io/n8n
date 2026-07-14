@@ -1,4 +1,4 @@
-import type { FolderConflictPolicy } from '../../n8n-packages.types';
+import type { FolderConflictPolicy } from '../../n8n-packages.types.js';
 
 export interface MatchedFolderDecision {
 	blocked: boolean;

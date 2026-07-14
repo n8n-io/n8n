@@ -5,8 +5,8 @@ import convict from 'convict';
 import { readFileSync } from 'fs';
 import { setGlobalState, UserError } from 'n8n-workflow';
 
-import { inE2ETests } from '@/constants';
-import { setMicrosoftObservabilityDefaults } from '@/utils';
+import { inE2ETests } from '@/constants.js';
+import { setMicrosoftObservabilityDefaults } from '@/utils.js';
 
 const globalConfig = Container.get(GlobalConfig);
 
@@ -26,7 +26,7 @@ if (inE2ETests) {
 }
 
 // Load schema after process.env has been overwritten
-import { schema } from './schema';
+import { schema } from './schema.js';
 const config = convict(schema, { args: [] });
 
 // eslint-disable-next-line @typescript-eslint/unbound-method

@@ -8,8 +8,8 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee.js';
 
 describe('EnterpriseWorkflowService', () => {
 	let service: EnterpriseWorkflowService;

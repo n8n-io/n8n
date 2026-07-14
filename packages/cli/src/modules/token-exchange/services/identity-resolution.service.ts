@@ -10,14 +10,14 @@ import { Service } from '@n8n/di';
 import { isBuiltInRole } from '@n8n/permissions';
 import { createHash } from 'node:crypto';
 
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
-import { UserService } from '@/services/user.service';
+import { EventService } from '@/events/event.service.js';
+import { RoleService } from '@/services/role.service.js';
+import { UserService } from '@/services/user.service.js';
 
-import { TokenExchangeAuthError } from '../token-exchange.errors';
-import type { ExternalTokenClaims } from '../token-exchange.schemas';
-import { TokenExchangeFailureReason } from '../token-exchange.types';
-import { TrustedKeyService } from './trusted-key.service';
+import { TokenExchangeAuthError } from '../token-exchange.errors.js';
+import type { ExternalTokenClaims } from '../token-exchange.schemas.js';
+import { TokenExchangeFailureReason } from '../token-exchange.types.js';
+import { TrustedKeyService } from './trusted-key.service.js';
 
 /**
  * Password placeholder for JIT-provisioned users. This is not a valid bcrypt

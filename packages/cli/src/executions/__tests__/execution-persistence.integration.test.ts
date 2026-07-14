@@ -4,9 +4,9 @@ import type { IExecutionResponse } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
-import { DbStore } from '@/executions/execution-data/db-store';
-import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { DbStore } from '@/executions/execution-data/db-store.js';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
 describe('ExecutionPersistence', () => {
 	beforeAll(async () => {

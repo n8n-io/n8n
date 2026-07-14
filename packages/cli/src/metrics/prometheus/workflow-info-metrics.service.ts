@@ -4,10 +4,10 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@/services/cache/cache.service.js';
 
-import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQuery } from './cached-metric-query';
+import type { PrometheusMetricsCollector } from './base.js';
+import { CachedMetricQuery } from './cached-metric-query.js';
 
 /**
  * Exposes a gauge (`n8n_workflow_info`) that maps workflow IDs to their human-readable

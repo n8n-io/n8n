@@ -1,7 +1,7 @@
 import type { RoleMappingRuleRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ProvisioningRoleDeletionChecker } from '../role-deletion-checker.ee';
+import { ProvisioningRoleDeletionChecker } from '../role-deletion-checker.ee.js';
 
 describe('ProvisioningRoleDeletionChecker', () => {
 	const roleMappingRuleRepository = mock<RoleMappingRuleRepository>();

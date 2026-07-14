@@ -6,13 +6,13 @@ import { createHmac } from 'crypto';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { ChatInstance } from '../../../chat-integration.service';
-import { ComponentMapper } from '../../../component-mapper';
+import type { ChatInstance } from '../../../chat-integration.service.js';
+import { ComponentMapper } from '../../../component-mapper.js';
 import type {
 	getIntegrationToolConnectionDescriptors,
 	IntegrationMessageContext,
-} from '../../../integration-tools';
-import { LinearIntegration } from '../../../platforms/linear-integration';
+} from '../../../integration-tools.js';
+import { LinearIntegration } from '../../../platforms/linear-integration.js';
 import {
 	createReplayContextSetup,
 	installFetchStub,
@@ -21,7 +21,7 @@ import {
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
 	sendJsonWebhook,
-} from '../replay-test-helpers';
+} from '../replay-test-helpers.js';
 
 export interface LinearUserFixture {
 	id: string;

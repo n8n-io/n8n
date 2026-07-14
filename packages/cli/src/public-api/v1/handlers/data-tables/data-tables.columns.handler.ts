@@ -1,15 +1,15 @@
 import { AddDataTableColumnDto, updateDataTableColumnSchema } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableColumnNameConflictError } from '@/modules/data-table/errors/data-table-column-name-conflict.error';
-import { DataTableSystemColumnNameConflictError } from '@/modules/data-table/errors/data-table-system-column-name-conflict.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { DataTableService } from '@/modules/data-table/data-table.service.js';
+import { DataTableColumnNameConflictError } from '@/modules/data-table/errors/data-table-column-name-conflict.error.js';
+import { DataTableSystemColumnNameConflictError } from '@/modules/data-table/errors/data-table-system-column-name-conflict.error.js';
 
-import type { DataTableRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import { projectScope, publicApiScope } from '../../shared/middlewares/global.middleware';
+import type { DataTableRequest } from '../../../types.js';
+import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
+import { projectScope, publicApiScope } from '../../shared/middlewares/global.middleware.js';
 
 const handleError = (error: unknown) => {
 	if (

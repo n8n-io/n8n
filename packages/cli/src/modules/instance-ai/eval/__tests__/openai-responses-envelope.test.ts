@@ -7,7 +7,7 @@ import {
 	forwardTranslateToResponsesSseEvents,
 	isResponsesStreamRequested,
 	reverseTranslateOpenAiResponsesRequest,
-} from '../openai-responses-envelope';
+} from '../openai-responses-envelope.js';
 
 describe('reverseTranslateOpenAiResponsesRequest', () => {
 	it('emits the synthetic /v1/responses URL and POST method', () => {

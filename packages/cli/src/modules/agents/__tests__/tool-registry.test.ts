@@ -1,6 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 
-import { buildToolRegistry } from '../tool-registry';
+import { buildToolRegistry } from '../tool-registry.js';
 
 function mkTool(name: string, metadata?: Record<string, unknown>): BuiltTool {
 	return { name, metadata } as BuiltTool;

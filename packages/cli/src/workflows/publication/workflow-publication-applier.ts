@@ -14,14 +14,14 @@ import type { INode } from 'n8n-workflow';
 import type {
 	PublicationResult,
 	TriggerPublicationStatus,
-} from '@/workflows/publication/publication-result';
-import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
+} from '@/workflows/publication/publication-result.js';
+import { computeTriggerDiff } from '@/workflows/publication/trigger-diff.js';
 import {
 	WorkflowTriggerActivator,
 	type TriggerActivationFailure,
 	type TriggerActivationOutcome,
-} from '@/workflows/triggers/workflow-trigger-activator';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+} from '@/workflows/triggers/workflow-trigger-activator.js';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
 
 /**
  * Reconciles a workflow's triggers to a published version, one outbox record at

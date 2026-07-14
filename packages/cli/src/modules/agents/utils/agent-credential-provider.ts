@@ -1,8 +1,8 @@
 import type { User } from '@n8n/db';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
 
-import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider.js';
 
 export function createAgentCredentialProvider(
 	credentialsService: CredentialsService,

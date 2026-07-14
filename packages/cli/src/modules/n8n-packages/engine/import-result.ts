@@ -1,7 +1,7 @@
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
 
-import type { WorkflowImportOutcome } from '../entities/workflow/workflow-import.types';
-import { serializeBindings } from '../n8n-packages.types';
+import type { WorkflowImportOutcome } from '../entities/workflow/workflow-import.types.js';
+import { serializeBindings } from '../n8n-packages.types.js';
 import type {
 	ImportCredentialSummary,
 	ImportedFolderSummary,
@@ -9,8 +9,8 @@ import type {
 	ImportPackageSummary,
 	ImportResult,
 	PackageImportBindings,
-} from '../n8n-packages.types';
-import type { PackageManifest } from '../spec/manifest.schema';
+} from '../n8n-packages.types.js';
+import type { PackageManifest } from '../spec/manifest.schema.js';
 
 export function toPackageSummary(manifest: PackageManifest): ImportPackageSummary {
 	return {

@@ -3,11 +3,11 @@ import { User } from '@n8n/db';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { ExecutionService } from '@/executions/execution.service';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ExecutionService } from '@/executions/execution.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { createSearchExecutionsTool } from '../tools/search-executions.tool';
+import { createSearchExecutionsTool } from '../tools/search-executions.tool.js';
 
 const createExecution = (overrides: Partial<ExecutionSummary> = {}): ExecutionSummary =>
 	({

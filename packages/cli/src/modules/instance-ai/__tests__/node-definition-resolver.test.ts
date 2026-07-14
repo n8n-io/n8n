@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { resolveNodeTypeDefinition } from '../node-definition-resolver';
+import { resolveNodeTypeDefinition } from '../node-definition-resolver.js';
 
 describe('resolveNodeTypeDefinition', () => {
 	let defsDir: string;

@@ -6,30 +6,30 @@ import { Cipher } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE, type IDataObject } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
-import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { ExternalSecretsProviderConnectionManager } from '@/modules/external-secrets.ee/external-secrets-provider-connection-manager.ee';
-import { ExternalSecretsProviderLifecycle } from '@/modules/external-secrets.ee/provider-lifecycle.service';
-import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
-import { ExternalSecretsRetryManager } from '@/modules/external-secrets.ee/retry-manager.service';
-import { ExternalSecretsSecretsCache } from '@/modules/external-secrets.ee/secrets-cache.service';
-import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service';
+import type { EventService } from '@/events/event.service.js';
+import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee.js';
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee.js';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
+import { ExternalSecretsProviderConnectionManager } from '@/modules/external-secrets.ee/external-secrets-provider-connection-manager.ee.js';
+import { ExternalSecretsProviderLifecycle } from '@/modules/external-secrets.ee/provider-lifecycle.service.js';
+import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service.js';
+import { ExternalSecretsRetryManager } from '@/modules/external-secrets.ee/retry-manager.service.js';
+import { ExternalSecretsSecretsCache } from '@/modules/external-secrets.ee/secrets-cache.service.js';
+import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service.js';
 import type {
 	ExternalSecretsSettings,
 	SecretsProviderState,
-} from '@/modules/external-secrets.ee/types';
+} from '@/modules/external-secrets.ee/types.js';
 
 import {
 	DummyProvider,
 	FailedProvider,
 	MockProviders,
 	TestFailProvider,
-} from '../../shared/external-secrets/utils';
-import { createOwner, createUser } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+} from '../../shared/external-secrets/utils.js';
+import { createOwner, createUser } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import { setupTestServer } from '../shared/utils/index.js';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;

@@ -2,7 +2,7 @@ import { GetResourceDependenciesDto, GetResourceDependencyCountsDto } from '@n8n
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, RestController } from '@n8n/decorators';
 
-import { WorkflowDependencyQueryService } from './workflow-dependency-query.service';
+import { WorkflowDependencyQueryService } from './workflow-dependency-query.service.js';
 
 @RestController('/workflow-dependencies')
 export class WorkflowDependencyController {

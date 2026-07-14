@@ -6,9 +6,9 @@ import { Service } from '@n8n/di';
 import type { IHttpRequestOptions, IN8nHttpFullResponse } from 'n8n-workflow';
 import type { z } from 'zod';
 
-import { IdentifierValidationError } from './identifier-interface';
+import { IdentifierValidationError } from './identifier-interface.js';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@/services/cache/cache.service.js';
 
 const REQUEST_TIMEOUT = 10 * Time.seconds.toMilliseconds;
 const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour

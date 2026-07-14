@@ -7,19 +7,19 @@ import {
 	type AgentChatIntegrationContext,
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
-} from '../agent-chat-integration';
-import { loadLinearAdapter } from '../esm-loader';
+} from '../agent-chat-integration.js';
+import { loadLinearAdapter } from '../esm-loader.js';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
-} from '../integration-tool-definitions';
-import { connectionUnavailable } from '../integration-helpers';
-import type { IntegrationActionResult } from '../integration-tools';
-import { executeLinearAction, executeLinearContextQuery } from './linear-operations';
+} from '../integration-tool-definitions.js';
+import { connectionUnavailable } from '../integration-helpers.js';
+import type { IntegrationActionResult } from '../integration-tools.js';
+import { executeLinearAction, executeLinearContextQuery } from './linear-operations.js';
 import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
-} from './linear-tool-definitions';
+} from './linear-tool-definitions.js';
 
 /**
  * Linear platform integration.

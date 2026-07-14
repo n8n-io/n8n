@@ -37,10 +37,10 @@ import {
 	resolveEmbeddingProviderOptionsFromCredential,
 	type ManagedEmbeddingProviderOptions,
 	type ManagedEmbeddingProviderOptionsResolver,
-} from './embedding-credential';
-import { resolveCredentialAwareModelConfig } from './model-config';
-import { resolveProviderToolName } from './provider-tool-aliases';
-import { buildVectorStore } from './vector-store-factory';
+} from './embedding-credential.js';
+import { resolveCredentialAwareModelConfig } from './model-config.js';
+import { resolveProviderToolName } from './provider-tool-aliases.js';
+import { buildVectorStore } from './vector-store-factory.js';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
 

@@ -11,18 +11,18 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { EventService } from '@/events/event.service';
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
-import type { OauthService } from '@/oauth/oauth.service';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { EventService } from '@/events/event.service.js';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
+import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types.js';
+import type { OauthService } from '@/oauth/oauth.service.js';
 
-import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity';
-import type { InstanceAiMcpRegistryConnectionRepository } from '../../repositories/instance-ai-mcp-registry-connection.repository';
-import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service';
+import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity.js';
+import type { InstanceAiMcpRegistryConnectionRepository } from '../../repositories/instance-ai-mcp-registry-connection.repository.js';
+import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service.js';
 
 const { mcpClientCloseMock, mcpClientConstructorMock, mcpClientListToolsMock } = vi.hoisted(() => ({
 	mcpClientCloseMock: vi.fn<() => Promise<void>>(),

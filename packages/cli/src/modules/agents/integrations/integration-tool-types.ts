@@ -1,7 +1,7 @@
 import type { AgentIntegrationConfig, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { z } from 'zod';
 
-import type { IntegrationErrorCode } from './integration-error-codes';
+import type { IntegrationErrorCode } from './integration-error-codes.js';
 
 export type IntegrationMessageTarget =
 	| {

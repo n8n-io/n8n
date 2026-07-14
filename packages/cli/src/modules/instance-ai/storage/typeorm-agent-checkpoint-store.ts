@@ -3,7 +3,7 @@ import type { CheckpointStore, SerializableAgentState } from '@n8n/instance-ai';
 import { LessThan } from '@n8n/typeorm';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { InstanceAiCheckpointRepository } from '../repositories/instance-ai-checkpoint.repository';
+import { InstanceAiCheckpointRepository } from '../repositories/instance-ai-checkpoint.repository.js';
 
 const EXPIRED_CHECKPOINT_MESSAGE =
 	'This action has expired and cannot be resumed. Please start a new turn.';

@@ -7,7 +7,7 @@ vi.mock('@n8n/instance-ai', () => ({
 
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 
-import { generatePinData } from '../pin-data-generator';
+import { generatePinData } from '../pin-data-generator.js';
 
 const createEvalAgentMock = vi.mocked(createEvalAgent);
 const extractTextMock = vi.mocked(extractText);

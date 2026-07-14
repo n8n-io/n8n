@@ -3,7 +3,7 @@ import type {
 	SlackEventFixture,
 	SlackReplayFixtures,
 	SlackUserFixture,
-} from './replay-test-context';
+} from './replay-test-context.js';
 
 export const slackUser = (overrides: Partial<SlackUserFixture> = {}): SlackUserFixture => ({
 	id: 'U_ALICE',

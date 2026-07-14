@@ -4,15 +4,15 @@ import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { DataTable as DataTableEntity } from '@/modules/data-table/data-table.entity';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import type { DataTable as DataTableEntity } from '@/modules/data-table/data-table.entity.js';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
 
 import {
 	EvaluationConfigValidator,
 	isCoercibleBooleanExpression,
-} from '../evaluation-config-validator';
-import type { LlmJudgeProviderRegistry } from '../llm-judge-provider-registry';
+} from '../evaluation-config-validator.js';
+import type { LlmJudgeProviderRegistry } from '../llm-judge-provider-registry.js';
 
 function makeNode(over: Partial<INode> & Pick<INode, 'name'>): INode {
 	return {

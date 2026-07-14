@@ -1,4 +1,4 @@
-import { UniqueFilenameAllocator } from '../unique-filename-allocator';
+import { UniqueFilenameAllocator } from '../unique-filename-allocator.js';
 
 describe('UniqueFilenameAllocator', () => {
 	it('returns the slugged base path on first allocation', () => {

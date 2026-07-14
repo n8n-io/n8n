@@ -15,13 +15,13 @@ import type {
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
 
-import { EvaluationCollectionService } from '../evaluation-collection.service';
-import type { TestRunnerService } from '../test-runner/test-runner.service.ee';
+import { EvaluationCollectionService } from '../evaluation-collection.service.js';
+import type { TestRunnerService } from '../test-runner/test-runner.service.ee.js';
 
 function makeConfig(over: Partial<EvaluationConfig> = {}): EvaluationConfig {
 	return {

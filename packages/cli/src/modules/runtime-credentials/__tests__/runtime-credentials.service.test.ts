@@ -3,9 +3,9 @@ import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { RuntimeCredentialsConfig } from '../runtime-credentials.config';
-import type { SensitiveFieldRules } from '../runtime-credentials.schemas';
-import { RuntimeCredentialsService } from '../runtime-credentials.service';
+import type { RuntimeCredentialsConfig } from '../runtime-credentials.config.js';
+import type { SensitiveFieldRules } from '../runtime-credentials.schemas.js';
+import { RuntimeCredentialsService } from '../runtime-credentials.service.js';
 
 const item = (json: IDataObject): INodeExecutionData => ({ json });
 

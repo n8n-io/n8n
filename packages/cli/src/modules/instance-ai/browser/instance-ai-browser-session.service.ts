@@ -21,17 +21,17 @@ import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { Push } from '@/push';
-import { UrlService } from '@/services/url.service';
-import { Telemetry } from '@/telemetry';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { Push } from '@/push/index.js';
+import { UrlService } from '@/services/url.service.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { BrowserLocalMcpServer } from './browser-local-mcp-server';
+import { BrowserLocalMcpServer } from './browser-local-mcp-server.js';
 import {
 	BROWSER_USE_WS_NAMESPACE,
 	CDP_TOKEN_HEADER,
 	type BrowserUseUpgradeRequest,
-} from './browser-use-ws.constants';
+} from './browser-use-ws.constants.js';
 
 const CONNECT_TOKEN_TTL_MS = 5 * 60 * 1000;
 

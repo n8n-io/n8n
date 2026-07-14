@@ -11,31 +11,31 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
-import config from '@/config';
-import { inE2ETests, N8N_VERSION } from '@/constants';
-import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
-import { CredentialTypes } from '@/credential-types';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
-import { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { MfaService } from '@/mfa/mfa.service';
-import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { isApiEnabled } from '@/public-api';
-import { PushConfig } from '@/push/push.config';
-import { OwnershipService } from '@/services/ownership.service';
-import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
-import { UserManagementMailer } from '@/user-management/email';
-import { resolveFrontendHealthEndpointPath } from '@/utils/health-endpoint.util';
+import config from '@/config/index.js';
+import { inE2ETests, N8N_VERSION } from '@/constants.js';
+import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews.js';
+import { CredentialTypes } from '@/credential-types.js';
+import { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper.js';
+import { License } from '@/license.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { MfaService } from '@/mfa/mfa.service.js';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config.js';
+import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service.js';
+import { isApiEnabled } from '@/public-api/index.js';
+import { PushConfig } from '@/push/push.config.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers.js';
+import { UserManagementMailer } from '@/user-management/email/index.js';
+import { resolveFrontendHealthEndpointPath } from '@/utils/health-endpoint.util.js';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflow-history/workflow-history-helper';
+} from '@/workflows/workflow-history/workflow-history-helper.js';
 
-import { AiUsageService } from './ai-usage.service';
-import { UrlService } from './url.service';
-import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
+import { AiUsageService } from './ai-usage.service.js';
+import { UrlService } from './url.service.js';
+import { WorkflowReviewPolicyService } from './workflow-review-policy.service.js';
 
 const DYNAMIC_BANNER_FILTERS_CACHE_TTL = 30 * Time.seconds.toMilliseconds;
 
@@ -146,7 +146,7 @@ export class FrontendService {
 		void this.generateTypes();
 		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
-			void import('@/modules/community-packages/community-packages.service').then(
+			void import('@/modules/community-packages/community-packages.service.js').then(
 				({ CommunityPackagesService }) => {
 					this.communityPackagesService = Container.get(CommunityPackagesService);
 				},

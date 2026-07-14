@@ -1,4 +1,4 @@
-import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
 import {
 	InvalidGrantError,
 	InvalidTargetError,
@@ -6,26 +6,27 @@ import {
 import type {
 	AuthorizationParams,
 	OAuthServerProvider,
-} from '@modelcontextprotocol/sdk/server/auth/provider';
-import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
+} from '@modelcontextprotocol/sdk/server/auth/provider.js';
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type {
 	OAuthClientInformationFull,
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
-} from '@modelcontextprotocol/sdk/shared/auth';
+} from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 
-import { OAuthClient } from './database/entities/oauth-client.entity';
-import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
-import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
-import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
-import { OAuthSessionService } from './oauth-session.service';
-import { OAuthTokenService } from './oauth-token.service';
-import { OAuthClientLimitReachedError } from './oauth.errors';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry.js';
+
+import { OAuthClient } from './database/entities/oauth-client.entity.js';
+import { OAuthClientRepository } from './database/repositories/oauth-client.repository.js';
+import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository.js';
+import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service.js';
+import { OAuthSessionService } from './oauth-session.service.js';
+import { OAuthTokenService } from './oauth-token.service.js';
+import { OAuthClientLimitReachedError } from './oauth.errors.js';
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;

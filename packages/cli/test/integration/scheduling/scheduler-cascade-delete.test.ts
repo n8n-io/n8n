@@ -4,9 +4,9 @@ import { Container } from '@n8n/di';
 import { createScheduler } from '@n8n/scheduler';
 import type { ClaimedTask, Scheduler, SchedulerPasses } from '@n8n/scheduler';
 
-import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler.js';
 
-import { createDueJobFactory } from './shared/job-factory';
+import { createDueJobFactory } from './shared/job-factory.js';
 
 /**
  * Cascade-delete safety: a job's `scheduled_task` rows carry a real DB foreign

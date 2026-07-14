@@ -17,10 +17,10 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { createFolder } from '@test-integration/db/folders';
-import { createMember, createOwner, createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service.js';
+import { createFolder } from '@test-integration/db/folders.js';
+import { createMember, createOwner, createUser } from '@test-integration/db/users.js';
+import { setupTestServer } from '@test-integration/utils/index.js';
 
 const testServer = setupTestServer({ endpointGroups: ['mcp'] });
 

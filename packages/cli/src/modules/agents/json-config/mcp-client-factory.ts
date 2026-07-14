@@ -4,8 +4,8 @@ import type { CustomFetch } from '@n8n/backend-network';
 import { isMcpOAuth2Authentication } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import type { OauthService } from '@/oauth/oauth.service';
-import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
+import type { OauthService } from '@/oauth/oauth.service.js';
+import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch.js';
 
 /**
  * Convert the JSON-config `approval` shape into the SDK's `requireApproval`

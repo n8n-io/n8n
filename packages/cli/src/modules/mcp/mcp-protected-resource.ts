@@ -1,9 +1,9 @@
 import { Service } from '@n8n/di';
 
-import { McpConfig } from './mcp.config';
-import { McpSettingsService } from './mcp.settings.service';
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { McpConfig } from './mcp.config.js';
+import { McpSettingsService } from './mcp.settings.service.js';
+import type { ProtectedResource } from '@/services/protected-resource.registry.js';
+import { UrlService } from '@/services/url.service.js';
 import type { User } from '@n8n/db';
 
 export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';

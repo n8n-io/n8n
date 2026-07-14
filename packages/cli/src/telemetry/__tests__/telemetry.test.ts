@@ -6,8 +6,8 @@ import { InstanceSettings } from 'n8n-core';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { PostHogClient } from '@/posthog';
-import { Telemetry } from '@/telemetry';
+import { PostHogClient } from '@/posthog/index.js';
+import { Telemetry } from '@/telemetry/index.js';
 
 vi.unmock('@/telemetry');
 vi.mock('@/posthog');

@@ -7,7 +7,7 @@ import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
+import { LoadNodesAndCredentials } from '../load-nodes-and-credentials.js';
 
 vi.mock('lodash/debounce', () => ({ default: (fn: () => void) => fn }));
 
@@ -520,7 +520,7 @@ describe('LoadNodesAndCredentials', () => {
 
 		beforeEach(async () => {
 			// Import the mocked functions
-			const toolGeneration = await import('@/tool-generation');
+			const toolGeneration = await import('@/tool-generation/index.js');
 			createAiTools = toolGeneration.createAiTools as Mock;
 			createHitlTools = toolGeneration.createHitlTools as Mock;
 

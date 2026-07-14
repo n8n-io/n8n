@@ -1,10 +1,10 @@
 import type { InstanceAiGatewayCapabilities } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
-import type { Telemetry } from '@/telemetry';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { InstanceAiGatewayService } from '../instance-ai-gateway.service';
-import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { InstanceAiGatewayService } from '../instance-ai-gateway.service.js';
+import type { InstanceAiSettingsService } from '../instance-ai-settings.service.js';
 
 const CAPABILITIES: InstanceAiGatewayCapabilities = {
 	rootPath: '/home/user/project',

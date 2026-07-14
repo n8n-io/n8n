@@ -2,15 +2,15 @@ import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { ActiveExecutions } from '@/active-executions';
-import type { WorkflowRunner } from '@/workflow-runner';
+import type { ActiveExecutions } from '@/active-executions.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
 
 import {
 	normalizeTriggerInput,
 	resolveWorkflowTool,
 	validateCompatibility,
-} from '../tools/workflow-tool-factory';
-import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
+} from '../tools/workflow-tool-factory.js';
+import type { WorkflowToolContext } from '../tools/workflow-tool-factory.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

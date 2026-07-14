@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import type { Mock } from 'vitest';
 
-import { applyCors } from '../cors.util';
+import { applyCors } from '../cors.util.js';
 
 describe('applyCors', () => {
 	let mockReq: Partial<Request>;

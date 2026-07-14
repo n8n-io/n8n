@@ -8,7 +8,7 @@ import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { strict } from 'node:assert';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
 /**
  * Responsible for deleting old executions from the database and deleting their

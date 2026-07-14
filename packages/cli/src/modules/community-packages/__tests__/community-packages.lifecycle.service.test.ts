@@ -3,16 +3,16 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { EventService } from '@/events/event.service';
-import type { Push } from '@/push';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { EventService } from '@/events/event.service.js';
+import type { Push } from '@/push/index.js';
 
-import type { CommunityNodeTypesService } from '../community-node-types.service';
-import type { CommunityPackagesConfig } from '../community-packages.config';
-import { CommunityPackagesLifecycleService } from '../community-packages.lifecycle.service';
-import type { CommunityPackagesService } from '../community-packages.service';
-import type { InstalledPackages } from '../installed-packages.entity';
-import { executeNpmCommand } from '../npm-utils';
+import type { CommunityNodeTypesService } from '../community-node-types.service.js';
+import type { CommunityPackagesConfig } from '../community-packages.config.js';
+import { CommunityPackagesLifecycleService } from '../community-packages.lifecycle.service.js';
+import type { CommunityPackagesService } from '../community-packages.service.js';
+import type { InstalledPackages } from '../installed-packages.entity.js';
+import { executeNpmCommand } from '../npm-utils.js';
 
 vi.mock('../npm-utils', async () => ({
 	...(await vi.importActual<typeof import('../npm-utils')>('../npm-utils')),

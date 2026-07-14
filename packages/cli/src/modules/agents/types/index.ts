@@ -4,4 +4,4 @@ export type {
 	SuspendComponent,
 	RichSuspendPayload,
 	ComponentResumeData,
-} from './components';
+} from './components.js';

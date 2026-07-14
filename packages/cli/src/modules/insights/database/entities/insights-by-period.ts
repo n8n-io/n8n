@@ -9,8 +9,8 @@ import {
 } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { InsightsMetadata } from './insights-metadata';
-import type { PeriodUnit } from './insights-shared';
+import { InsightsMetadata } from './insights-metadata.js';
+import type { PeriodUnit } from './insights-shared.js';
 import {
 	isValidPeriodNumber,
 	isValidTypeNumber,
@@ -18,7 +18,7 @@ import {
 	NumberToType,
 	PeriodUnitToNumber,
 	TypeToNumber,
-} from './insights-shared';
+} from './insights-shared.js';
 
 @Entity()
 export class InsightsByPeriod extends BaseEntity {

@@ -9,10 +9,10 @@ import {
 } from '@n8n/instance-ai';
 import { UserError } from 'n8n-workflow';
 
-import type { InstanceAiPendingConfirmation } from './entities/instance-ai-pending-confirmation.entity';
-import type { InProcessEventBus } from './event-bus/in-process-event-bus';
-import type { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
-import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
+import type { InstanceAiPendingConfirmation } from './entities/instance-ai-pending-confirmation.entity.js';
+import type { InProcessEventBus } from './event-bus/in-process-event-bus.js';
+import type { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository.js';
+import type { DbSnapshotStorage } from './storage/db-snapshot-storage.js';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);

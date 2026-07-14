@@ -5,10 +5,10 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UserError } from 'n8n-workflow';
 import z from 'zod';
 
-import { RISK_CATEGORIES } from '@/security-audit/constants';
-import type { Risk } from '@/security-audit/types';
+import { RISK_CATEGORIES } from '@/security-audit/constants.js';
+import type { Risk } from '@/security-audit/types.js';
 
-import { BaseCommand } from './base-command';
+import { BaseCommand } from './base-command.js';
 
 const flagsSchema = z.object({
 	categories: z
@@ -71,7 +71,7 @@ export class SecurityAudit extends BaseCommand<z.infer<typeof flagsSchema>> {
 			throw new UserError([message, hint].join('. '));
 		}
 
-		const { SecurityAuditService } = await import('@/security-audit/security-audit.service');
+		const { SecurityAuditService } = await import('@/security-audit/security-audit.service.js');
 
 		const result = await Container.get(SecurityAuditService).run(
 			categories,

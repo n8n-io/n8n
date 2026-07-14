@@ -16,29 +16,29 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import type { CredentialTypes } from '@/credential-types';
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { NodeTypes } from '@/node-types';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { CredentialTypes } from '@/credential-types.js';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
+import type { NodeTypes } from '@/node-types.js';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
 
-import type { AgentConfigService } from '../agent-config.service';
-import type { AgentCustomToolsService } from '../agent-custom-tools.service';
-import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import type { AgentSkillsService } from '../agent-skills.service';
-import type { AgentTaskService } from '../agent-task.service';
-import type { AgentsToolsService } from '../agents-tools.service';
-import type { AgentsService } from '../agents.service';
-import type { AttachableWorkflowsService } from '../attachable-workflows.service';
+import type { AgentConfigService } from '../agent-config.service.js';
+import type { AgentCustomToolsService } from '../agent-custom-tools.service.js';
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service.js';
+import type { AgentSkillsService } from '../agent-skills.service.js';
+import type { AgentTaskService } from '../agent-task.service.js';
+import type { AgentsToolsService } from '../agents-tools.service.js';
+import type { AgentsService } from '../agents.service.js';
+import type { AttachableWorkflowsService } from '../attachable-workflows.service.js';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
-} from '../builder/agents-builder-tools.service';
-import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
-import { BUILDER_TOOLS } from '../builder/builder-tool-names';
-import type { Agent } from '../entities/agent.entity';
-import type { AgentRepository } from '../repositories/agent.repository';
-import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import type { AiService } from '@/services/ai.service';
+} from '../builder/agents-builder-tools.service.js';
+import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service.js';
+import { BUILDER_TOOLS } from '../builder/builder-tool-names.js';
+import type { Agent } from '../entities/agent.entity.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
+import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime.js';
+import type { AiService } from '@/services/ai.service.js';
 
 const ctx = {
 	resumeData: undefined,

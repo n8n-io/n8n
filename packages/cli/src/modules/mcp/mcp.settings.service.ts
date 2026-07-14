@@ -11,13 +11,13 @@ import {
 	type IWorkflowSettings,
 } from 'n8n-workflow';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { CacheService } from '@/services/cache/cache.service';
-import { removeDefaultValues } from '@/workflow-helpers';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { CollaborationService } from '@/collaboration/collaboration.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { CacheService } from '@/services/cache/cache.service.js';
+import { removeDefaultValues } from '@/workflow-helpers.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto';
+import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto.js';
 
 const KEY = 'mcp.access.enabled';
 const REDIRECT_URIS_KEY = 'mcp.oauth.allowedRedirectUris';

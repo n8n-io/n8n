@@ -4,9 +4,9 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { ManualExecutionCancelledError } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions';
+import { ActiveExecutions } from '@/active-executions.js';
 
-import { Publisher } from './pubsub/publisher.service';
+import { Publisher } from './pubsub/publisher.service.js';
 
 /**
  * Cross-process stop protocol for in-memory executions in queue mode.

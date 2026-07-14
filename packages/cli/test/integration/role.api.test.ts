@@ -8,11 +8,11 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 } from '@n8n/permissions';
 
-import { SecuritySettingsService } from '@/services/security-settings.service';
+import { SecuritySettingsService } from '@/services/security-settings.service.js';
 
-import { createMember } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils/';
+import { createMember } from './shared/db/users.js';
+import type { SuperAgentTest } from './shared/types.js';
+import * as utils from './shared/utils//index.js';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['role'],

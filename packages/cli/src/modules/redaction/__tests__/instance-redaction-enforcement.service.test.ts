@@ -6,11 +6,11 @@ import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
-import { SELF_SEND_COMMANDS } from '@/scaling/constants';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { CacheService } from '@/services/cache/cache.service';
+import { SELF_SEND_COMMANDS } from '@/scaling/constants.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
-import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
+import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service.js';
 
 const KEY = 'redaction.enforcement';
 

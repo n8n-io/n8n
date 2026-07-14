@@ -7,9 +7,9 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { NodeTypes } from '@/node-types';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { buildGetResourceLocatorOptionsTool } from '../get-resource-locator-options.tool';
+import type { NodeTypes } from '@/node-types.js';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import { buildGetResourceLocatorOptionsTool } from '../get-resource-locator-options.tool.js';
 
 vi.mock('@/workflow-execute-additional-data', () => ({
 	getBase: vi.fn().mockResolvedValue({}),

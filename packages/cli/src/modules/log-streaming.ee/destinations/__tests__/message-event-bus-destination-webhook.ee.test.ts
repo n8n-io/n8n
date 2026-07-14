@@ -4,13 +4,13 @@ import { mock } from 'vitest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { IHttpRequestOptions, MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
 
-import { CredentialsHelper } from '@/credentials-helper';
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { CredentialsHelper } from '@/credentials-helper.js';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
 
 import {
 	MessageEventBusDestinationWebhook,
 	isMessageEventBusDestinationWebhookOptions,
-} from '../message-event-bus-destination-webhook.ee';
+} from '../message-event-bus-destination-webhook.ee.js';
 
 const mockEventBus = {} as MessageEventBus;
 

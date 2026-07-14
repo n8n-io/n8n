@@ -3,8 +3,8 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import {
 	buildAgentConfigurationTelemetry,
 	buildAgentConfigurationTelemetryFromConfig,
-} from '../agent-telemetry';
-import type { Agent } from '../entities/agent.entity';
+} from '../agent-telemetry.js';
+import type { Agent } from '../entities/agent.entity.js';
 
 function makeAgent(schema: AgentJsonConfig | null, overrides: Partial<Agent> = {}): Agent {
 	return {

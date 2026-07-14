@@ -3,7 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import promClient from 'prom-client';
 
-import { PrometheusWebhookAndFormMetricsService } from '../webhook-and-form-metrics.service';
+import { PrometheusWebhookAndFormMetricsService } from '../webhook-and-form-metrics.service.js';
 
 vi.mock('prom-client');
 
