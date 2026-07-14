@@ -50,7 +50,13 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
 		const deduplicationKey = scheduleTriggerDeduplicationKey(task);
-		const timezone = workflowData.settings?.timezone ?? this.globalConfig.generic.timezone;
+		// `''`/`'DEFAULT'` are the instance-default sentinels, not Moment zones:
+		// resolve them to the instance timezone so the item carries valid metadata.
+		const settingsTimezone = workflowData.settings?.timezone;
+		const timezone =
+			settingsTimezone && settingsTimezone !== 'DEFAULT'
+				? settingsTimezone
+				: this.globalConfig.generic.timezone;
 		const item = buildScheduleTriggerItem(task.scheduledFor, timezone);
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({

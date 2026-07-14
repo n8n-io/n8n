@@ -8,6 +8,11 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
+import {
+	ensurePersonalProjectId,
+	useInstanceAiHandoff,
+} from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import WorkflowPreviewHost from '@/app/components/WorkflowPreviewHost.vue';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import TemplatesView from './TemplatesView.vue';
@@ -25,6 +30,8 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
+const instanceAiHandoff = useInstanceAiHandoff();
+const instanceAiAvailable = useInstanceAiAvailable();
 
 const loading = ref(true);
 const showPreview = ref(true);
@@ -50,6 +57,28 @@ const openTemplateSetup = async (id: string, e: PointerEvent) => {
 		templatesStore,
 		source: 'template_preview',
 	});
+};
+
+const startWithAi = async () => {
+	if (!template.value || !instanceAiAvailable.value) return;
+	const projectId = await ensurePersonalProjectId();
+	if (!projectId) return;
+
+	await instanceAiHandoff.startThread(
+		projectId,
+		i18n.baseText('instanceAi.launch.template.message', {
+			interpolate: { name: template.value.name, id: templateId.value },
+		}),
+		undefined,
+		undefined,
+		{
+			launch: {
+				source: 'template-view',
+				origin: 'internal',
+				sourceContext: { templateId: templateId.value, templateName: template.value.name },
+			},
+		},
+	);
 };
 
 const scrollToTop = () => {
@@ -167,12 +196,24 @@ const previewDocumentId = computed(() =>
 					<div :class="$style.templateCard">
 						<RecommendedTemplateCard v-if="template" :template="template" :show-details="true">
 							<template #belowContent>
-								<N8nButton
-									data-test-id="use-template-button"
-									:label="i18n.baseText('template.buttons.tryTemplate')"
-									size="large"
-									@click.stop="openTemplateSetup(templateId, $event)"
-								/>
+								<div :class="$style.templateActions">
+									<N8nButton
+										data-test-id="use-template-button"
+										:label="i18n.baseText('template.buttons.tryTemplate')"
+										size="large"
+										@click.stop="openTemplateSetup(templateId, $event)"
+									/>
+									<N8nButton
+										v-if="instanceAiAvailable"
+										data-test-id="start-with-ai-button"
+										:class="$style.startWithAi"
+										:label="i18n.baseText('template.buttons.startWithAi')"
+										variant="ghost"
+										icon="sparkles"
+										size="large"
+										@click.stop="startWithAi"
+									/>
+								</div>
 							</template>
 						</RecommendedTemplateCard>
 					</div>
@@ -229,6 +270,45 @@ const previewDocumentId = computed(() =>
 
 	@media (max-width: $breakpoint-xs) {
 		display: block;
+	}
+}
+
+.templateActions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+// Same layered-background technique as the design system's Ask Assistant
+// button; the doubled class selector outranks N8nButton's background rules.
+.startWithAi.startWithAi {
+	// Icon inherits currentColor; the label is repainted with the gradient below.
+	--button--color: var(--assistant--color--highlight-2);
+	border: 1px solid transparent;
+	background:
+		var(--assistant--button--color--background--gradient) padding-box,
+		var(--assistant--color--highlight-gradient) border-box;
+
+	&:hover {
+		background:
+			var(--assistant--button--color--background--hover) padding-box,
+			var(--assistant--button--color--background--gradient--hover) padding-box,
+			var(--assistant--color--highlight-gradient--reverse) border-box;
+	}
+
+	&:active {
+		background:
+			var(--assistant--button--color--background--active) padding-box,
+			var(--assistant--button--color--background--gradient--active) padding-box,
+			var(--assistant--color--highlight-gradient--reverse) border-box;
+	}
+
+	span {
+		background: var(--assistant--color--highlight-gradient);
+		background-clip: text;
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
 	}
 }
 

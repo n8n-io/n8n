@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import type {
+	ICredentialContext,
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
 	IWorkflowSettings,
@@ -171,6 +172,48 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 
 	getSystemResolverId(): string {
 		return SYSTEM_RESOLVER_ID;
+	}
+
+	/**
+	 * Resolves the n8n user a pending authorization link should be bound to, when
+	 * the resolver maps its context to an n8n user (`resolveOwningUserId`).
+	 *
+	 * - `unbound`: resolver doesn't map to an n8n user (external-subject resolvers
+	 *   like Slack / OAuth introspection) — the link stays unbound and works as today.
+	 * - `bound`: resolver named a user — bind the link to it.
+	 * - `unresolved`: resolver implements the mapping but threw or returned nothing —
+	 *   callers fail closed rather than issue an unbindable link.
+	 *
+	 * Self-contained (reuses the resolver-loading idiom of `resolveIfNeeded` without
+	 * touching that hot path).
+	 */
+	async resolveOwningUserIdForAuthorization(
+		credentialContext: ICredentialContext,
+		resolverId: string,
+	): Promise<
+		{ status: 'unbound' } | { status: 'bound'; userId: string } | { status: 'unresolved' }
+	> {
+		const resolverEntity = await this.resolverRepository.findOneBy({ id: resolverId });
+		const resolver =
+			resolverEntity && this.resolverRegistry.getResolverByTypename(resolverEntity.type);
+		if (!resolverEntity || !resolver?.resolveOwningUserId) {
+			return { status: 'unbound' };
+		}
+
+		try {
+			const parsedConfig = jsonParse<Record<string, unknown>>(
+				await this.cipher.decryptV2(resolverEntity.config),
+			);
+			const resolverConfig = await this.expressionService.resolve(parsedConfig);
+			const userId = await resolver.resolveOwningUserId(credentialContext, {
+				resolverId: resolverEntity.id,
+				resolverName: resolverEntity.type,
+				configuration: resolverConfig,
+			});
+			return userId ? { status: 'bound', userId } : { status: 'unresolved' };
+		} catch {
+			return { status: 'unresolved' };
+		}
 	}
 
 	/**

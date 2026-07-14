@@ -6,10 +6,12 @@ import { ChatHubToolContextKey } from '@/app/constants/injectionKeys';
 
 const credentialsById: Record<string, { id: string; name: string }> = {};
 const getCredentialById = vi.fn((id: string) => credentialsById[id]);
+const getCredentialTypeByName = vi.fn(() => undefined);
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		getCredentialById,
+		getCredentialTypeByName,
 	}),
 }));
 
@@ -78,13 +80,19 @@ const NodeCredentialsStub = {
 	`,
 };
 
+const CredentialIconStub = {
+	template: '<i data-testid="credential-icon" />',
+	props: ['credentialTypeName', 'size'],
+};
+
 import AskCredentialCard from '../components/interactive/AskCredentialCard.vue';
 
 const baseProps = {
-	purpose: 'Slack credential',
-	credentialType: 'slackApi',
+	credentialRequests: [
+		{ credentialType: 'slackApi', reason: 'Slack credential', existingCredentials: [] },
+	],
+	message: 'Slack credential',
 	projectId: 'p1',
-	agentId: 'a1',
 };
 
 function mountCard(props: Record<string, unknown> = {}) {
@@ -93,12 +101,14 @@ function mountCard(props: Record<string, unknown> = {}) {
 		global: {
 			stubs: {
 				NodeCredentials: NodeCredentialsStub,
+				CredentialIcon: CredentialIconStub,
 				N8nButton: {
 					props: ['disabled', 'type', 'size', 'variant'],
 					template:
 						'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot/></button>',
 				},
 				N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size', 'color'] },
+				N8nCard: { template: '<section><slot/></section>' },
 				N8nText: { template: '<span><slot/></span>', props: ['size', 'bold', 'color', 'tag'] },
 			},
 		},
@@ -128,7 +138,7 @@ describe('AskCredentialCard', () => {
 		expect(stub.attributes('data-readonly')).toBe('false');
 	});
 
-	it('emits skipped: true when Skip is pressed', async () => {
+	it('emits { skipped: true } when Skip is pressed', async () => {
 		const wrapper = mountCard();
 		await flushPromises();
 
@@ -139,16 +149,14 @@ describe('AskCredentialCard', () => {
 		expect(emitted[0][0]).toEqual({ skipped: true });
 	});
 
-	it('emits the chosen credential as soon as a credential is picked', async () => {
+	it('emits the chosen credential as a `credentials` map as soon as it is picked', async () => {
 		const wrapper = mountCard();
 		await flushPromises();
-
-		expect(wrapper.find('[data-testid="ask-credential-confirm"]').exists()).toBe(false);
 
 		await wrapper.find('[data-testid="stub-pick-credential"]').trigger('click');
 
 		const emitted = wrapper.emitted('submit') as unknown[][];
-		expect(emitted[0][0]).toEqual({ credentialId: 'cred-1', credentialName: 'Acme Slack' });
+		expect(emitted[0][0]).toEqual({ credentials: { slackApi: 'cred-1' } });
 	});
 
 	it('does not emit when NodeCredentials emits an empty credentials map', async () => {
@@ -167,21 +175,23 @@ describe('AskCredentialCard', () => {
 		expect(wrapper.find('[data-testid="ask-credential-skip"]').exists()).toBe(false);
 	});
 
-	it('forwards the disabled flag to NodeCredentials as readonly', async () => {
-		const wrapper = mountCard({ disabled: true });
-		await flushPromises();
-
-		const stub = wrapper.find('[data-testid="node-credentials-stub"]');
-		expect(stub.attributes('data-readonly')).toBe('true');
-	});
-
-	it('renders the resolved credential name when given a resolvedValue with credentialName', async () => {
+	it('replaces the live picker with a resolved summary containing the credential name when disabled', async () => {
 		const wrapper = mountCard({
 			disabled: true,
 			resolvedValue: { credentialId: 'cred-9', credentialName: 'Picked Slack' },
 		});
 		await flushPromises();
+		expect(wrapper.find('[data-testid="node-credentials-stub"]').exists()).toBe(false);
 		expect(wrapper.text()).toContain('Picked Slack');
+	});
+
+	it('renders the resolved credential name from a `credentials` map resume value', async () => {
+		const wrapper = mountCard({
+			disabled: true,
+			resolvedValue: { credentials: { slackApi: 'cred-1' } },
+		});
+		await flushPromises();
+		expect(wrapper.text()).toContain('Acme Slack');
 	});
 
 	it('renders the "Skipped" label when the resolvedValue is { skipped: true }', async () => {
@@ -190,6 +200,6 @@ describe('AskCredentialCard', () => {
 			resolvedValue: { skipped: true },
 		});
 		await flushPromises();
-		expect(wrapper.text()).toContain('Skipped');
+		expect(wrapper.text()).toContain('agents.chat.askCredential.skipped');
 	});
 });
