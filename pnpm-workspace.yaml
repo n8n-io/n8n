@@ -56,7 +56,7 @@ catalog:
   '@modelcontextprotocol/ext-apps': 1.3.2
   '@modelcontextprotocol/sdk': 1.26.0
   '@mozilla/readability': ^0.6.0
-  '@n8n_io/ai-assistant-sdk': 1.24.0
+  '@n8n_io/ai-assistant-sdk': 1.25.0
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.55.0
