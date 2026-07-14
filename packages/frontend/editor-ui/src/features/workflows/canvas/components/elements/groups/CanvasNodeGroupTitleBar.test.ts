@@ -120,25 +120,47 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
-	describe('double-click to toggle collapse', () => {
-		it('emits toggle when the group body is double-clicked', async () => {
+	describe('double-click does nothing', () => {
+		it('does not emit toggle when the group body is double-clicked', async () => {
 			const wrapper = render();
 			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-header'));
-			expect(wrapper.emitted().toggle).toEqual([['g1']]);
-		});
-
-		it('does not emit toggle when the title is double-clicked', async () => {
-			const wrapper = render();
-			const titleArea = wrapper.getByTestId('canvas-node-group-title');
-			const titleEdit = titleArea.querySelector('.nodrag') as HTMLElement;
-			await fireEvent.dblClick(titleEdit);
 			expect(wrapper.emitted().toggle).toBeUndefined();
 		});
 
-		it('does not emit toggle when the ungroup button is double-clicked', async () => {
+		it('stops double-click propagation so the canvas does not zoom', async () => {
 			const wrapper = render();
-			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-ungroup'));
-			expect(wrapper.emitted().toggle).toBeUndefined();
+			const outsideListener = vi.fn();
+			wrapper.container.addEventListener('dblclick', outsideListener);
+			await fireEvent.dblClick(wrapper.getByTestId('canvas-node-group-header'));
+			expect(outsideListener).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('click propagation to the VueFlow node wrapper', () => {
+		// Plain clicks must bubble: Canvas.onNodeClick turns them into a
+		// collapse/expand toggle.
+		it('lets plain header clicks bubble', async () => {
+			const wrapper = render();
+			const outsideListener = vi.fn();
+			wrapper.container.addEventListener('click', outsideListener);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-header'));
+			expect(outsideListener).toHaveBeenCalled();
+		});
+
+		it('stops clicks on the title edit so renaming does not select or toggle the group', async () => {
+			const wrapper = render();
+			const outsideListener = vi.fn();
+			wrapper.container.addEventListener('click', outsideListener);
+			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
+			expect(outsideListener).not.toHaveBeenCalled();
+		});
+
+		it('stops clicks on the chevron toggle button', async () => {
+			const wrapper = render();
+			const outsideListener = vi.fn();
+			wrapper.container.addEventListener('click', outsideListener);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-toggle'));
+			expect(outsideListener).not.toHaveBeenCalled();
 		});
 	});
 

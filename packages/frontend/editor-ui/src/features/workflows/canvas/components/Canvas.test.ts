@@ -282,6 +282,52 @@ describe('Canvas', () => {
 		await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).toEqual(['group:g1']));
 	});
 
+	describe('group header click model', () => {
+		const setupGroup = async () => {
+			workflowDocumentStore.setNodeGroups([{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }]);
+			const nodeGroupView = createNodeGroupViewMock(false);
+			const rendered = renderComponent({
+				props: { nodes: [createCanvasNodeElement({ id: 'node-1' }), createCanvasGroupNode()] },
+				global: { provide: { [NodeGroupViewKey as symbol]: nodeGroupView } },
+			});
+
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(2),
+			);
+
+			return { ...rendered, nodeGroupView, vueFlow: useVueFlow(canvasId) };
+		};
+
+		it('toggles collapse without selecting the title bar on a plain header click', async () => {
+			const { getByTestId, nodeGroupView, vueFlow } = await setupGroup();
+
+			await fireEvent.click(getByTestId('canvas-node-group-header'));
+
+			await waitFor(() => expect(nodeGroupView.isGroupCollapsed('g1')).toBe(true));
+			expect(vueFlow.getSelectedNodes.value).toHaveLength(0);
+		});
+
+		it('selects the title bar without toggling on a modifier click', async () => {
+			const { getByTestId, nodeGroupView, vueFlow } = await setupGroup();
+
+			await fireEvent.click(getByTestId('canvas-node-group-header'), { metaKey: true });
+
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toContain('group:g1'),
+			);
+			expect(nodeGroupView.isGroupCollapsed('g1')).toBe(false);
+		});
+
+		it('neither toggles nor selects when the rename field is clicked', async () => {
+			const { getByTestId, nodeGroupView, vueFlow } = await setupGroup();
+
+			await fireEvent.click(getByTestId('inline-edit-preview'));
+
+			expect(nodeGroupView.isGroupCollapsed('g1')).toBe(false);
+			expect(vueFlow.getSelectedNodes.value).toHaveLength(0);
+		});
+	});
+
 	describe('expanded group selection', () => {
 		const setupExpandedGroup = async (initialCollapsed = false) => {
 			workflowDocumentStore.setNodeGroups([

@@ -815,8 +815,22 @@ function onDeleteSelection() {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
-	// Title bars have their own click handlers
-	if (isCanvasGroupNode(node)) return;
+	if (isCanvasGroupNode(node)) {
+		// Modifier clicks keep VueFlow's multi-select behavior (cmd/ctrl+click).
+		if (event.ctrlKey || event.metaKey || event.shiftKey) return;
+
+		// A plain click on the title bar toggles collapse instead of selecting.
+		// VueFlow already selected the node before emitting this event, so undo
+		// that first — selection stays a cmd+click/lasso gesture.
+		if (node.selected) {
+			removeSelectedNodes([node]);
+		}
+		const groupId = parseCanvasGroupNodeId(node.id);
+		if (groupId) {
+			onCanvasGroupToggle(groupId);
+		}
+		return;
+	}
 
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);

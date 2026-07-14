@@ -133,13 +133,16 @@ function onOpenContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', group.value.id, event);
 }
 
-// Toggle collapse on double clicking
-function onWrapperDblClick(event: MouseEvent) {
+// Plain header clicks toggle collapse — handled at the canvas level
+// (Canvas.onNodeClick), because VueFlow synthesizes node clicks that bypass
+// this DOM tree when the pointer moved a little. Clicks on interactive
+// children (title rename) must not bubble there, or they would select the
+// group and toggle it.
+function onWrapperClick(event: MouseEvent) {
 	const target = event.target as HTMLElement | null;
-	// if happened inside an element with its own click behavior, do nothing
-	if (target?.closest('.nodrag')) return;
-
-	emit('toggle', group.value.id);
+	if (target?.closest('.nodrag')) {
+		event.stopPropagation();
+	}
 }
 
 async function focusTitleEdit() {
@@ -208,7 +211,8 @@ function onWrapperPointerDown(event: PointerEvent) {
 		data-test-id="canvas-node-group"
 		:data-group-id="group.id"
 		@pointerdown="onWrapperPointerDown"
-		@dblclick.stop="onWrapperDblClick"
+		@click="onWrapperClick"
+		@dblclick.stop
 		@contextmenu="onOpenContextMenu"
 	>
 		<div :class="$style.titleBar">
