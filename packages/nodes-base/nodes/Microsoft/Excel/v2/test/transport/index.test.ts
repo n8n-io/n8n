@@ -9,6 +9,7 @@ import {
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
+import * as readRows from '../../actions/worksheet/readRows.operation';
 import { searchWorkbooks } from '../../methods/listSearch';
 import {
 	driveEndpoint,
@@ -860,7 +861,7 @@ describe('Microsoft Excel Transport', () => {
 		it('returns undefined for the OAuth2 credential', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftExcelOAuth2Api');
 
-			expect(resolveScopeRoot.call(mockExecuteFunctions)).toBeUndefined();
+			expect(resolveScopeRoot.call(mockExecuteFunctions, 0)).toBeUndefined();
 		});
 
 		it('resolves the user root for the Service Principal credential', () => {
@@ -873,7 +874,7 @@ describe('Microsoft Excel Transport', () => {
 				(name) => params[name as string] as never,
 			);
 
-			expect(resolveScopeRoot.call(mockExecuteFunctions)).toBe('/users/jane%40contoso.com');
+			expect(resolveScopeRoot.call(mockExecuteFunctions, 0)).toBe('/users/jane%40contoso.com');
 		});
 
 		it('falls back to the user target when resourceTarget is unpersisted', () => {
@@ -887,7 +888,43 @@ describe('Microsoft Excel Transport', () => {
 					(name in params ? params[name as string] : fallback) as never,
 			);
 
-			expect(resolveScopeRoot.call(mockExecuteFunctions)).toBe('/users/jane%40contoso.com');
+			expect(resolveScopeRoot.call(mockExecuteFunctions, 0)).toBe('/users/jane%40contoso.com');
+		});
+	});
+
+	describe('execute error attribution', () => {
+		it('stamps context.itemIndex on a NodeError from the failing item', async () => {
+			const mockRequestWithAuthentication = vi
+				.fn()
+				.mockResolvedValue({ values: [['row'], ['jane-row']] });
+			mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
+			(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockReturnValue([]);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name, itemIndex, fallback) => {
+				const params: Record<string, unknown> = {
+					authentication: 'microsoftEntraServicePrincipalApi',
+					resourceTarget: 'user',
+					workbook: 'WB',
+					worksheet: 'WS',
+				};
+				if (name === 'userTarget')
+					return { value: itemIndex === 1 ? 'not a user' : 'jane@contoso.com' } as never;
+				return (name in params ? params[name as string] : fallback) as never;
+			});
+
+			let caught: unknown;
+			try {
+				await readRows.execute.call(mockExecuteFunctions, [{ json: {} }, { json: {} }]);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(NodeOperationError);
+			expect((caught as NodeOperationError).message).toBe('The target ID is not valid');
+			expect((caught as NodeOperationError).context.itemIndex).toBe(1);
+			// Item 0 resolved and requested normally before item 1 failed validation.
+			expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
 		});
 	});
 });

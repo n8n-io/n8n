@@ -93,7 +93,7 @@ export function driveEndpoint(root: string): string {
  */
 export function resolveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	itemIndex = 0,
+	itemIndex: number,
 ): string | undefined {
 	if (getExcelCredentialType.call(this) !== 'microsoftEntraServicePrincipalApi') {
 		return undefined;
