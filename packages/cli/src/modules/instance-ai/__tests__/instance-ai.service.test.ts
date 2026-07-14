@@ -172,11 +172,13 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
+	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
 	type SpawnBackgroundTaskOptions,
 	type SpawnBackgroundTaskResult,
 	type SpawnManagedBackgroundTaskOptions,
+	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
@@ -786,6 +788,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
 						loadSkill: (skillId: string) => Promise<unknown>;
 					};
+					claimSubAgentUsage?: (
+						dedupeId: string,
+						usage: BuilderUsageItem[],
+						status: TraceStatus,
+					) => void;
 				};
 			}>;
 			settingsService: {
@@ -828,6 +835,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
+			creditService: { claimRunUsage: Mock };
 		};
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -896,6 +904,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		service.creditService = { claimRunUsage: vi.fn() };
 		(createAllTools as Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -923,6 +932,26 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
+
+		// The credit-metering hook is wired to the instance-AI thread/user in
+		// scope here, not whatever thread the sub-agent stream itself is keyed to.
+		const usageItem: BuilderUsageItem = {
+			type: 'llmTokens',
+			model: 'anthropic/claude-sonnet',
+			uncachedInput: 80,
+			cacheRead: 20,
+			cacheWrite: 0,
+			output: 20,
+		};
+		environment.orchestrationContext.claimSubAgentUsage?.('dedupe-1', [usageItem], 'completed');
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-1',
+			'dedupe-1',
+			[usageItem],
+			'completed',
+		);
+
 		expect(createSandbox).not.toHaveBeenCalled();
 		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as Mock).mock.calls[0]?.[0]
 			.workspace as { ensureWorkspace: () => Promise<unknown> };

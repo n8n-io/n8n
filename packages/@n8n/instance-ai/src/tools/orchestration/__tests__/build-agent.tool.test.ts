@@ -93,6 +93,29 @@ function toolResultChunk(toolCallId: string, output: unknown = {}) {
 	return { type: 'tool-result', toolCallId, output };
 }
 
+/** A `finish` chunk carrying billable token usage, for credit-metering tests. */
+function finishChunk() {
+	return {
+		type: 'finish',
+		model: 'anthropic/claude-sonnet',
+		usage: {
+			promptTokens: 100,
+			completionTokens: 20,
+			totalTokens: 120,
+			inputTokenDetails: { noCache: 80, cacheRead: 20, cacheWrite: 0 },
+		},
+	};
+}
+
+const expectedUsageItem = {
+	type: 'llmTokens',
+	model: 'anthropic/claude-sonnet',
+	uncachedInput: 80,
+	cacheRead: 20,
+	cacheWrite: 0,
+	output: 20,
+};
+
 function askQuestionsSuspendPayload() {
 	return {
 		requestId: 'builder-req-1',
@@ -190,6 +213,10 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	context.modelId = 'anthropic/claude-sonnet-host-resolved';
 	// Tracing-off is the default; tracing tests set their own stub.
 	context.tracing = undefined;
+	// Billing-off is the default; metering tests set their own spy — otherwise the
+	// deep-mock proxy would make the hook truthy (and its assertions meaningless)
+	// in every existing test.
+	context.claimSubAgentUsage = undefined;
 
 	return { context, delegate, publishedEvents };
 }
@@ -987,6 +1014,161 @@ describe('build-agent tool', () => {
 					{ resumeData: { approved: true }, suspendPayload: suspendPayloadWithCheckpoint() },
 				),
 			).rejects.toThrow('boom mid-resume');
+		});
+	});
+
+	describe('credit metering', () => {
+		it('claims usage once for a completed leg', async () => {
+			const { context, delegate } = makeContext();
+			context.claimSubAgentUsage = vi.fn();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([finishChunk()], 'ok'));
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{ toolCallId: 'orch-call-1' },
+			);
+
+			expect(context.claimSubAgentUsage).toHaveBeenCalledTimes(1);
+			expect(context.claimSubAgentUsage).toHaveBeenCalledWith(
+				'run-1:orch-call-1',
+				[expectedUsageItem],
+				'completed',
+			);
+		});
+
+		it('claims usage with status errored for an errored leg', async () => {
+			const { context, delegate } = makeContext();
+			context.claimSubAgentUsage = vi.fn();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream([finishChunk(), { type: 'error', error: 'boom' }], ''),
+			);
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{ toolCallId: 'orch-call-1' },
+			);
+
+			expect(context.claimSubAgentUsage).toHaveBeenCalledWith(
+				'run-1:orch-call-1',
+				[expectedUsageItem],
+				'errored',
+			);
+		});
+
+		it('claims usage with a suspension-suffixed dedupe id before cascading the suspension', async () => {
+			const { context, delegate } = makeContext();
+			context.claimSubAgentUsage = vi.fn();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[
+						finishChunk(),
+						{
+							type: 'tool-call-suspended',
+							runId: 'builder-run-1',
+							toolCallId: 'builder-call-1',
+							toolName: 'ask_questions',
+							suspendPayload: askQuestionsSuspendPayload(),
+						},
+					],
+					'',
+				),
+			);
+			const suspend: Mock = vi.fn().mockResolvedValue(undefined);
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{ toolCallId: 'orch-call-1', suspend },
+			);
+
+			expect(context.claimSubAgentUsage).toHaveBeenCalledTimes(1);
+			expect(context.claimSubAgentUsage).toHaveBeenCalledWith(
+				'run-1:orch-call-1:s:builder-call-1',
+				[expectedUsageItem],
+				'suspended',
+			);
+			const claimOrder = (context.claimSubAgentUsage as Mock).mock.invocationCallOrder[0];
+			const suspendOrder = suspend.mock.invocationCallOrder[0];
+			expect(claimOrder).toBeLessThan(suspendOrder);
+		});
+
+		it('claims usage with the ref-suffixed dedupe base on the resume leg', async () => {
+			const { context, delegate } = makeContext();
+			context.claimSubAgentUsage = vi.fn();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([finishChunk()], 'Done.'));
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData: { approved: true },
+					suspendPayload: {
+						...askQuestionsSuspendPayload(),
+						requestId: 'orch-req-1',
+						builderCheckpoint: {
+							runId: 'builder-run-1',
+							toolCallId: 'builder-call-1',
+							configUpdated: false,
+						},
+					},
+					toolCallId: 'orch-call-1',
+				},
+			);
+
+			expect(context.claimSubAgentUsage).toHaveBeenCalledWith(
+				'run-1:orch-call-1:builder-call-1',
+				[expectedUsageItem],
+				'completed',
+			);
+		});
+
+		it('does not throw when the metering hook is absent', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([finishChunk()], 'ok'));
+
+			const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(result.ok).toBe(true);
+		});
+
+		it('still calls the hook with an empty array when the stream carried no usage', async () => {
+			const { context, delegate } = makeContext();
+			context.claimSubAgentUsage = vi.fn();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'ok'));
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{ toolCallId: 'orch-call-1' },
+			);
+
+			expect(context.claimSubAgentUsage).toHaveBeenCalledWith('run-1:orch-call-1', [], 'completed');
 		});
 	});
 

@@ -2071,6 +2071,12 @@ export class InstanceAiService {
 			trackTelemetry: (eventName, properties) => {
 				this.telemetry.track(eventName, properties);
 			},
+			// Aggregate on the instance-AI thread (not the `ia-builder:` session
+			// thread) so the credit service's per-thread display total and FE push
+			// attribute builder tokens to the conversation the user sees.
+			claimSubAgentUsage: (dedupeId, usage, status) => {
+				void this.creditService.claimRunUsage(user, threadId, dedupeId, usage, status);
+			},
 			domainTools,
 			abortSignal,
 			taskStorage,

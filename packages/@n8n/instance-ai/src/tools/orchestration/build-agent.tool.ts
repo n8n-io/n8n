@@ -287,6 +287,8 @@ async function runBuilderConsumeLoop(params: {
 	onSettled?: () => Promise<void>;
 	/** Trace inputs recorded on the child run (distinct per leg: outbound message vs. resume marker). */
 	traceInputs?: unknown;
+	/** Deterministic per-leg claim id base (result.agentRunId is always '' for builder streams). */
+	dedupeBase: string;
 }): Promise<BuildAgentOutput> {
 	const {
 		context,
@@ -298,6 +300,7 @@ async function runBuilderConsumeLoop(params: {
 		carriedConfigUpdated,
 		onSettled,
 		traceInputs,
+		dedupeBase,
 	} = params;
 
 	const traceRun = await startSubAgentTrace(context, {
@@ -350,6 +353,7 @@ async function runBuilderConsumeLoop(params: {
 		} else {
 			await failTraceRun(context, traceRun, new Error(output.error ?? 'builder run failed'));
 		}
+		context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
 		return output;
 	}
 
@@ -374,12 +378,18 @@ async function runBuilderConsumeLoop(params: {
 			"The agent builder's confirmation request could not be shown in this chat; the build turn was cancelled.";
 		await failTraceRun(context, traceRun, new Error(message));
 		publishAgentBuilderFailure(context, builderAgentId, new Error(message));
+		context.claimSubAgentUsage?.(`${dedupeBase}:s:invalid`, result.usage?.usage ?? [], 'errored');
 		return { ok: false, error: message, configUpdated: configUpdatedSoFar };
 	}
 
 	// The builder-level requestId must not leak up: the FE confirms against the
 	// orchestrator's own suspension, so a fresh one is minted here.
 	await finishTraceRun(context, traceRun, { metadata: { outcome: 'suspended' } });
+	context.claimSubAgentUsage?.(
+		`${dedupeBase}:s:${result.suspension.toolCallId}`,
+		result.usage?.usage ?? [],
+		'suspended',
+	);
 	return await ctx.suspend({
 		...parsedSuspendPayload.data,
 		requestId: nanoid(),
@@ -475,6 +485,7 @@ async function handleResume(
 		turn,
 		carriedConfigUpdated: ref.configUpdated,
 		traceInputs: { resumed: true },
+		dedupeBase: `${context.runId}:${ctx.toolCallId ?? builderAgentId}:${ref.toolCallId}`,
 	});
 }
 
@@ -562,6 +573,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				turn,
 				carriedConfigUpdated: false,
 				traceInputs: { message: outboundMessage },
+				dedupeBase: `${context.runId}:${ctx.toolCallId ?? builderAgentId}`,
 				onSettled: bindAfterTurn
 					? async () => {
 							domainContext.agentBuilderTarget = boundTarget;
