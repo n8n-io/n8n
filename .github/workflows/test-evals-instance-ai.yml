@@ -18,6 +18,11 @@ on:
         required: false
         type: string
         default: ''
+      suite:
+        description: 'LangTracer suite slug or id to pull test cases from.'
+        required: false
+        type: string
+        default: 'n8n-workflows'
       sandbox-provider:
         description: 'Sandbox provider (n8n-sandbox or daytona)'
         required: false
@@ -72,6 +77,10 @@ on:
         description: 'Test-case dataset to run (e.g. "pr", "full"). Empty = no filter.'
         required: false
         default: ''
+      suite:
+        description: 'LangTracer suite slug or id to pull test cases from.'
+        required: false
+        default: 'n8n-workflows'
       sandbox-provider:
         description: 'Sandbox provider (n8n-sandbox or daytona)'
         required: false
@@ -92,12 +101,19 @@ on:
 jobs:
   run-evals:
     name: 'Run Evals'
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: 90
+    # 8vcpu/32GB: full-suite N=10 baselines need ~150 min of eval time and
+    # did not fit the 4vcpu tier at any timeout.
+    runs-on: blacksmith-8vcpu-ubuntu-2204
+    # Long ceiling only for high-N baseline captures; regular runs keep a
+    # tight guard so a wedged run fails fast. Plain comparison (not fromJSON):
+    # it coerces the string input to a number, and a malformed dispatch value
+    # (NaN) falls back to the 90-minute guard instead of erroring the job.
+    timeout-minutes: ${{ (inputs.iterations || '3') >= 5 && 240 || 90 }}
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
-      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687,5688'
+      # 10 lanes x 2.5 GB caps = 25 GB, leaving ~7 GB for sandbox + CLI + OS.
+      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687'
     permissions:
       contents: read
       pull-requests: write
@@ -121,6 +137,25 @@ jobs:
         uses: ./.github/actions/load-n8n-docker
         with:
           cache-sha: ${{ inputs.cache-sha }}
+
+      # Host OOMs and disk exhaustion leave no application trace — sample host
+      # + container telemetry every 60s and ship it with the results artifact.
+      - name: Start host telemetry sampler
+        run: |
+          mkdir -p eval-diag
+          { echo "=== disk at job start ==="; df -h /; docker system df; } > eval-diag/df-at-start.log
+          nohup bash -c 'while true; do
+            {
+              date -u +%FT%TZ
+              free -m | head -2
+              df -h / | tail -1
+              docker stats --no-stream --format "{{.Name}} cpu={{.CPUPerc}} mem={{.MemUsage}}"
+              ps -eo rss=,pid=,comm= --sort=-rss | head -5
+              echo
+            } >> eval-diag/host-samples.log 2>&1
+            sleep 60
+          done' > /dev/null 2>&1 &
+          echo $! > eval-diag/sampler.pid
 
       - name: Start sandbox service
         if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
@@ -174,8 +209,17 @@ jobs:
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
+            # Bounded and self-healing: a lane that exhausts its capped heap is
+            # restarted by docker instead of staying dead; pruning + log caps
+            # keep per-lane disk and memory flat over a multi-hour run.
             docker run -d --name "n8n-eval-$((i+1))" \
               "${NETWORK_ARGS[@]}" \
+              --memory 2.5g --memory-swap 2.5g \
+              --restart on-failure \
+              --log-opt max-size=50m --log-opt max-file=2 \
+              -e NODE_OPTIONS=--max-old-space-size=2048 \
+              -e EXECUTIONS_DATA_PRUNE=true \
+              -e EXECUTIONS_DATA_MAX_AGE=1 \
               -e E2E_TESTS=true \
               -e N8N_ENABLED_MODULES=instance-ai \
               -e N8N_AI_ENABLED=true \
@@ -195,7 +239,7 @@ jobs:
               n8nio/n8n:local
           done
           # 120s budget per port: containers booting in parallel on a shared
-          # 4vcpu runner contend for CPU/disk during n8n's startup (DB migrations,
+          # runner contend for CPU/disk during n8n's startup (DB migrations,
           # license init), so each takes longer than a solo boot.
           for port in "${PORTS[@]}"; do
             ready=false
@@ -277,6 +321,25 @@ jobs:
             exit 1
           fi
 
+      # Disk pressure develops during the eval (per-lane SQLite growth,
+      # verifier snapshots, logs), not at job start — so the runway check
+      # lives here, after the image load and lane startup, where "is there
+      # enough free disk for the next few hours" is a meaningful question.
+      # A run-A-style on-runner fallback build leaves tens of GB of builder
+      # cache that is safe to reclaim once every lane is up.
+      - name: Ensure disk runway for the eval run
+        shell: bash
+        run: |
+          free_gb=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "${free_gb:-0}" -lt 30 ]; then
+            echo "Only ${free_gb}GB free — reclaiming builder cache before the run accretes data"
+            # Best-effort: a prune failure must not skip the eval run itself.
+            docker builder prune -f || echo "::warning::builder prune failed — continuing with ${free_gb}GB free"
+            df -h / || true
+          else
+            echo "Disk runway OK: ${free_gb}GB free"
+          fi
+
       - name: Run Instance AI Evals
         continue-on-error: true
         working-directory: packages/@n8n/instance-ai
@@ -291,6 +354,11 @@ jobs:
           LANGSMITH_PROJECT: instance-ai-evals
           FILTER: ${{ inputs.filter }}
           TIER: ${{ inputs.tier }}
+          SUITE: ${{ inputs.suite }}
+          # LangTracer is the test-case source of truth (TRUST-247); the CLI
+          # pulls the suite per run via its export API.
+          LANGTRACER_URL: ${{ secrets.EVALS_LANGTRACER_URL }}
+          LANGTRACER_API_KEY: ${{ secrets.LANGTRACER_API_KEY }}
           ITERATIONS: ${{ inputs.iterations }}
           EXPERIMENT_NAME: ${{ inputs.experiment-name }}
           EVAL_PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number }}
@@ -302,6 +370,12 @@ jobs:
           done
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
           ARGS=(--base-url "$BASE_URLS" --concurrency 32 --verbose --iterations "${ITERATIONS:-3}")
+          # LangTracer is the only CI case source (no disk fallback by design).
+          ARGS+=(--source langtracer --suite "${SUITE:-n8n-workflows}")
+          # Pin the LangSmith cohort: langtracer mode otherwise derives a
+          # suite-scoped dataset/baseline prefix, which would fork the KPI
+          # history and orphan the baseline comparison.
+          ARGS+=(--dataset instance-ai-workflow-evals --baseline-prefix instance-ai-baseline-)
           [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
           [ -n "$TIER" ] && ARGS+=(--tier "$TIER")
           [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
@@ -346,19 +420,22 @@ jobs:
           done
 
           # Layer 1 — accuracy filter: only surface diagnostic signals.
-          # `tail -100` after the filter so we get the LATEST matching lines
+          # `tail -1000` after the filter so we get the LATEST matching lines
           # (post-eval failure signal), not the earliest startup-time ones.
+          # -t keeps timestamps; the inspect line surfaces OOM kills/restarts,
+          # which leave no log line of their own.
           SIGNALS='sandbox|builder|sandbox-service|daytona|instance.?ai|error|warn|reject|exception|fail'
           for c in $(docker ps -aq --filter "name=n8n-eval-"); do
             name=$(docker inspect --format '{{.Name}}' "$c" | sed 's|^/||')
             echo ""
             echo "============================================================"
-            echo "=== $name (filtered diagnostic signals, last 100 lines) ==="
+            echo "=== $name (filtered diagnostic signals, last 1000 lines) ==="
             echo "============================================================"
-            docker logs "$c" 2>&1 \
+            docker inspect --format 'state: status={{.State.Status}} oomkilled={{.State.OOMKilled}} exitcode={{.State.ExitCode}} restarts={{.RestartCount}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' "$c" || true
+            docker logs -t "$c" 2>&1 \
               | grep -ivE 'migration' \
               | grep -iE "$SIGNALS" \
-              | tail -100 \
+              | tail -1000 \
               || true
           done
 
@@ -375,6 +452,7 @@ jobs:
       - name: Stop n8n containers
         if: ${{ always() }}
         run: |
+          [ -f eval-diag/sampler.pid ] && kill "$(cat eval-diag/sampler.pid)" 2>/dev/null || true
           mapfile -t ids < <(docker ps -aq --filter "name=n8n-eval-")
           if [ "${#ids[@]}" -gt 0 ]; then
             docker stop "${ids[@]}" 2>/dev/null || true
@@ -420,4 +498,5 @@ jobs:
           path: |
             packages/@n8n/instance-ai/eval-results.json
             packages/@n8n/instance-ai/.data/workflow-eval-report.html
+            eval-diag/
           retention-days: 14

@@ -13,7 +13,11 @@ vi.mock('@n8n/instance-ai', () => ({
 		evaluateTerminal(
 			_events: unknown[],
 			status: 'completed' | 'cancelled' | 'errored',
-			options: { errorMessage?: string; suppressCompletedFallback?: boolean } = {},
+			options: {
+				errorMessage?: string;
+				errorCode?: 'quota_exhausted';
+				suppressCompletedFallback?: boolean;
+			} = {},
 		) {
 			if (status === 'completed' && options.suppressCompletedFallback) {
 				return {
@@ -39,6 +43,7 @@ vi.mock('@n8n/instance-ai', () => ({
 							content:
 								options.errorMessage ??
 								'I hit an error before I could finish that response. Please try again.',
+							...(options.errorCode ? { code: options.errorCode } : {}),
 						},
 					},
 				};
@@ -443,6 +448,19 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		deps.publishRunFinish('thread-a', 'run-1', 'errored');
 
 		expect(deps.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+	});
+
+	it('forwards a structured error code onto the emitted error event', () => {
+		const { service, deps } = createService();
+
+		service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
+			messageGroupId: 'group-1',
+			errorMessage: "You've run out of AI credits.",
+			errorCode: 'quota_exhausted',
+		});
+
+		const errorEvent = deps.eventBus.events.find((event) => event.type === 'error');
+		expect(errorEvent?.payload).toMatchObject({ code: 'quota_exhausted' });
 	});
 
 	it('clears malformed confirmation suspension and finishes the run after the guard error', async () => {

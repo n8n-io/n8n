@@ -46,7 +46,6 @@ describe('useAgentTelemetry', () => {
 		};
 		useAgentTelemetry().trackSubmittedMessage({
 			agentId: 'ag-1',
-			mode: 'test',
 			status: 'draft',
 			agentConfig: fingerprint,
 		});

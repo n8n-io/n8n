@@ -5,7 +5,7 @@ import {
 	type CredentialResolverConfiguration,
 	type ICredentialResolver,
 } from '@n8n/decorators';
-import { Not } from '@n8n/typeorm';
+import { Not, type UpdateResult } from '@n8n/typeorm';
 import type { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -611,6 +611,57 @@ describe('DynamicCredentialResolverService', () => {
 			expect(mockLogger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('Failed to reactivate workflow'),
 				expect.objectContaining({ error: expect.any(Error) }),
+			);
+			expect(mockWorkflowRepository.update).toHaveBeenCalledWith('wf-active-1', {
+				active: false,
+				activeVersionId: null,
+			});
+		});
+
+		it('should tear down triggers again before deactivating when reactivation fails', async () => {
+			const entity = createMockEntity();
+			const callOrder: string[] = [];
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRepository.remove.mockResolvedValue(entity);
+			mockWorkflowRepository.findActiveByCredentialResolverId.mockResolvedValue(['wf-active-1']);
+			mockActiveWorkflowManager.remove.mockImplementation(async () => {
+				callOrder.push('remove');
+			});
+			mockActiveWorkflowManager.add.mockImplementation(async () => {
+				callOrder.push('add');
+				throw new Error('Reactivation failed');
+			});
+			mockWorkflowRepository.update.mockImplementation(async () => {
+				callOrder.push('update');
+				return {} as UpdateResult;
+			});
+
+			await expect(service.delete('resolver-id-123')).resolves.toBeUndefined();
+
+			// A failed reactivation may have partially registered triggers, in memory
+			// and as durable schedule jobs; they must be torn down before the workflow
+			// is flagged inactive, or they keep firing an inactive workflow.
+			expect(callOrder).toEqual(['remove', 'add', 'remove', 'update']);
+			expect(mockActiveWorkflowManager.remove).toHaveBeenNthCalledWith(2, 'wf-active-1');
+		});
+
+		it('should still deactivate the workflow when the rollback teardown fails', async () => {
+			const entity = createMockEntity();
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRepository.remove.mockResolvedValue(entity);
+			mockWorkflowRepository.findActiveByCredentialResolverId.mockResolvedValue(['wf-active-1']);
+			mockActiveWorkflowManager.add.mockRejectedValue(new Error('Reactivation failed'));
+			mockActiveWorkflowManager.remove
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('teardown failed'));
+
+			await expect(service.delete('resolver-id-123')).resolves.toBeUndefined();
+
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to roll back partial reactivation'),
+				expect.objectContaining({ workflowId: 'wf-active-1' }),
 			);
 			expect(mockWorkflowRepository.update).toHaveBeenCalledWith('wf-active-1', {
 				active: false,

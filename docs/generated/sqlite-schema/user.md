@@ -233,6 +233,7 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   INTEGER id
+  TEXT scope
   varchar userId FK
 }
 "project" {

@@ -33,7 +33,6 @@ describe('UsersController', () => {
 		mock(),
 		mock(),
 		eventService,
-		mock(),
 		jwtService,
 		urlService,
 		provisioningService,
