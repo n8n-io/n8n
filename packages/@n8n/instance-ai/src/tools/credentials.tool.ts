@@ -427,6 +427,13 @@ async function handleSearchTypes(
 	// Filter out generic auth types — the AI should use dedicated types
 	const results = allResults.filter((r) => !GENERIC_AUTH_TYPES.has(r.type));
 
+	if (results.length === 0) {
+		return {
+			results,
+			guidance: `No dedicated credential type matches. If the service's auth fits header/query/body values, use "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" and provide a credentialHints recipe during setup (see the workflow-builder skill); fall back to other generic types only for what a template cannot express (digest, OAuth flows).`,
+		};
+	}
+
 	return { results };
 }
 
