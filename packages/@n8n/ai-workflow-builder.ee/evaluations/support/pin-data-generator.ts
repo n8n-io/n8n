@@ -49,7 +49,7 @@ export interface PinDataGeneratorOptions {
 	llm: BaseChatModel;
 	/** Loaded node type descriptions (from env.parsedNodeTypes) */
 	nodeTypes: INodeTypeDescription[];
-	/** `__schema__` lookup (see environment.createNodesBaseSchemaLookup) */
+	/** `__schema__` lookup (see environment.createNodeSchemaLookup) */
 	outputSchemaLookup?: OutputSchemaLookup;
 	/** Logger for verbose output */
 	logger?: EvalLogger;

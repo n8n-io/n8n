@@ -1,8 +1,9 @@
+import { AGENT_NODE_TYPE } from './ai-root-shapes';
 import { buildSchemaContexts, findOutputParserTargets } from './context';
 import { buildDateAnchors } from './date-anchors';
 import { workflowToMermaid } from './mermaid';
 import { parsePinDataResponse, repairStructuredAgentOutput } from './parse';
-import { buildPinDataUserPrompt } from './prompt';
+import { buildNodeSchemaSection, buildPinDataUserPrompt } from './prompt';
 import type { OutputSchemaLookup } from './types';
 import type { WorkflowJSON } from '../types/base';
 
@@ -250,17 +251,34 @@ describe('ai-root shapes', () => {
 			expect(isAiRootNodeType(type)).toBe(true);
 		}
 
-		// Verified against the node implementations: extractor wraps in `output`,
-		// classifier passes the input through, sentiment adds `sentimentAnalysis`.
-		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.informationExtractor', false)).toContain(
-			'"output"',
-		);
+		// Static shapes (extractor, sentiment, retrieval QA, summarization,
+		// assistant) live in nodes-langchain `__schema__` files; the prose only
+		// covers graph-conditional shapes and the passthrough classifier.
 		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.textClassifier', false)).toContain(
 			'passed through',
 		);
-		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.sentimentAnalysis', false)).toContain(
-			'sentimentAnalysis',
-		);
+		expect(describeAiRootShape(AGENT_NODE_TYPE, true)).toContain('parsed JSON object');
+	});
+
+	it('prefers a resolved __schema__ over the prose shape line for AI roots', () => {
+		const chainNode = {
+			name: 'Answer',
+			type: '@n8n/n8n-nodes-langchain.chainRetrievalQa',
+			typeVersion: 1.7,
+			parameters: {},
+		} as unknown as WorkflowJSON['nodes'][number];
+		const schema = { type: 'object', properties: { response: { type: 'string' } } };
+
+		const [withSchema] = buildSchemaContexts([chainNode], () => schema);
+		const withSchemaSection = buildNodeSchemaSection(withSchema).join('\n');
+		expect(withSchemaSection).toContain('Output JSON Schema:');
+		expect(withSchemaSection).not.toContain('AI ROOT OUTPUT SHAPE');
+
+		// Without a resolved schema the prose fallback still renders.
+		const [withoutSchema] = buildSchemaContexts([chainNode]);
+		const withoutSchemaSection = buildNodeSchemaSection(withoutSchema).join('\n');
+		expect(withoutSchemaSection).toContain('AI ROOT OUTPUT SHAPE');
+		expect(withoutSchemaSection).not.toContain('no schema available');
 	});
 
 	it('classifies the assistant and vendor LLM nodes as AI roots', async () => {

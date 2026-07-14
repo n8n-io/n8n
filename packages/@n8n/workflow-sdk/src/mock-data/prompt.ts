@@ -37,9 +37,14 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 
 	const isAiRoot = isAiRootNodeType(ctx.nodeType);
 	if (isAiRoot) {
-		lines.push(
-			`- AI ROOT OUTPUT SHAPE: every item MUST be ${describeAiRootShape(ctx.nodeType, ctx.outputParser !== undefined)}`,
-		);
+		// Roots with a static `__schema__` shape are covered by the schema
+		// section below; the prose is for graph-conditional shapes (see
+		// `describeAiRootShape`) and the no-schema fallback.
+		if (!ctx.schema) {
+			lines.push(
+				`- AI ROOT OUTPUT SHAPE: every item MUST be ${describeAiRootShape(ctx.nodeType, ctx.outputParser !== undefined)}`,
+			);
+		}
 		if (ctx.outputParser?.schemaText) {
 			const target =
 				ctx.nodeType === AGENT_NODE_TYPE ? 'The `output` object' : 'The top-level `json` fields';

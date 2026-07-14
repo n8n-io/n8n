@@ -221,44 +221,53 @@ export function findRepoRoot(startDir: string): string | undefined {
 	return undefined;
 }
 
+/** Package name → repo-relative package dir for `__schema__` resolution. */
+const SCHEMA_PACKAGE_DIRS: Record<string, string[]> = {
+	'n8n-nodes-base': ['packages', 'nodes-base'],
+	'@n8n/n8n-nodes-langchain': ['packages', '@n8n', 'nodes-langchain'],
+};
+
 /**
- * Build a `__schema__` output-schema lookup for n8n-nodes-base from the
- * package's known-nodes manifest (`dist/known/nodes.json`) — the same node
+ * Build a `__schema__` output-schema lookup for the local node packages from
+ * their known-nodes manifests (`dist/known/nodes.json`) — the same node
  * type → directory mapping the server uses, resolved through n8n-core's
  * canonical schema resolver. Returns undefined outside the monorepo.
  */
-export function createNodesBaseSchemaLookup(): OutputSchemaLookup | undefined {
+export function createNodeSchemaLookup(): OutputSchemaLookup | undefined {
 	const repoRoot = findRepoRoot(__dirname);
 	if (!repoRoot) return undefined;
-	const packageRoot = path.join(repoRoot, 'packages', 'nodes-base');
-	const knownNodesPath = path.join(packageRoot, 'dist', 'known', 'nodes.json');
-	if (!fs.existsSync(knownNodesPath)) {
-		// Degradation is real but easy to miss: every fixture silently drops to
-		// API-knowledge-only generation, so make the stale/missing build loud.
-		console.warn(
-			`[SCHEMA-LOOKUP] ${knownNodesPath} not found (nodes-base not built?) — pin data will be generated without __schema__ shapes`,
-		);
-		return undefined;
-	}
 
-	let knownNodes: Record<string, { sourcePath?: string } | undefined>;
-	try {
-		knownNodes = jsonParse(fs.readFileSync(knownNodesPath, 'utf-8'));
-	} catch {
-		console.warn(
-			`[SCHEMA-LOOKUP] ${knownNodesPath} is unreadable — pin data will be generated without __schema__ shapes`,
-		);
-		return undefined;
+	const packages = new Map<
+		string,
+		{ root: string; nodes: Record<string, { sourcePath?: string } | undefined> }
+	>();
+	for (const [packageName, dirParts] of Object.entries(SCHEMA_PACKAGE_DIRS)) {
+		const packageRoot = path.join(repoRoot, ...dirParts);
+		const knownNodesPath = path.join(packageRoot, 'dist', 'known', 'nodes.json');
+		try {
+			packages.set(packageName, {
+				root: packageRoot,
+				nodes: jsonParse(fs.readFileSync(knownNodesPath, 'utf-8')),
+			});
+		} catch {
+			// Degradation is real but easy to miss: fixtures silently drop to
+			// API-knowledge-only generation, so make the stale/missing build loud.
+			console.warn(
+				`[SCHEMA-LOOKUP] ${knownNodesPath} missing or unreadable (${packageName} not built?) — pin data will be generated without its __schema__ shapes`,
+			);
+		}
 	}
+	if (packages.size === 0) return undefined;
 
 	return ({ type, typeVersion, resource, operation }) => {
 		const [packageName, shortType] = type.split('.');
-		if (packageName !== 'n8n-nodes-base' || !shortType) return undefined;
-		const sourcePath = knownNodes[shortType]?.sourcePath;
-		if (!sourcePath) return undefined;
+		if (!shortType) return undefined;
+		const pkg = packages.get(packageName);
+		const sourcePath = pkg?.nodes[shortType]?.sourcePath;
+		if (!pkg || !sourcePath) return undefined;
 
 		return loadOutputSchema({
-			nodeDir: path.dirname(path.join(packageRoot, sourcePath)),
+			nodeDir: path.dirname(path.join(pkg.root, sourcePath)),
 			version: typeVersion,
 			resource,
 			operation,

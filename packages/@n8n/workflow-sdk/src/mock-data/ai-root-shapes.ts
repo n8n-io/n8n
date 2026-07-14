@@ -40,12 +40,15 @@ export function isAiRootNodeType(nodeType: string): boolean {
 }
 
 /**
- * Per-root-type pinned item shape. Verified against the node implementations:
- * Agent wraps in `output`; ChainLlm emits `{ text }` (or the parser's object
- * FLAT at the top level — `formatResponse` unwraps it); ChainRetrievalQa emits
- * `{ response }`; ChainSummarization emits `{ output: { output_text } }`.
- * Getting the key wrong silently breaks every downstream `$json.<key>`
- * reference (observed: chainLlm pinned with `output` → empty Slack digest).
+ * Per-root-type pinned item shape, for the roots whose shape can't live in a
+ * static `__schema__/v<X>/output.json` file (nodes-langchain ships those for
+ * chainRetrievalQa, chainSummarization, informationExtractor,
+ * sentimentAnalysis, openAiAssistant — the prompt embeds them via the schema
+ * lookup and skips this prose). What stays here is graph-conditional: Agent
+ * and ChainLlm reshape based on an attached output parser, textClassifier is
+ * a pure input passthrough. Getting the key wrong silently breaks every
+ * downstream `$json.<key>` reference (observed: chainLlm pinned with
+ * `output` → empty Slack digest).
  */
 export function describeAiRootShape(nodeType: string, hasParser: boolean): string {
 	switch (nodeType) {
@@ -57,16 +60,8 @@ export function describeAiRootShape(nodeType: string, hasParser: boolean): strin
 			return hasParser
 				? 'the parsed fields FLAT at the top level of `json` — chainLlm unwraps parser output, so there is NO `output` or `text` wrapper key.'
 				: '`{ "json": { "text": "<final response text>" } }` — the key is `text` (chainLlm has NO `output` key), and it is a plain string.';
-		case '@n8n/n8n-nodes-langchain.chainRetrievalQa':
-			return '`{ "json": { "response": "<answer text>" } }` — the key is `response`, a plain string.';
-		case '@n8n/n8n-nodes-langchain.chainSummarization':
-			return '`{ "json": { "output": { "output_text": "<summary text>" } } }`.';
-		case '@n8n/n8n-nodes-langchain.informationExtractor':
-			return '`{ "json": { "output": <object of extracted fields> } }` — `output` is a parsed object matching the extraction attributes, never a string.';
 		case '@n8n/n8n-nodes-langchain.textClassifier':
 			return 'the INPUT item passed through UNCHANGED (this node routes items to a category branch without reshaping them) — emit a plausible input item, no classification wrapper key.';
-		case '@n8n/n8n-nodes-langchain.sentimentAnalysis':
-			return 'the INPUT item with an added `sentimentAnalysis` object — `{ "json": { ...original input fields, "sentimentAnalysis": { "category": "<sentiment>" } } }`.';
 		default:
 			if (VENDOR_AI_ROOT_NODE_TYPES.has(nodeType)) {
 				return "a plausible vendor API response for the node's configured resource and operation — there is NO `output` wrapper key; mirror the vendor's response fields.";
