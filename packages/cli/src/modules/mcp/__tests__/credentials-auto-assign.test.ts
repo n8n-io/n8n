@@ -578,6 +578,146 @@ describe('autoPopulateNodeCredentials', () => {
 				},
 			]);
 		});
+
+		describe('incoming n8n Connect markers', () => {
+			const suppliedMarker = { id: null, name: 'supplied name', __aiGatewayManaged: true } as const;
+
+			test('keeps an eligible incoming marker and honors it over the user credential', async () => {
+				const node = makeNode({ credentials: { slackApi: { ...suppliedMarker } } });
+				const workflow = makeWorkflow([node]);
+				const desc = makeNodeTypeDescription();
+				const { credentialsService, nodeTypes } = createMocks({
+					usableCredentials: [{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }],
+					nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
+				});
+				vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+
+				const result = await autoPopulateNodeCredentials(
+					workflow,
+					user,
+					nodeTypes,
+					credentialsService,
+					projectId,
+					makeAiGatewayService(true),
+				);
+
+				// Canonicalized to the sentinel and kept — the explicit n8n Connect request
+				// wins over the owned credential, and no assignment is recorded for it.
+				expect(node.credentials).toEqual({
+					slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				});
+				expect(result.assignments).toEqual([]);
+				expect(result.outcomes).toEqual([]);
+			});
+
+			test('strips an ineligible incoming marker when the node is not covered', async () => {
+				const node = makeNode({
+					type: 'n8n-nodes-base.gmail',
+					credentials: { gmailOAuth2: { ...suppliedMarker } },
+				});
+				const workflow = makeWorkflow([node]);
+				const desc = makeNodeTypeDescription({
+					name: 'n8n-nodes-base.gmail',
+					credentials: [makeCredentialDescription({ name: 'gmailOAuth2' })],
+				});
+				const { credentialsService, nodeTypes } = createMocks({
+					usableCredentials: [],
+					nodeTypeDescriptions: new Map([['n8n-nodes-base.gmail', desc]]),
+				});
+				vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+
+				const result = await autoPopulateNodeCredentials(
+					workflow,
+					user,
+					nodeTypes,
+					credentialsService,
+					projectId,
+					makeAiGatewayService(true),
+				);
+
+				expect(node.credentials?.gmailOAuth2).toBeUndefined();
+				expect(result.outcomes[0]).toMatchObject({
+					source: 'none',
+					reasonNotAiGateway: 'nodeNotCovered',
+				});
+			});
+
+			test('strips a marker on an HTTP Request node', async () => {
+				const node = makeNode({
+					name: 'HTTP',
+					type: 'n8n-nodes-base.httpRequest',
+					credentials: { slackApi: { ...suppliedMarker } },
+				});
+				const workflow = makeWorkflow([node]);
+				const { credentialsService, nodeTypes } = createMocks({ usableCredentials: [] });
+
+				const result = await autoPopulateNodeCredentials(
+					workflow,
+					user,
+					nodeTypes,
+					credentialsService,
+					projectId,
+					makeAiGatewayService(true),
+				);
+
+				expect(node.credentials?.slackApi).toBeUndefined();
+				expect(result.skippedHttpNodes).toEqual(['HTTP']);
+			});
+
+			test('strips a marker placed under an undeclared credential key', async () => {
+				const node = makeNode({
+					credentials: {
+						slackApi: { id: 'cred-1', name: 'My Slack' },
+						bogusApi: { ...suppliedMarker },
+					},
+				});
+				const workflow = makeWorkflow([node]);
+				const desc = makeNodeTypeDescription();
+				const { credentialsService, nodeTypes } = createMocks({
+					nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
+				});
+				vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+
+				await autoPopulateNodeCredentials(
+					workflow,
+					user,
+					nodeTypes,
+					credentialsService,
+					projectId,
+					makeAiGatewayService(true),
+				);
+
+				expect(node.credentials?.bogusApi).toBeUndefined();
+				// The explicit credential id on the declared slot is left untouched.
+				expect(node.credentials?.slackApi).toEqual({ id: 'cred-1', name: 'My Slack' });
+			});
+
+			test('strips an incoming marker when the gateway is unavailable', async () => {
+				const node = makeNode({ credentials: { slackApi: { ...suppliedMarker } } });
+				const workflow = makeWorkflow([node]);
+				const desc = makeNodeTypeDescription();
+				const { credentialsService, nodeTypes } = createMocks({
+					usableCredentials: [],
+					nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
+				});
+				vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+
+				const result = await autoPopulateNodeCredentials(
+					workflow,
+					user,
+					nodeTypes,
+					credentialsService,
+					projectId,
+					makeAiGatewayService(false),
+				);
+
+				expect(node.credentials?.slackApi).toBeUndefined();
+				expect(result.outcomes[0]).toMatchObject({
+					source: 'none',
+					reasonNotAiGateway: 'notAvailable',
+				});
+			});
+		});
 	});
 });
 

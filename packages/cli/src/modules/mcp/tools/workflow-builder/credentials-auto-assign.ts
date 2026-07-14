@@ -1,6 +1,6 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import type { INode, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
+import type { INode, INodeParameters, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -65,6 +65,70 @@ const HTTP_NODE_TYPES = new Set([
 ]);
 
 /**
+ * Normalizes n8n Connect (`__aiGatewayManaged`) markers on the given nodes.
+ *
+ * The marker is server-assigned, so it must correspond to an eligible slot. For every
+ * marked credential — across all nodes and keys, including ones `autoPopulateNodeCredentials`
+ * skips (HTTP/disabled nodes, undeclared keys) — the marker is kept (canonicalized to the
+ * sentinel) when it still passes `checkAiGatewayEligibility`, and removed otherwise.
+ */
+export function reconcileAiGatewayMarkers(
+	nodes: INode[],
+	nodeTypes: NodeTypes,
+	aiGatewayConfig: AiGatewayConfigDto | undefined,
+): void {
+	for (const node of nodes) {
+		if (!node.credentials) continue;
+		const credentials = node.credentials;
+
+		const markerTypes = Object.keys(credentials).filter(
+			(credentialType) => credentials[credentialType]?.__aiGatewayManaged,
+		);
+		if (markerTypes.length === 0) continue;
+
+		const nodeParameters = aiGatewayConfig ? resolveNodeParameters(node, nodeTypes) : undefined;
+		if (!aiGatewayConfig || !nodeParameters) {
+			for (const credentialType of markerTypes) delete credentials[credentialType];
+			continue;
+		}
+
+		for (const credentialType of markerTypes) {
+			if (
+				checkAiGatewayEligibility(node, credentialType, aiGatewayConfig, nodeParameters).eligible
+			) {
+				credentials[credentialType] = {
+					id: null,
+					name: AI_GATEWAY_CREDENTIAL_NAME,
+					__aiGatewayManaged: true,
+				};
+			} else {
+				delete credentials[credentialType];
+			}
+		}
+	}
+}
+
+/** Resolves a node's parameters with defaults applied, or `undefined` if its type can't be resolved. */
+function resolveNodeParameters(node: INode, nodeTypes: NodeTypes): INodeParameters | undefined {
+	let description: INodeTypeDescription;
+	try {
+		description = nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+	} catch {
+		return undefined;
+	}
+	return (
+		NodeHelpers.getNodeParameters(
+			description.properties,
+			node.parameters,
+			true,
+			false,
+			node,
+			description,
+		) ?? node.parameters
+	);
+}
+
+/**
  * Auto-populates missing credentials on workflow nodes.
  *
  * Resolution order per slot:
@@ -104,6 +168,8 @@ export async function autoPopulateNodeCredentials(
 	const aiGatewayConfig: AiGatewayConfigDto | undefined = availability.available
 		? availability.config
 		: undefined;
+
+	reconcileAiGatewayMarkers(workflow.nodes, nodeTypes, aiGatewayConfig);
 
 	const assignments: CredentialAssignment[] = [];
 	const skippedHttpNodes: string[] = [];
@@ -151,6 +217,11 @@ export async function autoPopulateNodeCredentials(
 
 			const existing = node.credentials?.[credDesc.name];
 			if (existing?.id) continue;
+
+			// Markers were validated by reconcileAiGatewayMarkers (eligible kept, rest
+			// stripped), so an eligible n8n Connect request is honored ahead of the user's
+			// own credentials.
+			if (existing?.__aiGatewayManaged) continue;
 
 			const userCandidates = credentialsByType.get(credDesc.name);
 			const hadUserCredential = !!userCandidates?.length;
