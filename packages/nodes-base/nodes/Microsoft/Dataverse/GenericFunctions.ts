@@ -9,7 +9,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, sleep } from 'n8n-workflow';
-import { DATAVERSE_API_PATH, USER_AGENT } from './constants';
+import { DATAVERSE_API_PATH, buildUserAgent } from './constants';
 
 /** Headers we send to Dataverse must be string-valued. */
 export type DataverseHeaders = Record<string, string>;
@@ -25,7 +25,6 @@ const ODATA_DEFAULT_HEADERS: DataverseHeaders = {
 	Accept: 'application/json',
 	'OData-MaxVersion': '4.0',
 	'OData-Version': '4.0',
-	'User-Agent': USER_AGENT,
 };
 
 const CONTENT_TYPE_JSON = 'application/json; charset=utf-8';
@@ -213,6 +212,7 @@ export async function dataverseApiRequest(
 		url: `${baseUrl}${DATAVERSE_API_PATH}${resource}`,
 		headers: {
 			...ODATA_DEFAULT_HEADERS,
+			'User-Agent': buildUserAgent(ctx.getNode().typeVersion),
 			'Content-Type': CONTENT_TYPE_JSON,
 			...headers,
 		},
@@ -255,6 +255,7 @@ export async function dataverseApiRequestAllItems(
 	const mergedPrefer = callerPrefer ? `${callerPrefer},${PAGE_SIZE_PREFER}` : PAGE_SIZE_PREFER;
 	const headers: DataverseHeaders = {
 		...ODATA_DEFAULT_HEADERS,
+		'User-Agent': buildUserAgent(ctx.getNode().typeVersion),
 		...extraHeaders,
 		Prefer: mergedPrefer,
 	};

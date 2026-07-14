@@ -7,9 +7,8 @@ export class MicrosoftDataverseOAuth2Api implements ICredentialType {
 
 	displayName = 'Microsoft Dataverse OAuth2 API';
 
-	// Anchor is the `## Credentials` heading in README.md — keep that heading stable.
 	documentationUrl =
-		'https://github.com/microsoft/n8n-nodes-microsoft-dataverse?tab=readme-ov-file#credentials';
+		'https://learn.microsoft.com/en-us/power-apps/developer/data-platform/authenticate-oauth';
 
 	properties: INodeProperties[] = [
 		{

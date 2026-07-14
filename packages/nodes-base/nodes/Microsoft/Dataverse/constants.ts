@@ -13,9 +13,19 @@
 export const DATAVERSE_API_PATH = '/api/data/v9.2';
 
 /**
- * `User-Agent` sent on every Dataverse Web API request. A descriptive agent
- * string lets Microsoft correlate traffic to this node in support/telemetry
- * scenarios. The version is read from package.json so it always matches the
- * published release without a second place to bump.
+ * Product token for the `User-Agent` sent on every Dataverse Web API request.
+ * A descriptive agent string lets Microsoft correlate traffic to this node in
+ * support/telemetry scenarios.
  */
-export const USER_AGENT = 'n8n-nodes-base.microsoftDataverse/1.0.0';
+export const USER_AGENT_PREFIX = 'n8n-nodes-base.microsoftDataverse';
+
+/**
+ * Build the `User-Agent` including the node's version so requests are
+ * attributable to a specific node version (e.g. `n8n-nodes-base.microsoftDataverse/1.0`).
+ * Pass `this.getNode().typeVersion` from the execution/load-options context.
+ * A whole-number version is normalized to include a minor (`1` -> `1.0`).
+ */
+export function buildUserAgent(version: number | string): string {
+	const normalized = Number.isInteger(Number(version)) ? `${Number(version)}.0` : `${version}`;
+	return `${USER_AGENT_PREFIX}/${normalized}`;
+}

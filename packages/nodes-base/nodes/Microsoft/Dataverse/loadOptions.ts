@@ -8,7 +8,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import { DATAVERSE_API_PATH, USER_AGENT } from './constants';
+import { DATAVERSE_API_PATH, buildUserAgent } from './constants';
 
 /**
  * `loadOptions` handlers for the Dataverse node. These power the in-editor
@@ -32,7 +32,6 @@ const ODATA_HEADERS = {
 	Accept: 'application/json',
 	'OData-MaxVersion': '4.0',
 	'OData-Version': '4.0',
-	'User-Agent': USER_AGENT,
 };
 
 interface EntityDefinition {
@@ -97,7 +96,10 @@ async function dataverseGet<T>(
 		method: 'GET',
 		url,
 		qs,
-		headers: ODATA_HEADERS,
+		headers: {
+			...ODATA_HEADERS,
+			'User-Agent': buildUserAgent(ctx.getNode().typeVersion),
+		},
 		json: true,
 	};
 	try {
