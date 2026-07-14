@@ -128,7 +128,6 @@ const projectHandlers: ProjectHandlers = {
 		},
 	],
 	getProjectUsers: [
-		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:list' }),
 		validCursor,
 		async (req, res) => {
