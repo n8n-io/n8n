@@ -608,7 +608,6 @@ describe('createScheduler late dispatch', () => {
 					message: 'Scheduler fired a task later than its scheduled time',
 					context: expect.objectContaining({
 						taskType: 'test-task',
-						// A 2020 runAt is years past, so the reported lag is a large whole number.
 						lagSeconds: expect.any(Number),
 					}),
 				}),

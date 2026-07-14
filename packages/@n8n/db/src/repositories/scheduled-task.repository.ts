@@ -424,9 +424,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		};
 	}
 
-	/**
-	 * @returns database clock.
-	 */
+	/** Current time on the database clock, used to check this instance's clock for skew. */
 	async readDbTime(): Promise<Date> {
 		const [row]: Array<{ dbNow: Date | string }> = await this.query(
 			`SELECT ${dbNowLiteral(this.isPostgres)} AS "dbNow"`,

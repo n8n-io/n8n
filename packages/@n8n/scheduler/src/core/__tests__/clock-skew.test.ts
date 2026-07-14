@@ -54,11 +54,10 @@ describe('isClockSkewSignificant', () => {
 		expect(isClockSkewSignificant({ offsetMs: -5_000, roundTripMs: 20 })).toBe(true);
 	});
 
-	it('does not trip on a slow read alone: the offset must exceed half the round-trip', () => {
+	it('requires the offset to exceed half the round-trip', () => {
 		// A 4s round-trip gives ±2s of measurement uncertainty, so a 1.5s offset (above
 		// the fixed threshold) is still within the noise and must not warn.
 		expect(isClockSkewSignificant({ offsetMs: 1_500, roundTripMs: 4_000 })).toBe(false);
-		// The same round-trip with a clearly larger offset does warn.
 		expect(isClockSkewSignificant({ offsetMs: 3_000, roundTripMs: 4_000 })).toBe(true);
 	});
 

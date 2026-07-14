@@ -11,7 +11,7 @@
 export interface ClockSkew {
 	/** Coordination clock minus instance clock, in ms. Positive means it is ahead. */
 	offsetMs: number;
-	/** The round-trip of the sampling read, in ms. Bounds the estimate's own error (±half). */
+	/** Round-trip of the sampling read, in ms; bounds the estimate's error (±half). */
 	roundTripMs: number;
 }
 
@@ -34,10 +34,9 @@ export const DEFAULT_CLOCK_SKEW_OPTIONS: ClockSkewOptions = {
 };
 
 /**
- * Estimate the clock offset from a single round-trip. The coordination clock was
- * read at some instant between `before` and `after` (both instance-clock readings
- * taken around the read), so that instant maps to their midpoint on the instance
- * clock; the offset is `referenceNow - midpoint`.
+ * Estimate the clock offset from a single round-trip: the coordination clock was
+ * read at some instant between `before` and `after`, so that instant maps to their
+ * midpoint on the instance clock, giving offset = `referenceNow - midpoint`.
  */
 export function measureClockSkew(sample: {
 	/** Instance clock immediately before reading the coordination clock. */
