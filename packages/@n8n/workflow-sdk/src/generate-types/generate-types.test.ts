@@ -5033,6 +5033,106 @@ describe('generate-types', () => {
 			}
 		});
 
+		it('exact-matches fractional typeVersions against minor-versioned dirs', () => {
+			const nodeName = '__TestMinorVersionExact__';
+			const schema = { type: 'object', properties: { id: { type: 'string' } } };
+
+			try {
+				createTestSchemaDir(nodeName, 'v2.0.0', {
+					'contact/get.json': JSON.stringify({ type: 'object', properties: {} }),
+				});
+				createTestSchemaDir(nodeName, 'v2.3.0', {
+					'contact/get.json': JSON.stringify(schema),
+				});
+
+				const result = generateTypes.discoverSchemasForNode(
+					`n8n-nodes-base.${nodeName}`,
+					2.3,
+					nodeName,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].schema).toEqual(schema);
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('falls back to the closest LOWER version comparing full X.Y.Z tuples', () => {
+			const nodeName = '__TestMinorVersionFallback__';
+			const older = { type: 'object', properties: { a: { type: 'string' } } };
+			const closest = { type: 'object', properties: { b: { type: 'string' } } };
+			const newer = { type: 'object', properties: { c: { type: 'string' } } };
+
+			try {
+				createTestSchemaDir(nodeName, 'v2.0.0', { 'contact/get.json': JSON.stringify(older) });
+				createTestSchemaDir(nodeName, 'v2.2.0', { 'contact/get.json': JSON.stringify(closest) });
+				createTestSchemaDir(nodeName, 'v2.4.0', { 'contact/get.json': JSON.stringify(newer) });
+
+				// 2.3 has no exact dir: must pick v2.2.0 (closest lower), never v2.4.0.
+				const result = generateTypes.discoverSchemasForNode(
+					`n8n-nodes-base.${nodeName}`,
+					2.3,
+					nodeName,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].schema).toEqual(closest);
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('resolves to a higher same-major minor before dropping to an older major', () => {
+			const nodeName = '__TestSameMajorAbove__';
+			const v1Schema = { type: 'object', properties: { legacy: { type: 'string' } } };
+			const v22Schema = { type: 'object', properties: { current: { type: 'string' } } };
+
+			try {
+				// The Notion shape: node versions 2 and 2.1 share the class behind
+				// v2.2.0 — falling to v1.0.0 would silently lose their schemas.
+				createTestSchemaDir(nodeName, 'v1.0.0', {
+					'contact/get.json': JSON.stringify(v1Schema),
+				});
+				createTestSchemaDir(nodeName, 'v2.2.0', {
+					'contact/get.json': JSON.stringify(v22Schema),
+				});
+
+				for (const version of [2, 2.1]) {
+					const result = generateTypes.discoverSchemasForNode(
+						`n8n-nodes-base.${nodeName}`,
+						version,
+						nodeName,
+					);
+
+					expect(result).toHaveLength(1);
+					expect(result[0].schema).toEqual(v22Schema);
+				}
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('never falls forward to a newer major', () => {
+			const nodeName = '__TestNoNewerMajor__';
+
+			try {
+				createTestSchemaDir(nodeName, 'v3.0.0', {
+					'contact/get.json': JSON.stringify({ type: 'object' }),
+				});
+
+				const result = generateTypes.discoverSchemasForNode(
+					`n8n-nodes-base.${nodeName}`,
+					2,
+					nodeName,
+				);
+
+				expect(result).toHaveLength(0);
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
 		it('discovers both root-level JSON files and resource subdirectories', () => {
 			const nodeName = '__TestMixedNodeBoth__';
 			const rootSchema = { type: 'object', properties: { id: { type: 'string' } } };
