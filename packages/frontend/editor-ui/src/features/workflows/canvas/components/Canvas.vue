@@ -827,7 +827,14 @@ function onPointerDownCapture() {
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
 	if (isCanvasGroupNode(node)) {
-		// Modifier clicks keep VueFlow's multi-select behavior (cmd/ctrl+click).
+		// Clicks on the group body (frame) are plain selection gestures —
+		// VueFlow's native click handling already selected the group (plain
+		// click) or toggled its selection (cmd/ctrl+click).
+		const isBodyClick =
+			event.target instanceof Element && event.target.closest('[data-canvas-node-group-body]');
+		if (isBodyClick) return;
+
+		// Modifier clicks on the header keep VueFlow's multi-select behavior.
 		if (event.ctrlKey || event.metaKey || event.shiftKey) return;
 
 		// A plain click on the title bar toggles collapse instead of selecting —
@@ -1765,6 +1772,15 @@ defineExpose({
 		top: var(--canvas-selection-box--top) !important;
 		width: var(--canvas-selection-box--width) !important;
 		height: var(--canvas-selection-box--height) !important;
+	}
+
+	// Group title bars (and their pointer-interactive frames) must stay behind
+	// canvas nodes at all times. VueFlow raises selected nodes by +1000, which
+	// would float a selected group's frame above any overlapping node that
+	// isn't part of the same selection — swallowing its pointer events (dead
+	// clicks, hover flicker).
+	:global(.vue-flow__node-canvas-node-group) {
+		z-index: -1 !important;
 	}
 	/* stylelint-enable declaration-no-important */
 }

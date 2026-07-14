@@ -316,6 +316,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 			v-if="!isCollapsed"
 			:class="$style.frame"
 			:style="frameStyle"
+			data-canvas-node-group-body
 			data-test-id="canvas-node-group-frame"
 		/>
 
@@ -487,6 +488,10 @@ function onWrapperPointerDown(event: PointerEvent) {
 	opacity: 1;
 }
 
+// The frame is a pointer surface: clicking empty group space selects the
+// group and dragging it moves the group, through the same VueFlow node
+// machinery as the title bar. Member nodes and edges render above it, so
+// only clicks on truly empty group space land here.
 .frame {
 	position: absolute;
 	left: 0;
@@ -495,7 +500,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 	@include styles.canvas-node-border(dashed);
 	border-top: none;
 	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
-	pointer-events: none;
 	box-sizing: border-box;
 	z-index: 0;
 }

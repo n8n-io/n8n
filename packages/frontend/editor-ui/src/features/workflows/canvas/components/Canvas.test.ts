@@ -374,6 +374,94 @@ describe('Canvas', () => {
 		});
 	});
 
+	describe('group body click', () => {
+		const setupGroups = async () => {
+			workflowDocumentStore.setNodeGroups([{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }]);
+			const nodeGroupView = createNodeGroupViewMock(false);
+			const rendered = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement({ id: 'node-1' }), createCanvasGroupNode({ id: 'g1' })],
+				},
+				global: { provide: { [NodeGroupViewKey as symbol]: nodeGroupView } },
+			});
+
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(2),
+			);
+
+			const frame = rendered.container.querySelector<HTMLElement>(
+				'[data-id="group:g1"] [data-test-id="canvas-node-group-frame"]',
+			)!;
+
+			return { ...rendered, frame, nodeGroupView, vueFlow: useVueFlow(canvasId) };
+		};
+
+		it('selects the whole group when its body is clicked, without toggling collapse', async () => {
+			const { frame, emitted, nodeGroupView, vueFlow } = await setupGroups();
+
+			await fireEvent.pointerDown(frame);
+			await fireEvent.click(frame);
+
+			// Title bar selected; the reconciler extends it to the members.
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id).sort()).toEqual([
+					'group:g1',
+					'node-1',
+				]),
+			);
+			expect(nodeGroupView.isGroupCollapsed('g1')).toBe(false);
+			expect(emitted()['click:pane']).toBeUndefined();
+		});
+
+		it('selects the group on a body click while one of its members is selected', async () => {
+			const { frame, vueFlow } = await setupGroups();
+
+			vueFlow.addSelectedNodes([vueFlow.findNode('node-1')!]);
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toContain('node-1'),
+			);
+
+			await fireEvent.pointerDown(frame);
+			await fireEvent.click(frame);
+
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id).sort()).toEqual([
+					'group:g1',
+					'node-1',
+				]),
+			);
+		});
+
+		it('keeps the group selected when its body is clicked again', async () => {
+			const { frame, vueFlow } = await setupGroups();
+
+			await fireEvent.pointerDown(frame);
+			await fireEvent.click(frame);
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toContain('group:g1'),
+			);
+
+			await fireEvent.pointerDown(frame);
+			await fireEvent.click(frame);
+
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toContain('group:g1'),
+			);
+		});
+
+		it('treats modifier body clicks as selection gestures without toggling collapse', async () => {
+			const { frame, nodeGroupView, vueFlow } = await setupGroups();
+
+			await fireEvent.pointerDown(frame, { metaKey: true });
+			await fireEvent.click(frame, { metaKey: true });
+
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toContain('group:g1'),
+			);
+			expect(nodeGroupView.isGroupCollapsed('g1')).toBe(false);
+		});
+	});
+
 	describe('expanded group selection', () => {
 		const setupExpandedGroup = async (initialCollapsed = false) => {
 			workflowDocumentStore.setNodeGroups([
