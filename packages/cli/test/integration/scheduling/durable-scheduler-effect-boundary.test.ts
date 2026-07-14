@@ -28,7 +28,7 @@ import {
  * (`reclaimTombstone`); a never-dispatched last-attempt lease lapse is salvaged
  * rather than dropped; and a post-dispatch lease lapse is not recorded failed (the
  * dispatch marker lets the reaper complete it). Concurrent-handler behaviour
- * (finding 5) is deliberately not asserted here: at-least-once permits overlap, and
+ * is deliberately not asserted here: at-least-once permits overlap, and
  * tightening it is deferred to the misfire-policy work.
  */
 describe('durable scheduler effect boundary', () => {
@@ -92,7 +92,7 @@ describe('durable scheduler effect boundary', () => {
 	 * Mirrors `ScheduleTriggerTaskHandler.execute`: insert the execution row under the
 	 * occurrence's dedup key (real unique index), then report the dispatch. A
 	 * pre-existing row makes the insert collide, and `DuplicateExecutionError` is
-	 * swallowed like `recordExistingHandoff` does — no dispatch, and no `onDispatch`
+	 * swallowed like `recordExistingHandoff` does: no dispatch, and no `onDispatch`
 	 * (the effect already exists and isn't ours).
 	 */
 	const effectBoundaryHandler = (opts: { hangAfterDispatch?: boolean } = {}): TaskHandler => ({
@@ -184,7 +184,7 @@ describe('durable scheduler effect boundary', () => {
 	// (a) A tombstone row (a prior attempt inserted the execution as `new`, then died
 	// before dispatching) holds the dedup key. The redelivery must still dispatch the
 	// workflow. On master it does not: the insert collides and the dispatch is skipped,
-	// yet the task is recorded `succeeded` (findings 1 and 2).
+	// yet the task is recorded `succeeded`.
 	it('dispatches the workflow even when a tombstone execution row already holds the key', async () => {
 		const taskRow = await createTask();
 		const key = scheduleTriggerDeduplicationKey({
@@ -248,7 +248,7 @@ describe('durable scheduler effect boundary', () => {
 
 	// (c) The workflow is dispatched (the marker is stamped), then the lease lapses
 	// before the outcome write. The reaper sees the marker and completes the row rather
-	// than recording `failed` for work that was done (finding 4).
+	// than recording `failed` for work that was done.
 	it('does not record a task failed after its workflow was dispatched', async () => {
 		const scheduler = makeScheduler(effectBoundaryHandler({ hangAfterDispatch: true }));
 
@@ -256,7 +256,7 @@ describe('durable scheduler effect boundary', () => {
 
 		// Fire it: the handler dispatches and reports it, then stalls (the instance hangs
 		// before the outcome write). Wait for the dispatch marker to be persisted so the
-		// reaper below reads it — this is the deterministic post-dispatch state.
+		// reaper below reads it: this is the deterministic post-dispatch state.
 		await scheduler.execute();
 		await waitFor(
 			async () => (await taskRepo.findOneByOrFail({ id: taskRow.id })).dispatchedAt !== null,

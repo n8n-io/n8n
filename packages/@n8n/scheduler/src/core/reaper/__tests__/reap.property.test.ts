@@ -10,7 +10,7 @@ import { reap } from '../reap';
  * gets exactly one terminal-or-retry decision (never two, never none). The effect
  * boundary is the primary split: a dispatched row (`dispatchedAt` set) is completed
  * as succeeded whatever its attempts, never redelivered. Only a never-dispatched row
- * splits on the attempt count — reclaimed if it has attempts left, else dead-lettered.
+ * splits on the attempt count: reclaimed if it has attempts left, else dead-lettered.
  * Reclaim always uses the shared backoff curve.
  */
 describe('reap decision (fast-check)', () => {

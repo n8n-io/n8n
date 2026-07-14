@@ -294,7 +294,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect((await reload(id)).dispatchedAt).not.toBeNull();
 
 			// A redelivered occurrence is allowed back to its handler, so a second
-			// markDispatched at the same claim still lands (no dispatchedAt IS NULL fence).
+			// `markDispatched` at the same claim still lands (no `dispatchedAt IS NULL` fence).
 			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
 				1,
 			);
@@ -551,7 +551,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 				claimedBy: HOST_A,
 				leaseExpiresAt: past(),
 				leaseEpoch: 1,
-				// A running row whose lease lapsed after the owner started it (beginDispatch ran)
+				// A running row whose lease lapsed after the owner started it (`beginDispatch` ran)
 				// but before the effect was handed off: the pre-dispatch shape the reaper reclaims
 				// or dead-letters. Post-dispatch cases override `dispatchedAt` with a timestamp.
 				startedAt: past(),
@@ -634,8 +634,8 @@ describe('ScheduledTaskRepository executor methods', () => {
 					),
 				).toBe(1);
 
-				// startedAt is cleared so the next attempt re-acquires the beginDispatch mutex,
-				// and dispatchedAt stays null (the effect still has not happened).
+				// `startedAt` is cleared so the next attempt re-acquires the `beginDispatch` mutex,
+				// and `dispatchedAt` stays null (the effect still has not happened).
 				const row = await reload(task.id);
 				expect(row.startedAt).toBeNull();
 				expect(row.dispatchedAt).toBeNull();
