@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { DateValue } from '@internationalized/date';
+import { reactiveOmit } from '@vueuse/core';
 import {
 	DateRangePickerCalendar,
 	DateRangePickerCell,
@@ -18,6 +19,7 @@ import {
 	DateRangePickerTrigger,
 	injectDateRangePickerRootContext,
 	useForwardPropsEmits,
+	type DateRange,
 } from 'reka-ui';
 import { computed, defineComponent, nextTick, provide, ref, shallowRef, toRef, watch } from 'vue';
 
@@ -66,8 +68,29 @@ const emit = defineEmits<N8nDateRangePickerRootEmits>();
 defineSlots<{
 	presets?: {};
 	trigger?: {};
-	footer?: { close: () => void };
+	footer?: { apply: () => void; close: () => void };
 }>();
+
+function copyRange(range?: DateRange | null): DateRange {
+	return {
+		start: range?.start?.copy(),
+		end: range?.end?.copy(),
+	};
+}
+
+function getCommittedRange(): DateRange {
+	if (props.modelValue !== undefined) {
+		return copyRange(props.modelValue);
+	}
+
+	return copyRange(uncontrolledValue.value);
+}
+
+/** Uncontrolled committed value (ignored when `modelValue` is provided). */
+const uncontrolledValue = shallowRef(copyRange(props.defaultValue));
+/** Working selection while the popover is open — not emitted until Apply. */
+const draftRange = shallowRef(getCommittedRange());
+const applyOnClose = ref(false);
 
 const closePopover = () => {
 	if (rekaRoot.value) {
@@ -77,7 +100,33 @@ const closePopover = () => {
 	}
 };
 
-const forwarded = useForwardPropsEmits(props, emit);
+/** Commit the draft and close. */
+function applyAndClose() {
+	applyOnClose.value = true;
+	closePopover();
+}
+
+/** Close without committing (outside click / Escape / footer close). */
+function dismissPopover() {
+	applyOnClose.value = false;
+	closePopover();
+}
+
+function onDraftUpdate(value: DateRange) {
+	draftRange.value = copyRange(value);
+}
+
+const forwarded = useForwardPropsEmits(
+	reactiveOmit(props, ['modelValue', 'defaultValue']),
+	(event, ...args) => {
+		if (event === 'update:modelValue') {
+			onDraftUpdate(args[0] as DateRange);
+			return;
+		}
+
+		emit(event, ...args);
+	},
+);
 const activeCalendarField = ref<'start' | 'end'>('end');
 const skipNextCellClick = ref(false);
 const blockedCellInteraction = ref(false);
@@ -97,29 +146,60 @@ provide(N8N_DATE_RANGE_PICKER_CONTEXT, {
 });
 
 watch(
+	() => props.modelValue,
+	(value) => {
+		if (value === undefined) return;
+
+		const next = copyRange(value);
+		if (!rekaRoot.value?.open.value) {
+			draftRange.value = next;
+			return;
+		}
+
+		// Parent updated the value while open (e.g. presets) — keep the draft in sync.
+		draftRange.value = next;
+	},
+);
+
+watch(
 	() => rekaRoot.value?.open.value,
 	(isOpen, wasOpen) => {
 		const rootContext = rekaRoot.value;
 		if (!rootContext) return;
 
 		if (!isOpen) {
-			// Only clear when the popover actually closes, not on initial mount.
 			if (wasOpen !== true) return;
 
-			// Defer so parents watching `open` can commit the draft before we reset it.
-			void nextTick(() => {
-				if (rekaRoot.value?.open.value) return;
-				rootContext.onDateChange({ start: undefined, end: undefined });
-				activeCalendarField.value = 'start';
-			});
+			if (applyOnClose.value) {
+				const applied = copyRange(draftRange.value);
+				if (props.modelValue === undefined) {
+					uncontrolledValue.value = applied;
+				}
+				emit('update:modelValue', applied);
+				applyOnClose.value = false;
+			} else {
+				draftRange.value = getCommittedRange();
+			}
+
+			activeCalendarField.value = 'start';
 			return;
 		}
 
-		if (!isEmptyDateRange(rootContext.modelValue.value)) return;
+		applyOnClose.value = false;
+		draftRange.value = getCommittedRange();
+
+		if (!isEmptyDateRange(draftRange.value)) {
+			const start = draftRange.value.start;
+			if (start) {
+				rootContext.onPlaceholderChange(start.copy());
+			}
+			activeCalendarField.value = props.single ? 'start' : 'end';
+			return;
+		}
 
 		const todayRange = createTodayRange({
 			granularity: rootContext.granularity.value,
-			referenceStart: rootContext.modelValue.value.start,
+			referenceStart: draftRange.value.start,
 			minValue: rootContext.minValue.value,
 			maxValue: rootContext.maxValue.value,
 			isDateUnavailable: rootContext.isDateUnavailable,
@@ -127,10 +207,10 @@ watch(
 
 		if (!todayRange) return;
 
-		rootContext.onDateChange({
+		draftRange.value = {
 			start: todayRange.start.copy(),
 			end: todayRange.end.copy(),
-		});
+		};
 		rootContext.onPlaceholderChange(todayRange.start.copy());
 		activeCalendarField.value = props.single ? 'start' : 'end';
 	},
@@ -261,7 +341,11 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 </script>
 
 <template>
-	<DateRangePickerRoot v-bind="forwarded" :granularity="effectiveGranularity">
+	<DateRangePickerRoot
+		v-bind="forwarded"
+		:model-value="draftRange"
+		:granularity="effectiveGranularity"
+	>
 		<DateRangePickerRekaBridge />
 		<DateRangePickerTrigger as-child>
 			<slot name="trigger">
@@ -353,13 +437,13 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 					</div>
 
 					<div v-if="showInputs" :class="$style.FooterWrapper">
-						<slot name="footer" :close="closePopover">
+						<slot name="footer" :apply="applyAndClose" :close="dismissPopover">
 							<N8nButton
 								variant="subtle"
 								size="small"
 								label="Apply"
 								:class="$style.FooterButton"
-								@click="closePopover"
+								@click="applyAndClose"
 							/>
 							<N8nDateRangePickerClearButton :class="$style.FooterButton" />
 						</slot>

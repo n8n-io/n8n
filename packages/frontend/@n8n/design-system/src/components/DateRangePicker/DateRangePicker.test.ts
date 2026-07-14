@@ -21,26 +21,46 @@ async function openCalendarPopover(container: Element) {
 	return popover;
 }
 
+async function applySelection(
+	getByRole: (role: string, options?: { name: string }) => HTMLElement,
+) {
+	await userEvent.click(getByRole('button', { name: 'Apply' }));
+	await nextTick();
+}
+
 describe('N8nDateRangePicker', () => {
 	it('should show the date range picker when trigger is clicked', async () => {
 		const { container } = render(DateRangePicker);
 		await openCalendarPopover(container);
 	});
 
-	it('selects today as both start and end date when opened', async () => {
-		const { container, emitted } = render(DateRangePicker);
+	it('selects today as both start and end date when applied', async () => {
+		const { container, emitted, getByRole } = render(DateRangePicker);
 		await openCalendarPopover(container);
+		await applySelection(getByRole);
 
-		const modelValueUpdates = emitted('update:modelValue') ?? [];
-		const todayRange = modelValueUpdates.at(-1)?.[0];
+		const todayRange = emitted('update:modelValue')?.at(-1)?.[0];
 		const todayDate = today(getLocalTimeZone());
 
 		expect(todayRange?.start?.compare(todayDate)).toBe(0);
 		expect(todayRange?.end?.compare(todayDate)).toBe(0);
 	});
 
-	it('keeps the start and end dates when navigating to the previous month', async () => {
+	it('does not emit modelValue until Apply is clicked', async () => {
 		const { container, emitted } = render(DateRangePicker);
+		const popover = await openCalendarPopover(container);
+
+		const todayDate = today(getLocalTimeZone());
+		const tomorrow = todayDate.add({ days: 1 });
+		await userEvent.click(
+			popover.querySelector(`[data-value="${tomorrow.toString()}"]`) as HTMLElement,
+		);
+
+		expect(emitted('update:modelValue')).toBeFalsy();
+	});
+
+	it('keeps the start and end dates when navigating to the previous month', async () => {
+		const { container, emitted, getByRole } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
 		const todayDate = today(getLocalTimeZone());
@@ -48,6 +68,7 @@ describe('N8nDateRangePicker', () => {
 		expect(prevButton).toBeTruthy();
 
 		await userEvent.click(prevButton);
+		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
@@ -55,7 +76,7 @@ describe('N8nDateRangePicker', () => {
 	});
 
 	it('keeps the start and end dates when navigating to another month', async () => {
-		const { container, emitted } = render(DateRangePicker);
+		const { container, emitted, getByRole } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
 		const todayDate = today(getLocalTimeZone());
@@ -63,6 +84,7 @@ describe('N8nDateRangePicker', () => {
 		expect(nextButton).toBeTruthy();
 
 		await userEvent.click(nextButton);
+		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
@@ -70,7 +92,7 @@ describe('N8nDateRangePicker', () => {
 	});
 
 	it('extends the range from today after navigating to the previous month', async () => {
-		const { container, emitted } = render(DateRangePicker);
+		const { container, emitted, getByRole } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
 		const todayDate = today(getLocalTimeZone());
@@ -86,6 +108,7 @@ describe('N8nDateRangePicker', () => {
 		expect(targetCell).toBeTruthy();
 
 		await userEvent.click(targetCell);
+		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(targetDay)).toBe(0);
@@ -93,7 +116,7 @@ describe('N8nDateRangePicker', () => {
 	});
 
 	it('stays on the selected month when choosing an end date in another month', async () => {
-		const { container, emitted } = render(DateRangePicker);
+		const { container, emitted, getByRole } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
 		const todayDate = today(getLocalTimeZone());
@@ -109,10 +132,6 @@ describe('N8nDateRangePicker', () => {
 
 		await userEvent.click(targetCell);
 
-		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
-		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
-		expect(lastUpdate?.end?.compare(targetDay)).toBe(0);
-
 		await nextTick();
 
 		// Calendar should remain on the month of the selected end date (not jump back to start).
@@ -122,6 +141,12 @@ describe('N8nDateRangePicker', () => {
 		expect(selectedEndCell).toBeTruthy();
 		expect(selectedEndCell.hasAttribute('data-focused')).toBe(true);
 		expect(selectedEndCell.getAttribute('data-selection-end')).toBe('true');
+
+		await applySelection(getByRole);
+
+		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
+		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
+		expect(lastUpdate?.end?.compare(targetDay)).toBe(0);
 	});
 
 	it('does not mark the placeholder day as selected after month navigation', async () => {
@@ -144,7 +169,7 @@ describe('N8nDateRangePicker', () => {
 	});
 
 	it('ignores the placeholder day click immediately after changing month', async () => {
-		const { container, emitted } = render(DateRangePicker);
+		const { container, emitted, getByRole } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
 		const todayDate = today(getLocalTimeZone());
@@ -158,6 +183,7 @@ describe('N8nDateRangePicker', () => {
 		expect(firstCell).toBeTruthy();
 
 		await userEvent.click(firstCell);
+		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
@@ -165,7 +191,7 @@ describe('N8nDateRangePicker', () => {
 	});
 
 	it('extends the auto-selected today range when another day is clicked', async () => {
-		const { container, emitted } = render(DateRangePicker);
+		const { container, emitted, getByRole } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
 		const todayDate = today(getLocalTimeZone());
@@ -177,6 +203,7 @@ describe('N8nDateRangePicker', () => {
 		expect(tomorrowCell).toBeTruthy();
 
 		await userEvent.click(tomorrowCell);
+		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
@@ -184,7 +211,7 @@ describe('N8nDateRangePicker', () => {
 	});
 
 	it('extends the auto-selected today range when Enter is pressed on a day', async () => {
-		const { container, emitted } = render(DateRangePicker);
+		const { container, emitted, getByRole } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
 		const todayDate = today(getLocalTimeZone());
@@ -196,6 +223,7 @@ describe('N8nDateRangePicker', () => {
 		expect(tomorrowCell).toBeTruthy();
 		tomorrowCell.focus();
 		await userEvent.keyboard('{Enter}');
+		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
@@ -203,7 +231,7 @@ describe('N8nDateRangePicker', () => {
 	});
 
 	it('alternates active field between end and start after each selection', async () => {
-		const { container, emitted } = render(DateRangePicker);
+		const { container, emitted, getByRole } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
 		const todayDate = today(getLocalTimeZone());
@@ -223,6 +251,8 @@ describe('N8nDateRangePicker', () => {
 		);
 
 		expect(popover.querySelector('[data-active-field="end"]')).toBeTruthy();
+
+		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(fiveDaysAgo)).toBe(0);
@@ -251,23 +281,30 @@ describe('N8nDateRangePicker', () => {
 	});
 
 	it('allows selecting a new start date when the start field is active', async () => {
-		const { container, emitted } = render(DateRangePicker);
+		const { container, emitted, getByRole } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
 		const todayDate = today(getLocalTimeZone());
+		const tomorrow = todayDate.add({ days: 1 });
 		const newStart = todayDate.subtract({ days: 5 });
 
-		await userEvent.click(popover.querySelector('[aria-label="Start date"]') as HTMLElement);
+		// Selecting an end date switches the active field to start.
+		await userEvent.click(
+			popover.querySelector(`[data-value="${tomorrow.toString()}"]`) as HTMLElement,
+		);
+		expect(popover.querySelector('[data-active-field="start"]')).toBeTruthy();
+
 		await userEvent.click(
 			popover.querySelector(`[data-value="${newStart.toString()}"]`) as HTMLElement,
 		);
+		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(newStart)).toBe(0);
-		expect(lastUpdate?.end?.compare(todayDate)).toBe(0);
+		expect(lastUpdate?.end?.compare(tomorrow)).toBe(0);
 	});
 
-	it('should emit update:close when clicking the apply button', async () => {
+	it('should emit update:open when clicking the apply button', async () => {
 		const { container, emitted, getByRole } = render(DateRangePicker);
 		await openCalendarPopover(container);
 
@@ -282,27 +319,57 @@ describe('N8nDateRangePicker', () => {
 		]);
 	});
 
-	it('should clear the selected range when the popover closes', async () => {
+	it('commits the selected range when Apply is clicked', async () => {
 		const { container, emitted, getByRole } = render(DateRangePicker);
-		await openCalendarPopover(container);
+		const popover = await openCalendarPopover(container);
 
-		const todayRange = emitted('update:modelValue')?.at(-1)?.[0];
-		expect(todayRange?.start).toBeTruthy();
-		expect(todayRange?.end).toBeTruthy();
+		const todayDate = today(getLocalTimeZone());
+		const tomorrow = todayDate.add({ days: 1 });
+		await userEvent.click(
+			popover.querySelector(`[data-value="${tomorrow.toString()}"]`) as HTMLElement,
+		);
 
-		await userEvent.click(getByRole('button', { name: 'Apply' }));
-		await nextTick();
+		expect(emitted('update:modelValue')).toBeFalsy();
+
+		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
-		expect(lastUpdate?.start).toBeUndefined();
-		expect(lastUpdate?.end).toBeUndefined();
+		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
+		expect(lastUpdate?.end?.compare(tomorrow)).toBe(0);
 	});
 
-	it('should clear the selected range when clicking the clear button', async () => {
+	it('does not commit the selected range when the popover is dismissed', async () => {
+		const initial = {
+			start: today(getLocalTimeZone()).subtract({ days: 7 }),
+			end: today(getLocalTimeZone()),
+		};
+		const { container, emitted } = render(DateRangePicker, {
+			props: { modelValue: initial },
+		});
+		const popover = await openCalendarPopover(container);
+
+		const tomorrow = today(getLocalTimeZone()).add({ days: 1 });
+		await userEvent.click(
+			popover.querySelector(`[data-value="${tomorrow.toString()}"]`) as HTMLElement,
+		);
+
+		const trigger = container.querySelector(
+			'[data-reka-date-field-segment="trigger"]',
+		) as HTMLElement;
+		await userEvent.click(trigger);
+		await nextTick();
+
+		expect(emitted('update:modelValue')).toBeFalsy();
+	});
+
+	it('should clear the draft range when clicking the clear button, and commit on Apply', async () => {
 		const { container, emitted, getByRole } = render(DateRangePicker);
 		await openCalendarPopover(container);
 
 		await userEvent.click(getByRole('button', { name: 'Clear' }));
+		expect(emitted('update:modelValue')).toBeFalsy();
+
+		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start).toBeUndefined();
@@ -395,7 +462,7 @@ describe('N8nDateRangePicker', () => {
 			const end = new CalendarDateTime(todayDate.year, todayDate.month, todayDate.day, 17, 0, 0);
 			const tomorrow = todayDate.add({ days: 1 });
 
-			const { container, emitted } = render(DateRangePicker, {
+			const { container, emitted, getByRole } = render(DateRangePicker, {
 				props: {
 					showTime: true,
 					modelValue: { start, end },
@@ -409,6 +476,7 @@ describe('N8nDateRangePicker', () => {
 			expect(tomorrowCell).toBeTruthy();
 
 			await userEvent.click(tomorrowCell);
+			await applySelection(getByRole);
 
 			const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 			expect(lastUpdate?.start?.toString()).toBe(start.toString());
@@ -441,7 +509,7 @@ describe('N8nDateRangePicker', () => {
 		});
 
 		it('selects the same date for start and end when a day is clicked', async () => {
-			const { container, emitted } = render(DateRangePicker, {
+			const { container, emitted, getByRole } = render(DateRangePicker, {
 				props: { single: true },
 			});
 			const popover = await openCalendarPopover(container);
@@ -453,6 +521,7 @@ describe('N8nDateRangePicker', () => {
 			) as HTMLElement;
 
 			await userEvent.click(tomorrowCell);
+			await applySelection(getByRole);
 
 			const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 			expect(lastUpdate?.start?.compare(tomorrow)).toBe(0);

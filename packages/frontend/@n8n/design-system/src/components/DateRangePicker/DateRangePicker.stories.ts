@@ -1,6 +1,6 @@
 import { CalendarDateTime, today } from '@internationalized/date';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 
 import N8nButton from '../N8nButton';
 import DateRangePicker from './DateRangePicker.vue';
@@ -15,13 +15,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function copyRange(range: DateRange | undefined): DateRange {
-	return {
-		start: range?.start?.copy(),
-		end: range?.end?.copy(),
-	};
-}
-
 export const Default: Story = {};
 
 export const ControlledUncontrolled: Story = {
@@ -34,18 +27,9 @@ export const ControlledUncontrolled: Story = {
 				start: todayDate.subtract({ days: 7 }),
 				end: todayDate.copy(),
 			};
-			const committed = ref<DateRange>(copyRange(lastWeek));
-			const draft = ref<DateRange>(copyRange(lastWeek));
-			const open = ref(false);
-
-			watch(open, (isOpen) => {
-				if (isOpen) {
-					draft.value = copyRange(committed.value);
-					return;
-				}
-
-				// Capture before the picker clears the draft on close.
-				committed.value = copyRange(draft.value);
+			const value = ref<DateRange>({
+				start: lastWeek.start.copy(),
+				end: lastWeek.end.copy(),
 			});
 
 			const presets = [
@@ -63,9 +47,11 @@ export const ControlledUncontrolled: Story = {
 				},
 			];
 
-			function setCommitted(range: DateRange) {
-				committed.value = copyRange(range);
-				draft.value = copyRange(range);
+			function setValue(range: DateRange) {
+				value.value = {
+					start: range.start?.copy(),
+					end: range.end?.copy(),
+				};
 			}
 
 			const uncontrolledDefault = {
@@ -74,11 +60,9 @@ export const ControlledUncontrolled: Story = {
 			};
 
 			return {
-				committed,
-				draft,
-				open,
+				value,
 				presets,
-				setCommitted,
+				setValue,
 				uncontrolledDefault,
 				formatDateRangeValue,
 			};
@@ -89,10 +73,10 @@ export const ControlledUncontrolled: Story = {
 				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
 					Controlled
 				</h3>
-				<DateRangePicker v-model="draft" v-model:open="open" locale="en-GB">
+				<DateRangePicker v-model="value" locale="en-GB">
 					<template #trigger>
 						<N8nButton variant="subtle" icon="calendar">
-							{{ formatDateRangeValue(committed, { locale: 'en-GB' }) || 'Select range' }}
+							{{ formatDateRangeValue(value, { locale: 'en-GB' }) || 'Select range' }}
 						</N8nButton>
 					</template>
 				</DateRangePicker>
@@ -111,14 +95,14 @@ export const ControlledUncontrolled: Story = {
 							font: inherit;
 							font-size: var(--font-size--xs);
 						"
-						@click="setCommitted(preset.range)"
+						@click="setValue(preset.range)"
 					>
 						{{ preset.label }}
 					</button>
 				</div>
 				<p style="margin-top: var(--spacing--sm); font-size: var(--font-size--sm);">
 					Selected:
-					<strong>{{ formatDateRangeValue(committed, { locale: 'en-GB' }) || '(empty)' }}</strong>
+					<strong>{{ formatDateRangeValue(value, { locale: 'en-GB' }) || '(empty)' }}</strong>
 				</p>
 			</section>
 			<section>
@@ -145,30 +129,18 @@ export const FormattedTrigger: Story = {
 	render: () => ({
 		components: { DateRangePicker, N8nButton },
 		setup() {
-			const initial = {
+			const range = ref({
 				start: today('UTC').subtract({ days: 7 }),
 				end: today('UTC'),
-			};
-			const committed = ref<DateRange>(copyRange(initial));
-			const draft = ref<DateRange>(copyRange(initial));
-			const open = ref(false);
-
-			watch(open, (isOpen) => {
-				if (isOpen) {
-					draft.value = copyRange(committed.value);
-					return;
-				}
-
-				committed.value = copyRange(draft.value);
 			});
 
-			return { committed, draft, open, formatDateRangeValue };
+			return { range, formatDateRangeValue };
 		},
 		template: `
-			<DateRangePicker v-model="draft" v-model:open="open" locale="en-GB">
+			<DateRangePicker v-model="range" locale="en-GB">
 				<template #trigger>
 					<N8nButton variant="subtle" icon="calendar">
-						{{ formatDateRangeValue(committed, { locale: 'en-GB' }) || 'Select range' }}
+						{{ formatDateRangeValue(range, { locale: 'en-GB' }) || 'Select range' }}
 					</N8nButton>
 				</template>
 			</DateRangePicker>
@@ -180,30 +152,18 @@ export const SingleDateSelection: Story = {
 	render: () => ({
 		components: { DateRangePicker, N8nButton },
 		setup() {
-			const initial = {
+			const range = ref({
 				start: today('UTC'),
 				end: today('UTC'),
-			};
-			const committed = ref<DateRange>(copyRange(initial));
-			const draft = ref<DateRange>(copyRange(initial));
-			const open = ref(false);
-
-			watch(open, (isOpen) => {
-				if (isOpen) {
-					draft.value = copyRange(committed.value);
-					return;
-				}
-
-				committed.value = copyRange(draft.value);
 			});
 
-			return { committed, draft, open, formatDateValue };
+			return { range, formatDateValue };
 		},
 		template: `
-			<DateRangePicker v-model="draft" v-model:open="open" single locale="en-GB">
+			<DateRangePicker v-model="range" single locale="en-GB">
 				<template #trigger>
 					<N8nButton variant="subtle" icon="calendar">
-						{{ formatDateValue(committed.start, { locale: 'en-GB' }) || 'Select date' }}
+						{{ formatDateValue(range.start, { locale: 'en-GB' }) || 'Select date' }}
 					</N8nButton>
 				</template>
 			</DateRangePicker>
@@ -216,30 +176,18 @@ export const WithTimeSelection: Story = {
 		components: { DateRangePicker, N8nButton },
 		setup() {
 			const now = today('UTC');
-			const initial = {
+			const range = ref({
 				start: new CalendarDateTime(now.year, now.month, now.day, 9, 0, 0),
 				end: new CalendarDateTime(now.year, now.month, now.day, 17, 0, 0),
-			};
-			const committed = ref<DateRange>(copyRange(initial));
-			const draft = ref<DateRange>(copyRange(initial));
-			const open = ref(false);
-
-			watch(open, (isOpen) => {
-				if (isOpen) {
-					draft.value = copyRange(committed.value);
-					return;
-				}
-
-				committed.value = copyRange(draft.value);
 			});
 
-			return { committed, draft, open, formatDateRangeValue };
+			return { range, formatDateRangeValue };
 		},
 		template: `
-			<DateRangePicker v-model="draft" v-model:open="open" show-time locale="en-GB">
+			<DateRangePicker v-model="range" show-time locale="en-GB">
 				<template #trigger>
 					<N8nButton variant="subtle" icon="calendar">
-						{{ formatDateRangeValue(committed, { locale: 'en-GB', includeTime: true }) || 'Select date and time' }}
+						{{ formatDateRangeValue(range, { locale: 'en-GB', includeTime: true }) || 'Select date and time' }}
 					</N8nButton>
 				</template>
 			</DateRangePicker>
@@ -252,30 +200,18 @@ export const WithTimeSelection12Hour: Story = {
 		components: { DateRangePicker, N8nButton },
 		setup() {
 			const now = today('UTC');
-			const initial = {
+			const range = ref({
 				start: new CalendarDateTime(now.year, now.month, now.day, 9, 0, 0),
 				end: new CalendarDateTime(now.year, now.month, now.day, 17, 0, 0),
-			};
-			const committed = ref<DateRange>(copyRange(initial));
-			const draft = ref<DateRange>(copyRange(initial));
-			const open = ref(false);
-
-			watch(open, (isOpen) => {
-				if (isOpen) {
-					draft.value = copyRange(committed.value);
-					return;
-				}
-
-				committed.value = copyRange(draft.value);
 			});
 
-			return { committed, draft, open, formatDateRangeValue };
+			return { range, formatDateRangeValue };
 		},
 		template: `
-			<DateRangePicker v-model="draft" v-model:open="open" show-time :hour-cycle="12" locale="en-US">
+			<DateRangePicker v-model="range" show-time :hour-cycle="12" locale="en-US">
 				<template #trigger>
 					<N8nButton variant="subtle" icon="calendar">
-						{{ formatDateRangeValue(committed, { locale: 'en-US', includeTime: true, hourCycle: 12 }) || 'Select date and time' }}
+						{{ formatDateRangeValue(range, { locale: 'en-US', includeTime: true, hourCycle: 12 }) || 'Select date and time' }}
 					</N8nButton>
 				</template>
 			</DateRangePicker>
