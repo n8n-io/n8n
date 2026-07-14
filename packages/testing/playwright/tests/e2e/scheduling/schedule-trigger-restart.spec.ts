@@ -33,7 +33,7 @@ test.describe(
 			// eslint-disable-next-line playwright/no-skipped-test -- runtime guard, not a disabled test
 			test.skip(!n8nContainer, 'container-only: requires a restartable n8n container');
 
-			const wf = makeScheduleTriggerWorkflow(5);
+			const wf = makeScheduleTriggerWorkflow();
 			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
 				wf.toJSON() as IWorkflowBase,
 			);

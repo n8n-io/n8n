@@ -51,11 +51,11 @@ test.describe(
 		test('should not fire once per sweep when the tick is slower than the sweep', async ({
 			api,
 		}) => {
-			// Sweep and executor run every 1s but the schedule ticks every 5s. The
+			// Sweep and executor run every 1s but the schedule ticks every 2s. The
 			// dedupe guards (row claim + guarded fire-time write) must collapse the
-			// intervening sweeps so a single 5s tick yields a single execution, not
-			// one per second.
-			const wf = makeScheduleTriggerWorkflow(5);
+			// intervening sweeps so a single tick yields a single execution, not one
+			// per second.
+			const wf = makeScheduleTriggerWorkflow();
 			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
 				wf.toJSON() as IWorkflowBase,
 			);
@@ -63,18 +63,18 @@ test.describe(
 			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 			await api.workflows.waitForExecution(workflowId, 60_000, 'trigger');
 
-			// Observe a fixed window of roughly four 5s ticks.
-			await sleep(22_000);
+			// Observe a fixed window of roughly five 2s ticks.
+			await sleep(10_000);
 			const executions = await api.workflows.getExecutions(workflowId, 50);
 
-			// ~4 expected over 22s at a 5s tick. A per-sweep double-fire would land
-			// near ~20. Tolerant band absorbs scheduling jitter either side.
+			// ~6 expected over 10s at a 2s tick. A per-sweep double-fire (once every
+			// 1s) would land near ~11. Tolerant band absorbs scheduling jitter.
 			expect(executions.length).toBeGreaterThanOrEqual(2);
 			expect(executions.length).toBeLessThanOrEqual(8);
 		});
 
 		test('should stop firing after the workflow is deactivated', async ({ api }) => {
-			const wf = makeScheduleTriggerWorkflow(5);
+			const wf = makeScheduleTriggerWorkflow();
 			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
 				wf.toJSON() as IWorkflowBase,
 			);
@@ -87,17 +87,17 @@ test.describe(
 			// Let any in-flight tick settle, then snapshot and hold across several
 			// intervals. Deactivation removes the scheduled job (no read path exists,
 			// so this is proven indirectly by the count staying flat).
-			await sleep(3_000);
+			await sleep(2_000);
 			const countAfterDeactivate = (await api.workflows.getExecutions(workflowId, 50)).length;
 
-			await sleep(12_000);
+			await sleep(6_000);
 			const countAtEnd = (await api.workflows.getExecutions(workflowId, 50)).length;
 
 			expect(countAtEnd).toBe(countAfterDeactivate);
 		});
 
 		test('should fire a Schedule Trigger driven by a raw cron expression', async ({ api }) => {
-			const wf = makeCronScheduleTriggerWorkflow('*/5 * * * * *');
+			const wf = makeCronScheduleTriggerWorkflow();
 			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
 				wf.toJSON() as IWorkflowBase,
 			);

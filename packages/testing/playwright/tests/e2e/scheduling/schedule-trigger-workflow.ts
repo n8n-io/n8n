@@ -1,9 +1,10 @@
 import { workflow, trigger, node } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
-// Builds a Schedule Trigger -> NoOp workflow that fires every few seconds, so a
-// trigger-mode execution appears well within the test's wait budget.
-export const makeScheduleTriggerWorkflow = (secondsInterval = 5) => {
+// Builds a Schedule Trigger -> NoOp workflow that fires every couple of seconds,
+// so a trigger-mode execution appears quickly and the observation windows stay
+// short (keeps the CI cost down).
+export const makeScheduleTriggerWorkflow = (secondsInterval = 2) => {
 	const scheduleTrigger = trigger({
 		type: 'n8n-nodes-base.scheduleTrigger',
 		version: 1.3,
@@ -30,7 +31,7 @@ export const makeScheduleTriggerWorkflow = (secondsInterval = 5) => {
 
 // Same shape but driven by a raw cron expression (the `cronExpression` field
 // takes a separate provisioning branch from the fixed-interval fields).
-export const makeCronScheduleTriggerWorkflow = (expression = '*/5 * * * * *') => {
+export const makeCronScheduleTriggerWorkflow = (expression = '*/2 * * * * *') => {
 	const scheduleTrigger = trigger({
 		type: 'n8n-nodes-base.scheduleTrigger',
 		version: 1.3,
