@@ -22,9 +22,9 @@ executes; the data is pinned onto it.
   resolved through n8n-core's `resolveOutputSchemaPath`/`loadOutputSchema` and
   `LoadNodesAndCredentials.createOutputSchemaLookup()`. Prompt building and
   parsing live in `@n8n/workflow-sdk` (`mock-data/`).
-- Used by: Phase 1.5 bypass pin data (`pin-data-generator.ts`), the
-  ai-workflow-builder eval harness, and in-product simulated verification
-  (`@n8n/instance-ai` `generate-simulation-fixtures.service.ts`).
+- Used by: Phase 1.5 bypass pin data (`pin-data-generator.ts`) and in-product
+  simulated verification (`@n8n/instance-ai`
+  `generate-simulation-fixtures.service.ts`).
 
 ## The rule
 
@@ -34,6 +34,3 @@ emitting items. Therefore:
 
 - Never feed `__schema__` into wire-level mock generation.
 - Never let API docs override an available `__schema__` for node-output mocks.
-
-See `.agents/specs/schema-preview-mock-data-harmonization.md` for the full
-architecture and history.

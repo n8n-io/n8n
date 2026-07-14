@@ -1,11 +1,9 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
-import type { OutputSchemaLookup } from '@n8n/workflow-sdk';
 import fs from 'fs';
 import { Client } from 'langsmith/client';
-import { loadOutputSchema, OUTPUT_PARSER_SCHEMA_VARIANT } from 'n8n-core';
-import { jsonParse, type INodeTypeDescription } from 'n8n-workflow';
+import { type INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
 import { DEFAULT_MODEL, getApiKeyEnvVar, MODEL_FACTORIES, type ModelId } from '@/llm-config';
@@ -219,62 +217,6 @@ export function findRepoRoot(startDir: string): string | undefined {
 		dir = path.dirname(dir);
 	}
 	return undefined;
-}
-
-/** Package name → repo-relative package dir for `__schema__` resolution. */
-const SCHEMA_PACKAGE_DIRS: Record<string, string[]> = {
-	'n8n-nodes-base': ['packages', 'nodes-base'],
-	'@n8n/n8n-nodes-langchain': ['packages', '@n8n', 'nodes-langchain'],
-};
-
-/**
- * Build a `__schema__` output-schema lookup for the local node packages from
- * their known-nodes manifests (`dist/known/nodes.json`) — the same node
- * type → directory mapping the server uses, resolved through n8n-core's
- * canonical schema resolver. Returns undefined outside the monorepo.
- */
-export function createNodeSchemaLookup(): OutputSchemaLookup | undefined {
-	const repoRoot = findRepoRoot(__dirname);
-	if (!repoRoot) return undefined;
-
-	const packages = new Map<
-		string,
-		{ root: string; nodes: Record<string, { sourcePath?: string } | undefined> }
-	>();
-	for (const [packageName, dirParts] of Object.entries(SCHEMA_PACKAGE_DIRS)) {
-		const packageRoot = path.join(repoRoot, ...dirParts);
-		const knownNodesPath = path.join(packageRoot, 'dist', 'known', 'nodes.json');
-		try {
-			packages.set(packageName, {
-				root: packageRoot,
-				nodes: jsonParse(fs.readFileSync(knownNodesPath, 'utf-8')),
-			});
-		} catch {
-			// Degradation is real but easy to miss: fixtures silently drop to
-			// API-knowledge-only generation, so make the stale/missing build loud.
-			console.warn(
-				`[SCHEMA-LOOKUP] ${knownNodesPath} missing or unreadable (${packageName} not built?) — pin data will be generated without its __schema__ shapes`,
-			);
-		}
-	}
-	if (packages.size === 0) return undefined;
-
-	return ({ type, typeVersion, resource, operation, hasOutputParser }) => {
-		const [packageName, shortType] = type.split('.');
-		if (!shortType) return undefined;
-		const pkg = packages.get(packageName);
-		const sourcePath = pkg?.nodes[shortType]?.sourcePath;
-		if (!pkg || !sourcePath) return undefined;
-
-		return loadOutputSchema({
-			nodeDir: path.dirname(path.join(pkg.root, sourcePath)),
-			version: typeVersion,
-			resource,
-			operation,
-			versionFallback: true,
-			variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
-		});
-	};
 }
 
 /**

@@ -4,7 +4,6 @@
  * This module is pure: no filesystem, no LLM calls, no clock access. Schema
  * lookup and model invocation are injected by consumers (instance-ai eval,
  * ai-workflow-builder evals, in-product simulated verification).
- * See `.agents/specs/schema-preview-mock-data-harmonization.md`.
  */
 
 /** Pin data keyed by node name, items wrapped in n8n's `{ json }` envelope. */

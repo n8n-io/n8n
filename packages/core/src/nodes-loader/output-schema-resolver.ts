@@ -6,7 +6,8 @@ import path from 'node:path';
  * Locates a node's output preview schema (`__schema__/v<version>/<resource>/<operation>.json`).
  * Canonical resolver for every consumer of `__schema__` files: the `/schemas`
  * HTTP route (exact version) and mock/pin-data generation (version fallback).
- * See `.agents/specs/schema-preview-mock-data-harmonization.md`.
+ * `__schema__` describes a node's OUTPUT items after its own post-processing,
+ * never the service's wire format.
  */
 export interface OutputSchemaRef {
 	/** Directory that contains the node's `__schema__/` (dirname of the node's source path). */
