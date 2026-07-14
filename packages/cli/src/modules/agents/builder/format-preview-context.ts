@@ -2,11 +2,10 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { TimelineEvent } from '../execution-recorder';
 
-// Mirrored by the frontend when stripping the block from displayed builder messages
+/** Delimits the LLM-facing preview transcript block. */
 export const PREVIEW_CONTEXT_OPEN_TAG = '<preview_session_context>';
 export const PREVIEW_CONTEXT_CLOSE_TAG = '</preview_session_context>';
 
-// Using these constant values as testing fixtures first
 const MAX_TEXT_CHARS = 4_000;
 const MAX_TOOL_VALUE_CHARS = 2_000;
 const MAX_BLOCK_CHARS = 100_000;

@@ -43,7 +43,6 @@ describe('resolveAgentPreviewHandoff', () => {
 
 		const result = await resolveAgentPreviewHandoff(handoff, {
 			projectId: 'project-1',
-			agentsModuleActive: true,
 			getThreadDetail,
 		});
 
@@ -61,7 +60,6 @@ describe('resolveAgentPreviewHandoff', () => {
 	it('uses Session #N as titleFallback when the preview session is untitled', async () => {
 		const result = await resolveAgentPreviewHandoff(handoff, {
 			projectId: 'project-1',
-			agentsModuleActive: true,
 			getThreadDetail: vi.fn().mockResolvedValue({
 				thread: makeThread({ title: null, sessionNumber: 7 }),
 				executions: [makeExecution()],
@@ -75,7 +73,6 @@ describe('resolveAgentPreviewHandoff', () => {
 	it('uses Session #N as titleFallback when the preview session title is blank', async () => {
 		const result = await resolveAgentPreviewHandoff(handoff, {
 			projectId: 'project-1',
-			agentsModuleActive: true,
 			getThreadDetail: vi.fn().mockResolvedValue({
 				thread: makeThread({ title: '   ', sessionNumber: 2 }),
 				executions: [makeExecution()],
@@ -85,56 +82,10 @@ describe('resolveAgentPreviewHandoff', () => {
 		expect(result.titleFallback).toBe('Session #2');
 	});
 
-	it('returns the bind target only after a successful resolve', async () => {
-		const bindTarget = vi.fn();
-
-		const result = await resolveAgentPreviewHandoff(handoff, {
-			projectId: 'project-9',
-			agentsModuleActive: true,
-			getThreadDetail: vi.fn().mockResolvedValue({
-				thread: makeThread(),
-				executions: [makeExecution()],
-			}),
-		});
-		// Mirrors InstanceAiService: bind only after resolve returns.
-		bindTarget(result.target);
-
-		expect(bindTarget).toHaveBeenCalledTimes(1);
-		expect(bindTarget).toHaveBeenCalledWith({ agentId: 'agent-1', projectId: 'project-9' });
-	});
-
-	it('does not produce a bind target when resolution fails', async () => {
-		const bindTarget = vi.fn();
-
-		await expect(
-			resolveAgentPreviewHandoff(handoff, {
-				projectId: 'project-1',
-				agentsModuleActive: true,
-				getThreadDetail: vi.fn().mockResolvedValue(null),
-			}).then((result) => {
-				bindTarget(result.target);
-				return result;
-			}),
-		).rejects.toThrow('Preview session not found');
-
-		expect(bindTarget).not.toHaveBeenCalled();
-	});
-
-	it('throws when the agents module is inactive', async () => {
-		await expect(
-			resolveAgentPreviewHandoff(handoff, {
-				projectId: 'project-1',
-				agentsModuleActive: false,
-				getThreadDetail: vi.fn(),
-			}),
-		).rejects.toThrow('Agent preview handoff is not available');
-	});
-
 	it('throws when the preview session is missing', async () => {
 		await expect(
 			resolveAgentPreviewHandoff(handoff, {
 				projectId: 'project-1',
-				agentsModuleActive: true,
 				getThreadDetail: vi.fn().mockResolvedValue(null),
 			}),
 		).rejects.toThrow('Preview session not found');
@@ -146,7 +97,6 @@ describe('resolveAgentPreviewHandoff', () => {
 				{ ...handoff, executionId: 'missing' },
 				{
 					projectId: 'project-1',
-					agentsModuleActive: true,
 					getThreadDetail: vi.fn().mockResolvedValue({
 						thread: makeThread(),
 						executions: [makeExecution()],

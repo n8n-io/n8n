@@ -3108,16 +3108,12 @@ export class InstanceAiService {
 					);
 				}
 				const agentExecutionService = this.getAgentExecutionService();
+				if (!agentExecutionService) {
+					throw new UserError('Agent preview handoff is not available');
+				}
 				const resolved = await resolveAgentPreviewHandoff(handoffContext, {
 					projectId,
-					agentsModuleActive: agentExecutionService !== null,
-					getThreadDetail: async (previewThreadId, previewProjectId, previewAgentId) => {
-						const service = this.getAgentExecutionService();
-						if (!service) {
-							throw new UserError('Agent preview handoff is not available');
-						}
-						return await service.getThreadDetail(previewThreadId, previewProjectId, previewAgentId);
-					},
+					getThreadDetail: agentExecutionService.getThreadDetail.bind(agentExecutionService),
 				});
 				handoffContextBlock = resolved.block;
 				agentPreviewTitleFallback = resolved.titleFallback;

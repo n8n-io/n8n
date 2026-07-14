@@ -8,17 +8,12 @@ import {
 import type { AgentExecutionService } from '../agents/agent-execution.service';
 import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
 
-export type AgentPreviewHandoffTarget = {
-	agentId: string;
-	projectId: string;
-};
-
 export type AgentPreviewHandoffResult = {
 	block: string;
 	/** Always non-empty — session title when set, otherwise `Session #N`. */
 	titleFallback: string;
 	/** Payload to persist as `instanceAiAgentBuilderTarget` after a successful resolve. */
-	target: AgentPreviewHandoffTarget;
+	target: { agentId: string; projectId: string };
 };
 
 /**
@@ -31,14 +26,9 @@ export async function resolveAgentPreviewHandoff(
 	context: InstanceAiAgentPreviewHandoffContext,
 	options: {
 		projectId: string;
-		agentsModuleActive: boolean;
 		getThreadDetail: AgentExecutionService['getThreadDetail'];
 	},
 ): Promise<AgentPreviewHandoffResult> {
-	if (!options.agentsModuleActive) {
-		throw new UserError('Agent preview handoff is not available');
-	}
-
 	const detail = await options.getThreadDetail(
 		context.threadId,
 		options.projectId,
