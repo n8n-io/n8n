@@ -491,10 +491,10 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
 	});
 
-	it('forwards a structured error code onto the emitted error event', () => {
+	it('forwards a structured error code onto the emitted error event', async () => {
 		const { service, deps } = createService();
 
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
 			messageGroupId: 'group-1',
 			errorMessage: "You've run out of AI credits.",
 			errorCode: 'quota_exhausted',
