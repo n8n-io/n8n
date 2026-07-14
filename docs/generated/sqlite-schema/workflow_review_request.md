@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(36) NOT NULL, "state" varchar(16) NOT NULL DEFAULT ('open'), "decision" varchar(50) NOT NULL DEFAULT ('pending'), "title" varchar(512) NOT NULL, "description" text, "createdById" varchar, "updatedById" varchar, "closedById" varchar, "lastStatusChangeAt" datetime(3), "approvedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_review_request_state" CHECK ("state" IN ('open', 'closed')), CONSTRAINT "CHK_workflow_review_request_decision" CHECK ("decision" IN ('pending', 'changes_requested', 'approved')), CONSTRAINT "FK_c218d1df94adc3b169dee3cc06c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_21d5f5a831d2e38960030bb4f60" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_2817c3a0245197b498818c447cb" FOREIGN KEY ("updatedById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_d53ef208e6055f328dd7b897e51" FOREIGN KEY ("closedById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(36) NOT NULL, "state" varchar(16) NOT NULL DEFAULT ('open'), "decision" varchar(50) NOT NULL DEFAULT ('pending'), "title" varchar(512) NOT NULL, "description" text, "createdById" varchar, "updatedById" varchar, "closedById" varchar, "approvedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_review_request_state" CHECK ("state" IN ('open', 'closed')), CONSTRAINT "CHK_workflow_review_request_decision" CHECK ("decision" IN ('pending', 'changes_requested', 'approved')), CONSTRAINT "FK_c218d1df94adc3b169dee3cc06c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_21d5f5a831d2e38960030bb4f60" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_2817c3a0245197b498818c447cb" FOREIGN KEY ("updatedById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_d53ef208e6055f328dd7b897e51" FOREIGN KEY ("closedById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -22,7 +22,6 @@ CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "
 | decision | varchar(50) | 'pending' | false |  |  |  |
 | description | TEXT |  | true |  |  |  |
 | id | varchar(36) |  | false | [workflow_review_request_authors](workflow_review_request_authors.md) [workflow_review_request_reviewers](workflow_review_request_reviewers.md) [workflow_review_request_workflow](workflow_review_request_workflow.md) |  |  |
-| lastStatusChangeAt | datetime(3) |  | true |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | state | varchar(16) | 'open' | false |  |  |  |
 | title | varchar(512) |  | false |  |  |  |
@@ -69,7 +68,6 @@ erDiagram
   varchar_50_ decision
   TEXT description
   varchar_36_ id PK
-  datetime_3_ lastStatusChangeAt
   varchar_36_ projectId FK
   varchar_16_ state
   varchar_512_ title

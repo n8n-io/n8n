@@ -303,7 +303,6 @@ erDiagram
   varchar_50_ decision
   TEXT description
   varchar_36_ id PK
-  datetime_3_ lastStatusChangeAt
   varchar_36_ projectId FK
   varchar_16_ state
   varchar_512_ title
