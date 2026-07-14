@@ -14,8 +14,6 @@ const oauthClientShape = {
 	grantedAt: z.number(),
 	/** Scopes granted on the consent screen. */
 	scopes: z.array(z.string()),
-	/** Unix ms of the last authenticated request from this client. NULL = no activity recorded. */
-	lastActiveAt: z.number().nullable(),
 };
 
 /**

@@ -64,15 +64,6 @@ const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
 		},
 	},
 	{
-		title: i18n.baseText('settings.mcp.oAuthClients.table.lastActive'),
-		key: 'lastActiveAt',
-		width: 160,
-		disableSort: true,
-		value() {
-			return;
-		},
-	},
-	{
 		title: i18n.baseText('settings.mcp.oAuthClients.table.connectedAt'),
 		key: 'grantedAt',
 		width: 160,
@@ -195,16 +186,6 @@ function onRevoke(item: OAuthClientResponseDto) {
 				<template #[`item.scopes`]="{ item }">
 					<N8nText data-test-id="mcp-client-access" color="text-light" :class="$style.access">
 						{{ accessSummary(item) }}
-					</N8nText>
-				</template>
-				<template #[`item.lastActiveAt`]="{ item }">
-					<N8nText data-test-id="mcp-client-last-active" color="text-base">
-						<TimeAgo
-							v-if="item.lastActiveAt !== null"
-							:date="new Date(item.lastActiveAt).toISOString()"
-							capitalize
-						/>
-						<template v-else>&ndash;</template>
 					</N8nText>
 				</template>
 				<template #[`item.grantedAt`]="{ item }">

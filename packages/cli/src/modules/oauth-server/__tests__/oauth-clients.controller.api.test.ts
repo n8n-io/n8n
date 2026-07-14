@@ -50,7 +50,6 @@ describe('GET /rest/mcp/oauth-clients', () => {
 			clientId: ownerClient.id,
 			grantedAt,
 			scope: ['workflow:read', 'execution:read'],
-			lastActiveAt: null,
 		});
 		await userConsentRepository.save({
 			userId: member.id,
@@ -70,7 +69,6 @@ describe('GET /rest/mcp/oauth-clients', () => {
 			id: ownerClient.id,
 			grantedAt,
 			scopes: ['workflow:read', 'execution:read'],
-			lastActiveAt: null,
 		});
 	});
 });

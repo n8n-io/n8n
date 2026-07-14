@@ -28,8 +28,6 @@ export type UserWithContext = {
 	authType?: Mcpauth_type;
 	/** OAuth scopes granted to the token. `undefined` = not scope-bearing (e.g. API key) → full access. */
 	scopes?: string[];
-	/** OAuth client the token belongs to. `undefined` for non-OAuth credentials. */
-	clientId?: string;
 };
 
 /**
@@ -43,12 +41,6 @@ export interface OAuthTokenVerifier {
 	 * and resolve the token's user.
 	 */
 	verifyOAuthAccessToken(token: string, expectedAudience?: string): Promise<UserWithContext>;
-
-	/**
-	 * Record that the user+client grant was actively used (e.g. an MCP tool
-	 * call), for the connected-clients "last active" display. Fire-and-forget.
-	 */
-	recordClientActivity(userId: string, clientId: string): void;
 }
 
 /**
@@ -80,9 +72,5 @@ export class OAuthTokenVerifierProxy implements OAuthTokenVerifier {
 			};
 		}
 		return await this.provider.verifyOAuthAccessToken(token, expectedAudience);
-	}
-
-	recordClientActivity(userId: string, clientId: string): void {
-		this.provider?.recordClientActivity(userId, clientId);
 	}
 }

@@ -104,19 +104,6 @@ describe('OAuthClientsTable', () => {
 			);
 		});
 
-		it('should show a placeholder when the client has no recorded activity', () => {
-			const client = createOAuthClient({ lastActiveAt: null });
-
-			const { getByTestId } = createComponent({
-				props: {
-					clients: [client],
-					loading: false,
-				},
-			});
-
-			expect(getByTestId('mcp-client-last-active')).toHaveTextContent('–');
-		});
-
 		it('should render multiple clients in the table', () => {
 			const clients = [
 				createOAuthClient({ id: 'client-1', name: 'First Client' }),

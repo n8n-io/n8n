@@ -19,7 +19,6 @@ import { Service } from '@n8n/di';
 import type { Response } from 'express';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';
-import { UserConsent } from './database/entities/oauth-user-consent.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
@@ -38,7 +37,6 @@ export type ConnectedOAuthClient = Omit<
 > & {
 	grantedAt: number;
 	scopes: string[];
-	lastActiveAt: number | null;
 };
 
 /** Maximum length for a single redirect URI */
@@ -446,7 +444,6 @@ export class OAuthServerService implements OAuthServerProvider {
 				// bigint columns come back as strings on Postgres
 				grantedAt: Number(consent.grantedAt),
 				scopes: consent.scope,
-				lastActiveAt: consent.lastActiveAt === null ? null : Number(consent.lastActiveAt),
 			};
 		});
 	}
@@ -485,21 +482,16 @@ export class OAuthServerService implements OAuthServerProvider {
 		// its consent first — so `NOT EXISTS` keeps the client — or, if the
 		// client is already gone, fails cleanly on the foreign key instead of
 		// being silently cascade-deleted.
+		const remainingConsentsSubQuery = this.userConsentRepository
+			.createQueryBuilder('consent')
+			.select('1')
+			.where('consent.clientId = :clientId')
+			.getQuery();
 		const result = await this.oauthClientRepository
 			.createQueryBuilder()
 			.delete()
 			.from(OAuthClient)
-			.where('id = :clientId', { clientId })
-			.andWhere((qb) => {
-				const subQuery = qb
-					.subQuery()
-					.select('1')
-					.from(UserConsent, 'consent')
-					.where('consent.clientId = :clientId')
-					.getQuery();
-				return `NOT EXISTS ${subQuery}`;
-			})
-			.setParameter('clientId', clientId)
+			.where(`id = :clientId AND NOT EXISTS (${remainingConsentsSubQuery})`, { clientId })
 			.execute();
 
 		if (result.affected && result.affected > 0) {

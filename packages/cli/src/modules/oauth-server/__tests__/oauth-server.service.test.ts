@@ -884,6 +884,22 @@ describe('OAuthServerService', () => {
 	});
 
 	describe('deleteClient', () => {
+		// The GC step deletes the client through a single conditional query
+		// (`DELETE ... WHERE id = :clientId AND NOT EXISTS (<remaining consents>)`),
+		// so both repositories are driven via query builders rather than the
+		// repository `delete()` shortcut. `affected` decides whether the client
+		// row was actually removed.
+		const mockGarbageCollect = (affected: number) => {
+			(userConsentRepository.createQueryBuilder as unknown as Mock).mockReturnValue({
+				select: () => ({ where: () => ({ getQuery: () => 'SELECT 1' }) }),
+			});
+			const execute = vi.fn().mockResolvedValue({ affected });
+			(oauthClientRepository.createQueryBuilder as unknown as Mock).mockReturnValue({
+				delete: () => ({ from: () => ({ where: () => ({ execute }) }) }),
+			});
+			return execute;
+		};
+
 		it("should revoke only the user's grant and keep the client while other consents remain", async () => {
 			const client = {
 				id: 'client-123',
@@ -895,7 +911,7 @@ describe('OAuthServerService', () => {
 				userId: 'user-456',
 				clientId: 'client-123',
 			} as any);
-			userConsentRepository.countBy.mockResolvedValue(1);
+			const execute = mockGarbageCollect(0);
 
 			await service.deleteClient('client-123', 'user-456');
 
@@ -908,7 +924,7 @@ describe('OAuthServerService', () => {
 				clientId: 'client-123',
 				userId: 'user-456',
 			});
-			expect(oauthClientRepository.delete).not.toHaveBeenCalled();
+			expect(execute).toHaveBeenCalled();
 		});
 
 		it('should garbage-collect the client when the last consent is revoked', async () => {
@@ -922,12 +938,15 @@ describe('OAuthServerService', () => {
 				userId: 'user-456',
 				clientId: 'client-123',
 			} as any);
-			userConsentRepository.countBy.mockResolvedValue(0);
-			oauthClientRepository.delete.mockResolvedValue({} as any);
+			const execute = mockGarbageCollect(1);
 
 			await service.deleteClient('client-123', 'user-456');
 
-			expect(oauthClientRepository.delete).toHaveBeenCalledWith({ id: 'client-123' });
+			expect(userConsentRepository.delete).toHaveBeenCalledWith({
+				clientId: 'client-123',
+				userId: 'user-456',
+			});
+			expect(execute).toHaveBeenCalled();
 		});
 
 		it('should throw when client does not exist', async () => {

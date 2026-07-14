@@ -25,7 +25,6 @@ import { McpConfig } from '../mcp.config';
 import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
-import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 import { Telemetry } from '@/telemetry';
 import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
@@ -65,9 +64,6 @@ describe('McpController', () => {
 		resolveMcpAppsVariant: vi.fn(),
 	} as unknown as McpService;
 	const mcpSettingsService = { getEnabled: vi.fn() } as unknown as McpSettingsService;
-	const oauthTokenVerifier = {
-		recordClientActivity: vi.fn(),
-	} as unknown as OAuthTokenVerifierProxy;
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
@@ -85,59 +81,12 @@ describe('McpController', () => {
 		Container.set(Telemetry, telemetry);
 		Container.set(McpService, mcpService);
 		Container.set(McpSettingsService, mcpSettingsService);
-		Container.set(OAuthTokenVerifierProxy, oauthTokenVerifier);
 		// Real repositories can't be auto-constructed by DI without a DataSource.
 		Container.set(ApiKeyRepository, mock<ApiKeyRepository>());
 
 		// Imported here (not statically) so the Container.set above runs first.
 		({ McpController } = await import('../mcp.controller'));
 		controller = Container.get(McpController);
-	});
-
-	test('records client activity for OAuth tool calls', async () => {
-		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
-		(mcpService.getServer as unknown as Mock).mockReturnValue({
-			connect: vi.fn().mockResolvedValue(undefined),
-			close: vi.fn().mockResolvedValue(undefined),
-		});
-		const res = createRes();
-
-		await controller.build(
-			createReq({
-				mcpAuthType: 'oauth',
-				mcpClientId: 'client-1',
-				body: { jsonrpc: '2.0', method: 'tools/call', params: { name: 'search_workflows' } },
-			} as Partial<AuthenticatedMcpRequest>),
-			res,
-		);
-
-		expect(oauthTokenVerifier.recordClientActivity).toHaveBeenCalledWith('user-1', 'client-1');
-	});
-
-	test('does not record activity for non-tool-call requests or API keys', async () => {
-		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
-		(mcpService.getServer as unknown as Mock).mockReturnValue({
-			connect: vi.fn().mockResolvedValue(undefined),
-			close: vi.fn().mockResolvedValue(undefined),
-		});
-
-		// tools/list is not activity
-		await controller.build(
-			createReq({
-				mcpClientId: 'client-1',
-				body: { jsonrpc: '2.0', method: 'tools/list' },
-			} as Partial<AuthenticatedMcpRequest>),
-			createRes(),
-		);
-		// API-key requests carry no client id
-		await controller.build(
-			createReq({
-				body: { jsonrpc: '2.0', method: 'tools/call', params: { name: 'search_workflows' } },
-			}),
-			createRes(),
-		);
-
-		expect(oauthTokenVerifier.recordClientActivity).not.toHaveBeenCalled();
 	});
 
 	test('returns 403 if MCP access is disabled', async () => {

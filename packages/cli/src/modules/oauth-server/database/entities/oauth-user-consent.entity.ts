@@ -33,8 +33,4 @@ export class UserConsent {
 	/** OAuth scopes granted on the consent screen. */
 	@JsonColumn()
 	scope: string[];
-
-	/** Unix ms of the last authenticated request with this grant's tokens. NULL = no activity recorded. */
-	@Column({ type: 'bigint', nullable: true })
-	lastActiveAt: number | null;
 }

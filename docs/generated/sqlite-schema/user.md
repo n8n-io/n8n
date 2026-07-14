@@ -233,7 +233,6 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   INTEGER id
-  bigint lastActiveAt
   TEXT scope
   varchar userId FK
 }

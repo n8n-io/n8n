@@ -12,7 +12,6 @@ import type { AccessToken } from '../database/entities/oauth-access-token.entity
 import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
-import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { OAuthTokenService } from '../oauth-token.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
@@ -27,7 +26,6 @@ let logger: Mocked<Logger>;
 let userRepository: Mocked<UserRepository>;
 let accessTokenRepository: Mocked<AccessTokenRepository>;
 let refreshTokenRepository: Mocked<RefreshTokenRepository>;
-let userConsentRepository: Mocked<UserConsentRepository>;
 let service: OAuthTokenService;
 let mockTransactionManager: any;
 
@@ -51,7 +49,6 @@ describe('OAuthTokenService', () => {
 		userRepository = mockInstance(UserRepository);
 		accessTokenRepository = mockInstance(AccessTokenRepository) as Mocked<AccessTokenRepository>;
 		refreshTokenRepository = mockInstance(RefreshTokenRepository) as Mocked<RefreshTokenRepository>;
-		userConsentRepository = mockInstance(UserConsentRepository) as Mocked<UserConsentRepository>;
 
 		mockTransactionManager = {
 			insert: vi.fn().mockResolvedValue(mock()),
@@ -75,7 +72,6 @@ describe('OAuthTokenService', () => {
 			userRepository,
 			accessTokenRepository,
 			refreshTokenRepository,
-			userConsentRepository,
 			registry,
 		);
 	});
@@ -455,7 +451,7 @@ describe('OAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			expect(result).toEqual({ user, authType: 'oauth', scopes: [], clientId });
+			expect(result).toEqual({ user, authType: 'oauth', scopes: [] });
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { id: userId },
 				relations: ['role'],
@@ -487,42 +483,10 @@ describe('OAuthTokenService', () => {
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
 			expect(result).toMatchObject({ user: null });
-			expect(userConsentRepository.update).not.toHaveBeenCalled();
-		});
-
-		it('should not record activity on verification alone', async () => {
-			const userId = 'user-activity';
-			const clientId = 'client-activity';
-			const { accessToken } = service.generateTokenPair(userId, clientId, undefined, []);
-
-			accessTokenRepository.findOne.mockResolvedValue(
-				mock<AccessToken>({ token: accessToken, clientId, userId }),
-			);
-			userRepository.findOne.mockResolvedValue(mock<User>({ id: userId }));
-
-			await service.verifyOAuthAccessToken(accessToken);
-
-			expect(userConsentRepository.update).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('recordClientActivity', () => {
-		it('should update the consent lastActiveAt', () => {
-			service.recordClientActivity('user-record', 'client-record');
-
-			expect(userConsentRepository.update).toHaveBeenCalledWith(
-				{ userId: 'user-record', clientId: 'client-record' },
-				{ lastActiveAt: expect.any(Number) },
-			);
-		});
-
-		it('should throttle writes for the same user and client', () => {
-			service.recordClientActivity('user-throttled', 'client-throttled');
-			service.recordClientActivity('user-throttled', 'client-throttled');
-
-			expect(userConsentRepository.update).toHaveBeenCalledTimes(1);
-		});
-
+	describe('verifyOAuthAccessToken audience resolution', () => {
 		it('should deny when a resource-scoped audience cannot be resolved', async () => {
 			// Fail closed: the token carries an audience but no resource resolves for
 			// it (deleted, or a transient resolver failure the registry swallows), so
@@ -630,7 +594,6 @@ describe('OAuthTokenService', () => {
 				userRepository,
 				accessTokenRepository,
 				refreshTokenRepository,
-				userConsentRepository,
 				multiResourceRegistry,
 			);
 		});
@@ -712,7 +675,6 @@ describe('OAuthTokenService', () => {
 				userRepository,
 				accessTokenRepository,
 				refreshTokenRepository,
-				userConsentRepository,
 				scopedRegistry,
 			);
 		});

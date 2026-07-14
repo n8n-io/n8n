@@ -7,7 +7,6 @@
 | clientId | varchar |  | false |  | [public.oauth_clients](public.oauth_clients.md) |  |
 | grantedAt | bigint |  | false |  |  | Unix timestamp in milliseconds |
 | id | integer |  | false |  |  |  |
-| lastActiveAt | bigint |  | true |  |  |  |
 | scope | json |  | false |  |  | OAuth scopes granted on the consent screen |
 | userId | uuid |  | false |  | [public.user](public.user.md) |  |
 
@@ -44,7 +43,6 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   integer id
-  bigint lastActiveAt
   json scope
   uuid userId FK
 }
