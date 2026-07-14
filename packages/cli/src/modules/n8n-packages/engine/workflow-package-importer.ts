@@ -28,7 +28,7 @@ import {
 import { N8nPackageParser } from './n8n-package-parser';
 
 /**
- * Imports loose top-level workflows, their folder shells, and credential deps into a target project.
+ * Imports loose top-level workflows, their folder shells, and credential & data table deps into a target project.
  * Resolves the target scope from the request, then delegates plan/gate/apply to ImportOrchestrator.
  */
 @Service()
