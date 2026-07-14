@@ -175,6 +175,74 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 		});
 	});
 
+	it('leaves AI roots alone when only the fallback model is credentialless', async () => {
+		mockClassify.mockResolvedValue([executeVerdict('Draft Reply')]);
+
+		const { nodeSimulationPlan } = await planVerificationSimulation({
+			workflow: wf(
+				[
+					{ name: 'Draft Reply', type: '@n8n/n8n-nodes-langchain.agent' },
+					{
+						name: 'Primary Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						credentials: { openAiApi: { id: 'real-cred', name: 'OpenAI' } },
+					},
+					{ name: 'Fallback Model', type: '@n8n/n8n-nodes-langchain.lmChatAnthropic' },
+				],
+				{
+					...modelConnection('Primary Model', 'Draft Reply'),
+					'Fallback Model': {
+						ai_languageModel: [[{ node: 'Draft Reply', type: 'ai_languageModel', index: 1 }]],
+					},
+				},
+			),
+			workflowId: 'wf-1',
+		});
+
+		expect(nodeSimulationPlan?.find((v) => v.nodeName === 'Draft Reply')).toMatchObject({
+			verdict: 'execute',
+		});
+	});
+
+	it('looks through a Model Selector to the credentials of the models feeding it', async () => {
+		mockClassify.mockResolvedValue([executeVerdict('Draft Reply')]);
+
+		const selectorWorkflow = (modelCredentials?: Record<string, { id: string; name: string }>) =>
+			wf(
+				[
+					{ name: 'Draft Reply', type: '@n8n/n8n-nodes-langchain.agent' },
+					{ name: 'Selector', type: '@n8n/n8n-nodes-langchain.modelSelector' },
+					{
+						name: 'OpenAI Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						...(modelCredentials ? { credentials: modelCredentials } : {}),
+					},
+				],
+				{
+					...modelConnection('Selector', 'Draft Reply'),
+					...modelConnection('OpenAI Model', 'Selector'),
+				},
+			);
+
+		const withCreds = await planVerificationSimulation({
+			workflow: selectorWorkflow({ openAiApi: { id: 'real-cred', name: 'OpenAI' } }),
+			workflowId: 'wf-1',
+		});
+		// The selector itself has no credentials, but the model behind it does.
+		expect(withCreds.nodeSimulationPlan?.find((v) => v.nodeName === 'Draft Reply')).toMatchObject({
+			verdict: 'execute',
+		});
+		expect(withCreds.nodeSimulationPlan?.find((v) => v.nodeName === 'Selector')).toBeUndefined();
+
+		const withoutCreds = await planVerificationSimulation({
+			workflow: selectorWorkflow(),
+			workflowId: 'wf-1',
+		});
+		expect(
+			withoutCreds.nodeSimulationPlan?.find((v) => v.nodeName === 'Draft Reply'),
+		).toMatchObject({ verdict: 'simulate' });
+	});
+
 	it('still injects trigger and AI-root verdicts when classification throws but declared fixtures exist', async () => {
 		mockClassify.mockRejectedValue(new Error('classifier down'));
 

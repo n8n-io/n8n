@@ -82,11 +82,17 @@ function withSimulatedTriggerVerdicts(
 export const CREDENTIALLESS_AI_ROOT_SIMULATION_REASON =
 	'Language model sub-node has no configured credentials — output is simulated during verification';
 
+/** Routes `ai_languageModel` inputs to a root; carries no credentials itself. */
+const MODEL_SELECTOR_NODE_TYPE = '@n8n/n8n-nodes-langchain.modelSelector';
+
 /**
- * AI-root node names whose `ai_languageModel` sub-node has no usable
- * credentials (none configured, or configured but mocked). Exported so plan
- * reconciliation can re-derive the same set from the live workflow once
- * credentials change.
+ * AI-root node names for which NO `ai_languageModel` sub-node has usable
+ * credentials (none configured, or configured but mocked). A root with any
+ * credentialed model can execute: a fallback model is only consulted when the
+ * primary errors, so a credentialless fallback alone must not force
+ * simulation. Model Selector nodes never hold credentials — they are looked
+ * through to the models feeding them. Exported so plan reconciliation can
+ * re-derive the same set from the live workflow once credentials change.
  */
 export function findCredentiallessAiRoots(
 	workflow: WorkflowJSON,
@@ -101,26 +107,46 @@ export function findCredentiallessAiRoots(
 	);
 
 	// `ai_languageModel` connections run sub-node → root, so the connection
-	// SOURCE is the model and the listed targets are the roots it feeds.
-	const roots = new Set<string>();
+	// SOURCE is the model (or selector) and the listed targets are the nodes
+	// it feeds.
+	const modelSourcesByTarget = new Map<string, string[]>();
 	for (const [sourceName, nodeConns] of Object.entries(workflow.connections ?? {})) {
 		const modelConns = (nodeConns as Record<string, unknown>).ai_languageModel;
 		if (!Array.isArray(modelConns)) continue;
 
 		const subNode = nodesByName.get(sourceName);
 		if (!subNode || subNode.disabled) continue;
-		const credentialless =
-			mockedNodeNames.has(sourceName) ||
-			!subNode.credentials ||
-			Object.keys(subNode.credentials).length === 0;
-		if (!credentialless) continue;
 
 		for (const group of modelConns) {
 			if (!Array.isArray(group)) continue;
 			for (const conn of group) {
 				if (typeof conn !== 'object' || conn === null || !('node' in conn)) continue;
-				roots.add((conn as { node: string }).node);
+				const target = (conn as { node: string }).node;
+				const sources = modelSourcesByTarget.get(target);
+				if (sources) sources.push(sourceName);
+				else modelSourcesByTarget.set(target, [sourceName]);
 			}
+		}
+	}
+
+	const hasUsableCredentials = (name: string, visited: Set<string>): boolean => {
+		if (visited.has(name)) return false;
+		visited.add(name);
+		const node = nodesByName.get(name);
+		if (!node || node.disabled) return false;
+		if (node.type === MODEL_SELECTOR_NODE_TYPE) {
+			const models = modelSourcesByTarget.get(name) ?? [];
+			return models.some((model) => hasUsableCredentials(model, visited));
+		}
+		if (mockedNodeNames.has(name)) return false;
+		return Boolean(node.credentials && Object.keys(node.credentials).length > 0);
+	};
+
+	const roots = new Set<string>();
+	for (const [target, sources] of modelSourcesByTarget) {
+		if (nodesByName.get(target)?.type === MODEL_SELECTOR_NODE_TYPE) continue;
+		if (!sources.some((source) => hasUsableCredentials(source, new Set()))) {
+			roots.add(target);
 		}
 	}
 	return roots;

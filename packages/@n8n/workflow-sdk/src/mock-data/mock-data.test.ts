@@ -1,5 +1,6 @@
 import { buildSchemaContexts, findOutputParserTargets } from './context';
 import { buildDateAnchors } from './date-anchors';
+import { workflowToMermaid } from './mermaid';
 import { parsePinDataResponse, repairStructuredAgentOutput } from './parse';
 import { buildPinDataUserPrompt } from './prompt';
 import type { OutputSchemaLookup } from './types';
@@ -202,6 +203,41 @@ describe('repairStructuredAgentOutput', () => {
 	});
 });
 
+describe('workflowToMermaid', () => {
+	it('renders nodes with resource/operation labels and connections', () => {
+		const mermaid = workflowToMermaid(workflow);
+
+		expect(mermaid).toContain('flowchart LR');
+		expect(mermaid).toContain('n0["Get Rows (dataTable v1, resource:row, op:get)"]');
+		expect(mermaid).toContain('n1["AI Root (agent v1.7)"]');
+		expect(mermaid).toContain('n1 --> n3');
+	});
+
+	it('escapes quotes and newlines in labels so the flowchart stays parseable', () => {
+		const wf = {
+			nodes: [
+				{
+					name: 'Fetch "Today\'s" Data',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					parameters: { resource: 'a"b', operation: 'first\nsecond' },
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		const mermaid = workflowToMermaid(wf);
+
+		expect(mermaid).toContain(
+			'n0["Fetch #quot;Today\'s#quot; Data (httpRequest v4.2, resource:a#quot;b, op:first second)"]',
+		);
+		// No label may contain an unescaped double quote.
+		const labels = [...mermaid.matchAll(/\["(.*)"\]/g)].map((m) => m[1]);
+		expect(labels).toHaveLength(1);
+		expect(labels[0]).not.toContain('"');
+	});
+});
+
 describe('ai-root shapes', () => {
 	it('classifies the extractor/classifier/sentiment chains as AI roots', async () => {
 		const { isAiRootNodeType, describeAiRootShape } = await import('./ai-root-shapes');
@@ -224,6 +260,34 @@ describe('ai-root shapes', () => {
 		);
 		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.sentimentAnalysis', false)).toContain(
 			'sentimentAnalysis',
+		);
+	});
+
+	it('classifies the assistant and vendor LLM nodes as AI roots', async () => {
+		const { isAiRootNodeType, describeAiRootShape } = await import('./ai-root-shapes');
+
+		// Mirrors the editor's canonical AI_ROOT_NODE_TYPES list
+		// (evaluation.ee/evaluation.constants.ts).
+		for (const type of [
+			'@n8n/n8n-nodes-langchain.openAiAssistant',
+			'@n8n/n8n-nodes-langchain.openAi',
+			'@n8n/n8n-nodes-langchain.anthropic',
+			'@n8n/n8n-nodes-langchain.googleGemini',
+			'@n8n/n8n-nodes-langchain.ollama',
+			'@n8n/n8n-nodes-langchain.alibabaCloud',
+			'@n8n/n8n-nodes-langchain.miniMax',
+			'@n8n/n8n-nodes-langchain.moonshot',
+		]) {
+			expect(isAiRootNodeType(type)).toBe(true);
+		}
+
+		// The assistant returns the AgentExecutor result — the `output` envelope.
+		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.openAiAssistant', false)).toContain(
+			'"output"',
+		);
+		// Vendor nodes emit their API response; there is no `output` wrapper.
+		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.anthropic', false)).toContain(
+			'vendor API response',
 		);
 	});
 });

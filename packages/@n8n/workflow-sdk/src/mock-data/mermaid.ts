@@ -1,6 +1,14 @@
 import type { WorkflowJSON } from '../types/base';
 
 /**
+ * Node names and parameter values may contain quotes or newlines, which would
+ * terminate the `["label"]` syntax early and malform the flowchart.
+ */
+function escapeMermaidLabel(text: string): string {
+	return text.replace(/"/g, '#quot;').replace(/\s*\r?\n\s*/g, ' ');
+}
+
+/**
  * Convert a workflow's nodes and connections to a mermaid flowchart string.
  * Provides the LLM with workflow structure context for consistent data generation.
  */
@@ -27,7 +35,7 @@ export function workflowToMermaid(workflow: WorkflowJSON): string {
 		if (operation) label += `, op:${operation}`;
 		label += ')';
 
-		lines.push(`  ${id}["${label}"]`);
+		lines.push(`  ${id}["${escapeMermaidLabel(label)}"]`);
 	}
 
 	const { connections } = workflow;

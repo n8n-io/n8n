@@ -1,18 +1,38 @@
 /**
- * AI root node types (Agent/Chain) and their pinned-item output shapes.
- * Keep in sync with new agent/chain types in `@n8n/n8n-nodes-langchain`.
+ * AI root node types (Agent/Chain/vendor LLM) and their pinned-item output
+ * shapes. Keep in sync with new agent/chain types in
+ * `@n8n/n8n-nodes-langchain` and with the editor's canonical list in
+ * `editor-ui/src/features/ai/evaluation.ee/evaluation.constants.ts`.
  */
 
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
 
+/**
+ * Vendor API nodes (OpenAI, Anthropic, …): AI roots for detection purposes,
+ * but their output is the vendor's API response shaped by the selected
+ * resource/operation (and `simplify` toggles) — there is no stable wrapper
+ * key to describe statically.
+ */
+const VENDOR_AI_ROOT_NODE_TYPES = new Set<string>([
+	'@n8n/n8n-nodes-langchain.openAi',
+	'@n8n/n8n-nodes-langchain.anthropic',
+	'@n8n/n8n-nodes-langchain.googleGemini',
+	'@n8n/n8n-nodes-langchain.ollama',
+	'@n8n/n8n-nodes-langchain.alibabaCloud',
+	'@n8n/n8n-nodes-langchain.miniMax',
+	'@n8n/n8n-nodes-langchain.moonshot',
+]);
+
 const AI_ROOT_NODE_TYPES = new Set<string>([
 	AGENT_NODE_TYPE,
+	'@n8n/n8n-nodes-langchain.openAiAssistant',
 	'@n8n/n8n-nodes-langchain.chainLlm',
 	'@n8n/n8n-nodes-langchain.chainRetrievalQa',
 	'@n8n/n8n-nodes-langchain.chainSummarization',
 	'@n8n/n8n-nodes-langchain.informationExtractor',
 	'@n8n/n8n-nodes-langchain.textClassifier',
 	'@n8n/n8n-nodes-langchain.sentimentAnalysis',
+	...VENDOR_AI_ROOT_NODE_TYPES,
 ]);
 
 export function isAiRootNodeType(nodeType: string): boolean {
@@ -48,6 +68,9 @@ export function describeAiRootShape(nodeType: string, hasParser: boolean): strin
 		case '@n8n/n8n-nodes-langchain.sentimentAnalysis':
 			return 'the INPUT item with an added `sentimentAnalysis` object — `{ "json": { ...original input fields, "sentimentAnalysis": { "category": "<sentiment>" } } }`.';
 		default:
+			if (VENDOR_AI_ROOT_NODE_TYPES.has(nodeType)) {
+				return "a plausible vendor API response for the node's configured resource and operation — there is NO `output` wrapper key; mirror the vendor's response fields.";
+			}
 			return '`{ "json": { "output": "<final response text>" } }`.';
 	}
 }
