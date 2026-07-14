@@ -1,0 +1,27 @@
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_e5eb138ee1927f::t_a24a2cfb34b1ef 2222-2232
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/http-request-validator.ts
+  s_e5eb138ee1927f::t_a24a2cfb34b1ef 15-31,101-120
+  s_e5eb138ee1927f::t_461e84c9a48857 121-123
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_e5eb138ee1927f::t_1649bc31af67a0 2581-2590
+  s_e5eb138ee1927f::t_161997c2dd3411 2591-2592
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/http-request-validator.test.ts
+  s_e5eb138ee1927f::t_1649bc31af67a0 8,16,330-392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "240b4bfbc4d987f589c84acf4bbfc25e0aad3489",
+  "prompts": {},
+  "sessions": {
+    "s_e5eb138ee1927f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87369f71-7cd7-4171-b908-682eacaab3f4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

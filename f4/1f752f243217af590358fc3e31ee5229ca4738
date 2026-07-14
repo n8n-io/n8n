@@ -1,0 +1,14 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  h_9b272a633435fb 8-9,51,109,111,189-193,196-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f41f752f243217af590358fc3e31ee5229ca4738",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
