@@ -9,7 +9,7 @@ describe('Test Split Out Node', () => {
 });
 
 describe('SplitOut', () => {
-	const execute = async (fieldToSplitOut: string | string[]) => {
+	const execute = async (fieldToSplitOut: string | string[] | number) => {
 		const executeFunctions = mock<IExecuteFunctions>();
 		executeFunctions.getInputData.mockReturnValue([
 			{
@@ -44,5 +44,11 @@ describe('SplitOut', () => {
 				{ json: { id: 2 }, pairedItem: { item: 0 } },
 			],
 		]);
+	});
+
+	it('should throw when fields to split out have an invalid type', async () => {
+		await expect(execute(123)).rejects.toThrow(
+			"The 'Fields To Split Out' parameter must be a string of fields separated by commas or an array of strings.",
+		);
 	});
 });
