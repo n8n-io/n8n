@@ -46,7 +46,6 @@ CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_review_request_project_state_decision_created | CREATE INDEX "IDX_workflow_review_request_project_state_decision_created"<br />			ON "workflow_review_request"("projectId", "state", "decision", "createdAt" DESC) |
 | sqlite_autoindex_workflow_review_request_1 | PRIMARY KEY (id) |
 
 ## Relations

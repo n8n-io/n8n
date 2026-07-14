@@ -41,7 +41,6 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_review_request_project_state_decision_created | CREATE INDEX "IDX_workflow_review_request_project_state_decision_created" ON public.workflow_review_request USING btree ("projectId", state, decision, "createdAt" DESC) |
 | PK_ae17b90023bcd05e003cd8f64dc | CREATE UNIQUE INDEX "PK_ae17b90023bcd05e003cd8f64dc" ON public.workflow_review_request USING btree (id) |
 
 ## Relations

@@ -163,22 +163,7 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 			const prefix = context.tablePrefix;
 
 			expect(
-				await indexExists(
-					context,
-					`IDX_${prefix}workflow_review_request_project_state_decision_created`,
-				),
-			).toBe(true);
-			expect(
 				await indexExists(context, `UQ_${prefix}workflow_review_request_workflow_request_workflow`),
-			).toBe(true);
-			expect(
-				await indexExists(
-					context,
-					`IDX_${prefix}workflow_review_request_workflow_workflow_version`,
-				),
-			).toBe(true);
-			expect(
-				await indexExists(context, `IDX_${prefix}workflow_review_request_workflow_workflow_id`),
 			).toBe(true);
 			expect(
 				await indexExists(context, `UQ_${prefix}workflow_review_request_reviewers_request_user`),

@@ -10,11 +10,7 @@ const USER_TABLE = 'user';
 const WORKFLOW_ENTITY_TABLE = 'workflow_entity';
 const WORKFLOW_HISTORY_TABLE = 'workflow_history';
 
-const IDX_REQUEST_PROJECT_STATE_DECISION_CREATED =
-	'workflow_review_request_project_state_decision_created';
 const UQ_WORKFLOW_REQUEST_WORKFLOW = 'workflow_review_request_workflow_request_workflow';
-const IDX_WORKFLOW_REQUEST_WORKFLOW_VERSION = 'workflow_review_request_workflow_workflow_version';
-const IDX_WORKFLOW_REQUEST_WORKFLOW_WORKFLOW_ID = 'workflow_review_request_workflow_workflow_id';
 const UQ_WORKFLOW_REQUEST_REVIEWERS = 'workflow_review_request_reviewers_request_user';
 const UQ_WORKFLOW_REQUEST_AUTHORS = 'workflow_review_request_authors_request_user';
 
@@ -24,11 +20,10 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 		await this.createWorkflowChildTable(context);
 		await this.createReviewerJunctionTable(context);
 		await this.createAuthorJunctionTable(context);
-		await this.createRequestIndexes(context);
 		await this.createChildWorkflowAndJunctionIndexes(context);
 	}
 
-	async down({ schemaBuilder: { dropTable }, runQuery, escape, tablePrefix }: MigrationContext) {
+	async down({ schemaBuilder: { dropTable }, runQuery, tablePrefix }: MigrationContext) {
 		await runQuery(
 			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_AUTHORS)}`,
 		);
@@ -36,17 +31,7 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_REVIEWERS)}`,
 		);
 		await runQuery(
-			`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_WORKFLOW_ID)}`,
-		);
-		await runQuery(
-			`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_VERSION)}`,
-		);
-		await runQuery(
 			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_WORKFLOW)}`,
-		);
-
-		await runQuery(
-			`DROP INDEX IF EXISTS ${escape.indexName(IDX_REQUEST_PROJECT_STATE_DECISION_CREATED)}`,
 		);
 
 		await dropTable(AUTHOR_TABLE);
@@ -185,21 +170,11 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 		const authorTable = escape.tableName(AUTHOR_TABLE);
 		const requestIdColumn = escape.columnName('workflowReviewRequestId');
 		const workflowIdColumn = escape.columnName('workflowId');
-		const workflowVersionIdColumn = escape.columnName('workflowVersionId');
 		const userIdColumn = escape.columnName('userId');
 
 		await runQuery(
 			`CREATE UNIQUE INDEX IF NOT EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_WORKFLOW)}
 			ON ${workflowTable}(${requestIdColumn}, ${workflowIdColumn})`,
-		);
-		await runQuery(
-			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_VERSION)}
-			ON ${workflowTable}(${workflowIdColumn}, ${workflowVersionIdColumn})
-			WHERE ${workflowVersionIdColumn} IS NOT NULL`,
-		);
-		await runQuery(
-			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_WORKFLOW_ID)}
-			ON ${workflowTable}(${workflowIdColumn})`,
 		);
 		await runQuery(
 			`CREATE UNIQUE INDEX IF NOT EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_REVIEWERS)}
@@ -208,19 +183,6 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 		await runQuery(
 			`CREATE UNIQUE INDEX IF NOT EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_AUTHORS)}
 			ON ${authorTable}(${requestIdColumn}, ${userIdColumn})`,
-		);
-	}
-
-	private async createRequestIndexes({ runQuery, escape }: MigrationContext) {
-		const requestTable = escape.tableName(REQUEST_TABLE);
-		const projectIdColumn = escape.columnName('projectId');
-		const stateColumn = escape.columnName('state');
-		const decisionColumn = escape.columnName('decision');
-		const createdAtColumn = escape.columnName('createdAt');
-
-		await runQuery(
-			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_REQUEST_PROJECT_STATE_DECISION_CREATED)}
-			ON ${requestTable}(${projectIdColumn}, ${stateColumn}, ${decisionColumn}, ${createdAtColumn} DESC)`,
 		);
 	}
 }

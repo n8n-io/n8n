@@ -34,8 +34,6 @@ CREATE TABLE "workflow_review_request_workflow" ("id" varchar(36) PRIMARY KEY NO
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_review_request_workflow_workflow_id | CREATE INDEX "IDX_workflow_review_request_workflow_workflow_id"<br />			ON "workflow_review_request_workflow"("workflowId") |
-| IDX_workflow_review_request_workflow_workflow_version | CREATE INDEX "IDX_workflow_review_request_workflow_workflow_version"<br />			ON "workflow_review_request_workflow"("workflowId", "workflowVersionId")<br />			WHERE "workflowVersionId" IS NOT NULL |
 | UQ_workflow_review_request_workflow_request_workflow | CREATE UNIQUE INDEX "UQ_workflow_review_request_workflow_request_workflow"<br />			ON "workflow_review_request_workflow"("workflowReviewRequestId", "workflowId") |
 | sqlite_autoindex_workflow_review_request_workflow_1 | PRIMARY KEY (id) |
 
