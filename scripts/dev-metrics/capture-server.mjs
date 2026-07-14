@@ -13,7 +13,7 @@
  *   export N8N_DEV_METRICS_RUDDERSTACK_URL=http://localhost:9999
  *
  * Reminder: track.mjs only sends when consent is granted
- * (~/.n8n/dev-telemetry.json) and when run from inside an n8n checkout. See the
+ * (~/.n8n/dev/dev-telemetry.json) and when run from inside an n8n checkout. See the
  * "Testing locally" section of this folder's README.
  */
 import { appendFileSync } from 'node:fs';

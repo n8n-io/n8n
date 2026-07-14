@@ -25,7 +25,7 @@ pnpm install
 
 pnpm <anything>
   └─ pnpm shim → runs pnpm.n8n-real, then (backgrounded) →
-       track.mjs  (installed copy in ~/.n8n/bin) → RudderStack (n8n-dev)
+       track.mjs  (installed copy in ~/.n8n/dev/bin) → RudderStack (n8n-dev)
 ```
 
 - Replaced **in place**, so it works regardless of PATH order. If the binary's
@@ -33,7 +33,7 @@ pnpm <anything>
   dir).
 - `N8N_DEV_SHIM_ACTIVE` guards against double-counting nested calls (e.g.
   `turbo -> pnpm`) and the tracker's own `<bin> --version` probe.
-- The tracker (`track.mjs`) is **copied to `~/.n8n/bin`** and run from there, so
+- The tracker (`track.mjs`) is **copied to `~/.n8n/dev/bin`** and run from there, so
   it's independent of which checkout (or none) you're in. Install only overwrites
   the copy when the checkout's `// n8n-track-version` is newer, so the newest
   version wins and an older checkout can't downgrade it. It self-scopes: it checks
@@ -44,10 +44,10 @@ pnpm <anything>
 | --- | --- |
 | `setup.mjs` | Consent prompt; replaces/restores binaries; `--status`/`--enable`/`--disable`/`--reset`. |
 | `shadow-shim.sh` | Shim template (versioned via `# n8n-shadow-shim-version`); rendered per binary with the binary name, saved-real path, and its dir baked in. |
-| `track.mjs` | Builds the anonymous event and POSTs it to RudderStack (fire-and-forget). Copied to `~/.n8n/bin` on install; the shim runs that copy. |
+| `track.mjs` | Builds the anonymous event and POSTs it to RudderStack (fire-and-forget). Copied to `~/.n8n/dev/bin` on install; the shim runs that copy. |
 | `capture-server.mjs` | Local capture stub for testing — logs every event instead of sending it upstream. |
 
-State lives in `~/.n8n/dev-telemetry.json` (separate from n8n's secret `config`):
+State lives in `~/.n8n/dev/dev-telemetry.json` (separate from n8n's secret `config`):
 
 ```json
 { "schemaVersion": 1, "consent": "granted", "anonId": "<uuid>", "week": "2026-W26" }
@@ -141,7 +141,7 @@ node scripts/dev-metrics/capture-server.mjs --port 9999 --out /tmp/events.jsonl
 
 ```bash
 # terminal B — drive the tracker directly (fastest; run from inside the repo)
-U=$(mktemp -d); mkdir -p "$U/.n8n"; echo '{"consent":"granted"}' > "$U/.n8n/dev-telemetry.json"
+U=$(mktemp -d); mkdir -p "$U/.n8n/dev"; echo '{"consent":"granted"}' > "$U/.n8n/dev/dev-telemetry.json"
 N8N_USER_FOLDER="$U" \
 N8N_DEV_METRICS_RUDDERSTACK_URL=http://localhost:9999 \
 N8N_DEV_TRACK_BIN=pnpm N8N_DEV_TRACK_MS=1234 N8N_DEV_TRACK_CODE=0 N8N_DEV_TRACK_CWD="$PWD" \

@@ -10,7 +10,7 @@
  *
  * Invoked with no arguments from scripts/prepare.mjs during `pnpm install`: the
  * first time an internal developer (git email @n8n.io) installs interactively,
- * it asks once (via /dev/tty). The decision persists in ~/.n8n/dev-telemetry.json.
+ * it asks once (via /dev/tty). The decision persists in ~/.n8n/dev/dev-telemetry.json.
  *
  * Manual usage:
  *   node scripts/dev-metrics/setup.mjs            bootstrap (prompt once)
@@ -52,19 +52,20 @@ const SAVED_SUFFIX = '.n8n-real';
 // tracker sends its raw argv, no per-binary code needed.
 const SHADOWED_BINARIES = ['pnpm'];
 
-function n8nDir() {
+// Dev-metrics state lives under ~/.n8n/dev, namespaced away from n8n's own files.
+function devDir() {
 	const userFolder = process.env.N8N_USER_FOLDER ?? homedir();
-	return join(userFolder, '.n8n');
+	return join(userFolder, '.n8n', 'dev');
 }
 
 function statePath() {
-	return join(n8nDir(), 'dev-telemetry.json');
+	return join(devDir(), 'dev-telemetry.json');
 }
 
 /** Stable copy of the tracker the shim runs — refreshed on each install, so it's
  * the latest committed version regardless of which checkout you're in. */
 function trackerDest() {
-	return join(n8nDir(), 'bin', 'track.mjs');
+	return join(devDir(), 'bin', 'track.mjs');
 }
 
 /** Read a `<key>: N` version marker from a file, or null. */
@@ -98,7 +99,7 @@ function readState() {
 }
 
 function writeState(next) {
-	mkdirSync(n8nDir(), { recursive: true });
+	mkdirSync(devDir(), { recursive: true });
 	const prev = readState() ?? {};
 	writeFileSync(
 		statePath(),

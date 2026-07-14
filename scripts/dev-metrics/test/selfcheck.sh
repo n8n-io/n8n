@@ -26,9 +26,9 @@ grep -q "n8n-shadow-shim-version" "$BIN/pnpm" || fail "shim not installed"
 grep -q "REAL" "$BIN/pnpm.n8n-real" || fail "original not saved"
 
 cd "$REPO"
-rc=0; out=$(sh -c 'pnpm build --filter x' 2>&1) || rc=$?
+rc=0; out=$(sh -c 'pnpm superlongcommandname packages/cli' 2>&1) || rc=$?
 [ "$rc" -eq 7 ] || fail "exit code not preserved (got $rc)"
-echo "$out" | grep -q "REAL build --filter x" || fail "real binary did not run"
+echo "$out" | grep -q "REAL superlongcommandname packages/cli" || fail "real binary did not run"
 
 N8N_DEV_SHIM_ACTIVE=1 sh -c 'pnpm test' >/dev/null 2>&1 || true   # must not track
 
@@ -38,7 +38,8 @@ node "$SRC/setup.mjs" --enable >/dev/null                        # idempotent
 sleep 1
 n=$(grep -c '"event":"dev:cli_command"' "$EV" || true)
 [ "$n" -eq 1 ] || fail "expected 1 event, got $n"
-grep -qF '"args":["build","--filter","x"]' "$EV" || fail "argv not captured faithfully"
+# "superlongcommandname" (>16) is truncated; "packages/cli" is path-like, kept whole.
+grep -qF '"args":["superlongcommand","packages/cli"]' "$EV" || fail "argv not clamped as expected"
 grep -q '"binary_version":"9.9.9"' "$EV" || fail "version not detected"
 grep -q '"cpu_cores"' "$EV" || fail "machine info not captured"
 

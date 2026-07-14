@@ -13,7 +13,7 @@
  * Today only `pnpm` is shadowed; add another CLI to SHADOWED_BINARIES in setup.mjs.
  *
  * Nothing is sent unless the developer granted consent via
- * scripts/dev-metrics/setup.mjs (stored in ~/.n8n/dev-telemetry.json).
+ * scripts/dev-metrics/setup.mjs (stored in ~/.n8n/dev/dev-telemetry.json).
  *
  * Input from the shim: the command's argv as this script's own arguments, plus
  *   N8N_DEV_TRACK_BIN   the shadowed binary, e.g. "pnpm"
@@ -21,8 +21,9 @@
  *   N8N_DEV_TRACK_CODE  exit code
  *   N8N_DEV_TRACK_CWD   directory the command ran in
  *
- * The argv is sent verbatim as `args` (an array, boundaries preserved), parsed
- * downstream — so anything on the command line is transmitted; scrub downstream.
+ * Each argv entry is sent as `args` (an array, boundaries preserved), truncated
+ * to 16 chars unless it looks like a path (see clampArg), which caps accidental
+ * secret leakage while keeping subcommands/flags/paths readable.
  * `dir` is repo-relative. Errors are swallowed so tracking never disrupts a workflow.
  */
 // n8n-track-version: 1 — bump on change; setup.mjs never downgrades the installed copy.
@@ -96,7 +97,7 @@ function isoWeek(date) {
 
 function statePath() {
 	const userFolder = process.env.N8N_USER_FOLDER ?? homedir();
-	return join(userFolder, '.n8n', 'dev-telemetry.json');
+	return join(userFolder, '.n8n', 'dev', 'dev-telemetry.json');
 }
 
 function readState() {
@@ -185,6 +186,12 @@ async function sendEvent(event, anonymousId, properties) {
 	});
 }
 
+/** Truncate an argv entry to 16 chars, but keep path-like values (contain `/`)
+ * whole — paths like `--filter=packages/cli` or `./scripts/x` stay analyzable. */
+function clampArg(arg) {
+	return arg.includes('/') ? arg : arg.slice(0, 16);
+}
+
 async function main() {
 	if (process.env.N8N_DEV_TELEMETRY === '0') return; // runtime kill switch
 
@@ -223,7 +230,7 @@ async function main() {
 		actor: detectActor(),
 		binary,
 		binary_version: binaryVersion,
-		args: process.argv.slice(2), // faithful argv, parsed on the collection side
+		args: process.argv.slice(2).map(clampArg), // truncated unless path-like (clampArg)
 		dir,
 		duration_ms: Number.isFinite(durationMs) ? durationMs : null,
 		exit_code: Number.isFinite(exitCode) ? exitCode : null,

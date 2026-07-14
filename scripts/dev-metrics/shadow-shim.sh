@@ -52,7 +52,7 @@ N8N_DEV_SHIM_ACTIVE=1 "$__real" "$@"
 __code=$?
 __end=$(__now_ms)
 
-# Run the installed tracker (a stable copy in ~/.n8n, not the checkout's) — it
+# Run the installed tracker (a stable copy in ~/.n8n/dev, not the checkout's) — it
 # self-scopes to n8n checkouts, so we just hand it the cwd and let it decide.
 if [ -f "$__tracker" ] && command -v node >/dev/null 2>&1; then
 	# Background in a subshell so no "[job] PID" notice reaches the terminal.
