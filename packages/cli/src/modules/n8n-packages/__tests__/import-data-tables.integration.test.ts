@@ -155,6 +155,32 @@ describe('workflow package import — with data tables', () => {
 				where: { id: result.workflows[0].localId },
 			});
 			expect(imported.nodes[0].parameters.dataTableId).toMatchObject({ value: table.id });
+
+			const { count: rowCount } = await dataTableService.getManyRowsAndCount(
+				table.id,
+				project.id,
+				{},
+			);
+			expect(rowCount).toBe(0);
+		});
+
+		it('handles a package mixing matched and created tables', async () => {
+			const existing = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [
+					{ name: 'email', type: 'string' },
+					{ name: 'signed_up_at', type: 'date' },
+				],
+			});
+			const matchedTable = serializedDataTable({ id: existing.id });
+			const createdTable = serializedDataTable({ id: 'freshtable1', name: 'Orders' });
+			const { packageBuffer } = await buildDataTablePackage([matchedTable, createdTable]);
+
+			await importPackage({ user: owner, projectId: project.id, packageBuffer });
+
+			const tables = await tablesInProject(project.id);
+			expect(tables.map(({ id }) => id).sort()).toEqual([existing.id, 'freshtable1'].sort());
+			expect(tables.find(({ id }) => id === 'freshtable1')?.name).toBe('Orders');
 		});
 
 		it('round-trips a real export: table lands in another project with the same id and schema', async () => {
