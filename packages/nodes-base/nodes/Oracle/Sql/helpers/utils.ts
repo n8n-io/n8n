@@ -8,9 +8,10 @@ import type {
 	IPairedItemData,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { deepCopy, NodeOperationError, UserError } from 'n8n-workflow';
+import { NodeOperationError, UserError } from 'n8n-workflow';
 import oracledb from 'oracledb';
 
+import { routeBinaryProperties } from '@utils/binary';
 import { generatePairedItemData, wrapData } from '@utils/utilities';
 
 import type {
@@ -425,21 +426,14 @@ async function _getResponseForOutbinds(
 
 		for (let j = 0; j < normalizedRows.length; j++) {
 			let row = normalizedRows[j];
-			const binary: IBinaryKeyData = {};
+			let binary: IBinaryKeyData = {};
 
 			if (serializeDates) {
-				// RETURNING values bypass the fetch handler, so binds arrive as live JS objects.
-				// Move binary (BLOB/RAW) columns to the item's binary output and deep-serialize the
-				// rest (e.g. date binds become ISO strings) so json stays JSON-safe.
-				const json: Record<string, any> = {};
-				for (const [key, value] of Object.entries(row)) {
-					if (Buffer.isBuffer(value)) {
-						binary[key] = await this.helpers.prepareBinaryData(value, key);
-					} else {
-						json[key] = value;
-					}
-				}
-				row = deepCopy(json);
+				// RETURNING values bypass the fetch handler, so binds arrive as live JS objects that
+				// need routing (BLOB/RAW to binary) and serializing (date binds to ISO strings)
+				const routed = await routeBinaryProperties.call(this, row as IDataObject);
+				row = routed.json;
+				binary = routed.binary;
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(wrapData(row), {

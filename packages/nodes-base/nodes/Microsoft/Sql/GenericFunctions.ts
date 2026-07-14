@@ -1,13 +1,9 @@
 import type { IResult } from 'mssql';
 import mssql from 'mssql';
-import type {
-	IBinaryKeyData,
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
+import { routeBinaryProperties } from '@utils/binary';
 import { chunk, flatten } from '@utils/utilities';
 
 import type { ITables, OperationInputData } from './interfaces';
@@ -261,28 +257,16 @@ export async function deleteOperation(tables: ITables, pool: mssql.ConnectionPoo
 	);
 }
 
-// Moves binary (varbinary/image) columns to the item's binary output and deep-serializes
+// Routes binary (varbinary/image) columns to the item's binary output and deep-serializes
 // the remaining columns so json stays JSON-safe (e.g. Dates become ISO strings)
 async function prepareRowWithBinary(
 	this: IExecuteFunctions,
 	row: IDataObject,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const json: IDataObject = {};
-	const binary: IBinaryKeyData = {};
+	const { json, binary } = await routeBinaryProperties.call(this, row);
 
-	for (const [key, value] of Object.entries(row)) {
-		if (Buffer.isBuffer(value)) {
-			binary[key] = await this.helpers.prepareBinaryData(value, key);
-		} else {
-			json[key] = value;
-		}
-	}
-
-	const item: INodeExecutionData = {
-		json: deepCopy(json),
-		pairedItem: [{ item: itemIndex }],
-	};
+	const item: INodeExecutionData = { json, pairedItem: [{ item: itemIndex }] };
 	if (Object.keys(binary).length) {
 		item.binary = binary;
 	}
