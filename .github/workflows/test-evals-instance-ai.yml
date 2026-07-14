@@ -92,9 +92,9 @@ on:
 jobs:
   run-evals:
     name: 'Run Evals'
-    # 8vcpu/32GB: full-suite N=10 baselines need ~150 min of eval time and
-    # did not fit the 4vcpu tier at any timeout.
-    runs-on: blacksmith-8vcpu-ubuntu-2204
+    # 16vcpu/64GB: memory is the constraint, not CPU — lanes need heap headroom
+    # for concurrent builds, and Blacksmith couples RAM to vcpus (4 GB/vcpu).
+    runs-on: blacksmith-16vcpu-ubuntu-2204
     # Long ceiling only for high-N baseline captures; regular runs keep a
     # tight guard so a wedged run fails fast. Plain comparison (not fromJSON):
     # it coerces the string input to a number, and a malformed dispatch value
@@ -103,8 +103,9 @@ jobs:
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
-      # 10 lanes x 2.5 GB caps = 25 GB, leaving ~7 GB for sandbox + CLI + OS.
-      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687'
+      # 12 lanes x 3.5 GB caps = 42 GB, leaving ~22 GB for sandbox + CLI + OS —
+      # generous slack so lane bursts can't starve the runner agent itself.
+      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687,5688,5689'
     permissions:
       contents: read
       pull-requests: write
@@ -205,10 +206,10 @@ jobs:
             # keep per-lane disk and memory flat over a multi-hour run.
             docker run -d --name "n8n-eval-$((i+1))" \
               "${NETWORK_ARGS[@]}" \
-              --memory 2.5g --memory-swap 2.5g \
+              --memory 3.5g --memory-swap 3.5g \
               --restart on-failure \
               --log-opt max-size=50m --log-opt max-file=2 \
-              -e NODE_OPTIONS=--max-old-space-size=2048 \
+              -e NODE_OPTIONS=--max-old-space-size=3072 \
               -e EXECUTIONS_DATA_PRUNE=true \
               -e EXECUTIONS_DATA_MAX_AGE=1 \
               -e E2E_TESTS=true \
@@ -348,14 +349,28 @@ jobs:
           ITERATIONS: ${{ inputs.iterations }}
           EXPERIMENT_NAME: ${{ inputs.experiment-name }}
           EVAL_PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number }}
+          # Bound the eval CLI's own heap so CLI memory growth dies visibly in
+          # this step (heap trace in the log) instead of pressuring the host.
+          NODE_OPTIONS: --max-old-space-size=8192
         run: |
+          # Stream a host one-liner into the job log every 60s. Unlike the
+          # sampler artifact (lost if the VM dies), streamed log lines survive
+          # a runner death — they are the black box for host-level failures.
+          ( while true; do
+              echo "[hoststat] $(date -u +%FT%TZ) $(free -m | awk 'NR==2{printf "used=%sMB avail=%sMB", $3, $7}') load=$(cut -d' ' -f1 /proc/loadavg)"
+              sleep 60
+            done ) &
+          HOSTSTAT_PID=$!
+          trap 'kill "$HOSTSTAT_PID" 2>/dev/null || true' EXIT
+
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           URLS=()
           for port in "${PORTS[@]}"; do
             URLS+=("http://localhost:$port")
           done
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
-          ARGS=(--base-url "$BASE_URLS" --concurrency 32 --verbose --iterations "${ITERATIONS:-3}")
+          # 44 over 12 lanes ≈ 3.7 per lane (burst 4 per MAX_CONCURRENT_BUILDS).
+          ARGS=(--base-url "$BASE_URLS" --concurrency 44 --verbose --iterations "${ITERATIONS:-3}")
           [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
           [ -n "$TIER" ] && ARGS+=(--tier "$TIER")
           [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
