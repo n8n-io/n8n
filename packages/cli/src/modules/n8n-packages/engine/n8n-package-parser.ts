@@ -69,19 +69,7 @@ export class N8nPackageParser {
 
 		const dataTables: SerializedDataTable[] = [];
 		for (const entry of manifest.dataTables ?? []) {
-			const path = `${entry.target}/data-table.json`;
-			const wire = await this.readJson(reader, path, 'data table');
-
-			try {
-				dataTables.push(serializedDataTableSchema.parse(wire));
-			} catch (cause) {
-				if (cause instanceof ZodError) {
-					throw new UserError(`Package data table file at ${path} failed schema validation.`, {
-						cause,
-					});
-				}
-				throw cause;
-			}
+			dataTables.push(await this.readDataTable(reader, entry));
 		}
 		return dataTables;
 	}
@@ -155,6 +143,25 @@ export class N8nPackageParser {
 			name: folder.name,
 			parentFolderId: folder.parentFolderId,
 		};
+	}
+
+	private async readDataTable(
+		reader: PackageReader,
+		entry: ManifestEntry,
+	): Promise<SerializedDataTable> {
+		const path = `${entry.target}/data-table.json`;
+		const wire = await this.readJson(reader, path, 'data table');
+
+		try {
+			return serializedDataTableSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package data table file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
 	}
 
 	private async readProject(reader: PackageReader, entry: ManifestEntry): Promise<PreparedProject> {

@@ -1,8 +1,9 @@
+import { createFailure } from './data-table.types';
 import type { DataTableResolutionFailure } from './data-table.types';
 import type { DataTableMissingMode } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 
-export type AbsentTableEffect =
+export type TableEffect =
 	| { action: 'create' }
 	| { action: 'skip' }
 	| { action: 'fail'; failure: DataTableResolutionFailure };
@@ -15,17 +16,12 @@ export type AbsentTableEffect =
 /* eslint-disable @typescript-eslint/naming-convention -- API data table missing mode keys */
 const ON_ABSENT_TABLE: Record<
 	DataTableMissingMode,
-	(requirement: PackageDataTableRequirement) => AbsentTableEffect
+	(requirement: PackageDataTableRequirement) => TableEffect
 > = {
 	create: () => ({ action: 'create' }),
 	'must-preexist': (requirement) => ({
 		action: 'fail',
-		failure: {
-			kind: 'missing',
-			sourceId: requirement.id,
-			name: requirement.name,
-			usedByWorkflows: [...requirement.usedByWorkflows].sort(),
-		},
+		failure: createFailure(requirement, 'missing'),
 	}),
 	'do-nothing': () => ({ action: 'skip' }),
 };
@@ -34,6 +30,6 @@ const ON_ABSENT_TABLE: Record<
 export function decideAbsentTable(
 	mode: DataTableMissingMode,
 	requirement: PackageDataTableRequirement,
-): AbsentTableEffect {
+): TableEffect {
 	return ON_ABSENT_TABLE[mode](requirement);
 }

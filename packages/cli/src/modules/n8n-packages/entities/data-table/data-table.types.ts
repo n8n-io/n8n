@@ -35,6 +35,22 @@ export type DataTableResolutionFailure = {
 	usedByWorkflows: string[];
 };
 
+export function createFailure(
+	requirement: PackageDataTableRequirement,
+	kind: DataTableResolutionFailureKind,
+	details: Partial<
+		Pick<DataTableResolutionFailure, 'existingProjectId' | 'missingColumns' | 'typeMismatches'>
+	> = {},
+): DataTableResolutionFailure {
+	return {
+		kind,
+		sourceId: requirement.id,
+		name: requirement.name,
+		usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
+		...details,
+	};
+}
+
 export interface DataTableImportRequest {
 	requirements: PackageDataTableRequirement[] | undefined;
 	/** The package's `data-table.json` contents, keyed off the manifest entries. */

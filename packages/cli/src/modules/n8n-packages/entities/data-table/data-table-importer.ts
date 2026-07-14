@@ -7,36 +7,18 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { findSchemaIncompatibility } from './data-table-compat';
+import { matchTargetTable } from './data-table-matching-mode';
 import { decideAbsentTable } from './data-table-missing-mode';
+import type { TableEffect } from './data-table-missing-mode';
+import { createFailure } from './data-table.types';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
 	DataTableResolutionFailure,
 } from './data-table.types';
-import type { DataTableMatchingMode, ImportContext } from '../../n8n-packages.types';
+import type { DataTableMissingMode, ImportContext } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
-
-/**
- * How a package table resolves to a target-project table. A single-value RFC
- * seam until `by-name` matching lands. `by-id` never falls back to names —
- * names are only checked for uniqueness when a table is about to be created.
- */
-/* eslint-disable @typescript-eslint/naming-convention -- API data table matching mode keys */
-const MATCH_TARGET_TABLE: Record<
-	DataTableMatchingMode,
-	(
-		requirement: PackageDataTableRequirement,
-		targetsById: Map<string, DataTable>,
-		projectId: string,
-	) => DataTable | undefined
-> = {
-	'by-id': ({ id }, targetsById, projectId) => {
-		const table = targetsById.get(id);
-		return table && table.projectId === projectId ? table : undefined;
-	},
-};
-/* eslint-enable @typescript-eslint/naming-convention */
 
 interface PlannedCreation {
 	table: SerializedDataTable;
@@ -53,8 +35,8 @@ export class DataTableImporter {
 	/**
 	 * Resolves the package's data table references against the target project.
 	 * Read-only: matched tables are compat-checked and otherwise used as-is
-	 * (never renamed or altered); absent tables become planned creations or
-	 * failures per missing mode. Mirrors the credential side's `plan`.
+	 * (never renamed or altered); absent tables become planned creations,
+	 * failures, or skips per missing mode. Mirrors the credential side's `plan`.
 	 */
 	async plan(
 		context: ImportContext,
@@ -75,6 +57,7 @@ export class DataTableImporter {
 			requirements.map(({ id }) => id),
 		);
 		const targetsById = new Map(targets.map((table) => [table.id, table]));
+		const candidates = { projectId: context.projectId, targetsById };
 
 		const creations: PlannedCreation[] = [];
 		const failures: DataTableResolutionFailure[] = [];
@@ -87,49 +70,17 @@ export class DataTableImporter {
 				);
 			}
 
-			const target = MATCH_TARGET_TABLE[request.matchingMode](
+			const matchedTargetTable = matchTargetTable(request.matchingMode, requirement, candidates);
+
+			const effect = resolveRequirement(
 				requirement,
-				targetsById,
-				context.projectId,
+				packageTable,
+				matchedTargetTable,
+				targetsById.get(requirement.id),
+				request.missingMode,
 			);
-
-			if (target) {
-				const incompatibility = findSchemaIncompatibility(packageTable.columns, target.columns);
-				if (incompatibility) {
-					failures.push({
-						kind: 'schema-incompatible',
-						sourceId: requirement.id,
-						name: requirement.name,
-						...incompatibility,
-						usedByWorkflows: workflowsUsing([requirement]),
-					});
-				}
-				// Matched: used as-is. Ids are preserved on import, so the workflow
-				// node references already point at the matched table.
-				continue;
-			}
-
-			const effect = decideAbsentTable(request.missingMode, requirement);
-			if (effect.action === 'fail') {
-				failures.push(effect.failure);
-				continue;
-			}
-			if (effect.action === 'skip') continue;
-
-			// Ids are globally unique, so a same-id table in another project blocks creation.
-			const existingElsewhere = targetsById.get(requirement.id);
-			if (existingElsewhere) {
-				failures.push({
-					kind: 'id-conflict',
-					sourceId: requirement.id,
-					name: requirement.name,
-					existingProjectId: existingElsewhere.projectId,
-					usedByWorkflows: workflowsUsing([requirement]),
-				});
-				continue;
-			}
-
-			creations.push({ table: packageTable, requirement });
+			if (effect.action === 'create') creations.push({ table: packageTable, requirement });
+			else if (effect.action === 'fail') failures.push(effect.failure);
 		}
 
 		failures.push(...(await this.creationFailures(context, creations)));
@@ -187,17 +138,57 @@ export class DataTableImporter {
 			// A same-named target table here is never the match candidate (matching is
 			// by id), and two package tables of one name cannot both land in one project.
 			if (existingByName.has(table.name) || packageTablesPerName.get(table.name)! > 1) {
-				failures.push({
-					kind: 'name-conflict',
-					sourceId: requirement.id,
-					name: requirement.name,
-					usedByWorkflows: workflowsUsing([requirement]),
-				});
+				failures.push(createFailure(requirement, 'name-conflict'));
 			}
 		}
 
 		return failures;
 	}
+}
+
+/**
+ * Decides the fate of one package table reference, independent of how the
+ * target was matched: matched tables are compat-checked and otherwise used
+ * as-is; absent tables follow the missing mode, with globally unique ids
+ * guarding planned creations. `existingWithSameId` is the instance-wide (any
+ * project) occupant of the requirement's id, only consulted for creations.
+ */
+function resolveRequirement(
+	requirement: PackageDataTableRequirement,
+	packageTable: SerializedDataTable,
+	matchedTargetTable: DataTable | undefined,
+	existingTableWithSameId: DataTable | undefined,
+	missingMode: DataTableMissingMode,
+): TableEffect {
+	if (matchedTargetTable) {
+		const incompatibility = findSchemaIncompatibility(
+			packageTable.columns,
+			matchedTargetTable.columns,
+		);
+		if (incompatibility) {
+			return {
+				action: 'fail',
+				failure: createFailure(requirement, 'schema-incompatible', incompatibility),
+			};
+		}
+		// Matched: used as-is. Ids are preserved on import, so the workflow
+		// node references already point at the matched table.
+		return { action: 'skip' };
+	}
+
+	const effect = decideAbsentTable(missingMode, requirement);
+	if (effect.action !== 'create') return effect;
+
+	// Ids are globally unique, so a same-id table in another project blocks creation.
+	if (existingTableWithSameId) {
+		return {
+			action: 'fail',
+			failure: createFailure(requirement, 'id-conflict', {
+				existingProjectId: existingTableWithSameId.projectId,
+			}),
+		};
+	}
+	return effect;
 }
 
 /** Sorted unique workflow ids referencing the given requirements. */
