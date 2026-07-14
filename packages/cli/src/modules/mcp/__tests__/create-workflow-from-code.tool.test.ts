@@ -887,7 +887,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					},
 					{
 						nodeName: 'OpenAI',
-						credentialName: 'n8n Connect',
+						credentialName: 'n8n credits',
 						credentialType: 'openAiApi',
 						source: 'aiGateway',
 					},

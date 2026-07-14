@@ -397,12 +397,12 @@ describe('autoPopulateNodeCredentials', () => {
 			);
 
 			expect(node.credentials).toEqual({
-				slackApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
 			});
 			expect(result.assignments).toEqual([
 				{
 					nodeName: 'Test Node',
-					credentialName: 'n8n Connect',
+					credentialName: 'n8n credits',
 					credentialType: 'slackApi',
 					source: 'aiGateway',
 				},

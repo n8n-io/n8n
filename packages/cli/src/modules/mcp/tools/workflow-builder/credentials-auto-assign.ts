@@ -15,7 +15,7 @@ import {
 import { MCP_CREDENTIALS_AUTOASSIGN_EVENT } from '../../mcp.constants';
 
 /** Display name written into AI Gateway-managed credential sentinels. User-facing brand. */
-const AI_GATEWAY_CREDENTIAL_NAME = 'n8n Connect';
+const AI_GATEWAY_CREDENTIAL_NAME = 'n8n credits';
 
 export interface CredentialAssignment {
 	nodeName: string;
