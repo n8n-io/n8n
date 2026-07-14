@@ -266,7 +266,8 @@ describe('durable scheduler effect boundary', () => {
 		// The stalled owner's lease lapses; the reaper resolves the row.
 		await taskRepo.update({ id: taskRow.id }, { leaseExpiresAt: past() });
 		const result = await scheduler.reap();
-		expect(result.deadLettered).toBe(1);
+		// A completion is a success, not a dead-letter, so it is not counted as one.
+		expect(result.deadLettered).toBe(0);
 
 		// The marker proves the effect happened, so the row is completed, not failed.
 		const final = await taskRepo.findOneByOrFail({ id: taskRow.id });

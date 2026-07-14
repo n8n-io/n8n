@@ -230,7 +230,8 @@ describe('scheduler across two mains over one database', () => {
 			}),
 		);
 
-		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 1 });
+		// A completion is a success, not a dead-letter: neither reclaimed nor dead-lettered.
+		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 0 });
 
 		// Not re-run: the effect already happened.
 		expect(executedA).toHaveLength(0);

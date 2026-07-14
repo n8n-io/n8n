@@ -128,16 +128,15 @@ export async function reap(
 			const nextAttempts = task.attempts + 1;
 			const ref = { id: task.id, claimedEpoch: task.leaseEpoch };
 			if (nextAttempts >= task.maxAttempts) {
-				// Last attempt: the row is terminally resolved either way, so it counts as
-				// dead-lettered. The effect boundary decides how.
+				// Last attempt: the effect boundary decides how the row is terminally resolved.
 				// - If the owner was lost after dispatch (`dispatchedAt` set), the effect already happened:
 				//   complete it as succeeded rather than record a failure for work that was done,
-				//   and never dispatch it again.
+				//   and never dispatch it again. It is a success, not a failure, so it is not counted
+				//   as dead-lettered; the `onCompletedAfterDispatch` hook reports it instead.
 				// - If it was lost before dispatch, the effect never happened:
 				//   salvage it with one final dispatch, then dead-letter it as failed.
 				if (task.dispatchedAt !== null) {
 					const affected = await store.completeExpired(ref);
-					deadLettered += affected;
 					if (affected > 0) {
 						try {
 							// Stryker disable next-line OptionalChaining: the enclosing catch

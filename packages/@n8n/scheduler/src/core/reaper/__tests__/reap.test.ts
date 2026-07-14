@@ -147,8 +147,8 @@ describe('reap', () => {
 		expect(dispatch).not.toHaveBeenCalled();
 		expect(onDeadLetter).not.toHaveBeenCalled();
 		expect(onCompletedAfterDispatch).toHaveBeenCalledWith({ taskId: task.id });
-		// Terminally resolved by the reaper, so still counted alongside dead-letters.
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		// A success, not a failure: reported via the hook, not counted as dead-lettered.
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
 	});
 
 	it('dead-letters when the next attempt reaches maxAttempts', async () => {

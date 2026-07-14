@@ -69,12 +69,12 @@ describe('reap decision (fast-check)', () => {
 				expect([...completeIds].sort()).toEqual(expectedComplete.map((r) => r.id).sort());
 				expect([...deadLetterIds].sort()).toEqual(expectedDeadLetter.map((r) => r.id).sort());
 
-				// Counts reflect the decisions and cover the whole batch. Completions and
-				// dead-letters are both terminal reaper resolutions, so both count as
-				// `deadLettered`.
+				// Counts reflect the decisions. `deadLettered` is genuine terminal failures
+				// only; a post-dispatch completion is a success, reported via the hook and not
+				// counted here. The three decisions together still cover the whole batch.
 				expect(result.reclaimed).toBe(expectedReclaim.length);
-				expect(result.deadLettered).toBe(expectedComplete.length + expectedDeadLetter.length);
-				expect(result.reclaimed + result.deadLettered).toBe(rows.length);
+				expect(result.deadLettered).toBe(expectedDeadLetter.length);
+				expect(result.reclaimed + result.deadLettered + completeIds.length).toBe(rows.length);
 
 				// Reclaim waits the shared backoff for the just-counted attempt, and the
 				// guarded update fences on the epoch read during the sweep.
