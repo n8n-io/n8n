@@ -1,5 +1,4 @@
-import type { IWorkflowBase } from 'n8n-workflow';
-
+import { expectScheduleTriggerFires } from './schedule-trigger-helpers';
 import { makeScheduleTriggerWorkflow } from './schedule-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
 
@@ -44,13 +43,7 @@ test.describe(
 			// eslint-disable-next-line playwright/no-skipped-test -- runtime topology guard, not a disabled test
 			test.skip(mainUrls.length < 2, 'requires a multi-main cluster (2+ mains)');
 
-			const wf = makeScheduleTriggerWorkflow();
-			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
-				wf.toJSON() as IWorkflowBase,
-			);
-
-			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-			await api.workflows.waitForExecution(workflowId, 60_000, 'trigger');
+			const workflowId = await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 
 			// Observe a fixed window of roughly five 2s ticks. Both mains run the
 			// sweep + executor every 1s, so a broken claim would let each main fire
@@ -68,6 +61,7 @@ test.describe(
 			api,
 			mainUrls,
 			n8nContainer,
+			createApiForMain,
 		}) => {
 			// eslint-disable-next-line playwright/no-skipped-test -- runtime topology guard, not a disabled test
 			test.skip(mainUrls.length < 2, 'requires a multi-main cluster (2+ mains)');
@@ -75,13 +69,7 @@ test.describe(
 			// eslint-disable-next-line playwright/no-skipped-test -- container-only guard, not a disabled test
 			test.skip(!n8nContainer, 'container-only: requires stoppable n8n containers');
 
-			const wf = makeScheduleTriggerWorkflow();
-			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
-				wf.toJSON() as IWorkflowBase,
-			);
-
-			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-			await api.workflows.waitForExecution(workflowId, 60_000, 'trigger');
+			const workflowId = await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 
 			// Snapshot what fired before the stop. Continuity is only proven by an
 			// execution whose id is not in this set appearing afterwards.
@@ -89,25 +77,32 @@ test.describe(
 				(await api.workflows.getExecutions(workflowId, 50)).map((execution) => execution.id),
 			);
 
-			// Stop one main. There is no leader, so the survivor is already competing
-			// for the same ticks and its sweep/executor keep going; any tick the
-			// stopped main had claimed but not completed is reclaimed once its lease
-			// expires. The api fixture talks through the load balancer, which routes
-			// to the surviving main.
+			// Stop main-1. There is no leader, so the survivor (main-2) is already
+			// competing for the same ticks and its sweep/executor keep going; any tick
+			// main-1 had claimed but not completed is reclaimed once its lease expires.
 			const [stopped] = n8nContainer.findContainers(/-n8n-main-1$/);
 			expect(stopped, 'main-1 container should be found').toBeDefined();
 			await n8nContainer.stopContainer(/-n8n-main-1$/);
 
+			// Query the survivor directly rather than via the load balancer, which
+			// keeps routing a share of requests to the stopped main until it drops it.
+			const survivor = await createApiForMain(1);
+
 			// A brand-new trigger execution (not in the pre-stop set) fires without
-			// re-activation and succeeds. Generous budget: covers load-balancer
-			// re-routing plus, in the worst case, a lease-expiry reclaim.
+			// re-activation and succeeds. Generous budget: covers, worst case, a
+			// lease-expiry reclaim. Transient errors while the survivor settles are
+			// swallowed so the poll keeps trying.
 			await expect
 				.poll(
 					async () => {
-						const fresh = (await api.workflows.getExecutions(workflowId, 50)).find(
-							(execution) => !idsBeforeStop.has(execution.id) && execution.mode === 'trigger',
-						);
-						return fresh?.status ?? null;
+						try {
+							const fresh = (await survivor.workflows.getExecutions(workflowId, 50)).find(
+								(execution) => !idsBeforeStop.has(execution.id) && execution.mode === 'trigger',
+							);
+							return fresh?.status ?? null;
+						} catch {
+							return null;
+						}
 					},
 					{ timeout: 90_000, intervals: [2_000] },
 				)

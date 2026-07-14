@@ -1,5 +1,4 @@
-import type { IWorkflowBase } from 'n8n-workflow';
-
+import { expectScheduleTriggerFires } from './schedule-trigger-helpers';
 import {
 	makeScheduleTriggerWorkflow,
 	makeCronScheduleTriggerWorkflow,
@@ -36,16 +35,7 @@ test.describe(
 		test('should fire an activated Schedule Trigger through the durable scheduler', async ({
 			api,
 		}) => {
-			const wf = makeScheduleTriggerWorkflow();
-			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
-				wf.toJSON() as IWorkflowBase,
-			);
-
-			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-
-			// Generous budget: depends on sweep + executor cadence plus the interval.
-			const execution = await api.workflows.waitForExecution(workflowId, 60_000, 'trigger');
-			expect(execution.status).toBe('success');
+			await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 		});
 
 		test('should not fire once per sweep when the tick is slower than the sweep', async ({
@@ -55,13 +45,7 @@ test.describe(
 			// dedupe guards (row claim + guarded fire-time write) must collapse the
 			// intervening sweeps so a single tick yields a single execution, not one
 			// per second.
-			const wf = makeScheduleTriggerWorkflow();
-			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
-				wf.toJSON() as IWorkflowBase,
-			);
-
-			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-			await api.workflows.waitForExecution(workflowId, 60_000, 'trigger');
+			const workflowId = await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 
 			// Observe a fixed window of roughly five 2s ticks.
 			await sleep(10_000);
@@ -74,13 +58,7 @@ test.describe(
 		});
 
 		test('should stop firing after the workflow is deactivated', async ({ api }) => {
-			const wf = makeScheduleTriggerWorkflow();
-			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
-				wf.toJSON() as IWorkflowBase,
-			);
-
-			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-			await api.workflows.waitForExecution(workflowId, 60_000, 'trigger');
+			const workflowId = await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 
 			await api.workflows.deactivate(workflowId);
 
@@ -97,15 +75,8 @@ test.describe(
 		});
 
 		test('should fire a Schedule Trigger driven by a raw cron expression', async ({ api }) => {
-			const wf = makeCronScheduleTriggerWorkflow();
-			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
-				wf.toJSON() as IWorkflowBase,
-			);
-
-			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-
-			const execution = await api.workflows.waitForExecution(workflowId, 60_000, 'trigger');
-			expect(execution.status).toBe('success');
+			// Cron variant: exercises the cronExpression provisioning branch.
+			await expectScheduleTriggerFires(api, makeCronScheduleTriggerWorkflow());
 		});
 	},
 );

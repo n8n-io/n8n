@@ -1,5 +1,4 @@
-import type { IWorkflowBase } from 'n8n-workflow';
-
+import { expectScheduleTriggerFires } from './schedule-trigger-helpers';
 import { makeScheduleTriggerWorkflow } from './schedule-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
 
@@ -33,13 +32,7 @@ test.describe(
 			// eslint-disable-next-line playwright/no-skipped-test -- runtime guard, not a disabled test
 			test.skip(!n8nContainer, 'container-only: requires a restartable n8n container');
 
-			const wf = makeScheduleTriggerWorkflow();
-			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
-				wf.toJSON() as IWorkflowBase,
-			);
-
-			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-			await api.workflows.waitForExecution(workflowId, 60_000, 'trigger');
+			const workflowId = await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 
 			// Snapshot the executions that exist BEFORE the restart. Continuity is
 			// only proven by an execution whose id is not in this set firing after
@@ -49,8 +42,10 @@ test.describe(
 				(await api.workflows.getExecutions(workflowId, 50)).map((execution) => execution.id),
 			);
 
-			// Restart the single main container in place (same writable layer + DB).
-			const [main] = n8nContainer.findContainers(/-n8n$/);
+			// Restart a main container in place (same writable layer + DB). The
+			// naming differs by topology: `-n8n` single-main, `-n8n-main-N` in a
+			// cluster; match either and take the first.
+			const [main] = n8nContainer.findContainers(/-n8n(-main-\d+)?$/);
 			expect(main, 'main n8n container should be found').toBeDefined();
 			await main.restart();
 
@@ -59,15 +54,14 @@ test.describe(
 				.poll(
 					async () => {
 						try {
-							const response = await api.request.get('/healthz/readiness');
-							return response.status();
+							return await api.isHealthy('readiness');
 						} catch {
-							return 0;
+							return false;
 						}
 					},
 					{ timeout: 60_000, intervals: [1_000] },
 				)
-				.toBe(200);
+				.toBe(true);
 
 			// A brand-new trigger execution (not in the pre-restart set) appears
 			// without re-activating the workflow, and it succeeds.
