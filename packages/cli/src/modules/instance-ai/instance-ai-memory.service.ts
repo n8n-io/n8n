@@ -1,5 +1,6 @@
 import type {
 	InstanceAiEnsureThreadResponse,
+	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
@@ -12,6 +13,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import {
+	buildAgentTreeFromEvents,
 	createSubAgentResourceIdPrefix,
 	patchThread,
 	type AgentDbMessage,
@@ -31,6 +33,7 @@ import {
 	parseStoredMessages,
 } from './message-parser';
 import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
+import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-log.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 
@@ -98,6 +101,7 @@ export class InstanceAiMemoryService {
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly checkpointRepository: InstanceAiCheckpointRepository,
 		private readonly pendingConfirmationRepository: InstanceAiPendingConfirmationRepository,
+		private readonly eventLogRepository: InstanceAiEventLogRepository,
 		private readonly durableLogMetrics: DurableLogMetrics,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -237,6 +241,14 @@ export class InstanceAiMemoryService {
 			snapshots = snapshots.filter((s) => !excluded.has(s.runId));
 		}
 
+		// Durable-log flag (fold-on-read): for post-log threads, the agent tree
+		// is derived by folding the durable event log — the persisted snapshot
+		// tree is written but no longer read. Pre-log threads (no log rows) keep
+		// the legacy snapshot path untouched until the Gate B backfill (INS-851).
+		if (this.instanceAiConfig.durableLog) {
+			snapshots = await this.overlayLogDerivedTrees(threadId, snapshots, options?.excludeRunIds);
+		}
+
 		// Surface the in-flight messages from any suspended checkpoint. The
 		// user's prompt is persisted to memory on receipt, but the intermediate
 		// assistant responses and pending tool-call from a turn suspended at HITL
@@ -256,6 +268,108 @@ export class InstanceAiMemoryService {
 
 		const projectId = await this.agentMemory.getThreadProjectId(threadId);
 		return { threadId, projectId: projectId ?? undefined, messages };
+	}
+
+	/**
+	 * Durable-log fold-on-read: supersede each snapshot's stored tree with a
+	 * fold of the durable log over the snapshot's runIds, and synthesize
+	 * snapshot entries for runs that have log rows but no snapshot row at all
+	 * (e.g. the snapshot write failed or the process died first). Snapshot rows
+	 * keep providing the message alignment metadata
+	 * (createdAt/messageGroupId/runIds); only the tree content is derived.
+	 * Threads with no log rows are returned unchanged (legacy path).
+	 */
+	private async overlayLogDerivedTrees(
+		threadId: string,
+		snapshots: AgentTreeSnapshot[],
+		excludeRunIds?: string[],
+	): Promise<AgentTreeSnapshot[]> {
+		const start = Date.now();
+		let rows;
+		try {
+			rows = await this.eventLogRepository.getForThread(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to read Instance AI event log for history', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return snapshots;
+		}
+		if (rows.length === 0) return snapshots;
+
+		// Per-run bookkeeping in seq order: events, group id (from run-start),
+		// and last-write time (mimics the snapshot row's write-at-run-finish
+		// timestamp, which the parser aligns messages by).
+		const runs = new Map<
+			string,
+			{ events: InstanceAiEvent[]; messageGroupId?: string; lastAt: Date }
+		>();
+		for (const row of rows) {
+			if (!row.runId) continue;
+			let run = runs.get(row.runId);
+			if (!run) {
+				run = { events: [], lastAt: row.createdAt };
+				runs.set(row.runId, run);
+			}
+			run.events.push(row.event);
+			run.lastAt = row.createdAt;
+			if (row.event.type === 'run-start') {
+				const groupId = row.event.payload.messageGroupId;
+				if (typeof groupId === 'string' && groupId) run.messageGroupId = groupId;
+			}
+		}
+
+		let replaced = 0;
+		const covered = new Set<string>();
+		const result = snapshots.map((snapshot) => {
+			const runIds = snapshot.runIds?.length ? snapshot.runIds : [snapshot.runId];
+			const events = runIds.flatMap((runId) => runs.get(runId)?.events ?? []);
+			for (const runId of runIds) covered.add(runId);
+			if (events.length === 0) return snapshot; // pre-log run — legacy tree
+			replaced++;
+			return { ...snapshot, tree: buildAgentTreeFromEvents(events) };
+		});
+
+		// Runs recorded in the log but never snapshotted: group them the way the
+		// snapshot writer would have (by run-start messageGroupId, else alone).
+		const excluded = new Set(excludeRunIds ?? []);
+		const groups = new Map<string, { runIds: string[]; events: InstanceAiEvent[]; lastAt: Date }>();
+		for (const [runId, run] of runs) {
+			if (covered.has(runId) || excluded.has(runId)) continue;
+			const key = run.messageGroupId ?? runId;
+			let group = groups.get(key);
+			if (!group) {
+				group = { runIds: [], events: [], lastAt: run.lastAt };
+				groups.set(key, group);
+			}
+			group.runIds.push(runId);
+			group.events.push(...run.events);
+			if (run.lastAt > group.lastAt) group.lastAt = run.lastAt;
+		}
+
+		let synthesized = 0;
+		for (const [key, group] of groups) {
+			// Nothing renderable beyond the run lifecycle — skip, matching today's
+			// behavior of not surfacing empty orphan cards.
+			const hasContent = group.events.some(
+				(e) => e.type !== 'run-start' && e.type !== 'run-finish',
+			);
+			if (!hasContent) continue;
+			synthesized++;
+			const lastRunId = group.runIds[group.runIds.length - 1];
+			result.push({
+				tree: buildAgentTreeFromEvents(group.events),
+				runId: lastRunId,
+				messageGroupId: key === lastRunId ? undefined : key,
+				runIds: group.runIds,
+				createdAt: group.lastAt,
+				updatedAt: group.lastAt,
+			});
+		}
+		result.sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
+
+		this.durableLogMetrics.recordFoldRead(Date.now() - start, replaced, synthesized);
+		return result;
 	}
 
 	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`

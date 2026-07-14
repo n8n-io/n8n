@@ -42,6 +42,17 @@ export class DurableLogMetrics {
 		cursorAgeEventsMax: 0,
 	};
 
+	/** History read counters (fold-on-read path). */
+	history = {
+		/** getRichMessages reads that folded trees from the durable log. */
+		foldReads: 0,
+		foldLatencyMsTotal: 0,
+		/** Stored snapshot trees superseded by a log-derived tree. */
+		snapshotTreesReplaced: 0,
+		/** Trees synthesized for runs that had log rows but no snapshot. */
+		treesSynthesized: 0,
+	};
+
 	constructor(private readonly eventService: EventService) {}
 
 	recordDrainBatch(rows: number, bytes: number): void {
@@ -76,6 +87,18 @@ export class DurableLogMetrics {
 		this.eventService.emit('instance-ai-durable-log-replayed', {
 			events: eventsServed,
 			cursorAgeEvents,
+		});
+	}
+
+	recordFoldRead(latencyMs: number, replaced: number, synthesized: number): void {
+		this.history.foldReads++;
+		this.history.foldLatencyMsTotal += latencyMs;
+		this.history.snapshotTreesReplaced += replaced;
+		this.history.treesSynthesized += synthesized;
+		this.eventService.emit('instance-ai-history-folded', {
+			latencyMs,
+			snapshotTreesReplaced: replaced,
+			treesSynthesized: synthesized,
 		});
 	}
 

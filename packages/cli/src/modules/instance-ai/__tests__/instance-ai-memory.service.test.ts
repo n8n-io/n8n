@@ -28,11 +28,16 @@ const mockAgentMemory = {
 // Mock GlobalConfig
 const mockDbSnapshotStorage = { getAll: vi.fn().mockResolvedValue([]) };
 const mockCheckpointRepository = { findActiveByThreadId: vi.fn().mockResolvedValue([]) };
+const mockEventLogRepository = { getForThread: vi.fn().mockResolvedValue([]) };
+const mockDurableLogMetrics = { recordFoldRead: vi.fn(), notifyParserFallbacks: vi.fn() };
 
-function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
+function createService(
+	options: { threadTtlDays?: number; durableLog?: boolean } = {},
+): InstanceAiMemoryService {
 	const mockConfig = {
 		instanceAi: {
 			threadTtlDays: options.threadTtlDays ?? 0,
+			durableLog: options.durableLog ?? false,
 		},
 		database: {
 			type: 'postgresdb',
@@ -46,8 +51,6 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		},
 	};
 	const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
-	// Flag off: the durable-log metrics forwarder only fires on parser fallbacks.
-	const mockDurableLogMetrics = { notifyParserFallbacks: vi.fn() };
 	return new InstanceAiMemoryService(
 		mockLogger as never,
 		mockConfig as never,
@@ -55,6 +58,7 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		mockDbSnapshotStorage as never,
 		mockCheckpointRepository as never,
 		mockPendingConfirmationRepository as never,
+		mockEventLogRepository as never,
 		mockDurableLogMetrics as never,
 	);
 }
@@ -298,6 +302,207 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 
 		expect(result.messages).toHaveLength(1);
 		expect(result.messages[0].role).toBe('user');
+	});
+});
+
+describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read', () => {
+	function eventRow(event: { runId: string; [key: string]: unknown }, createdAt: Date) {
+		return { runId: event.runId, createdAt, event };
+	}
+
+	const userMessage = {
+		id: 'msg-u',
+		role: 'user',
+		content: 'Hello',
+		createdAt: new Date('2026-01-01T00:00:00.000Z'),
+	};
+	const assistantMessage = {
+		id: 'msg-a',
+		role: 'assistant',
+		content: [{ type: 'text', text: 'Done!' }],
+		createdAt: new Date('2026-01-01T00:00:01.000Z'),
+	};
+	const at = new Date('2026-01-01T00:00:01.000Z');
+
+	function toolCallRows(runId: string, count: number) {
+		const rows = [];
+		for (let i = 1; i <= count; i++) {
+			rows.push(
+				eventRow(
+					{
+						type: 'tool-call',
+						runId,
+						agentId: 'agent-001',
+						payload: { toolCallId: `tc-${i}`, toolName: `tool-${i}`, args: {} },
+					},
+					at,
+				),
+				eventRow(
+					{
+						type: 'tool-result',
+						runId,
+						agentId: 'agent-001',
+						payload: { toolCallId: `tc-${i}`, result: {} },
+					},
+					at,
+				),
+			);
+		}
+		return rows;
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockDbSnapshotStorage.getAll.mockResolvedValue([]);
+		mockEventLogRepository.getForThread.mockResolvedValue([]);
+		mockListMessages.mockResolvedValue({ messages: [userMessage, assistantMessage] });
+	});
+
+	it('supersedes a degenerate stored snapshot with the tree folded from the log', async () => {
+		// The stored snapshot was built over an evicted buffer: an empty
+		// cancelled tree with none of the run's work (the INS-595 bug family).
+		mockDbSnapshotStorage.getAll.mockResolvedValue([
+			{
+				tree: makeTree({ status: 'cancelled', textContent: '', timeline: [], toolCalls: [] }),
+				runId: 'run_abc',
+				createdAt: at,
+				updatedAt: at,
+			},
+		]);
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1' },
+				},
+				at,
+			),
+			...toolCallRows('run_abc', 3),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				at,
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		const assistant = result.messages[1];
+		expect(assistant.agentTree?.toolCalls).toHaveLength(3);
+		expect(assistant.agentTree?.toolCalls.map((tc) => tc.toolName)).toEqual([
+			'tool-1',
+			'tool-2',
+			'tool-3',
+		]);
+		expect(assistant.agentTree?.status).toBe('completed');
+		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1, 0);
+	});
+
+	it('synthesizes a tree for a run that has log rows but no snapshot', async () => {
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1' },
+				},
+				at,
+			),
+			...toolCallRows('run_abc', 1),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				at,
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		const assistant = result.messages[1];
+		expect(assistant.agentTree).toBeDefined();
+		expect(assistant.agentTree?.toolCalls).toHaveLength(1);
+		expect(assistant.runId).toBe('run_abc');
+		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 0, 1);
+	});
+
+	it('keeps the stored snapshot tree for pre-log threads (no log rows)', async () => {
+		const tree = makeTree();
+		mockDbSnapshotStorage.getAll.mockResolvedValue([
+			{ tree, runId: 'run_abc', createdAt: at, updatedAt: at },
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		expect(result.messages[1].agentTree).toStrictEqual(tree);
+		expect(mockDurableLogMetrics.recordFoldRead).not.toHaveBeenCalled();
+	});
+
+	it('falls back to stored snapshots when the log read fails', async () => {
+		const tree = makeTree();
+		mockDbSnapshotStorage.getAll.mockResolvedValue([
+			{ tree, runId: 'run_abc', createdAt: at, updatedAt: at },
+		]);
+		mockEventLogRepository.getForThread.mockRejectedValue(new Error('db down'));
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		expect(result.messages[1].agentTree).toStrictEqual(tree);
+	});
+
+	it('does not synthesize entries for lifecycle-only runs', async () => {
+		const tree = makeTree();
+		mockDbSnapshotStorage.getAll.mockResolvedValue([
+			{ tree, runId: 'run_abc', createdAt: at, updatedAt: at },
+		]);
+		// A second run left only its lifecycle facts — no renderable work, so no
+		// orphan card is synthesized (matches today's behavior).
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_empty',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-2' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_empty',
+					agentId: 'agent-001',
+					payload: { status: 'cancelled' },
+				},
+				at,
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		await service.getRichMessages('user-1', 'thread-1');
+
+		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 0, 0);
+	});
+
+	it('never reads the log when the flag is off', async () => {
+		const service = createService();
+		await service.getRichMessages('user-1', 'thread-1');
+
+		expect(mockEventLogRepository.getForThread).not.toHaveBeenCalled();
 	});
 });
 
