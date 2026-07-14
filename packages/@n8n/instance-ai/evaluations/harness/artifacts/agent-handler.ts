@@ -13,9 +13,8 @@ export const agentHandler: ArtifactHandler<AgentArtifact> = {
 	type: 'agent',
 	runsExecutionScenarios: false,
 	discover(ctx) {
-		// The only signal is `targetResource.type === 'agent'`, captured from the SSE
-		// `agent-spawned` stream. The build_agent tool result is
-		// `{ ok, config, configHash, updatedAt, versionId }` and carries no agent id.
+		// Refs are captured from the `create_agent` tool result (via the agent_builder router),
+		// which carries the agentId. `build_agent` only persists config and returns no id.
 		return ctx.artifactRefs.filter((ref) => ref.type === 'agent');
 	},
 	async fetch(ref, client) {

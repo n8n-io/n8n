@@ -4,11 +4,15 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import { DATA_TABLES_TOOL_ID, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
+import {
+	AGENT_BUILDER_TOOL_IDS,
+	DATA_TABLES_TOOL_ID,
+	DOMAIN_TOOL_IDS,
+	EVAL_CONFIG_TOOL_ID,
+} from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
 	ArtifactRef,
-	ArtifactType,
 	CapturedEvent,
 	CapturedToolCall,
 	ConversationMetrics,
@@ -101,6 +105,8 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 
 				// Extract resource IDs from tool results
 				extractResourceIds(toolName, args, result, workflowIds, executionIds, dataTableIds);
+				// Non-workflow artifact refs (agent, config-eval) ride the same tool-result signals.
+				captureArtifactRef(toolName, args, result, artifactRefsByKey);
 				break;
 			}
 
@@ -150,11 +156,6 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				if (tools.length > 0) {
 					activity.reasoning = `Tools: ${tools.join(', ')}`;
 				}
-
-				// A spawned agent's targetResource is the only signal for non-workflow
-				// artifacts (agent, config-eval). `targetResource` is emitted on agent-spawned
-				// only, so this is equivalent to walking every agent-tree node's targetResource.
-				collectArtifactRef(getRecord(payload, 'targetResource'), artifactRefsByKey);
 				break;
 			}
 
@@ -215,23 +216,39 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 	};
 }
 
-/** Artifact types discovered via `targetResource` (workflow has its own discovery path). */
-const ARTIFACT_REF_TYPES = new Set<string>(['agent', 'config-eval']);
-
-function isArtifactRefType(type: string): type is ArtifactType {
-	return ARTIFACT_REF_TYPES.has(type);
-}
-
-/** Collect a non-workflow artifact ref from an `agent-spawned` targetResource, deduped by type+id. */
-function collectArtifactRef(
-	targetResource: Record<string, unknown> | undefined,
+/**
+ * Capture a non-workflow artifact ref from a tool result — the signals the assistant emits
+ * today (workflow has its own discovery path). Deduped by type+id.
+ *
+ * - agent: `create_agent` (via the `agent_builder` router) returns `{ ok, agentId, ... }`.
+ * - config-eval: `eval-config` action `create` returns `{ config }`; the ref id is the owning
+ *   workflow id from the call args (config-evals are fetched per-workflow).
+ */
+function captureArtifactRef(
+	toolName: string,
+	args: Record<string, unknown>,
+	result: unknown,
 	out: Map<string, ArtifactRef>,
 ): void {
-	if (!targetResource) return;
-	const type = getString(targetResource, 'type');
-	const id = getString(targetResource, 'id');
-	if (!type || !id || !isArtifactRefType(type)) return;
-	out.set(`${type}:${id}`, { type, id });
+	const record = toResultRecord(result);
+
+	if (
+		toolName === AGENT_BUILDER_TOOL_IDS.AGENT_BUILDER &&
+		getString(args, 'action') === AGENT_BUILDER_TOOL_IDS.CREATE_AGENT
+	) {
+		const agentId = record?.ok === true ? extractIdFromRecord(record, ['agentId']) : undefined;
+		if (agentId) out.set(`agent:${agentId}`, { type: 'agent', id: agentId });
+		return;
+	}
+
+	// 'create' is the eval-config action literal (no exported constant).
+	if (toolName === EVAL_CONFIG_TOOL_ID && getString(args, 'action') === 'create') {
+		const workflowId = getString(args, 'workflowId');
+		const created = record?.config !== undefined && record.config !== null;
+		if (workflowId && created) {
+			out.set(`config-eval:${workflowId}`, { type: 'config-eval', id: workflowId });
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------

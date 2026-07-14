@@ -277,7 +277,12 @@ When a build produces a non-workflow artifact, the harness discovers it, fetches
 
 Because these are plain outcome expectations, scoring, the gate, the PR comment, and the HTML report all handle them with no artifact-specific plumbing. A scenario-less agent case is graded on its expectations (`requiresWorkflowOutput` keys off execution scenarios only, so a missing workflow isn't reported as a build failure).
 
-**Provisional:** the assistant does not yet emit dedicated agent-build / config-eval-setup signals in tool results. Discovery keys off `targetResource.type` on agent-tree nodes only — the `build_agent` and `eval-setup-with-agent` tool results carry no artifact id to read. Expect this to be revisited once the assistant emits proper signals.
+Discovery reads the build's SSE tool-result stream (in `outcome/event-parser.ts`, alongside workflow/data-table id capture):
+
+- **agent** — the `create_agent` action (dispatched through the `agent_builder` router) returns `{ ok, agentId }`; the `agentId` is the ref.
+- **config-eval** — the `eval-config` tool's `create` action returns `{ config }`; the ref is the owning workflow id from the call args (config-evals are fetched per-workflow).
+
+(`build_agent` only persists config and returns no id, so it is not a discovery signal.)
 
 Not yet covered: an automatic "unexpected artifact" fail (a build producing an artifact the case never mentions). That's parked until the signals exist, to be added later as a binary check or per-dataset rather than as a case-schema field.
 

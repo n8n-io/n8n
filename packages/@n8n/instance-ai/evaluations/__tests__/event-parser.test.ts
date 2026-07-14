@@ -337,25 +337,40 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.agentActivities[0].status).toBe('completed');
 	});
 
-	it('captures agent / config-eval artifact refs from agent-spawned targetResource, deduped', () => {
-		const spawn = (agentId: string, targetResource: Record<string, unknown>): CapturedEvent => ({
+	it('captures agent / config-eval refs from the real create tool results, deduped', () => {
+		const call = (
+			toolCallId: string,
+			toolName: string,
+			args: Record<string, unknown>,
+		): CapturedEvent => ({
 			timestamp: 1000,
-			type: 'agent-spawned',
-			data: {
-				type: 'agent-spawned',
-				agentId,
-				payload: { agentId, role: 'builder', parentId: 'root', targetResource },
-			},
+			type: 'tool-call',
+			data: { type: 'tool-call', payload: { toolCallId, toolName, args } },
+		});
+		const resultEvent = (toolCallId: string, result: unknown): CapturedEvent => ({
+			timestamp: 1100,
+			type: 'tool-result',
+			data: { type: 'tool-result', payload: { toolCallId, result } },
 		});
 		const events: CapturedEvent[] = [
-			spawn('a1', { type: 'agent', id: 'agent-1' }),
-			spawn('a2', { type: 'config-eval', id: 'wf-1' }),
-			// A workflow targetResource is discovered via its own path, not here.
-			spawn('a3', { type: 'workflow', id: 'wf-2' }),
-			// Duplicate agent ref collapses.
-			spawn('a4', { type: 'agent', id: 'agent-1' }),
-			// No id → skipped.
-			spawn('a5', { type: 'agent' }),
+			// create_agent via the agent_builder router → result carries the agentId.
+			call('tc-1', 'agent_builder', { action: 'create_agent', name: 'Support' }),
+			resultEvent('tc-1', { ok: true, agentId: 'agent-1', projectId: 'p1', name: 'Support' }),
+			// eval-config create → ref is the owning workflow id from the args.
+			call('tc-2', 'eval-config', { action: 'create', workflowId: 'wf-1', name: 'My eval' }),
+			resultEvent('tc-2', { config: { id: 'cfg-1', workflowId: 'wf-1' } }),
+			// A non-create agent_builder action contributes nothing.
+			call('tc-3', 'agent_builder', { action: 'read_config' }),
+			resultEvent('tc-3', { ok: true, config: {} }),
+			// A failed create_agent contributes nothing.
+			call('tc-4', 'agent_builder', { action: 'create_agent', name: 'Nope' }),
+			resultEvent('tc-4', { ok: false, errors: [{ message: 'boom' }] }),
+			// eval-config list only inspects → nothing.
+			call('tc-5', 'eval-config', { action: 'list', workflowId: 'wf-2' }),
+			resultEvent('tc-5', { configs: [] }),
+			// Duplicate agent create collapses.
+			call('tc-6', 'agent_builder', { action: 'create_agent', name: 'Support again' }),
+			resultEvent('tc-6', { ok: true, agentId: 'agent-1', projectId: 'p1', name: 'Support' }),
 		];
 
 		const result = extractOutcomeFromEvents(events);
@@ -366,12 +381,24 @@ describe('extractOutcomeFromEvents', () => {
 		]);
 	});
 
-	it('returns no artifact refs when agents carry no targetResource', () => {
+	it('captures no config-eval ref when the create was denied (no config in the result)', () => {
 		const events: CapturedEvent[] = [
 			{
 				timestamp: 1000,
-				type: 'agent-spawned',
-				data: { type: 'agent-spawned', agentId: 'a1', payload: { agentId: 'a1', role: 'builder' } },
+				type: 'tool-call',
+				data: {
+					type: 'tool-call',
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'eval-config',
+						args: { action: 'create', workflowId: 'wf-1' },
+					},
+				},
+			},
+			{
+				timestamp: 1100,
+				type: 'tool-result',
+				data: { type: 'tool-result', payload: { toolCallId: 'tc-1', result: { denied: true } } },
 			},
 		];
 

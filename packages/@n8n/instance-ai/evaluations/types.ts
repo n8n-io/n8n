@@ -145,8 +145,8 @@ export interface EventOutcome {
 	workflowIds: string[];
 	executionIds: string[];
 	dataTableIds: string[];
-	/** Non-workflow artifact references (agent, config-eval) captured from the
-	 *  `agent-spawned` stream's `targetResource` — the only signal the assistant emits. */
+	/** Non-workflow artifact references (agent, config-eval) captured from the tool-result
+	 *  stream — `create_agent`'s agentId and `eval-config` create's owning workflow id. */
 	artifactRefs: ArtifactRef[];
 	finalText: string;
 	toolCalls: CapturedToolCall[];
