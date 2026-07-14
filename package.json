@@ -41,6 +41,7 @@
     "lint:ci": "turbo run lint lint:styles && pnpm boundaries:check",
     "boundaries": "turbo boundaries",
     "boundaries:check": "node scripts/check-boundaries.mjs",
+    "boundaries:baseline": "node scripts/check-boundaries.mjs --write",
     "sync:skill-links": "node scripts/sync-agent-skill-links.mjs",
     "check:skill-links": "node scripts/sync-agent-skill-links.mjs --check",
     "check:zod-peer-deps": "node scripts/check-zod-peer-deps.mjs",

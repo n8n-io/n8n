@@ -14,10 +14,11 @@
  * one at the same count. Upgrade to a fingerprinted baseline if that matters.
  */
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+const write = process.argv.includes('--write');
 const baselineFile = join(dirname(fileURLToPath(import.meta.url)), '..', '.boundaries-baseline.json');
 const baseline = JSON.parse(readFileSync(baselineFile, 'utf8')).issues;
 
@@ -32,6 +33,13 @@ if (!match) {
 }
 
 const current = Number(match[1]);
+
+if (write) {
+	writeFileSync(baselineFile, JSON.stringify({ issues: current }, null, 2) + '\n');
+	console.log(`Wrote baseline: ${current} issues (was ${baseline}).`);
+	process.exit(0);
+}
+
 console.log(`turbo boundaries: ${current} issues (baseline ${baseline})`);
 
 if (current > baseline) {
@@ -39,7 +47,9 @@ if (current > baseline) {
 		`\nBoundaries regressed: ${current} issues, baseline is ${baseline}.\n` +
 			'Your change added undeclared-dependency or reach-in import violations.\n' +
 			'Declare the missing dependency in the package.json, or import from the package root.\n' +
-			'Run `pnpm boundaries` to see the offending imports.',
+			'Offending imports:\n\n' +
+			output +
+			'\nRe-check with `pnpm boundaries`.',
 	);
 	process.exit(1);
 }
@@ -47,7 +57,7 @@ if (current > baseline) {
 if (current < baseline) {
 	console.log(
 		`\nNice — ${baseline - current} fewer issues than baseline.\n` +
-			`Lower the "issues" value in .boundaries-baseline.json to ${current} to lock in the win.`,
+			'Run `pnpm boundaries:baseline` to lock in the win.',
 	);
 }
 
