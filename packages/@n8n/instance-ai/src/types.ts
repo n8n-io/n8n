@@ -860,11 +860,18 @@ export interface BuilderTurnStream {
 	text: Promise<string>;
 }
 
+/** Reference to a suspended builder tool call awaiting user input. */
+export interface BuilderOpenSuspension {
+	runId: string;
+	toolCallId: string;
+}
+
 /**
  * Narrow delegate wrapping the agents-module builder for sub-agent use.
- * Provided by the host (cli) only when the agents module is active. This
- * version excludes interactive builder tools at the session level, so every
- * `streamBuild` call completes, errors, or is cancelled — never suspends.
+ * Provided by the host (cli) only when the agents module is active. Runs the
+ * builder's full interactive toolset — `streamBuild`/`resumeBuild` may
+ * suspend, which the caller cascades through its own suspend/resume so the
+ * builder's questions survive a process restart.
  */
 export interface InstanceAiBuilderDelegate {
 	createAgent(name: string): Promise<{ agentId: string; projectId: string }>;
@@ -873,6 +880,18 @@ export interface InstanceAiBuilderDelegate {
 		message: string,
 		session: BuilderDelegateSession,
 	): Promise<BuilderTurnStream>;
+	resumeBuild(
+		agentId: string,
+		resume: { runId: string; toolCallId: string; resumeData: unknown },
+		session: BuilderDelegateSession,
+	): Promise<BuilderTurnStream>;
+	/** All suspended tool calls on the builder's open checkpoint for this session thread ([] when none). */
+	findOpenSuspensions(
+		agentId: string,
+		session: BuilderDelegateSession,
+	): Promise<BuilderOpenSuspension[]>;
+	/** Expire the builder checkpoint for `runId` so a failed cascade leaves no orphaned open suspension. */
+	cancelOpenSuspension(agentId: string, runId: string): Promise<void>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────

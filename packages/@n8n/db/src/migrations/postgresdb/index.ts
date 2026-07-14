@@ -220,7 +220,8 @@ import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-Crea
 import { AddPartialIndexForGlobalCredentials1784000000044 } from '../common/1784000000044-AddPartialIndexForGlobalCredentials';
 import { AddRecurringCronScheduleKind1784000000045 } from '../common/1784000000045-AddRecurringCronScheduleKind';
 import { CreateInstanceAiEventsTable1784000000046 } from '../common/1784000000046-CreateInstanceAiEventsTable';
-import { AddScheduledTaskDispatchedAt1784000000047 } from '../common/1784000000047-AddScheduledTaskDispatchedAt';
+import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/1784000000047-BackfillPreScopingOAuthGrantScopes';
+import { AddScheduledTaskDispatchedAt1784000000048 } from '../common/1784000000048-AddScheduledTaskDispatchedAt';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -446,5 +447,6 @@ export const postgresMigrations: Migration[] = [
 	AddPartialIndexForGlobalCredentials1784000000044,
 	AddRecurringCronScheduleKind1784000000045,
 	CreateInstanceAiEventsTable1784000000046,
-	AddScheduledTaskDispatchedAt1784000000047,
+	BackfillPreScopingOAuthGrantScopes1784000000047,
+	AddScheduledTaskDispatchedAt1784000000048,
 ];

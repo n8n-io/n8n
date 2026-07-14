@@ -160,7 +160,7 @@ export class InstanceAiController {
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
-		// Only file attachments carry a mime type to validate; workflow
+		// Only file attachments carry a mime type to validate; workflow and agent
 		// attachments are resource references the agent resolves with its tools.
 		const fileAttachments = (payload.attachments ?? []).filter(
 			(attachment) => attachment.type === 'file',

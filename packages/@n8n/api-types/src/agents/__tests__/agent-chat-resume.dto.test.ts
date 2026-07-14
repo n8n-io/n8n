@@ -1,7 +1,7 @@
 import { credentialResumeSchema, questionsResumeSchema } from '../agent-interaction.schema';
-import { AgentBuildResumeDto } from '../dto';
+import { AgentChatResumeDto } from '../dto';
 
-describe('AgentBuildResumeDto', () => {
+describe('AgentChatResumeDto', () => {
 	const base = { runId: 'run-1', toolCallId: 'tc-1' };
 
 	it('does not strip answers from a questions-card resume', () => {
@@ -10,7 +10,7 @@ describe('AgentBuildResumeDto', () => {
 			answers: [{ questionId: 'q1', selectedOptions: ['a'] }],
 		};
 
-		const result = AgentBuildResumeDto.safeParse({ ...base, resumeData });
+		const result = AgentChatResumeDto.safeParse({ ...base, resumeData });
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
@@ -28,7 +28,7 @@ describe('AgentBuildResumeDto', () => {
 	it('still allows a plain credential-card denial to resolve as skipped', () => {
 		const resumeData = { approved: false };
 
-		const result = AgentBuildResumeDto.safeParse({ ...base, resumeData });
+		const result = AgentChatResumeDto.safeParse({ ...base, resumeData });
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;

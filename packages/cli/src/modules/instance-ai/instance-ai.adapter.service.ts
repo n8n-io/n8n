@@ -359,7 +359,10 @@ export class InstanceAiAdapterService {
 		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
 		try {
 			return Container.get(InstanceAiBuilderDelegateAdapterService);
-		} catch {
+		} catch (error) {
+			this.logger.warn('Failed to resolve builder delegate adapter; agent building disabled', {
+				error: error instanceof Error ? error.message : String(error),
+			});
 			return null;
 		}
 	}
@@ -1144,6 +1147,17 @@ export class InstanceAiAdapterService {
 					mockDataSources: pinDataPlan.mockDataSources,
 				};
 
+				// In queue mode the worker rebuilds the run from persisted `execution.data`,
+				// where top-level `runData.source` doesn't survive. Persist it in
+				// `manualData` so worker-side statistics can classify IAI runs.
+				if (runData.executionData) {
+					runData.executionData.manualData = {
+						...runData.executionData.manualData,
+						userId: user.id,
+						source: runData.source,
+					};
+				}
+
 				// When manual executions are offloaded to workers (queue mode), the worker
 				// rebuilds the run from the persisted `execution.data`. The adapter's manual
 				// run details otherwise live in transient top-level fields that don't survive
@@ -1164,6 +1178,7 @@ export class InstanceAiAdapterService {
 						manualData: {
 							userId: runData.userId,
 							triggerToStartFrom: runData.triggerToStartFrom,
+							source: runData.source,
 						},
 						executionData: null,
 					});
