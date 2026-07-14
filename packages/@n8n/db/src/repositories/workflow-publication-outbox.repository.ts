@@ -106,11 +106,11 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	private async enqueueAllActiveWithPostgresUpsert(): Promise<void> {
-		const tableName = this.getTableName('workflow_publication_outbox');
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 
 		await this.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = false
@@ -120,11 +120,11 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	private async enqueueAllActiveWithSqliteUpsert(): Promise<void> {
-		const tableName = this.getTableName('workflow_publication_outbox');
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 
 		await this.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
@@ -153,11 +153,11 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	private async enqueueByWorkflowIdsWithPostgresUpsert(workflowIds: string[]): Promise<void> {
-		const tableName = this.getTableName('workflow_publication_outbox');
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 
 		await this.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."id" = ANY($1) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = false
@@ -168,12 +168,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	private async enqueueByWorkflowIdsWithSqliteUpsert(workflowIds: string[]): Promise<void> {
-		const tableName = this.getTableName('workflow_publication_outbox');
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 		const placeholders = workflowIds.map(() => '?').join(', ');
 
 		await this.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."id" IN (${placeholders}) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
