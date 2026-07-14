@@ -24,7 +24,7 @@ const i18n = useI18n();
 		<N8nTooltip v-if="canSendToAssistant" placement="bottom" :show-after="300">
 			<N8nIconButton
 				variant="ghost"
-				icon="arrow-up-right"
+				icon="square-arrow-out-up-right"
 				size="small"
 				icon-size="medium"
 				data-test-id="agent-chat-message-send-to-assistant"
