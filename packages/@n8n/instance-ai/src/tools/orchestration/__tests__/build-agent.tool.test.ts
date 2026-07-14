@@ -66,7 +66,7 @@ function suspendingStream(): BuilderTurnStream {
 			{
 				type: 'tool-call-suspended',
 				toolCallId: 'call-1',
-				toolName: 'ask_question',
+				toolName: 'ask_questions',
 				suspendPayload: { message: 'unexpected question', severity: 'info' },
 			},
 		],

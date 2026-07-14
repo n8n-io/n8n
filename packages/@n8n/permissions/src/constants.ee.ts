@@ -14,6 +14,7 @@ export const RESOURCES = {
 		'shareGlobally',
 		'move',
 		'connect',
+		'createEndUser',
 		...DEFAULT_OPERATIONS,
 	] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
