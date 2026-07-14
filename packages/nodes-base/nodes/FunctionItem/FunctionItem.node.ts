@@ -21,9 +21,9 @@ export class FunctionItem implements INodeType {
 		group: ['transform'],
 		version: 1,
 		description: 'Run custom function code which gets executed once per item',
+		iconColor: 'amber',
 		defaults: {
 			name: 'Function Item',
-			color: '#ddbb33',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
