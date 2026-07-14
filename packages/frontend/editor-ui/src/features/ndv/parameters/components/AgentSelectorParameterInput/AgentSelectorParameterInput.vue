@@ -18,7 +18,7 @@ import ParameterIssues from '../ParameterIssues.vue';
 import { useResourceLocatorDropdown } from '../../composables/useResourceLocatorDropdown';
 import { useResourceLocatorModes } from '../../composables/useResourceLocatorModes';
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAgentProjectNameResolver } from '@/features/agents/composables/useAgentProjectNameResolver';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useDebounce } from '@/app/composables/useDebounce';
@@ -64,7 +64,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const projectStore = useProjectsStore();
 const { onDocumentVisible } = useDocumentVisibility();
 const { debounce } = useDebounce();
 
@@ -78,23 +77,9 @@ const width = ref(0);
 // so every surface reads/writes the same agent record.
 const projectId = useAgentScopeProjectId();
 
-// Resolve a project by id from the stores the picker already has loaded, so the
-// per-agent subtitle stays consistent with the `projectId` the catalog is
-// scoped to.
-function findProject(id: string) {
-	if (!id) return null;
-	if (projectStore.currentProject?.id === id) return projectStore.currentProject;
-	if (projectStore.personalProject?.id === id) return projectStore.personalProject;
-	return projectStore.myProjects.find((candidate) => candidate.id === id) ?? null;
-}
-
-function resolveProjectName(id: string): string | null {
-	// Only surface a project subtitle for non-personal team projects
-	if (!projectStore.isTeamProjectFeatureEnabled) return null;
-	const project = findProject(id);
-	if (!project || project.type === 'personal') return null;
-	return project.name ?? null;
-}
+// Resolve project subtitles from the stores the picker already has loaded, so
+// they stay consistent with the `projectId` the catalog is scoped to.
+const { resolveProjectName } = useAgentProjectNameResolver();
 
 const {
 	agentsResources,

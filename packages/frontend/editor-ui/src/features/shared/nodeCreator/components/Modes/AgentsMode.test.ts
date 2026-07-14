@@ -1,0 +1,198 @@
+import { nextTick, ref } from 'vue';
+import type { Pinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
+import { screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+
+import { DEBOUNCE_TIME, MESSAGE_AN_AGENT_NODE_TYPE, getDebounceTime } from '@/app/constants';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
+import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
+import { createComponentRenderer } from '@/__tests__/render';
+import AgentsMode from './AgentsMode.vue';
+
+const mockDocumentStoreState = {
+	allNodes: [],
+	workflowTriggerNodes: [],
+	aiNodes: [],
+	getExpressionHandler: () => null,
+};
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: () => mockDocumentStoreState,
+	createWorkflowDocumentId: (id: string) => `${id}@latest`,
+	injectWorkflowDocumentStore: () => ({ value: mockDocumentStoreState }),
+}));
+
+const setAddedNodeActionParameters = vi.fn();
+vi.mock('../../composables/useActions', () => ({
+	useActions: () => ({ setAddedNodeActionParameters }),
+}));
+
+const locatorState = {
+	agentsResources: ref<Array<{ name: string; value: string; personalisation: null }>>([]),
+	isLoadingResources: ref(false),
+	loadError: ref<unknown | null>(null),
+	hasMoreAgentsToLoad: ref(false),
+	searchFilter: ref(''),
+	onSearchFilter: vi.fn(),
+	loadMore: vi.fn(),
+	setAgentsResources: vi.fn(),
+};
+vi.mock('@/features/ndv/parameters/composables/useAgentResourcesLocator', () => ({
+	useAgentResourcesLocator: () => locatorState,
+}));
+
+vi.mock('@/features/agents/composables/useAgentScopeProjectId', () => ({
+	useAgentScopeProjectId: () => ref('project-1'),
+}));
+
+vi.mock('@/features/agents/composables/useAgentProjectNameResolver', () => ({
+	useAgentProjectNameResolver: () => ({ resolveProjectName: () => null }),
+}));
+
+const render = createComponentRenderer(AgentsMode);
+
+function pushAgentsViewStack() {
+	useViewStacks().pushViewStack({
+		title: 'Message an n8n Agent',
+		hasSearch: true,
+		mode: 'agents',
+		items: [],
+	});
+}
+
+describe('AgentsMode', () => {
+	let pinia: Pinia;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		pinia = createPinia();
+		setActivePinia(pinia);
+		locatorState.agentsResources.value = [];
+		locatorState.isLoadingResources.value = false;
+		locatorState.loadError.value = null;
+		locatorState.hasMoreAgentsToLoad.value = false;
+		locatorState.searchFilter.value = '';
+	});
+
+	it('renders the create-new entry, divider and agent rows', async () => {
+		locatorState.agentsResources.value = [
+			{ name: 'Support Triage', value: 'agent-1', personalisation: null },
+			{ name: 'Sales Researcher', value: 'agent-2', personalisation: null },
+		];
+		pushAgentsViewStack();
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.getByText('Create new agent')).toBeInTheDocument();
+		expect(screen.getByText('Or message an existing agent')).toBeInTheDocument();
+		expect(screen.getByText('Support Triage')).toBeInTheDocument();
+		expect(screen.getByText('Sales Researcher')).toBeInTheDocument();
+	});
+
+	it('adds the node preset to an inline agent when create-new is clicked', async () => {
+		pushAgentsViewStack();
+		const { emitted } = render({ pinia });
+		await nextTick();
+
+		await userEvent.click(screen.getByText('Create new agent'));
+
+		expect(emitted('nodeTypeSelected')).toEqual([[[{ type: MESSAGE_AN_AGENT_NODE_TYPE }]]]);
+		expect(setAddedNodeActionParameters).toHaveBeenCalledWith(
+			expect.objectContaining({
+				key: MESSAGE_AN_AGENT_NODE_TYPE,
+				value: { agentSource: 'inline' },
+			}),
+		);
+	});
+
+	it('adds the node preset to the picked agent when an existing agent is clicked', async () => {
+		locatorState.agentsResources.value = [
+			{ name: 'Support Triage', value: 'agent-1', personalisation: null },
+		];
+		pushAgentsViewStack();
+		const { emitted } = render({ pinia });
+		await nextTick();
+
+		await userEvent.click(screen.getByText('Support Triage'));
+
+		expect(emitted('nodeTypeSelected')).toEqual([[[{ type: MESSAGE_AN_AGENT_NODE_TYPE }]]]);
+		expect(setAddedNodeActionParameters).toHaveBeenCalledWith(
+			expect.objectContaining({
+				key: MESSAGE_AN_AGENT_NODE_TYPE,
+				value: {
+					agentSource: 'referenced',
+					agentId: {
+						__rl: true,
+						mode: 'list',
+						value: 'agent-1',
+						cachedResultName: 'Support Triage',
+					},
+				},
+			}),
+		);
+	});
+
+	it('tracks which option was selected', async () => {
+		locatorState.agentsResources.value = [
+			{ name: 'Support Triage', value: 'agent-1', personalisation: null },
+		];
+		pushAgentsViewStack();
+		const trackSpy = vi.spyOn(useNodeCreatorStore(), 'onAgentPanelOptionSelected');
+		render({ pinia });
+		await nextTick();
+
+		await userEvent.click(screen.getByText('Create new agent'));
+		expect(trackSpy).toHaveBeenCalledWith({ choice: 'create_new' });
+
+		await userEvent.click(screen.getByText('Support Triage'));
+		expect(trackSpy).toHaveBeenCalledWith({ choice: 'existing_agent' });
+	});
+
+	it('forwards the panel search to the remote agent catalog, debounced', async () => {
+		vi.useFakeTimers();
+		try {
+			pushAgentsViewStack();
+			render({ pinia });
+			await nextTick();
+
+			useViewStacks().updateCurrentViewStack({ search: 'tri' });
+			await vi.advanceTimersByTimeAsync(getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH) + 1);
+
+			expect(locatorState.onSearchFilter).toHaveBeenCalledWith('tri');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('shows the empty state when the project has no agents', async () => {
+		pushAgentsViewStack();
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.getByTestId('agents-panel-empty')).toBeInTheDocument();
+		expect(screen.getByText('No agents in this project yet')).toBeInTheDocument();
+	});
+
+	it('shows the no-matches state when a search yields nothing', async () => {
+		locatorState.searchFilter.value = 'nope';
+		pushAgentsViewStack();
+		useViewStacks().updateCurrentViewStack({ search: 'nope' });
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.getByText('No agents matching your search')).toBeInTheDocument();
+	});
+
+	it('shows the error state with a retry that reloads the catalog', async () => {
+		locatorState.loadError.value = new Error('boom');
+		pushAgentsViewStack();
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.getByTestId('agents-panel-load-error')).toBeInTheDocument();
+
+		locatorState.setAgentsResources.mockClear();
+		await userEvent.click(screen.getByText('Retry'));
+		expect(locatorState.setAgentsResources).toHaveBeenCalled();
+	});
+});
