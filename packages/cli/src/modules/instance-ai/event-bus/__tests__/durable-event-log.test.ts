@@ -32,6 +32,9 @@ class FakeRepo {
 	/** Fail the next N maxSeq reads (seq seeding hits a transient DB error). */
 	failNextMaxSeq = 0;
 
+	/** Hold the next append until released — models an in-flight DB round trip. */
+	gateNextAppend: Promise<void> | undefined;
+
 	async maxSeq(_threadId: string): Promise<number> {
 		if (this.failNextMaxSeq > 0) {
 			this.failNextMaxSeq--;
@@ -46,6 +49,11 @@ class FakeRepo {
 	}
 
 	async appendBatch(_threadId: string, firstSeq: number, events: InstanceAiEvent[]) {
+		if (this.gateNextAppend) {
+			const gate = this.gateNextAppend;
+			this.gateNextAppend = undefined;
+			await gate;
+		}
 		if (this.failNextAppendsTransient > 0) {
 			this.failNextAppendsTransient--;
 			throw new Error('connect ETIMEDOUT');
@@ -329,6 +337,54 @@ describe('DurableEventLog', () => {
 			[1, 'text-block'],
 			[2, 'tool-call'],
 		]);
+	});
+
+	it('clearThread during an in-flight append aborts the batch instead of retrying it', async () => {
+		const repo = new FakeRepo();
+		let releaseAppend!: () => void;
+		repo.gateNextAppend = new Promise((resolve) => (releaseAppend = resolve));
+		repo.failNextAppendsTransient = 1; // the gated attempt fails once released
+		const { log, metrics } = buildLog(repo);
+		const emitted: DrainedEvent[] = [];
+
+		log.publish(THREAD, toolCall('tc-old'), (drained) => emitted.push(drained));
+		// The drain is now awaiting the DB. The thread gets cleared meanwhile
+		// (deletion / E2E reset); the resumed attempt must stop, not retry into
+		// the id's next lifecycle.
+		log.clearThread(THREAD);
+		releaseAppend();
+		await log.flush(THREAD);
+
+		expect(repo.rows).toEqual([]);
+		expect(emitted).toEqual([]);
+		expect(metrics.drain.appendConflicts).toBe(0);
+		// Not a durability incident: the batch was dropped because its thread is gone.
+		expect(metrics.drain.appendFailures).toBe(0);
+	});
+
+	it('a recreated thread id does not receive rows from the previous lifecycle', async () => {
+		const repo = new FakeRepo();
+		let releaseAppend!: () => void;
+		repo.gateNextAppend = new Promise((resolve) => (releaseAppend = resolve));
+		repo.failNextAppendsTransient = 1;
+		const { log } = buildLog(repo);
+		const emitted: DrainedEvent[] = [];
+		const collect = (drained: DrainedEvent) => emitted.push(drained);
+
+		log.publish(THREAD, toolCall('tc-old'), collect);
+		// Same id, new lifecycle, while the old append is still in flight.
+		log.clearThread(THREAD);
+		log.publish(THREAD, toolCall('tc-new'), collect);
+		releaseAppend();
+		await log.flush(THREAD);
+
+		// Only the new lifecycle's fact exists, from seq 1.
+		const persisted = repo.rows.map((r) => [
+			r.seq,
+			r.event.type === 'tool-call' ? r.event.payload.toolCallId : r.event.type,
+		]);
+		expect(persisted).toEqual([[1, 'tc-new']]);
+		expect(emitted.filter((e) => e.live).map((e) => e.id)).toEqual([1]);
 	});
 
 	it('getNextEventId reflects rows appended by another writer', async () => {
