@@ -481,6 +481,63 @@ export class S3 implements INodeType {
 				}
 				if (resource === 'file') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CopyObject.html
+					if (operation === 'getPresignedUrl') {
+						const bucketName = this.getNodeParameter('bucketName', i) as string;
+						const fileKey = this.getNodeParameter('fileKey', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						const credentials = await this.getCredentials('s3');
+
+						const endpoint = new URL(credentials.endpoint as string);
+
+						let path: string;
+
+						if (credentials.forcePathStyle) {
+							path = `/${bucketName}/${fileKey}`;
+						} else {
+							endpoint.host = `${bucketName}.${endpoint.host}`;
+							path = `/${fileKey}`;
+						}
+
+						const { sign } = require('aws4');
+
+						const signOpts: IDataObject = {
+							host: endpoint.host,
+							method: 'GET',
+							path,
+							service: 's3',
+							region: credentials.region,
+							signQuery: true,
+						};
+
+						// aws4 expects X-Amz-Expires to already exist
+						signOpts.path += `?X-Amz-Expires=${additionalFields.expires ?? 3600}`;
+
+						const securityHeaders = {
+							accessKeyId: `${credentials.accessKeyId}`.trim(),
+							secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+							sessionToken: credentials.temporaryCredentials
+								? `${credentials.sessionToken}`.trim()
+								: undefined,
+						};
+
+						sign(signOpts, securityHeaders);
+
+						const presignedUrl = `${endpoint.protocol}//${signOpts.host}${signOpts.path}`;
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({
+								url: presignedUrl,
+							}),
+							{
+								itemData: {
+									item: i,
+								},
+							},
+						);
+
+						returnData.push(...executionData);
+					}
 					if (operation === 'copy') {
 						const sourcePath = this.getNodeParameter('sourcePath', i) as string;
 						const destinationPath = this.getNodeParameter('destinationPath', i) as string;
