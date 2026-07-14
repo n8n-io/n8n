@@ -701,6 +701,13 @@ describe('parseAwsUrl', () => {
 		expect(parseAwsUrl(url)).toEqual({ service: 'es', region: 'us-east-1' });
 	});
 
+	it('resolves the service left of the region for a bucket-qualified S3 interface endpoint', () => {
+		// Outside VPCE_HOSTNAME_PATTERN by design (extra bucket label before the vpce id);
+		// the trailing `vpce` label must not be mistaken for a region-middle service.
+		const url = new URL('https://mybucket.vpce-0abc123.s3.us-east-1.vpce.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-east-1' });
+	});
+
 	it('parses an S3 access-point hostname', () => {
 		const url = new URL('https://myap-123456789012.s3-accesspoint.us-west-2.amazonaws.com/');
 		expect(parseAwsUrl(url)).toEqual({ service: 's3-accesspoint', region: 'us-west-2' });

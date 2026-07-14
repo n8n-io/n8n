@@ -303,11 +303,18 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
 	}
 	const region = regionIdx === -1 ? null : labels[regionIdx];
 	let service = labels[0];
-	if (regionIdx !== -1 && regionIdx === labels.length - 2 && isAwsEndpointHostname(hostname)) {
+	if (
+		regionIdx !== -1 &&
+		regionIdx === labels.length - 2 &&
+		isAwsEndpointHostname(hostname) &&
+		labels[regionIdx + 1] !== 'vpce'
+	) {
 		// On AWS hosts the region is otherwise always the last label before the domain
 		// suffix, so a second-to-last region marks the region-middle and region-first
 		// shapes (`<domain>.<region>.es.amazonaws.com`, `<region>.queue.amazonaws.com`),
-		// which put the service right of the region.
+		// which put the service right of the region. Bucket-qualified S3 interface
+		// endpoints (`<bucket>.vpce-<id>.s3.<region>.vpce.amazonaws.com`) also carry a
+		// second-to-last region but their trailing `vpce` label is not a service.
 		service = labels[regionIdx + 1];
 	} else if (regionIdx >= 2) {
 		// AWS hostnames place the service label immediately left of the region
