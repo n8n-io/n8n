@@ -13,7 +13,7 @@ const columnName = 'triggerKind';
  * again during application startup after migrations run, when the leader
  * enqueues and processes a publication record for every active workflow.
  */
-export class AddTriggerKindToWorkflowPublicationTriggerStatus1784000000047
+export class AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048
 	implements ReversibleMigration
 {
 	async up({ schemaBuilder: { addColumns, column }, runQuery, escape }: MigrationContext) {

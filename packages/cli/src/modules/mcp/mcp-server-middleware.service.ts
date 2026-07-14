@@ -98,8 +98,13 @@ export class McpServerMiddlewareService {
 			}
 
 			(req as AuthenticatedRequest).user = user;
-			(req as AuthenticatedRequest & { mcpAuthType?: UserWithContext['authType'] }).mcpAuthType =
-				result.authType;
+			const mcpReq = req as AuthenticatedRequest & {
+				mcpAuthType?: UserWithContext['authType'];
+				mcpScopes?: string[];
+			};
+			mcpReq.mcpAuthType = result.authType;
+			// undefined for API keys = not scope-bearing → full tool access
+			mcpReq.mcpScopes = result.scopes;
 
 			next();
 		};

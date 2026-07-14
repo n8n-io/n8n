@@ -95,8 +95,8 @@ const registerClient = async () =>
 
 const mintAccessToken = async (userId: string, resourceUrl: string) => {
 	const clientId = await registerClient();
-	const pair = tokenService.generateTokenPair(userId, clientId, resourceUrl);
-	await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, userId);
+	const pair = tokenService.generateTokenPair(userId, clientId, resourceUrl, []);
+	await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, userId, []);
 	return pair.accessToken;
 };
 
