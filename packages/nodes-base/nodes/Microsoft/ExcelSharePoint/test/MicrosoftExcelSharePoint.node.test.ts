@@ -23,10 +23,11 @@ describe('MicrosoftExcelSharePoint (hidden shell)', () => {
 		expect(node.description.displayName).not.toBe(oneDriveNode.description.displayName);
 	});
 
-	it('should be a blank shell — no credentials, no properties', () => {
+	it('should stay a shell — sign-in only, no operations or tool exposure', () => {
 		expect(node.description.version).toBe(1);
-		expect(node.description.properties).toHaveLength(0);
-		expect(node.description.credentials).toBeUndefined();
+		// Any property beyond the sign-in selector would silently no-op through
+		// the pass-through execute; the first action ticket updates this bound.
+		expect(node.description.properties).toHaveLength(1);
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 

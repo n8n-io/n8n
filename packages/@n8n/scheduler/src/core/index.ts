@@ -18,7 +18,7 @@ export type {
 export { computeFirstRunAt, computeNextRunAt } from './recurrence/next-run';
 export { validateSchedule } from './recurrence/validate';
 
-export { provision, deprovision, createJobProvisioner } from './provisioning';
+export { provision, deprovision, createJobProvisioner, scheduleFingerprint } from './provisioning';
 export type {
 	JobProvisioner,
 	JobProvisionerDeps,

@@ -315,6 +315,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 						...(event.payload.statusCode !== undefined
 							? { statusCode: event.payload.statusCode }
 							: {}),
+						...(event.payload.code ? { code: event.payload.code } : {}),
 						...(event.payload.provider ? { provider: event.payload.provider } : {}),
 						...(event.payload.technicalDetails
 							? { technicalDetails: event.payload.technicalDetails }

@@ -19,7 +19,10 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
-import { buildWorkflowReferencingCredential } from './utils/test-builders';
+import {
+	buildWorkflowCallingSubWorkflow,
+	buildWorkflowReferencingCredential,
+} from './utils/test-builders';
 
 let service: N8nPackagesService;
 
@@ -126,6 +129,42 @@ describe('project package export', () => {
 			expect(projectFile).toBeDefined();
 			expect(JSON.parse(projectFile!.content.toString())).toEqual({ id, name });
 		}
+	});
+
+	it('blocks project exports when a static sub-workflow is outside the package', async () => {
+		const owner = await createOwner();
+		const projectA = await createTeamProject('Project A', owner);
+		const projectB = await createTeamProject('Project B', owner);
+		const externalChild = await createWorkflow(
+			{ name: 'External Child', nodes: [], connections: {} },
+			projectB,
+		);
+		await buildWorkflowCallingSubWorkflow({
+			name: 'Parent',
+			project: projectA,
+			subWorkflowId: externalChild.id,
+		});
+
+		await expect(service.exportPackage({ user: owner, projectIds: [projectA.id] })).rejects.toThrow(
+			'sub-workflow dependency not included in the package',
+		);
+	});
+
+	it('allows sub-workflow dependencies inside any selected project', async () => {
+		const owner = await createOwner();
+		const projectA = await createTeamProject('Project A', owner);
+		const projectB = await createTeamProject('Project B', owner);
+		const child = await createWorkflow({ name: 'Child', nodes: [], connections: {} }, projectB);
+		const parent = await buildWorkflowCallingSubWorkflow({
+			name: 'Parent',
+			project: projectA,
+			subWorkflowId: child.id,
+		});
+
+		const { manifest } = await exportProjects(owner, [projectA.id, projectB.id]);
+
+		expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual([parent.id, child.id].sort());
+		expect(manifest.requirements).toBeUndefined();
 	});
 
 	it('exports the owner personal project', async () => {
