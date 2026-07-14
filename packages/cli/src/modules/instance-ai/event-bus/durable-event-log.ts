@@ -104,6 +104,15 @@ export class DurableEventLog {
 
 	private readonly emitters = new Map<string, EmitFn>();
 
+	/**
+	 * Lifecycle token per thread, compared by identity. A drain captures it at
+	 * batch start and re-checks after every await: clearThread() replaces the
+	 * thread's token, so a drain resuming from a DB round trip after the clear
+	 * aborts instead of persisting or emitting into the id's next lifecycle
+	 * (e.g. a thread deleted and recreated under the same id mid-append).
+	 */
+	private readonly lifecycles = new Map<string, object>();
+
 	/** Per-thread idle timers driving the trailing-delta flush. */
 	private readonly idleFlushTimers = new Map<string, NodeJS.Timeout>();
 
@@ -172,6 +181,9 @@ export class DurableEventLog {
 		this.lastSeq.delete(threadId);
 		this.buffers.delete(threadId);
 		this.emitters.delete(threadId);
+		// Invalidates any drain currently awaiting the DB for this thread: it
+		// re-checks the token when it resumes and aborts its persist/emits.
+		this.lifecycles.delete(threadId);
 		const timer = this.idleFlushTimers.get(threadId);
 		if (timer) clearTimeout(timer);
 		this.idleFlushTimers.delete(threadId);
@@ -184,6 +196,7 @@ export class DurableEventLog {
 		this.lastSeq.clear();
 		this.buffers.clear();
 		this.emitters.clear();
+		this.lifecycles.clear();
 		for (const timer of this.idleFlushTimers.values()) clearTimeout(timer);
 		this.idleFlushTimers.clear();
 	}
@@ -264,6 +277,7 @@ export class DurableEventLog {
 	}
 
 	private async drainBatch(threadId: string, batch: PendingEntry[]): Promise<void> {
+		const lifecycle = this.currentLifecycle(threadId);
 		const flushSignals: FlushSignal[] = [];
 		const settleFlushes = () => {
 			for (const signal of flushSignals) signal.resolve();
@@ -318,7 +332,14 @@ export class DurableEventLog {
 
 		let firstSeq: number | undefined;
 		if (toPersist.length > 0) {
-			firstSeq = await this.persistWithRetry(threadId, toPersist);
+			firstSeq = await this.persistWithRetry(threadId, toPersist, lifecycle);
+			// The thread was cleared while the persist was in flight: its next
+			// lifecycle (a recreated id, or nothing) must not receive this batch's
+			// emissions. Flush waiters still settle — there is nothing left to flush.
+			if (this.lifecycles.get(threadId) !== lifecycle) {
+				settleFlushes();
+				return;
+			}
 			const persistedAt = Date.now();
 			for (const entry of batch) {
 				if (!isFlushMarker(entry)) this.metrics.recordQueueLatency(persistedAt - entry.enqueuedAt);
@@ -333,6 +354,16 @@ export class DurableEventLog {
 			emit({ ...(id !== undefined ? { id } : {}), event: drained.event, live: drained.live });
 		}
 		settleFlushes();
+	}
+
+	/** The thread's current lifecycle token, minted on first use. */
+	private currentLifecycle(threadId: string): object {
+		let token = this.lifecycles.get(threadId);
+		if (!token) {
+			token = {};
+			this.lifecycles.set(threadId, token);
+		}
+		return token;
 	}
 
 	/** Drain every open buffer of the thread into block facts (flush marker path). */
@@ -365,9 +396,21 @@ export class DurableEventLog {
 	private async persistWithRetry(
 		threadId: string,
 		events: InstanceAiEvent[],
+		lifecycle: object,
 	): Promise<number | undefined> {
 		let lastError: unknown;
 		for (let attempt = 1; attempt <= MAX_APPEND_ATTEMPTS; attempt++) {
+			// The thread was cleared while an earlier attempt was in flight: stop
+			// instead of appending into the id's next lifecycle (deleted threads
+			// would burn every retry on the FK; a recreated id would accept the
+			// stale rows). Not a durability failure — the thread is gone.
+			if (this.lifecycles.get(threadId) !== lifecycle) {
+				this.logger.debug('Instance AI event log dropped a batch for a cleared thread', {
+					threadId,
+					events: events.length,
+				});
+				return undefined;
+			}
 			// The seed read lives inside the try: a transient failure there must
 			// consume an attempt and retry, not reject the (unawaited) drain.
 			let firstSeq: number | undefined;
