@@ -45,15 +45,10 @@ export class WorkflowPublicationTriggerStatusRepository extends Repository<Workf
 	}
 
 	/**
-	 * Returns every trigger that should currently be registered in memory across
-	 * all workflows: activated, non-webhook (poll/trigger) triggers of active
-	 * workflows. Because the table is fully replaced on each publish, `activated`
-	 * rows always reflect the currently published version, so no version filter is
-	 * needed. The join on `activeVersionId` drops stale rows of unpublished
-	 * workflows (possible if a crash interrupts an unpublish before its rows are
-	 * cleared), which would otherwise read as deficient forever. This is the
-	 * "should be active in memory" set a reconciler diffs against the in-memory
-	 * registry.
+	 * Returns every trigger that should currently be registered in memory: the
+	 * activated, non-webhook (poll/trigger) triggers of active workflows. The
+	 * join on `activeVersionId` drops stale rows left by an interrupted
+	 * unpublish, which would otherwise read as missing forever.
 	 */
 	async findActivatedInMemoryTriggers(): Promise<InMemoryTriggerRef[]> {
 		return await this.createQueryBuilder('ts')
