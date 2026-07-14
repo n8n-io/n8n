@@ -1,5 +1,6 @@
 import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue';
 import { deepCopy, type INodeParameters } from 'n8n-workflow';
+import type { AgentSkill } from '@n8n/api-types';
 
 import type { INodeUi } from '@/Interface';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
@@ -11,6 +12,7 @@ import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentSc
 import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import {
 	createDefaultInlineAgent,
+	generateInlineSkillId,
 	INLINE_AGENT_PARAMETER_NAME,
 	readAgentSource,
 	readInlineAgentParameter,
@@ -30,6 +32,7 @@ const INLINE_CONFIG_KEYS = [
 	'instructions',
 	'tools',
 	'mcpServers',
+	'skills',
 ] as const satisfies ReadonlyArray<keyof AgentJsonConfig>;
 
 function pickInlineConfigKeys<T extends Partial<AgentJsonConfig>>(source: T): T {
@@ -40,6 +43,31 @@ function pickInlineConfigKeys<T extends Partial<AgentJsonConfig>>(source: T): T 
 		}
 	}
 	return picked as T;
+}
+
+/** The `inlineAgent` parameter value, before the backend narrows the config. */
+interface InlineAgentParameterValue {
+	config: AgentJsonConfig;
+	skills?: Record<string, AgentSkill>;
+}
+
+/**
+ * Keep only skill bodies whose id is still referenced by the config — the
+ * write-time mirror of the backend's `removeUnreferencedSkills`. Removing a
+ * skill ref therefore GCs its body in the same parameter write. The `skills`
+ * key is omitted entirely when empty so params without skills stay
+ * byte-identical to their pre-skills shape.
+ */
+function withPrunedSkillBodies(
+	config: AgentJsonConfig,
+	bodies: Record<string, AgentSkill>,
+): InlineAgentParameterValue {
+	const refIds = new Set((config.skills ?? []).map((ref) => ref.id));
+	const kept = Object.fromEntries(Object.entries(bodies).filter(([id]) => refIds.has(id)));
+	return {
+		config,
+		...(Object.keys(kept).length > 0 ? { skills: kept } : {}),
+	};
 }
 
 /**
@@ -73,6 +101,9 @@ export function useInlineAgentConfig(
 
 	const localConfig = computed<AgentJsonConfig | null>(() => inlineAgent.value?.config ?? null);
 
+	/** Skill bodies from the node parameter — the inline stand-in for `agent.skills`. */
+	const skillBodies = computed<Record<string, AgentSkill>>(() => inlineAgent.value?.skills ?? {});
+
 	/**
 	 * Host identity for the capability modals' confirm guards: a late confirm
 	 * must not write onto a different node the user switched to meanwhile.
@@ -81,6 +112,20 @@ export function useInlineAgentConfig(
 		const node = toValue(activeNode);
 		return node && isAgentNode.value ? `inline:${node.id}` : '';
 	});
+
+	// Eager, not debounced: writes are local node-parameter edits (workflow
+	// persistence has its own debounce), and a deferred write could fire after
+	// a node switch and land on the wrong node. Body + ref changes must share
+	// one emit — two sequential read-modify-write emits can lose the first.
+	function writeInlineAgent(node: INodeUi, value: InlineAgentParameterValue) {
+		ndvEventBus.emit('updateParameterValue', {
+			name: `parameters.${INLINE_AGENT_PARAMETER_NAME}`,
+			value: value as unknown as INodeParameters,
+			// Address the write to this node explicitly so a modal confirm landing
+			// after a node switch still targets the node it was opened for.
+			node: node.name,
+		});
+	}
 
 	/** Write the merged definition to the node parameter (standard pipeline). */
 	function scheduleConfigUpdate(updates: Partial<AgentJsonConfig>) {
@@ -93,17 +138,50 @@ export function useInlineAgentConfig(
 			...deepCopy(pickInlineConfigKeys(updates)),
 		});
 
-		ndvEventBus.emit('updateParameterValue', {
-			name: `parameters.${INLINE_AGENT_PARAMETER_NAME}`,
-			value: { config: nextConfig } as unknown as INodeParameters,
-			// Address the write to this node explicitly so a modal confirm landing
-			// after a node switch still targets the node it was opened for.
-			node: node.name,
-		});
+		writeInlineAgent(node, withPrunedSkillBodies(nextConfig, deepCopy(current.skills ?? {})));
 	}
 
-	// Inline agents carry no skill bodies and no custom tools, so the actions'
-	// agent-resource reads all fall back gracefully on null.
+	/** Mint an id and land the body + its config ref in one parameter write. */
+	function createInlineSkill(skill: AgentSkill) {
+		const node = toValue(activeNode);
+		if (!node || !isAgentNode.value) return;
+
+		const current = readInlineAgentParameter(node) ?? createDefaultInlineAgent();
+		const skillId = generateInlineSkillId(Object.keys(current.skills ?? {}));
+		const nextConfig: AgentJsonConfig = pickInlineConfigKeys({
+			...deepCopy(current.config),
+			skills: [...(current.config.skills ?? []), { type: 'skill' as const, id: skillId }],
+		});
+
+		writeInlineAgent(
+			node,
+			withPrunedSkillBodies(nextConfig, {
+				...deepCopy(current.skills ?? {}),
+				[skillId]: deepCopy(skill),
+			}),
+		);
+	}
+
+	/** Body-only update; the ref is unchanged so the config carries over as-is. */
+	function updateInlineSkill(skillId: string, skill: AgentSkill) {
+		const node = toValue(activeNode);
+		if (!node || !isAgentNode.value) return;
+
+		const current = readInlineAgentParameter(node) ?? createDefaultInlineAgent();
+		if (!(current.config.skills ?? []).some((ref) => ref.id === skillId)) return;
+
+		writeInlineAgent(
+			node,
+			withPrunedSkillBodies(pickInlineConfigKeys(deepCopy(current.config)), {
+				...deepCopy(current.skills ?? {}),
+				[skillId]: deepCopy(skill),
+			}),
+		);
+	}
+
+	// Inline agents carry no custom tools, so the actions' agent-resource
+	// reads all fall back gracefully on null. Skill bodies come from the
+	// `localSkills` seam below instead of an entity.
 	const agent = ref<AgentResource | null>(null);
 	const connectedTriggers = ref<string[]>([]);
 
@@ -114,9 +192,14 @@ export function useInlineAgentConfig(
 		agentId: hostId,
 		connectedTriggers,
 		scheduleConfigUpdate,
-		// Skills are out of inline scope (the capabilities section is rendered
-		// without its skills section), so the skill-save seam never fires.
+		// Unused: with `localSkills` present, skill persistence goes through the
+		// seam's single-emit callbacks, never this entity-autosave hook.
 		scheduleSkillSave: () => {},
+		localSkills: {
+			bodies: skillBodies,
+			createSkill: createInlineSkill,
+			updateSkill: updateInlineSkill,
+		},
 		// Approval suspends the run for a human; workflow executions don't
 		// support suspend/resume, so the config modals hide the toggle.
 		supportsToolApproval: false,

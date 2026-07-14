@@ -1,4 +1,5 @@
 import type { AgentCapabilitySummary, InlineAgentConfig } from '@n8n/api-types';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import type { INodeUi } from '@/Interface';
 
@@ -43,6 +44,22 @@ export function createDefaultInlineAgent(): InlineAgentConfig {
 }
 
 /**
+ * Mirror of the backend's `generateAgentResourceId('skill', …)` for inline
+ * agents, whose skill ids are minted client-side (there is no entity to POST
+ * to). Same `skill_<nanoid>` format, same collision retry.
+ */
+export function generateInlineSkillId(existingIds: Iterable<string> = []): string {
+	const existing = new Set(existingIds);
+
+	for (let attempt = 0; attempt < 10; attempt++) {
+		const id = `skill_${generateNanoId()}`;
+		if (!existing.has(id)) return id;
+	}
+
+	throw new Error('Could not generate unique skill id');
+}
+
+/**
  * Shape an inline config like a saved agent's capability summary so surfaces
  * (canvas card chips, model row) can reuse the saved-agent rendering.
  */
@@ -60,7 +77,12 @@ export function inlineAgentToCapabilitySummary(
 		channels: [],
 		tools: toCapabilitySummaryTools(config.tools),
 		mcpServers: (config.mcpServers ?? []).map((server) => ({ name: server.name })),
-		skills: [],
+		// The id fallback covers a body an external edit removed; the editor
+		// prunes the reverse case (orphan bodies) on write.
+		skills: (config.skills ?? []).map((ref) => ({
+			id: ref.id,
+			name: inlineAgent.skills?.[ref.id]?.name ?? ref.id,
+		})),
 		tasks: [],
 	};
 }
