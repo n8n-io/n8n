@@ -614,6 +614,36 @@ describe('N8nLlmTracing', () => {
 			});
 		});
 
+		it('should use the run-scoped prompt estimate, not a later run overwriting the shared field', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+
+			// run-1 recorded its own estimate...
+			tracer.runsMap['run-1'] = {
+				index: 0,
+				messages: ['Prompt 1'],
+				options: {},
+				promptTokensEstimate: 50,
+			};
+			// ...but a concurrent run-2 later overwrote the shared instance field.
+			tracer.promptTokensEstimate = 200;
+
+			estimateTokensFromStringList.mockResolvedValue(25);
+
+			const output: LLMResult = {
+				generations: [[{ text: 'Response text' }]],
+				llmOutput: {},
+			};
+
+			await tracer.handleLLMEnd(output, 'run-1');
+
+			const callArgs = mockExecutionFunctions.addOutputData.mock.calls[0] as any;
+			const outputData = callArgs?.[2]?.[0]?.[0]?.json;
+
+			// Prompt tokens come from run-1's own estimate (50), not run-2's shared 200.
+			expect(outputData.tokenUsageEstimate.promptTokens).toBe(50);
+			expect(outputData.tokenUsageEstimate.totalTokens).toBe(75);
+		});
+
 		it('should handle string messages', async () => {
 			const tracer = new N8nLlmTracing(mockExecutionFunctions);
 

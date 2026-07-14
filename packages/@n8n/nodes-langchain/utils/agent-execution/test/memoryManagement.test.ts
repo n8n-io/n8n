@@ -407,6 +407,27 @@ describe('memoryManagement', () => {
 			expect(result[1].content).toBe('[1, 2, 3]');
 		});
 
+		it('should keep an object-array observation as a string when its `type` is not a valid block', () => {
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'listUsers',
+						toolInput: {},
+						log: 'Listing',
+						toolCallId: 'call-users',
+						type: 'tool_call',
+					},
+					// Ordinary tool JSON whose objects happen to carry a `type` field
+					// must not be promoted to multimodal content.
+					observation: JSON.stringify([{ type: 'user', name: 'Ada' }]),
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps);
+
+			expect(result[1].content).toBe(JSON.stringify([{ type: 'user', name: 'Ada' }]));
+		});
+
 		it('should create synthetic AIMessage when messageLog is missing', () => {
 			const steps: ToolCallData[] = [
 				{

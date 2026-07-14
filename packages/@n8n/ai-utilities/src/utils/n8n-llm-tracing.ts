@@ -35,6 +35,8 @@ type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
 type RunDetail = {
 	index: number;
 	messages: BaseMessage[] | string[] | string;
+	/** Prompt-token estimate for this specific run, read back in `handleLLMEnd`. */
+	promptTokensEstimate?: number;
 	options: SerializedSecret | SerializedNotImplemented | SerializedFields;
 };
 
@@ -152,9 +154,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 				output.generations,
 			);
 
-			tokenUsageEstimate.promptTokens = this.promptTokensEstimate;
-			tokenUsageEstimate.totalTokens =
-				tokenUsageEstimate.completionTokens + this.promptTokensEstimate;
+			// Read the estimate for THIS run so interleaved runs don't cross values.
+			const promptTokensEstimate = runDetails.promptTokensEstimate ?? this.promptTokensEstimate;
+			tokenUsageEstimate.promptTokens = promptTokensEstimate;
+			tokenUsageEstimate.totalTokens = tokenUsageEstimate.completionTokens + promptTokensEstimate;
 		}
 		const response: {
 			response: { generations: LLMResult['generations'] };
@@ -257,6 +260,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			index,
 			options,
 			messages: messages[0],
+			promptTokensEstimate: estimatedTokens,
 		};
 		this.promptTokensEstimate = estimatedTokens;
 	}
@@ -293,6 +297,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			index,
 			options,
 			messages: prompts,
+			promptTokensEstimate: estimatedTokens,
 		};
 		this.promptTokensEstimate = estimatedTokens;
 	}

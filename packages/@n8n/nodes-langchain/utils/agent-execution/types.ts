@@ -107,17 +107,29 @@ export type ObservationContentBlock =
 	| ObservationFileBlock;
 
 /**
- * Type guard for an observation content block. Kept intentionally loose (only
- * requires a string `type`) so it matches any block shape buildObservation
- * produces when parsing a serialized observation back into structured content.
+ * Type guard for an observation content block. Validates the discriminator and
+ * each variant's required fields, so an ordinary JSON-array tool result that
+ * merely contains a `type` key is not misclassified as multimodal content.
  */
 export function isObservationContentBlock(block: unknown): block is ObservationContentBlock {
-	return (
-		typeof block === 'object' &&
-		block !== null &&
-		'type' in block &&
-		typeof (block as { type: unknown }).type === 'string'
-	);
+	if (typeof block !== 'object' || block === null || !('type' in block)) {
+		return false;
+	}
+	const candidate = block as Record<string, unknown>;
+	switch (candidate.type) {
+		case 'text':
+			return typeof candidate.text === 'string';
+		case 'image_url':
+			return (
+				typeof candidate.image_url === 'object' &&
+				candidate.image_url !== null &&
+				typeof (candidate.image_url as Record<string, unknown>).url === 'string'
+			);
+		case 'file':
+			return typeof candidate.mediaType === 'string' && typeof candidate.data === 'string';
+		default:
+			return false;
+	}
 }
 
 /**
