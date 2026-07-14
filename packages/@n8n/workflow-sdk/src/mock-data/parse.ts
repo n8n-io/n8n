@@ -1,4 +1,4 @@
-import { resolveStructuredEnvelopeKey } from './ai-root-shapes';
+import { findEnvelopeKey } from './ai-root-shapes';
 import { findOutputParserTargets } from './context';
 import type { NodeSchemaContext, PinData } from './types';
 import type { WorkflowJSON } from '../types/base';
@@ -73,9 +73,6 @@ export function repairStructuredOutput(
 	workflow: WorkflowJSON,
 	schemaContexts?: NodeSchemaContext[],
 ): PinData {
-	const nodeTypeByName = new Map(
-		workflow.nodes.filter((node) => node.name).map((node) => [node.name, node.type] as const),
-	);
 	const schemaByName = new Map(
 		(schemaContexts ?? []).map((ctx) => [ctx.nodeName, ctx.schema] as const),
 	);
@@ -83,9 +80,8 @@ export function repairStructuredOutput(
 
 	for (const nodeName of findOutputParserTargets(workflow).keys()) {
 		const items = repaired[nodeName];
-		const nodeType = nodeTypeByName.get(nodeName);
-		if (!items || !nodeType) continue;
-		const envelopeKey = resolveStructuredEnvelopeKey(nodeType, schemaByName.get(nodeName));
+		if (!items) continue;
+		const envelopeKey = findEnvelopeKey(schemaByName.get(nodeName));
 		if (!envelopeKey) continue;
 
 		repaired[nodeName] = items.map((item) => {

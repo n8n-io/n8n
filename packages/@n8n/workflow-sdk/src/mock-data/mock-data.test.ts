@@ -1,4 +1,3 @@
-import { AGENT_NODE_TYPE } from './ai-root-shapes';
 import { buildSchemaContexts, findOutputParserTargets } from './context';
 import { buildDateAnchors } from './date-anchors';
 import { workflowToMermaid } from './mermaid';
@@ -114,10 +113,20 @@ describe('buildSchemaContexts', () => {
 describe('buildPinDataUserPrompt', () => {
 	const anchors = buildDateAnchors(new Date('2026-01-15T12:00:00Z'));
 
-	it('embeds schemas, AI root shapes, consumers, and trailing date anchors', () => {
+	it('embeds schemas, envelope targeting, consumers, and trailing date anchors', () => {
 		const contexts = buildSchemaContexts(
 			workflow.nodes.filter((n) => n.name === 'Get Rows' || n.name === 'AI Root'),
-			({ type }) => (type === 'n8n-nodes-base.dataTable' ? { type: 'object' } : undefined),
+			({ type, hasOutputParser }) => {
+				if (type === 'n8n-nodes-base.dataTable') return { type: 'object' };
+				if (hasOutputParser) {
+					return {
+						type: 'object',
+						required: ['output'],
+						properties: { output: { type: 'object' } },
+					};
+				}
+				return undefined;
+			},
 			findOutputParserTargets(workflow),
 		);
 
@@ -129,7 +138,6 @@ describe('buildPinDataUserPrompt', () => {
 		expect(prompt).toContain('## Data Generation Instructions');
 		expect(prompt).toContain('## Test Scenario (authoritative — overrides everything above)');
 		expect(prompt).toContain('- Output JSON Schema:');
-		expect(prompt).toContain('AI ROOT OUTPUT SHAPE');
 		expect(prompt).toContain('The `output` object must conform to this JSON Schema');
 		expect(prompt).toContain('Direct downstream consumers');
 		expect(prompt.trimEnd().endsWith(anchors)).toBe(true);
@@ -167,10 +175,24 @@ describe('parsePinDataResponse', () => {
 });
 
 describe('repairStructuredOutput', () => {
+	const withParserVariant = {
+		type: 'object',
+		required: ['output'],
+		properties: { output: { type: 'object' } },
+	};
+	// The envelope is purely schema-derived: contexts resolved with the
+	// with-parser variant are what enables the repair.
+	const agentContexts = buildSchemaContexts(
+		workflow.nodes,
+		({ hasOutputParser }) => (hasOutputParser ? withParserVariant : undefined),
+		findOutputParserTargets(workflow),
+	);
+
 	it('parses JSON-encoded string outputs', () => {
 		const repaired = repairStructuredOutput(
 			{ 'AI Root': [{ json: { output: '{"summary":"hi"}' } }] },
 			workflow,
+			agentContexts,
 		);
 
 		expect(repaired['AI Root'][0]).toEqual({ json: { output: { summary: 'hi' } } });
@@ -178,7 +200,7 @@ describe('repairStructuredOutput', () => {
 
 	it('wraps flat parsed fields into the output envelope without mutating the input', () => {
 		const input = { 'AI Root': [{ json: { summary: 'hi' } }] };
-		const repaired = repairStructuredOutput(input, workflow);
+		const repaired = repairStructuredOutput(input, workflow, agentContexts);
 
 		expect(repaired['AI Root'][0]).toEqual({ json: { output: { summary: 'hi' } } });
 		expect(input['AI Root'][0]).toEqual({ json: { summary: 'hi' } });
@@ -186,15 +208,22 @@ describe('repairStructuredOutput', () => {
 
 	it('leaves well-shaped items and plain-text outputs alone', () => {
 		const wellShaped = { 'AI Root': [{ json: { output: { summary: 'hi' } } }] };
-		expect(repairStructuredOutput(wellShaped, workflow)).toEqual(wellShaped);
+		expect(repairStructuredOutput(wellShaped, workflow, agentContexts)).toEqual(wellShaped);
 
 		const plainText = { 'AI Root': [{ json: { output: 'just text' } }] };
-		expect(repairStructuredOutput(plainText, workflow)).toEqual(plainText);
+		expect(repairStructuredOutput(plainText, workflow, agentContexts)).toEqual(plainText);
+	});
+
+	it('does nothing without resolved schemas — no hardcoded envelope fallback', () => {
+		const flat = { 'AI Root': [{ json: { summary: 'hi' } }] };
+
+		expect(repairStructuredOutput(flat, workflow)).toEqual(flat);
 	});
 
 	it('repairs chainLlm parser targets into the output envelope like agent', () => {
 		// The structured output parser emits `{ output: ... }` for chainLlm too
-		// (verified against N8nStructuredOutputParser for parser versions ≥1.1).
+		// (verified against N8nStructuredOutputParser for parser versions ≥1.1) —
+		// its with-parser `__schema__` variant declares the same envelope.
 		const chainWorkflow = {
 			nodes: [
 				{ name: 'Chain', type: '@n8n/n8n-nodes-langchain.chainLlm', typeVersion: 1.9 },
@@ -209,9 +238,14 @@ describe('repairStructuredOutput', () => {
 				Parser: { ai_outputParser: [[{ node: 'Chain', type: 'ai_outputParser', index: 0 }]] },
 			},
 		} as unknown as WorkflowJSON;
+		const chainContexts = buildSchemaContexts(
+			chainWorkflow.nodes,
+			({ hasOutputParser }) => (hasOutputParser ? withParserVariant : undefined),
+			findOutputParserTargets(chainWorkflow),
+		);
 		const flat = { Chain: [{ json: { summary: 'hi' } }] };
 
-		expect(repairStructuredOutput(flat, chainWorkflow)['Chain'][0]).toEqual({
+		expect(repairStructuredOutput(flat, chainWorkflow, chainContexts)['Chain'][0]).toEqual({
 			json: { output: { summary: 'hi' } },
 		});
 	});
@@ -335,7 +369,7 @@ describe('ai-root shapes', () => {
 	});
 
 	it('derives the structured envelope key from a with-parser schema', async () => {
-		const { findEnvelopeKey, resolveStructuredEnvelopeKey } = await import('./ai-root-shapes');
+		const { findEnvelopeKey } = await import('./ai-root-shapes');
 
 		const agentVariant = {
 			type: 'object',
@@ -348,26 +382,20 @@ describe('ai-root shapes', () => {
 			required: ['output'],
 			properties: { output: { type: 'string' } },
 		};
-
-		expect(findEnvelopeKey(agentVariant)).toBe('output');
-		// Flat layouts and string outputs declare no envelope.
-		expect(findEnvelopeKey(chainLlmVariant)).toBeUndefined();
-		expect(findEnvelopeKey(plainAgent)).toBeUndefined();
-
-		// A schema-declared envelope works for any root type — no hardcoded list.
+		// A schema-declared envelope works for any root type — no hardcoded list,
+		// and no fallback: an unresolved schema means no envelope.
 		const customVariant = {
 			type: 'object',
 			required: ['data'],
 			properties: { data: { type: 'object' } },
 		};
-		expect(resolveStructuredEnvelopeKey('some.futureRoot', customVariant)).toBe('data');
-		// Without a resolved schema, agent and chainLlm keep the known-critical
-		// `output` fallback (the structured parser emits that wrapper for both).
-		expect(resolveStructuredEnvelopeKey(AGENT_NODE_TYPE, undefined)).toBe('output');
-		expect(resolveStructuredEnvelopeKey('@n8n/n8n-nodes-langchain.chainLlm', undefined)).toBe(
-			'output',
-		);
-		expect(resolveStructuredEnvelopeKey('some.futureRoot', undefined)).toBeUndefined();
+
+		expect(findEnvelopeKey(agentVariant)).toBe('output');
+		expect(findEnvelopeKey(customVariant)).toBe('data');
+		// Flat layouts, string outputs, and missing schemas declare no envelope.
+		expect(findEnvelopeKey(chainLlmVariant)).toBeUndefined();
+		expect(findEnvelopeKey(plainAgent)).toBeUndefined();
+		expect(findEnvelopeKey(undefined)).toBeUndefined();
 	});
 
 	it('prefers a resolved __schema__ over the prose shape line for AI roots', () => {

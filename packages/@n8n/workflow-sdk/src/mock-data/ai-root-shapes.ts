@@ -81,19 +81,3 @@ export function findEnvelopeKey(schema: Record<string, unknown> | undefined): st
 	);
 	return candidates.length === 1 ? candidates[0][0] : undefined;
 }
-
-/**
- * Envelope key for a parser-target root: schema-derived when the lookup
- * resolved a variant, with a hardcoded Agent/ChainLlm fallback so the
- * known-critical `output` envelope survives environments without
- * `__schema__` files (community installs, stale builds).
- */
-export function resolveStructuredEnvelopeKey(
-	nodeType: string,
-	schema: Record<string, unknown> | undefined,
-): string | undefined {
-	if (schema) return findEnvelopeKey(schema);
-	return nodeType === AGENT_NODE_TYPE || nodeType === '@n8n/n8n-nodes-langchain.chainLlm'
-		? 'output'
-		: undefined;
-}

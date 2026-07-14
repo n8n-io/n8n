@@ -273,7 +273,6 @@ describe('emit-instance-ai', () => {
 			'isAiRootNodeType',
 			'parsePinDataResponse',
 			'repairStructuredOutput',
-			'resolveStructuredEnvelopeKey',
 			'workflowToMermaid',
 			// Display-options matching
 			'matchesDisplayOptions',

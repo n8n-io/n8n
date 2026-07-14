@@ -222,6 +222,12 @@ describe('generateSimulationFixtures', () => {
 		const result = await generateSimulationFixtures({
 			workflow,
 			plan: [simulateVerdict('AI Root')],
+			// The envelope is derived from the with-parser `__schema__` variant —
+			// in the product the adapter always injects this lookup.
+			outputSchemaLookup: ({ hasOutputParser }) =>
+				hasOutputParser
+					? { type: 'object', required: ['output'], properties: { output: { type: 'object' } } }
+					: undefined,
 		});
 
 		expect(result['AI Root']).toEqual([{ output: { summary: 'hi' } }]);

@@ -10,7 +10,6 @@ export {
 	isAiRootNodeType,
 	describeAiRootShape,
 	findEnvelopeKey,
-	resolveStructuredEnvelopeKey,
 } from './ai-root-shapes';
 export {
 	buildSchemaContexts,

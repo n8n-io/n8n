@@ -1,8 +1,4 @@
-import {
-	describeAiRootShape,
-	isAiRootNodeType,
-	resolveStructuredEnvelopeKey,
-} from './ai-root-shapes';
+import { describeAiRootShape, findEnvelopeKey, isAiRootNodeType } from './ai-root-shapes';
 import { collectDownstreamConsumers } from './context';
 import { workflowToMermaid } from './mermaid';
 import type { NodeSchemaContext, PinDataGenerationInstructions } from './types';
@@ -48,7 +44,7 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 			lines.push(`- AI ROOT OUTPUT SHAPE: every item MUST be ${describeAiRootShape(ctx.nodeType)}`);
 		}
 		if (ctx.outputParser?.schemaText) {
-			const envelopeKey = resolveStructuredEnvelopeKey(ctx.nodeType, ctx.schema);
+			const envelopeKey = findEnvelopeKey(ctx.schema);
 			const target = envelopeKey ? `The \`${envelopeKey}\` object` : 'The top-level `json` fields';
 			const label = ctx.outputParser.schemaIsExample
 				? `- ${target} must have the same shape and field names as this example:`
