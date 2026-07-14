@@ -81,6 +81,7 @@ import {
 import {
 	extractErrorMessage,
 	isTransientNetworkError,
+	LANE_QUARANTINED_ABORT,
 	MAX_EXEC_ATTEMPTS,
 	shouldRetryScenarioExecution,
 } from '../harness/transient-error';
@@ -102,9 +103,6 @@ import type {
 	WorkflowTestCaseResult,
 } from '../types';
 import { caseDisplayPrompt, conversationUserTurnsAsText } from '../utils/conversation-text';
-
-// n8n degrades above ~4 concurrent builds.
-const MAX_CONCURRENT_BUILDS = 4;
 
 /** Attempts (initial + retries) for a build hitting transient network errors. */
 const MAX_BUILD_ATTEMPTS = 3;
@@ -596,7 +594,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		testCaseByFileSlug.set(fileSlug, testCase);
 	}
 
-	// LaneState carries the allocator-managed counters (activeBuilds,
+	// LaneState carries the allocator-managed counters (activeWork,
 	// inflightKeys) plus the lane's traced LangSmith wrappers. `runner` is
 	// the underlying Lane (n8n client, credential state) — named distinctly so
 	// it doesn't shadow the iteration variable `lane` in lanes.map().
@@ -614,8 +612,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	interface LaneState {
 		runner: Lane;
 		laneNum: number;
-		activeBuilds: number;
+		activeWork: number;
 		inflightKeys: Set<string>;
+		/** Armed per quarantine: aborts the lane's in-flight HTTP work so it
+		 *  fails fast instead of running out its timeouts against a dead backend. */
+		failFast: AbortController;
 		tracedBuild: (buildArgs: BuildArgs) => Promise<BuildResult>;
 		tracedExecute: (execArgs: {
 			workflowId: string;
@@ -632,8 +633,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		return {
 			runner: lane,
 			laneNum,
-			activeBuilds: 0,
+			activeWork: 0,
 			inflightKeys: new Set<string>(),
+			failFast: new AbortController(),
 			tracedBuild: traceable(
 				async (buildArgs: BuildArgs) =>
 					await buildWorkflow({
@@ -709,19 +711,30 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	}
 
 	// Work-stealing: each build acquires a lane that isn't already running its
-	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use
-	// the lane that built their workflow. Health options quarantine a dead lane
-	// instead of letting its instant failures attract the whole queue.
-	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS, {
+	// fileSlug, runs there, then releases. Scenario executions re-acquire the
+	// lane that built their workflow, so builds and scenarios share the same
+	// per-lane cap — a lane whose scenarios back up stops winning new builds
+	// until it drains. Health options quarantine a dead lane instead of letting
+	// its instant failures attract the whole queue.
+	const allocator = new LaneAllocator(laneStates, args.laneConcurrency, {
 		probe: laneHealthy,
-		onQuarantine: (lane) =>
+		onQuarantine: (lane) => {
 			logger.error(
 				`[lane ${String(lane.laneNum)}] quarantined after consecutive transport failures; probing ${lane.runner.baseUrl} for recovery`,
-			),
+			);
+			// Fail the lane's in-flight HTTP work now — those requests can only
+			// run out their timeouts against a dead backend, and each burnt
+			// timeout books a framework row. A fresh controller arms retries.
+			lane.failFast.abort(new Error(`${LANE_QUARANTINED_ABORT} (lane ${String(lane.laneNum)})`));
+			lane.failFast = new AbortController();
+		},
 		onReadmit: (lane) => logger.info(`[lane ${String(lane.laneNum)}] healthy again — re-admitted`),
 		onAllQuarantined: () =>
 			logger.error('All lanes quarantined — builds paused pending lane recovery'),
 	});
+	for (const state of laneStates) {
+		state.runner.client.laneSignal = () => state.failFast.signal;
+	}
 	const buildCache = new Map<
 		string,
 		Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }>
@@ -773,7 +786,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				{
 					const transient = await isTransportFailure(build, lane);
 					if (!build.success) build.transportFailure = transient;
-					allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
+					allocator.reportOutcome(lane, transient ? 'transient-failure' : 'ok');
 				}
 				const buildDurationMs = Date.now() - start;
 				// Cleanup registration happens inside buildWorkflowViaMcpOnLane (as soon
@@ -861,7 +874,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					(await isTransportFailure(build, lane)) ||
 					(!build.success && allocator.wasQuarantinedSince(lane, start));
 				if (!build.success) build.transportFailure = transient;
-				allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
+				allocator.reportOutcome(lane, transient ? 'transient-failure' : 'ok');
 				if (!transient || attempt >= MAX_BUILD_ATTEMPTS) break;
 				logger.warn(
 					`Build ${fileSlug} attempt ${String(attempt)}/${String(MAX_BUILD_ATTEMPTS)} failed transiently on lane ${String(lane.laneNum)} (${build.error ?? 'unknown'}); retrying on another lane`,
@@ -1068,22 +1081,42 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 
 		const execStart = Date.now();
 		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
+		const scenarioTimeoutMs = effectiveTimeoutMs(
+			testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
+			args.timeoutMs,
+		);
 		let result;
 		for (let attempt = 1; ; attempt++) {
 			try {
-				result = await builtOnLane.tracedExecute({
-					workflowId: build.workflowId,
-					scenario,
-					workflowJsons: build.workflowJsons,
-					buildTrace: build.buildTrace,
-					timeoutMs: effectiveTimeoutMs(
-						testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
-						args.timeoutMs,
-					),
-				});
+				// Scenario executions are pinned to the lane that built the workflow,
+				// so they take one of its work slots — that's what makes scenario
+				// backlog visible to the build allocator. A quarantined lane keeps
+				// the slot request queued until re-admission (the workflow survives
+				// the container restart). Waiting burns no compute, so the deadline
+				// is 2× the scenario budget: enough to outlast in-flight builds
+				// ahead of it, while still bounding a truly wedged lane.
+				await allocator.acquireOn(builtOnLane, { deadlineMs: scenarioTimeoutMs * 2 });
+				try {
+					result = await builtOnLane.tracedExecute({
+						workflowId: build.workflowId,
+						scenario,
+						workflowJsons: build.workflowJsons,
+						buildTrace: build.buildTrace,
+						timeoutMs: scenarioTimeoutMs,
+					});
+				} finally {
+					allocator.release(builtOnLane);
+				}
+				allocator.reportOutcome(builtOnLane, 'ok');
 				break;
 			} catch (error: unknown) {
 				const errorMessage = extractErrorMessage(error);
+				// In a scenario-only phase (a run's tail) these are the only signal
+				// that a lane died — without them quarantine, and with it fail-fast
+				// and wait-for-recovery, would never engage after the last build.
+				if (isTransientNetworkError(errorMessage)) {
+					allocator.reportOutcome(builtOnLane, 'transient-failure');
+				}
 				if (shouldRetryScenarioExecution(errorMessage, attempt)) {
 					logger.warn(
 						`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
@@ -1200,8 +1233,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 
 	const experimentPrefix = args.experimentName ?? computeExperimentPrefix();
 
+	// One in-flight case-iteration per lane work slot, plus one spare per lane
+	// so a lane isn't idle while an example sits in a judge phase (no lane work).
+	const evaluateConcurrency = lanes.length * (args.laneConcurrency + 1);
 	logger.info(
-		`Starting evaluate() with concurrency=${String(args.concurrency)}, ${String(lanes.length)} lane(s) × ${String(MAX_CONCURRENT_BUILDS)} concurrent builds, iterations=${String(args.iterations)}`,
+		`Starting evaluate() with ${String(lanes.length)} lane(s) × lane-concurrency ${String(args.laneConcurrency)} (builds + scenario executions) → ${String(evaluateConcurrency)} in-flight case-iterations, iterations=${String(args.iterations)}`,
 	);
 
 	// Filter the dataset to the selected slugs — the sync is additive, so orphans
@@ -1223,7 +1259,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			data: evaluateData,
 			evaluators: [feedbackExtractor],
 			experimentPrefix,
-			maxConcurrency: args.concurrency,
+			maxConcurrency: evaluateConcurrency,
 			client: lsClient,
 			metadata: {
 				filter: args.filter ?? 'all',
@@ -1231,8 +1267,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				tier: args.tier ?? null,
 				prebuilt: prebuiltManifest !== undefined,
 				baselinePrefix: args.baselinePrefix,
-				concurrency: args.concurrency,
-				maxBuilds: MAX_CONCURRENT_BUILDS,
+				concurrency: evaluateConcurrency,
+				laneConcurrency: args.laneConcurrency,
 				lanes: lanes.length,
 				iterations: args.iterations,
 				...buildCIMetadata(),
@@ -1582,7 +1618,7 @@ async function runDirectLoop(config: RunConfig): Promise<{
 							}
 							return result;
 						},
-						MAX_CONCURRENT_BUILDS,
+						args.laneConcurrency,
 					);
 					return bucket.map((b, i) => ({ origIdx: b.origIdx, result: results[i] }));
 				}),

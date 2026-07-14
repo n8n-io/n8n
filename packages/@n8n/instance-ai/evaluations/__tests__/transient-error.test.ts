@@ -1,7 +1,10 @@
 import {
 	extractErrorMessage,
+	isExecutionTimeout,
 	isTransientNetworkError,
+	LANE_QUARANTINED_ABORT,
 	MAX_EXEC_ATTEMPTS,
+	shouldRetryScenarioExecution,
 } from '../harness/transient-error';
 
 describe('transient-error', () => {
@@ -59,5 +62,24 @@ describe('transient-error', () => {
 	it('caps retries at a small positive number', () => {
 		expect(MAX_EXEC_ATTEMPTS).toBeGreaterThan(1);
 		expect(MAX_EXEC_ATTEMPTS).toBeLessThanOrEqual(5);
+	});
+
+	describe('lane-quarantine aborts', () => {
+		const message = `${LANE_QUARANTINED_ABORT} (lane 3)`;
+
+		it('classifies the abort as transient so builds fail over', () => {
+			expect(isTransientNetworkError(message)).toBe(true);
+		});
+
+		it('does not mistake the abort for a client-side timeout', () => {
+			// Timeouts get MAX_TIMEOUT_ATTEMPTS (2); the fail-fast abort is cheap
+			// and must keep the full network-retry budget.
+			expect(isExecutionTimeout(message)).toBe(false);
+		});
+
+		it('retries the aborted execution up to the network-retry budget', () => {
+			expect(shouldRetryScenarioExecution(message, MAX_EXEC_ATTEMPTS - 1)).toBe(true);
+			expect(shouldRetryScenarioExecution(message, MAX_EXEC_ATTEMPTS)).toBe(false);
+		});
 	});
 });

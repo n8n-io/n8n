@@ -296,3 +296,17 @@ describe('parseCliArgs --build-via-mcp', () => {
 		expect(() => parseCliArgs(['--build-max-attempts', 'lots'])).toThrow();
 	});
 });
+
+describe('parseCliArgs --lane-concurrency', () => {
+	it('defaults to 4 work units per lane', () => {
+		expect(parseCliArgs([]).laneConcurrency).toBe(4);
+	});
+
+	it('parses an explicit per-lane cap', () => {
+		expect(parseCliArgs(['--lane-concurrency', '2']).laneConcurrency).toBe(2);
+	});
+
+	it('rejects the removed --concurrency flag with a migration hint', () => {
+		expect(() => parseCliArgs(['--concurrency', '32'])).toThrow(/--lane-concurrency/);
+	});
+});

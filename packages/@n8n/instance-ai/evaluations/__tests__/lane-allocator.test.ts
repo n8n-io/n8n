@@ -7,7 +7,7 @@ interface TestLane extends AllocatableLane {
 function newLanes(count: number): TestLane[] {
 	return Array.from({ length: count }, (_, i) => ({
 		id: i,
-		activeBuilds: 0,
+		activeWork: 0,
 		inflightKeys: new Set<string>(),
 	}));
 }
@@ -20,7 +20,7 @@ describe('LaneAllocator', () => {
 		const l2 = await a.acquire('p2');
 		const l3 = await a.acquire('p3');
 		expect([l1.id, l2.id, l3.id]).toEqual([0, 1, 2]);
-		expect(lanes.map((l) => l.activeBuilds)).toEqual([1, 1, 1]);
+		expect(lanes.map((l) => l.activeWork)).toEqual([1, 1, 1]);
 	});
 
 	it('skips a lane already running the same prompt', async () => {
@@ -51,7 +51,7 @@ describe('LaneAllocator', () => {
 		expect(lanes[0].inflightKeys.has('p1')).toBe(true);
 	});
 
-	it('respects maxConcurrentBuilds per lane', async () => {
+	it('respects the per-lane work cap', async () => {
 		const lanes = newLanes(1);
 		const a = new LaneAllocator(lanes, 2);
 		await a.acquire('p1');
@@ -92,6 +92,137 @@ describe('LaneAllocator', () => {
 		expect(order).toEqual(['p3', 'p1']);
 	});
 
+	describe('pinned work slots (scenario executions)', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('counts pinned work toward the lane cap so a backlogged lane stops winning builds', async () => {
+			const lanes = newLanes(2);
+			const a = new LaneAllocator(lanes, 2);
+			await a.acquireOn(lanes[0]);
+			await a.acquireOn(lanes[0]);
+			// Lane 0 is full of scenario work — every build must land on lane 1.
+			const b1 = await a.acquire('p1');
+			const b2 = await a.acquire('p2');
+			expect([b1.id, b2.id]).toEqual([1, 1]);
+			a.release(lanes[0]);
+			const b3 = await a.acquire('p3');
+			expect(b3.id).toBe(0);
+		});
+
+		it('waits for the pinned lane even when other lanes are free', async () => {
+			const lanes = newLanes(2);
+			const a = new LaneAllocator(lanes, 1);
+			await a.acquire('p1'); // fills lane 0
+			let resolved = false;
+			const pinned = a.acquireOn(lanes[0]).then(() => {
+				resolved = true;
+			});
+			await new Promise((r) => setImmediate(r));
+			expect(resolved).toBe(false); // lane 1 being free must not unblock it
+			a.release(lanes[0], 'p1');
+			await pinned;
+			expect(resolved).toBe(true);
+		});
+
+		it('rejects a pinned wait at its deadline with the lane state in the message', async () => {
+			vi.useFakeTimers();
+			const lanes = newLanes(1);
+			const a = new LaneAllocator(lanes, 1);
+			await a.acquire('p1');
+			const pinned = a.acquireOn(lanes[0], { deadlineMs: 1000 });
+			const rejection = expect(pinned).rejects.toThrow('no lane slot within 1000ms');
+			await vi.advanceTimersByTimeAsync(1000);
+			await rejection;
+			vi.useRealTimers();
+		});
+
+		it('keeps pinned waiters queued through quarantine and serves them on re-admission', async () => {
+			vi.useFakeTimers();
+			const lanes = newLanes(2);
+			let healthy = false;
+			const a = new LaneAllocator(lanes, 4, {
+				probe: async () => await Promise.resolve(healthy),
+				probeIntervalMs: 1000,
+				quarantineThreshold: 1,
+			});
+			a.reportOutcome(lanes[0], 'transient-failure');
+			expect(a.isQuarantined(lanes[0])).toBe(true);
+			let resolved = false;
+			const pinned = a.acquireOn(lanes[0]).then(() => {
+				resolved = true;
+			});
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(resolved).toBe(false);
+			healthy = true;
+			await vi.advanceTimersByTimeAsync(1000);
+			await pinned;
+			expect(resolved).toBe(true);
+			expect(lanes[0].activeWork).toBe(1);
+			vi.useRealTimers();
+		});
+
+		it('serves a queued pinned waiter before an earlier-queued build waiter', async () => {
+			const lanes = newLanes(1);
+			const a = new LaneAllocator(lanes, 1);
+			await a.acquire('p1'); // fills the lane
+			const order: string[] = [];
+			void a.acquire('p2').then(() => order.push('build'));
+			void a.acquireOn(lanes[0]).then(() => order.push('pinned'));
+			a.release(lanes[0], 'p1');
+			await new Promise((r) => setImmediate(r));
+			// The build queued first, but it could run on any lane — the pinned
+			// scenario can only run here, so it wins the freed slot.
+			expect(order).toEqual(['pinned']);
+			a.release(lanes[0]);
+			await new Promise((r) => setImmediate(r));
+			expect(order).toEqual(['pinned', 'build']);
+		});
+
+		it('hands a re-admitted lane to its pinned backlog before queued builds', async () => {
+			vi.useFakeTimers();
+			const lanes = newLanes(1);
+			let healthy = false;
+			const a = new LaneAllocator(lanes, 2, {
+				probe: async () => await Promise.resolve(healthy),
+				probeIntervalMs: 1000,
+				quarantineThreshold: 1,
+				allQuarantinedGraceMs: 60_000,
+			});
+			a.reportOutcome(lanes[0], 'transient-failure');
+			const order: string[] = [];
+			void a.acquire('p1').then(() => order.push('build'));
+			void a.acquireOn(lanes[0]).then(() => order.push('pinned-1'));
+			void a.acquireOn(lanes[0]).then(() => order.push('pinned-2'));
+			healthy = true;
+			await vi.advanceTimersByTimeAsync(1000);
+			// Two slots on re-admission: the pinned backlog (which waited through
+			// the outage) fills them; the build — queued first — stays behind.
+			expect(order).toEqual(['pinned-1', 'pinned-2']);
+			a.release(lanes[0]);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(order).toEqual(['pinned-1', 'pinned-2', 'build']);
+		});
+
+		it('does not hand a freed slot on another lane to a pinned waiter', async () => {
+			const lanes = newLanes(2);
+			const a = new LaneAllocator(lanes, 1);
+			await a.acquire('p1'); // lane 0
+			await a.acquire('p2'); // lane 1
+			let resolved = false;
+			void a.acquireOn(lanes[0]).then(() => {
+				resolved = true;
+			});
+			a.release(lanes[1], 'p2');
+			await new Promise((r) => setImmediate(r));
+			expect(resolved).toBe(false);
+			a.release(lanes[0], 'p1');
+			await new Promise((r) => setImmediate(r));
+			expect(resolved).toBe(true);
+		});
+	});
+
 	describe('lane health', () => {
 		afterEach(() => {
 			vi.useRealTimers();
@@ -105,7 +236,7 @@ describe('LaneAllocator', () => {
 				quarantineThreshold: 3,
 				onQuarantine,
 			});
-			for (let i = 0; i < 3; i++) a.reportBuildOutcome(lanes[0], 'transient-failure');
+			for (let i = 0; i < 3; i++) a.reportOutcome(lanes[0], 'transient-failure');
 			expect(a.isQuarantined(lanes[0])).toBe(true);
 			expect(onQuarantine).toHaveBeenCalledWith(lanes[0]);
 			const l1 = await a.acquire('p1');
@@ -119,11 +250,11 @@ describe('LaneAllocator', () => {
 				probe: async () => await Promise.resolve(false),
 				quarantineThreshold: 3,
 			});
-			a.reportBuildOutcome(lanes[0], 'transient-failure');
-			a.reportBuildOutcome(lanes[0], 'transient-failure');
-			a.reportBuildOutcome(lanes[0], 'ok');
-			a.reportBuildOutcome(lanes[0], 'transient-failure');
-			a.reportBuildOutcome(lanes[0], 'transient-failure');
+			a.reportOutcome(lanes[0], 'transient-failure');
+			a.reportOutcome(lanes[0], 'transient-failure');
+			a.reportOutcome(lanes[0], 'ok');
+			a.reportOutcome(lanes[0], 'transient-failure');
+			a.reportOutcome(lanes[0], 'transient-failure');
 			expect(a.isQuarantined(lanes[0])).toBe(false);
 		});
 
@@ -139,7 +270,7 @@ describe('LaneAllocator', () => {
 				allQuarantinedGraceMs: 60_000,
 				onReadmit,
 			});
-			a.reportBuildOutcome(lanes[0], 'transient-failure');
+			a.reportOutcome(lanes[0], 'transient-failure');
 			expect(a.isQuarantined(lanes[0])).toBe(true);
 			const waiter = a.acquire('p1');
 			await vi.advanceTimersByTimeAsync(1000);
@@ -173,7 +304,7 @@ describe('LaneAllocator', () => {
 				quarantineThreshold: 1,
 			});
 			expect(a.wasQuarantinedSince(lanes[0], before)).toBe(false);
-			a.reportBuildOutcome(lanes[0], 'transient-failure');
+			a.reportOutcome(lanes[0], 'transient-failure');
 			expect(a.wasQuarantinedSince(lanes[0], before)).toBe(true);
 			expect(a.wasQuarantinedSince(lanes[0], Date.now() + 1000)).toBe(false);
 		});
@@ -187,8 +318,8 @@ describe('LaneAllocator', () => {
 				quarantineThreshold: 1,
 				allQuarantinedGraceMs: 5000,
 			});
-			a.reportBuildOutcome(lanes[0], 'transient-failure');
-			a.reportBuildOutcome(lanes[1], 'transient-failure');
+			a.reportOutcome(lanes[0], 'transient-failure');
+			a.reportOutcome(lanes[1], 'transient-failure');
 			const pending = a.acquire('p1');
 			const rejection = expect(pending).rejects.toThrow('All 2 lanes quarantined');
 			await vi.advanceTimersByTimeAsync(5000);

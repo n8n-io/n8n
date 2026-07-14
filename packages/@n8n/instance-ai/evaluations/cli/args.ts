@@ -38,7 +38,7 @@ export interface CliArgs {
 	timeoutMs: number;
 	/** One or more n8n base URLs. Multi-lane runs use a work-stealing allocator
 	 *  that dispatches each build to a lane that isn't already running its
-	 *  prompt, capped per-lane at MAX_CONCURRENT_BUILDS=4. Pass comma-separated
+	 *  prompt, capped per-lane by `--lane-concurrency`. Pass comma-separated
 	 *  to `--base-url`. */
 	baseUrls: string[];
 	email?: string;
@@ -63,9 +63,13 @@ export interface CliArgs {
 	outputDir?: string;
 	/** LangSmith dataset name (synced from JSON test cases before each run) */
 	dataset: string;
-	/** Max concurrent target() calls in LangSmith evaluate(). Build concurrency is
-	 *  enforced separately by the LaneAllocator (cap=4 per lane). */
-	concurrency: number;
+	/** Max concurrent work units (builds + scenario executions) on one lane —
+	 *  the one concurrency knob. Lanes come from `--base-url`; the global
+	 *  in-flight cap is derived as lanes × (laneConcurrency + 1), so it never
+	 *  needs to be kept in sync with the lane count by hand. With a single
+	 *  base URL this is simply "how much runs at once on my instance". The
+	 *  default reflects that an n8n backend degrades above ~4 concurrent builds. */
+	laneConcurrency: number;
 	/** LangSmith experiment name prefix (auto-generated if not set) */
 	experimentName?: string;
 	/** Number of iterations to run each test case (default: 1). Each iteration
@@ -138,7 +142,7 @@ const cliArgsSchema = z.object({
 	deletePrebuiltWorkflows: z.boolean().default(false),
 	outputDir: z.string().optional(),
 	dataset: z.string().default(DEFAULT_DATASET),
-	concurrency: z.number().int().positive().default(16),
+	laneConcurrency: z.number().int().positive().default(4),
 	experimentName: z.string().optional(),
 	iterations: z.number().int().positive().default(1),
 	pinAiRoots: z.array(z.string().min(1)).optional(),
@@ -235,7 +239,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		deletePrebuiltWorkflows: validated.deletePrebuiltWorkflows,
 		outputDir: validated.outputDir,
 		dataset,
-		concurrency: validated.concurrency,
+		laneConcurrency: validated.laneConcurrency,
 		experimentName: validated.experimentName,
 		iterations: validated.iterations,
 		pinAiRoots: validated.pinAiRoots,
@@ -295,7 +299,7 @@ interface RawArgs {
 	deletePrebuiltWorkflows: boolean;
 	outputDir?: string;
 	dataset: string;
-	concurrency: number;
+	laneConcurrency: number;
 	experimentName?: string;
 	iterations: number;
 	pinAiRoots?: string[];
@@ -328,7 +332,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		deletePrebuiltWorkflows: false,
 		outputDir: undefined,
 		dataset: DEFAULT_DATASET,
-		concurrency: 16,
+		laneConcurrency: 4,
 		experimentName: undefined,
 		iterations: 1,
 		pinAiRoots: undefined,
@@ -417,10 +421,18 @@ function parseRawArgs(argv: string[]): RawArgs {
 				i++;
 				break;
 
-			case '--concurrency':
-				result.concurrency = parseIntArg(argv, i, '--concurrency');
+			case '--lane-concurrency':
+				result.laneConcurrency = parseIntArg(argv, i, '--lane-concurrency');
 				i++;
 				break;
+
+			case '--concurrency':
+				throw new Error(
+					'--concurrency was replaced by --lane-concurrency: the cap is per lane now ' +
+						'(concurrent builds + scenario executions on one lane, default 4), and the ' +
+						'global in-flight cap is derived as lanes × (lane-concurrency + 1). With a ' +
+						'single --base-url the two flags mean the same thing.',
+				);
 
 			case '--experiment-name':
 				result.experimentName = nextArg(argv, i, '--experiment-name');
