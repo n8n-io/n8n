@@ -1,168 +1,38 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHttpRequestMethods,
-	ILoadOptionsFunctions,
-	IRequestOptions,
-	JsonObject,
-} from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestMethods, IHttpRequestOptions } from 'n8n-workflow';
 
-export const SERVICE_PRINCIPAL_AUTH = 'microsoftEntraServicePrincipalApi';
+import { buildRequestOptions } from '../helpers/converters';
+import { getExcelSharePointCredentialType } from '../helpers/credentials';
+import { getErrorMapper } from '../helpers/errorMappers';
+import type { AuthContext } from '../helpers/interfaces';
 
-export type ExcelSharePointCredentialType = 'microsoftOAuth2Api' | typeof SERVICE_PRINCIPAL_AUTH;
-
-export const DEFAULT_GRAPH_BASE_URL = 'https://graph.microsoft.com';
-
-// Consulted on 403s so the error names the missing permission; each action adds its row.
-export const REQUIRED_PERMISSIONS: Record<string, { delegated: string; application: string }> = {
-	'worksheet:readRows': {
-		delegated: 'Sites.Read.All',
-		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
-	},
-};
-
-export function getExcelSharePointCredentialType(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-): ExcelSharePointCredentialType {
-	// In load-options contexts the 2nd arg is the fallback, not an item index — keep the 2-arg form
-	const selected = this.getNodeParameter('authentication', 0);
-	return selected === SERVICE_PRINCIPAL_AUTH ? SERVICE_PRINCIPAL_AUTH : 'microsoftOAuth2Api';
-}
-
-/** Best-effort lookup; load-options contexts may not expose resource/operation. */
-function lookupRequiredPermissions(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-): { delegated: string; application: string } | undefined {
-	try {
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
-		if (typeof resource === 'string' && typeof operation === 'string') {
-			return REQUIRED_PERMISSIONS[`${resource}:${operation}`];
-		}
-	} catch {}
-	return undefined;
-}
-
-type GraphRequestError = {
-	httpCode?: string | number | null;
-	statusCode?: string | number | null;
-	message?: string;
-	code?: string;
-	error?: { error?: GraphRequestError };
-};
-
-// A 404 can come from any of the location segments, so the message must not
-// single one out
-const NOT_FOUND_MESSAGE =
-	'The requested resource was not found. Check the Site, Library, Workbook, and Sheet values.';
-
-// App-only error bodies can include internal identifiers — surface only a
-// fixed message + status (which lives on `httpCode` as a string when wrapped)
-function servicePrincipalApiError(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	error: GraphRequestError,
-): NodeApiError {
-	const rawCode = error.httpCode ?? error.statusCode;
-	const httpCode: number | undefined =
-		rawCode === undefined || rawCode === null ? undefined : Number(rawCode);
-
-	let message: string;
-	if (httpCode === undefined || Number.isNaN(httpCode)) {
-		// No HTTP status means the request never got an answer — don't blame
-		// inputs or permissions
-		message = 'Could not reach Microsoft Graph. Check your network connection and try again.';
-	} else if (httpCode === 404) {
-		message = NOT_FOUND_MESSAGE;
-	} else if (httpCode === 401) {
-		message =
-			"The Service Principal token was rejected. Check the app registration's client secret and that admin consent is granted.";
-	} else if (httpCode === 403) {
-		const permissions = lookupRequiredPermissions.call(this);
-		message = permissions
-			? `The app registration is missing a consented application permission for this operation: ${permissions.application}. Grant it and admin consent, then retry.`
-			: 'The app registration is missing a consented application permission for this operation. Grant the required Microsoft Graph application permission and admin consent, then retry.';
-	} else {
-		message = `Microsoft Graph rejected the request (HTTP ${httpCode ?? 'unknown'}). Check the operation's inputs and the app registration's permissions.`;
-	}
-
-	const sanitizedError: JsonObject = { message };
-	const errorOptions: IDataObject = { message };
-	if (httpCode !== undefined && !Number.isNaN(httpCode)) {
-		sanitizedError.httpStatusCode = httpCode;
-		errorOptions.httpCode = `${httpCode}`;
-	}
-	return new NodeApiError(this.getNode(), sanitizedError, errorOptions);
-}
-
-function delegatedApiError(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	error: GraphRequestError,
-): NodeApiError {
-	const errorOptions: IDataObject = {};
-	const statusCode = Number(error.statusCode ?? error.httpCode);
-	if (statusCode === 403) {
-		// Missing scope OR no access to the site; callers key off httpCode '403'
-		const permissions = lookupRequiredPermissions.call(this);
-		errorOptions.message = permissions
-			? `Microsoft Graph refused this request. The credential may be missing the ${permissions.delegated} permission, or the signed-in account may not have access to this resource`
-			: 'Microsoft Graph refused this request. The credential may be missing a required permission, or the signed-in account may not have access to this resource';
-		errorOptions.description =
-			"Check the credential's scopes (with admin consent if your tenant requires it) and that the signed-in account can access the site, then try again.";
-		errorOptions.httpCode = '403';
-	} else if (error.error?.error) {
-		const httpCode = error.statusCode;
-		error = error.error.error;
-		error.statusCode = httpCode;
-		errorOptions.message = error.message;
-
-		if (error.code === 'NotFound' && error.message === 'Resource not found') {
-			errorOptions.message = NOT_FOUND_MESSAGE;
-		}
-	}
-	return new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
-}
-
-export async function microsoftApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+export async function microsoftApiRequest<T extends IDataObject = IDataObject>(
+	this: AuthContext,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-): Promise<IDataObject> {
+): Promise<T> {
 	const credentialType = getExcelSharePointCredentialType.call(this);
-	const isServicePrincipal = credentialType === SERVICE_PRINCIPAL_AUTH;
+	const mapError = getErrorMapper(credentialType);
 	const credentials = await this.getCredentials(credentialType);
-	const baseUrl = (
-		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
-			? credentials.graphApiBaseUrl
-			: DEFAULT_GRAPH_BASE_URL
-	).replace(/\/+$/, '');
-	const options: IRequestOptions = {
-		headers: {
-			'Content-Type': 'application/json',
-		},
+	const options = buildRequestOptions({
 		method,
+		resource,
 		body,
 		qs,
-		// An explicit `uri` (e.g. a next-page link from Graph) is used verbatim
-		uri: uri ?? `${baseUrl}${resource}`,
-		json: true,
-	};
+		uri,
+		headers,
+		graphApiBaseUrl: credentials.graphApiBaseUrl,
+	});
 	try {
-		if (Object.keys(headers).length !== 0) {
-			options.headers = Object.assign({}, options.headers, headers);
-		}
-		// The SP credential is not an oAuth2Api type, so it can't go through requestOAuth2
-		if (isServicePrincipal) {
-			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-		}
-		return await this.helpers.requestOAuth2.call(this, credentialType, options);
+		return await this.helpers.httpRequestWithAuthentication.call<
+			AuthContext,
+			[string, IHttpRequestOptions],
+			Promise<T>
+		>(this, credentialType, options);
 	} catch (error) {
-		throw isServicePrincipal
-			? servicePrincipalApiError.call(this, error)
-			: delegatedApiError.call(this, error);
+		throw mapError.call(this, error);
 	}
 }

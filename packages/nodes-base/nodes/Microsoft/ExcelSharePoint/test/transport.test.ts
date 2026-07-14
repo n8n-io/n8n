@@ -3,12 +3,12 @@ import { NodeApiError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH } from '../transport';
+import { SERVICE_PRINCIPAL_AUTH } from '../helpers/constants';
+import { microsoftApiRequest } from '../transport';
 
 describe('Microsoft Excel (SharePoint) Transport', () => {
 	let ctx: Mocked<IExecuteFunctions>;
-	let mockRequestOAuth2: Mock;
-	let mockRequestWithAuthentication: Mock;
+	let mockHttpRequestWithAuthentication: Mock;
 
 	const setParams = (params: Record<string, unknown>) => {
 		ctx.getNodeParameter.mockImplementation(
@@ -20,10 +20,8 @@ describe('Microsoft Excel (SharePoint) Transport', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		ctx = mockDeep<IExecuteFunctions>();
-		mockRequestOAuth2 = vi.fn().mockResolvedValue({ values: [] });
-		mockRequestWithAuthentication = vi.fn().mockResolvedValue({ values: [] });
-		ctx.helpers.requestOAuth2 = mockRequestOAuth2;
-		ctx.helpers.requestWithAuthentication = mockRequestWithAuthentication;
+		mockHttpRequestWithAuthentication = vi.fn().mockResolvedValue({ values: [] });
+		ctx.helpers.httpRequestWithAuthentication = mockHttpRequestWithAuthentication;
 		ctx.getNode.mockReturnValue({
 			id: 'test-node',
 			name: 'Test Node',
@@ -46,9 +44,9 @@ describe('Microsoft Excel (SharePoint) Transport', () => {
 
 		await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/drives/d/items/i');
 
-		expect(mockRequestOAuth2).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
 			'microsoftOAuth2Api',
-			expect.objectContaining({ uri: `${baseUrl}/v1.0/sites/s/drives/d/items/i` }),
+			expect.objectContaining({ url: `${baseUrl}/v1.0/sites/s/drives/d/items/i` }),
 		);
 	});
 
@@ -57,20 +55,22 @@ describe('Microsoft Excel (SharePoint) Transport', () => {
 
 		await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s');
 
-		expect(mockRequestOAuth2).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
 			'microsoftOAuth2Api',
-			expect.objectContaining({ uri: 'https://graph.microsoft.com/v1.0/sites/s' }),
+			expect.objectContaining({ url: 'https://graph.microsoft.com/v1.0/sites/s' }),
 		);
 	});
 
-	it('routes Service Principal requests through requestWithAuthentication', async () => {
+	it('sends Service Principal requests with its own credential type', async () => {
 		setParams({ authentication: SERVICE_PRINCIPAL_AUTH });
 
 		await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s');
 
 		expect(ctx.getCredentials).toHaveBeenCalledWith(SERVICE_PRINCIPAL_AUTH);
-		expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
-		expect(mockRequestOAuth2).not.toHaveBeenCalled();
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+			SERVICE_PRINCIPAL_AUTH,
+			expect.anything(),
+		);
 	});
 
 	it('uses an explicit uri verbatim', async () => {
@@ -78,9 +78,9 @@ describe('Microsoft Excel (SharePoint) Transport', () => {
 
 		await microsoftApiRequest.call(ctx, 'GET', '/ignored', {}, {}, nextLink);
 
-		expect(mockRequestOAuth2).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
 			'microsoftOAuth2Api',
-			expect.objectContaining({ uri: nextLink }),
+			expect.objectContaining({ url: nextLink }),
 		);
 	});
 
@@ -90,7 +90,7 @@ describe('Microsoft Excel (SharePoint) Transport', () => {
 			resource: 'worksheet',
 			operation: 'readRows',
 		});
-		mockRequestOAuth2.mockRejectedValue({
+		mockHttpRequestWithAuthentication.mockRejectedValue({
 			statusCode: 403,
 			error: { error: { code: 'accessDenied', message: 'Access denied' } },
 		});
@@ -106,7 +106,7 @@ describe('Microsoft Excel (SharePoint) Transport', () => {
 			resource: 'worksheet',
 			operation: 'readRows',
 		});
-		mockRequestWithAuthentication.mockRejectedValue({ httpCode: '403' });
+		mockHttpRequestWithAuthentication.mockRejectedValue({ httpCode: '403' });
 
 		await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s')).rejects.toThrow(
 			/Sites\.Read\.All \(or Sites\.Selected/,
@@ -119,7 +119,7 @@ describe('Microsoft Excel (SharePoint) Transport', () => {
 			resource: 'worksheet',
 			operation: 'readRows',
 		});
-		mockRequestWithAuthentication.mockRejectedValue({ httpCode: '404' });
+		mockHttpRequestWithAuthentication.mockRejectedValue({ httpCode: '404' });
 
 		await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s')).rejects.toThrow(
 			'The requested resource was not found. Check the Site, Library, Workbook, and Sheet values.',
@@ -128,7 +128,7 @@ describe('Microsoft Excel (SharePoint) Transport', () => {
 
 	it('reports a network failure as unreachable, not as a rejection', async () => {
 		setParams({ authentication: SERVICE_PRINCIPAL_AUTH });
-		mockRequestWithAuthentication.mockRejectedValue(new Error('getaddrinfo ENOTFOUND'));
+		mockHttpRequestWithAuthentication.mockRejectedValue(new Error('getaddrinfo ENOTFOUND'));
 
 		await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s')).rejects.toThrow(
 			'Could not reach Microsoft Graph. Check your network connection and try again.',
@@ -141,7 +141,7 @@ describe('Microsoft Excel (SharePoint) Transport', () => {
 			resource: 'worksheet',
 			operation: 'readRows',
 		});
-		mockRequestWithAuthentication.mockRejectedValue({
+		mockHttpRequestWithAuthentication.mockRejectedValue({
 			httpCode: '500',
 			message: 'MARKER-do-not-leak',
 			error: { error: { message: 'MARKER-do-not-leak' } },
