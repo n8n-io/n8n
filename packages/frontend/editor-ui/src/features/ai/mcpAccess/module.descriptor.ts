@@ -38,7 +38,6 @@ export const MCPModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.mcp'),
 			position: 'top',
 			route: { to: { name: MCP_SETTINGS_VIEW } },
-			preview: true,
 			get available() {
 				return hasPermission(['rbac'], {
 					rbac: { scope: ['mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'] },

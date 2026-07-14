@@ -31,7 +31,7 @@ separate user-facing memory product.
 - Supported observational memory tuning fields: \`enabled\`, \`observerModel\`, \`reflectorModel\`, \`observerThresholdTokens\`, \`reflectorThresholdTokens\`, \`renderTokenBudget\`, \`observationLogTailLimit\`, and \`lockTtlMs\`.
 - Memory worker model fields must use object shape: \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`.
 - Only set \`observerModel\`, \`reflectorModel\`, \`extractorModel\`, or \`episodicMemory.reflectorModel\` when the user explicitly asks to use a specific model for memory work.
-- Use only credential IDs returned by \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\` for memory worker model fields. Do not invent IDs or copy a main-model credential unless one of those tools returned it for that worker model provider.
+- Use only credential IDs returned by \`resolve_llm\` or \`ask_credential\` for memory worker model fields. Do not invent IDs or copy a main-model credential unless one of those tools returned it for that worker model provider.
 
 ### Episodic Memory
 

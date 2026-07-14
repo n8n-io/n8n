@@ -933,6 +933,12 @@ export class CredentialsService {
 			return;
 		}
 
+		if (credential.isResolvable) {
+			const owningProject =
+				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			await this.ensureCanManageEndUserCredential(user, owningProject?.id);
+		}
+
 		await this.credentialsRepository.remove(credential);
 	}
 
@@ -1444,8 +1450,31 @@ export class CredentialsService {
 		return await this.createCredential({ ...dto, isManaged: true }, user);
 	}
 
+	/**
+	 * The end-user (resolvable) credential lifecycle — creating one, switching a
+	 * credential to or from end-user, deleting or transferring one — is limited
+	 * to roles holding `credential:createEndUser` on the owning project
+	 * (instance owners/admins, project admins, and personal project owners by
+	 * default). These operations affect every user's own connection, not just
+	 * the caller's, so they need more than the plain credential CRUD scopes.
+	 */
+	async ensureCanManageEndUserCredential(user: User, projectId?: string) {
+		const allowed =
+			projectId !== undefined &&
+			(await userHasScopes(user, ['credential:createEndUser'], false, { projectId }));
+		if (!allowed) {
+			throw new ForbiddenError(
+				'You do not have permission to manage end-user credentials in this project',
+			);
+		}
+	}
+
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
 		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
+
+		if (opts.isResolvable === true) {
+			await this.ensureCanManageEndUserCredential(user, targetProjectId);
+		}
 
 		await this.checkCredentialData(
 			opts.type,
