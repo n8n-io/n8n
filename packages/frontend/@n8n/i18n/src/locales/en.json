@@ -7121,6 +7121,7 @@
 	"agents.builder.skills.create.error": "Could not create skill",
 	"agents.builder.skills.added": "Skill added",
 	"agents.builder.skills.saveError": "Could not save skill",
+	"agents.builder.skills.duplicateName.error": "Agent already has a skill named \"{name}\"",
 	"agents.builder.skills.validation.nameRequired": "Enter a name.",
 	"agents.builder.skills.validation.nameMaxLength": "Name must be 128 characters or fewer.",
 	"agents.builder.skills.validation.descriptionRequired": "Enter a description.",

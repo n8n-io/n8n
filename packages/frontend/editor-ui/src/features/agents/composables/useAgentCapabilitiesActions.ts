@@ -229,17 +229,21 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	}
 
 	const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
-		const refs = localConfig.value?.skills ?? [];
+		// Inline hosts read refs from unvalidated node-parameter JSON: tolerate a
+		// non-array `skills`, skip malformed refs, and resolve bodies by own key
+		// only so ids like "constructor" can't surface prototype members.
+		const rawRefs = localConfig.value?.skills;
+		const refs = Array.isArray(rawRefs) ? rawRefs : [];
 		const bodies = localSkills?.bodies.value ?? agent.value?.skills ?? {};
 		const seen = new Set<string>();
 		const out: Array<{ id: string; skill: AgentSkill }> = [];
 
 		for (const skillRef of refs) {
-			if (!skillRef.id || seen.has(skillRef.id)) continue;
+			if (typeof skillRef?.id !== 'string' || !skillRef.id || seen.has(skillRef.id)) continue;
 			seen.add(skillRef.id);
 			out.push({
 				id: skillRef.id,
-				skill: bodies[skillRef.id] ?? {
+				skill: (Object.hasOwn(bodies, skillRef.id) ? bodies[skillRef.id] : undefined) ?? {
 					name: skillRef.id,
 					description: '',
 					instructions: '',
@@ -257,8 +261,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		telemetry?.trackOpenedSkillFromList?.(id);
 
 		// Self-address the modal to the agent it was opened for (like the add
-		// modals above): confirming after an agent switch must not write the
-		// skill onto the newly active agent.
+		// modals above): a confirm or remove landing after an agent switch must
+		// not write onto the newly active agent.
 		const targetAgentId = agentId.value;
 
 		uiStore.openModalWithData({
@@ -269,13 +273,20 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				skill,
 				skillId: id,
 				availableTools: configuredToolOptions(),
-				onRemove: (skillId: string) => onRemoveSkill(skillId),
+				onRemove: (skillId: string) => {
+					if (agentId.value !== targetAgentId) return;
+					onRemoveSkill(skillId);
+				},
 				onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
 					if (!skillId) return;
 					if (agentId.value !== targetAgentId) return;
 					const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
 
 					if (localSkills) {
+						if (hasDuplicateSkillName(sanitizedSkill.name, skillId)) {
+							showDuplicateSkillNameError(sanitizedSkill.name);
+							return;
+						}
 						localSkills.updateSkill(skillId, sanitizedSkill);
 						return;
 					}
@@ -332,6 +343,27 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		return normalizeAgentSkillForSave(skill, configuredToolNames());
 	}
 
+	/**
+	 * Authoring-time mirror of the backend's `assertSkillNameIsUnique` for
+	 * local-skill hosts, which have no REST call to reject duplicates — without
+	 * it the collision only surfaces as a runtime compile failure.
+	 */
+	function hasDuplicateSkillName(name: string, excludeId?: string): boolean {
+		const normalized = name.trim().toLowerCase();
+		return appliedSkills.value.some(
+			({ id, skill }) => id !== excludeId && skill.name.trim().toLowerCase() === normalized,
+		);
+	}
+
+	function showDuplicateSkillNameError(name: string) {
+		showMessage({
+			title: locale.baseText('agents.builder.skills.duplicateName.error', {
+				interpolate: { name: name.trim() },
+			}),
+			type: 'error',
+		});
+	}
+
 	function onRemoveTool(index: number) {
 		const currentTools = localConfig.value?.tools ?? [];
 		if (index < 0 || index >= currentTools.length) return;
@@ -371,8 +403,13 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 					if (localSkills) {
 						if (agentId.value !== targetAgentId) return;
+						const sanitizedSkill = filterSkillAllowedTools(skill);
+						if (hasDuplicateSkillName(sanitizedSkill.name)) {
+							showDuplicateSkillNameError(sanitizedSkill.name);
+							return;
+						}
 						// The host mints the skill id and writes body + ref together.
-						localSkills.createSkill(filterSkillAllowedTools(skill));
+						localSkills.createSkill(sanitizedSkill);
 						showMessage({
 							title: locale.baseText('agents.builder.skills.added'),
 							type: 'success',

@@ -55,4 +55,40 @@ describe('inlineAgentToCapabilitySummary', () => {
 	it('reports no skills for a config without refs', () => {
 		expect(inlineAgentToCapabilitySummary('node-1', base).skills).toEqual([]);
 	});
+
+	it('tolerates a non-array skills value and skips malformed refs', () => {
+		expect(
+			inlineAgentToCapabilitySummary('node-1', {
+				config: {
+					...base.config,
+					skills: {} as unknown as InlineAgentConfig['config']['skills'],
+				},
+			}).skills,
+		).toEqual([]);
+
+		const summary = inlineAgentToCapabilitySummary('node-1', {
+			config: {
+				...base.config,
+				skills: [
+					null,
+					{ type: 'skill' },
+					{ type: 'skill', id: 42 },
+					{ type: 'skill', id: 'skill_ok' },
+				] as unknown as InlineAgentConfig['config']['skills'],
+			},
+		});
+		expect(summary.skills).toEqual([{ id: 'skill_ok', name: 'skill_ok' }]);
+	});
+
+	it('resolves body names by own key only — a "constructor" ref falls back to its id', () => {
+		const summary = inlineAgentToCapabilitySummary('node-1', {
+			config: {
+				...base.config,
+				skills: [{ type: 'skill', id: 'constructor' }],
+			},
+			skills: {},
+		});
+
+		expect(summary.skills).toEqual([{ id: 'constructor', name: 'constructor' }]);
+	});
 });

@@ -22,8 +22,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
 }));
 
+const { showMessageSpy } = vi.hoisted(() => ({ showMessageSpy: vi.fn() }));
 vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
+	useToast: () => ({ showError: vi.fn(), showMessage: showMessageSpy }),
 }));
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -130,6 +131,7 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 type SkillModalData = {
 	skillId?: string;
 	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
+	onRemove?: (skillId: string) => void;
 };
 
 describe('useAgentCapabilitiesActions — localSkills host seam', () => {
@@ -139,13 +141,19 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		instructions: 'Categorize the request and route it.',
 	};
 
-	function setupLocal(options: { hostId?: ReturnType<typeof ref<string>> } = {}) {
+	function setupLocal(
+		options: {
+			hostId?: ReturnType<typeof ref<string>>;
+			skillRefs?: AgentJsonConfig['skills'];
+			bodies?: Record<string, AgentSkill>;
+		} = {},
+	) {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		const uiStore = useUIStore();
 		const hostId = options.hostId ?? ref('inline:node-1');
 
 		const localConfig = ref<AgentJsonConfig | null>(
-			makeConfig({ skills: [{ type: 'skill', id: 'skill_triage' }] }),
+			makeConfig({ skills: options.skillRefs ?? [{ type: 'skill', id: 'skill_triage' }] }),
 		);
 		const scheduleConfigUpdate = vi.fn();
 		const createSkill = vi.fn();
@@ -160,7 +168,7 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 			scheduleConfigUpdate,
 			scheduleSkillSave: vi.fn(),
 			localSkills: {
-				bodies: computed(() => ({ skill_triage: triage })),
+				bodies: computed(() => options.bodies ?? { skill_triage: triage }),
 				createSkill,
 				updateSkill,
 			},
@@ -196,11 +204,62 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		actions.onOpenAddSkillModal();
 		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
 		modalData.onConfirm({
-			skill: { ...triage, allowedTools: ['not_a_configured_tool'] },
+			skill: { ...triage, name: 'Second Skill', allowedTools: ['not_a_configured_tool'] },
 		});
 
 		expect(createSkill).toHaveBeenCalledWith(
 			expect.not.objectContaining({ allowedTools: expect.anything() }),
+		);
+	});
+
+	it('rejects an add whose name duplicates an applied skill (case-insensitive, trimmed)', () => {
+		const { uiStore, actions, createSkill } = setupLocal();
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: ' TRIAGE ' } });
+
+		expect(createSkill).not.toHaveBeenCalled();
+		expect(showMessageSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'error',
+				title: 'agents.builder.skills.duplicateName.error',
+			}),
+		);
+	});
+
+	it("rejects an edit that takes another applied skill's name", () => {
+		const { uiStore, actions, updateSkill } = setupLocal({
+			skillRefs: [
+				{ type: 'skill', id: 'skill_triage' },
+				{ type: 'skill', id: 'skill_escalate' },
+			],
+			bodies: { skill_triage: triage, skill_escalate: { ...triage, name: 'Escalate' } },
+		});
+
+		actions.onOpenSkillFromList('skill_escalate');
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ id: 'skill_escalate', skill: { ...triage, name: 'triage' } });
+
+		expect(updateSkill).not.toHaveBeenCalled();
+		expect(showMessageSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'error',
+				title: 'agents.builder.skills.duplicateName.error',
+			}),
+		);
+	});
+
+	it("allows an edit that keeps the skill's own name", () => {
+		const { uiStore, actions, updateSkill } = setupLocal();
+
+		actions.onOpenSkillFromList('skill_triage');
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ id: 'skill_triage', skill: { ...triage, description: 'Updated' } });
+
+		expect(updateSkill).toHaveBeenCalledWith(
+			'skill_triage',
+			expect.objectContaining({ description: 'Updated' }),
 		);
 	});
 
@@ -241,5 +300,43 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		actions.onRemoveSkill('skill_triage');
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [] });
+	});
+
+	it('drops a late remove from the skill modal when the host identity changed', () => {
+		const hostId = ref('inline:node-1');
+		const { uiStore, actions, scheduleConfigUpdate } = setupLocal({ hostId });
+
+		actions.onOpenSkillFromList('skill_triage');
+		hostId.value = 'inline:node-2';
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onRemove?.('skill_triage');
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+
+		hostId.value = 'inline:node-1';
+		modalData.onRemove?.('skill_triage');
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [] });
+	});
+
+	it('skips malformed skill refs and resolves bodies by own key only', () => {
+		const { actions } = setupLocal({
+			skillRefs: [
+				null,
+				{ type: 'skill', id: 42 },
+				{ type: 'skill', id: 'constructor' },
+			] as unknown as AgentJsonConfig['skills'],
+			bodies: {},
+		});
+
+		expect(actions.appliedSkills.value).toEqual([
+			{ id: 'constructor', skill: { name: 'constructor', description: '', instructions: '' } },
+		]);
+	});
+
+	it('treats a non-array skills value as no applied skills', () => {
+		const { actions } = setupLocal({
+			skillRefs: {} as unknown as AgentJsonConfig['skills'],
+		});
+
+		expect(actions.appliedSkills.value).toEqual([]);
 	});
 });
