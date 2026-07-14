@@ -1,5 +1,5 @@
+import lodashDebounce from 'lodash/debounce';
 import { ref } from 'vue';
-import _debounce from 'lodash/debounce';
 
 import { getDebounceTime } from './durations';
 
@@ -10,7 +10,7 @@ export interface DebounceOptions {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFunction = (...args: any) => any;
-type DebouncedFunc<T extends AnyFunction> = ReturnType<typeof _debounce<T>>;
+type DebouncedFunc<T extends AnyFunction> = ReturnType<typeof lodashDebounce<T>>;
 
 export function useDebounce() {
 	// Create a ref for the WeakMap to store debounced functions.
@@ -26,8 +26,10 @@ export function useDebounce() {
 
 		// If a debounced version is not found, create one and store it in the WeakMap.
 		if (debouncedFn === undefined) {
-			debouncedFn = _debounce(
+			debouncedFn = lodashDebounce(
+				// eslint-disable-next-line @typescript-eslint/require-await -- kept async so the debounced wrapper always returns a promise
 				async (...args: Parameters<T>) => {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-return -- AnyFunction return is intentionally `any`
 					return fn(...args);
 				},
 				effectiveDebounceTime,
@@ -47,6 +49,7 @@ export function useDebounce() {
 	): ReturnType<T> | undefined => {
 		const debouncedFn = debounce(fn, options);
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return -- AnyFunction return is intentionally `any`
 		return debouncedFn(...inputParameters);
 	};
 

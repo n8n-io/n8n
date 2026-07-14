@@ -1,6 +1,7 @@
-import { vi, describe, it, expect } from 'vitest';
-import { useDebounce } from './useDebounce';
 import { render, screen } from '@testing-library/vue';
+import { vi, describe, it, expect } from 'vitest';
+
+import { useDebounce } from './useDebounce';
 
 describe('useDebounce()', () => {
 	const debounceTime = 500;
@@ -32,7 +33,7 @@ describe('useDebounce()', () => {
 		},
 	};
 
-	it('debounces a function call', async () => {
+	it('debounces a function call', () => {
 		const mockFn = vi.fn();
 		render(TestComponent, { props: { mockFn } });
 		const button = screen.getByText('Click me');
@@ -43,7 +44,7 @@ describe('useDebounce()', () => {
 		expect(mockFn).toHaveBeenCalledTimes(1);
 	});
 
-	it('supports trailing option', async () => {
+	it('supports trailing option', () => {
 		const mockFn = vi.fn();
 		render(TestComponent, { props: { mockFn } });
 		const button = screen.getByText('Click me trailing');
@@ -58,7 +59,7 @@ describe('useDebounce()', () => {
 		expect(mockFn).toHaveBeenCalledTimes(1);
 	});
 
-	it('works with async functions', async () => {
+	it('works with async functions', () => {
 		const mockAsyncFn = vi.fn(async () => {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 		});
