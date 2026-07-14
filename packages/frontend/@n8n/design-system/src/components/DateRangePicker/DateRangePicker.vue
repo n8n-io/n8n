@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { DateValue } from '@internationalized/date';
 import {
 	DateRangePickerCalendar,
 	DateRangePickerCell,
@@ -15,20 +16,39 @@ import {
 	DateRangePickerPrev,
 	DateRangePickerRoot,
 	DateRangePickerTrigger,
+	injectDateRangePickerRootContext,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { computed, nextTick, provide, ref, toRef } from 'vue';
+import { computed, defineComponent, nextTick, provide, ref, shallowRef, toRef, watch } from 'vue';
 
 import N8nButton from '../N8nButton';
 import IconButton from '../N8nIconButton';
-import N8nDateRangePickerCalendarWrapper from './DateRangePickerCalendarWrapper.vue';
 import N8nDateRangePickerClearButton from './DateRangePickerClearButton.vue';
 import N8nDateRangePickerField from './DateRangePickerField.vue';
-import { N8N_DATE_RANGE_PICKER_CONTEXT } from './dateRangePicker.context';
-import N8nDateRangePickerOpenHandler from './DateRangePickerOpenHandler.vue';
+import {
+	N8N_DATE_RANGE_PICKER_CONTEXT,
+	type DateRangePickerRekaRoot,
+	useDateRangePickerContext,
+} from './dateRangePicker.context';
 import N8nDateRangePickerTodayButton from './DateRangePickerTodayButton.vue';
-import { formatMonthYearHeading } from './datePicker.utils';
+import {
+	createTodayRange,
+	formatMonthYearHeading,
+	isEmptyDateRange,
+	parseCalendarCellDate,
+	resolveDateSelection,
+} from './datePicker.utils';
 import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
+
+/** Captures reka root context for the parent (must render under DateRangePickerRoot). */
+const DateRangePickerRekaBridge = defineComponent({
+	name: 'DateRangePickerRekaBridge',
+	setup() {
+		const { rekaRoot } = useDateRangePickerContext();
+		rekaRoot.value = injectDateRangePickerRootContext();
+		return () => null;
+	},
+});
 
 const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
 	weekStartsOn: 1,
@@ -53,6 +73,8 @@ const closePopover = () => emit('update:open', false);
 const forwarded = useForwardPropsEmits(props, emit);
 const activeCalendarField = ref<'start' | 'end'>('end');
 const skipNextCellClick = ref(false);
+const blockedCellInteraction = ref(false);
+const rekaRoot = shallowRef<DateRangePickerRekaRoot | null>(null);
 const showInputs = computed(() => !props.hideInputs);
 const effectiveGranularity = computed(() => {
 	if (props.showTime) return props.granularity ?? 'minute';
@@ -60,10 +82,37 @@ const effectiveGranularity = computed(() => {
 });
 provide(N8N_DATE_RANGE_PICKER_CONTEXT, {
 	activeField: activeCalendarField,
-	skipNextCellClick,
 	single: toRef(props, 'single'),
 	showTime: toRef(props, 'showTime'),
+	rekaRoot,
 });
+
+watch(
+	() => rekaRoot.value?.open.value,
+	(isOpen) => {
+		const rootContext = rekaRoot.value;
+		if (!isOpen || !rootContext) return;
+
+		if (!isEmptyDateRange(rootContext.modelValue.value)) return;
+
+		const todayRange = createTodayRange({
+			granularity: rootContext.granularity.value,
+			referenceStart: rootContext.modelValue.value.start,
+			minValue: rootContext.minValue.value,
+			maxValue: rootContext.maxValue.value,
+			isDateUnavailable: rootContext.isDateUnavailable,
+		});
+
+		if (!todayRange) return;
+
+		rootContext.onDateChange({
+			start: todayRange.start.copy(),
+			end: todayRange.end.copy(),
+		});
+		rootContext.onPlaceholderChange(todayRange.start.copy());
+		activeCalendarField.value = props.single ? 'start' : 'end';
+	},
+);
 
 function blurFocusedCalendarCell() {
 	const active = document.activeElement;
@@ -78,11 +127,116 @@ function markPageNavigation() {
 		blurFocusedCalendarCell();
 	});
 }
+
+function isCalendarCellTarget(event: Event): HTMLElement | null {
+	const target = (event.target as Element | null)?.closest('[data-reka-calendar-cell-trigger]');
+	if (!target || target.hasAttribute('data-disabled') || target.hasAttribute('data-unavailable')) {
+		return null;
+	}
+
+	return target as HTMLElement;
+}
+
+function isPlaceholderDayCell(target: HTMLElement): boolean {
+	const rootContext = rekaRoot.value;
+	if (!rootContext) return false;
+
+	const selectedDate = parseCalendarCellDate(target);
+	if (!selectedDate) return false;
+
+	return selectedDate.compare(rootContext.placeholder.value) === 0;
+}
+
+function shouldSkipPlaceholderCellInteraction(target: HTMLElement): boolean {
+	if (!skipNextCellClick.value) return false;
+
+	return isPlaceholderDayCell(target);
+}
+
+function blockCalendarCellEvent(event: Event) {
+	event.preventDefault();
+	event.stopImmediatePropagation();
+}
+
+function applySelection(selectedDate: DateValue) {
+	const rootContext = rekaRoot.value;
+	if (!rootContext) return;
+
+	const selection = resolveDateSelection({
+		selected: selectedDate,
+		range: rootContext.modelValue.value,
+		activeField: activeCalendarField.value,
+		single: props.single,
+		preserveTime: props.showTime,
+	});
+
+	rootContext.onDateChange(selection.range);
+	activeCalendarField.value = selection.nextActiveField;
+}
+
+function handleCalendarPointerDownCapture(event: PointerEvent) {
+	const target = isCalendarCellTarget(event);
+	if (!target || !shouldSkipPlaceholderCellInteraction(target)) return;
+
+	skipNextCellClick.value = false;
+	blockedCellInteraction.value = true;
+	blockCalendarCellEvent(event);
+}
+
+function handleCalendarClickCapture(event: MouseEvent) {
+	const target = isCalendarCellTarget(event);
+	if (!target) return;
+
+	if (blockedCellInteraction.value) {
+		blockedCellInteraction.value = false;
+		blockCalendarCellEvent(event);
+		return;
+	}
+
+	if (shouldSkipPlaceholderCellInteraction(target)) {
+		skipNextCellClick.value = false;
+		blockCalendarCellEvent(event);
+		return;
+	}
+
+	if (skipNextCellClick.value) {
+		skipNextCellClick.value = false;
+	}
+
+	const selectedDate = parseCalendarCellDate(target);
+	if (!selectedDate) return;
+
+	blockCalendarCellEvent(event);
+	applySelection(selectedDate);
+}
+
+function handleCalendarKeydownCapture(event: KeyboardEvent) {
+	if (event.key !== 'Enter' && event.key !== ' ') return;
+
+	const target = isCalendarCellTarget(event);
+	if (!target) return;
+
+	if (shouldSkipPlaceholderCellInteraction(target)) {
+		skipNextCellClick.value = false;
+		blockCalendarCellEvent(event);
+		return;
+	}
+
+	if (skipNextCellClick.value) {
+		skipNextCellClick.value = false;
+	}
+
+	const selectedDate = parseCalendarCellDate(target);
+	if (!selectedDate) return;
+
+	blockCalendarCellEvent(event);
+	applySelection(selectedDate);
+}
 </script>
 
 <template>
 	<DateRangePickerRoot v-bind="forwarded" :granularity="effectiveGranularity">
-		<N8nDateRangePickerOpenHandler />
+		<DateRangePickerRekaBridge />
 		<DateRangePickerTrigger as-child>
 			<slot name="trigger">
 				<IconButton variant="subtle" icon="calendar" aria-label="Open calendar" />
@@ -122,7 +276,12 @@ function markPageNavigation() {
 						</div>
 					</DateRangePickerHeader>
 
-					<N8nDateRangePickerCalendarWrapper>
+					<div
+						@pointerdown.prevent
+						@pointerdown.capture="handleCalendarPointerDownCapture"
+						@click.capture="handleCalendarClickCapture"
+						@keydown.capture="handleCalendarKeydownCapture"
+					>
 						<DateRangePickerGrid
 							v-for="month in grid"
 							:key="month.value.toString()"
@@ -162,7 +321,7 @@ function markPageNavigation() {
 								</DateRangePickerGridRow>
 							</DateRangePickerGridBody>
 						</DateRangePickerGrid>
-					</N8nDateRangePickerCalendarWrapper>
+					</div>
 
 					<div v-if="showInputs" :class="$style.FooterWrapper">
 						<slot name="footer" :close="closePopover">
@@ -185,8 +344,6 @@ function markPageNavigation() {
 <style lang="css" module>
 .DateFieldWrapper {
 	width: 100%;
-	padding-bottom: var(--spacing--2xs);
-	margin-bottom: var(--spacing--2xs);
 }
 
 .DateField {

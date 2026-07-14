@@ -108,7 +108,7 @@ describe('datePicker.utils', () => {
 
 			const result = resolveDateSelection({
 				selected,
-				range: {},
+				range: { start: undefined, end: undefined },
 				activeField: 'end',
 				single: true,
 			});
@@ -139,7 +139,7 @@ describe('datePicker.utils', () => {
 
 			const result = resolveDateSelection({
 				selected,
-				range: { start },
+				range: { start, end: undefined },
 				activeField: 'end',
 			});
 

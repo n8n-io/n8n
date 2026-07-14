@@ -6,6 +6,7 @@ import {
 	today,
 	type DateValue,
 } from '@internationalized/date';
+import type { DateRange } from 'reka-ui';
 
 export type DatePickerFormatOptions = {
 	includeTime?: boolean;
@@ -52,8 +53,8 @@ function formatShortMonth(date: Date, locale: string): string {
 function applyActiveFieldSelection(
 	activeField: 'start' | 'end',
 	selected: DateValue,
-	range: { start?: DateValue; end?: DateValue },
-): { start?: DateValue; end?: DateValue } {
+	range: DateRange,
+): DateRange {
 	if (activeField === 'start') {
 		const start = selected.copy();
 		const end = range.end?.copy();
@@ -259,11 +260,11 @@ export function mergeDatePreservingTime(selected: DateValue, existing?: DateValu
 
 export function resolveDateSelection(options: {
 	selected: DateValue;
-	range: { start?: DateValue; end?: DateValue };
+	range: DateRange;
 	activeField: 'start' | 'end';
 	single?: boolean;
 	preserveTime?: boolean;
-}): { range: { start?: DateValue; end?: DateValue }; nextActiveField: 'start' | 'end' } {
+}): { range: DateRange; nextActiveField: 'start' | 'end' } {
 	const { selected, range, activeField, single = false, preserveTime = false } = options;
 
 	if (single) {
