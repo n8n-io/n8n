@@ -89,7 +89,10 @@ onBeforeUnmount(() => {
 		<template v-if="!isCanvasOnly" #sidebar>
 			<AppSidebar />
 		</template>
-		<LoadingView v-if="isLoading" />
+		<!-- Gate on a non-null document store, not just isLoading: during a load/switch the
+		provided store is briefly null (disposed before the new one is created), and NodeView's
+		strict injectNDVStore() reads throw if it mounts in that window. Mirrors WorkflowCanvasHostBody's isReady. -->
+		<LoadingView v-if="isLoading || !currentWorkflowDocumentStore" />
 		<RouterView v-else />
 		<template v-if="layoutProps.logs" #footer>
 			<LogsPanel />
