@@ -111,7 +111,6 @@ export class GithubAppApi implements ICredentialType {
 		}
 
 		return {
-			...credentials,
 			accessToken: response.token,
 		};
 	}

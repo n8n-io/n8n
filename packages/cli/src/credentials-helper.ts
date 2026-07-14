@@ -199,11 +199,31 @@ export class CredentialsHelper extends ICredentialsHelper {
 					}
 
 					if (node.credentials) {
-						await this.updateCredentials(
-							node.credentials[credentialType.name],
-							credentialType.name,
-							Object.assign(credentials, output),
-						);
+						// Only persist the keys the hook actually changed: keys that were not
+						// present in the input credentials, or that were empty/undefined. This
+						// prevents resolved {{ ... }} expressions (which have a non-empty string
+						// value in the input) from being written back over the original
+						// expression text. Keys that were already populated in the input —
+						// including expressions — are left intact on disk.
+						const dataToPersist: ICredentialDataDecryptedObject = {};
+						for (const [key, value] of Object.entries(output)) {
+							if (
+								!(key in credentials) ||
+								credentials[key] === '' ||
+								credentials[key] === undefined ||
+								credentials[key] === null
+							) {
+								dataToPersist[key] = value;
+							}
+						}
+
+						if (Object.keys(dataToPersist).length > 0) {
+							await this.updateCredentials(
+								node.credentials[credentialType.name],
+								credentialType.name,
+								dataToPersist,
+							);
+						}
 						return Object.assign(credentials, output);
 					}
 				}
