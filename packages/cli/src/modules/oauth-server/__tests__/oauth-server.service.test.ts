@@ -890,9 +890,7 @@ describe('OAuthServerService', () => {
 		// repository `delete()` shortcut. `affected` decides whether the client
 		// row was actually removed.
 		const mockGarbageCollect = (affected: number) => {
-			(userConsentRepository.createQueryBuilder as unknown as Mock).mockReturnValue({
-				select: () => ({ where: () => ({ getQuery: () => 'SELECT 1' }) }),
-			});
+			(userConsentRepository as any).metadata = { tableName: 'oauth_user_consents' };
 			const execute = vi.fn().mockResolvedValue({ affected });
 			(oauthClientRepository.createQueryBuilder as unknown as Mock).mockReturnValue({
 				delete: () => ({ from: () => ({ where: () => ({ execute }) }) }),

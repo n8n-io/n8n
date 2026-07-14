@@ -476,22 +476,19 @@ export class OAuthServerService implements OAuthServerProvider {
 		await this.authorizationCodeService.deleteForGrant(clientId, userId);
 		await this.userConsentRepository.delete({ clientId, userId });
 
-		// Garbage-collect the client only when no consents remain. A single
-		// conditional delete (rather than count-then-delete) keeps this atomic:
-		// a concurrent authorization for the same shared client either commits
-		// its consent first — so `NOT EXISTS` keeps the client — or, if the
-		// client is already gone, fails cleanly on the foreign key instead of
-		// being silently cascade-deleted.
-		const remainingConsentsSubQuery = this.userConsentRepository
-			.createQueryBuilder('consent')
-			.select('1')
-			.where('consent.clientId = :clientId')
-			.getQuery();
+		// Garbage-collect the client only when no consents remain. One conditional
+		// delete keeps it atomic: a concurrent authorization for the same client
+		// either commits its consent first (NOT EXISTS keeps the client) or fails
+		// cleanly on the FK instead of being silently cascade-deleted.
+		const consentsTable = this.userConsentRepository.metadata.tableName;
 		const result = await this.oauthClientRepository
 			.createQueryBuilder()
 			.delete()
 			.from(OAuthClient)
-			.where(`id = :clientId AND NOT EXISTS (${remainingConsentsSubQuery})`, { clientId })
+			.where(
+				`id = :clientId AND NOT EXISTS (SELECT 1 FROM ${consentsTable} WHERE "clientId" = :clientId)`,
+				{ clientId },
+			)
 			.execute();
 
 		if (result.affected && result.affected > 0) {
