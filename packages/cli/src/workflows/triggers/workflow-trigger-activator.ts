@@ -110,12 +110,10 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
-	 * Classifies each given trigger node by execution mechanism: `poll`/`trigger`
-	 * nodes are held in memory on the owning instance, `webhook` nodes live in the
-	 * `webhook_entity` table. Poll and trigger take precedence over webhook so a
-	 * node that both polls and exposes a webhook is treated as in-memory (matching
-	 * where it actually registers). Used to stamp per-trigger publication status so
-	 * reconciliation can diff the in-memory triggers against the registry.
+	 * Maps each trigger node to how it executes: `poll`/`trigger` register in
+	 * memory, `webhook` persists to `webhook_entity`. A node with several
+	 * mechanisms gets its in-memory kind. Used by reconciliation to tell which
+	 * triggers should be in the in-memory registry.
 	 */
 	getTriggerKinds(nodes: INode[]): Map<INode['id'], WorkflowPublicationTriggerKind> {
 		const workflow = new Workflow({
