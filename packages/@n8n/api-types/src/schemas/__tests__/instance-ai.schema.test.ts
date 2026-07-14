@@ -7,6 +7,9 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	instanceAiEventSchema,
 	isDisplayableConfirmationRequest,
+	InstanceAiEnsureThreadRequest,
+	normalizeInstanceAiThreadSource,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	isInstanceAiSandboxProvider,
 	parseDomainAccessGrants,
 	WEB_SEARCH_GRANT_KEY,
@@ -339,6 +342,37 @@ describe('isDisplayableConfirmationRequest', () => {
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
 		expect(Object.keys(handled)).toHaveLength(6);
+	});
+});
+
+describe('instance-ai launch schema', () => {
+	it('normalizes a known source', () => {
+		expect(normalizeInstanceAiThreadSource('template-view')).toBe('template-view');
+	});
+
+	it('falls back for an unknown source', () => {
+		expect(normalizeInstanceAiThreadSource('totally-made-up')).toBe(
+			INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+		);
+		expect(normalizeInstanceAiThreadSource(undefined)).toBe(INSTANCE_AI_THREAD_SOURCE_FALLBACK);
+	});
+
+	it('parses an ensure-thread request with launch fields', () => {
+		const parsed = new InstanceAiEnsureThreadRequest({
+			projectId: 'project-1',
+			origin: 'external',
+			source: 'website-template',
+			sourceContext: { templateId: '42' },
+		});
+		expect(parsed.origin).toBe('external');
+		expect(parsed.sourceContext).toEqual({ templateId: '42' });
+	});
+
+	it('rejects an oversized sourceContext', () => {
+		const big = { blob: 'x'.repeat(3000) };
+		expect(
+			() => new InstanceAiEnsureThreadRequest({ projectId: 'project-1', sourceContext: big }),
+		).toThrow();
 	});
 });
 

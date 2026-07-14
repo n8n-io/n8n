@@ -37,6 +37,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false); // chatApproval (prepareChatApproval)
 
 		//createSendAndWaitMessageBody
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('chatID');
@@ -86,6 +87,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false); // chatApproval (prepareChatApproval)
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('chatID');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
@@ -113,6 +115,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false); // chatApproval (prepareChatApproval)
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('chatID');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');

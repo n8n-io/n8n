@@ -1,17 +1,17 @@
 import {
+	type APPROVAL_TOOL_NAME,
 	type ASK_CREDENTIAL_TOOL_NAME,
 	type ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	type ASK_LLM_TOOL_NAME,
-	type ASK_QUESTION_TOOL_NAME,
-	type APPROVAL_TOOL_NAME,
+	type ASK_QUESTIONS_TOOL_NAME,
+	type CONFIGURE_CHANNEL_TOOL_NAME,
 	type N8N_CHAT_ACTION_TOOL_NAME,
-	type AskCredentialInput,
-	type AskCredentialResume,
-	type AskEmbeddingCredentialResume,
-	type AskLlmInput,
-	type AskLlmResume,
-	type AskQuestionInput,
-	type AskQuestionResume,
+	type ChannelResumeData,
+	type ChannelSuspendPayload,
+	type CredentialResumeData,
+	type CredentialSuspendPayload,
+	type QuestionAnswer,
+	type QuestionsResumeData,
+	type QuestionsSuspendPayload,
 } from '@n8n/api-types';
 
 import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
@@ -34,7 +34,7 @@ export interface ToolCall {
 	/**
 	 * One-line answer label rendered next to the tool name in
 	 * `AgentChatToolSteps`. Set when an interactive tool resolves so the user
-	 * sees what they picked (e.g. "Slack") instead of just "ask_question".
+	 * sees what they picked (e.g. "Slack") instead of just "ask_questions".
 	 */
 	displaySummary?: string;
 	/**
@@ -73,6 +73,34 @@ export interface ApprovalResume {
 }
 
 /**
+ * `ask_questions` / `ask_credential` / `configure_channel` each transform
+ * the FE's resume payload into a distinct tool-output shape rather than
+ * echoing it back verbatim. `resolvedValue` can therefore be EITHER shape
+ * depending on where it came from:
+ *
+ * - the resume payload itself (optimistic UI update in `useAgentChatStream`'s
+ *   `resume()`, applied before the backend confirms), or
+ * - the real tool output (from a `tool-result` SSE event or persisted
+ *   history) once the backend has actually run the tool's handler.
+ *
+ * Cards interpret `resolvedValue` defensively with type guards instead of
+ * assuming one shape.
+ */
+export type QuestionsResolvedValue =
+	| QuestionsResumeData
+	| { answered: boolean; answers?: Array<QuestionAnswer & { question?: string }> };
+
+export type CredentialResolvedValue =
+	| CredentialResumeData
+	| {
+			credentialId: string;
+			credentialName: string;
+			credentials?: Record<string, { id: string; name: string }>;
+	  };
+
+export type ChannelResolvedValue = ChannelResumeData | { connected: boolean };
+
+/**
  * Discriminated union describing the interactive card that a suspended tool call
  * renders in the chat. `toolName` is the discriminant.
  */
@@ -83,24 +111,19 @@ export type InteractivePayload =
 			resolvedValue?: ApprovalResume;
 	  })
 	| (InteractivePayloadBase & {
-			toolName: typeof ASK_CREDENTIAL_TOOL_NAME;
-			input: AskCredentialInput;
-			resolvedValue?: AskCredentialResume;
+			toolName: typeof ASK_QUESTIONS_TOOL_NAME;
+			input: QuestionsSuspendPayload;
+			resolvedValue?: QuestionsResolvedValue;
 	  })
 	| (InteractivePayloadBase & {
-			toolName: typeof ASK_EMBEDDING_CREDENTIAL_TOOL_NAME;
-			input: AskCredentialInput;
-			resolvedValue?: AskEmbeddingCredentialResume;
+			toolName: typeof ASK_CREDENTIAL_TOOL_NAME | typeof ASK_EMBEDDING_CREDENTIAL_TOOL_NAME;
+			input: CredentialSuspendPayload;
+			resolvedValue?: CredentialResolvedValue;
 	  })
 	| (InteractivePayloadBase & {
-			toolName: typeof ASK_LLM_TOOL_NAME;
-			input: AskLlmInput;
-			resolvedValue?: AskLlmResume;
-	  })
-	| (InteractivePayloadBase & {
-			toolName: typeof ASK_QUESTION_TOOL_NAME;
-			input: AskQuestionInput;
-			resolvedValue?: AskQuestionResume;
+			toolName: typeof CONFIGURE_CHANNEL_TOOL_NAME;
+			input: ChannelSuspendPayload;
+			resolvedValue?: ChannelResolvedValue;
 	  })
 	| (InteractivePayloadBase & {
 			toolName: typeof N8N_CHAT_ACTION_TOOL_NAME;

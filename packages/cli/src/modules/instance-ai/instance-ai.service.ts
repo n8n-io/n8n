@@ -12,7 +12,7 @@ import {
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
@@ -30,6 +30,7 @@ import {
 	getPromptFilesystemInstructions,
 	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
+	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
 	createInstanceAiLivenessPolicyConfig,
@@ -489,7 +490,6 @@ export class InstanceAiService {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
-		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -1848,12 +1848,14 @@ export class InstanceAiService {
 		const { searchProxyConfig, tracingProxyConfig, tokenManager, proxyBaseUrl } =
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
+		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
 			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
+			configEvalsEnabled,
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -1970,18 +1972,14 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		// The agent-builder tools are only registered when the agents module is
-		// active (InstanceAiAdapterService.getAgentBuilderAdapter), and the
-		// build_agent flow persists configs from workspace files, so the skill
-		// needs both the agents module and the sandbox workspace. Hide it when
-		// either is unavailable.
-		const allRuntimeSkills = loadInstanceAiRuntimeSkillSource();
-		const agentsModuleActive = this.moduleRegistry.isActive('agents');
-		const withoutAgentBuilderSkill = filterRuntimeSkillSource(allRuntimeSkills, ['agent-builder']);
-		// Default assumes no workspace; the sandbox block below restores the
-		// agent-builder skill once the workspace is known to be available.
-		let availableRuntimeSkills = withoutAgentBuilderSkill;
-		let runtimeSkills = availableRuntimeSkills;
+		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
+		// preserved) so every derived skill source inherits the exclusion.
+		const flagDisabledSkillIds = disabledInstanceAiSkillIds({ configEvalsEnabled });
+		const allRuntimeSkills =
+			flagDisabledSkillIds.length > 0
+				? filterRuntimeSkillSource(loadInstanceAiRuntimeSkillSource(), flagDisabledSkillIds)
+				: loadInstanceAiRuntimeSkillSource();
+		let runtimeSkills = allRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
 
@@ -2034,9 +2032,8 @@ export class InstanceAiService {
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
 				});
-				availableRuntimeSkills = agentsModuleActive ? allRuntimeSkills : withoutAgentBuilderSkill;
 				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
-					source: availableRuntimeSkills,
+					source: allRuntimeSkills,
 					workspace: runtimeSkillWorkspace,
 					logger: this.logger,
 				});
@@ -2072,7 +2069,7 @@ export class InstanceAiService {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			runtimeSkills,
-			runtimeSkillCatalog: availableRuntimeSkills,
+			runtimeSkillCatalog: allRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
 			formBaseUrl: this.formBaseUrl,
