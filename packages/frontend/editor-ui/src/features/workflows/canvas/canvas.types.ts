@@ -206,6 +206,7 @@ export interface CanvasGroupNodeData {
 	nodesRect: { x: number; y: number; width: number; height: number };
 	isCollapsed: boolean;
 	executionStatus?: GroupExecutionStatus;
+	allNodesDisabled?: boolean;
 }
 
 export type CanvasGroupNode = Node<CanvasGroupNodeData>;

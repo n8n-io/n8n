@@ -245,10 +245,9 @@ async function handleDescribe(
 
 /**
  * Resolve TypeScript type definitions for a validated list of node requests.
- * Shared by the consolidated `nodes` tool's `type-definition` action and the
- * agent-builder's `get_node_types` tool so both stay on one implementation.
+ * Used by the consolidated `nodes` tool's `type-definition` action.
  */
-export async function resolveNodeTypeDefinitions(
+async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
 	nodeTypes: NodeTypeRequest[],
 ) {

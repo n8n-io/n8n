@@ -1030,6 +1030,12 @@ type CronRecurrenceRule =
 			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
 	  };
 
+/**
+ * @deprecated Remnant of the legacy in-memory scheduling path. `registerCron`
+ * takes {@link Cron}, not this type; the durable scheduler path never uses it.
+ * Only `ScheduledTaskManager` and its helper still reference it (and only for
+ * `CronContext['recurrence']`). Slated to go away with `ScheduledTaskManager`.
+ */
 export type CronContext = {
 	nodeId: string;
 	workflowId: string;
@@ -1038,7 +1044,26 @@ export type CronContext = {
 	recurrence?: CronRecurrenceRule;
 };
 
-export type Cron = { expression: CronExpression; recurrence?: CronRecurrenceRule };
+/**
+ * Optional source descriptor.
+ * Which Schedule Trigger field produced this cron rule.
+ *
+ * Two different fields can produce the same cron string: a rule typed as a raw
+ * cron expression and a rule set to "every 30 seconds" can both come out as the
+ * same text. Knowing the original field lets code downstream tell them apart
+ * and store each one under the right kind.
+ */
+export type CronSource = {
+	field: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'cronExpression';
+	/** The interval size N (e.g. every N seconds); absent for a raw cron expression. */
+	size?: number;
+};
+
+export type Cron = {
+	expression: CronExpression;
+	recurrence?: CronRecurrenceRule;
+	source?: CronSource;
+};
 
 export interface SchedulingFunctions {
 	registerCron(cron: Cron, onTick: (scheduledT: Date) => void): void;

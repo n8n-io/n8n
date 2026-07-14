@@ -16,6 +16,7 @@ import {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
+	normalizeInstanceAiThreadSource,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -159,7 +160,7 @@ export class InstanceAiController {
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
-		// Only file attachments carry a mime type to validate; workflow
+		// Only file attachments carry a mime type to validate; workflow and agent
 		// attachments are resource references the agent resolves with its tools.
 		const fileAttachments = (payload.attachments ?? []).filter(
 			(attachment) => attachment.type === 'file',
@@ -595,11 +596,22 @@ export class InstanceAiController {
 		}
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
+
+		const launchMetadata =
+			payload.source !== undefined || payload.origin !== undefined
+				? {
+						source: normalizeInstanceAiThreadSource(payload.source),
+						origin: payload.origin ?? ('internal' as const),
+						sourceContext: payload.sourceContext,
+					}
+				: undefined;
+
 		try {
 			return await this.memoryService.ensureThread(
 				req.user.id,
 				requestedThreadId,
 				payload.projectId,
+				launchMetadata,
 			);
 		} catch (error) {
 			this.instanceAiErrorReporter.report(error, {

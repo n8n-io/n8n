@@ -154,7 +154,12 @@ describe('AgentExecutionOrchestratorService', () => {
 		const runtime = makeRuntime([
 			{ type: 'text-start', id: 'text-1' },
 			{ type: 'text-delta', id: 'text-1', delta: 'Choose one' },
-			{ type: 'tool-call-suspended', toolCallId: 'tc-1', toolName: 'ask_question', runId: 'run-1' },
+			{
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'ask_questions',
+				runId: 'run-1',
+			},
 		]);
 
 		const chunks = await collect(
@@ -457,7 +462,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			{
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-2',
-				toolName: 'ask_question',
+				toolName: 'ask_questions',
 				runId: 'run-2',
 			},
 		]);
