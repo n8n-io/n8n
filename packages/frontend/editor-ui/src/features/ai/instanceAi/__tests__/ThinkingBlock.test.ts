@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
@@ -239,6 +240,28 @@ describe('ThinkingBlock', () => {
 			},
 		});
 		expect(toolThenReasoning.getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
+	});
+
+	it('should show the elapsed in the header while expanded', async () => {
+		vi.useFakeTimers();
+		try {
+			const { getByTestId } = renderComponent({
+				props: {
+					agentNode: makeAgentNode({ status: 'active' }),
+					entries: [reasoning('Figuring out the trigger. Hmm.')],
+					active: true,
+				},
+			});
+
+			await vi.advanceTimersByTimeAsync(5000);
+			const header = getByTestId('thinking-block-header');
+			await fireEvent.click(header);
+
+			// The subline is hidden while expanded — the timer moves to the header.
+			expect(header).toHaveTextContent('5s');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('should reset the subline timer after an HITL pause', async () => {

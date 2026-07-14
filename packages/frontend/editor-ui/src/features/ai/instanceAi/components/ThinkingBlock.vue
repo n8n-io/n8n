@@ -144,7 +144,9 @@ const sublineLabel = computed<{ key: string; text: string }>(() => {
 	return { key: 'thinking', text: i18n.baseText('instanceAi.thinking.active') };
 });
 
-const sublineElapsed = computed<string | undefined>(() => {
+/** Live elapsed label — on the subline while collapsed, in the header while
+ *  expanded (the subline is hidden then, but the timing must not vanish). */
+const elapsedLabel = computed<string | undefined>(() => {
 	const sec = blockElapsedSec.value;
 	return sec >= 1 ? formatDuration(sec) : undefined;
 });
@@ -230,11 +232,15 @@ const title = computed<{ key: string; text: string }>(() => {
 				:aria-expanded="expanded"
 				data-test-id="thinking-block-header"
 			>
+				<span v-if="showActivityDot && expanded && isCounting" :class="$style.dot" />
 				<Transition name="thinking-title" mode="out-in">
 					<span :key="title.key" :class="$style.title">
 						{{ title.text }}
 					</span>
 				</Transition>
+				<span v-if="expanded && isCounting && elapsedLabel" :class="$style.headerElapsed">
+					{{ elapsedLabel }}
+				</span>
 				<N8nAiActivityStepChevron :open="expanded" />
 			</button>
 		</CollapsibleTrigger>
@@ -249,9 +255,7 @@ const title = computed<{ key: string; text: string }>(() => {
 					{{ sublineLabel.text }}
 				</span>
 			</Transition>
-			<span v-if="sublineElapsed" :class="$style.sublineElapsed">
-				&middot; {{ sublineElapsed }}
-			</span>
+			<span v-if="elapsedLabel" :class="$style.sublineElapsed"> &middot; {{ elapsedLabel }} </span>
 		</div>
 		<N8nAnimatedCollapsibleContent>
 			<div :class="$style.content">
@@ -335,6 +339,11 @@ const title = computed<{ key: string; text: string }>(() => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.headerElapsed {
+	flex-shrink: 0;
+	font-variant-numeric: tabular-nums;
 }
 
 .subline {
