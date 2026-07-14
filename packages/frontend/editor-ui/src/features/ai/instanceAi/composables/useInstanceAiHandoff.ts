@@ -41,6 +41,10 @@ export function buildInstanceAiArtifactCredentialQuestion(
 	return `How do I set up the credentials for ${credential.displayName}?${node}${existingCredentialNote(credential)}`;
 }
 
+export function buildInstanceAiAgentPreviewQuestion(): string {
+	return 'Please review this preview session and improve the agent based on how it behaved.';
+}
+
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
 
 export interface PendingFirstMessage {
@@ -63,6 +67,17 @@ export function buildInstanceAiCredentialHandoffContext(
 			...(credential.documentationUrl ? { documentationUrl: credential.documentationUrl } : {}),
 			...(credential.oauthRedirectUrl ? { oauthRedirectUrl: credential.oauthRedirectUrl } : {}),
 		},
+	};
+}
+
+export function buildInstanceAiAgentPreviewHandoffContext(params: {
+	agentId: string;
+	threadId: string;
+}): InstanceAiHandoffContext {
+	return {
+		source: 'agent-preview',
+		agentId: params.agentId,
+		threadId: params.threadId,
 	};
 }
 

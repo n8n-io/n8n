@@ -57,6 +57,7 @@ import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import { useInstanceAiAgentPreviewHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import { addMissingAgentPersonalisation } from '../utils/agentPersonalisation';
 import {
 	AGENT_BUILDER_VIEW,
@@ -100,6 +101,8 @@ const locale = useI18n();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const { canSendPreviewToInstanceAi, sendPreviewSessionToInstanceAi } =
+	useInstanceAiAgentPreviewHandoff();
 const sessionsStore = useAgentSessionsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
@@ -141,6 +144,17 @@ const isVersionHistoryOpen = ref(false);
 
 function onBuildChatStreamingChange(streaming: boolean) {
 	isBuildChatStreaming.value = streaming;
+}
+
+async function onSendPreviewToAssistant() {
+	const threadId = effectiveSessionId.value;
+	if (!threadId || !agentId.value || !projectId.value) return;
+
+	await sendPreviewSessionToInstanceAi({
+		projectId: projectId.value,
+		agentId: agentId.value,
+		threadId,
+	});
 }
 
 /**
@@ -1286,9 +1300,11 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
 					:initial-prompt="initialPrompt"
+					:can-send-to-assistant="canSendPreviewToInstanceAi"
 					@config-updated="onConfigUpdated"
 					@continue-loaded="onContinueLoaded"
 					@open-build="onOpenBuildFromChat"
+					@send-to-assistant="onSendPreviewToAssistant"
 				/>
 				<N8nButton
 					v-else-if="!isArtifactMode && isBuildChatHidden"

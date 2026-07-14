@@ -28,13 +28,19 @@ const props = defineProps<{
 	messagingState: 'idle' | 'waitingFirstChunk' | 'receiving';
 	projectId?: string;
 	agentId?: string;
+	sessionId?: string;
+	canSendToAssistant?: boolean;
 }>();
 
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
+	sendToAssistant: [];
 }>();
 
 const i18n = useI18n();
+const canSendToAssistant = computed(() =>
+	Boolean(props.canSendToAssistant && props.agentId && props.sessionId),
+);
 
 function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
 	// Cards without a runId are disabled at the card level (see InteractiveCard).
@@ -469,7 +475,9 @@ onBeforeUnmount(() => {
 							:content="getAssistantRunContent(group.id)"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
+							:can-send-to-assistant="canSendToAssistant"
 							@read-aloud="toggleReadAloud(group.id)"
+							@send-to-assistant="emit('sendToAssistant')"
 						/>
 					</div>
 					<AgentTypingIndicator
@@ -555,7 +563,9 @@ onBeforeUnmount(() => {
 							:content="getAssistantRunContent(group.id)"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
+							:can-send-to-assistant="canSendToAssistant"
 							@read-aloud="toggleReadAloud(group.id)"
+							@send-to-assistant="emit('sendToAssistant')"
 						/>
 						<AgentChatMemoryUsed
 							:memories="getMemoriesUsedInAssistantRun(group.id)"

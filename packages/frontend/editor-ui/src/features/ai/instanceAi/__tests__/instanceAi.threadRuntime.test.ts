@@ -1025,6 +1025,12 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		await activeRuntime(registry).sendMessage('hello', undefined, undefined, context);
 
+		expect(activeRuntime(registry).messages[0]).toMatchObject({
+			role: 'user',
+			content: 'hello',
+			context,
+		});
+
 		expect(mockPostMessage).toHaveBeenCalledWith(
 			expect.anything(),
 			activeThreadId,
