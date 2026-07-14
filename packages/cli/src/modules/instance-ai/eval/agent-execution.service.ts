@@ -265,6 +265,22 @@ export class EvalAgentExecutionService {
 				...(autoApprovedToolNames.has(entry.tool) ? { autoApproved: true } : {}),
 			};
 		});
+		// GenerateResult.toolCalls omits errored calls (node tools throw on
+		// failure), but their intercepted HTTP is exactly what the judge needs
+		// to verify the attempt (e.g. an injected channel_not_found). Surface
+		// ledger-only tools as explicit error records.
+		const reportedTools = new Set(toolCalls.map((entry) => entry.tool));
+		for (const [tool, interceptedRequests] of toolLedger) {
+			if (reportedTools.has(tool)) continue;
+			toolCalls.push({
+				tool,
+				kind: kindByToolName.get(tool) ?? 'other',
+				error: 'Tool call failed (not reported in the run result — see interceptedRequests)',
+				mocked: interceptedRequests.length > 0,
+				interceptedRequests,
+				...(autoApprovedToolNames.has(tool) ? { autoApproved: true } : {}),
+			});
+		}
 
 		return {
 			runId: result.runId,

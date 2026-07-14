@@ -80,6 +80,23 @@ describe('createAgentModelTurnRecorder', () => {
 		expect(recorder.turns[0].status).toBeUndefined();
 	});
 
+	it('keeps a truncated string when an oversized request body no longer parses as JSON', async () => {
+		const baseFetch: FetchFn = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+		const recorder = createAgentModelTurnRecorder(baseFetch, logger);
+
+		await recorder.fetch('https://api.openai.com/v1/chat/completions', {
+			method: 'POST',
+			body: JSON.stringify({
+				model: 'gpt-x',
+				messages: [{ role: 'user', content: 'y'.repeat(20_000) }],
+			}),
+		});
+
+		const recorded = recorder.turns[0].requestBody;
+		expect(typeof recorded).toBe('string');
+		expect(recorded).toContain('gpt-x');
+	});
+
 	it('truncates oversized recorded bodies', async () => {
 		const huge = 'x'.repeat(50_000);
 		const baseFetch: FetchFn = vi.fn().mockResolvedValue(new Response(huge, { status: 200 }));

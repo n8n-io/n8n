@@ -49,10 +49,11 @@ function recordableRequestBody(body: unknown): unknown {
 	}
 	const parsed = jsonParse<unknown>(body, { fallbackValue: undefined });
 	if (parsed === undefined) return truncateForLlm(body, MAX_RECORDED_REQUEST_CHARS);
-	return jsonParse<unknown>(
-		truncateForLlm(JSON.stringify(redactSecretKeys(parsed)), MAX_RECORDED_REQUEST_CHARS),
-		{ fallbackValue: '[truncated request body]' },
-	);
+	// Truncating serialized JSON usually breaks parseability — keep the
+	// truncated string (redacted content survives) rather than dropping it.
+	const redacted = JSON.stringify(redactSecretKeys(parsed));
+	if (redacted.length <= MAX_RECORDED_REQUEST_CHARS) return redactSecretKeys(parsed);
+	return truncateForLlm(redacted, MAX_RECORDED_REQUEST_CHARS);
 }
 
 export function createAgentModelTurnRecorder(

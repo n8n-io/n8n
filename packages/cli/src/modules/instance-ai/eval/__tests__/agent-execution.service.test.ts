@@ -280,6 +280,46 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(rebuiltEntity.integrations).toEqual([]);
 	});
 
+	it('surfaces errored tool calls omitted from the run result via the intercepted ledger', async () => {
+		// Node tools throw on failure and the SDK drops them from
+		// GenerateResult.toolCalls — the intercepted request (e.g. an injected
+		// channel_not_found) must still reach the judge.
+		const generate = vi.fn().mockImplementation(async () => {
+			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+				configureToolAdditionalData: (
+					additionalData: Record<string, unknown>,
+					ctx: { toolName: string; toolKind: string },
+				) => void;
+			};
+			const additionalData: Record<string, unknown> = { credentialsHelper: {} };
+			instrumentation.configureToolAdditionalData(additionalData, {
+				toolName: 'Slack_Tool',
+				toolKind: 'node',
+			});
+			const handler = additionalData.evalLlmMockHandler as EvalLlmMockHandler;
+			await handler({ url: 'https://slack.com/api/chat.postMessage', method: 'POST' }, {
+				name: 'Slack_Tool',
+				type: 'n8n-nodes-base.slackTool',
+			} as INode);
+			return makeGenerateResult({ toolCalls: [] });
+		});
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate, close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+		expect(result.toolCalls).toHaveLength(1);
+		expect(result.toolCalls[0]).toMatchObject({
+			tool: 'Slack_Tool',
+			kind: 'node',
+			mocked: true,
+			error: expect.stringContaining('interceptedRequests'),
+		});
+		expect(result.toolCalls[0].interceptedRequests).toHaveLength(1);
+	});
+
 	it('auto-approves suspended tool calls and flags them', async () => {
 		const suspended = makeGenerateResult({
 			pendingSuspend: [
