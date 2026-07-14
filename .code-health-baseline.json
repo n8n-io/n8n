@@ -199,26 +199,6 @@
 				"hash": "a77ced903cdf"
 			}
 		],
-		"packages/node-dev/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 49,
-				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "6988b9f58c92"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 48,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "da9b64834300"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 55,
-				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "632a744e397e"
-			}
-		],
 		"packages/nodes-base/package.json": [
 			{
 				"rule": "catalog-violations",

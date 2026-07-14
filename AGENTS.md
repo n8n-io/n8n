@@ -144,7 +144,6 @@ The monorepo is organized into these key packages:
 
 - Each package has isolated build configuration and can be developed independently
 - Hot reload works across the full stack during development
-- Node development uses dedicated `node-dev` CLI tool
 - Workflow tests are JSON-based for integration testing
 - AI features have dedicated development workflow (`pnpm dev:ai`)
 
