@@ -281,6 +281,8 @@ export const credentialSetupHintSchema = z.object({
 	placeholders: z.array(credentialPlaceholderDefSchema).min(1),
 	/** Where the user obtains the secret (e.g. the provider's API-keys page). */
 	docsUrl: z.string().optional(),
+	/** The service's logo/favicon URL, shown on the setup card. */
+	iconUrl: z.string().optional(),
 	suggestedName: z.string().optional(),
 	/** GET endpoint the created credential is auth-probed against. */
 	testUrl: z.string().optional(),

@@ -133,6 +133,7 @@ onMounted(async () => {
 		credentialData.value.template = JSON.stringify(props.setupHint.template, null, 2);
 		credentialData.value.placeholderDefs = JSON.stringify(props.setupHint.placeholders, null, 2);
 		if (props.setupHint.testUrl) credentialData.value.testUrl = props.setupHint.testUrl;
+		if (props.setupHint.iconUrl) credentialData.value.iconUrl = props.setupHint.iconUrl;
 		if (props.setupHint.acceptedStatusCodes?.length) {
 			credentialData.value.acceptedStatusCodes = JSON.stringify(
 				props.setupHint.acceptedStatusCodes,

@@ -76,14 +76,24 @@ during the build — never guess the auth format:
 - `template` — the auth request parts (headers/qs/body) exactly as documented,
   with `{{placeholder}}` markers where the user's values go.
 - `placeholders` — one entry per marker: `name`, user-facing `title`, `info`
-  on where to find it, and `type` (`password` unless clearly non-secret).
-- `docsUrl` — the provider page where the user obtains the secret.
-- `testUrl` — a cheap documented GET endpoint (e.g. `/v1/me`) used to verify
-  the credential on save and on later retests; omit if none is documented.
+  as short plain text on where to find it (no URLs — that's `docsUrl`'s job),
+  and `type` (`password` unless clearly non-secret).
+- `docsUrl` — the dashboard page where the user CREATES/COPIES the secret
+  (e.g. `https://replicate.com/account/api-tokens`), rendered as the card's
+  "Get it from" link. Never the API reference documentation.
+- `testUrl` — a side-effect-free documented GET endpoint used to verify the
+  credential on save and later retests. Must never trigger billable work:
+  account/profile/me-style endpoints only, never a resource or action URL.
+  Omit if none is documented.
+- `acceptedStatusCodes` — almost always omit; the user can adjust it later on
+  the credential if a service's auth answers 401/403 to valid GETs.
 - `suggestedName` — display name for the created credential.
+- `iconUrl` — the service's logo or favicon (https, on the provider's own
+  domain, e.g. `https://replicate.com/favicon.ico`) so the setup card shows
+  the service branding.
 
 Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
-`GET /v1/models` answers authenticated requests:
+`GET /v1/models` is a documented side-effect-free endpoint:
 
 ```json
 {
@@ -104,7 +114,8 @@ Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
         }
       ],
       "docsUrl": "https://fal.ai/dashboard/keys",
-      "testUrl": "https://fal.run/v1/models"
+      "testUrl": "https://fal.run/v1/models",
+      "iconUrl": "https://fal.ai/favicon.ico"
     }
   ]
 }

@@ -271,6 +271,12 @@ const hasTemplatedHint = computed(
 		!!currentRequest.value?.setupHint,
 );
 
+/** Agent-supplied service logo (https-only), shown instead of the generic type icon. */
+const hintIconUrl = computed(() => {
+	const url = currentRequest.value?.setupHint?.iconUrl;
+	return url && /^https:\/\//.test(url) ? url : undefined;
+});
+
 function openNewCredentialModal() {
 	const req = currentRequest.value;
 	if (!req) return;
@@ -523,7 +529,14 @@ async function handleSetupAutomatically() {
 			<div v-if="currentRequest" data-test-id="instance-ai-credential-card" :class="$style.card">
 				<!-- Header -->
 				<header :class="$style.header">
-					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
+					<img
+						v-if="hintIconUrl"
+						:src="hintIconUrl"
+						:alt="getDisplayName(currentRequest)"
+						:class="$style.serviceIcon"
+						data-test-id="credential-hint-icon"
+					/>
+					<CredentialIcon v-else :credential-type-name="currentRequest.credentialType" :size="16" />
 					<N8nText :class="$style.title" size="medium" color="text-dark" bold>
 						{{ getDisplayName(currentRequest) }}
 					</N8nText>
@@ -679,6 +692,13 @@ async function handleSetupAutomatically() {
 </template>
 
 <style lang="scss" module>
+.serviceIcon {
+	width: 16px;
+	height: 16px;
+	border-radius: var(--radius--sm);
+	object-fit: contain;
+}
+
 .card {
 	width: 100%;
 	display: flex;

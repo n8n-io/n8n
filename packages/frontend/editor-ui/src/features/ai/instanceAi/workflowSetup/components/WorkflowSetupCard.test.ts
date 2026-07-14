@@ -141,16 +141,21 @@ describe('WorkflowSetupCard', () => {
 				placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
 				// "API" must survive — hint names skip the type-name keyword filter.
 				suggestedName: 'fal.ai API Key',
+				iconUrl: 'https://fal.ai/favicon.ico',
 			},
 		});
 		workflowSetupContext.current = makeContext(section);
 
-		const { getByText, queryByText } = renderComponent({
+		const { getByText, getByTestId, queryByText } = renderComponent({
 			props: { section },
 		});
 
 		expect(getByText('Set up fal.ai API Key')).toBeInTheDocument();
 		expect(queryByText('Set up Header Auth')).not.toBeInTheDocument();
+		expect(getByTestId('credential-hint-icon')).toHaveAttribute(
+			'src',
+			'https://fal.ai/favicon.ico',
+		);
 	});
 
 	it('shows the credential app name when the section only needs credentials', () => {

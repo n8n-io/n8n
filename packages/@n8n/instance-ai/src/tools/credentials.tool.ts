@@ -55,7 +55,12 @@ export const setupHintField = z
 				z.object({
 					name: z.string().describe('Marker name used in the template as {{name}}'),
 					title: z.string().describe('Input label shown to the user (e.g. "API key")'),
-					info: z.string().optional().describe('Where/how the user obtains this value'),
+					info: z
+						.string()
+						.optional()
+						.describe(
+							'Short plain-text pointer to where/how the user obtains this value (e.g. "Create one under Dashboard → API tokens"). No URLs — navigation belongs in docsUrl.',
+						),
 					type: z
 						.enum(['password', 'plain'])
 						.optional()
@@ -68,7 +73,7 @@ export const setupHintField = z
 			.string()
 			.optional()
 			.describe(
-				"URL of the page where the user obtains the secret (the provider's API-keys / tokens page).",
+				'Direct URL of the dashboard page where the user creates/copies the secret (e.g. https://replicate.com/account/api-tokens) — rendered as the "Get it from" link. NOT the API reference documentation.',
 			),
 		suggestedName: z
 			.string()
@@ -76,11 +81,17 @@ export const setupHintField = z
 			.describe(
 				'Display name for the created credential, also used as the setup card title ("Set up {suggestedName}"). Name it after the service, user-facing — e.g. "fal.ai API Key", not the generic type name.',
 			),
+		iconUrl: z
+			.string()
+			.optional()
+			.describe(
+				"Absolute https URL of the service's logo or favicon, hosted on the provider's own domain (e.g. https://replicate.com/favicon.ico) — shown on the setup card so the credential reads as that service.",
+			),
 		testUrl: z
 			.string()
 			.optional()
 			.describe(
-				"Endpoint that answers an authenticated GET, used to verify the credential on save and on later retests. Prefer a cheap documented read endpoint (e.g. the provider's /v1/me). Omit when the provider documents none.",
+				'Side-effect-free endpoint that answers an authenticated GET, used to verify the credential on save and on later retests. Must be a documented account/profile/me-style endpoint that can never trigger billable work — never a resource or action URL. Omit when the provider documents none.',
 			),
 		acceptedStatusCodes: z
 			.array(z.number().int())

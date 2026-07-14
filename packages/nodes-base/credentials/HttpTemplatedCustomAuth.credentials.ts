@@ -28,25 +28,24 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			type: 'json',
 			required: true,
 			description:
-				'The authentication parts of the request (headers, body, qs) with {{placeholder}} markers where user-provided values are inserted. Must not contain secrets — those belong in the placeholder values.',
+				'The authentication parts (headers, body, qs) added to every request this credential signs. {{placeholder}} markers are replaced with the matching entry from Placeholder Values. Must not contain secrets — those belong in the placeholder values.',
 			placeholder: '{ "headers": { "Authorization": "Bearer {{api_key}}" } }',
 			default: '',
 		},
 		{
+			// Agent-authored UI metadata (input titles, help text, masking) driving
+			// the guided setup form — not user-editable, so hidden in the modal.
 			displayName: 'Placeholders',
 			name: 'placeholderDefs',
-			type: 'json',
-			description:
-				'Describes each placeholder shown to the user: name, title, help text and whether it is a secret',
-			placeholder:
-				'[ { "name": "api_key", "title": "API key", "info": "Found on the API keys page", "type": "password" } ]',
+			type: 'hidden',
 			default: '',
 		},
 		{
 			displayName: 'Placeholder Values',
 			name: 'placeholderValues',
 			type: 'json',
-			description: 'The value provided for each placeholder, by placeholder name',
+			description:
+				'The secret value that replaces each {{placeholder}} of the template when a request is sent, by placeholder name. Values are redacted after saving.',
 			placeholder: '{ "api_key": "..." }',
 			default: '',
 			typeOptions: {
@@ -57,16 +56,24 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			displayName: 'Test URL',
 			name: 'testUrl',
 			type: 'string',
-			description: 'GET endpoint the credential can be verified against',
+			description:
+				'Side-effect-free GET endpoint the credential is verified against (e.g. an account or profile endpoint). Must never trigger billable work.',
 			default: '',
 		},
 		{
-			// Status codes an auth probe of the test URL must not treat as a
-			// rejection (e.g. services returning 401 on GET even for valid
-			// credentials). Set from the AI Assistant's setup hint.
+			// Shown on AI Assistant setup surfaces; not runtime-relevant.
+			displayName: 'Icon URL',
+			name: 'iconUrl',
+			type: 'hidden',
+			default: '',
+		},
+		{
 			displayName: 'Accepted Status Codes',
 			name: 'acceptedStatusCodes',
-			type: 'hidden',
+			type: 'string',
+			description:
+				'Status codes the credential test must not treat as an auth rejection, as a JSON array — e.g. [401] for services that answer 401 to a valid GET. Only 401 and 403 can ever count as rejection, so other codes are ignored.',
+			placeholder: '[401]',
 			default: '',
 		},
 	];

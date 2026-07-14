@@ -48,13 +48,26 @@ const displayName = computed(() => {
 		);
 	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name } });
 });
+
+/** Agent-supplied service logo (https-only), shown instead of the generic type icon. */
+const hintIconUrl = computed(() => {
+	const url = props.section.setupHint?.iconUrl;
+	return url && /^https:\/\//.test(url) ? url : undefined;
+});
 </script>
 
 <template>
 	<div :class="$style.card" data-test-id="instance-ai-workflow-setup-card">
 		<header :class="$style.header">
+			<img
+				v-if="isCredentialOnlySection && hintIconUrl"
+				:src="hintIconUrl"
+				:alt="displayName"
+				:class="$style.serviceIcon"
+				data-test-id="credential-hint-icon"
+			/>
 			<CredentialIcon
-				v-if="isCredentialOnlySection"
+				v-else-if="isCredentialOnlySection"
 				:credential-type-name="credentialType ?? null"
 				:size="16"
 			/>
@@ -93,6 +106,13 @@ const displayName = computed(() => {
 </template>
 
 <style lang="scss" module>
+.serviceIcon {
+	width: 16px;
+	height: 16px;
+	border-radius: var(--radius--sm);
+	object-fit: contain;
+}
+
 .card {
 	display: flex;
 	flex-direction: column;
