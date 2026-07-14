@@ -45,6 +45,69 @@ export const Default = {
 	},
 } satisfies Story;
 
+export const ControlledUncontrolled = {
+	name: 'Controlled/Uncontrolled',
+	render: () => ({
+		components: { TagsInput },
+		setup() {
+			const value = ref(['workflow', 'production']);
+			const presets = [
+				{ label: 'Workflow + production', tags: ['workflow', 'production'] },
+				{ label: 'Staging only', tags: ['staging'] },
+				{ label: 'Clear', tags: [] as string[] },
+			];
+			return { value, presets };
+		},
+		template: `
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--xl);">
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Controlled
+				</h3>
+				<TagsInput
+					key="controlled"
+					v-model="value"
+					placeholder="Add tags..."
+				/>
+				<div style="display: flex; gap: var(--spacing--2xs); margin-top: var(--spacing--sm); flex-wrap: wrap;">
+					<button
+						v-for="preset in presets"
+						:key="preset.label"
+						type="button"
+						style="
+							padding: var(--spacing--3xs) var(--spacing--xs);
+							border: var(--border);
+							border-radius: var(--radius--2xs);
+							background: var(--background--surface);
+							color: var(--text-color);
+							cursor: pointer;
+							font: inherit;
+							font-size: var(--font-size--xs);
+						"
+						@click="value = [...preset.tags]"
+					>
+						{{ preset.label }}
+					</button>
+				</div>
+				<p style="margin-top: var(--spacing--sm); font-size: var(--font-size--sm);">
+					Selected: <strong>{{ value.length ? value.join(', ') : '(empty)' }}</strong>
+				</p>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Uncontrolled
+				</h3>
+				<TagsInput
+					key="uncontrolled"
+					:default-value="['workflow', 'production']"
+					placeholder="Add tags..."
+				/>
+			</section>
+		</div>
+		`,
+	}),
+} satisfies Story;
+
 export const Empty = {
 	render: (args) => ({
 		components: { TagsInput },
