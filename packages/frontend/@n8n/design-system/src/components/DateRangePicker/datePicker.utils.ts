@@ -220,15 +220,8 @@ export function applyActiveFieldSelection(
 	return { start, end };
 }
 
-export function getNextActiveFieldAfterSelection(
-	activeField: 'start' | 'end',
-	rangeBefore: { start?: DateValue; end?: DateValue },
-): 'start' | 'end' {
-	if (activeField === 'start') {
-		return 'end';
-	}
-
-	return rangeBefore.end ? 'start' : 'end';
+export function getNextActiveFieldAfterSelection(activeField: 'start' | 'end'): 'start' | 'end' {
+	return activeField === 'start' ? 'end' : 'start';
 }
 
 export function parseCalendarCellDate(element: Element): DateValue | undefined {

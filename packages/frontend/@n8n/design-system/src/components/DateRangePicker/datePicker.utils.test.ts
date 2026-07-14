@@ -140,30 +140,12 @@ describe('datePicker.utils', () => {
 	});
 
 	describe('getNextActiveFieldAfterSelection', () => {
-		it('moves to end immediately after selecting start', () => {
-			expect(
-				getNextActiveFieldAfterSelection('start', {
-					start: new CalendarDate(2025, 6, 10),
-					end: new CalendarDate(2025, 6, 20),
-				}),
-			).toBe('end');
+		it('moves to end after selecting start', () => {
+			expect(getNextActiveFieldAfterSelection('start')).toBe('end');
 		});
 
-		it('stays on end after the first end selection', () => {
-			expect(
-				getNextActiveFieldAfterSelection('end', {
-					start: new CalendarDate(2025, 6, 10),
-				}),
-			).toBe('end');
-		});
-
-		it('moves to start after updating an existing end date', () => {
-			expect(
-				getNextActiveFieldAfterSelection('end', {
-					start: new CalendarDate(2025, 6, 10),
-					end: new CalendarDate(2025, 6, 20),
-				}),
-			).toBe('start');
+		it('moves to start after selecting end', () => {
+			expect(getNextActiveFieldAfterSelection('end')).toBe('start');
 		});
 	});
 });

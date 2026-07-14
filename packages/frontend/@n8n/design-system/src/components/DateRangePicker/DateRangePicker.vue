@@ -17,7 +17,7 @@ import {
 	DateRangePickerTrigger,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { nextTick, provide, ref } from 'vue';
+import { computed, nextTick, provide, ref, toRef } from 'vue';
 
 import N8nButton from '../N8nButton';
 import IconButton from '../N8nIconButton';
@@ -26,6 +26,7 @@ import N8nDateRangePickerClearButton from './DateRangePickerClearButton.vue';
 import N8nDateRangePickerField from './DateRangePickerField.vue';
 import {
 	N8N_DATE_RANGE_PICKER_ACTIVE_FIELD,
+	N8N_DATE_RANGE_PICKER_SINGLE,
 	N8N_DATE_RANGE_PICKER_SKIP_NEXT_CELL_CLICK,
 } from './dateRangePicker.context';
 import N8nDateRangePickerOpenHandler from './DateRangePickerOpenHandler.vue';
@@ -38,6 +39,8 @@ const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
 	weekdayFormat: 'short',
 	fixedWeeks: true,
 	hourCycle: 24,
+	hideInputs: false,
+	single: false,
 });
 
 const emit = defineEmits<N8nDateRangePickerRootEmits>();
@@ -53,8 +56,10 @@ const closePopover = () => emit('update:open', false);
 const forwarded = useForwardPropsEmits(props, emit);
 const activeCalendarField = ref<'start' | 'end'>('end');
 const skipNextCellClick = ref(false);
+const showInputs = computed(() => !props.hideInputs);
 provide(N8N_DATE_RANGE_PICKER_ACTIVE_FIELD, activeCalendarField);
 provide(N8N_DATE_RANGE_PICKER_SKIP_NEXT_CELL_CLICK, skipNextCellClick);
+provide(N8N_DATE_RANGE_PICKER_SINGLE, toRef(props, 'single'));
 
 function blurFocusedCalendarCell() {
 	const active = document.activeElement;
@@ -83,7 +88,7 @@ function markPageNavigation() {
 		<DateRangePickerContent align="start" :side-offset="5" :class="$style.PopoverContent">
 			<DateRangePickerCalendar v-slot="{ weekDays, grid }" :class="$style.Calendar">
 				<div :class="$style.PopoverInner" :data-active-field="activeCalendarField">
-					<div v-if="!hideInputs" :class="$style.DateFieldWrapper">
+					<div v-if="showInputs" :class="$style.DateFieldWrapper">
 						<N8nDateRangePickerField :class="$style.DateField"></N8nDateRangePickerField>
 						<div :class="$style.DateFieldError">Outside of allowed range</div>
 					</div>
@@ -117,7 +122,9 @@ function markPageNavigation() {
 							:class="$style.CalendarGrid"
 						>
 							<DateRangePickerGridHead>
-								<DateRangePickerGridRow :class="$style.CalendarGridRow">
+								<DateRangePickerGridRow
+									:class="[$style.CalendarGridRow, $style.CalendarGridHeadRow]"
+								>
 									<DateRangePickerHeadCell
 										v-for="day in weekDays"
 										:key="day"
@@ -150,7 +157,7 @@ function markPageNavigation() {
 						</DateRangePickerGrid>
 					</N8nDateRangePickerCalendarWrapper>
 
-					<div v-if="!hideInputs" :class="$style.FooterWrapper">
+					<div v-if="showInputs" :class="$style.FooterWrapper">
 						<slot name="footer" :close="closePopover">
 							<N8nButton
 								variant="subtle"
@@ -170,7 +177,6 @@ function markPageNavigation() {
 
 <style lang="css" module>
 .DateFieldWrapper {
-	border-bottom: 1px solid var(--color--foreground);
 	width: 100%;
 	padding-bottom: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);
@@ -186,15 +192,14 @@ function markPageNavigation() {
 }
 
 .DateFieldError {
-	color: var(--color--danger);
+	color: var(--text-color--danger);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
-	margin-top: 5px;
+	margin-top: var(--spacing--3xs);
 	display: none;
 }
 
 .FooterWrapper {
-	border-top: 1px solid var(--color--foreground);
 	width: 100%;
 	padding-top: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
@@ -238,21 +243,25 @@ function markPageNavigation() {
 
 .CalendarGridRow {
 	display: grid;
-	margin-bottom: 0.25rem;
+	margin-bottom: var(--spacing--4xs);
 	grid-template-columns: repeat(7, var(--date-range-picker--cell-size));
 	width: fit-content;
+}
+
+.CalendarGridHeadRow {
+	margin-bottom: 0;
 }
 
 .CalendarHeadCell {
 	display: flex;
 	width: var(--date-range-picker--cell-size);
-	height: var(--date-range-picker--cell-size);
+	height: var(--spacing--lg);
 	align-items: center;
 	justify-content: center;
-	font-size: 0.75rem;
-	line-height: 1rem;
-	color: var(--color--text--tint-1);
-	font-weight: 400;
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	color: var(--text-color--subtler);
+	font-weight: var(--font-weight--regular);
 }
 
 .CalendarCell {
@@ -274,34 +283,34 @@ function markPageNavigation() {
 	align-items: center;
 	border: none;
 	outline: none;
-	font-weight: 400;
+	font-weight: var(--font-weight--regular);
 	white-space: nowrap;
 	background-color: transparent;
 	cursor: pointer;
-	font-size: 14px;
+	font-size: var(--font-size--xs);
 	font-style: normal;
 	line-height: normal;
-	color: var(--color--text);
-	border-radius: var(--radius--3xs);
+	color: var(--text-color);
+	border-radius: var(--radius--2xs);
 }
 
 .CalendarCellTrigger[data-outside-view] {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 }
 
 .CalendarCellTrigger:hover:not([data-disabled]):not([data-selection-start='true']):not(
 		[data-selection-end='true']
 	):not([data-selected='true']):not([data-today]) {
-	background-color: var(--color--foreground--tint-1);
+	background-color: var(--background--hover);
 }
 
 .CalendarCellTrigger[data-disabled] {
 	cursor: not-allowed;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 }
 
 .CalendarCellTrigger[data-unavailable] {
-	color: rgba(0, 0, 0, 0.3);
+	color: light-dark(var(--color--black-alpha-300), var(--color--white-alpha-300));
 	text-decoration: line-through;
 }
 
@@ -310,7 +319,7 @@ function markPageNavigation() {
 	position: absolute;
 	inset: 0;
 	z-index: 0;
-	background: var(--color--foreground--tint-1);
+	background: var(--background--hover);
 	border-radius: 0;
 }
 
@@ -318,42 +327,40 @@ function markPageNavigation() {
 .CalendarCell:has([data-selected='true']):not(
 		.CalendarCell:has([data-selected='true']) + .CalendarCell:has([data-selected='true'])
 	)::before {
-	border-top-left-radius: var(--radius--3xs);
-	border-bottom-left-radius: var(--radius--3xs);
+	border-top-left-radius: var(--radius--2xs);
+	border-bottom-left-radius: var(--radius--2xs);
 }
 
 /* Round the last selected cell in each row segment. */
 .CalendarCell:has([data-selected='true']):not(
 		:has(+ .CalendarCell [data-selected='true'])
 	)::before {
-	border-top-right-radius: var(--radius--3xs);
-	border-bottom-right-radius: var(--radius--3xs);
+	border-top-right-radius: var(--radius--2xs);
+	border-bottom-right-radius: var(--radius--2xs);
 }
 
 .CalendarCellTrigger[data-selection-start='true'],
 .CalendarCellTrigger[data-selection-end='true'] {
-	background-color: var(--color--blue-100);
-	color: var(--color--text);
-	box-shadow: inset 0 0 0 2px var(--color--blue-400);
-	border-radius: var(--radius--3xs);
+	background-color: var(--color--purple-500);
+	color: var(--color--neutral-white);
+	box-shadow: none;
+	border-radius: var(--radius--2xs);
 }
 
 .PopoverInner[data-active-field='start'] .CalendarCellTrigger[data-selection-start='true'] {
-	background-color: var(--color--blue-200);
-	box-shadow: inset 0 0 0 2px var(--color--blue-600);
+	background-color: var(--color--purple-600);
 }
 
 .PopoverInner[data-active-field='end'] .CalendarCellTrigger[data-selection-end='true'] {
-	background-color: var(--color--blue-200);
-	box-shadow: inset 0 0 0 2px var(--color--blue-600);
+	background-color: var(--color--purple-600);
 }
 
 .CalendarCellTrigger[data-today]:not([data-selection-start='true']):not(
 		[data-selection-end='true']
 	):not([data-selected='true']) {
-	background-color: var(--color--primary);
-	color: #fff;
-	border-radius: 9999px;
+	background-color: var(--background--brand);
+	color: var(--color--neutral-white);
+	border-radius: var(--radius--full);
 	box-shadow: none;
 }
 
@@ -369,7 +376,7 @@ function markPageNavigation() {
 .CalendarCellTrigger:focus-visible:not([data-selection-start='true']):not(
 		[data-selection-end='true']
 	):not([data-selected='true']):not([data-today]) {
-	background-color: var(--color--foreground--tint-1);
+	background-color: var(--background--hover);
 	box-shadow: none;
 }
 
@@ -379,13 +386,13 @@ function markPageNavigation() {
 
 .PopoverContent {
 	--date-range-picker--cell-size: var(--spacing--xl);
-	border-radius: 6px;
-	padding: 10px;
+	border-radius: var(--radius--2xs);
+	padding: var(--spacing--xs);
 	border: var(--border);
-	background: var(--color--foreground--tint-2);
-	box-shadow: 0 6px 16px 0 rgba(68, 28, 23, 0.06);
-	animation-duration: 400ms;
-	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+	background: var(--background--surface);
+	box-shadow: var(--shadow--sm);
+	animation-duration: var(--duration--base);
+	animation-timing-function: var(--easing--ease-out);
 	will-change: transform, opacity;
 	width: fit-content;
 	z-index: 9999;
@@ -411,15 +418,15 @@ function markPageNavigation() {
 .Presets {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
-	padding: 12px;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--xs);
 	border-right: var(--border);
 }
 
 @keyframes slideUpAndFade {
 	from {
 		opacity: 0;
-		transform: translateY(2px);
+		transform: translateY(var(--spacing--5xs));
 	}
 	to {
 		opacity: 1;
@@ -430,7 +437,7 @@ function markPageNavigation() {
 @keyframes slideRightAndFade {
 	from {
 		opacity: 0;
-		transform: translateX(-2px);
+		transform: translateX(calc(-1 * var(--spacing--5xs)));
 	}
 	to {
 		opacity: 1;
@@ -441,7 +448,7 @@ function markPageNavigation() {
 @keyframes slideDownAndFade {
 	from {
 		opacity: 0;
-		transform: translateY(-2px);
+		transform: translateY(calc(-1 * var(--spacing--5xs)));
 	}
 	to {
 		opacity: 1;
@@ -452,7 +459,7 @@ function markPageNavigation() {
 @keyframes slideLeftAndFade {
 	from {
 		opacity: 0;
-		transform: translateX(2px);
+		transform: translateX(var(--spacing--5xs));
 	}
 	to {
 		opacity: 1;

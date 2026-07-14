@@ -8,3 +8,7 @@ export const N8N_DATE_RANGE_PICKER_ACTIVE_FIELD: InjectionKey<Ref<DateRangePicke
 export const N8N_DATE_RANGE_PICKER_SKIP_NEXT_CELL_CLICK: InjectionKey<Ref<boolean>> = Symbol(
 	'N8nDateRangePickerSkipNextCellClick',
 );
+
+export const N8N_DATE_RANGE_PICKER_SINGLE: InjectionKey<Ref<boolean>> = Symbol(
+	'N8nDateRangePickerSingle',
+);

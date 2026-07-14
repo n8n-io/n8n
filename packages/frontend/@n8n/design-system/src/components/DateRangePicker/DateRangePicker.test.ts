@@ -26,18 +26,19 @@ describe('N8nDateRangePicker', () => {
 		await openCalendarPopover(container);
 	});
 
-	it('selects today as the start date when opened', async () => {
+	it('selects today as both start and end date when opened', async () => {
 		const { container, emitted } = render(DateRangePicker);
 		await openCalendarPopover(container);
 
 		const modelValueUpdates = emitted('update:modelValue') ?? [];
 		const todayRange = modelValueUpdates.at(-1)?.[0];
+		const todayDate = today(getLocalTimeZone());
 
-		expect(todayRange?.start).toBeDefined();
-		expect(todayRange?.end).toBeUndefined();
+		expect(todayRange?.start?.compare(todayDate)).toBe(0);
+		expect(todayRange?.end?.compare(todayDate)).toBe(0);
 	});
 
-	it('keeps the start date when navigating to the previous month', async () => {
+	it('keeps the start and end dates when navigating to the previous month', async () => {
 		const { container, emitted } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
@@ -49,10 +50,10 @@ describe('N8nDateRangePicker', () => {
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
-		expect(lastUpdate?.end).toBeUndefined();
+		expect(lastUpdate?.end?.compare(todayDate)).toBe(0);
 	});
 
-	it('keeps the start date when navigating to another month', async () => {
+	it('keeps the start and end dates when navigating to another month', async () => {
 		const { container, emitted } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
@@ -64,7 +65,7 @@ describe('N8nDateRangePicker', () => {
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
-		expect(lastUpdate?.end).toBeUndefined();
+		expect(lastUpdate?.end?.compare(todayDate)).toBe(0);
 	});
 
 	it('extends the range from today after navigating to the previous month', async () => {
@@ -127,7 +128,7 @@ describe('N8nDateRangePicker', () => {
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
-		expect(lastUpdate?.end).toBeUndefined();
+		expect(lastUpdate?.end?.compare(todayDate)).toBe(0);
 	});
 
 	it('extends the auto-selected today range when another day is clicked', async () => {
@@ -149,29 +150,31 @@ describe('N8nDateRangePicker', () => {
 		expect(lastUpdate?.end?.compare(tomorrow)).toBe(0);
 	});
 
-	it('keeps end active after the first end selection, then switches to start', async () => {
+	it('alternates active field between end and start after each selection', async () => {
 		const { container, emitted } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
 		const todayDate = today(getLocalTimeZone());
 		const tomorrow = todayDate.add({ days: 1 });
-		const nextWeek = todayDate.add({ days: 7 });
+		const fiveDaysAgo = todayDate.subtract({ days: 5 });
+
+		expect(popover.querySelector('[data-active-field="end"]')).toBeTruthy();
 
 		await userEvent.click(
 			popover.querySelector(`[data-value="${tomorrow.toString()}"]`) as HTMLElement,
 		);
 
-		expect(popover.querySelector('[data-active-field="end"]')).toBeTruthy();
-
-		await userEvent.click(
-			popover.querySelector(`[data-value="${nextWeek.toString()}"]`) as HTMLElement,
-		);
-
 		expect(popover.querySelector('[data-active-field="start"]')).toBeTruthy();
 
+		await userEvent.click(
+			popover.querySelector(`[data-value="${fiveDaysAgo.toString()}"]`) as HTMLElement,
+		);
+
+		expect(popover.querySelector('[data-active-field="end"]')).toBeTruthy();
+
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
-		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
-		expect(lastUpdate?.end?.compare(nextWeek)).toBe(0);
+		expect(lastUpdate?.start?.compare(fiveDaysAgo)).toBe(0);
+		expect(lastUpdate?.end?.compare(tomorrow)).toBe(0);
 	});
 
 	it('switches to end immediately after selecting start', async () => {
@@ -180,15 +183,13 @@ describe('N8nDateRangePicker', () => {
 
 		const todayDate = today(getLocalTimeZone());
 		const tomorrow = todayDate.add({ days: 1 });
-		const nextWeek = todayDate.add({ days: 7 });
 		const fiveDaysAgo = todayDate.subtract({ days: 5 });
 
 		await userEvent.click(
 			popover.querySelector(`[data-value="${tomorrow.toString()}"]`) as HTMLElement,
 		);
-		await userEvent.click(
-			popover.querySelector(`[data-value="${nextWeek.toString()}"]`) as HTMLElement,
-		);
+
+		expect(popover.querySelector('[data-active-field="start"]')).toBeTruthy();
 
 		await userEvent.click(
 			popover.querySelector(`[data-value="${fiveDaysAgo.toString()}"]`) as HTMLElement,
@@ -211,7 +212,7 @@ describe('N8nDateRangePicker', () => {
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(newStart)).toBe(0);
-		expect(lastUpdate?.end).toBeUndefined();
+		expect(lastUpdate?.end?.compare(todayDate)).toBe(0);
 	});
 
 	it('should emit update:close when clicking the apply button', async () => {
@@ -272,6 +273,38 @@ describe('N8nDateRangePicker', () => {
 
 			expect(queryByText('Apply', { selector: 'button' })).not.toBeInTheDocument();
 			expect(queryByText('Clear', { selector: 'button' })).not.toBeInTheDocument();
+		});
+	});
+
+	describe('single prop', () => {
+		it('should render a single date input when single is true', async () => {
+			const { container, queryByLabelText, getByLabelText } = render(DateRangePicker, {
+				props: { single: true },
+			});
+			await openCalendarPopover(container);
+
+			expect(getByLabelText('Date')).toBeVisible();
+			expect(queryByLabelText('Start date')).not.toBeInTheDocument();
+			expect(queryByLabelText('End date')).not.toBeInTheDocument();
+		});
+
+		it('selects the same date for start and end when a day is clicked', async () => {
+			const { container, emitted } = render(DateRangePicker, {
+				props: { single: true },
+			});
+			const popover = await openCalendarPopover(container);
+
+			const todayDate = today(getLocalTimeZone());
+			const tomorrow = todayDate.add({ days: 1 });
+			const tomorrowCell = popover.querySelector(
+				`[data-value="${tomorrow.toString()}"]`,
+			) as HTMLElement;
+
+			await userEvent.click(tomorrowCell);
+
+			const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
+			expect(lastUpdate?.start?.compare(tomorrow)).toBe(0);
+			expect(lastUpdate?.end?.compare(tomorrow)).toBe(0);
 		});
 	});
 

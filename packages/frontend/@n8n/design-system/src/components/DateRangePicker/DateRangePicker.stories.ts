@@ -4,7 +4,7 @@ import { ref } from 'vue';
 
 import N8nButton from '../N8nButton';
 import DateRangePicker from './DateRangePicker.vue';
-import { formatDateRangeValue } from './datePicker.utils';
+import { formatDateRangeValue, formatDateValue } from './datePicker.utils';
 
 const meta = {
 	component: DateRangePicker,
@@ -32,6 +32,29 @@ export const FormattedTrigger: Story = {
 				<template #trigger>
 					<N8nButton variant="subtle" icon="calendar">
 						{{ formatDateRangeValue(range, { locale: 'en-GB' }) || 'Select range' }}
+					</N8nButton>
+				</template>
+			</DateRangePicker>
+		`,
+	}),
+};
+
+export const SingleDateSelection: Story = {
+	render: () => ({
+		components: { DateRangePicker, N8nButton },
+		setup() {
+			const range = ref({
+				start: today('UTC'),
+				end: today('UTC'),
+			});
+
+			return { range, formatDateValue };
+		},
+		template: `
+			<DateRangePicker v-model="range" single locale="en-GB">
+				<template #trigger>
+					<N8nButton variant="subtle" icon="calendar">
+						{{ formatDateValue(range.start, { locale: 'en-GB' }) || 'Select date' }}
 					</N8nButton>
 				</template>
 			</DateRangePicker>

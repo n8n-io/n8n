@@ -4,11 +4,15 @@ import { injectDateRangePickerRootContext } from 'reka-ui';
 import { computed, inject, ref, watch } from 'vue';
 
 import N8nInput from '../N8nInput';
-import { N8N_DATE_RANGE_PICKER_ACTIVE_FIELD } from './dateRangePicker.context';
+import {
+	N8N_DATE_RANGE_PICKER_ACTIVE_FIELD,
+	N8N_DATE_RANGE_PICKER_SINGLE,
+} from './dateRangePicker.context';
 import { formatDateValue, isDateValueInBounds, parseDateValue } from './datePicker.utils';
 
 const rootContext = injectDateRangePickerRootContext();
 const activeField = inject(N8N_DATE_RANGE_PICKER_ACTIVE_FIELD);
+const single = inject(N8N_DATE_RANGE_PICKER_SINGLE);
 
 if (!activeField) {
 	throw new Error('DateRangePickerField must be used within N8nDateRangePicker');
@@ -17,6 +21,11 @@ if (!activeField) {
 watch(
 	() => rootContext.modelValue.value,
 	(range) => {
+		if (single?.value) {
+			activeField.value = 'start';
+			return;
+		}
+
 		if (!range?.start && !range?.end) {
 			activeField.value = 'start';
 			return;
@@ -137,6 +146,11 @@ function commitField(type: 'start' | 'end') {
 		return;
 	}
 
+	if (single?.value) {
+		updateRange(parsed.copy(), parsed.copy());
+		return;
+	}
+
 	if (type === 'start') {
 		const nextEnd = currentEnd && currentEnd.compare(parsed) < 0 ? undefined : currentEnd?.copy();
 		if (!isValidRange(parsed, nextEnd)) {
@@ -178,16 +192,20 @@ function onEndBlur() {
 </script>
 
 <template>
-	<div :class="$style.DateFields" :data-invalid="isInvalid ? '' : undefined">
+	<div
+		:class="[$style.DateFields, single && $style.DateFieldsSingle]"
+		:data-invalid="isInvalid ? '' : undefined"
+	>
 		<N8nInput
 			v-model="startText"
 			size="small"
 			:class="[$style.DateFieldInput, activeField === 'start' && $style.DateFieldInputActive]"
-			aria-label="Start date"
+			:aria-label="single ? 'Date' : 'Start date'"
 			@focus="onStartFocus"
 			@blur="onStartBlur"
 		/>
 		<N8nInput
+			v-if="!single"
 			v-model="endText"
 			size="small"
 			:class="[$style.DateFieldInput, activeField === 'end' && $style.DateFieldInputActive]"
@@ -204,6 +222,10 @@ function onEndBlur() {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: var(--spacing--2xs);
 	width: 100%;
+}
+
+.DateFieldsSingle {
+	grid-template-columns: minmax(0, 1fr);
 }
 
 .DateFieldInput {
@@ -226,6 +248,6 @@ function onEndBlur() {
 .DateFieldInputActive :global(.n8n-input__wrapper:focus-within),
 .DateFieldInputActive :global(.n8n-input__wrapper:hover:not(:focus-within)) {
 	outline: none;
-	box-shadow: inset 0 0 0 2px var(--color--blue-400);
+	box-shadow: inset 0 0 0 2px var(--color--purple-400);
 }
 </style>

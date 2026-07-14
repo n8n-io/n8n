@@ -4,6 +4,7 @@ import { inject, ref } from 'vue';
 
 import {
 	N8N_DATE_RANGE_PICKER_ACTIVE_FIELD,
+	N8N_DATE_RANGE_PICKER_SINGLE,
 	N8N_DATE_RANGE_PICKER_SKIP_NEXT_CELL_CLICK,
 } from './dateRangePicker.context';
 import {
@@ -15,6 +16,7 @@ import {
 const rootContext = injectDateRangePickerRootContext();
 const activeField = inject(N8N_DATE_RANGE_PICKER_ACTIVE_FIELD);
 const skipNextCellClick = inject(N8N_DATE_RANGE_PICKER_SKIP_NEXT_CELL_CLICK);
+const single = inject(N8N_DATE_RANGE_PICKER_SINGLE);
 const blockedCellInteraction = ref(false);
 
 function isCalendarCellTarget(event: Event): HTMLElement | null {
@@ -74,14 +76,24 @@ function handleCalendarClickCapture(event: MouseEvent) {
 	}
 
 	const selectedDate = parseCalendarCellDate(target);
-	if (!selectedDate || !activeField?.value) return;
+	if (!selectedDate) return;
 
 	blockCalendarCellEvent(event);
+
+	if (single?.value) {
+		rootContext.onDateChange({
+			start: selectedDate.copy(),
+			end: selectedDate.copy(),
+		});
+		return;
+	}
+
+	if (!activeField?.value) return;
 
 	const rangeBefore = rootContext.modelValue.value;
 
 	rootContext.onDateChange(applyActiveFieldSelection(activeField.value, selectedDate, rangeBefore));
-	activeField.value = getNextActiveFieldAfterSelection(activeField.value, rangeBefore);
+	activeField.value = getNextActiveFieldAfterSelection(activeField.value);
 }
 </script>
 

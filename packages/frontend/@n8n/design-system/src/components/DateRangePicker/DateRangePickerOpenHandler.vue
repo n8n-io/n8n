@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { injectDateRangePickerRootContext } from 'reka-ui';
-import { watch } from 'vue';
+import { inject, watch } from 'vue';
 
+import {
+	N8N_DATE_RANGE_PICKER_ACTIVE_FIELD,
+	N8N_DATE_RANGE_PICKER_SINGLE,
+} from './dateRangePicker.context';
 import { createTodayRange, isEmptyDateRange } from './datePicker.utils';
 
 const rootContext = injectDateRangePickerRootContext();
+const activeField = inject(N8N_DATE_RANGE_PICKER_ACTIVE_FIELD);
+const single = inject(N8N_DATE_RANGE_PICKER_SINGLE);
 
 watch(
 	() => rootContext.open.value,
@@ -25,9 +31,13 @@ watch(
 
 		rootContext.onDateChange({
 			start: todayRange.start.copy(),
-			end: undefined,
+			end: todayRange.end.copy(),
 		});
 		rootContext.onPlaceholderChange(todayRange.start.copy());
+
+		if (activeField) {
+			activeField.value = single?.value ? 'start' : 'end';
+		}
 	},
 );
 </script>
