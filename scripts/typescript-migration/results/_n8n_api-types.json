@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/api-types",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-14T08:13:33.024Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            2731,
+            2554,
+            2526
+          ],
+          "min": 2526,
+          "median": 2554,
+          "mean": 2604
+        },
+        "build": {
+          "runsMs": [
+            2513,
+            3418,
+            2639
+          ],
+          "min": 2513,
+          "median": 2639,
+          "mean": 2857
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-14T08:14:34.864Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            903,
+            857,
+            1156
+          ],
+          "min": 857,
+          "median": 903,
+          "mean": 972
+        },
+        "build": {
+          "runsMs": [
+            826,
+            927,
+            882
+          ],
+          "min": 826,
+          "median": 882,
+          "mean": 878
+        }
+      }
+    }
+  }
+}

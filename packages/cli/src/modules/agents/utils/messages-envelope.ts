@@ -75,8 +75,9 @@ function mergeOpenSuspendedToolCalls(
 /**
  * Merge an open suspended checkpoint into already-persisted history and
  * surface the open-suspensions sidecar (toolCallId + runId) so the FE can
- * re-arm suspended interactive cards after a refresh. Same contract as
- * GET /build/messages.
+ * re-arm suspended interactive cards after a refresh. Used by the chat
+ * controller's `GET /:agentId/chat/:threadId/messages` and
+ * `GET /:agentId/chat/messages` envelopes.
  *
  * The input `messages` must already be in DTO form (the caller converts raw
  * memory before passing it here). Checkpoint messages are converted here so
