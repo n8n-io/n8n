@@ -93,6 +93,7 @@ async function createInstanceRole() {
 		telemetry.track('User successfully created new role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'instance',
 			permissions: role.scopes,
 		});
 
@@ -122,6 +123,7 @@ async function updateInstanceRole(slug: string) {
 		telemetry.track('User updated role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'instance',
 			permissions_from: initialState.value?.scopes,
 			permissions_to: role.scopes,
 		});

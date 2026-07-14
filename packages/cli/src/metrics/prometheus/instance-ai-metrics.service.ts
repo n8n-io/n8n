@@ -74,6 +74,77 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 			},
 		});
 
+		// Durable event log (RFC: instance-ai durable event log). All series are
+		// flat when N8N_INSTANCE_AI_DURABLE_LOG is off.
+		const durableLogRowsTotal = new promClient.Counter({
+			name: `${this.config.prefix}instance_ai_durable_log_rows_total`,
+			help: 'Durable Instance AI event rows appended (structural facts + coalesced blocks).',
+		});
+		durableLogRowsTotal.inc(0);
+
+		const durableLogBytesTotal = new promClient.Counter({
+			name: `${this.config.prefix}instance_ai_durable_log_bytes_total`,
+			help: 'Serialized payload bytes appended to the durable Instance AI event log.',
+		});
+		durableLogBytesTotal.inc(0);
+
+		const durableLogQueueLatency = new promClient.Histogram({
+			name: `${this.config.prefix}instance_ai_durable_log_queue_latency_seconds`,
+			help: 'Time from event publish to durable batch persistence, per event.',
+			buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5],
+		});
+
+		const durableLogAppendConflictsTotal = new promClient.Counter({
+			name: `${this.config.prefix}instance_ai_durable_log_append_conflicts_total`,
+			help: 'Retried (threadId, seq) append collisions between concurrent writers.',
+		});
+		durableLogAppendConflictsTotal.inc(0);
+
+		const durableLogAppendFailuresTotal = new promClient.Counter({
+			name: `${this.config.prefix}instance_ai_durable_log_append_failures_total`,
+			help: 'Durable-log batches dropped after exhausting append retries.',
+		});
+		durableLogAppendFailuresTotal.inc(0);
+
+		const durableLogReplaysTotal = new promClient.Counter({
+			name: `${this.config.prefix}instance_ai_durable_log_replays_total`,
+			help: 'SSE reconnects that served a replay from the durable event log.',
+		});
+		durableLogReplaysTotal.inc(0);
+
+		const durableLogReplayCursorAge = new promClient.Histogram({
+			name: `${this.config.prefix}instance_ai_durable_log_replay_cursor_age_events`,
+			help: 'How many events behind the log head a reconnecting cursor was.',
+			buckets: [1, 5, 25, 100, 500],
+		});
+
+		const parserFallbacksTotal = new promClient.Counter({
+			name: `${this.config.prefix}instance_ai_parser_fallbacks_total`,
+			help: 'History messages rendered from the message-derived fallback ladder instead of a renderable snapshot tree.',
+		});
+		parserFallbacksTotal.inc(0);
+
+		this.eventService.on('instance-ai-durable-log-drained', ({ rows, bytes }) => {
+			durableLogRowsTotal.inc(rows);
+			durableLogBytesTotal.inc(bytes);
+		});
+		this.eventService.on('instance-ai-durable-log-queue-latency', ({ ms }) => {
+			durableLogQueueLatency.observe(ms / 1000);
+		});
+		this.eventService.on('instance-ai-durable-log-append-conflict', () => {
+			durableLogAppendConflictsTotal.inc(1);
+		});
+		this.eventService.on('instance-ai-durable-log-append-failure', () => {
+			durableLogAppendFailuresTotal.inc(1);
+		});
+		this.eventService.on('instance-ai-durable-log-replayed', ({ cursorAgeEvents }) => {
+			durableLogReplaysTotal.inc(1);
+			durableLogReplayCursorAge.observe(cursorAgeEvents);
+		});
+		this.eventService.on('instance-ai-parser-fallback', ({ count }) => {
+			parserFallbacksTotal.inc(count);
+		});
+
 		this.eventService.on(
 			'instance-ai-run-finished',
 			({ status, durationMs, model, toolCalls, toolErrors, usage }) => {

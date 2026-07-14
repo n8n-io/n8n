@@ -26,7 +26,6 @@ import {
 	N8nLink,
 	N8nInputLabel,
 	N8nInput,
-	N8nPreviewTag,
 } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
@@ -419,12 +418,7 @@ onMounted(async () => {
 	<div :class="$style.container">
 		<header :class="$style['main-header']" data-test-id="mcp-settings-header">
 			<div :class="$style.headings">
-				<div :class="$style['heading-row']">
-					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
-					<N8nTooltip :content="i18n.baseText('settings.mcp.preview.tooltip')">
-						<N8nPreviewTag size="medium" />
-					</N8nTooltip>
-				</div>
+				<N8nHeading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
 				<div v-show="mcpStore.mcpAccessEnabled" data-test-id="mcp-settings-description">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.mcp.description') }}.
@@ -572,13 +566,6 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	min-height: 60px;
-}
-
-.heading-row {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--5xs);
 }
 
 .tabs-header {

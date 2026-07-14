@@ -19,6 +19,7 @@ import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { OwnershipTransferService } from '@/services/ownership-transfer/ownership-transfer.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { BaseCommand } from '../base-command';
@@ -95,12 +96,10 @@ export class Reset extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			const project = await this.getProject(flags.userId, flags.projectId);
 
-			await Container.get(UserRepository).manager.transaction(async (trx) => {
-				for (const projectId of personalProjectIds) {
-					await Container.get(WorkflowService).transferAll(projectId, project.id, trx);
-					await Container.get(CredentialsService).transferAll(projectId, project.id, trx);
-				}
-			});
+			await Container.get(OwnershipTransferService).transferAllResources(
+				personalProjectIds,
+				project.id,
+			);
 		}
 
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
@@ -123,6 +122,11 @@ export class Reset extends BaseCommand<z.infer<typeof flagsSchema>> {
 		for (const credential of ownedCredentials) {
 			await Container.get(CredentialsService).delete(owner, credential.id);
 		}
+
+		// Clean up module-owned resources (e.g. data tables with their physical
+		// user tables) before the projects are removed, so they are not orphaned
+		// by the FK cascade. After a transfer this is a no-op.
+		await Container.get(OwnershipTransferService).deleteModuleOwnedResources(personalProjectIds);
 
 		await Container.get(AuthProviderSyncHistoryRepository).delete({ providerType: 'ldap' });
 		await Container.get(AuthIdentityRepository).delete({ providerType: 'ldap' });

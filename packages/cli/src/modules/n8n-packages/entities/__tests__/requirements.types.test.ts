@@ -21,7 +21,7 @@ function dataTable(dataTableId: string, workflowId: string): WorkflowDataTableRe
 }
 
 describe('mergeRequirements', () => {
-	it('concatenates each requirement type across parts, preserving order', () => {
+	it('concatenates credential requirements across parts, preserving order', () => {
 		const merged = mergeRequirements(
 			{
 				credentials: [cred('c1', 'w1')],
