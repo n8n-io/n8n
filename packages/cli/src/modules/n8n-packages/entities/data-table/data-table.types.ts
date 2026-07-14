@@ -1,4 +1,8 @@
-import type { DataTableMatchingMode, DataTableMissingMode } from '../../n8n-packages.types';
+import type {
+	DataTableMatchingMode,
+	DataTableMissingMode,
+	DataTableSchemaConflictPolicy,
+} from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
 
@@ -32,6 +36,8 @@ export type DataTableResolutionFailure = {
 	missingColumns?: string[];
 	/** For `schema-incompatible`: package columns whose target type differs. */
 	typeMismatches?: DataTableColumnTypeMismatch[];
+	/** For `schema-incompatible` under the `fail` policy: target columns not in the package schema. */
+	extraColumns?: string[];
 	usedByWorkflows: string[];
 };
 
@@ -39,7 +45,10 @@ export function createFailure(
 	requirement: PackageDataTableRequirement,
 	kind: DataTableResolutionFailureKind,
 	details: Partial<
-		Pick<DataTableResolutionFailure, 'existingProjectId' | 'missingColumns' | 'typeMismatches'>
+		Pick<
+			DataTableResolutionFailure,
+			'existingProjectId' | 'missingColumns' | 'typeMismatches' | 'extraColumns'
+		>
 	> = {},
 ): DataTableResolutionFailure {
 	return {
@@ -57,6 +66,7 @@ export interface DataTableImportRequest {
 	packageDataTables: SerializedDataTable[];
 	matchingMode: DataTableMatchingMode;
 	missingMode: DataTableMissingMode;
+	schemaConflictPolicy: DataTableSchemaConflictPolicy;
 }
 
 export interface DataTableImportPlan {

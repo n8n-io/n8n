@@ -62,6 +62,7 @@ async function importPackage(params: ImportParams) {
 		folderConflictPolicy: 'merge',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
+		dataTableSchemaConflictPolicy: 'keep-existing',
 		...params,
 	});
 }
@@ -258,6 +259,28 @@ describe('workflow package import — with data tables', () => {
 			expect(tables[0].columns).toHaveLength(3);
 		});
 
+		it('accepts an identical matched table under the strict fail conflict policy', async () => {
+			const existing = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [
+					{ name: 'email', type: 'string' },
+					{ name: 'signed_up_at', type: 'date' },
+				],
+			});
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({ id: existing.id }),
+			]);
+
+			await importPackage({
+				user: owner,
+				projectId: project.id,
+				packageBuffer,
+				dataTableSchemaConflictPolicy: 'fail',
+			});
+
+			expect(await tablesInProject(project.id)).toHaveLength(1);
+		});
+
 		it('matches a renamed target table by id and does not rename it back', async () => {
 			const existing = await dataTableService.createDataTable(project.id, {
 				name: 'Renamed On Target',
@@ -303,6 +326,39 @@ describe('workflow package import — with data tables', () => {
 				typeMismatches: [],
 				usedByWorkflows: ['wf-0'],
 			});
+
+			expect(await workflowRepository.count()).toBe(0);
+		});
+
+		it('blocks a matched table with extra columns under the strict fail conflict policy', async () => {
+			const existing = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [
+					{ name: 'email', type: 'string' },
+					{ name: 'signed_up_at', type: 'date' },
+					{ name: 'extra', type: 'boolean' },
+				],
+			});
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({ id: existing.id }),
+			]);
+
+			await expectBlocked(
+				importPackage({
+					user: owner,
+					projectId: project.id,
+					packageBuffer,
+					dataTableSchemaConflictPolicy: 'fail',
+				}),
+				{
+					type: 'data-table-unresolved',
+					kind: 'schema-incompatible',
+					sourceId: existing.id,
+					missingColumns: [],
+					typeMismatches: [],
+					extraColumns: ['extra'],
+				},
+			);
 
 			expect(await workflowRepository.count()).toBe(0);
 		});

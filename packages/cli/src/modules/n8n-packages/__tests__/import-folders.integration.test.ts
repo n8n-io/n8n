@@ -45,6 +45,7 @@ async function importFolders(params: FolderImportParams) {
 		folderConflictPolicy: params.folderConflictPolicy ?? 'merge',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
+		dataTableSchemaConflictPolicy: 'keep-existing',
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
 }

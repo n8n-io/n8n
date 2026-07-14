@@ -41,6 +41,7 @@ function makeRequest(overrides: Partial<DataTableImportRequest> = {}): DataTable
 		],
 		matchingMode: 'by-id',
 		missingMode: 'create',
+		schemaConflictPolicy: 'keep-existing',
 		...overrides,
 	};
 }

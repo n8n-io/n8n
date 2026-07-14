@@ -15,6 +15,7 @@ describe('ImportPackageRequestDto', () => {
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
 			});
 		}
 	});
@@ -37,6 +38,7 @@ describe('ImportPackageRequestDto', () => {
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
 			});
 		}
 	});
@@ -61,6 +63,7 @@ describe('ImportPackageRequestDto', () => {
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
 			});
 		}
 	});
@@ -84,6 +87,7 @@ describe('ImportPackageRequestDto', () => {
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
 			});
 		}
 	});
@@ -147,6 +151,29 @@ describe('ImportPackageRequestDto', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
 				dataTableMatchingMode: 'by-name',
+				workflowConflictPolicy: 'fail',
+			}).success,
+		).toBe(false);
+	});
+
+	it.each(['keep-existing', 'fail'] as const)(
+		'accepts %s as a dataTableSchemaConflictPolicy value',
+		(dataTableSchemaConflictPolicy) => {
+			const result = ImportPackageRequestDto.safeParse({
+				dataTableSchemaConflictPolicy,
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.dataTableSchemaConflictPolicy).toBe(dataTableSchemaConflictPolicy);
+			}
+		},
+	);
+
+	it('rejects unsupported dataTableSchemaConflictPolicy values', () => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				dataTableSchemaConflictPolicy: 'merge',
 				workflowConflictPolicy: 'fail',
 			}).success,
 		).toBe(false);

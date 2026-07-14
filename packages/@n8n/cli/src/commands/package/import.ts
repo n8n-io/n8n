@@ -62,6 +62,12 @@ export default class PackageImport extends BaseCommand {
 			options: ['create', 'must-preexist', 'do-nothing'],
 			aliases: ['data-table-missing-mode'],
 		}),
+		dataTableSchemaConflictPolicy: Flags.string({
+			description:
+				'How strictly a matched data table schema is compared: keep-existing (instance default) tolerates extra target columns; fail rejects any difference',
+			options: ['keep-existing', 'fail'],
+			aliases: ['data-table-schema-conflict-policy'],
+		}),
 		bindings: Flags.string({
 			description:
 				'Explicit source→target id bindings as a JSON object keyed by entity type, e.g. \'{"credentials":{"<sourceId>":"<targetId>"}}\'. Applied before credential-matching-mode resolution.',
@@ -92,6 +98,7 @@ export default class PackageImport extends BaseCommand {
 						credentialMissingMode: flags.credentialMissingMode,
 						dataTableMatchingMode: flags.dataTableMatchingMode,
 						dataTableMissingMode: flags.dataTableMissingMode,
+						dataTableSchemaConflictPolicy: flags.dataTableSchemaConflictPolicy,
 						bindings: flags.bindings,
 					},
 				);

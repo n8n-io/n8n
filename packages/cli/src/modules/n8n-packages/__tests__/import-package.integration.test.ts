@@ -39,6 +39,7 @@ import {
 	FolderConflictPolicy,
 	DataTableMatchingMode,
 	DataTableMissingMode,
+	DataTableSchemaConflictPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
@@ -67,6 +68,7 @@ type ImportPackageParams = Omit<
 	| 'folderConflictPolicy'
 	| 'dataTableMatchingMode'
 	| 'dataTableMissingMode'
+	| 'dataTableSchemaConflictPolicy'
 > &
 	Partial<
 		Pick<
@@ -80,6 +82,7 @@ type ImportPackageParams = Omit<
 			| 'folderConflictPolicy'
 			| 'dataTableMatchingMode'
 			| 'dataTableMissingMode'
+			| 'dataTableSchemaConflictPolicy'
 		>
 	>;
 
@@ -93,6 +96,7 @@ async function importPackage(params: ImportPackageParams) {
 		folderConflictPolicy: FolderConflictPolicy.Merge,
 		dataTableMatchingMode: DataTableMatchingMode.ById,
 		dataTableMissingMode: DataTableMissingMode.Create,
+		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
 		...params,
 	});
 }

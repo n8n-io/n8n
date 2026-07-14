@@ -4,6 +4,8 @@ import type { SerializedDataTableColumn } from '../../spec/serialized/data-table
 export interface SchemaIncompatibility {
 	missingColumns: string[];
 	typeMismatches: DataTableColumnTypeMismatch[];
+	/** Target columns not in the package schema; only reported by the strict `fail` conflict policy. */
+	extraColumns?: string[];
 }
 
 /**

@@ -169,6 +169,21 @@ post:
                 still validated for schema compatibility and can still block the
                 import. Matched tables are always used as-is: never renamed,
                 altered, or filled.
+            dataTableSchemaConflictPolicy:
+              type: string
+              enum:
+                - keep-existing
+                - fail
+              default: keep-existing
+              description: >
+                How strictly a matched data table's schema is compared.
+                `keep-existing` (default) accepts a target table that has every
+                package column with the same name and type, tolerating extra
+                target columns. `fail` is the strict drift-detection choice: any
+                difference, including extra target columns, rejects the import.
+                A missing column or a type mismatch always rejects. Both
+                policies are non-destructive — the matched table is never
+                altered.
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.

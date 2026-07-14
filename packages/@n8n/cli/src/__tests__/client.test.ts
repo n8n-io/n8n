@@ -177,12 +177,14 @@ describe('N8nClient packages', () => {
 					workflowConflictPolicy: 'fail',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'do-nothing',
+					dataTableSchemaConflictPolicy: 'fail',
 				},
 			);
 
 			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
 			expect(form.get('dataTableMatchingMode')).toBe('by-id');
 			expect(form.get('dataTableMissingMode')).toBe('do-nothing');
+			expect(form.get('dataTableSchemaConflictPolicy')).toBe('fail');
 		});
 
 		it('forwards bindings verbatim as a form field', async () => {

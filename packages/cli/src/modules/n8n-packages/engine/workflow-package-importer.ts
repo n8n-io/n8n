@@ -80,6 +80,7 @@ export class WorkflowPackageImporter {
 			packageDataTables: await this.packageParser.getDataTables(reader),
 			matchingMode: request.dataTableMatchingMode,
 			missingMode: request.dataTableMissingMode,
+			schemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 		};
 
 		const imported = await this.importOrchestrator.import({

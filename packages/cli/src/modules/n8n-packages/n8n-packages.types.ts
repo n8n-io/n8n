@@ -66,6 +66,13 @@ export const DataTableMissingMode = {
 	/** Imports the workflows without creating absent tables. Matched tables are still validated. */
 	DoNothing: 'do-nothing',
 } as const;
+
+export const DataTableSchemaConflictPolicy = {
+	/** Accepts a matched table that satisfies the package schema, tolerating extra target columns. */
+	KeepExisting: 'keep-existing',
+	/** Strict drift detection: fails the import on any schema difference, including extra target columns. */
+	Fail: 'fail',
+} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type WorkflowConflictPolicy =
@@ -82,6 +89,9 @@ export type DataTableMatchingMode =
 	(typeof DataTableMatchingMode)[keyof typeof DataTableMatchingMode];
 
 export type DataTableMissingMode = (typeof DataTableMissingMode)[keyof typeof DataTableMissingMode];
+
+export type DataTableSchemaConflictPolicy =
+	(typeof DataTableSchemaConflictPolicy)[keyof typeof DataTableSchemaConflictPolicy];
 
 export interface ExportPackageRequest {
 	user: User;
@@ -121,6 +131,7 @@ export type ImportFolderProperties = {
 export type ImportDataTableProperties = {
 	dataTableMatchingMode: DataTableMatchingMode;
 	dataTableMissingMode: DataTableMissingMode;
+	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy;
 };
 
 /**

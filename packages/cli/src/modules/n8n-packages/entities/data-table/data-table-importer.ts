@@ -6,17 +6,21 @@ import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { findSchemaIncompatibility } from './data-table-compat';
 import { matchTargetTable } from './data-table-matching-mode';
 import { decideAbsentTable } from './data-table-missing-mode';
 import type { TableEffect } from './data-table-missing-mode';
+import { findSchemaConflict } from './data-table-schema-conflict-policy';
 import { createFailure } from './data-table.types';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
 	DataTableResolutionFailure,
 } from './data-table.types';
-import type { DataTableMissingMode, ImportContext } from '../../n8n-packages.types';
+import type {
+	DataTableMissingMode,
+	DataTableSchemaConflictPolicy,
+	ImportContext,
+} from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
 
@@ -78,6 +82,7 @@ export class DataTableImporter {
 				matchedTargetTable,
 				targetsById.get(requirement.id),
 				request.missingMode,
+				request.schemaConflictPolicy,
 			);
 			if (effect.action === 'create') creations.push({ table: packageTable, requirement });
 			else if (effect.action === 'fail') failures.push(effect.failure);
@@ -159,9 +164,11 @@ function resolveRequirement(
 	matchedTargetTable: DataTable | undefined,
 	existingTableWithSameId: DataTable | undefined,
 	missingMode: DataTableMissingMode,
+	schemaConflictPolicy: DataTableSchemaConflictPolicy,
 ): TableEffect {
 	if (matchedTargetTable) {
-		const incompatibility = findSchemaIncompatibility(
+		const incompatibility = findSchemaConflict(
+			schemaConflictPolicy,
 			packageTable.columns,
 			matchedTargetTable.columns,
 		);

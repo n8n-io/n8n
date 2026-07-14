@@ -247,6 +247,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('workflowIdPolicy', 'new')
 			.field('dataTableMatchingMode', 'by-id')
 			.field('dataTableMissingMode', 'must-preexist')
+			.field('dataTableSchemaConflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);

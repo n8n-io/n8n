@@ -20,6 +20,7 @@ export interface ImportPackageFields {
 	folderConflictPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
+	dataTableSchemaConflictPolicy?: string;
 }
 
 export interface ExportPackageFields {
