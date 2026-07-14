@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
-import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
+import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
@@ -8,6 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, inject, ref } from 'vue';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
+import { getDismissedContextKeys, handoffContextKey } from '../instanceAi.handoffContext';
 import ConnectionsCard from './ConnectionsCard.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -120,14 +121,6 @@ function openArtifactLabel(name: string) {
 	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
 }
 
-function contextKey(context: InstanceAiHandoffContext): string {
-	if (context.source === 'agent-preview') {
-		return `${context.source}:${context.agentId}:${context.threadId}:${context.executionId ?? ''}`;
-	}
-
-	return `${context.source}:${context.credential.credentialType}:${context.credential.id ?? context.credential.displayName}`;
-}
-
 function agentPreviewContextName(agentId: string): string {
 	const matchingArtifact = thread.producedArtifacts.get(agentId);
 	if (matchingArtifact?.type === 'agent') {
@@ -142,16 +135,12 @@ function agentPreviewContextName(agentId: string): string {
 const contextEntries = computed<ContextEntry[]>(() => {
 	const entries: ContextEntry[] = [];
 	const seen = new Set<string>();
-	const dismissedKeys = new Set(
-		Array.isArray(store.getThreadMetadata(thread.id)?.dismissedContextKeys)
-			? (store.getThreadMetadata(thread.id)?.dismissedContextKeys as string[])
-			: [],
-	);
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
 
 	for (const message of [...thread.messages].reverse()) {
 		if (message.role !== 'user' || !message.context) continue;
 
-		const key = contextKey(message.context);
+		const key = handoffContextKey(message.context);
 		if (seen.has(key) || dismissedKeys.has(key)) continue;
 		seen.add(key);
 
@@ -177,11 +166,7 @@ const contextEntries = computed<ContextEntry[]>(() => {
 });
 
 async function dismissContext(key: string) {
-	const dismissedKeys = new Set(
-		Array.isArray(store.getThreadMetadata(thread.id)?.dismissedContextKeys)
-			? (store.getThreadMetadata(thread.id)?.dismissedContextKeys as string[])
-			: [],
-	);
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
 	dismissedKeys.add(key);
 	await store.updateThreadMetadata(thread.id, {
 		dismissedContextKeys: [...dismissedKeys],

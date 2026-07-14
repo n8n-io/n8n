@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
-	buildInstanceAiAgentPreviewQuestion,
 	buildInstanceAiCredentialHandoffContext,
+	consumePendingHandoffContext,
+	stashPendingHandoffContext,
 } from '../composables/useInstanceAiHandoff';
 
 describe('useInstanceAiHandoff', () => {
@@ -45,9 +46,15 @@ describe('useInstanceAiHandoff', () => {
 		});
 	});
 
-	it('builds the default opening question for agent preview handoff', () => {
-		expect(buildInstanceAiAgentPreviewQuestion()).toBe(
-			'Please review this preview session and improve the agent based on how it behaved.',
-		);
+	it('stashes and consumes a pending handoff context once', () => {
+		const context = buildInstanceAiAgentPreviewHandoffContext({
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+		});
+
+		stashPendingHandoffContext('thread-1', context);
+
+		expect(consumePendingHandoffContext('thread-1')).toEqual(context);
+		expect(consumePendingHandoffContext('thread-1')).toBeNull();
 	});
 });

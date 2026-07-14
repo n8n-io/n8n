@@ -1,11 +1,8 @@
-import { useI18n } from '@n8n/i18n';
-
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { useInstanceAiAvailable } from './useInstanceAiAvailability';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
-	buildInstanceAiAgentPreviewQuestion,
 	useInstanceAiHandoff,
 } from './useInstanceAiHandoff';
 
@@ -16,10 +13,9 @@ interface AgentPreviewHandoffParams {
 }
 
 export function useInstanceAiAgentPreviewHandoff() {
-	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const canSendPreviewToInstanceAi = useInstanceAiAvailable();
-	const { startThread } = useInstanceAiHandoff();
+	const { openThreadWithContext } = useInstanceAiHandoff();
 
 	async function sendPreviewSessionToInstanceAi({
 		projectId,
@@ -28,16 +24,10 @@ export function useInstanceAiAgentPreviewHandoff() {
 	}: AgentPreviewHandoffParams): Promise<void> {
 		if (!canSendPreviewToInstanceAi.value || !projectId || !agentId || !threadId) return;
 
-		await startThread(
+		await openThreadWithContext(
 			projectId,
-			i18n.baseText('agents.builder.preview.sendToAssistant.message') ??
-				buildInstanceAiAgentPreviewQuestion(),
-			undefined,
-			undefined,
-			{
-				newTab: true,
-				context: buildInstanceAiAgentPreviewHandoffContext({ agentId, threadId }),
-			},
+			buildInstanceAiAgentPreviewHandoffContext({ agentId, threadId }),
+			{ newTab: true },
 		);
 
 		telemetry.track('Instance AI opened from agent preview', {

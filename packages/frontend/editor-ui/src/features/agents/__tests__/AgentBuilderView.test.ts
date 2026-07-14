@@ -90,7 +90,7 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff', () => ({
 	useInstanceAiAgentPreviewHandoff: () => ({
-		canSendPreviewToInstanceAi: { value: true },
+		canSendPreviewToInstanceAi: ref(true),
 		sendPreviewSessionToInstanceAi: sendPreviewSessionToInstanceAiMock,
 	}),
 }));
