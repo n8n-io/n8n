@@ -56,9 +56,15 @@ build a config eval instead and briefly say that is how you set up evaluations.
 
 ## Metrics
 
-Each metric is LLM-judged and needs a judge model: `provider`, `credentialId`,
-`model`, and `outputType` (`numeric`, the default, or `boolean`). Reuse an LLM
-credential the workflow already uses when one fits. Two presets are available:
+Each metric is LLM-judged and needs a judge model: a `credentialId`, a `model`,
+and an `outputType` (`numeric`, the default, or `boolean`). Reuse an LLM
+credential the workflow already uses when one fits.
+
+Do **not** set `provider` unless you know the exact chat-model node type — it is
+derived automatically from the credential you pass (each credential type maps to
+one provider). Just pick the credential and the model.
+
+Two presets are available:
 
 - **`correctness`** — compares the produced answer to a ground-truth answer.
   Requires `expectedAnswer` (an n8n expression resolving to the ground-truth

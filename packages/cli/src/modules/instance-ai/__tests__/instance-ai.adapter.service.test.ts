@@ -65,9 +65,11 @@ import {
 	extractNodeOutput,
 	formatExecutionError,
 	resolveDataTableByIdOrName,
+	resolveMetricProviders,
 	truncateNodeOutput,
 	truncateResultData,
 } from '../instance-ai.adapter.service';
+import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1214,11 +1216,14 @@ vi.mock('@/permissions.ee/check-access', () => ({
 import type {
 	AiBuilderTemporaryWorkflowRepository,
 	User,
+	CredentialsEntity,
 	ExecutionRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { UserError, UnexpectedError } from 'n8n-workflow';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
@@ -3545,5 +3550,99 @@ describe('isConfigEvalsEnabled', () => {
 		} as unknown as PostHogClient);
 
 		expect(await adapter.isConfigEvalsEnabled(user)).toBe(false);
+	});
+});
+
+describe('resolveMetricProviders', () => {
+	const registry = new LlmJudgeProviderRegistry();
+	const user = mock<User>();
+
+	const baseInput = (metricOverrides: Record<string, unknown> = {}) => ({
+		name: 'Eval',
+		startNodeName: 'Chat',
+		endNodeName: 'Agent',
+		dataTableId: 'dt1',
+		metrics: [
+			{
+				name: 'Helpfulness',
+				preset: 'helpfulness' as const,
+				credentialId: 'cred1',
+				model: 'gpt-4o',
+				outputType: 'numeric' as const,
+				actualAnswer: '={{ $json.output }}',
+				userQuery: '={{ $json.input }}',
+				...metricOverrides,
+			},
+		],
+	});
+
+	it('derives the provider node type from the credential type', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(
+			mock<CredentialsEntity>({ type: 'openAiApi' }),
+		);
+
+		const result = await resolveMetricProviders(baseInput(), {
+			user,
+			credentialsFinderService,
+			llmJudgeProviderRegistry: registry,
+		});
+
+		expect(result.metrics[0].provider).toBe('@n8n/n8n-nodes-langchain.lmChatOpenAi');
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred1', user, [
+			'credential:read',
+		]);
+	});
+
+	it('leaves an explicitly supplied provider untouched (no credential lookup)', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+
+		const result = await resolveMetricProviders(
+			baseInput({ provider: '@n8n/n8n-nodes-langchain.lmChatAnthropic' }),
+			{ user, credentialsFinderService, llmJudgeProviderRegistry: registry },
+		);
+
+		expect(result.metrics[0].provider).toBe('@n8n/n8n-nodes-langchain.lmChatAnthropic');
+		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+	});
+
+	it('throws a UserError when the credential is not found or inaccessible', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+		await expect(
+			resolveMetricProviders(baseInput(), {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry: registry,
+			}),
+		).rejects.toThrow(UserError);
+	});
+
+	it('throws a UserError when the credential type is not a supported provider', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(
+			mock<CredentialsEntity>({ type: 'httpBasicAuth' }),
+		);
+
+		await expect(
+			resolveMetricProviders(baseInput(), {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry: registry,
+			}),
+		).rejects.toThrow(UserError);
+	});
+
+	it('throws an UnexpectedError when the provider registry is unavailable', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+
+		await expect(
+			resolveMetricProviders(baseInput(), {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry: undefined,
+			}),
+		).rejects.toThrow(UnexpectedError);
 	});
 });
