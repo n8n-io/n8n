@@ -534,6 +534,9 @@ export interface BuildResult {
 	 *  gone, reconstruction drift, restore failed) — a harness/framework problem,
 	 *  not an agent build failure. Routed to `framework_issue`. */
 	seedingFailed?: boolean;
+	/** Transport-level failure (network error, or the lane unreachable right
+	 *  after failing — e.g. timed out against a dead lane). Routed to `framework_issue`. */
+	transportFailure?: boolean;
 }
 
 export interface BuildWorkflowConfig {
@@ -923,17 +926,21 @@ export async function executeScenario(
 
 /**
  * Clean up workflows and data tables created during a build.
+ *
+ * Returns false when any deletion failed so callers can retry later.
  */
 export async function cleanupBuild(
 	client: N8nClient,
 	build: BuildResult,
 	logger: EvalLogger,
-): Promise<void> {
+): Promise<boolean> {
+	let clean = true;
+
 	for (const id of build.createdWorkflowIds) {
 		try {
 			await client.deleteWorkflow(id);
 		} catch {
-			// Best-effort cleanup
+			clean = false; // Best-effort cleanup
 		}
 	}
 
@@ -944,14 +951,26 @@ export async function cleanupBuild(
 				try {
 					await client.deleteDataTable(projectId, dtId);
 				} catch {
-					// Best-effort cleanup
+					clean = false; // Best-effort cleanup
 				}
 			}
 			logger.verbose(`  Cleaned up ${String(build.createdDataTableIds.length)} data table(s)`);
 		} catch {
-			// Non-fatal — project ID lookup may fail
+			clean = false; // Non-fatal — project ID lookup may fail
 		}
 	}
+
+	// Clears backend thread state (run-state registries, memory) that otherwise
+	// grows one entry per build for the container's lifetime.
+	if (build.threadId) {
+		try {
+			await client.deleteThread(build.threadId);
+		} catch {
+			clean = false; // Best-effort cleanup
+		}
+	}
+
+	return clean;
 }
 
 // ---------------------------------------------------------------------------

@@ -84,6 +84,11 @@ export class AuthService {
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
 
+			// The dynamic-credential authorize link is a top-level browser navigation
+			// (link click / redirect), so it can't carry the browser-id header. The
+			// GET method guard below keeps this GET-only; POST authorize is unaffected.
+			`/${restEndpoint}/credentials/:id/authorize`,
+
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',

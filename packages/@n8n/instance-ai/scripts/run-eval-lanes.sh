@@ -335,8 +335,16 @@ for port in "${PORTS[@]}"; do
 		docker rm -f "$name" >/dev/null 2>&1 || true
 	fi
 
+	# Same bounds as CI (test-evals-instance-ai.yml): capped + restartable
+	# lanes, pruned executions.
 	docker run -d --name "$name" \
 		--env-file "$ENV_FILE_PATH" \
+		--memory 2.5g --memory-swap 2.5g \
+		--restart on-failure \
+		--log-opt max-size=50m --log-opt max-file=2 \
+		-e NODE_OPTIONS=--max-old-space-size=2048 \
+		-e EXECUTIONS_DATA_PRUNE=true \
+		-e EXECUTIONS_DATA_MAX_AGE=1 \
 		-e E2E_TESTS=true \
 		-e N8N_USER_FOLDER=/home/node/.n8n \
 		-p "${port}:5678" \

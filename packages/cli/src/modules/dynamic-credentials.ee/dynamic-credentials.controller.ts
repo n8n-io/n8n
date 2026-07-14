@@ -1,11 +1,11 @@
 import { Time } from '@n8n/constants';
-import { Delete, Get, Options, Param, Post, RestController } from '@n8n/decorators';
 import { CredentialsEntity, AuthenticatedRequest, isAuthenticatedRequest, User } from '@n8n/db';
-import type { Scope } from '@n8n/permissions';
+import { Delete, Get, Options, Param, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -14,6 +14,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
+import { UrlService } from '@/services/url.service';
 
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';
@@ -21,6 +22,7 @@ import {
 	AuthorizeIntentService,
 	CredentialConnectionStatusService,
 	DynamicCredentialResolverRegistry,
+	DynamicCredentialService,
 } from './services';
 import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
 import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
@@ -42,6 +44,8 @@ export class DynamicCredentialsController {
 		private readonly credentialConnectionStatusService: CredentialConnectionStatusService,
 		private readonly eventService: EventService,
 		private readonly authorizeIntentService: AuthorizeIntentService,
+		private readonly dynamicCredentialService: DynamicCredentialService,
+		private readonly urlService: UrlService,
 	) {}
 
 	private async findCredentialToUse(
@@ -173,12 +177,21 @@ export class DynamicCredentialsController {
 			});
 		}
 
+		// Best-effort: bind the callback to the intended n8n user when the resolver
+		// names one, so `decodeCsrfState` rejects a mismatched session. External
+		// machine callers legitimately have no n8n user, so this never fails the POST.
+		const ownership = await this.dynamicCredentialService.resolveOwningUserIdForAuthorization(
+			credentialContext,
+			resolverEntity.id,
+		);
+
 		const csrfData: CreateCsrfStateData = {
 			cid: credential.id,
 			origin: 'dynamic-credential',
 			authorizationHeader: req.headers.authorization ?? `Bearer ${credentialContext.identity}`,
 			authMetadata: credentialContext.metadata,
 			credentialResolverId: req.query.resolverId,
+			userId: ownership.status === 'bound' ? ownership.userId : undefined,
 		};
 
 		if (credential.type.toLowerCase().includes('oauth2')) {
@@ -227,6 +240,36 @@ export class DynamicCredentialsController {
 			return;
 		}
 
+		// When the link is bound to an n8n user, the clicker must be that user.
+		if (intent.userId) {
+			const user = isAuthenticatedRequest(req) ? req.user : undefined;
+
+			if (!user) {
+				this.eventService.emit('dynamic-credential-authorize-rejected', {
+					reason: 'unauthenticated',
+					credentialId: intent.credentialId,
+				});
+				// Absolute, same-origin http(s) URL so SigninView returns here after login.
+				const returnUrl = `${this.urlService.getInstanceBaseUrl()}${req.originalUrl}`;
+				res.redirect(
+					`${this.urlService.getInstanceBaseUrl()}/signin?redirect=${encodeURIComponent(returnUrl)}`,
+				);
+				return;
+			}
+
+			if (user.id !== intent.userId) {
+				this.eventService.emit('dynamic-credential-authorize-rejected', {
+					reason: 'user-mismatch',
+					credentialId: intent.credentialId,
+				});
+				this.oauthService.renderCallbackError(
+					res,
+					'This authorization link was issued for a different account. Sign in as the intended user and open the link again.',
+				);
+				return;
+			}
+		}
+
 		try {
 			const credential = await this.findCredentialToUse(intent.credentialId);
 
@@ -236,6 +279,7 @@ export class DynamicCredentialsController {
 				authorizationHeader: intent.identity ? `Bearer ${intent.identity}` : '',
 				authMetadata: intent.metadata,
 				credentialResolverId: intent.resolverId,
+				userId: intent.userId,
 			};
 
 			const authorizationUrl = credential.type.toLowerCase().includes('oauth2')
