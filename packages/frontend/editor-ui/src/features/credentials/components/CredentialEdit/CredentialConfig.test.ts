@@ -1,5 +1,6 @@
 import CredentialConfig from './CredentialConfig.vue';
 import { screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -883,6 +884,67 @@ describe('CredentialConfig', () => {
 
 			expect(screen.getByTestId('oauth-not-connected-banner')).toBeInTheDocument();
 			expect(screen.queryByTestId('quick-connect-button')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('templated custom auth view toggle', () => {
+		const templatedProps = {
+			...defaultRenderOptions.props,
+			isManaged: false,
+			credentialId: 'cred-1',
+			credentialType: {
+				name: 'httpTemplatedCustomAuth',
+				displayName: 'Templated Custom Auth',
+				properties: [],
+			},
+			credentialData: {
+				template: JSON.stringify({ headers: { Authorization: 'Bearer {{api_key}}' } }),
+			} as unknown as ICredentialDataDecryptedObject,
+			credentialPermissions: {
+				...(defaultRenderOptions.props?.credentialPermissions ?? {}),
+				update: true,
+			},
+		};
+
+		it('defaults to the simple view and toggles to the advanced field set', async () => {
+			renderComponent({ props: templatedProps });
+
+			expect(screen.getByTestId('templated-auth-simple-view')).toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('templated-auth-view-toggle'));
+
+			expect(screen.queryByTestId('templated-auth-simple-view')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('templated-auth-view-toggle'));
+
+			expect(screen.getByTestId('templated-auth-simple-view')).toBeInTheDocument();
+		});
+
+		it('opens the advanced view directly when the template has no markers', () => {
+			renderComponent({
+				props: {
+					...templatedProps,
+					credentialData: {
+						template: JSON.stringify({ headers: { Accept: 'application/json' } }),
+					} as unknown as ICredentialDataDecryptedObject,
+				},
+			});
+
+			expect(screen.queryByTestId('templated-auth-simple-view')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-view-toggle')).not.toBeInTheDocument();
+		});
+
+		it('shows no toggle for other credential types', () => {
+			renderComponent({
+				props: {
+					...templatedProps,
+					credentialType: mockCredentialType,
+					credentialData: {} as ICredentialDataDecryptedObject,
+				},
+			});
+
+			expect(screen.queryByTestId('templated-auth-view-toggle')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-simple-view')).not.toBeInTheDocument();
 		});
 	});
 });

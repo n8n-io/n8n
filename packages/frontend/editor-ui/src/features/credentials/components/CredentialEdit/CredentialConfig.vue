@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeMount, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
@@ -29,6 +29,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
+import TemplatedAuthSimpleView from './TemplatedAuthSimpleView.vue';
+import {
+	extractTemplateMarkers,
+	parseTemplatedAuthField,
+} from '@/features/credentials/templatedAuth.utils';
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -290,6 +296,23 @@ const isManagedOAuth = computed(
 function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
 }
+
+// ── Templated Custom Auth simple/advanced view ──────────────────────────────
+// Simple = one input per template {{marker}}; advanced = the raw field set.
+const templatedAuthMarkers = computed(() => {
+	if (props.credentialType?.name !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) return [];
+	return extractTemplateMarkers(
+		parseTemplatedAuthField<unknown>(props.credentialData.template, {}),
+	);
+});
+
+const showAdvancedTemplatedAuth = ref(false);
+
+// Markerless templates (e.g. a hand-created credential) have nothing to show
+// in the simple view, so they open advanced directly.
+const isSimpleTemplatedAuthView = computed(
+	() => templatedAuthMarkers.value.length > 0 && !showAdvancedTemplatedAuth.value,
+);
 
 function onDocumentationUrlClick(): void {
 	telemetry.track('User clicked credential modal docs link', {
@@ -611,14 +634,31 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</div>
 				</EnterpriseEdition>
 
+				<TemplatedAuthSimpleView
+					v-if="credentialType && canWrite && isSimpleTemplatedAuthView"
+					:credential-data="credentialData"
+					@update="onDataChange"
+				/>
 				<CredentialInputs
-					v-if="credentialType && canWrite"
+					v-else-if="credentialType && canWrite"
 					:credential-data="credentialData"
 					:credential-properties="credentialProperties"
 					:documentation-url="documentationUrl"
 					:show-validation-warnings="showValidationWarning"
 					@update="onDataChange"
 				/>
+				<N8nLink
+					v-if="credentialType && canWrite && templatedAuthMarkers.length > 0"
+					size="small"
+					data-test-id="templated-auth-view-toggle"
+					@click="showAdvancedTemplatedAuth = !showAdvancedTemplatedAuth"
+				>
+					{{
+						isSimpleTemplatedAuthView
+							? i18n.baseText('credentialEdit.templatedAuth.advancedView')
+							: i18n.baseText('credentialEdit.templatedAuth.simpleView')
+					}}
+				</N8nLink>
 
 				<N8nText v-if="isMissingCredentials" color="text-base" size="medium">
 					{{ i18n.baseText('credentialEdit.credentialConfig.missingCredentialType') }}

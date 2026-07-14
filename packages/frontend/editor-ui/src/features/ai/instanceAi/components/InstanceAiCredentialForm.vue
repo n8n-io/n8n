@@ -2,6 +2,7 @@
 import { useToast } from '@/app/composables/useToast';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { probeCredential } from '@/features/credentials/credentials.api';
+import { cleanPlaceholderValue } from '@/features/credentials/templatedAuth.utils';
 import { useCredentialForm } from '@/features/credentials/composables/useCredentialForm';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -85,21 +86,6 @@ const docsHost = computed(() => {
 	}
 });
 
-/** Static template text directly before a `{{marker}}` in the same string
- *  (e.g. `Key ` in `Key {{api_key}}`), used to strip a pasted duplicate. */
-function markerPrefix(name: string): string {
-	const template = props.setupHint.template;
-	const marker = new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`);
-	for (const section of [template.headers, template.qs, template.body]) {
-		for (const value of Object.values(section ?? {})) {
-			if (typeof value !== 'string') continue;
-			const match = marker.exec(value);
-			if (match && match.index > 0) return value.slice(0, match.index);
-		}
-	}
-	return '';
-}
-
 /**
  * Compose the user-provided placeholder values into the credential's
  * `placeholderValues` field. Pasted values are trimmed, and when the user
@@ -109,10 +95,11 @@ function markerPrefix(name: string): string {
 function composeGuidedData() {
 	const values: Record<string, string> = {};
 	for (const def of placeholderDefs.value) {
-		let value = (placeholderValues.value[def.name] ?? '').trim();
-		const prefix = markerPrefix(def.name);
-		if (prefix && value.startsWith(prefix)) value = value.slice(prefix.length).trim();
-		values[def.name] = value;
+		values[def.name] = cleanPlaceholderValue(
+			props.setupHint.template,
+			def.name,
+			placeholderValues.value[def.name] ?? '',
+		);
 	}
 	credentialData.value.placeholderValues = JSON.stringify(values, null, 2);
 }
