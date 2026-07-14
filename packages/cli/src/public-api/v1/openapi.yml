@@ -104,6 +104,8 @@ paths:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
   /workflows/{id}/test-runs/{runId}:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.yml'
+  /workflows/{id}/test-runs/{runId}/cancel:
+    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.cancel.yml'
   /workflows/{id}/test-runs/{runId}/test-cases:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.test-cases.yml'
   /users:

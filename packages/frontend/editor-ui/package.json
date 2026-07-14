@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "type": "module",
@@ -48,6 +48,7 @@
     "@n8n/composables": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/design-system": "workspace:*",
+    "@n8n/frontend-module-sdk": "workspace:*",
     "@n8n/i18n": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",

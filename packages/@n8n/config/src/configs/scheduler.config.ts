@@ -228,4 +228,27 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_MIN_INTERVAL', nonNegativeIntSchema)
 	minIntervalSeconds: number = 0;
+
+	/**
+	 * How a Schedule Trigger node's "every N seconds/minutes" schedules run under
+	 * the durable scheduler. Defaults to `legacy`.
+	 *
+	 * - `legacy`: fires stay aligned to the clock (on the minute, on the hour) and
+	 *   match the in-memory scheduler exactly.
+	 * - `new`: fires are spaced a steady N apart, timed from when the workflow was
+	 *   activated rather than from clock boundaries.
+	 *
+	 * `new` runs "every N" more faithfully. The legacy timing restarts every
+	 * minute, so an interval that doesn't divide evenly drifts (every 7 seconds,
+	 * for example, leaves a 4-second gap across each minute boundary); `new` keeps
+	 * a uniform gap throughout.
+	 *
+	 * `legacy` is the default so timing is unchanged while the durable scheduler
+	 * rolls out; `new` is the intended future default. Only "every N
+	 * seconds/minutes" schedules are affected: longer schedules (every N
+	 * hours/days/weeks/months) and raw cron expressions run the same way under
+	 * either setting.
+	 */
+	@Env('N8N_SCHEDULER_TRIGGER_NODE_MODE', z.enum(['legacy', 'new']))
+	triggerNodeMode: 'legacy' | 'new' = 'legacy';
 }

@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { N8nButton, N8nPopover, N8nRadioButtons } from '@n8n/design-system';
 import MCPOAuthPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPOAuthPopoverTab.vue';
 import MCPAccessTokenPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPAccessTokenPopoverTab.vue';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { MCP_ENDPOINT, MCP_CONNECT_POPOVER_WIDTH } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_CONNECT_POPOVER_WIDTH } from '@/features/ai/mcpAccess/mcp.constants';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const rootStore = useRootStore();
 const mcpStore = useMCPStore();
 
 defineProps<{
@@ -28,7 +26,7 @@ const tabItems = ref([
 	{ value: TABS.ACCESS_TOKEN, label: i18n.baseText('settings.mcp.connectPopover.tab.accessToken') },
 ]);
 
-const serverUrl = ref(`${rootStore.urlBaseEditor}${MCP_ENDPOINT}`);
+const serverUrl = computed(() => mcpStore.serverUrl);
 
 const activeTab = ref(tabItems.value[0].value);
 
