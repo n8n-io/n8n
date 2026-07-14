@@ -141,8 +141,9 @@ export class WorkflowPublicationReconciler {
 
 	/**
 	 * Workflows that have an activated in-memory trigger which is not currently
-	 * registered, excluding any already covered by an in-flight publication (so
-	 * the reconciler never competes with a publication that is about to fix it).
+	 * registered. Workflows with an in-flight publication are already excluded by
+	 * the query (that publication is about to fix them), and the enqueue is
+	 * idempotent regardless.
 	 */
 	private async findMissingActiveWorkflows(): Promise<string[]> {
 		const desiredByWorkflow = this.groupByWorkflow(
@@ -153,13 +154,7 @@ export class WorkflowPublicationReconciler {
 		for (const [workflowId, desiredNodeIds] of desiredByWorkflow) {
 			const registered = this.nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds(workflowId);
 			const hasMissing = [...desiredNodeIds].some((nodeId) => !registered.has(nodeId));
-			if (!hasMissing) continue;
-
-			// An in-flight record is already about to reconcile this workflow, so
-			// re-enqueuing would only churn. The enqueue is idempotent regardless.
-			if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) continue;
-
-			missing.push(workflowId);
+			if (hasMissing) missing.push(workflowId);
 		}
 
 		return missing;

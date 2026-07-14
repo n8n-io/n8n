@@ -1,7 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowsConfig } from '@n8n/config';
 import type {
-	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
@@ -47,7 +46,6 @@ beforeEach(() => {
 		publicationReconcileIntervalSeconds: 5,
 	});
 	triggerStatusRepository.findActivatedInMemoryTriggers.mockResolvedValue([]);
-	outboxRepository.findInFlightByWorkflowId.mockResolvedValue(null);
 	outboxRepository.enqueueByWorkflowIds.mockResolvedValue();
 	outboxConsumer.drainPending.mockResolvedValue(0);
 	setRegistered({});
@@ -144,20 +142,6 @@ describe('WorkflowPublicationReconciler', () => {
 
 			expect(outboxRepository.enqueueByWorkflowIds).not.toHaveBeenCalled();
 			expect(outboxConsumer.drainPending).not.toHaveBeenCalled();
-		});
-
-		it('skips a workflow that already has an in-flight publication', async () => {
-			triggerStatusRepository.findActivatedInMemoryTriggers.mockResolvedValue([
-				{ workflowId: 'wf-1', nodeId: 'n1' },
-			]);
-			setRegistered({ 'wf-1': [] }); // missing, but...
-			outboxRepository.findInFlightByWorkflowId.mockResolvedValue(
-				mock<WorkflowPublicationOutbox>(),
-			);
-
-			await service.reconcile();
-
-			expect(outboxRepository.enqueueByWorkflowIds).not.toHaveBeenCalled();
 		});
 
 		it('enqueues only the workflows with missing triggers among several', async () => {

@@ -277,5 +277,34 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 
 			expect(await repo.findActivatedInMemoryTriggers()).toEqual([]);
 		});
+
+		it('excludes workflows with an in-flight publication record', async () => {
+			await repo.replaceForWorkflow(workflow.id, [
+				{
+					nodeId: 'poll1',
+					versionId: 'v1',
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'in-memory',
+				},
+			]);
+
+			// An in-flight (pending/in_progress) publication is about to reconcile
+			// the workflow anyway, so its triggers must not be reported.
+			const record = outboxRepo.create({
+				workflowId: workflow.id,
+				publishedVersionId: 'v1',
+				status: 'pending',
+				errorMessage: null,
+			});
+			await outboxRepo.save(record);
+			expect(await repo.findActivatedInMemoryTriggers()).toEqual([]);
+
+			// Once the record is terminal the workflow is reported again.
+			await outboxRepo.update(record.id, { status: 'completed' });
+			expect(await repo.findActivatedInMemoryTriggers()).toEqual([
+				{ workflowId: workflow.id, nodeId: 'poll1' },
+			]);
+		});
 	});
 });
