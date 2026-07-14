@@ -1247,6 +1247,10 @@ export class WorkflowService {
 				role: sw.role,
 			})),
 		);
+
+		// Caller must invalidate the workflow-project cache for these IDs after the
+		// surrounding transaction commits, since their owner project has changed.
+		return ownedWorkflowIds;
 	}
 
 	async getWorkflowsWithNodesIncluded(user: User, nodeTypes: string[], includeNodes = false) {

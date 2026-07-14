@@ -12,6 +12,23 @@ export class DataTableModule implements ModuleInterface {
 		const { DataTableService } = await import('./data-table.service');
 		await Container.get(DataTableService).start();
 
+		const { OwnershipTransferHandlerRegistry } = await import(
+			'@/services/ownership-transfer/ownership-transfer-handler.registry'
+		);
+		Container.get(OwnershipTransferHandlerRegistry).register({
+			resource: 'data-table',
+			transferAll: async (fromProjectId, toProjectId, trx) => {
+				await Container.get(DataTableService).transferDataTablesByProjectId(
+					fromProjectId,
+					toProjectId,
+					trx,
+				);
+			},
+			deleteAll: async (projectId) => {
+				await Container.get(DataTableService).deleteDataTableByProjectId(projectId);
+			},
+		});
+
 		const { DataTableAggregateService } = await import('./data-table-aggregate.service');
 		await Container.get(DataTableAggregateService).start();
 
