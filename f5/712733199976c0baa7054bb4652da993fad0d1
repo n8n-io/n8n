@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_7442648e2e7e0c::t_7422ecab886cdf 8-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "f5712733199976c0baa7054bb4652da993fad0d1",
+  "prompts": {},
+  "sessions": {
+    "s_7442648e2e7e0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dbbd829-e49a-474d-9261-ace47c522bea",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.ts
+  s_9fa10492ef2960::t_61ad4f4a57efeb 122
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.test.ts
+  s_9fa10492ef2960::t_35ac1da73c72ee 43,52
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_9fa10492ef2960::t_75ded935e8a8eb 270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a47e47f73f0b55e916d1b709ae937cb34e96263d",
+  "prompts": {},
+  "sessions": {
+    "s_9fa10492ef2960": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c366ff8-c020-4541-a1e3-899d51d5e3ae",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
