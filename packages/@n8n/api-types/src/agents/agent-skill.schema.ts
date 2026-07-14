@@ -71,7 +71,14 @@ const agentSkillReferencesSchema = z
 export const agentSkillShape = {
 	name: z.string().min(1).max(128),
 	description: z.string().min(1).max(512),
-	instructions: z.string().min(1).max(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH),
+	// Measured in UTF-8 bytes like the reference limits, so multi-byte
+	// content cannot exceed the stated cap.
+	instructions: z
+		.string()
+		.min(1)
+		.refine((value) => utf8ByteLength(value) <= AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH, {
+			message: `Instructions must be ${AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH} bytes or fewer`,
+		}),
 	allowedTools: agentSkillStringArraySchema.optional(),
 	references: agentSkillReferencesSchema.optional(),
 	scripts: z.never().optional(),
