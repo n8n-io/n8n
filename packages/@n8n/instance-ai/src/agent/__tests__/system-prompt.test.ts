@@ -233,6 +233,16 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('do not route around that by delegating to `build-agent`');
 		});
 
+		it('routes agent-preview transcript handoffs through build-agent when agents are enabled', async () => {
+			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
+
+			expect(prompt).toContain('<agent-preview-context>');
+			expect(prompt).toContain('call `build-agent` with the given `agentId`');
+			expect(prompt).toContain(
+				'do not ask the user to re-describe what already appears in the transcript',
+			);
+		});
+
 		it('omits the build-agent fence and intent gate when the agents module is disabled', async () => {
 			const prompt = await getSystemPromptWithEnabledModules(undefined);
 

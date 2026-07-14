@@ -1169,6 +1169,30 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 			undefined,
 		);
 	});
+
+	it('passes agent-preview handoff context into executeRun', () => {
+		const service = createStartRunService();
+		const context = {
+			source: 'agent-preview' as const,
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			executionId: 'exec-1',
+		};
+
+		service.startRun(fakeUser, 'thread-a', 'Please improve this agent', undefined, context);
+
+		expect(service.executeRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			'Please improve this agent',
+			expect.any(AbortController),
+			undefined,
+			context,
+			'group-1',
+			undefined,
+		);
+	});
 });
 
 describe('InstanceAiService — pending checkpoint re-entry', () => {
