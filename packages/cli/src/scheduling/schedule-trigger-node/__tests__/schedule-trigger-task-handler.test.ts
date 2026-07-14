@@ -135,7 +135,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 				buildWorkflowData({ settings: { timezone: 'DEFAULT' } }),
 			);
 
-			await handler.execute(buildTask());
+			await handler.execute(buildTask(), onDispatch);
 
 			const [, , data] = workflowExecutionService.runWorkflow.mock.calls[0];
 			// 'DEFAULT' is a sentinel, not a Moment zone: it must not leak into the
