@@ -1387,13 +1387,13 @@ erDiagram
 }
 "workflow_review_request" {
   datetime_3_ approvedAt
-  datetime_3_ closedAt
   varchar closedById FK
   datetime_3_ createdAt
   varchar createdById FK
   varchar_50_ decision
   TEXT description
   varchar_36_ id PK
+  datetime_3_ lastStatusChangeAt
   varchar_36_ projectId FK
   varchar_16_ state
   varchar_512_ title

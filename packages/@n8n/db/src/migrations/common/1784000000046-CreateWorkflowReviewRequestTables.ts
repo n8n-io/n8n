@@ -79,7 +79,7 @@ export class CreateWorkflowReviewRequestTables1784000000046 implements Reversibl
 				column('createdById').uuid,
 				column('updatedById').uuid,
 				column('closedById').uuid,
-				column('closedAt').timestampTimezone(),
+				column('lastStatusChangeAt').timestampTimezone(),
 				column('approvedAt').timestampTimezone(),
 			)
 			.withTimestamps.withForeignKey('projectId', {

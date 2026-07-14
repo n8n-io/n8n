@@ -303,7 +303,7 @@ erDiagram
 "public.workflow_published_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;updatedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
-"public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;archivedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;closedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_review_request" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.workflow_review_request_authors" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.workflow_review_request_authors" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
@@ -1397,16 +1397,16 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "public.workflow_review_request" {
-  timestamp_3__with_time_zone archivedAt
-  uuid archivedById FK
+  timestamp_3__with_time_zone approvedAt
+  uuid closedById FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
+  varchar_50_ decision
   text description
   varchar_36_ id
+  timestamp_3__with_time_zone lastStatusChangeAt
   varchar_36_ projectId FK
-  text publishError
-  timestamp_3__with_time_zone publishErrorAt
-  varchar_50_ status
+  varchar_16_ state
   varchar_512_ title
   timestamp_3__with_time_zone updatedAt
   uuid updatedById FK
