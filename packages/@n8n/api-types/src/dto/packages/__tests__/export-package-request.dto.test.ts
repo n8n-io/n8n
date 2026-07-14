@@ -86,13 +86,13 @@ describe('ExportPackageRequestDto', () => {
 		});
 	});
 
-	describe('workflowsRequirementMissingPolicy', () => {
+	describe('missingWorkflowDependencyPolicy', () => {
 		it.each(['fail', 'reference-only', 'include-in-package'])(
 			'accepts %s',
-			(workflowsRequirementMissingPolicy) => {
+			(missingWorkflowDependencyPolicy) => {
 				const result = ExportPackageRequestDto.safeParse({
 					workflowIds: ['wf-1'],
-					workflowsRequirementMissingPolicy,
+					missingWorkflowDependencyPolicy,
 				});
 
 				expect(result.success).toBe(true);
@@ -104,14 +104,14 @@ describe('ExportPackageRequestDto', () => {
 
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.workflowsRequirementMissingPolicy).toBe('fail');
+				expect(result.data.missingWorkflowDependencyPolicy).toBe('fail');
 			}
 		});
 
 		it('rejects unknown values', () => {
 			const result = ExportPackageRequestDto.safeParse({
 				workflowIds: ['wf-1'],
-				workflowsRequirementMissingPolicy: 'skip',
+				missingWorkflowDependencyPolicy: 'skip',
 			});
 
 			expect(result.success).toBe(false);

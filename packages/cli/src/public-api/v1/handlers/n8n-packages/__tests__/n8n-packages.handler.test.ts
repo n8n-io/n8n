@@ -48,7 +48,7 @@ describe('n8n-packages handler', () => {
 			workflowIds?: string[];
 			folderIds?: string[];
 			projectIds?: string[];
-			workflowsRequirementMissingPolicy?: string;
+			missingWorkflowDependencyPolicy?: string;
 		},
 		apiKeyScopes?: string[],
 	) {
@@ -300,7 +300,7 @@ describe('n8n-packages handler', () => {
 			expect(mockEventService.emit).not.toHaveBeenCalled();
 		});
 
-		it('accepts a workflows requirement missing policy without changing the export request', async () => {
+		it('accepts a missing workflow dependency policy without changing the export request', async () => {
 			const stream = new PassThrough();
 			mockService.exportPackage.mockResolvedValue(stream);
 			const res = makeResponse();
@@ -309,7 +309,7 @@ describe('n8n-packages handler', () => {
 				makeRequest(
 					{
 						workflowIds: ['wf-1'],
-						workflowsRequirementMissingPolicy: 'reference-only',
+						missingWorkflowDependencyPolicy: 'reference-only',
 					},
 					['workflow:export'],
 				),

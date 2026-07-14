@@ -33,7 +33,7 @@ properties:
       minLength: 1
     example:
       - Ox8O54VQrmBrb4qL
-  workflowsRequirementMissingPolicy:
+  missingWorkflowDependencyPolicy:
     type: string
     enum:
       - fail

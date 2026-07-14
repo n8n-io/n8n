@@ -30,7 +30,7 @@ type ExportPackageRequest = AuthenticatedRequest<
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
-		workflowsRequirementMissingPolicy?: 'fail' | 'reference-only' | 'include-in-package';
+		missingWorkflowDependencyPolicy?: 'fail' | 'reference-only' | 'include-in-package';
 	}
 >;
 
