@@ -101,6 +101,10 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
 				}
 
+				console.log({
+					data: payload.data,
+				});
+
 				workflowIds = payload.data.workflowIds ?? [];
 				folderIds = payload.data.folderIds ?? [];
 				projectIds = payload.data.projectIds ?? [];

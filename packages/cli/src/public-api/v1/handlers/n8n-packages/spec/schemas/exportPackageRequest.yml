@@ -33,3 +33,13 @@ properties:
       minLength: 1
     example:
       - Ox8O54VQrmBrb4qL
+  workflowsRequirementMissingPolicy:
+    type: string
+    enum:
+      - fail
+      - reference-only
+      - include-in-package
+    description: >-
+      What to do when a dependency workflow (sub-workflow) is not explicitely included in the package target.
+    example: fail
+    default: fail
