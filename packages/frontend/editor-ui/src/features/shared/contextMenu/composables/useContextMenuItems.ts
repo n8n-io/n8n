@@ -17,7 +17,9 @@ import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectContextMenuGroupView } from './contextMenuGroupView';
 
 export type ContextMenuAction =
 	| 'open'
@@ -39,15 +41,28 @@ export type ContextMenuAction =
 	| 'open_sub_workflow'
 	| 'tidy_up'
 	| 'extract_sub_workflow'
+	| 'group_nodes'
+	| 'rename_group'
+	| 'ungroup_nodes'
+	| 'expand_all_groups'
+	| 'collapse_all_groups'
+	| 'expand_selected_groups'
+	| 'collapse_selected_groups'
 	| 'focus_ai_on_selected';
 
 /**
- * Actions that, once selected, hand off to another floating layer (e.g. a
- * popover) which then takes focus. For these the context menu must not restore
- * focus on close — otherwise the restore lands outside the freshly-opened layer
- * and immediately dismisses it.
+ * Actions that, once selected, hand off to another floating layer or input
+ * (e.g. a popover, the group title editor) which then takes focus. For these
+ * the context menu must not restore focus on close — otherwise the restore
+ * lands outside the freshly-focused element and immediately dismisses it.
+ * `group_nodes` qualifies because it autofocuses the created group's title
+ * editor, just like `rename_group`.
  */
-const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>(['change_color']);
+const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>([
+	'change_color',
+	'rename_group',
+	'group_nodes',
+]);
 
 export function isFocusHandoffAction(action: ContextMenuAction): boolean {
 	return FOCUS_HANDOFF_ACTIONS.has(action);
@@ -55,13 +70,19 @@ export function isFocusHandoffAction(action: ContextMenuAction): boolean {
 
 type Item = ActionDropdownItem<ContextMenuAction>;
 
-export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
+export function useContextMenuItems(
+	targetNodeIds: ComputedRef<string[]>,
+	targetGroupId?: ComputedRef<string | undefined>,
+	targetReadOnly?: ComputedRef<boolean>,
+): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 	const focusedNodesStore = useFocusedNodesStore();
+	const { resolveGroupableNodeIds } = useSelectionValidation();
+	const groupView = injectContextMenuGroupView();
 	const i18n = useI18n();
 
 	// Per-editor host overrides (already ANDed with the instance-wide store
@@ -75,6 +96,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 	const isReadOnly = computed(
 		() =>
+			(targetReadOnly?.value ?? false) ||
 			sourceControlStore.preferences.branchReadOnly ||
 			uiStore.isReadOnlyView ||
 			!workflowPermissions.value.update ||
@@ -97,6 +119,10 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId))
 			.filter(isPresent),
 	);
+
+	// Mirrors the Cmd+G eligibility — the same resolver also produces the
+	// member ids at execution time, so enablement can't diverge from it.
+	const canGroupTargetNodes = computed(() => resolveGroupableNodeIds(targetNodeIds.value) !== null);
 
 	const canAddNodeOfType = (nodeType: INodeTypeDescription) => {
 		const sameTypeNodes = (workflowDocumentStore?.value?.allNodes ?? []).filter(
@@ -147,18 +173,52 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	};
 
 	return computed(() => {
+		// A group target gets the multi-selection menu over its member nodes,
+		// worded for the group as a whole, plus the group's own actions on top.
+		const isGroupTarget = targetGroupId?.value !== undefined;
+		const groupActions: Item[] = isGroupTarget
+			? [
+					{
+						id: 'rename_group',
+						label: i18n.baseText('contextMenu.renameGroup'),
+						disabled: isReadOnly.value,
+					},
+					{
+						id: 'ungroup_nodes',
+						label: i18n.baseText('contextMenu.ungroupNodes'),
+						shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
+						disabled: isReadOnly.value,
+					},
+				]
+			: [];
+
 		const nodes = targetNodes.value;
+
+		// A group whose members can't be resolved anymore (e.g. deleted by a
+		// collaborator while the menu was open) keeps only its own actions.
+		if (isGroupTarget && nodes.length === 0) {
+			return groupActions;
+		}
+
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
 		const canExtract = nodes.some(isExecutable) && !nodes.every(isAiSubNode);
 
-		const i18nOptions = {
-			adjustToNumber: nodes.length,
-			interpolate: {
-				subject: onlyStickies
-					? i18n.baseText('contextMenu.sticky', { adjustToNumber: nodes.length })
-					: i18n.baseText('contextMenu.node', { adjustToNumber: nodes.length }),
-			},
-		};
+		const i18nOptions = isGroupTarget
+			? {
+					// Always the multi-selection wording ("Copy {subject}"), with the
+					// group as the subject, regardless of how many nodes it contains.
+					adjustToNumber: 2,
+					interpolate: { subject: i18n.baseText('contextMenu.nodeGroup') },
+				}
+			: {
+					adjustToNumber: nodes.length,
+					interpolate: {
+						subject: i18n.baseText(onlyStickies ? 'contextMenu.sticky' : 'contextMenu.node', {
+							adjustToNumber: nodes.length,
+							interpolate: { count: nodes.length },
+						}),
+					},
+				};
 
 		const selectionActions: Item[] = [
 			{
@@ -179,11 +239,25 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			{
 				id: 'extract_sub_workflow',
 				divided: true,
-				label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
+				label: i18n.baseText('contextMenu.extract', i18nOptions),
 				shortcut: { altKey: true, keys: ['X'] },
 				disabled: isReadOnly.value,
 			},
 		];
+
+		// Grouping doesn't apply to an existing group — it offers ungroup instead.
+		const groupingActions: Item[] = !isGroupTarget
+			? [
+					{
+						id: 'group_nodes',
+						// Starts its own section when the extraction item above is hidden
+						divided: !canExtract,
+						label: i18n.baseText('contextMenu.group', { adjustToNumber: nodes.length }),
+						shortcut: { metaKey: true, keys: ['G'] },
+						disabled: isReadOnly.value || !canGroupTargetNodes.value,
+					},
+				]
+			: [];
 
 		const aiActions: Item[] = [
 			!onlyStickies &&
@@ -192,10 +266,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				focusedNodesStore.isFeatureEnabled && {
 					id: 'focus_ai_on_selected',
 					divided: true,
-					label: i18n.baseText('contextMenu.focusAiOnSelected', {
-						adjustToNumber: nodes.length,
-						interpolate: { count: nodes.length },
-					}),
+					label: i18n.baseText('contextMenu.focusAiOnSelected', i18nOptions),
 					shortcut: { altKey: true, keys: ['I'] },
 					disabled: isReadOnly.value,
 				},
@@ -210,6 +281,72 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				),
 				shortcut: { shiftKey: true, altKey: true, keys: ['T'] },
 				disabled: isReadOnly.value,
+			},
+		];
+
+		// Distinct groups behind the target — a targeted title bar or the groups
+		// of the targeted nodes. Only a groups-only target qualifies: a single
+		// loose node yields undefined and hides the expand/collapse pair.
+		// Alt+G follows the same rule, so shortcut and menu can't diverge.
+		const targetGroupIds = ((): string[] | undefined => {
+			const carriedGroupId = targetGroupId?.value;
+			if (carriedGroupId !== undefined) return [carriedGroupId];
+			const groupIds = new Set<string>();
+			for (const node of nodes) {
+				const group = workflowDocumentStore?.value?.getGroupForNode(node.id);
+				if (!group) return undefined;
+				groupIds.add(group.id);
+			}
+			return groupIds.size > 0 ? [...groupIds] : undefined;
+		})();
+		// View preferences, so they stay enabled in read-only mode. An item is
+		// disabled when every target group is already in its end state; without
+		// a canvas-provided group view the state is unknown and both stay enabled.
+		const selectedGroupViewActions: Item[] = targetGroupIds
+			? [
+					{
+						id: 'expand_selected_groups',
+						divided: true,
+						label: i18n.baseText('contextMenu.expandSelectedGroups'),
+						shortcut: { altKey: true, keys: ['G'] },
+						disabled:
+							groupView !== undefined &&
+							targetGroupIds.every((groupId) => !groupView.isGroupCollapsed(groupId)),
+					},
+					{
+						id: 'collapse_selected_groups',
+						label: i18n.baseText('contextMenu.collapseSelectedGroups'),
+						shortcut: { shiftKey: true, altKey: true, keys: ['G'] },
+						disabled:
+							groupView !== undefined &&
+							targetGroupIds.every((groupId) => groupView.isGroupCollapsed(groupId)),
+					},
+				]
+			: [];
+
+		// Toggling group collapse is a view preference, not a workflow mutation,
+		// so these stay enabled in read-only mode. Same end-state rule as the
+		// selection-scoped items, applied to every group in the workflow.
+		const allGroups = workflowDocumentStore?.value?.allGroups ?? [];
+		const groupViewActions: Item[] = [
+			{
+				id: 'expand_all_groups',
+				divided: true,
+				label: i18n.baseText('contextMenu.expandAllGroups'),
+				shortcut: { altKey: true, keys: ['G'] },
+				disabled:
+					allGroups.length === 0 ||
+					(groupView !== undefined &&
+						allGroups.every((group) => !groupView.isGroupCollapsed(group.id))),
+			},
+			{
+				id: 'collapse_all_groups',
+				label: i18n.baseText('contextMenu.collapseAllGroups'),
+				shortcut: { shiftKey: true, altKey: true, keys: ['G'] },
+				disabled:
+					allGroups.length === 0 ||
+					(groupView !== undefined &&
+						allGroups.every((group) => groupView.isGroupCollapsed(group.id))),
 			},
 		];
 
@@ -228,6 +365,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					disabled: isReadOnly.value,
 				},
 				...layoutActions,
+				...groupViewActions,
 				...selectionActions,
 			];
 		} else {
@@ -260,7 +398,9 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
 				...layoutActions,
+				...selectedGroupViewActions,
 				...(canExtract ? extractionActions : []),
+				...groupingActions,
 				...aiActions,
 				...selectionActions,
 				{
@@ -272,7 +412,10 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				},
 			].filter(Boolean) as Item[];
 
-			if (nodes.length === 1) {
+			if (isGroupTarget) {
+				// The group's own actions sit on top, like single-node actions do
+				menuActions.unshift(...groupActions);
+			} else if (nodes.length === 1) {
 				const copyWebhookActions: Item[] = [];
 
 				if (isWebhookNode(nodes[0])) {

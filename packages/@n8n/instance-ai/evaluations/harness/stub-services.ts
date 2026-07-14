@@ -34,7 +34,6 @@ import {
 	resolveNodeTypeDefinition,
 } from '../../../../cli/src/modules/instance-ai/node-definition-resolver';
 import type {
-	InstanceAiAgentBuilderService,
 	InstanceAiContext,
 	InstanceAiCredentialService,
 	InstanceAiDataTableService,
@@ -45,7 +44,6 @@ import type {
 	SearchableNodeDescription,
 	WorkflowDetail,
 } from '../../src/types';
-import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -305,85 +303,10 @@ export async function createStubServices(
 		credentialService,
 		nodeService,
 		dataTableService,
-		// Mirror production gating: the CLI only injects agentBuilderService when
-		// the agents module is active. Providing the stub here makes the
-		// `agent_builder` router register in agents-on eval runs, so leak checks
-		// exercise the same tool surface production would have.
-		...(isAgentFeatureEnabled() ? { agentBuilderService: createStubAgentBuilderService() } : {}),
+		workflowTemplateService: { getTemplate: async () => ({ available: false as const }) },
 	};
 
 	return { context, capturedWorkflows };
-}
-
-/**
- * Canned no-op implementation of the agent-builder port. Discovery evals
- * measure dispatch decisions, not agent persistence — every method returns
- * minimal valid data.
- */
-function createStubAgentBuilderService(): InstanceAiAgentBuilderService {
-	return {
-		async createAgent(name, projectId) {
-			return { agentId: 'eval-agent-' + nanoid(6), projectId: projectId ?? 'eval-project', name };
-		},
-		async getConfigSnapshot() {
-			return { config: null, updatedAt: null, versionId: null };
-		},
-		async updateConfig(_agentId, _projectId, config) {
-			return { config, updatedAt: new Date().toISOString(), versionId: 'eval-version' };
-		},
-		async createSkill(_agentId, _projectId, skill) {
-			return { id: 'eval-skill-' + nanoid(6), skill };
-		},
-		async createTask(_agentId, _projectId, task) {
-			return {
-				id: 'eval-task-' + nanoid(6),
-				name: task.name,
-				objective: task.objective,
-				cronExpression: task.cronExpression,
-			};
-		},
-		async describeCustomTool() {
-			return {
-				name: 'eval-custom-tool',
-				description: 'stub: custom tools unavailable in eval',
-				systemInstruction: null,
-				inputSchema: null,
-				outputSchema: null,
-				hasSuspend: false,
-				hasResume: false,
-				hasToMessage: false,
-				requireApproval: false,
-				providerOptions: null,
-			};
-		},
-		async buildCustomTool() {
-			return { id: 'eval-custom-tool-' + nanoid(6) };
-		},
-		async listChatIntegrations() {
-			return [];
-		},
-		async listProjectAgents() {
-			return [];
-		},
-		async listModels() {
-			return [];
-		},
-		async searchMcpServers() {
-			return [];
-		},
-		async verifyMcpServer() {
-			return { ok: false, error: 'stub: MCP verification unavailable in eval' };
-		},
-		async searchNodes() {
-			return { results: [] };
-		},
-		async resolveResourceLocatorOptions() {
-			return { options: [] };
-		},
-		async listAttachableWorkflows() {
-			return [];
-		},
-	};
 }
 
 // ---------------------------------------------------------------------------

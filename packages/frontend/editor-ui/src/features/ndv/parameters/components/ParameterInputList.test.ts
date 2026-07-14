@@ -12,6 +12,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -64,7 +65,7 @@ import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
-import { WAIT_NODE_TYPE, AGENT_NODE_TYPE } from '@/app/constants';
+import { WAIT_NODE_TYPE, AGENT_NODE_TYPE, TELEGRAM_NODE_TYPE } from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 
 const mockConfirm = vi.fn();
@@ -2317,6 +2318,104 @@ describe('ParameterInputList', () => {
 				// Note: actual parameters rendered depend on node-type specific transformations
 				expect(container.querySelector('.parameter-input-list-wrapper')).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('Telegram HITL parameter gating', () => {
+		const telegramNode = {
+			...TEST_NODE_NO_ISSUES,
+			type: TELEGRAM_NODE_TYPE,
+		};
+
+		// All three are simple types that route through the stubbed ParameterInputFull,
+		// which forwards its `path` prop as a DOM attribute, so presence/absence can be
+		// asserted without needing each parameter's real (unstubbed) rendering.
+		const telegramParameters: INodeProperties[] = [
+			{ displayName: 'Chat ID', name: 'chatId', type: 'string', default: '' },
+			{ displayName: 'Approve Within Chat', name: 'chatApproval', type: 'boolean', default: false },
+			{
+				displayName: 'Chat Approval Options',
+				name: 'chatApprovalOptions',
+				type: 'string',
+				default: '',
+			},
+		];
+
+		it('hides the advanced HITL parameters when the experiment is off', async () => {
+			ndvStore.activeNode = telegramNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: telegramParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="chatId"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApproval"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="chatApprovalOptions"]')).not.toBeInTheDocument();
+		});
+
+		it('shows the advanced HITL parameters when the experiment is on', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			ndvStore.activeNode = telegramNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: telegramParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="chatId"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+		});
+
+		it('does not filter parameters for other node types', async () => {
+			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+			const { container } = renderComponent({
+				props: {
+					parameters: telegramParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+		});
+
+		it('reveals the advanced HITL parameters once the flag resolves after mount', async () => {
+			// PostHog flags resolve asynchronously after the app boots, so the NDV can
+			// mount before the real flag value is known. The parameter list must pick
+			// up the flag turning on afterwards, not just at initial render.
+			vi.useFakeTimers();
+			try {
+				const flagEnabled = ref(false);
+				mockedStore(usePostHog).isFeatureEnabled.mockImplementation(() => flagEnabled.value);
+				ndvStore.activeNode = telegramNode;
+
+				const { container } = renderComponent({
+					props: {
+						parameters: telegramParameters,
+						nodeValues: TEST_NODE_VALUES,
+					},
+				});
+				await flushPromises();
+
+				expect(container.querySelector('[path="chatApproval"]')).not.toBeInTheDocument();
+
+				flagEnabled.value = true;
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(250);
+				await flushPromises();
+
+				expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
+				expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 });
