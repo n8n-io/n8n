@@ -427,12 +427,20 @@ export class N8nClient {
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
+		missingWorkflowDependencyPolicy?: string;
 	}): Promise<Buffer> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
-		const body: { workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] } = {};
+		const body: {
+			workflowIds?: string[];
+			folderIds?: string[];
+			projectIds?: string[];
+			missingWorkflowDependencyPolicy?: string;
+		} = {};
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
+		if (fields.missingWorkflowDependencyPolicy)
+			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
 
 		return await this.request<Buffer>('POST', '/n8n-packages/export', {
 			body,
