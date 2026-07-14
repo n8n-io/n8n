@@ -493,4 +493,117 @@ describe('VariableExporter', () => {
 			]);
 		});
 	});
+
+	describe('cross-project name collision', () => {
+		it('fails a workflow/folder export when one name resolves to two different variables', async () => {
+			const deps = makeExporter();
+			const variableA = projectVariable('proj-a', { id: 'var-a', value: 'A' });
+			const variableB = projectVariable('proj-b', { id: 'var-b', value: 'B' });
+			deps.variablesService.getAllCached.mockResolvedValue([variableA, variableB]);
+			deps.variablesService.getAllForUser.mockResolvedValue([variableA, variableB]);
+			wireProjects(deps, {
+				workflowProjects: [
+					['wf-a', 'proj-a'],
+					['wf-b', 'proj-b'],
+				],
+				listableProjectIds: ['proj-a', 'proj-b'],
+			});
+			const writer = new CapturingWriter();
+
+			await expect(
+				deps.exporter.export({
+					user,
+					requirements: [req('wf-a', 'API_URL'), req('wf-b', 'API_URL')],
+					writer,
+					includeVariableValues: true,
+					// No projectTargetsById: this is a workflow/folder export.
+				}),
+			).rejects.toThrow(/cannot be bundled in a workflow or folder package/);
+
+			expect(writer.files).toEqual([]);
+			expect(writer.directories).toEqual([]);
+		});
+
+		it('allows the same collision for a project export, namespacing each variable', async () => {
+			const deps = makeExporter();
+			const variableA = projectVariable('proj-a', { id: 'var-a', value: 'A' });
+			const variableB = projectVariable('proj-b', { id: 'var-b', value: 'B' });
+			deps.variablesService.getAllCached.mockResolvedValue([variableA, variableB]);
+			deps.variablesService.getAllForUser.mockResolvedValue([variableA, variableB]);
+			wireProjects(deps, {
+				workflowProjects: [
+					['wf-a', 'proj-a'],
+					['wf-b', 'proj-b'],
+				],
+				listableProjectIds: ['proj-a', 'proj-b'],
+			});
+			const writer = new CapturingWriter();
+
+			const result = await deps.exporter.export({
+				user,
+				requirements: [req('wf-a', 'API_URL'), req('wf-b', 'API_URL')],
+				writer,
+				includeVariableValues: true,
+				projectTargetsById: new Map([
+					['proj-a', 'projects/a'],
+					['proj-b', 'projects/b'],
+				]),
+			});
+
+			expect(result.entries.map((e) => e.id).sort()).toEqual(['var-a', 'var-b']);
+		});
+
+		it('allows the collision in a workflow/folder export when values are excluded', async () => {
+			const deps = makeExporter();
+			const variableA = projectVariable('proj-a', { id: 'var-a', value: 'A' });
+			const variableB = projectVariable('proj-b', { id: 'var-b', value: 'B' });
+			deps.variablesService.getAllCached.mockResolvedValue([variableA, variableB]);
+			deps.variablesService.getAllForUser.mockResolvedValue([variableA, variableB]);
+			wireProjects(deps, {
+				workflowProjects: [
+					['wf-a', 'proj-a'],
+					['wf-b', 'proj-b'],
+				],
+				listableProjectIds: ['proj-a', 'proj-b'],
+			});
+			const writer = new CapturingWriter();
+
+			const result = await deps.exporter.export({
+				user,
+				requirements: [req('wf-a', 'API_URL'), req('wf-b', 'API_URL')],
+				writer,
+				includeVariableValues: false,
+			});
+
+			expect(result.entries).toEqual([]);
+			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-a', 'wf-b'] }]);
+			expect(writer.files).toEqual([]);
+		});
+
+		it('does not fail when the shared name resolves to a single variable across workflows', async () => {
+			const deps = makeExporter();
+			const shared = makeVariable({ id: 'var-shared', value: 'shared-value' });
+			deps.variablesService.getAllCached.mockResolvedValue([shared]);
+			deps.variablesService.getAllForUser.mockResolvedValue([shared]);
+			wireProjects(deps, {
+				workflowProjects: [
+					['wf-a', 'proj-personal'],
+					['wf-b', 'proj-personal'],
+				],
+				personalProjectId: 'proj-personal',
+			});
+			const writer = new CapturingWriter();
+
+			const result = await deps.exporter.export({
+				user,
+				requirements: [req('wf-a', 'API_URL'), req('wf-b', 'API_URL')],
+				writer,
+				includeVariableValues: true,
+			});
+
+			expect(result.entries).toEqual([
+				{ id: 'var-shared', name: 'API_URL', target: 'variables/apiurl' },
+			]);
+		});
+	});
 });

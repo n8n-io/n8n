@@ -14,6 +14,7 @@ import type {
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
+import { PackageExportBlockedError } from '../package-export.errors';
 
 /**
  * Variable rows indexed once so per-workflow resolution is a map lookup instead
@@ -25,6 +26,16 @@ interface VariableIndex {
 	accessibleGlobalByName: Map<string, Variables>;
 	accessibleProjectByName: Map<string, Map<string, Variables>>;
 	projectNamesInAnyScope: Map<string, Set<string>>;
+}
+
+/**
+ * A variable is bundled (and so counts towards a name collision) only when it
+ * carries an exportable value. Today that means string variables; other types
+ * (e.g. secrets) are never written. Extend this predicate to bundle more types
+ * and both the bundling loop and the collision guard follow automatically.
+ */
+function isBundleableVariable(variable: Variables | undefined): variable is Variables {
+	return variable?.type === 'string';
 }
 
 @Service()
@@ -54,6 +65,24 @@ export class VariableExporter {
 		);
 		const index = this.indexVariables(accessibleVariables, allVariables);
 
+		const grouped = this.groupByName(request.requirements);
+
+		// A workflow/folder package rolls every bundled variable up to a single
+		// top-level `variables/` dir and imports into one target project, so a name
+		// that resolves to two different variables across projects cannot be
+		// represented unambiguously. Project packages keep each in its own
+		// namespace, so the collision only matters when bundling values outside a
+		// project export.
+		const isProjectExport = (request.projectTargetsById?.size ?? 0) > 0;
+		if (request.includeVariableValues && !isProjectExport) {
+			this.assertNoCrossProjectNameCollision(
+				grouped,
+				projectIdByWorkflowId,
+				visibleProjectIds,
+				index,
+			);
+		}
+
 		// One allocator per base directory: `variables/` and each
 		// `projects/<slug>/variables/` suffix collisions independently.
 		const allocators = new Map<string, UniqueFilenameAllocator>();
@@ -69,7 +98,7 @@ export class VariableExporter {
 		const bundledVariableIds = new Set<string>();
 		const requirements: PackageVariableRequirement[] = [];
 
-		for (const [name, usedByWorkflows] of this.groupByName(request.requirements)) {
+		for (const [name, usedByWorkflows] of grouped) {
 			let aggregateValue: string | undefined;
 			let everyWorkflowResolvedToSameValue = true;
 
@@ -81,7 +110,7 @@ export class VariableExporter {
 					? this.resolve(name, workflowProjectId, index)
 					: undefined;
 
-				if (!variable || variable.type !== 'string') {
+				if (!isBundleableVariable(variable)) {
 					everyWorkflowResolvedToSameValue = false;
 					continue;
 				}
@@ -193,6 +222,43 @@ export class VariableExporter {
 	private async resolveWorkflowProjects(workflowIds: string[]): Promise<Map<string, string>> {
 		const owners = await this.sharedWorkflowRepository.findByWorkflowIds(workflowIds);
 		return new Map(owners.map((owner) => [owner.workflowId, owner.project.id]));
+	}
+
+	private assertNoCrossProjectNameCollision(
+		grouped: Map<string, string[]>,
+		projectIdByWorkflowId: Map<string, string>,
+		visibleProjectIds: Set<string>,
+		index: VariableIndex,
+	): void {
+		const conflictingNames: string[] = [];
+
+		for (const [name, usedByWorkflows] of grouped) {
+			const bundledVariableIds = new Set<string>();
+			for (const workflowId of usedByWorkflows) {
+				const workflowProjectId = projectIdByWorkflowId.get(workflowId);
+				const canInspectProjectScope =
+					workflowProjectId !== undefined && visibleProjectIds.has(workflowProjectId);
+				const variable = canInspectProjectScope
+					? this.resolve(name, workflowProjectId, index)
+					: undefined;
+				if (isBundleableVariable(variable)) bundledVariableIds.add(variable.id);
+			}
+			if (bundledVariableIds.size > 1) conflictingNames.push(name);
+		}
+
+		if (conflictingNames.length === 0) return;
+
+		const displayedNames = conflictingNames.slice(0, 20);
+		const omittedCount = conflictingNames.length - displayedNames.length;
+
+		throw new PackageExportBlockedError(
+			`${conflictingNames.length} variable name(s) resolve to different variables across projects and cannot be bundled in a workflow or folder package. Export aborted.`,
+			{
+				description: `Conflicting variable name(s): ${displayedNames.join(', ')}${
+					omittedCount > 0 ? `, and ${omittedCount} more` : ''
+				}. Export the projects as a project package, or export without variable values.`,
+			},
+		);
 	}
 
 	private groupByName(requirements: WorkflowVariableRequirement[]): Map<string, string[]> {
