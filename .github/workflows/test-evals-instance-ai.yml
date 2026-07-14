@@ -103,8 +103,9 @@ jobs:
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
-      # 14 lanes x 3.5 GB caps = 49 GB, leaving ~15 GB for sandbox + CLI + OS.
-      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687,5688,5689,5690,5691'
+      # 12 lanes x 3.5 GB caps = 42 GB, leaving ~22 GB for sandbox + CLI + OS —
+      # generous slack so lane bursts can't starve the runner agent itself.
+      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687,5688,5689'
     permissions:
       contents: read
       pull-requests: write
@@ -348,7 +349,20 @@ jobs:
           ITERATIONS: ${{ inputs.iterations }}
           EXPERIMENT_NAME: ${{ inputs.experiment-name }}
           EVAL_PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number }}
+          # Bound the eval CLI's own heap so CLI memory growth dies visibly in
+          # this step (heap trace in the log) instead of pressuring the host.
+          NODE_OPTIONS: --max-old-space-size=8192
         run: |
+          # Stream a host one-liner into the job log every 60s. Unlike the
+          # sampler artifact (lost if the VM dies), streamed log lines survive
+          # a runner death — they are the black box for host-level failures.
+          ( while true; do
+              echo "[hoststat] $(date -u +%FT%TZ) $(free -m | awk 'NR==2{printf "used=%sMB avail=%sMB", $3, $7}') load=$(cut -d' ' -f1 /proc/loadavg)"
+              sleep 60
+            done ) &
+          HOSTSTAT_PID=$!
+          trap 'kill "$HOSTSTAT_PID" 2>/dev/null || true' EXIT
+
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           URLS=()
           for port in "${PORTS[@]}"; do
