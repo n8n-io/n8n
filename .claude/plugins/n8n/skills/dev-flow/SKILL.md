@@ -78,9 +78,10 @@ Resolve the repo root in this order and `cd` there before Phase 1:
 
 From here on, all repo paths are relative to this root (e.g. `.claude/plans/`, `packages/cli`).
 
-The input is a Linear ticket ID (e.g. `PAY-1234`). If the user didn't give one, ask for it. The
-feature branch is created at the start of Phase 3, using the name **Linear** provides (see there) —
-not a hand-rolled slug, **unless this is a security fix** (see Phase 3).
+The input is a Linear ticket ID (e.g. `PAY-1234`). If the user didn't give one, ask for it.
+At the start of Phase 3, reuse the feature branch if you're already on one; otherwise create it
+using the name **Linear** provides (see there) — not a hand-rolled slug, **unless this is a
+security fix** (see Phase 3).
 
 Create a TodoWrite list with one item per phase so progress is visible and resumable. Track the
 ticket ID — every phase references it.
@@ -152,12 +153,14 @@ Record `[MINOR]` items in the plan as known trade-offs rather than blocking on t
 
 The converged plan file is the source of truth for the rest of the flow.
 
-## Phase 3 — Create the branch, then implement (bug path: reproduce first)
+## Phase 3 — Branch (only if needed), then implement (bug path: reproduce first)
 
-**3a — Create the branch.** This runs once. Linear generates a branch name for every issue (the string behind
-the "Copy git branch name" button), already slugified and namespaced. Use that exact name — it
-comes from the `branchName`/`gitBranchName` field fetched in Phase 1, and using it lets Linear
-auto-link the PR.
+**3a — Ensure a working branch (skip if you already have one).** Most of the time you'll already be
+on a feature branch when you start — keep it; don't create another. Only create a branch when you're
+on the **default branch** (or in a detached/no-branch state). When you do create one, use the name
+**Linear** generates for every issue (the string behind the "Copy git branch name" button), already
+slugified and namespaced. Use that exact name — it comes from the `branchName`/`gitBranchName`
+field fetched in Phase 1, and using it lets Linear auto-link the PR.
 
 > **Security fix exception (AGENTS.md):** if Phase 1 flagged this as a security fix, do **NOT** use
 > the Linear branch name if it reveals the vulnerability. This is a public repo — branch names,
@@ -165,12 +168,17 @@ auto-link the PR.
 > describes the fix (e.g. `node-1234-improve-request-handling`, not `...-fix-ssrf`). Apply the same
 > neutral-language rule to commit messages and test descriptions in every later phase.
 
-Create it off the up-to-date default branch:
+Check the current branch first; only create one if needed, off the up-to-date default branch:
 
 ```bash
-git fetch origin
 default=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@' || echo main)
-git switch -c "<branch-name>" "origin/$default"
+current=$(git branch --show-current)
+if [ -z "$current" ] || [ "$current" = "$default" ]; then
+  git fetch origin
+  git switch -c "<branch-name>" "origin/$default"
+else
+  echo "Already on '$current' — using it."
+fi
 ```
 
 If the Linear field is missing (and it's not a security fix), fall back to
@@ -183,9 +191,10 @@ with the Phase 1 context. It picks the right test layer and writes a failing reg
 implement until that test is green; the regression test stays.
 
 Implement the converged plan with the **`n8n:autodev-implementer`** agent (it executes the plan
-file at `.claude/plans/<TICKET-ID>.md` and gets the build/tests green). Fallback: the
-`n8n:developer` agent. For specialized slices, the implementer should lean on the relevant repo
-skills:
+file at `.claude/plans/<TICKET-ID>.md` and gets the build/tests green). Work is TDD throughout:
+for a **bug** the reproduction test above comes first; for a **feature**, test each behaviour
+alongside (ideally just before) the code that satisfies it. Fallback: the `n8n:developer` agent.
+For specialized slices, the implementer should lean on the relevant repo skills:
 
 - `n8n:db-migrations` — schema changes under `packages/@n8n/db/src/migrations/`
 - `n8n:design-system` — `.vue` work in `packages/frontend` using the design system

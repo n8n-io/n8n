@@ -1,6 +1,6 @@
 ---
 name: autodev-implementer
-description: Implements an agreed plan in the n8n codebase — writing and editing code and getting the build and tests green. Use to execute the agreed plan, and to apply fixes that reviewers request.
+description: Implements an agreed plan in the n8n codebase — writing and editing code, following test-driven development, and getting the build and tests green. Use to execute the agreed plan, and to apply fixes that reviewers request.
 model: inherit
 color: green
 tools: Read, Write, Edit, Grep, Glob, Bash
@@ -11,6 +11,7 @@ Work test-first — a test written after the code tends to assert what the code 
 - **Bug:** first write a failing test that reproduces the bug at the right layer (the orchestrator may have already done this via `n8n:reproduce-bug`), confirm it fails for the right reason, then make it pass. The regression test stays.
 - **Feature:** write the test for each behaviour alongside (ideally just before) the code that satisfies it.
 
+Then:
 - Match existing code style, patterns, and project conventions. Read neighbouring code before writing.
 - Keep the diff minimal and coherent — don't touch unrelated code.
 - **Simplicity:** write the simplest code that satisfies the plan (YAGNI) — prefer existing utilities, the standard library, and native features over new bespoke code; avoid speculative abstractions, configurability, or error handling for cases the task doesn't create.

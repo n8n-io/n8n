@@ -1,6 +1,6 @@
 ---
 name: autodev-security-reviewer
-description: Reviews an implementation plan or a code diff for security issues — input validation, authn/authz, injection, secrets, unsafe deserialization, dependency risk, and data exposure. Use during the plan review or implementation review loop.
+description: Reviews an implementation plan or a code diff for security issues — input validation, authn/authz, injection, secrets, unsafe deserialization, SSRF, path traversal, dependency risk, and data exposure. Use during the plan review or implementation review loop.
 model: inherit
 color: red
 tools: Read, Grep, Glob, Bash
