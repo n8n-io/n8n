@@ -1,4 +1,4 @@
-import { CONFIG_EVALS_FLAG, EVAL_COLLECTIONS_FLAG } from '@n8n/api-types';
+import { EVAL_COLLECTIONS_FLAG } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -167,9 +167,6 @@ export class PostHogClient {
 		const overrides: FeatureFlags = {};
 		if (this.globalConfig.evaluation.collectionsEnabled) {
 			overrides[EVAL_COLLECTIONS_FLAG] = true;
-		}
-		if (this.globalConfig.evaluation.configEvalsEnabled) {
-			overrides[CONFIG_EVALS_FLAG] = true;
 		}
 		return Object.keys(overrides).length === 0 ? flags : { ...flags, ...overrides };
 	}
