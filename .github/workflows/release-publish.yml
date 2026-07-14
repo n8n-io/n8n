@@ -253,4 +253,4 @@ jobs:
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel C036AELNMV0 \
-            --text '<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Release publish failed for n8n@${{ needs.determine-version-info.outputs.version }}>. Please Go to the actions page and retry failed runs to recover a flake in the release pipeline.'
+            --text '<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Release publish failed for n8n@${{ needs.determine-version-info.outputs.version }}>. Please go to the actions page and retry failed runs to recover a flake in the release pipeline. <!subteam^S08FYH9C9ME|@release-captain>'
