@@ -13,10 +13,14 @@ defineProps<{
 	localConfig: AgentJsonConfig | null;
 	connectedTriggers: string[];
 	effectiveSessionId?: string;
+	initialPrompt?: string;
+	canSendToAssistant?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'continue-loaded': [count: number];
+	'open-build': [];
+	'send-to-assistant': [];
 }>();
 
 const inputDraft = ref('');
@@ -35,9 +39,12 @@ const inputDraft = ref('');
 				:continue-session-id="effectiveSessionId"
 				:agent-config="localConfig"
 				:agent-status="deriveAgentStatus(agent)"
-				:connected-triggers="connectedTriggers"
-				@continue-loaded="emit('continue-loaded', $event)"
-			/>
+			:connected-triggers="connectedTriggers"
+			:can-send-to-assistant="canSendToAssistant"
+			@continue-loaded="emit('continue-loaded', $event)"
+			@open-build="emit('open-build')"
+			@send-to-assistant="emit('send-to-assistant')"
+		/>
 		</div>
 	</main>
 </template>

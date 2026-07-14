@@ -8,12 +8,27 @@ import type { ResourceEntry } from '../useResourceRegistry';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 
 const storeState = reactive({
+	id: 'thread-1',
 	currentTasks: undefined as TaskList | undefined,
 	producedArtifacts: new Map<string, ResourceEntry>(),
+	projectId: 'proj-1',
+	messages: [] as Array<{ role: 'user' | 'assistant'; context?: unknown }>,
 });
+const metadataState = reactive({
+	value: undefined as Record<string, unknown> | undefined,
+});
+const updateThreadMetadataMock = vi.fn(
+	async (_threadId: string, metadata: Record<string, unknown>) => {
+		metadataState.value = { ...metadataState.value, ...metadata };
+	},
+);
 
 vi.mock('../instanceAi.store', () => ({
 	useThread: vi.fn(() => storeState),
+	useInstanceAiStore: vi.fn(() => ({
+		getThreadMetadata: vi.fn(() => metadataState.value),
+		updateThreadMetadata: updateThreadMetadataMock,
+	})),
 }));
 
 const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
@@ -40,6 +55,10 @@ describe('InstanceAiArtifactsPanel', () => {
 	beforeEach(() => {
 		storeState.currentTasks = undefined;
 		storeState.producedArtifacts = new Map<string, ResourceEntry>();
+		storeState.projectId = 'proj-1';
+		storeState.messages = [];
+		metadataState.value = undefined;
+		updateThreadMetadataMock.mockClear();
 	});
 
 	it('keeps empty artifacts and connections sections visible without an empty tasks section', () => {
@@ -97,6 +116,91 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(artifactLink);
 
 		expect(openWorkflowPreview).toHaveBeenCalledWith('wf-1');
+	});
+
+	it('renders agent preview handoff context using the matching agent name', () => {
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'SEO Auditor',
+				},
+			],
+		]);
+		storeState.messages = [
+			{
+				role: 'user',
+				context: {
+					source: 'agent-preview',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
+				},
+			},
+		];
+
+		const { getByText, getAllByTestId } = renderComponent();
+
+		expect(getByText('Context')).toBeInTheDocument();
+		expect(getByText('SEO Auditor session')).toBeInTheDocument();
+		expect(getByText('Added to context')).toBeInTheDocument();
+		expect(getAllByTestId('instance-ai-context-row')).toHaveLength(1);
+	});
+
+	it('renders credential handoff context as credential setup', () => {
+		storeState.messages = [
+			{
+				role: 'user',
+				context: {
+					source: 'credential-modal',
+					credential: {
+						credentialType: 'gmailOAuth2Api',
+						displayName: 'Gmail OAuth2 API',
+					},
+				},
+			},
+		];
+
+		const { getByText } = renderComponent();
+
+		expect(getByText('Context')).toBeInTheDocument();
+		expect(getByText('Gmail OAuth2 API')).toBeInTheDocument();
+		expect(getByText('Credential setup')).toBeInTheDocument();
+	});
+
+	it('allows the user to dismiss a context entry', async () => {
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'SEO Auditor',
+				},
+			],
+		]);
+		storeState.messages = [
+			{
+				role: 'user',
+				context: {
+					source: 'agent-preview',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
+				},
+			},
+		];
+
+		const { getByTestId, queryByText } = renderComponent();
+
+		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
+
+		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
+			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
+		});
+		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
 	});
 
 	it('renders agent artifacts and opens them in the side panel', async () => {

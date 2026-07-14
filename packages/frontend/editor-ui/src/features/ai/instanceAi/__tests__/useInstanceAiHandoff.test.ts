@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildInstanceAiCredentialHandoffContext } from '../composables/useInstanceAiHandoff';
+import {
+	buildInstanceAiAgentPreviewHandoffContext,
+	buildInstanceAiAgentPreviewQuestion,
+	buildInstanceAiCredentialHandoffContext,
+} from '../composables/useInstanceAiHandoff';
 
 describe('useInstanceAiHandoff', () => {
 	it('builds credential modal handoff context without empty optional fields', () => {
@@ -26,5 +30,24 @@ describe('useInstanceAiHandoff', () => {
 				oauthRedirectUrl: 'http://localhost:5678/rest/oauth2-credential/callback',
 			},
 		});
+	});
+
+	it('builds agent preview handoff context for a full preview session', () => {
+		expect(
+			buildInstanceAiAgentPreviewHandoffContext({
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+			}),
+		).toEqual({
+			source: 'agent-preview',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+		});
+	});
+
+	it('builds the default opening question for agent preview handoff', () => {
+		expect(buildInstanceAiAgentPreviewQuestion()).toBe(
+			'Please review this preview session and improve the agent based on how it behaved.',
+		);
 	});
 });
