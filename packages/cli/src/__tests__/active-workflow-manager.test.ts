@@ -1036,6 +1036,60 @@ describe('ActiveWorkflowManager', () => {
 		});
 	});
 
+	describe('remove (multi-main)', () => {
+		const publisher = mock<Publisher>();
+		const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
+
+		const makeManager = () =>
+			new ActiveWorkflowManager(
+				mockLogger(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock<InstanceSettings>({ isMultiMain: true }),
+				publisher,
+				workflowsConfig,
+				mock(),
+				mock<TriggerExecutionContextFactory>(),
+				mock(),
+				scheduleTriggerJobRegistrar,
+			);
+
+		beforeEach(() => vi.clearAllMocks());
+
+		it('deprovisions durable jobs on the handling main, not only via the forwarded command', async () => {
+			// The command to tear down the in-memory triggers is fire-and-forget to the
+			// leader; durable rows are DB state, so their removal runs here and does not
+			// depend on that command landing.
+			await makeManager().remove('wf-mm');
+
+			expect(scheduleTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-mm');
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'remove-triggers-and-pollers',
+				payload: { workflowId: 'wf-mm' },
+			});
+		});
+
+		it('still forwards the teardown command when the durable deprovision fails', async () => {
+			scheduleTriggerJobRegistrar.removeWorkflow.mockRejectedValueOnce(
+				new Error('durable delete failed'),
+			);
+
+			await expect(makeManager().remove('wf-mm-fail')).resolves.not.toThrow();
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'remove-triggers-and-pollers',
+				payload: { workflowId: 'wf-mm-fail' },
+			});
+		});
+	});
+
 	describe('addNonWebhookTriggers', () => {
 		// This legacy path can run with the durable scheduler intercepting schedule
 		// nodes (e.g. a workflow transfer with the publication flag on), so the

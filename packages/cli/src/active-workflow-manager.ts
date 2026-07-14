@@ -933,6 +933,18 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			// Drop the durable jobs here rather than leaving it to the fire-and-forget
+			// command below: they are DB state, so removal is leader-independent, and a
+			// lost command would otherwise leak them, firing an inactive workflow.
+			try {
+				await this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId);
+			} catch (error) {
+				this.errorReporter.error(error);
+				this.logger.error(
+					`Could not remove durable schedule jobs of workflow "${workflowId}" because of error: "${error.message}"`,
+				);
+			}
+
 			void this.publisher.publishCommand({
 				command: 'remove-triggers-and-pollers',
 				payload: { workflowId },
