@@ -11,7 +11,7 @@
 //   node scripts/nathan.mjs deploy my-branch --license pro2
 //   node scripts/nathan.mjs deploy master test-ai --ai
 //
-// Needs a token in ~/.n8n/nathan-token — on first run it links you to a form to
+// Needs a token in ~/.n8n/dev/nathan-token — on first run it links you to a form to
 // get one and saves it there. A public tunnel is opened via `npx localtunnel`.
 import http from 'node:http';
 import fs from 'node:fs';
@@ -98,9 +98,9 @@ if (process.argv.includes('--selftest')) {
 	process.exit(0);
 }
 
-// --- token: read from ~/.n8n/nathan-token; prompt + save it on first run -----
+// --- token: read from ~/.n8n/dev/nathan-token; prompt + save it on first run -
 const TOKEN_FORM_URL = 'https://internal.users.n8n.cloud/form/d6d34a2f-4899-4ee8-afc8-f8c41a8a243d';
-const tokenFile = path.join(os.homedir(), '.n8n', 'nathan-token');
+const tokenFile = path.join(os.homedir(), '.n8n', 'dev', 'nathan-token');
 const readSavedToken = () => { try { return fs.readFileSync(tokenFile, 'utf8').trim() || null; } catch { return null; } };
 function saveToken(t) {
 	fs.mkdirSync(path.dirname(tokenFile), { recursive: true });
