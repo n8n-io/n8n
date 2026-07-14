@@ -334,12 +334,12 @@ describe('workflow package export — with variables', () => {
 		expect(JSON.stringify(manifest)).not.toContain('example.com');
 	});
 
-	it('omits the value when workflows in different projects resolve the same name differently', async () => {
+	it('blocks the export when workflows in different projects resolve the same name to different values', async () => {
 		const owner = await createOwner();
 		const projectA = await createTeamProject('Project A', owner);
 		const projectB = await createTeamProject('Project B', owner);
-		const variableA = await createProjectVariable('API_URL', 'https://a.example.com', projectA);
-		const variableB = await createProjectVariable('API_URL', 'https://b.example.com', projectB);
+		await createProjectVariable('API_URL', 'https://a.example.com', projectA);
+		await createProjectVariable('API_URL', 'https://b.example.com', projectB);
 		const wfA = await buildWorkflowReferencingVariables({
 			name: 'Workflow A',
 			project: projectA,
@@ -351,23 +351,9 @@ describe('workflow package export — with variables', () => {
 			variableNames: ['API_URL'],
 		});
 
-		const stream = await service.exportPackage({
-			user: owner,
-			workflowIds: [wfA.id, wfB.id],
-		});
-		const { manifest, entries } = await readExport(stream);
-
-		// Divergent resolutions: the single name-keyed requirement carries no value.
-		expect(manifest.requirements!.variables).toHaveLength(1);
-		expect(manifest.requirements!.variables![0]).not.toHaveProperty('value');
-
-		// Both distinct rows are still bundled; same key in one base dir gets a suffix.
-		expect(manifest.variables).toHaveLength(2);
-		const ids = manifest.variables!.map((entry) => entry.id).sort();
-		expect(ids).toEqual([variableA.id, variableB.id].sort());
-		const targets = manifest.variables!.map((entry) => entry.target).sort();
-		expect(targets[0]).not.toBe(targets[1]);
-		expect(variableFiles(entries)).toHaveLength(2);
+		await expect(
+			service.exportPackage({ user: owner, workflowIds: [wfA.id, wfB.id] }),
+		).rejects.toThrow(/would collide in the package/);
 	});
 
 	it('omits the value when any referencing workflow cannot resolve the name', async () => {

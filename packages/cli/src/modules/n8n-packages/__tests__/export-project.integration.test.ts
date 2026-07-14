@@ -356,28 +356,6 @@ describe('project package export — with folders / workflows', () => {
 		expect(payload.counts.variables).toBe(1);
 	});
 
-	it('blocks a workflow-package export spanning two projects that share a variable name with different values', async () => {
-		const owner = await createOwner();
-		const projectA = await createTeamProject('team-a', owner);
-		const projectB = await createTeamProject('team-b', owner);
-		await createProjectVariable('API_URL', 'https://a.example.com', projectA);
-		await createProjectVariable('API_URL', 'https://b.example.com', projectB);
-		const workflowA = await buildWorkflowReferencingVariables({
-			name: 'wf-a',
-			project: projectA,
-			variableNames: ['API_URL'],
-		});
-		const workflowB = await buildWorkflowReferencingVariables({
-			name: 'wf-b',
-			project: projectB,
-			variableNames: ['API_URL'],
-		});
-
-		await expect(
-			service.exportPackage({ user: owner, workflowIds: [workflowA.id, workflowB.id] }),
-		).rejects.toThrow(/cannot be bundled in a workflow or folder package/);
-	});
-
 	it('keeps a credential owned by a non-exported project at the package top level', async () => {
 		const owner = await createOwner();
 		const exportedProject = await createTeamProject('team-ligo', owner);

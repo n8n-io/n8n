@@ -16,16 +16,16 @@ import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
 
-/**
- * Variable rows indexed once so per-workflow resolution is a map lookup instead
- * of a scan over every variable. Project-scoped maps are keyed by project id
- * then name. `projectNamesInAnyScope` covers rows the caller cannot list too,
- * so we can detect a global shadowed by a hidden project row.
- */
 interface VariableIndex {
 	accessibleGlobalByName: Map<string, Variables>;
 	accessibleProjectByName: Map<string, Map<string, Variables>>;
 	projectNamesInAnyScope: Map<string, Set<string>>;
+}
+
+interface ResolvedName {
+	name: string;
+	usedByWorkflows: string[];
+	variables: Array<Variables | undefined>;
 }
 
 /**
@@ -65,22 +65,15 @@ export class VariableExporter {
 		);
 		const index = this.indexVariables(accessibleVariables, allVariables);
 
-		const grouped = this.groupByName(request.requirements);
+		const resolvedNames = this.resolveRequirements(
+			request.requirements,
+			projectIdByWorkflowId,
+			visibleProjectIds,
+			index,
+		);
 
-		// A workflow/folder package rolls every bundled variable up to a single
-		// top-level `variables/` dir and imports into one target project, so a name
-		// that resolves to two different variables across projects cannot be
-		// represented unambiguously. Project packages keep each in its own
-		// namespace, so the collision only matters when bundling values outside a
-		// project export.
-		const isProjectExport = (request.projectTargetsById?.size ?? 0) > 0;
-		if (request.includeVariableValues && !isProjectExport) {
-			this.assertNoCrossProjectNameCollision(
-				grouped,
-				projectIdByWorkflowId,
-				visibleProjectIds,
-				index,
-			);
+		if (request.includeVariableValues) {
+			this.assertNoBundledVariableCollision(resolvedNames, request.projectTargetsById);
 		}
 
 		// One allocator per base directory: `variables/` and each
@@ -98,18 +91,11 @@ export class VariableExporter {
 		const bundledVariableIds = new Set<string>();
 		const requirements: PackageVariableRequirement[] = [];
 
-		for (const [name, usedByWorkflows] of grouped) {
+		for (const { name, usedByWorkflows, variables } of resolvedNames) {
 			let aggregateValue: string | undefined;
 			let everyWorkflowResolvedToSameValue = true;
 
-			for (const workflowId of usedByWorkflows) {
-				const workflowProjectId = projectIdByWorkflowId.get(workflowId);
-				const canInspectProjectScope =
-					workflowProjectId !== undefined && visibleProjectIds.has(workflowProjectId);
-				const variable = canInspectProjectScope
-					? this.resolve(name, workflowProjectId, index)
-					: undefined;
-
+			for (const variable of variables) {
 				if (!isBundleableVariable(variable)) {
 					everyWorkflowResolvedToSameValue = false;
 					continue;
@@ -149,21 +135,41 @@ export class VariableExporter {
 	}
 
 	/**
+	 * Turns the flat requirement list into one entry per variable name.
+	 * Each entry records which workflows use the name and, for each of those
+	 * workflows, the actual variable its `$vars.<name>` would read at runtime.
+	 * That lookup yields `undefined` when the caller cannot see into the
+	 * workflow's project.
+	 */
+	private resolveRequirements(
+		requirements: WorkflowVariableRequirement[],
+		projectIdByWorkflowId: Map<string, string>,
+		visibleProjectIds: Set<string>,
+		index: VariableIndex,
+	): ResolvedName[] {
+		const resolveForWorkflow = (name: string, workflowId: string) => {
+			const projectId = projectIdByWorkflowId.get(workflowId);
+			if (projectId === undefined || !visibleProjectIds.has(projectId)) return undefined;
+			return this.resolve(name, projectId, index);
+		};
+
+		return [...this.groupByName(requirements)].map(([name, usedByWorkflows]) => ({
+			name,
+			usedByWorkflows,
+			variables: usedByWorkflows.map((workflowId) => resolveForWorkflow(name, workflowId)),
+		}));
+	}
+
+	/**
 	 * Resolves the variable a workflow's `$vars.<name>` hits at runtime: the
 	 * project-scoped row wins over a global of the same name. Returns `undefined`
 	 * when that row is a project variable the caller cannot list, so we never
 	 * export a misleading global in its place.
 	 */
-	private resolve(
-		name: string,
-		workflowProjectId: string | undefined,
-		index: VariableIndex,
-	): Variables | undefined {
-		if (workflowProjectId) {
-			const scoped = index.accessibleProjectByName.get(workflowProjectId)?.get(name);
-			if (scoped) return scoped;
-			if (index.projectNamesInAnyScope.get(workflowProjectId)?.has(name)) return undefined;
-		}
+	private resolve(name: string, projectId: string, index: VariableIndex): Variables | undefined {
+		const scoped = index.accessibleProjectByName.get(projectId)?.get(name);
+		if (scoped) return scoped;
+		if (index.projectNamesInAnyScope.get(projectId)?.has(name)) return undefined;
 
 		return index.accessibleGlobalByName.get(name);
 	}
@@ -224,27 +230,20 @@ export class VariableExporter {
 		return new Map(owners.map((owner) => [owner.workflowId, owner.project.id]));
 	}
 
-	private assertNoCrossProjectNameCollision(
-		grouped: Map<string, string[]>,
-		projectIdByWorkflowId: Map<string, string>,
-		visibleProjectIds: Set<string>,
-		index: VariableIndex,
+	/**
+	 * A name that resolves to two different variables in the same package
+	 * directory cannot be bundled: the second copy would be renamed `<name>-2`
+	 * and the import could not tell which one satisfies the requirement.
+	 * Collisions are checked per directory, so project exports — where each
+	 * project's variables live in their own namespace — stay unaffected.
+	 */
+	private assertNoBundledVariableCollision(
+		resolvedNames: ResolvedName[],
+		projectTargetsById: Map<string, string> | undefined,
 	): void {
-		const conflictingNames: string[] = [];
-
-		for (const [name, usedByWorkflows] of grouped) {
-			const bundledVariableIds = new Set<string>();
-			for (const workflowId of usedByWorkflows) {
-				const workflowProjectId = projectIdByWorkflowId.get(workflowId);
-				const canInspectProjectScope =
-					workflowProjectId !== undefined && visibleProjectIds.has(workflowProjectId);
-				const variable = canInspectProjectScope
-					? this.resolve(name, workflowProjectId, index)
-					: undefined;
-				if (isBundleableVariable(variable)) bundledVariableIds.add(variable.id);
-			}
-			if (bundledVariableIds.size > 1) conflictingNames.push(name);
-		}
+		const conflictingNames = resolvedNames
+			.filter(({ variables }) => this.hasDirectoryCollision(variables, projectTargetsById))
+			.map(({ name }) => name);
 
 		if (conflictingNames.length === 0) return;
 
@@ -252,13 +251,29 @@ export class VariableExporter {
 		const omittedCount = conflictingNames.length - displayedNames.length;
 
 		throw new PackageExportBlockedError(
-			`${conflictingNames.length} variable name(s) resolve to different variables across projects and cannot be bundled in a workflow or folder package. Export aborted.`,
+			`${conflictingNames.length} variable name(s) resolve to different variables that would collide in the package. Export aborted.`,
 			{
 				description: `Conflicting variable name(s): ${displayedNames.join(', ')}${
 					omittedCount > 0 ? `, and ${omittedCount} more` : ''
 				}. Export the projects as a project package, or export without variable values.`,
 			},
 		);
+	}
+
+	/** True when two distinct variables would be written into the same directory. */
+	private hasDirectoryCollision(
+		variables: Array<Variables | undefined>,
+		projectTargetsById: Map<string, string> | undefined,
+	): boolean {
+		const idByDir = new Map<string, string>();
+		for (const variable of variables) {
+			if (!isBundleableVariable(variable)) continue;
+			const dir = this.resolveBaseDir(variable, projectTargetsById);
+			const previousId = idByDir.get(dir);
+			if (previousId !== undefined && previousId !== variable.id) return true;
+			idByDir.set(dir, variable.id);
+		}
+		return false;
 	}
 
 	private groupByName(requirements: WorkflowVariableRequirement[]): Map<string, string[]> {

@@ -518,7 +518,7 @@ describe('VariableExporter', () => {
 					includeVariableValues: true,
 					// No projectTargetsById: this is a workflow/folder export.
 				}),
-			).rejects.toThrow(/cannot be bundled in a workflow or folder package/);
+			).rejects.toThrow(/would collide in the package/);
 
 			expect(writer.files).toEqual([]);
 			expect(writer.directories).toEqual([]);
@@ -551,6 +551,39 @@ describe('VariableExporter', () => {
 			});
 
 			expect(result.entries.map((e) => e.id).sort()).toEqual(['var-a', 'var-b']);
+		});
+
+		it('fails a mixed export when unexported-project variables collide at the top level', async () => {
+			const deps = makeExporter();
+			// proj-1 is exported (namespaced). proj-2 and proj-3 are only reached
+			// via loose workflows, so their same-named vars both funnel into the
+			// shared top-level variables/ dir and would suffix-collide there.
+			const variableB = projectVariable('proj-2', { id: 'var-b', value: 'B' });
+			const variableC = projectVariable('proj-3', { id: 'var-c', value: 'C' });
+			deps.variablesService.getAllCached.mockResolvedValue([variableB, variableC]);
+			deps.variablesService.getAllForUser.mockResolvedValue([variableB, variableC]);
+			wireProjects(deps, {
+				workflowProjects: [
+					['wf-b', 'proj-2'],
+					['wf-c', 'proj-3'],
+				],
+				listableProjectIds: ['proj-2', 'proj-3'],
+			});
+			const writer = new CapturingWriter();
+
+			await expect(
+				deps.exporter.export({
+					user,
+					requirements: [req('wf-b', 'API_URL'), req('wf-c', 'API_URL')],
+					writer,
+					includeVariableValues: true,
+					// A project target exists, but these workflows are outside it.
+					projectTargetsById: new Map([['proj-1', 'projects/p1']]),
+				}),
+			).rejects.toThrow(/would collide in the package/);
+
+			expect(writer.files).toEqual([]);
+			expect(writer.directories).toEqual([]);
 		});
 
 		it('allows the collision in a workflow/folder export when values are excluded', async () => {
