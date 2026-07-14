@@ -183,7 +183,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						undefined,
 						0,
 					);
-					expect(downloadAttachments).toHaveBeenCalledWith([mockMessages[0]], 'attachment_');
+					expect(downloadAttachments).toHaveBeenCalledWith([mockMessages[0]], 'attachment_', 0);
 					expect(result).toEqual(mockExecutionData);
 				});
 			});
@@ -288,7 +288,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'custom_');
+					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'custom_', 0);
 					expect(result).toEqual(mockExecutionData);
 				});
 
@@ -314,7 +314,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'attachment_');
+					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'attachment_', 0);
 				});
 			});
 
@@ -878,7 +878,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 					undefined,
 					0,
 				);
-				expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'prefix_');
+				expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'prefix_', 0);
 				expect(result).toEqual(mockExecutionData);
 			});
 		});

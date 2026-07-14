@@ -104,7 +104,13 @@ export async function getPollResponse(
 
 		if (options.downloadAttachments) {
 			const prefix = (options.attachmentsPrefix as string) || 'attachment_';
-			executionData = await downloadAttachments.call(this, responseData as IDataObject[], prefix);
+			// Poll context: 0 is the transport's fallback read, not an item index.
+			executionData = await downloadAttachments.call(
+				this,
+				responseData as IDataObject[],
+				prefix,
+				0,
+			);
 		} else {
 			executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 		}

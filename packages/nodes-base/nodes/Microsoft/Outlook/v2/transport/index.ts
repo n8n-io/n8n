@@ -185,7 +185,7 @@ export async function downloadAttachments(
 	this: IExecuteFunctions | IPollFunctions,
 	messages: IDataObject[] | IDataObject,
 	prefix: string,
-	itemIndex = 0,
+	itemIndex: number,
 ) {
 	const elements: INodeExecutionData[] = [];
 	if (!Array.isArray(messages)) {
