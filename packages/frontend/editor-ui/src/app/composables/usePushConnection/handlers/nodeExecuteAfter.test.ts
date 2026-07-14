@@ -61,6 +61,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
+				sequenceNumber: 1,
 				itemCountByConnectionType: { main: [2, 1] },
 				data: {
 					executionTime: 100,
@@ -102,6 +103,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'other-exec',
 				nodeName: 'Test Node',
+				sequenceNumber: 1,
 				itemCountByConnectionType: { main: [1] },
 				data: {
 					executionTime: 100,
@@ -127,6 +129,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
+				sequenceNumber: 1,
 				itemCountByConnectionType: {
 					main: [3],
 					ai_memory: [1, 2],
@@ -164,6 +167,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
+				sequenceNumber: 1,
 				itemCountByConnectionType: {},
 				data: {
 					executionTime: 100,
@@ -188,6 +192,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
+				sequenceNumber: 1,
 				itemCountByConnectionType: { main: [1] },
 				data: {
 					executionTime: 100,
@@ -221,6 +226,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
+				sequenceNumber: 1,
 				itemCountByConnectionType: {
 					main: [1],
 					// @ts-expect-error Testing invalid connection type
@@ -254,6 +260,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Wait',
+				sequenceNumber: 1,
 				itemCountByConnectionType: {},
 				data: {
 					executionTime: 0,
@@ -277,6 +284,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Wait',
+				sequenceNumber: 1,
 				itemCountByConnectionType: {},
 				data: {
 					executionTime: 0,
