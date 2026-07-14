@@ -16,6 +16,7 @@ import {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
+	normalizeInstanceAiThreadSource,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -595,11 +596,22 @@ export class InstanceAiController {
 		}
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
+
+		const launchMetadata =
+			payload.source !== undefined || payload.origin !== undefined
+				? {
+						source: normalizeInstanceAiThreadSource(payload.source),
+						origin: payload.origin ?? ('internal' as const),
+						sourceContext: payload.sourceContext,
+					}
+				: undefined;
+
 		try {
 			return await this.memoryService.ensureThread(
 				req.user.id,
 				requestedThreadId,
 				payload.projectId,
+				launchMetadata,
 			);
 		} catch (error) {
 			this.instanceAiErrorReporter.report(error, {

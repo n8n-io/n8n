@@ -87,7 +87,12 @@ const actions = computed(() => {
 		},
 	];
 
-	if (credentialPermissions.value.delete) {
+	// Deleting an end-user credential removes every user's own connection,
+	// so it additionally requires the createEndUser permission.
+	if (
+		credentialPermissions.value.delete &&
+		(!props.data.isResolvable || credentialPermissions.value.createEndUser)
+	) {
 		items.push({
 			label: locale.baseText('credentials.item.delete'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,

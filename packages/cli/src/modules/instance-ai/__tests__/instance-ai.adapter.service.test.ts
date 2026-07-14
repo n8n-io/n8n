@@ -48,7 +48,11 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 } from 'n8n-workflow';
-import { AI_GATEWAY_MANAGED_TAG, CONFIG_EVALS_FLAG } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	CONFIG_EVALUATIONS_FLAG,
+	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+} from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { NodeCatalogService } from '@/node-catalog';
@@ -1297,6 +1301,7 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 		nodeCatalogService,
 	);
 
@@ -1569,6 +1574,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -1894,6 +1900,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
 	const boundProjectId =
@@ -2647,6 +2654,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -2908,6 +2916,7 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -3507,16 +3516,29 @@ describe('createNodeAdapter — n8n Connect annotations', () => {
 describe('isConfigEvalsEnabled', () => {
 	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
 
-	it('resolves true when the flag is on', async () => {
+	it('resolves true when config-evaluations is on the enabled variant', async () => {
 		const adapter = createAdapterWithGatewayMock(vi.fn());
-		const getFeatureFlags = vi.fn().mockResolvedValue({ [CONFIG_EVALS_FLAG]: true });
+		const getFeatureFlags = vi.fn().mockResolvedValue({
+			[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
+		});
 		vi.spyOn(Container, 'get').mockReturnValue({ getFeatureFlags } as unknown as PostHogClient);
 
 		expect(await adapter.isConfigEvalsEnabled(user)).toBe(true);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
 	});
 
-	it('resolves false when the flag is absent (PostHog outage returns {})', async () => {
+	it('resolves false when config-evaluations is not on the enabled variant', async () => {
+		const adapter = createAdapterWithGatewayMock(vi.fn());
+		vi.spyOn(Container, 'get').mockReturnValue({
+			getFeatureFlags: vi.fn().mockResolvedValue({
+				[CONFIG_EVALUATIONS_FLAG]: 'control',
+			}),
+		} as unknown as PostHogClient);
+
+		expect(await adapter.isConfigEvalsEnabled(user)).toBe(false);
+	});
+
+	it('resolves false when the flags are absent (PostHog outage returns {})', async () => {
 		const adapter = createAdapterWithGatewayMock(vi.fn());
 		vi.spyOn(Container, 'get').mockReturnValue({
 			getFeatureFlags: vi.fn().mockResolvedValue({}),

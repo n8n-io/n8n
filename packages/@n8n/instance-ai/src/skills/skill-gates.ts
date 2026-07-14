@@ -2,7 +2,7 @@
 // `filterRuntimeSkillSource` (@n8n/agents) on the cached catalog — it returns a
 // filtered copy, so the process-level catalog cache is preserved.
 
-/** Skill folder id gated by the `088_instance_ai_config_evals` flag. */
+/** Skill folder id gated by the `088_config_evaluations` flag. */
 export const CONFIG_EVALS_SKILL_ID = 'config-evals';
 
 /** Resolved feature flags that gate one or more runtime skills. */

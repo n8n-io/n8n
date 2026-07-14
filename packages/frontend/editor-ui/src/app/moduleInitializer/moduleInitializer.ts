@@ -10,7 +10,10 @@ import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
 import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
 import { AgentsModule } from '@/features/agents/module.descriptor';
 import { OtelModule } from '@/features/settings/otel/module.descriptor';
-import { INSTANCE_AI_SETTINGS_VIEW } from '@/features/ai/instanceAi/constants';
+import {
+	INSTANCE_AI_NEW_VIEW,
+	INSTANCE_AI_SETTINGS_VIEW,
+} from '@/features/ai/instanceAi/constants';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
 
@@ -83,11 +86,12 @@ const checkModuleAvailability = (options: any) => {
 		return false;
 	}
 
-	// Settings route is always accessible even when the admin toggle is off;
-	// other instance-ai routes are disabled.
+	// When the admin toggle is off, instance-ai routes are disabled except the
+	// settings route, and the template deep-link route, whose guard falls back
+	// to the classic template setup instead of losing the user's intent.
 	if (options.to.meta.moduleName === 'instance-ai') {
 		const routeName = options.to.name;
-		if (routeName !== INSTANCE_AI_SETTINGS_VIEW) {
+		if (routeName !== INSTANCE_AI_SETTINGS_VIEW && routeName !== INSTANCE_AI_NEW_VIEW) {
 			const enabled = settingsStore.moduleSettings['instance-ai']?.enabled;
 			if (enabled === false) {
 				return false;
