@@ -502,6 +502,8 @@ export {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
+	MCP_INSTANCE_SCOPES,
+	type McpScope,
 } from './schemas/mcp.schema';
 
 export {
