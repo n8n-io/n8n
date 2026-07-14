@@ -33,7 +33,7 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			createdById: input.createdById,
 			updatedById: input.updatedById ?? input.createdById,
 			closedById: null,
-			closedAt: null,
+			lastStatusChangeAt: null,
 			approvedAt: null,
 		});
 		return await this.save(entity);

@@ -25,10 +25,10 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_review_request_workflow_request_workflow | CREATE UNIQUE INDEX "IDX_workflow_review_request_workflow_request_workflow" ON public.workflow_review_request_workflow USING btree ("workflowReviewRequestId", "workflowId") |
 | IDX_workflow_review_request_workflow_workflow_id | CREATE INDEX "IDX_workflow_review_request_workflow_workflow_id" ON public.workflow_review_request_workflow USING btree ("workflowId") |
 | IDX_workflow_review_request_workflow_workflow_version | CREATE INDEX "IDX_workflow_review_request_workflow_workflow_version" ON public.workflow_review_request_workflow USING btree ("workflowId", "workflowVersionId") WHERE ("workflowVersionId" IS NOT NULL) |
 | PK_be3bf4facb054cf2b2b116b3b9c | CREATE UNIQUE INDEX "PK_be3bf4facb054cf2b2b116b3b9c" ON public.workflow_review_request_workflow USING btree (id) |
+| UQ_workflow_review_request_workflow_request_workflow | CREATE UNIQUE INDEX "UQ_workflow_review_request_workflow_request_workflow" ON public.workflow_review_request_workflow USING btree ("workflowReviewRequestId", "workflowId") |
 
 ## Relations
 
@@ -68,16 +68,16 @@ erDiagram
   character_36_ versionId
 }
 "public.workflow_review_request" {
-  timestamp_3__with_time_zone archivedAt
-  uuid archivedById FK
+  timestamp_3__with_time_zone approvedAt
+  uuid closedById FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
+  varchar_50_ decision
   text description
   varchar_36_ id
+  timestamp_3__with_time_zone lastStatusChangeAt
   varchar_36_ projectId FK
-  text publishError
-  timestamp_3__with_time_zone publishErrorAt
-  varchar_50_ status
+  varchar_16_ state
   varchar_512_ title
   timestamp_3__with_time_zone updatedAt
   uuid updatedById FK

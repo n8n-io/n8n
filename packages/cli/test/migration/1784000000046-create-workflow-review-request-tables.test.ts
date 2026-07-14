@@ -169,10 +169,7 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 				),
 			).toBe(true);
 			expect(
-				await indexExists(
-					context,
-					`UQ_${prefix}workflow_review_request_workflow_request_workflow`,
-				),
+				await indexExists(context, `UQ_${prefix}workflow_review_request_workflow_request_workflow`),
 			).toBe(true);
 			expect(
 				await indexExists(
@@ -272,7 +269,9 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 				},
 			);
 
-			const [request] = await context.runQuery<Array<{ id: string; state: string; decision: string }>>(
+			const [request] = await context.runQuery<
+				Array<{ id: string; state: string; decision: string }>
+			>(
 				`SELECT "id", "state", "decision" FROM ${context.escape.tableName('workflow_review_request')} WHERE "id" = :id`,
 				{ id: requestId },
 			);

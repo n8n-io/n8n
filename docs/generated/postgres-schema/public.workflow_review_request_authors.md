@@ -23,9 +23,8 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_review_request_authors_request_user | CREATE UNIQUE INDEX "IDX_workflow_review_request_authors_request_user" ON public.workflow_review_request_authors USING btree ("workflowReviewRequestId", "userId") |
-| IDX_workflow_review_request_authors_user_id | CREATE INDEX "IDX_workflow_review_request_authors_user_id" ON public.workflow_review_request_authors USING btree ("userId") |
 | PK_47755615899710169aada453e6e | CREATE UNIQUE INDEX "PK_47755615899710169aada453e6e" ON public.workflow_review_request_authors USING btree (id) |
+| UQ_workflow_review_request_authors_request_user | CREATE UNIQUE INDEX "UQ_workflow_review_request_authors_request_user" ON public.workflow_review_request_authors USING btree ("workflowReviewRequestId", "userId") |
 
 ## Relations
 
@@ -58,16 +57,16 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_review_request" {
-  timestamp_3__with_time_zone archivedAt
-  uuid archivedById FK
+  timestamp_3__with_time_zone approvedAt
+  uuid closedById FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
+  varchar_50_ decision
   text description
   varchar_36_ id
+  timestamp_3__with_time_zone lastStatusChangeAt
   varchar_36_ projectId FK
-  text publishError
-  timestamp_3__with_time_zone publishErrorAt
-  varchar_50_ status
+  varchar_16_ state
   varchar_512_ title
   timestamp_3__with_time_zone updatedAt
   uuid updatedById FK

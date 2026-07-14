@@ -39,7 +39,7 @@ describe('WorkflowReviewRequestRepository', () => {
 				createdById: 'user-1',
 				updatedById: 'user-1',
 				closedById: null,
-				closedAt: null,
+				lastStatusChangeAt: null,
 				approvedAt: null,
 			});
 		});

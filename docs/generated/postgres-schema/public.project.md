@@ -184,16 +184,16 @@ erDiagram
   text value
 }
 "public.workflow_review_request" {
-  timestamp_3__with_time_zone archivedAt
-  uuid archivedById FK
+  timestamp_3__with_time_zone approvedAt
+  uuid closedById FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
+  varchar_50_ decision
   text description
   varchar_36_ id
+  timestamp_3__with_time_zone lastStatusChangeAt
   varchar_36_ projectId FK
-  text publishError
-  timestamp_3__with_time_zone publishErrorAt
-  varchar_50_ status
+  varchar_16_ state
   varchar_512_ title
   timestamp_3__with_time_zone updatedAt
   uuid updatedById FK
