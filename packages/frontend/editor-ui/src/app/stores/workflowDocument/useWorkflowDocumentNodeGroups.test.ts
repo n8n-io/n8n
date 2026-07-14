@@ -93,6 +93,34 @@ describe('useWorkflowDocumentNodeGroups', () => {
 		});
 	});
 
+	describe('updateDescription', () => {
+		it('sets the description of an existing group', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'G');
+			nodeGroups.updateDescription(group.id, 'What this group does');
+			expect(nodeGroups.getGroupById(group.id)?.description).toBe('What this group does');
+		});
+
+		it('clears the description when given an empty string', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'G');
+			nodeGroups.updateDescription(group.id, 'Something');
+			nodeGroups.updateDescription(group.id, '');
+			expect(nodeGroups.getGroupById(group.id)?.description).toBeUndefined();
+		});
+
+		it('does not fire a change event when the description is unchanged', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'G');
+			nodeGroups.updateDescription(group.id, 'Same');
+			const changeSpy = vi.fn();
+			nodeGroups.onNodeGroupsChange(changeSpy);
+			nodeGroups.updateDescription(group.id, 'Same');
+			expect(changeSpy).not.toHaveBeenCalled();
+		});
+
+		it('does nothing for an unknown group id', () => {
+			expect(() => nodeGroups.updateDescription('missing', 'X')).not.toThrow();
+		});
+	});
+
 	describe('deleteGroup', () => {
 		it('removes the group', () => {
 			const group = nodeGroups.createGroup(['a', 'b'], 'X');
