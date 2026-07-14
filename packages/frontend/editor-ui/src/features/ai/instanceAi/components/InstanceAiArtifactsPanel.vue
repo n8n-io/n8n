@@ -1,17 +1,18 @@
 <script lang="ts" setup>
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
-import type { TaskItem } from '@n8n/api-types';
+import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import { N8nHeading, N8nIcon } from '@n8n/design-system';
+import { N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, ref } from 'vue';
-import { useThread } from '../instanceAi.store';
+import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import ConnectionsCard from './ConnectionsCard.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const projectsStore = useProjectsStore();
+const store = useInstanceAiStore();
 
 const i18n = useI18n();
 const thread = useThread();
@@ -41,6 +42,13 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 	'openAgentPreview',
 	undefined,
 );
+
+interface ContextEntry {
+	key: string;
+	icon: IconName;
+	name: string;
+	subtitle: string;
+}
 
 function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 	if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -111,6 +119,74 @@ function artifactHref(artifact: ResourceEntry) {
 function openArtifactLabel(name: string) {
 	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
 }
+
+function contextKey(context: InstanceAiHandoffContext): string {
+	if (context.source === 'agent-preview') {
+		return `${context.source}:${context.agentId}:${context.threadId}:${context.executionId ?? ''}`;
+	}
+
+	return `${context.source}:${context.credential.credentialType}:${context.credential.id ?? context.credential.displayName}`;
+}
+
+function agentPreviewContextName(agentId: string): string {
+	const matchingArtifact = thread.producedArtifacts.get(agentId);
+	if (matchingArtifact?.type === 'agent') {
+		return i18n.baseText('instanceAi.artifactsPanel.context.agentPreviewNamed', {
+			interpolate: { name: matchingArtifact.name },
+		});
+	}
+
+	return i18n.baseText('instanceAi.artifactsPanel.context.agentPreview');
+}
+
+const contextEntries = computed<ContextEntry[]>(() => {
+	const entries: ContextEntry[] = [];
+	const seen = new Set<string>();
+	const dismissedKeys = new Set(
+		Array.isArray(store.getThreadMetadata(thread.id)?.dismissedContextKeys)
+			? (store.getThreadMetadata(thread.id)?.dismissedContextKeys as string[])
+			: [],
+	);
+
+	for (const message of [...thread.messages].reverse()) {
+		if (message.role !== 'user' || !message.context) continue;
+
+		const key = contextKey(message.context);
+		if (seen.has(key) || dismissedKeys.has(key)) continue;
+		seen.add(key);
+
+		if (message.context.source === 'agent-preview') {
+			entries.push({
+				key,
+				icon: 'robot',
+				name: agentPreviewContextName(message.context.agentId),
+				subtitle: i18n.baseText('instanceAi.artifactsPanel.context.addedToContext'),
+			});
+			continue;
+		}
+
+		entries.push({
+			key,
+			icon: 'key-round',
+			name: message.context.credential.displayName,
+			subtitle: i18n.baseText('instanceAi.artifactsPanel.context.credentialModal'),
+		});
+	}
+
+	return entries;
+});
+
+async function dismissContext(key: string) {
+	const dismissedKeys = new Set(
+		Array.isArray(store.getThreadMetadata(thread.id)?.dismissedContextKeys)
+			? (store.getThreadMetadata(thread.id)?.dismissedContextKeys as string[])
+			: [],
+	);
+	dismissedKeys.add(key);
+	await store.updateThreadMetadata(thread.id, {
+		dismissedContextKeys: [...dismissedKeys],
+	});
+}
 </script>
 
 <template>
@@ -130,6 +206,41 @@ function openArtifactLabel(name: string) {
 							<ProjectIcon :icon="project.icon" size="small" border-less />
 						</span>
 						<span :class="$style.artifactName">{{ project.name }}</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Context section -->
+			<div v-if="contextEntries.length > 0" :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.context.title') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.contextList">
+					<div
+						v-for="entry in contextEntries"
+						:key="entry.key"
+						:class="$style.contextRow"
+						data-test-id="instance-ai-context-row"
+					>
+						<span :class="$style.artifactIconWrap">
+							<N8nIcon :icon="entry.icon" size="large" :class="$style.artifactIcon" />
+						</span>
+						<span :class="$style.contextText">
+							<span :class="$style.contextName">{{ entry.name }}</span>
+							<span :class="$style.contextSubtitle">{{ entry.subtitle }}</span>
+						</span>
+						<N8nIconButton
+							icon="x"
+							variant="ghost"
+							size="xsmall"
+							:aria-label="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
+							:title="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
+							data-test-id="instance-ai-context-dismiss"
+							@click="dismissContext(entry.key)"
+						/>
 					</div>
 				</div>
 			</div>
@@ -269,6 +380,40 @@ function openArtifactLabel(name: string) {
 .artifactList {
 	display: flex;
 	flex-direction: column;
+}
+
+.contextList {
+	display: flex;
+	flex-direction: column;
+}
+
+.contextRow {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
+}
+
+.contextText {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.contextName {
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
+	color: var(--color--text--shade-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.contextSubtitle {
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	color: var(--color--text--tint-1);
 }
 
 .artifactRow {

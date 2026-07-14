@@ -55,6 +55,7 @@ import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import { useInstanceAiAgentPreviewHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import { addMissingAgentPersonalisation } from '../utils/agentPersonalisation';
 import {
 	AGENT_BUILDER_VIEW,
@@ -96,6 +97,8 @@ const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const { startThread: startInstanceAiThread } = useInstanceAiHandoff();
 const instanceAiAvailable = useInstanceAiAvailable();
+const { canSendPreviewToInstanceAi, sendPreviewSessionToInstanceAi } =
+	useInstanceAiAgentPreviewHandoff();
 const sessionsStore = useAgentSessionsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
@@ -130,6 +133,25 @@ const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agen
 const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
 
 const isVersionHistoryOpen = ref(false);
+
+async function onSendPreviewToAssistant() {
+	const threadId = effectiveSessionId.value;
+	if (!threadId || !agentId.value || !projectId.value) return;
+
+	await sendPreviewSessionToInstanceAi({
+		projectId: projectId.value,
+		agentId: agentId.value,
+		threadId,
+	});
+}
+
+/**
+ * Gate for the main body render. Stays false while `initialize()` is running so
+ * we don't:
+ *   - flash the home screen for users who arrive with a `?prompt=…` query that
+ *     will immediately transition them to the build chat, and
+ *   - render the preview chat before the route/config/session state has settled.
+ */
 const initialized = ref(false);
 const pendingArtifactRefreshKey = ref<number>();
 const agentName = ref('');
@@ -1215,9 +1237,11 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:agent="agent"
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
-					:effective-session-id="effectiveSessionId"
-					@continue-loaded="onContinueLoaded"
-				/>
+				:effective-session-id="effectiveSessionId"
+				@continue-loaded="onContinueLoaded"
+				:can-send-to-assistant="canSendPreviewToInstanceAi"
+				@send-to-assistant="onSendPreviewToAssistant"
+			/>
 
 				<AgentBuilderEditorColumn
 					v-if="!isPreviewMode"
