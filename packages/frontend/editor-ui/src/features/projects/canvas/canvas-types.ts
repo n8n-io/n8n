@@ -39,6 +39,10 @@ export interface ProjectCanvasContext {
 	hoveredNodeId: Ref<string | null>;
 	dropHotId: Ref<string | null>;
 	liftedId: Ref<string | null>;
+	/** Leftmost x of any visible unit — backward edges loop around it. */
+	contentLeftX: Ref<number>;
+	/** Lowest bottom y of any visible unit — backward edges run beneath it. */
+	contentBottomY: Ref<number>;
 	onCardPointerDown: (id: string, kind: CanvasPressKind, event: PointerEvent) => void;
 	/** Navigate to the new-workflow editor, creating inside the folder (null = project root). */
 	onAddWorkflow: (folderId: string | null) => void;

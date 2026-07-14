@@ -29,9 +29,9 @@ export const CLEARANCE = 40;
 /**
  * Initial automatic layout over root-level units only, using the folder-aggregated edge
  * set. Columns = longest path along trigger ('calls-workflow') edges left→right; a node
- * referenced only by tool edges sits in its caller's column, below it; order within a
- * column by barycenter of already-placed neighbours. Units with no edges go into a grid
- * below the connected graph.
+ * referenced only by tool edges always hangs directly below its caller, in the caller's
+ * column; other nodes are ordered within a column by barycenter of already-placed
+ * neighbours. Units with no edges go into a grid below the connected graph.
  */
 export function autoLayout(units: string[], edges: VisibleEdge[]): Map<string, XY> {
 	const positions = new Map<string, XY>();
@@ -55,30 +55,75 @@ export function autoLayout(units: string[], edges: VisibleEdge[]): Map<string, X
 		triggerAdj.set(edge.source, list);
 		triggerIn.set(edge.target, (triggerIn.get(edge.target) ?? 0) + 1);
 	}
+	const toolCallers = new Map<string, string[]>();
+	for (const edge of relevantEdges.filter((e) => e.type === 'uses-as-tool')) {
+		const callers = toolCallers.get(edge.target) ?? [];
+		callers.push(edge.source);
+		toolCallers.set(edge.target, callers);
+	}
+
 	const col = new Map<string, number>();
-	let frontier = connected.filter((id) => !triggerIn.has(id));
-	frontier.forEach((id) => col.set(id, 0));
-	let guard = 0;
-	while (frontier.length > 0 && guard++ < 60) {
-		const next: string[] = [];
-		for (const id of frontier) {
-			for (const target of triggerAdj.get(id) ?? []) {
-				const candidate = (col.get(id) ?? 0) + 1;
-				if ((col.get(target) ?? -1) < candidate) {
-					col.set(target, candidate);
-					next.push(target);
+	const propagateTriggerColumns = (start: string[]) => {
+		let frontier = start;
+		let guard = 0;
+		while (frontier.length > 0 && guard++ < 60) {
+			const next: string[] = [];
+			for (const id of frontier) {
+				for (const target of triggerAdj.get(id) ?? []) {
+					const candidate = (col.get(id) ?? 0) + 1;
+					if ((col.get(target) ?? -1) < candidate) {
+						col.set(target, candidate);
+						next.push(target);
+					}
 				}
 			}
+			frontier = next;
 		}
-		frontier = next;
+	};
+	// Column roots: nodes with no incoming trigger edges that are not tool targets — tool
+	// targets never anchor a column, they hang below their caller instead.
+	const roots = connected.filter((id) => !triggerIn.has(id) && !toolCallers.has(id));
+	roots.forEach((id) => col.set(id, 0));
+	propagateTriggerColumns(roots);
+
+	// Tool targets with no trigger column hang directly below their caller. Resolve each
+	// one's primary caller (callers may themselves be hanging tools, so iterate until
+	// every chain is anchored) and give it the caller's column.
+	const hangingTools = new Set([...toolCallers.keys()].filter((id) => !col.has(id)));
+	const primaryCaller = new Map<string, string>();
+	let resolvedSomething = true;
+	while (resolvedSomething) {
+		resolvedSomething = false;
+		for (const id of hangingTools) {
+			if (col.has(id)) continue;
+			const caller = (toolCallers.get(id) ?? []).find((c) => col.has(c));
+			if (caller === undefined) continue;
+			primaryCaller.set(id, caller);
+			col.set(id, col.get(caller) ?? 0);
+			resolvedSomething = true;
+		}
 	}
-	// Tool targets with no trigger column sit in their caller's column (they hang below)
-	for (const edge of relevantEdges.filter((e) => e.type === 'uses-as-tool')) {
-		if (!col.has(edge.target)) col.set(edge.target, col.get(edge.source) ?? 0);
-	}
+	// a hanging tool may itself trigger other workflows — give those columns too
+	propagateTriggerColumns([...hangingTools].filter((id) => col.has(id)));
 	for (const id of connected) if (!col.has(id)) col.set(id, 0);
 
-	// Rows: per column, order by barycenter of already-placed neighbours
+	const toolsByCaller = new Map<string, string[]>();
+	for (const id of hangingTools) {
+		const caller = primaryCaller.get(id);
+		if (caller === undefined) continue;
+		const list = toolsByCaller.get(caller) ?? [];
+		list.push(id);
+		toolsByCaller.set(caller, list);
+	}
+	// a node followed by its hanging tools, depth-first (tools of tools hang below too)
+	const withHangingTools = (id: string): string[] => {
+		const result = [id];
+		for (const tool of toolsByCaller.get(id) ?? []) result.push(...withHangingTools(tool));
+		return result;
+	};
+
+	// Rows: per column, flow nodes ordered by barycenter of already-placed neighbours,
+	// each immediately followed by the tools hanging below it
 	const preds = new Map<string, string[]>();
 	for (const edge of relevantEdges) {
 		const list = preds.get(edge.target) ?? [];
@@ -89,19 +134,28 @@ export function autoLayout(units: string[], edges: VisibleEdge[]): Map<string, X
 	const y = new Map<string, number>();
 	let bottomOfConnected = 0;
 	for (let c = 0; c <= maxCol; c++) {
-		const inCol = connected.filter((id) => col.get(id) === c);
+		const flowInCol = connected.filter((id) => col.get(id) === c && !hangingTools.has(id));
 		const bary = (id: string) => {
 			const placed = (preds.get(id) ?? []).filter((p) => y.has(p));
 			return placed.length > 0
 				? placed.reduce((sum, p) => sum + (y.get(p) ?? 0), 0) / placed.length
 				: Number.MAX_SAFE_INTEGER;
 		};
-		inCol.sort((a, b) => bary(a) - bary(b));
+		flowInCol.sort((a, b) => bary(a) - bary(b));
+		const order = flowInCol.flatMap(withHangingTools);
+		// hanging tools whose caller chain never anchored (cycles) fall back to column 0
+		const ordered = new Set(order);
+		for (const id of connected) {
+			if (col.get(id) === c && !ordered.has(id)) order.push(id);
+		}
 		let cursor = 0;
-		for (const id of inCol) {
+		for (const id of order) {
 			const placed = (preds.get(id) ?? []).filter((p) => y.has(p));
-			const want =
-				placed.length > 0
+			// hanging tools sit snug under the entry above them (their caller or a
+			// preceding sibling tool); flow nodes aim for their barycenter
+			const want = hangingTools.has(id)
+				? cursor
+				: placed.length > 0
 					? placed.reduce((sum, p) => sum + (y.get(p) ?? 0), 0) / placed.length
 					: cursor;
 			y.set(id, Math.max(cursor, want));
@@ -121,6 +175,194 @@ export function autoLayout(units: string[], edges: VisibleEdge[]): Map<string, X
 	isolated.forEach((id, i) => {
 		positions.set(id, {
 			x: 60 + (i % 5) * (NODE.w + 60),
+			y: gridTop + Math.floor(i / 5) * (NODE.h + 48),
+		});
+	});
+
+	return positions;
+}
+
+/* ---- force-driven auto-layout ---- */
+
+const FORCE_TICKS = 300;
+/** Inverse-square pair repulsion, active within the cutoff radius. */
+const FORCE_REPULSION = 900_000;
+const FORCE_REPULSION_CUTOFF = 700;
+/** Spring along every edge towards this rest length. */
+const FORCE_SPRING = 0.02;
+const FORCE_SPRING_REST = 380;
+/** Directional constraints: trigger targets right of sources, tools below callers. */
+const FORCE_TRIGGER_GAP_X = NODE.w + 150;
+const FORCE_TOOL_GAP_Y = NODE.h + 100;
+const FORCE_DIRECTIONAL = 0.06;
+const FORCE_ALIGN = 0.02;
+const FORCE_MAX_STEP = 30;
+const LAYOUT_MARGIN = 60;
+
+/**
+ * Force-driven initial layout: inverse-square repulsion between all units, springs along
+ * edges, and directional constraint forces — trigger ('calls-workflow') targets are pushed
+ * right of their sources, tool targets below their callers (with horizontal alignment).
+ * Deterministic: seeded from a golden-angle spiral, fixed tick count, no randomness.
+ * Finished with hard passes that remove overlaps and re-assert tool-below-caller ordering.
+ * Units with no edges go into a grid below the connected graph.
+ */
+export function forceLayout(units: string[], edges: VisibleEdge[]): Map<string, XY> {
+	const positions = new Map<string, XY>();
+	const unitSet = new Set(units);
+	const relevantEdges = edges.filter(
+		(e) => unitSet.has(e.source) && unitSet.has(e.target) && e.source !== e.target,
+	);
+
+	const hasEdge = new Set<string>();
+	for (const edge of relevantEdges) {
+		hasEdge.add(edge.source);
+		hasEdge.add(edge.target);
+	}
+	const connected = units.filter((id) => hasEdge.has(id));
+	const isolated = units.filter((id) => !hasEdge.has(id));
+
+	const index = new Map(connected.map((id, i) => [id, i]));
+	const n = connected.length;
+	// node centers, seeded on a deterministic golden-angle spiral
+	const x = new Array<number>(n);
+	const y = new Array<number>(n);
+	for (let i = 0; i < n; i++) {
+		const angle = i * 2.399963229728653;
+		const radius = 90 * Math.sqrt(i + 1);
+		x[i] = Math.cos(angle) * radius;
+		y[i] = Math.sin(angle) * radius;
+	}
+
+	const springs = relevantEdges.map((e) => ({
+		s: index.get(e.source)!,
+		t: index.get(e.target)!,
+		type: e.type,
+	}));
+
+	for (let tick = 0; tick < FORCE_TICKS; tick++) {
+		const alpha = 1 - tick / FORCE_TICKS;
+		const fx = new Array<number>(n).fill(0);
+		const fy = new Array<number>(n).fill(0);
+
+		// pairwise repulsion
+		for (let i = 0; i < n; i++) {
+			for (let j = i + 1; j < n; j++) {
+				const dx = x[i] - x[j];
+				const dy = y[i] - y[j];
+				const dist2 = dx * dx + dy * dy;
+				if (dist2 > FORCE_REPULSION_CUTOFF * FORCE_REPULSION_CUTOFF) continue;
+				const dist = Math.sqrt(dist2) || 1;
+				const f = FORCE_REPULSION / Math.max(dist2, 400);
+				fx[i] += (f * dx) / dist;
+				fy[i] += (f * dy) / dist;
+				fx[j] -= (f * dx) / dist;
+				fy[j] -= (f * dy) / dist;
+			}
+		}
+
+		for (const spring of springs) {
+			const { s, t } = spring;
+			const dx = x[t] - x[s];
+			const dy = y[t] - y[s];
+			const dist = Math.hypot(dx, dy) || 1;
+			// spring towards rest length
+			const f = FORCE_SPRING * (dist - FORCE_SPRING_REST);
+			fx[s] += (f * dx) / dist;
+			fy[s] += (f * dy) / dist;
+			fx[t] -= (f * dx) / dist;
+			fy[t] -= (f * dy) / dist;
+
+			if (spring.type === 'uses-as-tool') {
+				// tools hang below their caller, roughly aligned horizontally
+				const deficit = FORCE_TOOL_GAP_Y - (y[t] - y[s]);
+				if (deficit > 0) {
+					fy[s] -= deficit * FORCE_DIRECTIONAL;
+					fy[t] += deficit * FORCE_DIRECTIONAL;
+				}
+				const misalign = x[s] - x[t];
+				fx[t] += misalign * FORCE_ALIGN * 2;
+				fx[s] -= misalign * FORCE_ALIGN * 2;
+			} else {
+				// trigger flow runs left → right, roughly aligned vertically
+				const deficit = FORCE_TRIGGER_GAP_X - (x[t] - x[s]);
+				if (deficit > 0) {
+					fx[s] -= deficit * FORCE_DIRECTIONAL;
+					fx[t] += deficit * FORCE_DIRECTIONAL;
+				}
+				const misalign = y[s] - y[t];
+				fy[t] += misalign * FORCE_ALIGN;
+				fy[s] -= misalign * FORCE_ALIGN;
+			}
+		}
+
+		const maxStep = FORCE_MAX_STEP * alpha + 2;
+		for (let i = 0; i < n; i++) {
+			x[i] += Math.max(-maxStep, Math.min(maxStep, fx[i]));
+			y[i] += Math.max(-maxStep, Math.min(maxStep, fy[i]));
+		}
+	}
+
+	// centers → top-left rects
+	const rects = new Map<string, Rect>();
+	for (const id of connected) {
+		const i = index.get(id)!;
+		rects.set(id, { x: x[i] - NODE.w / 2, y: y[i] - NODE.h / 2, w: NODE.w, h: NODE.h });
+	}
+
+	// hard passes: no overlaps, and tools strictly below their callers
+	const toolSprings = relevantEdges.filter((e) => e.type === 'uses-as-tool');
+	for (let round = 0; round < 12; round++) {
+		let changed = false;
+		for (const edge of toolSprings) {
+			const s = rects.get(edge.source)!;
+			const t = rects.get(edge.target)!;
+			const minY = s.y + NODE.h + CLEARANCE;
+			if (t.y < minY) {
+				t.y = minY;
+				changed = true;
+			}
+		}
+		const ids = [...rects.keys()];
+		for (let i = 0; i < ids.length; i++) {
+			for (let j = i + 1; j < ids.length; j++) {
+				const a = rects.get(ids[i])!;
+				const b = rects.get(ids[j])!;
+				if (!rectsOverlap(a, b, CLEARANCE / 2)) continue;
+				const v = separationVector(a, b);
+				b.x += v.x / 2;
+				b.y += v.y / 2;
+				a.x -= v.x / 2;
+				a.y -= v.y / 2;
+				changed = true;
+			}
+		}
+		if (!changed) break;
+	}
+
+	// normalize into positive coordinates
+	let minX = Infinity;
+	let minY = Infinity;
+	let maxBottom = 0;
+	for (const r of rects.values()) {
+		minX = Math.min(minX, r.x);
+		minY = Math.min(minY, r.y);
+	}
+	if (!isFinite(minX)) {
+		minX = 0;
+		minY = 0;
+	}
+	for (const [id, r] of rects) {
+		const p = { x: r.x - minX + LAYOUT_MARGIN, y: r.y - minY + LAYOUT_MARGIN };
+		positions.set(id, p);
+		maxBottom = Math.max(maxBottom, p.y + NODE.h);
+	}
+
+	// isolated units: grid below the connected graph
+	const gridTop = maxBottom + 120;
+	isolated.forEach((id, i) => {
+		positions.set(id, {
+			x: LAYOUT_MARGIN + (i % 5) * (NODE.w + 60),
 			y: gridTop + Math.floor(i / 5) * (NODE.h + 48),
 		});
 	});
@@ -215,25 +457,17 @@ export function resolveDropTarget(point: XY, folders: DropCandidate[]): string |
 	return best;
 }
 
-export type DropOutcome =
-	| { kind: 'file'; folderId: string }
-	| { kind: 'move-to-root' }
-	| { kind: 'reposition' };
+export type DropOutcome = { kind: 'file'; folderId: string } | { kind: 'reposition' };
 
 /**
  * What happens when a lifted workflow is released. `target` is the drop folder (null when
- * over its own folder or empty canvas), `raw` the folder under the cursor regardless of
- * ownership. Dropping a workflow that lives in a folder onto empty canvas moves it to the
- * project root at the drop point; anything else that isn't a valid folder drop is a manual
- * reposition — the card stays where it was dropped.
+ * over its own folder or empty canvas). Anything that isn't a drop onto another folder is
+ * a manual reposition: the card stays where it was dropped and keeps its folder — its
+ * container stretches around it. Moving a workflow to the project root is an explicit
+ * context-menu action, not a drag gesture.
  */
-export function resolveDropOutcome(options: {
-	target: string | null;
-	raw: string | null;
-	currentFolderId: string | null;
-}): DropOutcome {
+export function resolveDropOutcome(options: { target: string | null }): DropOutcome {
 	if (options.target) return { kind: 'file', folderId: options.target };
-	if (options.raw === null && options.currentFolderId) return { kind: 'move-to-root' };
 	return { kind: 'reposition' };
 }
 

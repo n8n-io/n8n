@@ -6,8 +6,9 @@ import type { Edge, Node } from '@vue-flow/core';
 import { MarkerType, useVueFlow, VueFlow } from '@vue-flow/core';
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useDebounceFn } from '@vueuse/core';
 
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, getDebounceTime, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
@@ -36,15 +37,18 @@ import type {
 import { ProjectCanvasContextKey } from './canvas-types';
 import type { DropCandidate, Rect, XY } from './canvas-geometry';
 import {
-	autoLayout,
+	C_GAPY,
 	C_HEAD,
 	C_PAD,
 	childSlots,
 	containerRectForSlots,
+	forceLayout,
 	NODE,
+	rectsOverlap,
 	resolveDropOutcome,
 	resolveDropTarget,
 	resolveLevel,
+	separationVector,
 } from './canvas-geometry';
 import type { GraphModel, WorkflowRelationType } from './graph-model';
 import {
@@ -57,6 +61,8 @@ import {
 	resolveVisibleEdges,
 	WORKFLOW_RELATION_TYPES,
 } from './graph-model';
+import type { FolderChildOffsets } from './position-storage';
+import { loadCanvasState, saveCanvasState } from './position-storage';
 import { useCanvasTweens } from './composables/useCanvasTweens';
 import { useProjectDependencyGraph } from './composables/useProjectDependencyGraph';
 
@@ -112,6 +118,8 @@ const visibleTypes = ref<Set<WorkflowRelationType>>(new Set(['calls-workflow', '
 const hoveredNodeId = ref<string | null>(null);
 const dropHotId = ref<string | null>(null);
 const liftedId = ref<string | null>(null);
+const contentLeftX = ref(0);
+const contentBottomY = ref(0);
 
 /**
  * Local placement overrides for workflows moved via drag-to-file, re-applied after every
@@ -125,6 +133,61 @@ const tweens = useCanvasTweens({
 	setPos: (id, p) => pos.set(id, p),
 	onFrame: applyPositions,
 });
+
+/* ---- canvas state persistence (per project, local storage) ---- */
+
+/**
+ * Remembered child arrangements per folder, relative to the folder's position. Captured
+ * on collapse, applied on the next expand so manual layouts inside a folder survive
+ * expand/collapse round trips — and persisted along with positions.
+ */
+const folderChildOffsets = new Map<string, FolderChildOffsets>();
+
+/** Remember where a folder's children sit relative to a reference point (its card). */
+function captureChildOffsets(folderId: string, reference: XY): void {
+	const offsets: FolderChildOffsets = {};
+	for (const child of childEntities(model.value, folderId)) {
+		const p = targetPos(child.id);
+		if (p) offsets[child.id] = { x: p.x - reference.x, y: p.y - reference.y };
+	}
+	folderChildOffsets.set(folderId, offsets);
+}
+
+/**
+ * Give a child filed into a collapsed folder a spot beneath that folder's remembered
+ * arrangement, so the next expand doesn't overlap it with existing children.
+ */
+function rememberChildOffset(folderId: string, childId: string): void {
+	const offsets = folderChildOffsets.get(folderId);
+	// no remembered arrangement — the next expand grids all children anyway
+	if (!offsets) return;
+	let bottom = -Infinity;
+	let left = Infinity;
+	for (const offset of Object.values(offsets)) {
+		bottom = Math.max(bottom, offset.y);
+		left = Math.min(left, offset.x);
+	}
+	offsets[childId] = {
+		x: isFinite(left) ? left : C_PAD,
+		y: isFinite(bottom) ? bottom + NODE.h + C_GAPY : NODE.h + C_GAPY,
+	};
+}
+
+function persistPositions(): void {
+	const knownIds = new Set([...model.value.workflows.keys(), ...model.value.folders.keys()]);
+	// nothing loaded (yet) — don't wipe a previously stored arrangement
+	if (knownIds.size === 0) return;
+	saveCanvasState(
+		projectId,
+		{ positions: pos, expanded: [...expandedSet()], childOffsets: folderChildOffsets },
+		knownIds,
+	);
+}
+
+const schedulePositionsSave = useDebounceFn(
+	persistPositions,
+	getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE),
+);
 
 const relationshipTypeOptions: Array<{ label: string; value: WorkflowRelationType }> = [
 	{ label: i18n.baseText('projectCanvas.filter.callsWorkflow'), value: 'calls-workflow' },
@@ -166,23 +229,26 @@ type GetPos = (id: string) => XY | undefined;
 const livePos: GetPos = (id) => pos.get(id);
 const targetPos: GetPos = (id) => tweens.targetPos(id);
 
-function rectWith(id: string, getPos: GetPos): Rect {
+function rectWith(id: string, getPos: GetPos, excludeId: string | null = null): Rect {
 	if (model.value.folders.has(id) && expandedSet().has(id)) {
-		return containerRectWith(id, getPos);
+		return containerRectWith(id, getPos, excludeId);
 	}
 	const p = getPos(id) ?? { x: 0, y: 0 };
 	return { x: p.x, y: p.y, w: NODE.w, h: NODE.h };
 }
 
-function containerRectWith(folderId: string, getPos: GetPos): Rect {
+function containerRectWith(
+	folderId: string,
+	getPos: GetPos,
+	excludeId: string | null = null,
+): Rect {
 	let x0 = Infinity;
 	let y0 = Infinity;
 	let x1 = -Infinity;
 	let y1 = -Infinity;
 	for (const child of childEntities(model.value, folderId)) {
-		// the container's bbox ignores a lifted (dragged) workflow
-		if (child.id === liftedId.value) continue;
-		const r = rectWith(child.id, getPos);
+		if (child.id === excludeId) continue;
+		const r = rectWith(child.id, getPos, excludeId);
 		x0 = Math.min(x0, r.x);
 		y0 = Math.min(y0, r.y);
 		x1 = Math.max(x1, r.x + r.w);
@@ -200,9 +266,13 @@ function containerRectWith(folderId: string, getPos: GetPos): Rect {
 	};
 }
 
+// Rendered rects include a lifted (dragged) workflow, so its container resizes with it
+// live. Drop-target rects exclude it — otherwise the stretched container would follow
+// the cursor and always win the deepest-container check, breaking filing and move-to-root.
 const rectOf = (id: string) => rectWith(id, livePos);
 const rectOfT = (id: string) => rectWith(id, targetPos);
 const containerRect = (folderId: string) => containerRectWith(folderId, livePos);
+const dropRectOf = (id: string) => rectWith(id, livePos, liftedId.value);
 
 /* ============================== structure render ============================== */
 
@@ -315,19 +385,28 @@ function renderStructure(): void {
 
 /** Sync the position map into the flow nodes; container rects derive from child rects. */
 function applyPositions(): void {
+	let minX = Infinity;
+	let maxBottom = -Infinity;
 	for (const node of flowNodes.value) {
+		let height = NODE.h;
 		if (node.type === 'projectContainer') {
 			const data = node.data as ProjectContainerData;
 			const rect = containerRect(data.folderId);
 			node.position = { x: rect.x, y: rect.y };
 			data.width = rect.w;
 			data.height = rect.h;
+			height = rect.h;
 		} else {
 			const p = pos.get(node.id);
 			if (p) node.position = { x: p.x, y: p.y };
 			node.zIndex = node.id === liftedId.value ? 1000 : 100;
 		}
+		minX = Math.min(minX, node.position.x);
+		maxBottom = Math.max(maxBottom, node.position.y + height);
 	}
+	if (isFinite(minX)) contentLeftX.value = minX;
+	if (isFinite(maxBottom)) contentBottomY.value = maxBottom;
+	void schedulePositionsSave();
 }
 
 /* ============================== initial layout ============================== */
@@ -357,19 +436,55 @@ function ensureRootUnitPositions(): void {
 }
 
 async function initialise(): Promise<void> {
-	// expansion state may linger from a previous visit, but positions don't — start collapsed
+	// in-memory expansion state may linger from a previous visit — reset, then restore
+	// from the persisted canvas state
 	for (const folderId of [...expandedFolders.value]) markFolderCollapsed(folderId);
 	// refetch on every visit so workflows created since the last render show up
 	clearProjectCache();
 	await fetchRootGraph();
 	rebuildModel();
 
-	const m = model.value;
-	const rootUnits = childEntities(m, null).map((c) => c.id);
-	// lay out with the full folder-aggregated edge set so filter toggles never re-layout
-	const layoutEdges = resolveVisibleEdges(m, expandedSet(), new Set(WORKFLOW_RELATION_TYPES));
-	const positions = autoLayout(rootUnits, layoutEdges);
-	for (const [id, p] of positions) pos.set(id, p);
+	const stored = loadCanvasState(projectId);
+	if (stored && stored.positions.size > 0) {
+		for (const [id, p] of stored.positions) pos.set(id, p);
+		for (const [folderId, offsets] of stored.childOffsets) {
+			folderChildOffsets.set(folderId, offsets);
+		}
+
+		// restore expanded folders: fetch their graphs so their children are known
+		for (const folderId of stored.expanded) {
+			await fetchFolderGraph(folderId);
+		}
+		rebuildModel();
+		const restorable = stored.expanded.filter((id) => model.value.folders.has(id));
+		restorable.sort((a, b) => folderDepth(model.value, a) - folderDepth(model.value, b));
+		for (const folderId of restorable) {
+			markFolderExpanded(folderId);
+		}
+		// children usually restore from their stored absolute positions; give anything
+		// new (or missing) a spot from the remembered offsets or a grid slot
+		for (const folderId of restorable) {
+			const anchor = pos.get(folderId);
+			if (!anchor) continue;
+			const children = childEntities(model.value, folderId).map((c) => c.id);
+			const remembered = folderChildOffsets.get(folderId);
+			const slots = childSlots(anchor, children);
+			children.forEach((id, i) => {
+				if (pos.has(id)) return;
+				const offset = remembered?.[id];
+				pos.set(id, offset ? { x: anchor.x + offset.x, y: anchor.y + offset.y } : slots[i]);
+			});
+		}
+		// units created since the last visit get placed below the stored arrangement
+		ensureRootUnitPositions();
+	} else {
+		const m = model.value;
+		const rootUnits = childEntities(m, null).map((c) => c.id);
+		// lay out with the full folder-aggregated edge set so filter toggles never re-layout
+		const layoutEdges = resolveVisibleEdges(m, expandedSet(), new Set(WORKFLOW_RELATION_TYPES));
+		const positions = forceLayout(rootUnits, layoutEdges);
+		for (const [id, p] of positions) pos.set(id, p);
+	}
 
 	// the one and only automatic viewport fit happens via fit-view-on-init
 	renderStructure();
@@ -395,25 +510,34 @@ async function expandFolder(folderId: string): Promise<void> {
 	const anchor = pos.get(folderId);
 	if (!anchor) return;
 	const children = childEntities(model.value, folderId).map((c) => c.id);
+	// restore the remembered arrangement where one exists; new children get grid slots
+	const remembered = folderChildOffsets.get(folderId);
 	const slots = childSlots(anchor, children);
+	const targets = children.map((id, i) => {
+		const offset = remembered?.[id];
+		return offset ? { id, x: anchor.x + offset.x, y: anchor.y + offset.y } : slots[i];
+	});
 	// children animate outward from the folder's position
-	for (const slot of slots) pos.set(slot.id, { ...anchor });
+	for (const target of targets) pos.set(target.id, { ...anchor });
 	markFolderExpanded(folderId);
 	renderStructure();
-	for (const slot of slots) tweens.tweenPos(slot.id, { x: slot.x, y: slot.y });
+	for (const target of targets) tweens.tweenPos(target.id, { x: target.x, y: target.y });
 
-	const finalRect = containerRectForSlots(anchor, slots);
+	const finalRect = containerRectForSlots(anchor, targets);
 	resolveAround(folderId, finalRect);
 }
 
 function collapseFolder(folderId: string): void {
-	// auto-collapse expanded descendants first
+	// auto-collapse expanded descendants first, remembering their child arrangements
+	// (relative to their anchor, which auto-collapse leaves untouched)
 	for (const folder of model.value.folders.values()) {
 		if (
 			folder.id !== folderId &&
 			expandedSet().has(folder.id) &&
 			isDescendantOfFolder(folder.id, folderId)
 		) {
+			const anchor = pos.get(folder.id);
+			if (anchor) captureChildOffsets(folder.id, anchor);
 			markFolderCollapsed(folder.id);
 		}
 	}
@@ -422,7 +546,10 @@ function collapseFolder(folderId: string): void {
 	const kids = childEntities(model.value, folderId);
 	const rect = containerRect(folderId);
 	// the collapsed folder node lands at the container's origin, vertically centered
-	pos.set(folderId, { x: rect.x, y: rect.y + (rect.h - NODE.h) / 2 });
+	const cardPos = { x: rect.x, y: rect.y + (rect.h - NODE.h) / 2 };
+	// remember the arrangement relative to the card, so the next expand restores it
+	captureChildOffsets(folderId, cardPos);
+	pos.set(folderId, cardPos);
 
 	if (kids.length === 0) {
 		markFolderCollapsed(folderId);
@@ -529,7 +656,7 @@ function dropTargetAt(worldX: number, worldY: number): string | null {
 		expanded: expanded.has(folder.id),
 		visible: isEntityVisible(m, expanded, folder.id),
 		depth: folderDepth(m, folder.id),
-		rect: rectOf(folder.id),
+		rect: dropRectOf(folder.id),
 	}));
 	return resolveDropTarget({ x: worldX, y: worldY }, candidates);
 }
@@ -622,18 +749,11 @@ function onWindowPointerUp(): void {
 
 	liftedId.value = null;
 	dropHotId.value = null;
-	const outcome = resolveDropOutcome({
-		target: current.target,
-		raw: current.raw,
-		currentFolderId: parentOf(model.value, current.id),
-	});
+	const outcome = resolveDropOutcome({ target: current.target });
 	if (outcome.kind === 'file') {
 		void moveWorkflowToFolder(current.id, outcome.folderId, current.origPos);
-	} else if (outcome.kind === 'move-to-root') {
-		// dragged out of a container onto empty canvas → move to project root at the drop point
-		void moveWorkflowToFolder(current.id, null, current.origPos);
 	} else {
-		// manual reposition — the card stays where it was dropped
+		// manual reposition — the card stays where it was dropped and keeps its folder
 		applyPositions();
 	}
 }
@@ -719,8 +839,26 @@ async function moveWorkflowToFolder(
 
 	const finish = () => {
 		renderStructure();
-		relayoutFolder(targetFolderId);
-		relayoutFolder(sourceFolderId);
+		// existing children stay where they are — no re-layout. The card keeps its drop
+		// position inside an open container; just push the container's neighbours clear
+		// of any growth.
+		if (targetFolderId && expandedSet().has(targetFolderId)) {
+			resolveAround(targetFolderId, rectOfT(targetFolderId));
+		}
+		// remember a spot inside a collapsed folder's arrangement for the swallowed card
+		if (targetFolderId && !expandedSet().has(targetFolderId)) {
+			rememberChildOffset(targetFolderId, workflowId);
+		}
+		// moved to project root: make sure it doesn't sit on top of its old container
+		if (!targetFolderId && sourceFolderId && expandedSet().has(sourceFolderId)) {
+			const containerRectNow = containerRect(sourceFolderId);
+			const workflowRect = rectOf(workflowId);
+			if (rectsOverlap(containerRectNow, workflowRect, 0)) {
+				const v = separationVector(containerRectNow, workflowRect);
+				const p = pos.get(workflowId);
+				if (p) tweens.tweenPos(workflowId, { x: p.x + v.x, y: p.y + v.y });
+			}
+		}
 		// a folder emptied by the move collapses away
 		if (
 			sourceFolderId &&
@@ -759,8 +897,6 @@ async function moveWorkflowToFolder(
 		adjustWorkflowCounts(targetPath, -1);
 		pos.set(workflowId, { ...origPos });
 		renderStructure();
-		relayoutFolder(targetFolderId);
-		relayoutFolder(sourceFolderId);
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
 	}
 }
@@ -802,11 +938,13 @@ async function createFolderIn(parentFolderId: string | null): Promise<void> {
 		appendFolderNode({ id: newFolder.id, name: newFolder.name, parentFolderId });
 		rebuildModel();
 		if (parentFolderId && expandedSet().has(parentFolderId)) {
-			// the new folder card animates outward from the parent container's anchor
-			const anchor = pos.get(parentFolderId);
-			if (anchor) pos.set(newFolder.id, { ...anchor });
+			// place the new folder card beneath the container's existing content — siblings
+			// keep their positions; only the container's neighbours get pushed by the growth
+			const rect = containerRect(parentFolderId);
+			pos.set(newFolder.id, { x: rect.x + C_PAD, y: rect.y + (rect.h - NODE.h) / 2 });
 			renderStructure();
-			relayoutFolder(parentFolderId);
+			tweens.tweenPos(newFolder.id, { x: rect.x + C_PAD, y: rect.y + rect.h - C_PAD + C_GAPY });
+			resolveAround(parentFolderId, rectOfT(parentFolderId));
 		} else {
 			ensureRootUnitPositions();
 			renderStructure();
@@ -1075,7 +1213,7 @@ function buildContextMenuItems(target: ContextMenuTarget): ProjectCanvasMenuItem
 		];
 	}
 	if (target.kind === 'workflow') {
-		return [
+		const items: ProjectCanvasMenuItem[] = [
 			{
 				id: 'open-workflow',
 				label: i18n.baseText('projectCanvas.menu.openWorkflow'),
@@ -1086,13 +1224,22 @@ function buildContextMenuItems(target: ContextMenuTarget): ProjectCanvasMenuItem
 				label: i18n.baseText('projectCanvas.menu.renameWorkflow'),
 				icon: 'pen',
 			},
-			{
-				id: 'archive-workflow',
-				label: i18n.baseText('projectCanvas.menu.archiveWorkflow'),
-				icon: 'archive',
-				divided: true,
-			},
 		];
+		// dropping on empty canvas repositions in place, so moving out of a folder is explicit
+		if (parentOf(model.value, target.id) !== null) {
+			items.push({
+				id: 'move-to-root',
+				label: i18n.baseText('projectCanvas.menu.moveToRoot'),
+				icon: 'log-out',
+			});
+		}
+		items.push({
+			id: 'archive-workflow',
+			label: i18n.baseText('projectCanvas.menu.archiveWorkflow'),
+			icon: 'archive',
+			divided: true,
+		});
+		return items;
 	}
 	const expanded = expandedSet().has(target.id);
 	return [
@@ -1162,6 +1309,12 @@ function onContextMenuSelect(actionId: string): void {
 		case 'archive-workflow':
 			if (target.kind === 'workflow') void archiveWorkflowAction(target.id);
 			break;
+		case 'move-to-root':
+			if (target.kind === 'workflow') {
+				const currentPos = pos.get(target.id);
+				if (currentPos) void moveWorkflowToFolder(target.id, null, { ...currentPos });
+			}
+			break;
 		case 'rename-folder':
 			if (target.kind === 'folder') void renameFolderIn(target.id);
 			break;
@@ -1189,6 +1342,8 @@ const canvasContext: ProjectCanvasContext = {
 	hoveredNodeId,
 	dropHotId,
 	liftedId,
+	contentLeftX,
+	contentBottomY,
 	onCardPointerDown,
 	onAddWorkflow: (folderId) => createWorkflowIn(folderId),
 	onAddFolder: (parentFolderId) => void createFolderIn(parentFolderId),
@@ -1230,6 +1385,8 @@ onMounted(async () => {
 onBeforeUnmount(() => {
 	folderEventBus.off('folder-deleted', onFolderDeletedEvent);
 	detachWindowListeners();
+	// flush any pending debounced save so the latest arrangement survives navigation
+	persistPositions();
 });
 
 defineExpose({

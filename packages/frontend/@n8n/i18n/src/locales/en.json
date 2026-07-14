@@ -2669,6 +2669,7 @@
 	"projectCanvas.menu.openWorkflow": "Open workflow",
 	"projectCanvas.menu.renameWorkflow": "Rename workflow",
 	"projectCanvas.menu.archiveWorkflow": "Archive workflow",
+	"projectCanvas.menu.moveToRoot": "Move to project root",
 	"projectCanvas.menu.renameFolder": "Rename folder",
 	"projectCanvas.menu.deleteFolder": "Delete folder",
 	"projectCanvas.menu.newWorkflow": "New workflow",
