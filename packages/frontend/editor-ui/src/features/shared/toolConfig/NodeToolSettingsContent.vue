@@ -66,7 +66,11 @@ const node = shallowRef<INode | null>(props.initialNode);
 const userEditedName = ref(false);
 
 const existingToolNames = computed(() => props.existingToolNames ?? []);
-const credentialProjectId = computed(() => props.projectId ?? projectsStore.personalProject?.id);
+// `props.projectId` can be an empty string when the agent scope id has not
+// resolved yet (see `useAgentScopeProjectId`), so fall back with `||` rather
+// than `??` — otherwise the empty string sticks and the credential fetch below
+// is skipped on first open.
+const credentialProjectId = computed(() => props.projectId || projectsStore.personalProject?.id);
 
 const nodeTypeDescription = computed(() => {
 	if (!props.initialNode) {
@@ -348,8 +352,16 @@ onMounted(async () => {
 	// Set project context for dynamic parameter loading and credential creation.
 	if (props.projectId) {
 		await projectsStore.fetchAndSetProject(props.projectId);
-	} else if (projectsStore.personalProject) {
-		projectsStore.setCurrentProject(projectsStore.personalProject);
+	} else {
+		// No usable project scope was provided (the agent scope id can resolve to
+		// '' before project state loads). Ensure the personal project is loaded so
+		// the credential fetch below has a real scope on first open.
+		if (!projectsStore.personalProject) {
+			await projectsStore.getPersonalProject();
+		}
+		if (projectsStore.personalProject) {
+			projectsStore.setCurrentProject(projectsStore.personalProject);
+		}
 	}
 
 	// Ensure credentials are loaded for the credentials selector to work.
