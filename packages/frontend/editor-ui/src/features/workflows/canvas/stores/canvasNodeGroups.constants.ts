@@ -9,3 +9,5 @@ export const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1];
 export const GROUP_HEADER_WIDTH_COLLAPSED = 400;
 /** Character cap on a group description (TBC — tuned to stay ~3 lines when collapsed). */
 export const GROUP_DESCRIPTION_MAX_LENGTH = 280;
+/** Below this zoom level all group descriptions and their affordances are hidden. */
+export const GROUP_DESCRIPTION_MIN_ZOOM = 0.66;
