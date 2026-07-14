@@ -606,16 +606,13 @@ describe('createScheduler late dispatch', () => {
 				expect.objectContaining({
 					level: 'warn',
 					message: 'Scheduler fired a task later than its scheduled time',
-					context: expect.objectContaining({
-						taskType: 'test-task',
-						lagSeconds: expect.any(Number),
-					}),
 				}),
 			);
 		});
 		const warned = onEvent.mock.calls
 			.map(([event]) => event)
 			.find((event) => event.message === 'Scheduler fired a task later than its scheduled time');
+		expect(warned?.context?.taskType).toBe('test-task');
 		expect(warned?.context?.lagSeconds).toBeGreaterThan(
 			DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS,
 		);
