@@ -118,7 +118,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 7 |  | table |
 | [workflow_publish_history](workflow_publish_history.md) | 6 |  | table |
 | [workflow_published_version](workflow_published_version.md) | 4 |  | table |
-| [workflow_review_request](workflow_review_request.md) | 13 |  | table |
+| [workflow_review_request](workflow_review_request.md) | 12 |  | table |
 | [workflow_review_request_authors](workflow_review_request_authors.md) | 3 |  | table |
 | [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 3 |  | table |
 | [workflow_review_request_workflow](workflow_review_request_workflow.md) | 4 |  | table |
@@ -1378,7 +1378,6 @@ erDiagram
   varchar_50_ decision
   TEXT description
   varchar_36_ id PK
-  datetime_3_ lastStatusChangeAt
   varchar_36_ projectId FK
   varchar_16_ state
   varchar_512_ title

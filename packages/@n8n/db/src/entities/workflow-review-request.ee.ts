@@ -50,8 +50,5 @@ export class WorkflowReviewRequest extends WithTimestampsAndStringId {
 	closedById: string | null;
 
 	@DateTimeColumn({ nullable: true })
-	lastStatusChangeAt: Date | null;
-
-	@DateTimeColumn({ nullable: true })
 	approvedAt: Date | null;
 }
