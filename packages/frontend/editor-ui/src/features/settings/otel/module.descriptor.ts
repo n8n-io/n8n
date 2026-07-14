@@ -1,4 +1,4 @@
-import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 
 const SettingsOpenTelemetryView = async () => await import('./SettingsOpenTelemetryView.vue');

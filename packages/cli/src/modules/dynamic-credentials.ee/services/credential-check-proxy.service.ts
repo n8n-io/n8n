@@ -4,6 +4,7 @@ import type {
 	CredentialCheckResult,
 	CredentialCheckStatus,
 	DynamicCredentialCheckProxyProvider,
+	ICredentialContext,
 	IExecutionContext,
 } from 'n8n-workflow';
 
@@ -13,6 +14,7 @@ import { UrlService } from '@/services/url.service';
 import { ExecutionContextService } from 'n8n-core';
 import { AuthorizeIntentService } from './authorize-intent.service';
 import { CredentialResolverWorkflowService } from './credential-resolver-workflow.service';
+import { DynamicCredentialService } from './dynamic-credential.service';
 
 @Service()
 export class CredentialCheckProxyService implements DynamicCredentialCheckProxyProvider {
@@ -21,6 +23,7 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 		private readonly executionContextService: ExecutionContextService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly authorizeIntentService: AuthorizeIntentService,
+		private readonly dynamicCredentialService: DynamicCredentialService,
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
 	) {}
@@ -79,7 +82,7 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 	private async generateAuthorizationUrl(
 		credentialId: string,
 		resolverId: string,
-		credentialContext: { identity?: string; metadata?: Record<string, unknown> },
+		credentialContext: ICredentialContext,
 	): Promise<string | undefined> {
 		const credential = await this.enterpriseCredentialsService.getOne(credentialId);
 		if (!credential) return undefined;
@@ -87,10 +90,20 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 		const type = credential.type.toLowerCase();
 		if (!type.includes('oauth2') && !type.includes('oauth1')) return undefined;
 
+		// Bind the link to the intended n8n user when the resolver names one. Fail
+		// closed if the resolver maps to a user but can't resolve one right now —
+		// issuing an unbindable link would let any clicker complete the connection.
+		const ownership = await this.dynamicCredentialService.resolveOwningUserIdForAuthorization(
+			credentialContext,
+			resolverId,
+		);
+		if (ownership.status === 'unresolved') return undefined;
+
 		const token = await this.authorizeIntentService.create({
 			credentialId: credential.id,
 			resolverId,
 			identity: credentialContext.identity ?? '',
+			userId: ownership.status === 'bound' ? ownership.userId : undefined,
 			metadata: credentialContext.metadata,
 		});
 
