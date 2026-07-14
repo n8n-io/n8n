@@ -260,6 +260,12 @@ export function toLcContent(block: N8nMessages.MessageContent): LangchainMessage
 	if (isN8nReasoningBlock(block)) {
 		return { type: 'reasoning', reasoning: block.text };
 	}
+	if ((block.type as string) === 'image_url') {
+		return {
+			type: 'image_url',
+			image_url: (block as any).image_url,
+		} as any;
+	}
 	if (isN8nFileBlock(block)) {
 		const { url, fileId, ...rest } = block.providerMetadata ?? {};
 		return {
@@ -355,10 +361,35 @@ export function toLcMessage(message: Message): LangchainMessages.BaseMessage {
 			if (!toolResult) {
 				throw new Error('Tool message is missing a tool-result content block');
 			}
-			const content =
-				typeof toolResult.result === 'string'
-					? toolResult.result
-					: JSON.stringify(toolResult.result);
+			let content: LangchainMessages.MessageContent;
+			const isMessageContentArray =
+				Array.isArray(toolResult.result) &&
+				toolResult.result.every(
+					(item) =>
+						item &&
+						typeof item === 'object' &&
+						'type' in item &&
+						typeof item.type === 'string' &&
+						[
+							'text',
+							'reasoning',
+							'file',
+							'image_url',
+							'tool-call',
+							'invalid-tool-call',
+							'tool-result',
+							'citation',
+							'provider',
+						].includes(item.type as string),
+				);
+			if (isMessageContentArray) {
+				content = toolResult.result.map(toLcContent);
+			} else {
+				content =
+					typeof toolResult.result === 'string'
+						? toolResult.result
+						: JSON.stringify(toolResult.result);
+			}
 			return new LangchainMessages.ToolMessage({
 				content,
 				tool_call_id: toolResult.toolCallId,

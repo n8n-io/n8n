@@ -603,10 +603,10 @@ describe('makeHandleToolInvocation', () => {
 		]);
 	});
 
-	it('should handle binary data and return a warning message', async () => {
+	it('should handle binary data and forward it in the output data', async () => {
 		const mockContext = mock<IExecuteFunctions>();
 		contextFactory.mockReturnValue(mockContext);
-		const mockResult = [[{ json: {}, binary: { file: 'data' } }]];
+		const mockResult = [[{ json: {}, binary: { file: 'data' } } as any]];
 		execute.mockResolvedValueOnce(mockResult);
 
 		const handleToolInvocation = makeHandleToolInvocation(
@@ -617,16 +617,14 @@ describe('makeHandleToolInvocation', () => {
 		);
 		const result = await handleToolInvocation(toolArgs);
 
-		expect(result).toBe(
-			'"Error: The Tool attempted to return binary data, which is not supported in Agents"',
-		);
+		expect(result).toBe('[{}]');
 		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
 			[
 				{
 					json: {
-						response:
-							'Error: The Tool attempted to return binary data, which is not supported in Agents',
+						response: [{}],
 					},
+					binary: { file: 'data' },
 				},
 			],
 		]);
@@ -676,10 +674,11 @@ describe('makeHandleToolInvocation', () => {
 					json: {
 						response: [{ a: 3 }],
 					},
+					binary: { file: 'data' },
 				},
 			],
 		]);
-		expect(warnFn).toHaveBeenCalled();
+		expect(warnFn).not.toHaveBeenCalled();
 	});
 
 	it('should handle execution errors and return an error message', async () => {

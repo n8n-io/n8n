@@ -82,7 +82,7 @@ describe('runAgent - iteration count tracking', () => {
 		};
 
 		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
-		vi.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
+		vi.spyOn(agentExecution, 'buildSteps').mockResolvedValue([]);
 		vi.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
 			{
 				actionType: 'ExecutionNodeAction' as const,
@@ -143,7 +143,7 @@ describe('runAgent - iteration count tracking', () => {
 		};
 
 		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
-		vi.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
+		vi.spyOn(agentExecution, 'buildSteps').mockResolvedValue([]);
 		vi.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
 			{
 				actionType: 'ExecutionNodeAction' as const,
@@ -216,7 +216,7 @@ describe('runAgent - iteration count tracking', () => {
 				},
 			],
 		});
-		vi.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
+		vi.spyOn(agentExecution, 'buildSteps').mockResolvedValue([]);
 		vi.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
 			{
 				actionType: 'ExecutionNodeAction' as const,

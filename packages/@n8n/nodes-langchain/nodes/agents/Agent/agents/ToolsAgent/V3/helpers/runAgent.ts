@@ -47,9 +47,28 @@ export async function runAgent(
 ): Promise<RunAgentResult> {
 	const { itemIndex, input, steps, tools, options } = itemContext;
 
+	const parsedSteps = steps.map((step) => {
+		let observation: any = step.observation;
+		try {
+			if (typeof step.observation === 'string' && step.observation.trim().startsWith('[')) {
+				const parsed = JSON.parse(step.observation);
+				if (
+					Array.isArray(parsed) &&
+					parsed.every((item) => typeof item === 'object' && item !== null && 'type' in item)
+				) {
+					observation = parsed;
+				}
+			}
+		} catch {}
+		return {
+			...step,
+			observation,
+		};
+	});
+
 	const invokeParams = {
 		// steps are passed to the ToolCallingAgent in the runnable sequence to keep track of tool calls
-		steps,
+		steps: parsedSteps,
 		input,
 		system_message: options.systemMessage ?? SYSTEM_MESSAGE,
 		formatting_instructions:
@@ -98,7 +117,7 @@ export async function runAgent(
 
 			return {
 				actions,
-				metadata: buildResponseMetadata(response, itemIndex),
+				metadata: await buildResponseMetadata(response, itemIndex),
 			};
 		}
 		// Save conversation to memory including any tool call context
@@ -152,7 +171,7 @@ export async function runAgent(
 
 		return {
 			actions,
-			metadata: buildResponseMetadata(response, itemIndex),
+			metadata: await buildResponseMetadata(response, itemIndex),
 		};
 	}
 }

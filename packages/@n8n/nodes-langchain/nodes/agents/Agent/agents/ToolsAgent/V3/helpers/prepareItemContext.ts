@@ -44,7 +44,7 @@ export async function prepareItemContext(
 	response?: EngineResponse<RequestResponseMetadata>,
 	model?: BaseChatModel,
 ): Promise<ItemContext> {
-	const steps = buildSteps(response, itemIndex);
+	const steps = await buildSteps(response, itemIndex, ctx);
 
 	const input = getPromptInputByType({
 		ctx,

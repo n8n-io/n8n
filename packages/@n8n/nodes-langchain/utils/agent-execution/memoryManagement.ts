@@ -116,9 +116,22 @@ export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 		}
 
 		// Create ToolMessage with the observation result
+		let content: any = step.observation;
+		try {
+			if (typeof step.observation === 'string' && step.observation.trim().startsWith('[')) {
+				const parsed = JSON.parse(step.observation);
+				if (
+					Array.isArray(parsed) &&
+					parsed.every((item) => typeof item === 'object' && item !== null && 'type' in item)
+				) {
+					content = parsed;
+				}
+			}
+		} catch {}
+
 		messages.push(
 			new ToolMessage({
-				content: step.observation,
+				content,
 				tool_call_id: toolCallId,
 				name: step.action.tool,
 			}),

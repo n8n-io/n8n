@@ -1,6 +1,15 @@
 import { AIMessage } from '@langchain/core/messages';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 import { nodeNameToToolName } from 'n8n-workflow';
-import type { EngineResponse, EngineResult, IDataObject } from 'n8n-workflow';
+import type {
+	EngineResponse,
+	EngineResult,
+	IDataObject,
+	IExecuteFunctions,
+	ISupplyDataFunctions,
+	INodeExecutionData,
+} from 'n8n-workflow';
 
 import type {
 	RequestResponseMetadata,
@@ -280,14 +289,13 @@ function buildSharedGeminiAIMessage(
 /**
  * Builds the observation string from tool result data.
  */
-function buildObservation(toolData: {
-	data?: { ai_tool?: Array<Array<{ json?: unknown }>> };
-	error?: { message?: string; name?: string };
-}): string {
-	const aiToolData = toolData?.data?.ai_tool?.[0]?.map((item) => item?.json);
-	if (aiToolData && aiToolData.length > 0) {
-		return JSON.stringify(aiToolData);
-	}
+async function buildObservation(
+	toolData: {
+		data?: { ai_tool?: INodeExecutionData[][] };
+		error?: { message?: string; name?: string };
+	},
+	ctx?: IExecuteFunctions | ISupplyDataFunctions,
+): Promise<string> {
 	if (toolData?.error) {
 		const errorInfo = {
 			error: toolData.error.message ?? 'Unknown error',
@@ -295,7 +303,116 @@ function buildObservation(toolData: {
 		};
 		return JSON.stringify(errorInfo);
 	}
-	return JSON.stringify('');
+
+	const aiToolItems = toolData?.data?.ai_tool?.[0];
+	if (!aiToolItems || aiToolItems.length === 0) {
+		return JSON.stringify('');
+	}
+
+	const jsonContent = aiToolItems.map((item) => item?.json);
+	const textOutputs: string[] = [];
+	const structuredBlocks: Array<Record<string, any>> = [];
+	const warnings: string[] = [];
+
+	const maxSizeInBytes =
+		Container.get(AiConfig)?.maxAgentPassthroughBinarySizeBytes ?? 50 * 1024 * 1024;
+
+	for (const item of aiToolItems) {
+		if (item?.binary) {
+			for (const binaryData of Object.values(item.binary)) {
+				if (!binaryData) continue;
+
+				// Process base64 data
+				let base64Data: string;
+				if (binaryData.id && ctx) {
+					try {
+						const binaryBuffer = await ctx.helpers.binaryToBuffer(
+							await ctx.helpers.getBinaryStream(binaryData.id),
+						);
+						base64Data = Buffer.from(binaryBuffer).toString('base64');
+					} catch (e) {
+						base64Data = binaryData.data.includes('base64,')
+							? binaryData.data.split('base64,')[1]
+							: binaryData.data;
+					}
+				} else {
+					base64Data = binaryData.data.includes('base64,')
+						? binaryData.data.split('base64,')[1]
+						: binaryData.data;
+				}
+
+				// Oversized file check (Soft Warning)
+				const sizeInBytes = Buffer.byteLength(base64Data, 'base64');
+				if (sizeInBytes > maxSizeInBytes) {
+					const fileName = binaryData.fileName ?? 'attachment';
+					const sizeInMb = (sizeInBytes / (1024 * 1024)).toFixed(1);
+					const limitInMb = (maxSizeInBytes / (1024 * 1024)).toFixed(1);
+					warnings.push(
+						`[File "${fileName}" skipped: ${sizeInMb} MB exceeds the ${limitInMb} MB limit]`,
+					);
+					continue;
+				}
+
+				const isText = (mimeType: string) => {
+					const type = mimeType.toLowerCase();
+					return (
+						type.startsWith('text/') ||
+						type === 'application/json' ||
+						type === 'application/xml' ||
+						type === 'application/csv' ||
+						type === 'application/x-yaml' ||
+						type === 'application/yaml' ||
+						type === 'application/javascript' ||
+						type === 'application/typescript'
+					);
+				};
+
+				if (isText(binaryData.mimeType)) {
+					const textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
+					textOutputs.push(
+						`File: ${binaryData.fileName ?? 'attachment'}\nContent:\n${textContent}`,
+					);
+				} else if (binaryData.mimeType.startsWith('image/')) {
+					structuredBlocks.push({
+						type: 'image_url',
+						image_url: {
+							url: `data:${binaryData.mimeType};base64,${base64Data}`,
+						},
+					});
+				} else {
+					structuredBlocks.push({
+						type: 'file',
+						mediaType: binaryData.mimeType,
+						data: base64Data,
+					});
+				}
+			}
+		}
+	}
+
+	// Build the text message body
+	let textBody = JSON.stringify(jsonContent);
+	if (textOutputs.length > 0) {
+		textBody += '\n\n' + textOutputs.join('\n\n');
+	}
+	if (warnings.length > 0) {
+		textBody += '\n\n' + warnings.join('\n');
+	}
+
+	// If there are no structured blocks (images, PDFs), we just return a simple text string
+	if (structuredBlocks.length === 0) {
+		return textBody;
+	}
+
+	// Otherwise return a list of blocks
+	const contentBlocks: Array<Record<string, any>> = [
+		{
+			type: 'text',
+			text: textBody,
+		},
+		...structuredBlocks,
+	];
+	return JSON.stringify(contentBlocks);
 }
 
 /**
@@ -313,10 +430,11 @@ function buildObservation(toolData: {
  * @param itemIndex - The current item index being processed
  * @returns Array of tool call data representing the agent steps
  */
-export function buildSteps(
+export async function buildSteps(
 	response: EngineResponse<RequestResponseMetadata> | undefined,
 	itemIndex: number,
-): ToolCallData[] {
+	ctx?: IExecuteFunctions | ISupplyDataFunctions,
+): Promise<ToolCallData[]> {
 	const steps: ToolCallData[] = [];
 
 	if (!response) return steps;
@@ -372,7 +490,7 @@ export function buildSteps(
 	for (let i = 0; i < batchTools.length; i++) {
 		const { tool, toolInput, toolId, toolName, nodeName, providerMetadata } = batchTools[i];
 
-		const observation = buildObservation(tool.data);
+		const observation = await buildObservation(tool.data, ctx);
 
 		// Exclude metadata fields (id, log, type) from the tool input forwarded to the result
 		const { id, log, type, ...toolInputForResult } = toolInput;

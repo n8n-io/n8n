@@ -1,5 +1,7 @@
 import type { EngineResponse } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 
 import { buildSteps } from '../buildSteps';
 import type { RequestResponseMetadata } from '../types';
@@ -8,13 +10,13 @@ describe('buildSteps', () => {
 	const itemIndex = 0;
 
 	describe('Basic functionality', () => {
-		it('should return empty array when response is undefined', () => {
-			const result = buildSteps(undefined, itemIndex);
+		it('should return empty array when response is undefined', async () => {
+			const result = await buildSteps(undefined, itemIndex);
 
 			expect(result).toEqual([]);
 		});
 
-		it('should build steps from engine response', () => {
+		it('should build steps from engine response', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -45,7 +47,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toMatchObject({
@@ -59,7 +61,7 @@ describe('buildSteps', () => {
 			});
 		});
 
-		it('should handle multiple tool responses', () => {
+		it('should handle multiple tool responses', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -114,14 +116,14 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(2);
 			expect(result[0].action.tool).toBe('Calculator');
 			expect(result[1].action.tool).toBe('Search');
 		});
 
-		it('should use input.tool as the tool name for toolkit tools (e.g., MCP Client)', () => {
+		it('should use input.tool as the tool name for toolkit tools (e.g., MCP Client)', async () => {
 			// When an MCP Client node (a toolkit) exposes sub-tools, createEngineRequests stores
 			// the actual MCP tool name (e.g., "list_tickets") in input.tool.
 			// buildSteps must use this name — not nodeNameToToolName("MCP Client") = "MCP_Client" —
@@ -157,7 +159,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.tool).toBe('list_tickets');
@@ -165,7 +167,7 @@ describe('buildSteps', () => {
 			expect(result[0].action.messageLog?.[0]?.tool_calls?.[0]?.name).toBe('list_tickets');
 		});
 
-		it('should filter out responses for different item indexes', () => {
+		it('should filter out responses for different item indexes', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -220,13 +222,13 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, 0);
+			const result = await buildSteps(response, 0);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.tool).toBe('Calculator');
 		});
 
-		it('should handle responses with minimal toolInput', () => {
+		it('should handle responses with minimal toolInput', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -257,7 +259,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			// Even with minimal input, a step is created with empty toolInput
 			expect(result).toHaveLength(1);
@@ -265,7 +267,7 @@ describe('buildSteps', () => {
 		});
 
 		describe('Previous requests handling', () => {
-			it('should include previous requests from metadata', () => {
+			it('should include previous requests from metadata', async () => {
 				const previousRequests = [
 					{
 						action: {
@@ -311,14 +313,14 @@ describe('buildSteps', () => {
 					},
 				};
 
-				const result = buildSteps(response, itemIndex);
+				const result = await buildSteps(response, itemIndex);
 
 				expect(result).toHaveLength(2);
 				expect(result[0]).toEqual(previousRequests[0]);
 				expect(result[1].action.tool).toBe('Calculator');
 			});
 
-			it('should not duplicate steps that already exist in previousRequests', () => {
+			it('should not duplicate steps that already exist in previousRequests', async () => {
 				const previousRequests = [
 					{
 						action: {
@@ -364,7 +366,7 @@ describe('buildSteps', () => {
 					},
 				};
 
-				const result = buildSteps(response, itemIndex);
+				const result = await buildSteps(response, itemIndex);
 
 				expect(result).toHaveLength(1);
 				expect(result[0]).toEqual(previousRequests[0]);
@@ -372,7 +374,7 @@ describe('buildSteps', () => {
 		});
 
 		describe('Synthetic AI message creation', () => {
-			it('should create synthetic AI message with tool calls', () => {
+			it('should create synthetic AI message with tool calls', async () => {
 				const response: EngineResponse<RequestResponseMetadata> = {
 					actionResponses: [
 						{
@@ -403,7 +405,7 @@ describe('buildSteps', () => {
 					metadata: {},
 				};
 
-				const result = buildSteps(response, itemIndex);
+				const result = await buildSteps(response, itemIndex);
 
 				expect(result).toHaveLength(1);
 				expect(result[0].action.messageLog).toBeDefined();
@@ -421,7 +423,7 @@ describe('buildSteps', () => {
 				});
 			});
 
-			it('should use custom log if provided', () => {
+			it('should use custom log if provided', async () => {
 				const response: EngineResponse<RequestResponseMetadata> = {
 					actionResponses: [
 						{
@@ -453,13 +455,13 @@ describe('buildSteps', () => {
 					metadata: {},
 				};
 
-				const result = buildSteps(response, itemIndex);
+				const result = await buildSteps(response, itemIndex);
 
 				expect(result).toHaveLength(1);
 				expect(result[0].action.log).toBe('Custom log message');
 			});
 
-			it('should use custom type if provided', () => {
+			it('should use custom type if provided', async () => {
 				const response: EngineResponse<RequestResponseMetadata> = {
 					actionResponses: [
 						{
@@ -491,7 +493,7 @@ describe('buildSteps', () => {
 					metadata: {},
 				};
 
-				const result = buildSteps(response, itemIndex);
+				const result = await buildSteps(response, itemIndex);
 
 				expect(result).toHaveLength(1);
 				expect(result[0].action.type).toBe('custom_type');
@@ -500,7 +502,7 @@ describe('buildSteps', () => {
 	});
 
 	describe('Error handling', () => {
-		it('should handle tool responses with error data structure', () => {
+		it('should handle tool responses with error data structure', async () => {
 			// When a tool fails, the data structure contains error information
 			// instead of the normal ai_tool data structure
 			const response: EngineResponse<RequestResponseMetadata> = {
@@ -536,7 +538,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			// Should still produce a step with error information in the observation
 			expect(result).toHaveLength(1);
@@ -544,7 +546,7 @@ describe('buildSteps', () => {
 			expect(result[0].observation).not.toBe('""');
 		});
 
-		it('should handle tool responses with executionError passed directly', () => {
+		it('should handle tool responses with executionError passed directly', async () => {
 			// This simulates when WorkflowToolService passes ExecutionError directly
 			// to addOutputData instead of wrapping it in the expected format
 			const response: EngineResponse<RequestResponseMetadata> = {
@@ -583,7 +585,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			// Should handle missing ai_tool gracefully and include error info
 			expect(result).toHaveLength(1);
@@ -591,7 +593,7 @@ describe('buildSteps', () => {
 			expect(result[0].observation).not.toBe('""');
 		});
 
-		it('should preserve error information when building observation from error response', () => {
+		it('should preserve error information when building observation from error response', async () => {
 			const errorMessage = 'Received tool input did not match expected schema';
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
@@ -626,14 +628,14 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			// The observation should include the error message so the agent knows what went wrong
 			expect(result[0].observation).toContain(errorMessage);
 		});
 
-		it('should handle error responses with ai_tool containing error wrapper', () => {
+		it('should handle error responses with ai_tool containing error wrapper', async () => {
 			// When WorkflowToolService correctly wraps error in INodeExecutionData format
 			const errorMessage = 'Workflow execution failed';
 			const response: EngineResponse<RequestResponseMetadata> = {
@@ -667,7 +669,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			// This test passes when error is properly wrapped - validates the expected format
@@ -676,7 +678,7 @@ describe('buildSteps', () => {
 	});
 
 	describe('Observation formatting', () => {
-		it('should stringify tool result data correctly', () => {
+		it('should stringify tool result data correctly', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -712,7 +714,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].observation).toBe(
@@ -723,7 +725,7 @@ describe('buildSteps', () => {
 			);
 		});
 
-		it('should handle empty ai_tool data', () => {
+		it('should handle empty ai_tool data', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -754,7 +756,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].observation).toBe('""');
@@ -762,7 +764,7 @@ describe('buildSteps', () => {
 	});
 
 	describe('Anthropic thinking blocks reconstruction', () => {
-		it('should reconstruct AIMessage with thinking content blocks', () => {
+		it('should reconstruct AIMessage with thinking content blocks', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -798,7 +800,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.messageLog).toBeDefined();
@@ -822,7 +824,7 @@ describe('buildSteps', () => {
 			});
 		});
 
-		it('should reconstruct AIMessage with redacted_thinking content blocks', () => {
+		it('should reconstruct AIMessage with redacted_thinking content blocks', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -857,7 +859,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.messageLog).toBeDefined();
@@ -880,7 +882,7 @@ describe('buildSteps', () => {
 			});
 		});
 
-		it('should use empty content and tool_calls when no thinking blocks are present', () => {
+		it('should use empty content and tool_calls when no thinking blocks are present', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -912,7 +914,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.messageLog).toBeDefined();
@@ -924,7 +926,7 @@ describe('buildSteps', () => {
 			expect(message.tool_calls?.[0].name).toBe('Calculator');
 		});
 
-		it('should handle thinking content without thinkingType', () => {
+		it('should handle thinking content without thinkingType', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -959,7 +961,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -968,7 +970,7 @@ describe('buildSteps', () => {
 			expect(message.tool_calls?.[0].name).toBe('Calculator');
 		});
 
-		it('should work alongside Gemini thought_signature', () => {
+		it('should work alongside Gemini thought_signature', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1007,7 +1009,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -1033,7 +1035,7 @@ describe('buildSteps', () => {
 	});
 
 	describe('Tool name resolution', () => {
-		it('should use HITL toolName when HITL metadata is present', () => {
+		it('should use HITL toolName when HITL metadata is present', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1069,14 +1071,14 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			// Should use the toolName from HITL metadata
 			expect(result[0].action.tool).toBe('custom_search_tool');
 		});
 
-		it('should convert nodeName to toolName when HITL metadata is not present', () => {
+		it('should convert nodeName to toolName when HITL metadata is not present', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1107,14 +1109,14 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			// Should convert node name using nodeNameToToolName
 			expect(result[0].action.tool).toBe('Calculator_Node');
 		});
 
-		it('should use converted nodeName in message content when HITL metadata is absent', () => {
+		it('should use converted nodeName in message content when HITL metadata is absent', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1145,7 +1147,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -1153,7 +1155,7 @@ describe('buildSteps', () => {
 			expect(message.tool_calls?.[0].name).toBe('My_Custom_Node');
 		});
 
-		it('should handle HITL toolName in Anthropic thinking blocks', () => {
+		it('should handle HITL toolName in Anthropic thinking blocks', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1194,7 +1196,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -1212,7 +1214,7 @@ describe('buildSteps', () => {
 	});
 
 	describe('Tool input extraction', () => {
-		it('should extract toolInput as object with string input property', () => {
+		it('should extract toolInput as object with string input property', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1243,14 +1245,14 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			// toolInput is always an object for type consistency with LangChain ToolCall
 			expect(result[0].action.toolInput).toEqual({ input: '5*343' });
 		});
 
-		it('should extract toolInput with multiple arguments (new format)', () => {
+		it('should extract toolInput with multiple arguments (new format)', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1282,7 +1284,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.toolInput).toEqual({
@@ -1293,7 +1295,7 @@ describe('buildSteps', () => {
 			expect(result[0].action.toolInput).not.toHaveProperty('id');
 		});
 
-		it('should exclude metadata fields (id, log, type) from toolInput', () => {
+		it('should exclude metadata fields (id, log, type) from toolInput', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1327,7 +1329,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.toolInput).toEqual({
@@ -1340,7 +1342,7 @@ describe('buildSteps', () => {
 			expect(result[0].action.toolInput).not.toHaveProperty('type');
 		});
 
-		it('should handle tools with non-string input property as full object', () => {
+		it('should handle tools with non-string input property as full object', async () => {
 			// When input property exists but is not a string (e.g., object), extract all properties
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
@@ -1373,7 +1375,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			// Should extract all properties except metadata (id, log, type)
@@ -1386,7 +1388,7 @@ describe('buildSteps', () => {
 	});
 
 	describe('Gemini thought_signature in additional_kwargs', () => {
-		it('should include thought_signature in AIMessage additional_kwargs', () => {
+		it('should include thought_signature in AIMessage additional_kwargs', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1420,7 +1422,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -1431,7 +1433,7 @@ describe('buildSteps', () => {
 			});
 		});
 
-		it('should group parallel tool calls into shared AIMessage with Gemini signature', () => {
+		it('should group parallel tool calls into shared AIMessage with Gemini signature', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1492,7 +1494,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(2);
 
@@ -1520,7 +1522,7 @@ describe('buildSteps', () => {
 			expect(result[1].observation).toBe(JSON.stringify([{ temp: '72F' }]));
 		});
 
-		it('should NOT group parallel tool calls without Gemini signature', () => {
+		it('should NOT group parallel tool calls without Gemini signature', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1571,7 +1573,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(2);
 
@@ -1582,7 +1584,7 @@ describe('buildSteps', () => {
 			expect(result[1].action.messageLog![0].tool_calls).toHaveLength(1);
 		});
 
-		it('should not include additional_kwargs when no thought_signature present', () => {
+		it('should not include additional_kwargs when no thought_signature present', async () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -1613,7 +1615,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = await buildSteps(response, itemIndex);
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -1621,6 +1623,174 @@ describe('buildSteps', () => {
 			expect(
 				message.additional_kwargs?.__gemini_function_call_thought_signatures__,
 			).toBeUndefined();
+		});
+	});
+
+	describe('Binary/Multimodal extraction', () => {
+		beforeAll(() => {
+			Container.set(AiConfig, {
+				maxAgentPassthroughBinarySizeBytes: 50 * 1024 * 1024,
+			} as any);
+		});
+
+		it('should extract and decode text files to UTF-8 text', async () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'FileReader',
+							input: { id: 'call_123' },
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: { itemIndex: 0 },
+						},
+						data: {
+							data: {
+								ai_tool: [
+									[
+										{
+											json: { success: true },
+											binary: {
+												file: {
+													id: 'some-file-id',
+													fileName: 'notes.txt',
+													mimeType: 'text/plain',
+													data: 'SGVsbG8gV29ybGQ=', // base64 for 'Hello World'
+												},
+											},
+										},
+									],
+								],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = await buildSteps(response, itemIndex);
+			expect(result).toHaveLength(1);
+			expect(result[0].observation).toContain('File: notes.txt');
+			expect(result[0].observation).toContain('Content:\nHello World');
+			expect(result[0].observation).toContain('{"success":true}');
+		});
+
+		it('should pass image files as image_url structured blocks', async () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'ScreenshotNode',
+							input: { id: 'call_123' },
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: { itemIndex: 0 },
+						},
+						data: {
+							data: {
+								ai_tool: [
+									[
+										{
+											json: { success: true },
+											binary: {
+												screenshot: {
+													id: 'img-id',
+													fileName: 'screenshot.png',
+													mimeType: 'image/png',
+													data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+												},
+											},
+										},
+									],
+								],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = await buildSteps(response, itemIndex);
+			expect(result).toHaveLength(1);
+
+			const observation = JSON.parse(result[0].observation);
+			expect(observation).toBeInstanceOf(Array);
+			expect(observation[0]).toEqual({
+				type: 'text',
+				text: '[{"success":true}]',
+			});
+			expect(observation[1]).toEqual({
+				type: 'image_url',
+				image_url: {
+					url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+				},
+			});
+		});
+
+		it('should skip oversized files and append a warning to the observation text', async () => {
+			const originalGet = Container.get;
+			const getSpy = vi.spyOn(Container, 'get').mockImplementation((token: any) => {
+				if (token === AiConfig) {
+					return { maxAgentPassthroughBinarySizeBytes: 5 } as any;
+				}
+				return originalGet(token);
+			});
+
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'HugeFileNode',
+							input: { id: 'call_123' },
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: { itemIndex: 0 },
+						},
+						data: {
+							data: {
+								ai_tool: [
+									[
+										{
+											json: { success: true },
+											binary: {
+												bigFile: {
+													id: 'big-id',
+													fileName: 'huge.png',
+													mimeType: 'image/png',
+													data: 'SGVsbG8gV29ybGQgZnJvbSBhIHNhbmRib3g=', // base64 for 'Hello World from a sandbox', > 5 bytes
+												},
+											},
+										},
+									],
+								],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = await buildSteps(response, itemIndex);
+			expect(result).toHaveLength(1);
+			expect(result[0].observation).toContain('[File "huge.png" skipped:');
+			expect(result[0].observation).toContain('exceeds the 0.0 MB limit]');
+
+			getSpy.mockRestore();
 		});
 	});
 });

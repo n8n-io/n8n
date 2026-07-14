@@ -181,6 +181,7 @@ function mapResult(result?: NodeOutput) {
 		| undefined;
 	let nodeHasMixedJsonAndBinaryData = false;
 	let sendMessage: ChatNodeMessageWithButtons | string | undefined = undefined;
+	let binary: INodeExecutionData['binary'] | undefined = undefined;
 
 	if (result === undefined) {
 		response = undefined;
@@ -199,11 +200,18 @@ function mapResult(result?: NodeOutput) {
 					'If you are seeing this from a nested AgentToolV3 sub-agent, update n8n — recent versions resolve sub-agent engine requests inline.',
 			},
 		);
-	} else if (containsBinaryData(result) && !containsDataThatIsUsefulToTheAgent(result)) {
-		response = 'Error: The Tool attempted to return binary data, which is not supported in Agents';
 	} else {
 		if (containsBinaryData(result)) {
-			nodeHasMixedJsonAndBinaryData = true;
+			// Extract all binary data from the first output branch
+			const binaryItems = result?.[0]?.filter((item) => item.binary);
+			if (binaryItems && binaryItems.length > 0) {
+				binary = {};
+				for (const item of binaryItems) {
+					if (item.binary) {
+						Object.assign(binary, item.binary);
+					}
+				}
+			}
 		}
 		response = result?.[0]?.flatMap((item) => item.json);
 
@@ -214,7 +222,7 @@ function mapResult(result?: NodeOutput) {
 		}
 	}
 
-	return { response, nodeHasMixedJsonAndBinaryData, sendMessage };
+	return { response, nodeHasMixedJsonAndBinaryData, sendMessage, binary };
 }
 
 export function makeHandleToolInvocation(
@@ -275,7 +283,7 @@ export function makeHandleToolInvocation(
 				// Execute the sub-node with the proxied context
 				const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
 
-				const { response, nodeHasMixedJsonAndBinaryData, sendMessage } = mapResult(result);
+				const { response, nodeHasMixedJsonAndBinaryData, sendMessage, binary } = mapResult(result);
 
 				// If the node returned some binary data, but also useful data we just log a warning instead of overriding the result
 				if (nodeHasMixedJsonAndBinaryData) {
@@ -286,7 +294,7 @@ export function makeHandleToolInvocation(
 
 				// Add output data to the context
 				context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, [
-					[{ json: { response }, sendMessage }],
+					[{ json: { response }, sendMessage, ...(binary ? { binary } : {}) }],
 				]);
 
 				// Return the stringified results

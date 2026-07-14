@@ -171,7 +171,7 @@ export class ToolExecutor implements INodeType {
 								];
 								return {
 									actions: engineRequest,
-									metadata: buildResponseMetadata(response, 0),
+									metadata: await buildResponseMetadata(response, 0),
 								};
 							}
 

@@ -14,14 +14,14 @@ import type { RequestResponseMetadata } from './types';
  * @returns Metadata object with previousRequests and iterationCount
  *
  */
-export function buildResponseMetadata(
+export async function buildResponseMetadata(
 	response: EngineResponse<RequestResponseMetadata> | undefined,
 	itemIndex: number,
-): RequestResponseMetadata {
+): Promise<RequestResponseMetadata> {
 	const currentIterationCount = response?.metadata?.iterationCount ?? 0;
 
 	return {
-		previousRequests: buildSteps(response, itemIndex),
+		previousRequests: await buildSteps(response, itemIndex),
 		itemIndex,
 		iterationCount: currentIterationCount + 1,
 	};

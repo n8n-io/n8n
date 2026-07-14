@@ -29,8 +29,8 @@ describe('buildIterationMetadata', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should return metadata with iterationCount 1 when response is undefined', () => {
-		const result = buildResponseMetadata(undefined, 0);
+	it('should return metadata with iterationCount 1 when response is undefined', async () => {
+		const result = await buildResponseMetadata(undefined, 0);
 
 		expect(result).toEqual({
 			previousRequests: [],
@@ -39,12 +39,12 @@ describe('buildIterationMetadata', () => {
 		});
 	});
 
-	it('should return metadata with iterationCount 1 when response has no metadata', () => {
+	it('should return metadata with iterationCount 1 when response has no metadata', async () => {
 		const response = {
 			actionResponses: [],
 		} as unknown as EngineResponse<RequestResponseMetadata>;
 
-		const result = buildResponseMetadata(response, 0);
+		const result = await buildResponseMetadata(response, 0);
 
 		expect(result).toEqual({
 			previousRequests: [],
@@ -53,13 +53,13 @@ describe('buildIterationMetadata', () => {
 		});
 	});
 
-	it('should return metadata with iterationCount 1 when response metadata has no iterationCount', () => {
+	it('should return metadata with iterationCount 1 when response metadata has no iterationCount', async () => {
 		const response: EngineResponse<RequestResponseMetadata> = {
 			actionResponses: [],
 			metadata: {},
 		};
 
-		const result = buildResponseMetadata(response, 0);
+		const result = await buildResponseMetadata(response, 0);
 
 		expect(result).toEqual({
 			previousRequests: [],
@@ -68,7 +68,7 @@ describe('buildIterationMetadata', () => {
 		});
 	});
 
-	it('should increment iterationCount when response has existing iterationCount', () => {
+	it('should increment iterationCount when response has existing iterationCount', async () => {
 		const response: EngineResponse<RequestResponseMetadata> = {
 			actionResponses: [],
 			metadata: {
@@ -76,7 +76,7 @@ describe('buildIterationMetadata', () => {
 			},
 		};
 
-		const result = buildResponseMetadata(response, 0);
+		const result = await buildResponseMetadata(response, 0);
 
 		expect(result).toEqual({
 			previousRequests: [],
@@ -85,7 +85,7 @@ describe('buildIterationMetadata', () => {
 		});
 	});
 
-	it('should include previousRequests when response has actionResponses', () => {
+	it('should include previousRequests when response has actionResponses', async () => {
 		const response: EngineResponse<RequestResponseMetadata> = {
 			actionResponses: [
 				{
@@ -111,7 +111,7 @@ describe('buildIterationMetadata', () => {
 			},
 		};
 
-		const result = buildResponseMetadata(response, 0);
+		const result = await buildResponseMetadata(response, 0);
 
 		expect(result.itemIndex).toBe(0);
 		expect(result.iterationCount).toBe(2);
@@ -125,9 +125,9 @@ describe('buildIterationMetadata', () => {
 		});
 	});
 
-	it('should handle multiple iterations correctly', () => {
+	it('should handle multiple iterations correctly', async () => {
 		// First iteration
-		const result1 = buildResponseMetadata(undefined, 0);
+		const result1 = await buildResponseMetadata(undefined, 0);
 		expect(result1.iterationCount).toBe(1);
 
 		// Second iteration
@@ -135,7 +135,7 @@ describe('buildIterationMetadata', () => {
 			actionResponses: [],
 			metadata: { iterationCount: 1 },
 		};
-		const result2 = buildResponseMetadata(response2, 0);
+		const result2 = await buildResponseMetadata(response2, 0);
 		expect(result2.iterationCount).toBe(2);
 
 		// Third iteration
@@ -143,22 +143,22 @@ describe('buildIterationMetadata', () => {
 			actionResponses: [],
 			metadata: { iterationCount: 2 },
 		};
-		const result3 = buildResponseMetadata(response3, 0);
+		const result3 = await buildResponseMetadata(response3, 0);
 		expect(result3.iterationCount).toBe(3);
 	});
 
-	it('should pass correct itemIndex to buildSteps', () => {
+	it('should pass correct itemIndex to buildSteps', async () => {
 		const response: EngineResponse<RequestResponseMetadata> = {
 			actionResponses: [],
 			metadata: { iterationCount: 1 },
 		};
 
-		buildResponseMetadata(response, 5);
+		await buildResponseMetadata(response, 5);
 
 		expect(agentExecution.buildSteps).toHaveBeenCalledWith(response, 5);
 	});
 
-	it('should handle iterationCount starting from 0', () => {
+	it('should handle iterationCount starting from 0', async () => {
 		const response: EngineResponse<RequestResponseMetadata> = {
 			actionResponses: [],
 			metadata: {
@@ -166,7 +166,7 @@ describe('buildIterationMetadata', () => {
 			},
 		};
 
-		const result = buildResponseMetadata(response, 0);
+		const result = await buildResponseMetadata(response, 0);
 
 		expect(result).toEqual({
 			previousRequests: [],
