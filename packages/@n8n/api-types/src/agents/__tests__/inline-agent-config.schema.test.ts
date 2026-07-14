@@ -194,6 +194,48 @@ describe('InlineAgentConfigSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('rejects referenced bodies with duplicate names (case-insensitive, trimmed), with a pathed message', () => {
+		const result = InlineAgentConfigSchema.safeParse({
+			config: {
+				...baseConfig,
+				skills: [
+					{ type: 'skill', id: 'skill_a' },
+					{ type: 'skill', id: 'skill_b' },
+				],
+			},
+			skills: {
+				skill_a: validSkillBody,
+				skill_b: { ...validSkillBody, name: ` ${validSkillBody.name.toUpperCase()} ` },
+			},
+		});
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const issue = result.error.issues[0];
+			expect(issue.path).toEqual(['skills', 'skill_b', 'name']);
+			expect(issue.message).toContain('same name');
+		}
+	});
+
+	it('accepts distinct referenced names and ignores an orphan sharing a name', () => {
+		const result = InlineAgentConfigSchema.safeParse({
+			config: {
+				...baseConfig,
+				skills: [
+					{ type: 'skill', id: 'skill_a' },
+					{ type: 'skill', id: 'skill_b' },
+				],
+			},
+			skills: {
+				skill_a: validSkillBody,
+				skill_b: { ...validSkillBody, name: 'Escalation' },
+				// Orphans are outside the uniqueness scope: the runtime never
+				// attaches them, so a colliding name cannot conflict.
+				orphan: validSkillBody,
+			},
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it.each([
 		['missing instructions', { name: 'Triage', description: 'Triage requests' }],
 		['unknown body key', { ...validSkillBody, extra: true }],

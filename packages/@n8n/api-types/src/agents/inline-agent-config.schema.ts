@@ -69,6 +69,12 @@ export const InlineAgentJsonConfigSchema = AgentJsonConfigSchema.pick({
  * error instead. Orphan bodies are tolerated, matching the saved-agent entity:
  * the runtime only reads referenced ids, and the editor prunes orphans on
  * every parameter write.
+ *
+ * Referenced bodies must also have unique names (case-insensitive, trimmed):
+ * saved agents enforce this when a skill is created
+ * (`assertSkillNameIsUnique`), and the runtime rejects duplicates when
+ * attaching skills (`normalizeRuntimeSkills`) — validating here keeps that
+ * failure pathed too.
  */
 function assertSkillRefIntegrity(
 	value: {
@@ -78,6 +84,7 @@ function assertSkillRefIntegrity(
 	ctx: z.RefinementCtx,
 ) {
 	const bodies = value.skills ?? {};
+	const idsByName = new Map<string, string>();
 	for (const [index, ref] of (value.config.skills ?? []).entries()) {
 		if (!Object.hasOwn(bodies, ref.id)) {
 			ctx.addIssue({
@@ -85,7 +92,19 @@ function assertSkillRefIntegrity(
 				message: `Skill "${ref.id}" is referenced in config.skills but has no body in skills`,
 				path: ['config', 'skills', index, 'id'],
 			});
+			continue;
 		}
+		const name = bodies[ref.id].name.trim();
+		const existingId = idsByName.get(name.toLowerCase());
+		if (existingId !== undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `Skill "${ref.id}" has the same name as skill "${existingId}" ("${name}")`,
+				path: ['skills', ref.id, 'name'],
+			});
+			continue;
+		}
+		idsByName.set(name.toLowerCase(), ref.id);
 	}
 }
 
