@@ -296,7 +296,6 @@ erDiagram
   varchar_50_ decision
   text description
   varchar_36_ id
-  timestamp_3__with_time_zone lastStatusChangeAt
   varchar_36_ projectId FK
   varchar_16_ state
   varchar_512_ title
