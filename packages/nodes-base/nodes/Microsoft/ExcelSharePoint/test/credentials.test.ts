@@ -3,7 +3,7 @@ import type { Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { SERVICE_PRINCIPAL_AUTH } from '../helpers/constants';
-import { getExcelSharePointCredentialType } from '../helpers/credentials';
+import { getExcelSharePointCredentialType } from '../transport';
 
 describe('Microsoft Excel (SharePoint) Credentials', () => {
 	let ctx: Mocked<IExecuteFunctions>;

@@ -1,7 +1,14 @@
 import type { IDataObject, IHttpRequestMethods, IHttpRequestOptions } from 'n8n-workflow';
 
 import { DEFAULT_GRAPH_BASE_URL } from './constants';
-import type { GraphRequestError } from './interfaces';
+
+export type GraphRequestError = {
+	httpCode?: string | number | null;
+	statusCode?: string | number | null;
+	message?: string;
+	code?: string;
+	error?: { error?: GraphRequestError };
+};
 
 /** Normalizes Graph's inconsistent status-code fields (string, number, or absent) into a clean number. */
 export function toHttpCode(raw: string | number | null | undefined): number | undefined {

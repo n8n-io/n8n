@@ -1,5 +1,7 @@
 export const SERVICE_PRINCIPAL_AUTH = 'microsoftEntraServicePrincipalApi';
 
+export type ExcelSharePointCredentialType = 'microsoftOAuth2Api' | typeof SERVICE_PRINCIPAL_AUTH;
+
 export const DEFAULT_GRAPH_BASE_URL = 'https://graph.microsoft.com';
 
 // Consulted on 403s so the error names the missing permission; each action adds its row.

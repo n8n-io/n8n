@@ -2,8 +2,13 @@ import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { NOT_FOUND_MESSAGE, REQUIRED_PERMISSIONS } from './constants';
-import { toHttpCode, toPermissionKey, unwrapGraphError } from './converters';
-import type { AuthContext, GraphRequestError } from './interfaces';
+import {
+	toHttpCode,
+	toPermissionKey,
+	unwrapGraphError,
+	type GraphRequestError,
+} from './converters';
+import type { AuthContext } from './interfaces';
 
 /** Best-effort lookup; load-options contexts may not expose resource/operation. */
 function lookupRequiredPermissions(
