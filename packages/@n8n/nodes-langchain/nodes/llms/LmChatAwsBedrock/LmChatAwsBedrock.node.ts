@@ -388,9 +388,10 @@ export class LmChatAwsBedrock implements INodeType {
 		if (guardrail?.guardrailIdentifier) {
 			modelConfig.guardrailConfig = {
 				guardrailIdentifier: guardrail.guardrailIdentifier,
-				// AWS requires a version whenever guardrailConfig is sent. The field may be blank or
-				// absent (collection defaults only materialize on add); fall back to the working draft.
-				guardrailVersion: guardrail.guardrailVersion || 'DRAFT',
+				// AWS requires a version whenever guardrailConfig is sent. The field may be blank,
+				// whitespace (e.g. from an expression), or absent (collection defaults only
+				// materialize on add); fall back to the working draft.
+				guardrailVersion: guardrail.guardrailVersion?.trim() || 'DRAFT',
 				...(guardrail.trace ? { trace: guardrail.trace } : {}),
 			};
 		}

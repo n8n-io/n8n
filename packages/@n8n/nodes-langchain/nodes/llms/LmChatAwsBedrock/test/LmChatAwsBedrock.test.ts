@@ -343,13 +343,16 @@ describe('LmChatAwsBedrock', () => {
 				expect(config).not.toHaveProperty('guardrailConfig');
 			});
 
-			it('defaults the guardrail version to DRAFT when left blank', async () => {
+			it.each([
+				['left blank', ''],
+				['whitespace-only', '   '],
+			])('defaults the guardrail version to DRAFT when %s', async (_case, version) => {
 				const ctx = setupMockContext();
 				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
 					if (paramName === 'options')
 						return {
-							guardrail: { values: { guardrailIdentifier: 'gr-123', guardrailVersion: '' } },
+							guardrail: { values: { guardrailIdentifier: 'gr-123', guardrailVersion: version } },
 						};
 					return undefined;
 				});
