@@ -192,6 +192,20 @@ describe('domain tool construction', () => {
 		});
 	});
 
+	it('gates the eval-config tool on the config-evals flag (evaluationConfigService presence)', () => {
+		// Flag off: adapter leaves evaluationConfigService unset → tool absent.
+		const disabled = makeContext();
+		expect(createAllTools(disabled).get('eval-config')).toBeUndefined();
+		expect(createOrchestratorDomainTools(disabled).get('eval-config')).toBeUndefined();
+
+		// Flag on: adapter wires evaluationConfigService → tool exposed.
+		const enabled = makeContext({
+			evaluationConfigService: {} as InstanceAiContext['evaluationConfigService'],
+		});
+		expect(createAllTools(enabled).get('eval-config')).toBeDefined();
+		expect(createOrchestratorDomainTools(enabled).get('eval-config')).toBeDefined();
+	});
+
 	it('registers create-tasks but not the removed plan orchestration tool', () => {
 		const context = makeContext({
 			workflowTaskService: {},

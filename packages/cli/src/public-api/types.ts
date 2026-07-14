@@ -95,6 +95,8 @@ export declare namespace TestRunRequest {
 			lastId?: string;
 		}
 	>;
+	type Create = AuthenticatedRequest<{ id: string }>;
+	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
 }
 
 export declare namespace TagRequest {

@@ -7,7 +7,8 @@
 			"../@n8n/rest-api-client/src",
 			"../@n8n/composables/src",
 			"../@n8n/chat/src",
-			"../@n8n/design-system/src"
+			"../@n8n/design-system/src",
+			"../@n8n/frontend-module-sdk/src"
 		],
 		"noEmit": true,
 		"types": [
@@ -21,6 +22,7 @@
 			"@n8n/rest-api-client*": ["../@n8n/rest-api-client/src*"],
 			"@n8n/composables*": ["../@n8n/composables/src*"],
 			"@n8n/constants*": ["../../@n8n/constants/src*"],
+			"@n8n/frontend-module-sdk": ["../@n8n/frontend-module-sdk/src/index.ts"],
 			"@n8n/chat*": ["../@n8n/chat/src*"],
 			"@n8n/chat-hub*": ["../../@n8n/chat-hub/src*"],
 			"@n8n/design-system*": ["../@n8n/design-system/src*"],

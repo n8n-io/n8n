@@ -1,5 +1,5 @@
 import { i18n } from '@n8n/i18n';
-import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import {
 	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,

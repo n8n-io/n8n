@@ -1,10 +1,12 @@
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
 import { makeN8nLlmFailedAttemptHandler, getNodeProxyAgent } from '@n8n/ai-utilities';
-import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { UserError, type INode, type ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
+
+import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
 import { LmChatAwsBedrock } from '../LmChatAwsBedrock.node';
 
@@ -25,7 +27,12 @@ vi.mock('@utils/aws/resolveAwsCredentials', () => ({
 vi.mock('@aws-sdk/client-bedrock-runtime', () => ({
 	BedrockRuntimeClient: vi.fn(),
 }));
+vi.mock('@smithy/node-http-handler', () => ({
+	NodeHttpHandler: vi.fn(),
+}));
+
 const MockedBedrockRuntimeClient = vi.mocked(BedrockRuntimeClient);
+const MockedNodeHttpHandler = vi.mocked(NodeHttpHandler);
 const MockedChatBedrockConverse = vi.mocked(ChatBedrockConverse);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
@@ -269,7 +276,6 @@ describe('LmChatAwsBedrock', () => {
 				expect(MockedChatBedrockConverse).toHaveBeenCalledWith(
 					expect.objectContaining({
 						topP: 0.9,
-						maxRetries: 5,
 						performanceConfig: { latency: 'optimized' },
 						guardrailConfig: {
 							guardrailIdentifier: 'gr-123',
@@ -278,6 +284,26 @@ describe('LmChatAwsBedrock', () => {
 						},
 						additionalModelRequestFields: { top_k: 50 },
 					}),
+				);
+				// Retries are configured on the SDK client, since ChatBedrockConverse
+				// bypasses LangChain's retrying caller.
+				expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
+					expect.objectContaining({ maxAttempts: 6 }),
+				);
+			});
+
+			it('maps Max Retries 0 to a single SDK attempt', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+					if (paramName === 'options') return { maxRetries: 0 };
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
+					expect.objectContaining({ maxAttempts: 1 }),
 				);
 			});
 
@@ -297,6 +323,9 @@ describe('LmChatAwsBedrock', () => {
 				expect(config).not.toHaveProperty('performanceConfig');
 				expect(config).not.toHaveProperty('guardrailConfig');
 				expect(config).not.toHaveProperty('additionalModelRequestFields');
+				// Unset Max Retries keeps the SDK's default retry strategy.
+				const clientConfig = MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0] ?? {};
+				expect(clientConfig).not.toHaveProperty('maxAttempts');
 			});
 
 			it('throws a UserError when additionalModelRequestFields is invalid JSON', async () => {
@@ -363,6 +392,85 @@ describe('LmChatAwsBedrock', () => {
 				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
 					'https://bedrock-runtime.eu-west-3.amazonaws.com',
 				);
+			});
+		});
+
+		describe('request handler (timeout & proxy)', () => {
+			const setNodeParameters = (options: Record<string, unknown>) => {
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+					if (paramName === 'options') return options;
+					return undefined;
+				});
+			};
+
+			it('creates a handler with requestTimeout when timeout is set and no proxy is configured', async () => {
+				const ctx = setupMockContext();
+				setNodeParameters({ timeout: 120000 });
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedNodeHttpHandler).toHaveBeenCalledWith({
+					requestTimeout: 120000,
+					throwOnRequestTimeout: true,
+				});
+				const clientConfig = MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0];
+				expect(clientConfig?.requestHandler).toBe(MockedNodeHttpHandler.mock.instances.at(-1));
+			});
+
+			it('merges timeout and proxy agents into a single handler', async () => {
+				const ctx = setupMockContext();
+				const fakeAgent = { fake: 'agent' } as unknown as ReturnType<typeof getNodeProxyAgent>;
+				mockedGetNodeProxyAgent.mockReturnValue(fakeAgent);
+				setNodeParameters({ timeout: 30000 });
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedNodeHttpHandler).toHaveBeenCalledTimes(1);
+				expect(MockedNodeHttpHandler).toHaveBeenCalledWith({
+					httpAgent: fakeAgent,
+					httpsAgent: fakeAgent,
+					requestTimeout: 30000,
+					throwOnRequestTimeout: true,
+				});
+			});
+
+			it('creates a proxy-only handler without timeout keys when timeout is unset', async () => {
+				const ctx = setupMockContext();
+				const fakeAgent = { fake: 'agent' } as unknown as ReturnType<typeof getNodeProxyAgent>;
+				mockedGetNodeProxyAgent.mockReturnValue(fakeAgent);
+				setNodeParameters({});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedNodeHttpHandler).toHaveBeenCalledTimes(1);
+				const handlerOptions = MockedNodeHttpHandler.mock.calls.at(-1)?.[0] ?? {};
+				expect(handlerOptions).toEqual({ httpAgent: fakeAgent, httpsAgent: fakeAgent });
+				expect(handlerOptions).not.toHaveProperty('requestTimeout');
+				expect(handlerOptions).not.toHaveProperty('throwOnRequestTimeout');
+			});
+
+			it('creates no handler at all when neither timeout nor proxy is configured', async () => {
+				const ctx = setupMockContext();
+				setNodeParameters({});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedNodeHttpHandler).not.toHaveBeenCalled();
+				const clientConfig = MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0] ?? {};
+				expect(clientConfig).not.toHaveProperty('requestHandler');
+			});
+
+			it('passes timeout 0 through as a disabled requestTimeout', async () => {
+				const ctx = setupMockContext();
+				setNodeParameters({ timeout: 0 });
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedNodeHttpHandler).toHaveBeenCalledWith({
+					requestTimeout: 0,
+					throwOnRequestTimeout: true,
+				});
 			});
 		});
 

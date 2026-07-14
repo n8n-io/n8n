@@ -91,6 +91,7 @@ beforeAll(async () => {
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
 		mock(), // workflowPublicationNotifier
+		mock(), // scheduleTriggerJobRegistrar
 	);
 });
 
