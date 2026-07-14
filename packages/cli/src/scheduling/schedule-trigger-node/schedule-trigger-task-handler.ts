@@ -69,8 +69,7 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 				/* responsePromise= */ undefined,
 				deduplicationKey,
 			);
-			// The execution now exists and its run was initiated: the effect is real.
-			// Report it so the task carries its dispatch marker before we return.
+
 			onDispatch();
 
 			this.eventService.emit('workflow-executed', {

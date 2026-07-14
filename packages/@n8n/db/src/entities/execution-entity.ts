@@ -34,8 +34,7 @@ export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3' | 'az';
 // Partial unique index, load-bearing for the durable scheduler: this index — not
 // the scheduler's claim, lease, or epoch fencing — is what suppresses a duplicate
 // effect per deduplicationKey when the at-least-once scheduler redelivers an
-// occurrence. Dropping it silently removes that protection. See migration
-// 1778000000000.
+// occurrence. Dropping it silently removes that protection.
 @Index(['deduplicationKey'], { unique: true, where: '"deduplicationKey" IS NOT NULL' })
 export class ExecutionEntity {
 	@Generated()

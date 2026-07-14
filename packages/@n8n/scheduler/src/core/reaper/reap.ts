@@ -129,11 +129,12 @@ export async function reap(
 			const ref = { id: task.id, claimedEpoch: task.leaseEpoch };
 			if (nextAttempts >= task.maxAttempts) {
 				// Last attempt: the row is terminally resolved either way, so it counts as
-				// dead-lettered. The effect boundary decides how. If the owner was lost after
-				// dispatch (`dispatchedAt` set), the effect already happened: complete it as
-				// succeeded rather than record a failure for work that was done, and never
-				// dispatch it again. If it was lost before dispatch, the effect never happened:
-				// salvage it with one final dispatch, then dead-letter it as failed.
+				// dead-lettered. The effect boundary decides how.
+				// - If the owner was lost after dispatch (`dispatchedAt` set), the effect already happened:
+				//   complete it as succeeded rather than record a failure for work that was done,
+				//   and never dispatch it again.
+				// - If it was lost before dispatch, the effect never happened:
+				//   salvage it with one final dispatch, then dead-letter it as failed.
 				if (task.dispatchedAt !== null) {
 					const affected = await store.completeExpired(ref);
 					deadLettered += affected;

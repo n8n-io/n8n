@@ -28,6 +28,7 @@ export {
  *
  * That reservation (a "lease") expires after a while,
  * so if the worker dies mid-run another worker can take over.
+ *
  * The reverse also holds: a worker that outlives its lease may still be running
  * the task while another worker claims it, so the claim alone does not prevent
  * two workers running one task. The scheduler is at-least-once (a lost run is
