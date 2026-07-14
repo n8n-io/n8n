@@ -280,6 +280,13 @@ function hookFunctionsPush(
 		return resolvedUser;
 	}
 
+	// Monotonic counter shared by this execution's node-event pushes so the UI can
+	// order events that arrive late or out of order (e.g. after a suspended
+	// background tab resumes) and render only the latest node as executing
+	// (CAT-2895). Assigned in engine order here on the instance running the
+	// workflow; it rides the worker→main pubsub relay unchanged.
+	let nodeEventSequence = 0;
+
 	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
 		const { executionId } = this;
 		// Push data to session which started workflow before each
@@ -291,7 +298,10 @@ function hookFunctionsPush(
 		});
 
 		pushInstance.send(
-			{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data } },
+			{
+				type: 'nodeExecuteBefore',
+				data: { executionId, nodeName, sequenceNumber: nodeEventSequence++, data },
+			},
 			pushRef,
 		);
 	});
@@ -310,7 +320,13 @@ function hookFunctionsPush(
 		pushInstance.send(
 			{
 				type: 'nodeExecuteAfter',
-				data: { executionId, nodeName, itemCountByConnectionType, data: taskData },
+				data: {
+					executionId,
+					nodeName,
+					sequenceNumber: nodeEventSequence++,
+					itemCountByConnectionType,
+					data: taskData,
+				},
 			},
 			pushRef,
 		);
