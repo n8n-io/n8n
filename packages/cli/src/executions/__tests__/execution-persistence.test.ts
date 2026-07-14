@@ -377,6 +377,83 @@ describe('ExecutionPersistence', () => {
 				);
 			});
 		});
+
+		describe('tombstone reclaim', () => {
+			// A sibling test leaves jsonStore.write rejecting, and vi.clearAllMocks() does not
+			// reset implementations; restore a resolving write so the fs create path succeeds.
+			beforeEach(() => {
+				jsonStore.write.mockResolvedValue(123);
+			});
+
+			const payloadWithKey: CreateExecutionPayload = {
+				...createPayload,
+				deduplicationKey: 'wf-1:node-1:1700000000000',
+			};
+
+			const mockTombstone = (storedAt: 'db' | 'fs' | 's3' | 'az') =>
+				({
+					id: 'exec-old',
+					workflowId: 'workflow-123',
+					storedAt,
+				}) as unknown as ExecutionEntity;
+
+			it('deletes a reclaimed fs-mode tombstone data blob after the replacement commits', async () => {
+				const fsPersistence = createPersistenceService('fs');
+				const mockTx = createMockTransaction();
+				// A prior attempt left an orphaned `new` tombstone under this key, stored on fs.
+				mockTx.findOne.mockResolvedValue(mockTombstone('fs'));
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				const executionId = await fsPersistence.create(payloadWithKey);
+
+				expect(executionId).toBe('exec-1');
+				// The tombstone DB row is deleted inside the transaction...
+				expect(mockTx.delete).toHaveBeenCalledWith(ExecutionEntity, { id: 'exec-old' });
+				// ...and its out-of-band blob is cleared after commit, keyed by the OLD id.
+				expect(jsonStore.delete).toHaveBeenCalledWith([
+					{ workflowId: 'workflow-123', executionId: 'exec-old', storedAt: 'fs' },
+				]);
+			});
+
+			it('does not touch the blob store when the reclaimed tombstone was db-stored', async () => {
+				const dbPersistence = createPersistenceService('db');
+				const mockTx = createMockTransaction();
+				mockTx.findOne.mockResolvedValue(mockTombstone('db'));
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await dbPersistence.create(payloadWithKey);
+
+				// db-stored data cascaded with the row delete; nothing to clear out of band.
+				expect(mockTx.delete).toHaveBeenCalledWith(ExecutionEntity, { id: 'exec-old' });
+				expect(jsonStore.delete).not.toHaveBeenCalled();
+			});
+
+			it('reports but does not fail the create when the post-commit blob cleanup fails', async () => {
+				const fsPersistence = createPersistenceService('fs');
+				const mockTx = createMockTransaction();
+				mockTx.findOne.mockResolvedValue(mockTombstone('fs'));
+				executionRepository.manager.transaction = createMockTx(mockTx);
+				const cleanupError = new Error('blob store down');
+				jsonStore.delete.mockRejectedValueOnce(cleanupError);
+
+				// The new execution is committed, so a failed orphan cleanup is reported, not thrown.
+				const executionId = await fsPersistence.create(payloadWithKey);
+
+				expect(executionId).toBe('exec-1');
+				expect(errorReporter.error).toHaveBeenCalledWith(cleanupError, expect.anything());
+			});
+
+			it('skips the tombstone lookup and cleanup entirely without a deduplicationKey', async () => {
+				const fsPersistence = createPersistenceService('fs');
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await fsPersistence.create(createPayload); // no deduplicationKey
+
+				expect(mockTx.findOne).not.toHaveBeenCalled();
+				expect(jsonStore.delete).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('updateExistingExecution', () => {

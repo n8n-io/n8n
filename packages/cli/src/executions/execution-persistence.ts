@@ -93,9 +93,10 @@ export class ExecutionPersistence {
 		const workflowVersionId = workflowData.versionId ?? null;
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
+		let reclaimedTombstone: DeletionTarget | null = null;
 		try {
-			return await this.executionRepository.manager.transaction(async (tx) => {
-				await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
+			const executionId = await this.executionRepository.manager.transaction(async (tx) => {
+				reclaimedTombstone = await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
 				const ref = { workflowId: id, executionId };
@@ -117,6 +118,12 @@ export class ExecutionPersistence {
 
 				return executionId;
 			});
+
+			// Clear the reclaimed tombstone's blob only now, once the replacement has
+			// committed (blob deletes are not transactional; see the method).
+			await this.deleteReclaimedTombstoneData(reclaimedTombstone);
+
+			return executionId;
 		} catch (error) {
 			if (executionEntity.deduplicationKey && this.isDuplicateExecutionError(error)) {
 				throw new DuplicateExecutionError(executionEntity.deduplicationKey, error);
@@ -132,9 +139,11 @@ export class ExecutionPersistence {
 	 * dispatching it, so the row never advances past `new`. That tombstone asserts
 	 * an effect that never happened: without clearing it, the redelivered occurrence
 	 * collides on insert and the caller mistakes it for an already-run handoff,
-	 * dropping the occurrence. Deleting it (cascading its data) lets the redelivery
-	 * take over the key. Any other status reflects a real dispatch, so it is left in
-	 * place and the insert still surfaces the duplicate.
+	 * dropping the occurrence. Deleting the row lets the redelivery take over the key;
+	 * in `db` mode that cascades its data, while blob-stored data (fs/s3/az) lives out
+	 * of band and is returned here so `create` can delete it after the replacement
+	 * commits. Any other status reflects a real dispatch, so it is left in place and the
+	 * insert still surfaces the duplicate.
 	 *
 	 * Known imprecision, accepted under the scheduler's at-least-once contract: in
 	 * queue mode an execution stays `new` between being enqueued and a worker picking
@@ -142,13 +151,53 @@ export class ExecutionPersistence {
 	 * re-dispatches the occurrence (the worker's job then finds no execution and fails
 	 * noisily, but the occurrence still runs). Telling "inserted, never enqueued" from
 	 * "enqueued, not yet picked up" apart needs schema the misfire-policy work owns.
+	 *
+	 * @returns the deleted tombstone's storage location, so `create` can clear its
+	 * out-of-band data after committing, or `null` when there was nothing to reclaim.
 	 */
 	private async reclaimTombstone(
 		tx: EntityManager,
 		deduplicationKey: string | null | undefined,
-	): Promise<void> {
-		if (deduplicationKey) {
-			await tx.delete(ExecutionEntity, { deduplicationKey, status: 'new' });
+	): Promise<DeletionTarget | null> {
+		if (!deduplicationKey) return null;
+
+		// Load the tombstone before deleting it so its out-of-band blob can be cleared
+		// after the replacement commits. The unique `deduplicationKey` index means at
+		// most one row carries this key.
+		const tombstone = await tx.findOne(ExecutionEntity, {
+			where: { deduplicationKey, status: 'new' },
+			select: ['id', 'workflowId', 'storedAt'],
+		});
+		if (!tombstone) return null;
+
+		await tx.delete(ExecutionEntity, { id: tombstone.id });
+		return {
+			workflowId: tombstone.workflowId,
+			executionId: tombstone.id,
+			storedAt: tombstone.storedAt,
+		};
+	}
+
+	/**
+	 * Delete a reclaimed tombstone's out-of-band data blob, best-effort. Called after
+	 * the replacement execution has committed, since blob deletes are not
+	 * transactional: doing it earlier would strand the tombstone's blob if the insert
+	 * rolled back. `toBlobRefs` skips a `db`-stored tombstone, whose data the row
+	 * delete already removed. A failed cleanup only leaks the orphan blob, so it is
+	 * reported rather than allowed to fail the (already-persisted) create.
+	 */
+	private async deleteReclaimedTombstoneData(target: DeletionTarget | null): Promise<void> {
+		if (!target) return;
+		// A `db`-stored tombstone's data cascaded with the row delete, so `toBlobRefs`
+		// narrows it away and there is nothing to clear out of band.
+		const blobRefs = this.toBlobRefs([target]);
+		if (blobRefs.length === 0) return;
+		try {
+			await this.jsonStore.delete(blobRefs);
+		} catch (error) {
+			this.errorReporter.error(error, {
+				extra: { executionId: target.executionId, storedAt: target.storedAt },
+			});
 		}
 	}
 
