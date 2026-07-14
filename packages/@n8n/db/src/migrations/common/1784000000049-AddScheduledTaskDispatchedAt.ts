@@ -15,7 +15,7 @@ const columnName = 'dispatchedAt';
  * a crash before dispatch (redeliver, so the run is not lost). Nullable, so added
  * with a raw ALTER that skips the SQLite table rebuild.
  */
-export class AddScheduledTaskDispatchedAt1784000000048 implements ReversibleMigration {
+export class AddScheduledTaskDispatchedAt1784000000049 implements ReversibleMigration {
 	async up({ runQuery, escape, isPostgres }: MigrationContext) {
 		const tableName = escape.tableName(table);
 		const column = escape.columnName(columnName);
