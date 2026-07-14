@@ -1,0 +1,74 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_d59d5762cab6ce::t_98704fafe52407 47
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactiveSummary.ts
+  s_d59d5762cab6ce::t_bea18b175460f0 2,10-12,16-17,26
+packages/cli/src/modules/agents/builder/agents-builder-settings.service.ts
+  s_0e2f88c8ad88f8::t_c19382cf867f4e 100,103
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_db826f19bfb9f3::t_cb08fc287b8b88 52-54
+  s_db826f19bfb9f3::t_b8383be1f29f19 66-68
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_db826f19bfb9f3::t_fac0a4cd9df326 522,524,526,534,536,538,540
+  s_db826f19bfb9f3::t_0a0f720cf3d349 335,337,339
+  s_db826f19bfb9f3::t_4a830a7d198a7b 362-373,375,377-383,385-400,408,410
+  s_db826f19bfb9f3::t_4793fd132f41d4 560,562,578,580
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_5a07539b4b0f43::t_3d4b71a22dfb59 17-19
+  s_0e2f88c8ad88f8::t_adc0358e7dcdef 99-108
+  s_0e2f88c8ad88f8::t_948908f72b3eb2 383
+  s_0e2f88c8ad88f8::t_38c3985b18aa7d 493,495
+  s_0e2f88c8ad88f8::t_6eeb8d1e47e258 406
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_db826f19bfb9f3::t_714b91b23b7066 4
+  s_db826f19bfb9f3::t_17abcc06efdd29 270,273-274,286-287,289-290,292-294
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-settings.service.test.ts
+  s_0e2f88c8ad88f8::t_8785034917184e 11-12,14
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.vue
+  s_d59d5762cab6ce::t_0b5c388acb5482 92-94
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_0e2f88c8ad88f8::t_964727a299922e 347-350
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_0e2f88c8ad88f8::t_f5db301bac52dd 920-952
+packages/frontend/editor-ui/src/features/agents/__tests__/interactive-summary.test.ts
+  s_d59d5762cab6ce::t_7172f2484974a4 2,5,10-18,20,24,30,34,36-42,45,47-56,60-61,82,85,101,104,112,115,123,126,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "126f5ec55b0adcbbaaf63889c62f060b92673330",
+  "prompts": {},
+  "sessions": {
+    "s_0e2f88c8ad88f8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3b6b43f9-3414-4b3a-a595-267f6ccd22a0",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5a07539b4b0f43": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f767b531-6be7-453f-97a9-2eb4d638dbbd",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d59d5762cab6ce": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "39649ae5-0118-4309-b118-b6f652ae9daf",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_db826f19bfb9f3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4f7a48ca-c7ee-4978-9bea-8fa923e0fecd",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
