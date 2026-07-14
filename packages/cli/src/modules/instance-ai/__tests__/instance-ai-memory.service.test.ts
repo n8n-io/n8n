@@ -358,9 +358,10 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		mockListMessages.mockResolvedValue({ messages: [userMessage, assistantMessage] });
 	});
 
-	it('supersedes a degenerate stored snapshot with the tree folded from the log', async () => {
+	it('derives the tree from the log even when the stored snapshot is degenerate', async () => {
 		// The stored snapshot was built over an evicted buffer: an empty
 		// cancelled tree with none of the run's work (the INS-595 bug family).
+		// Flag on, it is simply never read — the log is authoritative.
 		mockDbSnapshotStorage.getAll.mockResolvedValue([
 			{
 				tree: makeTree({ status: 'cancelled', textContent: '', timeline: [], toolCalls: [] }),
@@ -405,7 +406,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
 	});
 
-	it('synthesizes a tree for a run that has log rows but no snapshot', async () => {
+	it('renders a run that crashed before its snapshot was written', async () => {
 		mockEventLogRepository.getForThread.mockResolvedValue([
 			eventRow(
 				{
@@ -436,6 +437,53 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(assistant.agentTree?.toolCalls).toHaveLength(1);
 		expect(assistant.runId).toBe('run_abc');
 		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
+	});
+
+	it('prefers the log-derived tree over a rich stored snapshot', async () => {
+		// The defining rule of fold-on-read: when the log has renderable rows,
+		// stored snapshot trees are not read at all — not even renderable ones.
+		mockDbSnapshotStorage.getAll.mockResolvedValue([
+			{
+				tree: makeTree({ textContent: 'From the snapshot' }),
+				runId: 'run_abc',
+				createdAt: at,
+				updatedAt: at,
+			},
+		]);
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'text-block',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { text: 'From the log' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_abc',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				at,
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		expect(result.messages[1].agentTree?.textContent).toBe('From the log');
 	});
 
 	it('keeps the stored snapshot tree for pre-log threads (no log rows)', async () => {
