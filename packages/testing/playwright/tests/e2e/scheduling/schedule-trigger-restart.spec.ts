@@ -25,8 +25,15 @@ test.describe(
 	() => {
 		test('should keep firing after a main restart without re-activation', async ({
 			api,
+			mainUrls,
 			n8nContainer,
 		}) => {
+			// Single-main only. Under a cluster a surviving main keeps ticking while
+			// one restarts, so the fresh execution would appear regardless of whether
+			// restart recovery works, making the test pass vacuously. Cluster
+			// crash-continuity is covered by the multi-main spec instead.
+			// eslint-disable-next-line playwright/no-skipped-test -- runtime topology guard, not a disabled test
+			test.skip(mainUrls.length >= 2, 'single-main only: cluster continuity is covered elsewhere');
 			// Needs a real container to restart; skipped when running against a
 			// pre-started local instance (n8nContainer is null there).
 			// eslint-disable-next-line playwright/no-skipped-test -- runtime guard, not a disabled test
@@ -36,15 +43,13 @@ test.describe(
 
 			// Snapshot the executions that exist BEFORE the restart. Continuity is
 			// only proven by an execution whose id is not in this set firing after
-			// the restart — waitForExecution's recency fallback would otherwise
+			// the restart; `waitForExecution`'s recency fallback would otherwise
 			// re-match a pre-restart execution when recovery takes under 5s.
 			const idsBeforeRestart = new Set(
 				(await api.workflows.getExecutions(workflowId, 50)).map((execution) => execution.id),
 			);
 
-			// Restart a main container in place (same writable layer + DB). The
-			// naming differs by topology: `-n8n` single-main, `-n8n-main-N` in a
-			// cluster; match either and take the first.
+			// Restart the main container in place (same writable layer + DB).
 			const [main] = n8nContainer.findContainers(/-n8n(-main-\d+)?$/);
 			expect(main, 'main n8n container should be found').toBeDefined();
 			await main.restart();

@@ -7,14 +7,13 @@ import { test, expect } from '../../../fixtures/base';
 
 const sleep = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
 
-// Durable scheduler path. Both flags are required: N8N_SCHEDULER_ENABLED alone
-// leaves activation on the legacy in-memory timer, so without
-// N8N_USE_WORKFLOW_PUBLICATION_SERVICE the schedule-trigger job registrar
-// early-returns and activation falls back to the legacy path. With both set the
-// registrar intercepts and the in-memory schedule is discarded, so these tests
-// exercise the durable path. Note: a successful trigger-mode execution does not
-// by itself prove durable-vs-legacy (both emit mode:trigger); the restart-
-// continuity spec is what actually distinguishes the two engines.
+// Durable scheduler path. Both flags are required: with only
+// `N8N_SCHEDULER_ENABLED` the job registrar early-returns and activation falls
+// back to the legacy in-memory timer. With both set the registrar intercepts and
+// the in-memory schedule is discarded.
+//
+// A successful trigger-mode execution does not by itself prove durable-vs-legacy
+// (both emit `mode:trigger`); the restart-continuity spec distinguishes them.
 test.use({
 	capability: {
 		env: {
@@ -47,14 +46,18 @@ test.describe(
 			// per second.
 			const workflowId = await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 
-			// Observe a fixed window of roughly five 2s ticks.
+			// Count the delta over a fixed window rather than the absolute total:
+			// expectScheduleTriggerFires already polled for up to 60s, so ticks
+			// accrued during detection must not count against the window's budget.
+			const countBefore = (await api.workflows.getExecutions(workflowId, 100)).length;
 			await sleep(10_000);
-			const executions = await api.workflows.getExecutions(workflowId, 50);
+			const countAfter = (await api.workflows.getExecutions(workflowId, 100)).length;
+			const fired = countAfter - countBefore;
 
-			// ~6 expected over 10s at a 2s tick. A per-sweep double-fire (once every
-			// 1s) would land near ~11. Tolerant band absorbs scheduling jitter.
-			expect(executions.length).toBeGreaterThanOrEqual(2);
-			expect(executions.length).toBeLessThanOrEqual(8);
+			// ~5 expected over 10s at a 2s tick. A per-sweep double-fire (once every
+			// 1s) would land near ~10. Tolerant band absorbs scheduling jitter.
+			expect(fired).toBeGreaterThanOrEqual(2);
+			expect(fired).toBeLessThanOrEqual(8);
 		});
 
 		test('should stop firing after the workflow is deactivated', async ({ api }) => {
@@ -75,7 +78,7 @@ test.describe(
 		});
 
 		test('should fire a Schedule Trigger driven by a raw cron expression', async ({ api }) => {
-			// Cron variant: exercises the cronExpression provisioning branch.
+			// Cron variant: exercises the `cronExpression` provisioning branch.
 			await expectScheduleTriggerFires(api, makeCronScheduleTriggerWorkflow());
 		});
 	},

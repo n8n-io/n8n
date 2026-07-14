@@ -4,9 +4,9 @@ import { makeScheduleTriggerWorkflow } from './schedule-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
 
 // Instance timezone set to a non-UTC zone. A workflow that leaves its timezone on
-// the 'DEFAULT' sentinel must have that resolved to the instance timezone when the
-// durable path builds the trigger item; the bug was 'DEFAULT' leaking straight
-// into moment.tz(...), which silently resolves an unknown zone to UTC.
+// the `'DEFAULT'` sentinel must have it resolved to the instance timezone when the
+// durable path builds the trigger item; the bug was `'DEFAULT'` leaking straight
+// into `moment.tz`, which silently resolves an unknown zone to UTC.
 const INSTANCE_TIMEZONE = 'America/New_York';
 
 test.use({
@@ -44,10 +44,10 @@ test.describe(
 			const full = await api.workflows.getExecution(execution.id, { redactExecutionData: false });
 
 			// The emitted item's Timezone field is `<zone> (UTC<offset>)`. Resolved
-			// correctly it names the instance zone; the pre-fix leak emitted the
-			// literal 'DEFAULT' sentinel resolved to UTC instead. America/New_York is
-			// never UTC+00:00 in any season, so the offset assertion is DST-proof and
-			// catches a resolve-to-UTC regression without hardcoding -04:00/-05:00.
+			// correctly it names the instance zone; the pre-fix leak resolved the
+			// `'DEFAULT'` sentinel to UTC. America/New_York is never UTC+00:00 in any
+			// season, so asserting the zone name and a non-UTC offset is DST-proof
+			// without hardcoding -04:00/-05:00.
 			expect(full.data).toContain(INSTANCE_TIMEZONE);
 			expect(full.data).not.toContain('DEFAULT (UTC');
 			expect(full.data).not.toContain('(UTC+00:00)');

@@ -1,9 +1,8 @@
 import { workflow, trigger, node } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
-// Builds a Schedule Trigger -> NoOp workflow that fires every couple of seconds,
-// so a trigger-mode execution appears quickly and the observation windows stay
-// short (keeps the CI cost down).
+// Builds a Schedule Trigger -> NoOp workflow firing every couple of seconds, so a
+// trigger-mode execution appears quickly and the observation windows stay short.
 export const makeScheduleTriggerWorkflow = (secondsInterval = 2) => {
 	const scheduleTrigger = trigger({
 		type: 'n8n-nodes-base.scheduleTrigger',

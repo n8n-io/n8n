@@ -5,19 +5,17 @@ import { test, expect } from '../../../fixtures/base';
 const sleep = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
 
 // Durable scheduler under a multi-main cluster. The scheduler has no leader: the
-// sweep, executor and reaper loops run on EVERY main, and correctness comes from
-// the DB claim (`FOR UPDATE SKIP LOCKED` + a `claimedBy`/`leaseEpoch` fence), not
-// from electing one main to fire. These tests prove the two properties that the
+// sweep, executor and reaper loops run on every main, and correctness comes from
+// the DB claim (`FOR UPDATE SKIP LOCKED` plus a `claimedBy`/`leaseEpoch` fence)
+// rather than electing one main to fire. These tests prove the two properties the
 // legacy in-memory timer cannot offer across a cluster: a tick fires exactly once
 // (not once per main), and firing survives losing a main (lease-expiry reclaim).
 //
-// Topology is inherited from the running project, NOT pinned here: the
-// `multi-main` project supplies 2 mains + a worker (queue mode, Postgres, load
-// balancer, licensed), while every other e2e project supplies a single main and
-// the tests skip via `mainUrls.length < 2`. Pinning `mains: 2` in `test.use`
-// would force a licensed 2-main stack under the sqlite project too, which throws
-// at startup without a license. Only the scheduler env is added here; it merges
-// with the project's container config.
+// Topology is inherited from the running project, not pinned here. Pinning
+// `mains: 2` in `test.use` would force a licensed 2-main stack under the sqlite
+// project too, which throws at startup without a license; instead the tests skip
+// via `mainUrls.length < 2` on single-main projects. Only the scheduler env is
+// added here, merged with the project's container config.
 test.use({
 	capability: {
 		env: {
@@ -45,16 +43,19 @@ test.describe(
 
 			const workflowId = await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 
-			// Observe a fixed window of roughly five 2s ticks. Both mains run the
-			// sweep + executor every 1s, so a broken claim would let each main fire
-			// the same tick, doubling the count towards ~12. A correct atomic claim
-			// keeps it to one execution per tick (~6). The band separates the two
-			// while absorbing scheduling jitter.
+			// Count the delta over a fixed window of roughly five 2s ticks. Both mains
+			// run the sweep + executor every 1s, so a broken claim would let each main
+			// fire the same tick, doubling the count towards ~10. A correct atomic
+			// claim keeps it to one execution per tick (~5). Measuring the delta (not
+			// the absolute total) keeps ticks accrued during the up-to-60s detection
+			// in expectScheduleTriggerFires out of the window's budget.
+			const countBefore = (await api.workflows.getExecutions(workflowId, 100)).length;
 			await sleep(10_000);
-			const executions = await api.workflows.getExecutions(workflowId, 50);
+			const countAfter = (await api.workflows.getExecutions(workflowId, 100)).length;
+			const fired = countAfter - countBefore;
 
-			expect(executions.length).toBeGreaterThanOrEqual(2);
-			expect(executions.length).toBeLessThanOrEqual(8);
+			expect(fired).toBeGreaterThanOrEqual(2);
+			expect(fired).toBeLessThanOrEqual(8);
 		});
 
 		test('should keep firing after one main is stopped', async ({

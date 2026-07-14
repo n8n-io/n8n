@@ -6,11 +6,10 @@ import type { ApiHelpers } from '../../../services/api-helper';
 
 type ScheduleTriggerWorkflow = ReturnType<typeof makeScheduleTriggerWorkflow>;
 
-// Shared happy-path assertion: create + activate a Schedule Trigger workflow and
-// assert it produces a successful trigger-mode execution. The fire tests differ
-// only in the rule kind (seconds vs cron) and the scheduler flags, so the flow
-// lives here once rather than being copy-pasted across specs. Returns the created
-// workflow id for callers that go on to inspect further executions.
+// Shared happy-path assertion: create and activate a Schedule Trigger workflow and
+// assert it produces a successful trigger-mode execution. Extracted because the
+// fire tests differ only in rule kind (seconds vs cron) and scheduler flags.
+// Returns the workflow id for callers that inspect further executions.
 export async function expectScheduleTriggerFires(
 	api: ApiHelpers,
 	wf: ScheduleTriggerWorkflow,
