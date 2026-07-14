@@ -580,6 +580,35 @@ describe('workflow package import — with data tables', () => {
 				importPackage({ user: owner, projectId: project.id, packageBuffer }),
 			).rejects.toThrowError(/missing the data table schema/);
 		});
+
+		it('rejects a package whose manifest data table id disagrees with its data-table.json', async () => {
+			const table = serializedDataTable({ id: 'realid1' });
+			const packageBuffer = await buildEntityPackageBuffer({
+				dataTables: [{ target: 'data-tables/dt-0', dataTable: table }],
+				// Manifest points the same target at a different id than data-table.json declares.
+				manifestExtras: {
+					dataTables: [{ id: 'manifestid1', name: table.name, target: 'data-tables/dt-0' }],
+				},
+			});
+
+			await expect(
+				importPackage({ user: owner, projectId: project.id, packageBuffer }),
+			).rejects.toThrow(/declares id "realid1" but the manifest lists it as "manifestid1"/);
+		});
+
+		it('rejects a table with a reserved column name before any writes', async () => {
+			const table = serializedDataTable({
+				columns: [{ name: 'id', type: 'string', index: 0 }],
+			});
+			const { packageBuffer } = await buildDataTablePackage([table]);
+
+			await expect(
+				importPackage({ user: owner, projectId: project.id, packageBuffer }),
+			).rejects.toThrowError(/failed schema validation/);
+
+			expect(await tablesInProject(project.id)).toHaveLength(0);
+			expect(await workflowRepository.count()).toBe(0);
+		});
 	});
 
 	describe('public API key scopes', () => {

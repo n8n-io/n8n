@@ -152,8 +152,9 @@ export class N8nPackageParser {
 		const path = `${entry.target}/data-table.json`;
 		const wire = await this.readJson(reader, path, 'data table');
 
+		let dataTable: SerializedDataTable;
 		try {
-			return serializedDataTableSchema.parse(wire);
+			dataTable = serializedDataTableSchema.parse(wire);
 		} catch (cause) {
 			if (cause instanceof ZodError) {
 				throw new UserError(`Package data table file at ${path} failed schema validation.`, {
@@ -162,6 +163,17 @@ export class N8nPackageParser {
 			}
 			throw cause;
 		}
+
+		// Requirements and workflow references key off the manifest id, but tables
+		// are created under data-table.json's id — a mismatch would import a table
+		// under an identity the manifest never declared.
+		if (dataTable.id !== entry.id) {
+			throw new UserError(
+				`Package data table at ${path} declares id "${dataTable.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		return dataTable;
 	}
 
 	private async readProject(reader: PackageReader, entry: ManifestEntry): Promise<PreparedProject> {
