@@ -44,7 +44,7 @@ export default class PackageExport extends BaseCommand {
 			options: ['fail', 'reference-only', 'include-in-package'],
 			default: 'fail',
 			description:
-				'What to do when a dependency workflow (sub-workflow) is not explicitely included in the package target',
+				'What to do when a dependency workflow (sub-workflow) is not explicitly included in the package target',
 			aliases: ['missing-workflow-dependency-policy'],
 		}),
 	};
