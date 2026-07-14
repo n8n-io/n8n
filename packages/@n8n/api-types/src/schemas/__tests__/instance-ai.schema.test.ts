@@ -3,6 +3,7 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildFetchUrlGrantKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	errorPayloadSchema,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
 	instanceAiEventSchema,
@@ -11,6 +12,7 @@ import {
 	normalizeInstanceAiThreadSource,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	isInstanceAiSandboxProvider,
+	isKnownInstanceAiErrorCode,
 	parseDomainAccessGrants,
 	WEB_SEARCH_GRANT_KEY,
 	workflowSetupNodeSchema,
@@ -51,6 +53,38 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+});
+
+describe('errorPayloadSchema', () => {
+	it('accepts a payload without a code', () => {
+		expect(errorPayloadSchema.parse({ content: 'boom' })).toEqual({ content: 'boom' });
+	});
+
+	it('accepts the quota_exhausted code', () => {
+		const payload = { content: 'out of credits', code: 'quota_exhausted' as const };
+		expect(errorPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('accepts an unknown code and preserves it (forward-compatible)', () => {
+		// A newer service may emit an error code an older client doesn't recognize.
+		// The wire schema must not reject it, otherwise the whole error event is
+		// dropped by instanceAiEventSchema.safeParse before the reducer's
+		// unknown-code fallback can render a generic error.
+		const parsed = errorPayloadSchema.safeParse({ content: 'boom', code: 'some_future_code' });
+		expect(parsed.success).toBe(true);
+		expect(parsed.success && parsed.data.code).toBe('some_future_code');
+	});
+});
+
+describe('isKnownInstanceAiErrorCode', () => {
+	it('is true for a recognized code', () => {
+		expect(isKnownInstanceAiErrorCode('quota_exhausted')).toBe(true);
+	});
+
+	it('is false for an unknown code or undefined', () => {
+		expect(isKnownInstanceAiErrorCode('some_future_code')).toBe(false);
+		expect(isKnownInstanceAiErrorCode(undefined)).toBe(false);
 	});
 });
 
