@@ -149,7 +149,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
 | `--iterations` | `1` | Run each test case N times with fresh builds |
 | `--tier` | — | Filter to test cases whose `datasets` array contains this value (e.g. `--tier pr` for the PR-time set). Combines with `--filter`/`--exclude`. |
-| `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/` and `data/agents/`; `langtracer` pulls a suite from LangTracer's REST API — see [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
+| `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/` and `data/agents/` — preferred for local development (authoring/calibrating a case); `langtracer` pulls a suite from LangTracer's REST API — bigger runs, already-pushed cases, and CI. See [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
 | `--suite` | — | LangTracer suite slug (or numeric id) to pull when `--source langtracer` (required in that mode) |
 | `--build-via-mcp` | `false` | Build each workflow by driving the lane's MCP server with `claude -p`, then verify it on that same lane — see [Building via MCP (`--build-via-mcp`)](#building-via-mcp---build-via-mcp). Works across multiple `--base-url` lanes; requires `LANGSMITH_API_KEY`; mutually exclusive with `--prebuilt-workflows` |
 | `--mcp-server` | `n8n-local` | MCP server name for the staged `claude` config + tool allowlist (`--build-via-mcp`) |
@@ -177,7 +177,10 @@ A case can belong to multiple groupings — e.g. PR-tier cases declare `"dataset
 
 ### Sourcing test cases from LangTracer
 
-**LangTracer is the source of truth for the workflow-eval corpus.** CI pulls the `n8n-workflows` suite on every run (`--source langtracer --suite n8n-workflows`; see `.github/workflows/test-evals-instance-ai.yml`) from [LangTracer](https://github.com/n8n-io/lang-tracer)'s REST API (`GET /api/v1/suites/:id/export`), validated through the same `EvalTestCaseSchema`. The CLI's own default stays `disk` (reads `data/workflows/` and `data/agents/`) as the local-dev path — for authoring and calibrating cases before they're pushed, and for the corpora that don't live in LangTracer (the `agents` tier and the seeded carve-out cases).
+**LangTracer is the source of truth for the workflow-eval corpus** — the `n8n-workflows` suite holds the cases, and CI pulls it on every run (see `.github/workflows/test-evals-instance-ai.yml`). The two `--source` modes split the work:
+
+- **`disk` (the default) — the preferred mode for local development.** Reads `data/workflows/` and `data/agents/`. Use it while authoring and calibrating a case: drop the JSON in, `--filter` it, iterate. It is also the only home of the `agents` tier and the seeded carve-out cases. Since the corpus migration the directory holds only those, so disk mode is about the case in front of you, not the full suite.
+- **`langtracer` — for bigger runs, already-pushed cases, and CI.** Pulls a suite from [LangTracer](https://github.com/n8n-io/lang-tracer)'s REST API (`GET /api/v1/suites/:id/export`), validated through the same `EvalTestCaseSchema`. Reach for it locally when you want the real corpus (a full or tier run) or to re-run a specific case that already lives in the suite; CI always runs this way.
 
 Set these in `.env.local`:
 
