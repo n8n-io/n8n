@@ -400,6 +400,7 @@ const {
 	groupNodes,
 	groupSelection,
 	renameGroup,
+	updateGroupDescription,
 	ungroup,
 	selectedGroupIds,
 } = useCanvasNodeGroupActions(selectedNodesAndGroups, {
@@ -715,6 +716,10 @@ function onCanvasGroupToggle(
 
 function onCanvasGroupNameUpdate(groupId: string, name: string) {
 	renameGroup(groupId, name);
+}
+
+function onCanvasGroupDescriptionUpdate(groupId: string, description: string) {
+	updateGroupDescription(groupId, description);
 }
 
 function onCanvasGroupUngroup(
@@ -1594,6 +1599,7 @@ defineExpose({
 				:read-only="readOnly || suppressInteraction"
 				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
+				@update:description="onCanvasGroupDescriptionUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
 				@open:contextmenu="onOpenGroupContextMenu"

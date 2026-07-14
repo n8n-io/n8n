@@ -6,7 +6,10 @@ import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
 import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
-import { GROUP_HEADER_HEIGHT as HEADER_HEIGHT } from '../../../stores/canvasNodeGroups.constants';
+import {
+	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
+	GROUP_DESCRIPTION_MAX_LENGTH,
+} from '../../../stores/canvasNodeGroups.constants';
 import { computeGroupFrameRects } from '../../../composables/useCanvasMapping.groups';
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
@@ -38,6 +41,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'update:name': [id: string, name: string];
+	'update:description': [id: string, description: string];
 	'title:focused': [id: string];
 	ungroup: [id: string];
 	toggle: [id: string];
@@ -54,6 +58,7 @@ const isAutofocusReady = computed(
 	() => !props.dimensions || (props.dimensions.width > 0 && props.dimensions.height > 0),
 );
 const isCollapsed = computed(() => props.data.isCollapsed);
+const isDescriptionEmpty = computed(() => !group.value.description?.trim());
 const executionStatus = computed(() => props.data.executionStatus);
 const allNodesDisabled = computed(() => props.data.allNodesDisabled ?? false);
 
@@ -113,6 +118,10 @@ watch(
 
 function onTitleUpdate(value: string) {
 	emit('update:name', group.value.id, value);
+}
+
+function onDescriptionUpdate(value: string) {
+	emit('update:description', group.value.id, value);
 }
 
 function onUngroupClick() {
@@ -262,33 +271,57 @@ function onWrapperPointerDown(event: PointerEvent) {
 					data-test-id="canvas-node-group-toggle"
 					@click.stop="onToggleClick"
 				/>
-				<div :class="$style.title" data-test-id="canvas-node-group-title">
-					<N8nTooltip
-						:content="group.name"
-						:disabled="!isTitleTruncated"
-						:show-after="500"
-						placement="bottom"
-					>
-						<div ref="titleText" :class="$style.titleText">
-							<N8nInlineTextEdit
-								ref="titleEdit"
-								:class="['nodrag', $style.inlineEdit]"
-								:model-value="group.name"
-								:read-only="readOnly"
-								:min-width="0"
-								max-width="100%"
-								:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
-								@update:model-value="onTitleUpdate"
-							/>
-							<div
-								v-if="allNodesDisabled"
-								:class="$style.deactivatedLabel"
-								data-test-id="canvas-node-group-deactivated-label"
-							>
-								({{ i18n.baseText('node.disabled') }})
+				<div :class="$style.titleColumn">
+					<div :class="$style.title" data-test-id="canvas-node-group-title">
+						<N8nTooltip
+							:content="group.name"
+							:disabled="!isTitleTruncated"
+							:show-after="500"
+							placement="bottom"
+						>
+							<div ref="titleText" :class="$style.titleText">
+								<N8nInlineTextEdit
+									ref="titleEdit"
+									:class="['nodrag', $style.inlineEdit]"
+									:model-value="group.name"
+									:read-only="readOnly"
+									:min-width="0"
+									max-width="100%"
+									:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
+									@update:model-value="onTitleUpdate"
+								/>
+								<div
+									v-if="allNodesDisabled"
+									:class="$style.deactivatedLabel"
+									data-test-id="canvas-node-group-deactivated-label"
+								>
+									({{ i18n.baseText('node.disabled') }})
+								</div>
 							</div>
-						</div>
-					</N8nTooltip>
+						</N8nTooltip>
+					</div>
+
+					<div
+						v-if="!isCollapsed"
+						:class="$style.description"
+						data-test-id="canvas-node-group-description"
+					>
+						<N8nInlineTextEdit
+							:class="[
+								'nodrag',
+								$style.inlineEdit,
+								$style.descriptionInline,
+								{ [$style.descriptionEmpty]: isDescriptionEmpty },
+							]"
+							:model-value="group.description ?? ''"
+							:read-only="readOnly"
+							:min-width="0"
+							max-width="100%"
+							:max-length="GROUP_DESCRIPTION_MAX_LENGTH"
+							:placeholder="i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')"
+							@update:model-value="onDescriptionUpdate"
+						/>
+					</div>
 				</div>
 				<div
 					v-if="isCollapsed && markStatus"
@@ -405,12 +438,21 @@ function onWrapperPointerDown(event: PointerEvent) {
 	background-color: transparent;
 }
 
+// Stacks the title and, when expanded, the description within the header box.
+.titleColumn {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	justify-content: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+	height: 100%;
+}
+
 .title {
 	display: flex;
 	align-items: center;
-	flex: 1;
 	min-width: 0;
-	height: 100%;
 	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--medium);
 }
@@ -433,6 +475,21 @@ function onWrapperPointerDown(event: PointerEvent) {
 .inlineEdit {
 	width: fit-content;
 	max-width: 100%;
+}
+
+// One-line description shown under the title in the header box.
+.description {
+	display: flex;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.descriptionInline {
+	color: var(--text-color--subtle);
+}
+
+.descriptionEmpty {
+	color: var(--text-color--disabled);
 }
 
 .deactivatedLabel {

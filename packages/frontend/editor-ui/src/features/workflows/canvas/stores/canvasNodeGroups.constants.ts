@@ -7,3 +7,5 @@ export const GROUP_PADDING_Y_BOTTOM = 88;
 export const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1];
 /** Fixed width when collapsed; also the minimum width when expanded. */
 export const GROUP_HEADER_WIDTH_COLLAPSED = 400;
+/** Character cap on a group description (TBC — tuned to stay ~3 lines when collapsed). */
+export const GROUP_DESCRIPTION_MAX_LENGTH = 280;

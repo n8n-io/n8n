@@ -1,5 +1,5 @@
 import { renderComponent } from '@/__tests__/render';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
@@ -186,6 +186,36 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
+	describe('description', () => {
+		it('shows the description under the title when expanded', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+			expect(wrapper.queryByTestId('canvas-node-group-description')).toBeTruthy();
+		});
+
+		it('hides the description when collapsed', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			expect(wrapper.queryByTestId('canvas-node-group-description')).toBeNull();
+		});
+
+		it('shows the add-description placeholder when empty', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+			const description = within(wrapper.getByTestId('canvas-node-group-description'));
+			expect(description.getByTestId('inline-edit-preview')).toHaveTextContent('Add description');
+		});
+
+		it('emits update:description when the description is edited', async () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+
+			const description = within(wrapper.getByTestId('canvas-node-group-description'));
+			await fireEvent.click(description.getByTestId('inline-edit-preview'));
+			const input = description.getByTestId('inline-edit-input') as HTMLInputElement;
+			await fireEvent.update(input, 'A helpful description');
+			await fireEvent.keyDown(input, { key: 'Enter' });
+
+			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'A helpful description']]);
+		});
+	});
+
 	describe('execution-status classes', () => {
 		it('applies no status class when executionStatus is undefined (idle)', () => {
 			const wrapper = render({ data: makeData({ executionStatus: undefined }) });
@@ -283,8 +313,9 @@ describe('CanvasNodeGroupTitleBar', () => {
 	describe('title rename + ungroup parity with old overlay', () => {
 		it('emits update:name on commit', async () => {
 			const wrapper = render({ data: makeData({ isCollapsed: false }) });
-			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
-			const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
+			const title = within(wrapper.getByTestId('canvas-node-group-title'));
+			await fireEvent.click(title.getByTestId('inline-edit-preview'));
+			const input = title.getByTestId('inline-edit-input') as HTMLInputElement;
 			await fireEvent.update(input, 'Renamed');
 			await fireEvent.keyDown(input, { key: 'Enter' });
 			expect(wrapper.emitted()['update:name']).toEqual([['g1', 'Renamed']]);
