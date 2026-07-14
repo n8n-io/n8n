@@ -261,10 +261,11 @@ export function toLcContent(block: N8nMessages.MessageContent): LangchainMessage
 		return { type: 'reasoning', reasoning: block.text };
 	}
 	if ((block.type as string) === 'image_url') {
+		const imageBlock = block as unknown as { image_url: string | { url: string; detail?: string } };
 		return {
 			type: 'image_url',
-			image_url: (block as any).image_url,
-		} as any;
+			image_url: imageBlock.image_url,
+		} as unknown as LangchainMessages.ContentBlock;
 	}
 	if (isN8nFileBlock(block)) {
 		const { url, fileId, ...rest } = block.providerMetadata ?? {};
