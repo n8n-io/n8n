@@ -20,6 +20,13 @@ export interface ImportPackageFields {
 	folderConflictPolicy?: string;
 }
 
+export interface ExportPackageFields {
+	workflowIds?: string[];
+	folderIds?: string[];
+	projectIds?: string[];
+	missingWorkflowDependencyPolicy?: string;
+}
+
 export class ApiError extends Error {
 	constructor(
 		readonly statusCode: number,
@@ -423,12 +430,7 @@ export class N8nClient {
 
 	// ─── Packages (beta) ───────────────────────────────────────────
 
-	async exportPackage(fields: {
-		workflowIds?: string[];
-		folderIds?: string[];
-		projectIds?: string[];
-		missingWorkflowDependencyPolicy?: string;
-	}): Promise<Buffer> {
+	async exportPackage(fields: ExportPackageFields): Promise<Buffer> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
 		const body: {
 			workflowIds?: string[];
