@@ -2572,6 +2572,7 @@ describe('generate-types', () => {
 			expect(result).toContain("'httpHeaderAuth'");
 			expect(result).toContain("'httpQueryAuth'");
 			expect(result).toContain("'httpCustomAuth'");
+			expect(result).toContain("'httpTemplatedCustomAuth'");
 			expect(result).toContain("'oAuth1Api'");
 			expect(result).toContain("'oAuth2Api'");
 			expect(result).toContain('Expression<string>');

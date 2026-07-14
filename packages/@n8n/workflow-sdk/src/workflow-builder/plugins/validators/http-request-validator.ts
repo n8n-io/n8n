@@ -72,7 +72,7 @@ export const httpRequestValidator: ValidatorPlugin = {
 				) {
 					issues.push({
 						code: 'HARDCODED_CREDENTIALS',
-						message: `'${node.name}' has a hardcoded value for sensitive header "${header.name}". Should create credentials, setting genericAuthType to httpHeaderAuth or httpBearerAuth).`,
+						message: `'${node.name}' has a hardcoded value for sensitive header "${header.name}". Should create credentials, setting genericAuthType to httpTemplatedCustomAuth (or reuse an existing httpHeaderAuth/httpBearerAuth credential).`,
 						severity: 'warning',
 						nodeName: node.name,
 						parameterPath: `headerParameters.parameters[${header.name}]`,

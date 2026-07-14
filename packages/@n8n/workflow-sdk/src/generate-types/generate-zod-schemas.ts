@@ -75,6 +75,7 @@ const GENERIC_AUTH_TYPE_VALUES = [
 	'httpHeaderAuth',
 	'httpQueryAuth',
 	'httpCustomAuth',
+	'httpTemplatedCustomAuth',
 	'oAuth1Api',
 	'oAuth2Api',
 ] as const;
