@@ -150,13 +150,22 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 */
 		const trackedExecutionIds = ref<Set<string>>(new Set());
 
+		const documentStore = useWorkflowDocumentStore(documentId);
+
 		/**
 		 * Queue of currently-executing node names driving per-node loading
 		 * spinners. Owned by the per-document store so spinner state stays
 		 * isolated per workflow document. Read purely via Vue reactivity; it is
 		 * intentionally not wired into the change-event mechanism below.
+		 *
+		 * `getEnclosingNodeNames` gives `useExecutingNode` the scope topology it
+		 * needs to collapse stale spinners: a node's non-main consumers (an AI
+		 * Agent for its tool/model, a vector store for its embeddings, …), which
+		 * keep executing while the node runs nested inside them.
 		 */
-		const executingNode = useExecutingNode();
+		const executingNode = useExecutingNode((nodeName) =>
+			documentStore.getChildNodes(nodeName, 'ALL_NON_MAIN', -1),
+		);
 
 		const onWorkflowExecutionStateChange = createEventHook<WorkflowExecutionStateChangeEvent>();
 
@@ -372,8 +381,6 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		// reactively, so add/remove calls invalidate only that entry — and only
 		// when the *value* changes (gated by structural equality).
 		// ---------------------------------------------------------------------
-
-		const documentStore = useWorkflowDocumentStore(documentId);
 
 		const executionRunningByNodeId = shallowReactive(new Map<string, ComputedRef<boolean>>());
 		const executionWaitingForNextByNodeId = shallowReactive(

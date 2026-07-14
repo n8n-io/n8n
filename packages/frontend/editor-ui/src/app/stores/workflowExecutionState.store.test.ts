@@ -27,6 +27,7 @@ import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tes
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import {
 	createRunExecutionData,
+	NodeConnectionTypes,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	type ExecutionSummary,
 } from 'n8n-workflow';
@@ -1445,6 +1446,87 @@ describe('workflowExecutionState.store', () => {
 			expect(a.executingNode.isNodeExecuting('Node A')).toBe(true);
 			expect(b.executingNode.isNodeExecuting('Node A')).toBe(false);
 			expect(b.executingNode.executingNode).toEqual([]);
+		});
+
+		// Scope-aware collapse (CAT-2895): a suspended tab can drop a
+		// `nodeExecuteAfter`, leaving stale nodes stuck in the queue and
+		// surfacing as several nodes spinning at once. The store feeds the
+		// workflow topology into `useExecutingNode` so it collapses stale
+		// same-scope siblings while preserving genuine parent+sub-node nesting.
+		describe('scope-aware collapse', () => {
+			// AI Agent → (main) Set, with a Calculator tool nested into the Agent
+			// via a non-main (ai_tool) connection.
+			function seedAgentToolWorkflow(documentId: ReturnType<typeof createWorkflowDocumentId>) {
+				const documentStore = useWorkflowDocumentStore(documentId);
+				documentStore.addNode({
+					id: 'agent-id',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				});
+				documentStore.addNode({
+					id: 'tool-id',
+					name: 'Calculator',
+					type: '@n8n/n8n-nodes-langchain.toolCalculator',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				});
+				documentStore.addNode({
+					id: 'set-id',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				});
+				documentStore.setConnections({
+					'AI Agent': {
+						main: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+					Calculator: {
+						[NodeConnectionTypes.AiTool]: [
+							[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+						],
+					},
+				});
+			}
+
+			it('keeps an AI Agent and its sub-node both spinning (nested pair)', () => {
+				const documentId = createWorkflowDocumentId('wf-nesting');
+				seedAgentToolWorkflow(documentId);
+				const executionStateStore = useWorkflowExecutionStateStore(documentId);
+
+				// Engine emits before(Agent) then before(Calculator) nested inside it.
+				executionStateStore.executingNode.addExecutingNode('AI Agent');
+				executionStateStore.executingNode.addExecutingNode('Calculator');
+
+				expect(executionStateStore.executingNode.isNodeExecuting('AI Agent')).toBe(true);
+				expect(executionStateStore.executingNode.isNodeExecuting('Calculator')).toBe(true);
+				// The per-node canvas projection sees both spinners.
+				expect(executionStateStore.executionRunningByNodeId.get('agent-id')?.value).toBe(true);
+				expect(executionStateStore.executionRunningByNodeId.get('tool-id')?.value).toBe(true);
+			});
+
+			it('supersedes stale sibling spinners when the next main node starts', () => {
+				const documentId = createWorkflowDocumentId('wf-supersede');
+				seedAgentToolWorkflow(documentId);
+				const executionStateStore = useWorkflowExecutionStateStore(documentId);
+
+				// Agent + tool are mid-run, then both nodeExecuteAfter events are lost.
+				executionStateStore.executingNode.addExecutingNode('AI Agent');
+				executionStateStore.executingNode.addExecutingNode('Calculator');
+
+				// The next main node starts — a main-connection sibling, not enclosed.
+				executionStateStore.executingNode.addExecutingNode('Set');
+
+				expect(executionStateStore.executingNode.isNodeExecuting('AI Agent')).toBe(false);
+				expect(executionStateStore.executingNode.isNodeExecuting('Calculator')).toBe(false);
+				expect(executionStateStore.executingNode.isNodeExecuting('Set')).toBe(true);
+				expect(executionStateStore.executingNode.executingNode).toEqual(['Set']);
+			});
 		});
 	});
 
