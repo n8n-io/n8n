@@ -1,0 +1,49 @@
+packages/cli/src/events/maps/relay.event-map.ts
+  s_ed6bf1aa0ec5ef::t_65305bafaf8f76 96
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_ed6bf1aa0ec5ef::t_4423218e5f2fb2 2226
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_ed6bf1aa0ec5ef::t_98bae52a5794df 9-14,20,23-26,30-42,45-47,59-60,70-72
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  h_6ef4cecfee65a2 78
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_ed6bf1aa0ec5ef::t_4b4c7e3a6537cb 66
+  s_ed6bf1aa0ec5ef::t_a0fccaea37e277 108
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  h_6ef4cecfee65a2 28,60,102,113,119
+  s_ed6bf1aa0ec5ef::t_4167f1fedce65e 32
+  s_ed6bf1aa0ec5ef::t_fa5c2ecd00604b 74,90
+  s_ed6bf1aa0ec5ef::t_6e0af6fa8b1647 83-84,86
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_ed6bf1aa0ec5ef::t_5b3912322dda7a 187-188,192-203
+  ai_agent 189-191
+  s_ed6bf1aa0ec5ef::t_1694975ab04e0d 15-16
+  s_ed6bf1aa0ec5ef::t_539945c2ed4751 436-470
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_ed6bf1aa0ec5ef::t_e353e16f1e39c9 18
+  s_ed6bf1aa0ec5ef::t_510fe3e3c897d5 139,141,148-162
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  h_6ef4cecfee65a2 20,63
+  s_ed6bf1aa0ec5ef::t_387e13b048fde8 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29fd38de055ca88949463c3248ec2928cedcf460",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_ed6bf1aa0ec5ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df5033e7-8f01-4674-bafb-352200f6b5f8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
