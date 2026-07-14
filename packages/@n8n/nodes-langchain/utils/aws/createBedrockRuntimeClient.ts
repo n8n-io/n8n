@@ -50,7 +50,9 @@ export function createBedrockRuntimeClient(params: {
 	}
 	if (timeout !== undefined) {
 		requestHandlerOptions.requestTimeout = timeout;
-		// Without this flag smithy only logs a warning on breach instead of failing the request.
+		// requestTimeout alone is a no-op. When the timeout is exceeded,
+		// smithy only prints a warning to the console and keeps waiting;
+		// only this flag makes it destroy the request and reject with a TimeoutError.
 		requestHandlerOptions.throwOnRequestTimeout = true;
 	}
 	if (Object.keys(requestHandlerOptions).length > 0) {
