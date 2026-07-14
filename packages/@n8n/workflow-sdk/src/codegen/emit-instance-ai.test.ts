@@ -252,6 +252,7 @@ describe('emit-instance-ai', () => {
 			// Validation
 			'validateNodeConfig',
 			'validateWorkflow',
+			'getSchemaBaseDirs',
 			'setSchemaBaseDirs',
 			// Pin-data + schema discovery
 			'discoverOutputSchemaForNode',

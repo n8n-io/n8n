@@ -181,7 +181,7 @@ const NodeToolCredentialSchema = z.object({
 	name: z.string(),
 });
 
-const DraftAgentModelSchema = z.union([z.literal(''), AgentModelSchema]);
+export const DraftAgentModelSchema = z.union([z.literal(''), AgentModelSchema]);
 
 export const NodeConfigSchema = z.object({
 	nodeType: z.string().min(1),
@@ -364,35 +364,41 @@ export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
 		.strict(),
 ]);
 
-const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
-	z.object({
-		type: z.literal('custom'),
-		id: z.string().min(1).regex(CUSTOM_TOOL_ID_REGEX),
+const CustomToolJsonConfigSchema = z.object({
+	type: z.literal('custom'),
+	id: z.string().min(1).regex(CUSTOM_TOOL_ID_REGEX),
+	requireApproval: z.boolean().optional(),
+});
+
+export const WorkflowToolJsonConfigSchema = z
+	.object({
+		type: z.literal('workflow'),
+		workflow: z.string().min(1),
+		name: z.string().optional(),
+		description: z.string().optional(),
 		requireApproval: z.boolean().optional(),
-	}),
-	z
-		.object({
-			type: z.literal('workflow'),
-			workflow: z.string().min(1),
-			name: z.string().optional(),
-			description: z.string().optional(),
-			requireApproval: z.boolean().optional(),
-			allOutputs: z
-				.boolean()
-				.optional()
-				.describe('Whether to return all node outputs instead of just the last node'),
-		})
-		.strict(),
-	z
-		.object({
-			type: z.literal('node'),
-			name: z.string().min(1),
-			description: z.string().optional(),
-			inputSchema: z.never().optional(),
-			node: NodeConfigSchema,
-			requireApproval: z.boolean().optional(),
-		})
-		.strict(),
+		allOutputs: z
+			.boolean()
+			.optional()
+			.describe('Whether to return all node outputs instead of just the last node'),
+	})
+	.strict();
+
+export const NodeToolJsonConfigSchema = z
+	.object({
+		type: z.literal('node'),
+		name: z.string().min(1),
+		description: z.string().optional(),
+		inputSchema: z.never().optional(),
+		node: NodeConfigSchema,
+		requireApproval: z.boolean().optional(),
+	})
+	.strict();
+
+const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
+	CustomToolJsonConfigSchema,
+	WorkflowToolJsonConfigSchema,
+	NodeToolJsonConfigSchema,
 ]);
 
 export const AgentJsonConfigSchema = z.object({
