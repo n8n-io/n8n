@@ -17,6 +17,9 @@ import type {
 	ThinkingContentBlock,
 	RedactedThinkingContentBlock,
 	ToolUseContentBlock,
+	ObservationContentBlock,
+	ObservationImageBlock,
+	ObservationFileBlock,
 } from './types';
 
 /**
@@ -286,8 +289,31 @@ function buildSharedGeminiAIMessage(
 	});
 }
 
+/** MIME types whose payload is decoded and inlined as text rather than a binary block. */
+function isTextMimeType(mimeType: string): boolean {
+	const type = mimeType.toLowerCase();
+	return (
+		type.startsWith('text/') ||
+		type === 'application/json' ||
+		type === 'application/xml' ||
+		type === 'application/csv' ||
+		type === 'application/x-yaml' ||
+		type === 'application/yaml' ||
+		type === 'application/javascript' ||
+		type === 'application/typescript'
+	);
+}
+
+/** Returns the raw base64 payload, dropping any `data:...;base64,` prefix. Empty when absent. */
+function stripBase64Prefix(data: string | undefined): string {
+	if (!data) return '';
+	return data.includes('base64,') ? data.split('base64,')[1] : data;
+}
+
 /**
- * Builds the observation string from tool result data.
+ * Builds the observation from tool result data. Returns a plain string for
+ * json/text-only results, or a serialized array of content blocks when binary
+ * images/files must be forwarded to the model.
  */
 async function buildObservation(
 	toolData: {
@@ -311,81 +337,76 @@ async function buildObservation(
 
 	const jsonContent = aiToolItems.map((item) => item?.json);
 	const textOutputs: string[] = [];
-	const structuredBlocks: Array<Record<string, any>> = [];
+	const structuredBlocks: Array<ObservationImageBlock | ObservationFileBlock> = [];
 	const warnings: string[] = [];
 
 	const maxSizeInBytes =
 		Container.get(AiConfig)?.maxAgentPassthroughBinarySizeBytes ?? 50 * 1024 * 1024;
 
 	for (const item of aiToolItems) {
-		if (item?.binary) {
-			for (const binaryData of Object.values(item.binary)) {
-				if (!binaryData) continue;
+		if (!item?.binary) continue;
 
-				// Process base64 data
-				let base64Data: string;
-				if (binaryData.id && ctx) {
-					try {
-						const binaryBuffer = await ctx.helpers.binaryToBuffer(
-							await ctx.helpers.getBinaryStream(binaryData.id),
-						);
-						base64Data = Buffer.from(binaryBuffer).toString('base64');
-					} catch (e) {
-						base64Data = binaryData.data.includes('base64,')
-							? binaryData.data.split('base64,')[1]
-							: binaryData.data;
-					}
-				} else {
-					base64Data = binaryData.data.includes('base64,')
-						? binaryData.data.split('base64,')[1]
-						: binaryData.data;
-				}
+		for (const [key, binaryData] of Object.entries(item.binary)) {
+			if (!binaryData) continue;
 
-				// Oversized file check (Soft Warning)
-				const sizeInBytes = Buffer.byteLength(base64Data, 'base64');
-				if (sizeInBytes > maxSizeInBytes) {
-					const fileName = binaryData.fileName ?? 'attachment';
-					const sizeInMb = (sizeInBytes / (1024 * 1024)).toFixed(1);
-					const limitInMb = (maxSizeInBytes / (1024 * 1024)).toFixed(1);
-					warnings.push(
-						`[File "${fileName}" skipped: ${sizeInMb} MB exceeds the ${limitInMb} MB limit]`,
+			const fileName = binaryData.fileName ?? key;
+
+			// Resolve the base64 payload. Binary stored by reference (an `id`) must
+			// be read back through the binary-data helpers; inline data is used
+			// directly. `stripBase64Prefix` guards against a missing/empty `data`.
+			let base64Data = '';
+			if (binaryData.id && ctx) {
+				try {
+					const binaryBuffer = await ctx.helpers.binaryToBuffer(
+						await ctx.helpers.getBinaryStream(binaryData.id),
 					);
-					continue;
-				}
-
-				const isText = (mimeType: string) => {
-					const type = mimeType.toLowerCase();
-					return (
-						type.startsWith('text/') ||
-						type === 'application/json' ||
-						type === 'application/xml' ||
-						type === 'application/csv' ||
-						type === 'application/x-yaml' ||
-						type === 'application/yaml' ||
-						type === 'application/javascript' ||
-						type === 'application/typescript'
+					base64Data = Buffer.from(binaryBuffer).toString('base64');
+				} catch (error) {
+					// The stored binary could not be read (e.g. evicted from the store).
+					// Fall back to any inline data; if there is none the check below skips it.
+					ctx.logger.warn(
+						`Failed to read binary data "${fileName}" for agent passthrough: ${
+							error instanceof Error ? error.message : String(error)
+						}`,
 					);
-				};
-
-				if (isText(binaryData.mimeType)) {
-					const textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
-					textOutputs.push(
-						`File: ${binaryData.fileName ?? 'attachment'}\nContent:\n${textContent}`,
-					);
-				} else if (binaryData.mimeType.startsWith('image/')) {
-					structuredBlocks.push({
-						type: 'image_url',
-						image_url: {
-							url: `data:${binaryData.mimeType};base64,${base64Data}`,
-						},
-					});
-				} else {
-					structuredBlocks.push({
-						type: 'file',
-						mediaType: binaryData.mimeType,
-						data: base64Data,
-					});
+					base64Data = stripBase64Prefix(binaryData.data);
 				}
+			} else {
+				base64Data = stripBase64Prefix(binaryData.data);
+			}
+
+			if (!base64Data) {
+				warnings.push(`[File "${fileName}" skipped: no readable data]`);
+				continue;
+			}
+
+			// Oversized file check (soft warning — the file is skipped, not the whole result)
+			const sizeInBytes = Buffer.byteLength(base64Data, 'base64');
+			if (sizeInBytes > maxSizeInBytes) {
+				const sizeInMb = (sizeInBytes / (1024 * 1024)).toFixed(1);
+				const limitInMb = (maxSizeInBytes / (1024 * 1024)).toFixed(1);
+				warnings.push(
+					`[File "${fileName}" skipped: ${sizeInMb} MB exceeds the ${limitInMb} MB limit]`,
+				);
+				continue;
+			}
+
+			if (isTextMimeType(binaryData.mimeType)) {
+				const textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
+				textOutputs.push(`File: ${fileName}\nContent:\n${textContent}`);
+			} else if (binaryData.mimeType.startsWith('image/')) {
+				structuredBlocks.push({
+					type: 'image_url',
+					image_url: {
+						url: `data:${binaryData.mimeType};base64,${base64Data}`,
+					},
+				});
+			} else {
+				structuredBlocks.push({
+					type: 'file',
+					mediaType: binaryData.mimeType,
+					data: base64Data,
+				});
 			}
 		}
 	}
@@ -399,17 +420,14 @@ async function buildObservation(
 		textBody += '\n\n' + warnings.join('\n');
 	}
 
-	// If there are no structured blocks (images, PDFs), we just return a simple text string
+	// If there are no structured blocks (images, files), we just return a simple text string
 	if (structuredBlocks.length === 0) {
 		return textBody;
 	}
 
-	// Otherwise return a list of blocks
-	const contentBlocks: Array<Record<string, any>> = [
-		{
-			type: 'text',
-			text: textBody,
-		},
+	// Otherwise return a serialized list of blocks (parsed back in buildMessagesFromSteps)
+	const contentBlocks: ObservationContentBlock[] = [
+		{ type: 'text', text: textBody },
 		...structuredBlocks,
 	];
 	return JSON.stringify(contentBlocks);

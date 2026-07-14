@@ -95,6 +95,32 @@ export type ContentBlock =
 	| GeminiThoughtSignatureBlock;
 
 /**
+ * Multimodal blocks used when a tool observation carries binary data
+ * (images/files) that is forwarded to the model alongside its text output.
+ */
+export type ObservationTextBlock = { type: 'text'; text: string };
+export type ObservationImageBlock = { type: 'image_url'; image_url: { url: string } };
+export type ObservationFileBlock = { type: 'file'; mediaType: string; data: string };
+export type ObservationContentBlock =
+	| ObservationTextBlock
+	| ObservationImageBlock
+	| ObservationFileBlock;
+
+/**
+ * Type guard for an observation content block. Kept intentionally loose (only
+ * requires a string `type`) so it matches any block shape buildObservation
+ * produces when parsing a serialized observation back into structured content.
+ */
+export function isObservationContentBlock(block: unknown): block is ObservationContentBlock {
+	return (
+		typeof block === 'object' &&
+		block !== null &&
+		'type' in block &&
+		typeof (block as { type: unknown }).type === 'string'
+	);
+}
+
+/**
  * Google/Gemini-specific thinking metadata.
  */
 export type GoogleThinkingMetadata = {

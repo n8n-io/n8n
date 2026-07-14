@@ -157,15 +157,14 @@ function containsBinaryData(nodeExecutionResult?: NodeOutput): boolean {
 }
 
 /**
- * Filters out non-json items and reports if the result contained mixed
- * responses (e.g. json and binary).
+ * Splits a node result into the json response, any binary data, and an
+ * optional chat message. Binary is forwarded to the agent alongside the json.
  */
 function mapResult(result?: NodeOutput) {
 	let response:
 		| string
 		| Array<IDataObject | GenericValue | GenericValue[] | IDataObject[]>
 		| undefined;
-	const nodeHasMixedJsonAndBinaryData = false;
 	let sendMessage: ChatNodeMessageWithButtons | string | undefined = undefined;
 	let binary: INodeExecutionData['binary'] | undefined = undefined;
 
@@ -208,7 +207,7 @@ function mapResult(result?: NodeOutput) {
 		}
 	}
 
-	return { response, nodeHasMixedJsonAndBinaryData, sendMessage, binary };
+	return { response, sendMessage, binary };
 }
 
 export function makeHandleToolInvocation(
@@ -269,14 +268,7 @@ export function makeHandleToolInvocation(
 				// Execute the sub-node with the proxied context
 				const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
 
-				const { response, nodeHasMixedJsonAndBinaryData, sendMessage, binary } = mapResult(result);
-
-				// If the node returned some binary data, but also useful data we just log a warning instead of overriding the result
-				if (nodeHasMixedJsonAndBinaryData) {
-					context.logger.warn(
-						`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
-					);
-				}
+				const { response, sendMessage, binary } = mapResult(result);
 
 				// Add output data to the context
 				context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, [

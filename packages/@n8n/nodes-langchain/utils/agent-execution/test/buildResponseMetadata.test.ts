@@ -1,4 +1,4 @@
-import type { EngineResponse } from 'n8n-workflow';
+import type { EngineResponse, IExecuteFunctions } from 'n8n-workflow';
 
 import { buildResponseMetadata } from '../buildResponseMetadata';
 import * as agentExecution from '../buildSteps';
@@ -147,15 +147,16 @@ describe('buildIterationMetadata', () => {
 		expect(result3.iterationCount).toBe(3);
 	});
 
-	it('should pass correct itemIndex to buildSteps', async () => {
+	it('should pass correct itemIndex and forward ctx to buildSteps', async () => {
 		const response: EngineResponse<RequestResponseMetadata> = {
 			actionResponses: [],
 			metadata: { iterationCount: 1 },
 		};
+		const ctx = { logger: { warn: vi.fn() } } as unknown as IExecuteFunctions;
 
-		await buildResponseMetadata(response, 5);
+		await buildResponseMetadata(response, 5, ctx);
 
-		expect(agentExecution.buildSteps).toHaveBeenCalledWith(response, 5);
+		expect(agentExecution.buildSteps).toHaveBeenCalledWith(response, 5, ctx);
 	});
 
 	it('should handle iterationCount starting from 0', async () => {

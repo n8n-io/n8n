@@ -117,7 +117,7 @@ export async function runAgent(
 
 			return {
 				actions,
-				metadata: await buildResponseMetadata(response, itemIndex),
+				metadata: await buildResponseMetadata(response, itemIndex, ctx),
 			};
 		}
 		// Save conversation to memory including any tool call context
@@ -171,7 +171,7 @@ export async function runAgent(
 
 		return {
 			actions,
-			metadata: await buildResponseMetadata(response, itemIndex),
+			metadata: await buildResponseMetadata(response, itemIndex, ctx),
 		};
 	}
 }

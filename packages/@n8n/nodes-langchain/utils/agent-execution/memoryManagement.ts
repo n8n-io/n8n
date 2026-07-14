@@ -4,7 +4,8 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, ToolMessage, trimMessages } from '@langchain/core/messages';
 import type { IDataObject, GenericValue } from 'n8n-workflow';
 
-import type { ToolCallData } from './types';
+import { isObservationContentBlock } from './types';
+import type { ObservationContentBlock, ToolCallData } from './types';
 
 /**
  * Extracts a string tool_call_id from various possible formats.
@@ -115,19 +116,21 @@ export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 			);
 		}
 
-		// Create ToolMessage with the observation result
-		let content: any = step.observation;
-		try {
-			if (typeof step.observation === 'string' && step.observation.trim().startsWith('[')) {
-				const parsed = JSON.parse(step.observation);
-				if (
-					Array.isArray(parsed) &&
-					parsed.every((item) => typeof item === 'object' && item !== null && 'type' in item)
-				) {
+		// Create ToolMessage with the observation result. Observations carrying
+		// multimodal blocks (images/files) are serialized as a JSON array string by
+		// buildObservation; parse them back into structured content so the model
+		// receives the blocks. Anything else stays a plain string.
+		let content: string | ObservationContentBlock[] = step.observation;
+		if (typeof step.observation === 'string' && step.observation.trim().startsWith('[')) {
+			try {
+				const parsed: unknown = JSON.parse(step.observation);
+				if (Array.isArray(parsed) && parsed.every(isObservationContentBlock)) {
 					content = parsed;
 				}
+			} catch {
+				// Not valid JSON — keep the observation as a plain string.
 			}
-		} catch {}
+		}
 
 		messages.push(
 			new ToolMessage({

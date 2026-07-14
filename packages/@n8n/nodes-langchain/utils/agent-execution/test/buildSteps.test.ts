@@ -1,4 +1,4 @@
-import type { EngineResponse } from 'n8n-workflow';
+import type { EngineResponse, IBinaryData, IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
@@ -1791,6 +1791,121 @@ describe('buildSteps', () => {
 			expect(result[0].observation).toContain('exceeds the 0.0 MB limit]');
 
 			getSpy.mockRestore();
+		});
+
+		// Builds a response with a single tool item carrying one binary attachment.
+		const responseWithBinary = (
+			binary: Partial<IBinaryData>,
+		): EngineResponse<RequestResponseMetadata> => ({
+			actionResponses: [
+				{
+					action: {
+						actionType: 'ExecutionNodeAction',
+						nodeName: 'BinaryNode',
+						input: { id: 'call_123' },
+						type: NodeConnectionTypes.AiTool,
+						id: 'call_123',
+						metadata: { itemIndex: 0 },
+					},
+					data: {
+						data: {
+							ai_tool: [[{ json: { success: true }, binary: { file: binary as IBinaryData } }]],
+						},
+						executionTime: 0,
+						startTime: 0,
+						executionIndex: 0,
+						source: [],
+					},
+				},
+			],
+			metadata: {},
+		});
+
+		it('should read binary stored by reference through the helpers when ctx is provided', async () => {
+			const ctx = {
+				helpers: {
+					getBinaryStream: vi.fn().mockResolvedValue('stream-handle'),
+					binaryToBuffer: vi.fn().mockResolvedValue(Buffer.from('Hello World')),
+				},
+				logger: { warn: vi.fn() },
+			} as unknown as IExecuteFunctions;
+
+			// Filesystem-mode binary: has an id, no inline data.
+			const response = responseWithBinary({
+				id: 'stored-id',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				data: '',
+			});
+
+			const result = await buildSteps(response, itemIndex, ctx);
+
+			expect(ctx.helpers.getBinaryStream).toHaveBeenCalledWith('stored-id');
+			expect(result[0].observation).toContain('File: notes.txt');
+			expect(result[0].observation).toContain('Content:\nHello World');
+		});
+
+		it('should fall back to inline data and warn when the stored binary read fails', async () => {
+			const warn = vi.fn();
+			const ctx = {
+				helpers: {
+					getBinaryStream: vi.fn().mockRejectedValue(new Error('binary evicted')),
+					binaryToBuffer: vi.fn(),
+				},
+				logger: { warn },
+			} as unknown as IExecuteFunctions;
+
+			const response = responseWithBinary({
+				id: 'stored-id',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				data: 'SGVsbG8gV29ybGQ=', // inline fallback: 'Hello World'
+			});
+
+			const result = await buildSteps(response, itemIndex, ctx);
+
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('binary evicted'));
+			expect(result[0].observation).toContain('Content:\nHello World');
+		});
+
+		it('should warn and skip when the stored binary is unreadable and has no inline data', async () => {
+			const warn = vi.fn();
+			const ctx = {
+				helpers: {
+					getBinaryStream: vi.fn().mockRejectedValue(new Error('binary evicted')),
+					binaryToBuffer: vi.fn(),
+				},
+				logger: { warn },
+			} as unknown as IExecuteFunctions;
+
+			const response = responseWithBinary({
+				id: 'stored-id',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				data: '',
+			});
+
+			const result = await buildSteps(response, itemIndex, ctx);
+
+			expect(warn).toHaveBeenCalled();
+			expect(result[0].observation).toContain('[File "notes.txt" skipped: no readable data]');
+		});
+
+		it('should pass non-image, non-text files as file blocks', async () => {
+			const response = responseWithBinary({
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+				data: 'JVBERi0=', // arbitrary base64
+			});
+
+			const result = await buildSteps(response, itemIndex);
+
+			const observation = JSON.parse(result[0].observation);
+			expect(observation[1]).toEqual({
+				type: 'file',
+				mediaType: 'application/pdf',
+				data: 'JVBERi0=',
+			});
 		});
 	});
 });
