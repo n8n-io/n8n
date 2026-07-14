@@ -1175,6 +1175,8 @@ export class CanvasPage extends BasePage {
 		root: () => this.page.getByTestId('canvas-selection-toolbar'),
 		groupButton: () => this.page.getByTestId('canvas-selection-toolbar-group'),
 		extractSubWorkflowButton: () => this.page.getByTestId('canvas-selection-toolbar-extract'),
+		// The tooltip is teleported to the document body when a toolbar button is hovered.
+		tooltip: () => this.page.getByTestId('tooltip-content').filter({ visible: true }),
 	};
 
 	getNodeGroupHeader(title: string): Locator {
