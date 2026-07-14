@@ -1,0 +1,29 @@
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_44a98ba2784a12::t_d446b22a984aa3 216-217
+  s_44a98ba2784a12::t_29c7d74109de94 434-435
+packages/@n8n/db/src/migrations/common/1784000000049-CreateWorkflowReviewRequestTables.ts
+  s_44a98ba2784a12::t_42b8bc36eb2c3b 17
+packages/@n8n/db/src/migrations/common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus.ts
+  ai_agent 1-39
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_44a98ba2784a12::t_50f198fd2246d1 224-225
+  s_44a98ba2784a12::t_6a70a4b32b68f9 452-453
+packages/cli/test/migration/1784000000049-create-workflow-review-request-tables.test.ts
+  s_44a98ba2784a12::t_9d434e03c62665 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d60dbe686ba565a5eec8f8b4d9cdc380233037e2",
+  "prompts": {},
+  "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
