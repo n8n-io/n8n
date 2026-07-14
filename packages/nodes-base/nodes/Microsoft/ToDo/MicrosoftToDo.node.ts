@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { stampItemIndexOnError } from '../GenericFunctions';
 import { targetDescription } from './descriptions/TargetDescription';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
 import { linkedResourceFields, linkedResourceOperations } from './LinkedResourceDescription';
@@ -124,7 +125,16 @@ export class MicrosoftToDo implements INodeType {
 			// select them easily
 			async getTaskLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const lists = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/todo/lists');
+				// loadOptions context: 0 is the transport's fallback read, not an item index.
+				const lists = await microsoftApiRequestAllItems.call(
+					this,
+					'value',
+					'GET',
+					'/todo/lists',
+					undefined,
+					undefined,
+					0,
+				);
 				for (const list of lists) {
 					returnData.push({
 						name: list.displayName as string,
@@ -164,6 +174,10 @@ export class MicrosoftToDo implements INodeType {
 							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
 							body,
 							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
 						);
 
 						// https://docs.microsoft.com/en-us/graph/api/linkedresource-delete?view=graph-rest-1.0&tabs=http
@@ -178,6 +192,10 @@ export class MicrosoftToDo implements INodeType {
 							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
 							undefined,
 							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
 						);
 						responseData = { success: true };
 
@@ -193,6 +211,10 @@ export class MicrosoftToDo implements INodeType {
 							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
 							undefined,
 							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
 						);
 
 						// https://docs.microsoft.com/en-us/graph/api/todotask-list-linkedresources?view=graph-rest-1.0&tabs=http
@@ -209,6 +231,7 @@ export class MicrosoftToDo implements INodeType {
 								`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
 								undefined,
 								qs,
+								i,
 							);
 						} else {
 							qs.$top = this.getNodeParameter('limit', i);
@@ -218,6 +241,10 @@ export class MicrosoftToDo implements INodeType {
 								`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
 								undefined,
 								qs,
+								undefined,
+								undefined,
+								undefined,
+								i,
 							);
 							responseData = responseData.value;
 						}
@@ -238,6 +265,10 @@ export class MicrosoftToDo implements INodeType {
 							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
 							body,
 							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
 						);
 					} else {
 						throw new NodeOperationError(
@@ -283,6 +314,10 @@ export class MicrosoftToDo implements INodeType {
 							`/todo/lists/${taskListId}/tasks`,
 							body,
 							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
 						);
 
 						// https://docs.microsoft.com/en-us/graph/api/todotask-delete?view=graph-rest-1.0&tabs=http
@@ -296,6 +331,10 @@ export class MicrosoftToDo implements INodeType {
 							`/todo/lists/${taskListId}/tasks/${taskId}`,
 							undefined,
 							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
 						);
 						responseData = { success: true };
 
@@ -310,6 +349,10 @@ export class MicrosoftToDo implements INodeType {
 							`/todo/lists/${taskListId}/tasks/${taskId}`,
 							undefined,
 							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
 						);
 
 						// https://docs.microsoft.com/en-us/graph/api/todotasklist-list-tasks?view=graph-rest-1.0&tabs=http
@@ -325,6 +368,7 @@ export class MicrosoftToDo implements INodeType {
 								`/todo/lists/${taskListId}/tasks/`,
 								undefined,
 								qs,
+								i,
 							);
 						} else {
 							qs.$top = this.getNodeParameter('limit', i);
@@ -334,6 +378,10 @@ export class MicrosoftToDo implements INodeType {
 								`/todo/lists/${taskListId}/tasks/`,
 								undefined,
 								qs,
+								undefined,
+								undefined,
+								undefined,
+								i,
 							);
 							responseData = responseData.value;
 						}
@@ -376,6 +424,10 @@ export class MicrosoftToDo implements INodeType {
 							`/todo/lists/${taskListId}/tasks/${taskId}`,
 							body,
 							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
 						);
 					} else {
 						throw new NodeOperationError(
@@ -391,7 +443,17 @@ export class MicrosoftToDo implements INodeType {
 							displayName: this.getNodeParameter('displayName', i) as string,
 						};
 
-						responseData = await microsoftApiRequest.call(this, 'POST', '/todo/lists/', body, qs);
+						responseData = await microsoftApiRequest.call(
+							this,
+							'POST',
+							'/todo/lists/',
+							body,
+							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
+						);
 
 						// https://docs.microsoft.com/en-us/graph/api/todotasklist-delete?view=graph-rest-1.0&tabs=http
 					} else if (operation === 'delete') {
@@ -402,6 +464,10 @@ export class MicrosoftToDo implements INodeType {
 							`/todo/lists/${listId}`,
 							undefined,
 							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
 						);
 						responseData = { success: true };
 
@@ -414,6 +480,10 @@ export class MicrosoftToDo implements INodeType {
 							`/todo/lists/${listId}`,
 							undefined,
 							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
 						);
 
 						// https://docs.microsoft.com/en-us/graph/api/todo-list-lists?view=graph-rest-1.0&tabs=http
@@ -427,6 +497,7 @@ export class MicrosoftToDo implements INodeType {
 								'/todo/lists',
 								undefined,
 								qs,
+								i,
 							);
 						} else {
 							qs.$top = this.getNodeParameter('limit', i);
@@ -436,6 +507,10 @@ export class MicrosoftToDo implements INodeType {
 								'/todo/lists',
 								undefined,
 								qs,
+								undefined,
+								undefined,
+								undefined,
+								i,
 							);
 							responseData = responseData.value;
 						}
@@ -453,6 +528,10 @@ export class MicrosoftToDo implements INodeType {
 							`/todo/lists/${listId}`,
 							body,
 							qs,
+							undefined,
+							undefined,
+							undefined,
+							i,
 						);
 					} else {
 						throw new NodeOperationError(
@@ -471,7 +550,8 @@ export class MicrosoftToDo implements INodeType {
 					returnData.push(...executionErrorData);
 					continue;
 				}
-				throw error;
+				// A NodeError from the transport may be missing the itemIndex, add it
+				throw stampItemIndexOnError(error, i);
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
