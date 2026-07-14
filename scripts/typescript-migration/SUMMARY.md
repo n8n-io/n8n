@@ -1,6 +1,6 @@
 # TypeScript 6 → 7 migration benchmarks
 
-Generated 2026-07-09T13:19:07.559Z from `scripts/typescript-migration/results/`.
+Generated 2026-07-14T08:16:53.088Z from `scripts/typescript-migration/results/`.
 
 | Package | typecheck Δ | build Δ |
 | --- | --- | --- |
@@ -8,6 +8,8 @@ Generated 2026-07-09T13:19:07.559Z from `scripts/typescript-migration/results/`.
 | `@n8n/ai-node-sdk` | -53.1% | -54.3% |
 | `@n8n/ai-utilities` | -66.9% | -63.2% |
 | `@n8n/ai-workflow-builder` | -69.3% | -33.1% |
+| `@n8n/api-types` | -64.6% | -66.6% |
+| `@n8n/backend-common` | -57.0% | -54.5% |
 | `@n8n/codemirror-lang` | -36.3% | -31.4% |
 | `@n8n/codemirror-lang-html` | — | -17.0% |
 | `@n8n/codemirror-lang-sql` | -42.7% | -39.2% |
@@ -59,6 +61,30 @@ typecheck:
 build:
   before               3.25s
   after                2.17s  -1078ms (-33.1%)
+```
+
+```
+=== @n8n/api-types — median times (Δ vs "before") ===
+
+typecheck:
+  before               2.55s
+  after                903ms  -1651ms (-64.6%)
+
+build:
+  before               2.64s
+  after                882ms  -1757ms (-66.6%)
+```
+
+```
+=== @n8n/backend-common — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.34s
+  after                576ms  -765ms (-57.0%)
+
+build:
+  before               1.19s
+  after                541ms  -649ms (-54.5%)
 ```
 
 ```
