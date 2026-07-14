@@ -220,7 +220,8 @@ import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-Crea
 import { AddPartialIndexForGlobalCredentials1784000000044 } from '../common/1784000000044-AddPartialIndexForGlobalCredentials';
 import { AddRecurringCronScheduleKind1784000000045 } from '../common/1784000000045-AddRecurringCronScheduleKind';
 import { CreateInstanceAiEventsTable1784000000046 } from '../common/1784000000046-CreateInstanceAiEventsTable';
-import { CreateWorkflowReviewRequestTables1784000000047 } from '../common/1784000000047-CreateWorkflowReviewRequestTables';
+import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/1784000000047-BackfillPreScopingOAuthGrantScopes';
+import { CreateWorkflowReviewRequestTables1784000000048 } from '../common/1784000000048-CreateWorkflowReviewRequestTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -446,5 +447,6 @@ export const postgresMigrations: Migration[] = [
 	AddPartialIndexForGlobalCredentials1784000000044,
 	AddRecurringCronScheduleKind1784000000045,
 	CreateInstanceAiEventsTable1784000000046,
-	CreateWorkflowReviewRequestTables1784000000047,
+	BackfillPreScopingOAuthGrantScopes1784000000047,
+	CreateWorkflowReviewRequestTables1784000000048,
 ];

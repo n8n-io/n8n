@@ -232,6 +232,7 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   integer id
+  json scope
   uuid userId FK
 }
 "public.project" {
