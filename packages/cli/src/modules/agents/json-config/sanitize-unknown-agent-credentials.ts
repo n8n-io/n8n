@@ -1,15 +1,15 @@
-import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 
 function clearUnknownCredentialId(
 	credentialId: unknown,
 	accessibleCredentialIds: ReadonlySet<string>,
-	allowManagedCredentialToken = false,
+	allowedManagedTokens: readonly string[] = [],
 ): unknown {
 	if (typeof credentialId !== 'string' || credentialId === '') {
 		return credentialId;
 	}
 
-	if (allowManagedCredentialToken && credentialId === MANAGED_CREDENTIAL_TOKEN) {
+	if (allowedManagedTokens.includes(credentialId)) {
 		return credentialId;
 	}
 
@@ -18,6 +18,23 @@ function clearUnknownCredentialId(
 
 function isManagedEpisodicMemoryCredentialPath(path: readonly string[]): boolean {
 	return path.join('.') === 'memory.episodicMemory.credential';
+}
+
+/** Model-credential paths where the n8n Connect managed tag is a valid value. */
+function isAiGatewayModelCredentialPath(path: readonly string[]): boolean {
+	const joined = path.join('.');
+	return (
+		joined === 'credential' ||
+		/^subAgents\.modelsByDifficulty\.(low|medium|high)\.credential$/.test(joined)
+	);
+}
+
+/** Managed credential tokens allowed to survive sanitization at the given path. */
+function allowedManagedTokensForPath(path: readonly string[]): string[] {
+	const tokens: string[] = [];
+	if (isManagedEpisodicMemoryCredentialPath(path)) tokens.push(MANAGED_CREDENTIAL_TOKEN);
+	if (isAiGatewayModelCredentialPath(path)) tokens.push(AI_GATEWAY_MANAGED_TAG);
+	return tokens;
 }
 
 function sanitizeUnknownCredentialsInValue(
@@ -44,7 +61,7 @@ function sanitizeUnknownCredentialsInValue(
 			sanitized[key] = clearUnknownCredentialId(
 				entry,
 				accessibleCredentialIds,
-				isManagedEpisodicMemoryCredentialPath(nextPath),
+				allowedManagedTokensForPath(nextPath),
 			);
 			continue;
 		}

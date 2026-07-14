@@ -1,4 +1,5 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
 import type { ModelLookup } from '../resolve-llm.tool';
@@ -291,6 +292,123 @@ describe('resolve_llm tool', () => {
 				requestedModel: 'claude-haiku-4-5',
 				error: 'credentials invalid',
 			});
+		});
+	});
+
+	describe('n8n Connect managed credentials', () => {
+		it('defaults to n8n Connect when there is no own credential and the gateway serves the provider', async () => {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup: makeModelLookup(),
+				isProviderServedByGateway: async (provider) => provider === 'anthropic',
+			});
+			const result = await tool.handler!({ provider: 'anthropic' }, {});
+
+			expect(result).toEqual({
+				ok: true,
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-6',
+				credentialId: AI_GATEWAY_MANAGED_TAG,
+				credentialName: 'n8n Connect',
+			});
+		});
+
+		it('returns missing_credential when no own credential and the gateway does not serve the provider', async () => {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup: makeModelLookup(),
+				isProviderServedByGateway: async () => false,
+			});
+			const result = await tool.handler!({ provider: 'anthropic' }, {});
+
+			expect(result).toMatchObject({
+				ok: false,
+				reason: 'missing_credential',
+				provider: 'anthropic',
+			});
+		});
+
+		it('does not offer n8n Connect for a provider the user already has credentials for', async () => {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([
+					{ id: 'cred-1', name: 'Anthropic A', type: 'anthropicApi' },
+					{ id: 'cred-2', name: 'Anthropic B', type: 'anthropicApi' },
+				]),
+				modelLookup: makeModelLookup(),
+				isProviderServedByGateway: async () => true,
+			});
+			const result = await tool.handler!({ provider: 'anthropic' }, {});
+
+			// The user has Anthropic keys, so n8n Connect is not offered for Anthropic —
+			// only their own credentials are ambiguous.
+			expect(result).toMatchObject({
+				ok: false,
+				reason: 'ambiguous_credential',
+				credentials: [
+					{ id: 'cred-1', name: 'Anthropic A' },
+					{ id: 'cred-2', name: 'Anthropic B' },
+				],
+			});
+		});
+
+		it('additively appends n8n Connect options for gateway providers the user has no key for', async () => {
+			const served = new Set(['openai', 'anthropic', 'google']);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([
+					{ id: 'cred-1', name: 'My Anthropic', type: 'anthropicApi' },
+					{ id: 'cred-2', name: 'My xAI', type: 'xAiApi' },
+				]),
+				modelLookup: makeModelLookup(),
+				isProviderServedByGateway: async (provider) => served.has(provider),
+			});
+			const result = (await tool.handler!({}, {})) as {
+				credentials?: Array<{ id: string; name: string; type: string; provider: string }>;
+			};
+
+			const creds = result.credentials ?? [];
+			// Own credential preserved.
+			expect(creds).toContainEqual({
+				id: 'cred-1',
+				name: 'My Anthropic',
+				type: 'anthropicApi',
+				provider: 'anthropic',
+			});
+			// n8n Connect options appended for supported providers without an own key (openai, google).
+			expect(creds).toContainEqual({
+				id: AI_GATEWAY_MANAGED_TAG,
+				name: 'n8n Connect',
+				type: 'openAiApi',
+				provider: 'openai',
+			});
+			expect(creds).toContainEqual({
+				id: AI_GATEWAY_MANAGED_TAG,
+				name: 'n8n Connect',
+				type: 'googlePalmApi',
+				provider: 'google',
+			});
+			// No n8n Connect entry for Anthropic — the user already has a key for it.
+			expect(
+				creds.filter((c) => c.provider === 'anthropic' && c.id === AI_GATEWAY_MANAGED_TAG),
+			).toHaveLength(0);
+		});
+
+		it('validates a requested managed model against the gateway allowlist', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'GPT-5 mini', value: 'gpt-5-mini' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup,
+				isProviderServedByGateway: async (provider) => provider === 'openai',
+			});
+			const result = await tool.handler!({ provider: 'openai', model: 'gpt-5-mini' }, {});
+
+			expect(result).toMatchObject({
+				ok: true,
+				model: 'gpt-5-mini',
+				credentialId: AI_GATEWAY_MANAGED_TAG,
+			});
+			expect(modelLookup.list).toHaveBeenCalledWith(AI_GATEWAY_MANAGED_TAG, 'openAiApi', 'openai');
 		});
 	});
 });

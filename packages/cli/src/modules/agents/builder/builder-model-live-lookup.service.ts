@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
@@ -23,7 +24,31 @@ export class BuilderModelLiveLookupService {
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
+
+	/**
+	 * Lists the chat models n8n Connect (AI Gateway) allows for a provider. Uses
+	 * the gateway's synthetic credential, so discovery hits the gateway's
+	 * `/models` endpoint — which is already filtered to the gateway allowlist.
+	 * Throws if the gateway does not serve the provider.
+	 */
+	async listManaged(
+		projectId: string,
+		provider: string,
+		user?: User,
+	): Promise<Array<{ name: string; value: string }>> {
+		const credentialType = await this.aiGatewayService.getCredentialTypeForProvider(provider);
+		if (!credentialType) {
+			throw new Error(`n8n Connect does not support the "${provider}" model provider`);
+		}
+		const raw = await this.aiGatewayService.getSyntheticCredential({
+			credentialType,
+			userId: user?.id,
+			projectId,
+		});
+		return await this.discoverModels(provider, raw);
+	}
 
 	/**
 	 * Returns `{ name, value }` pairs (value = the provider's model id, exactly
@@ -53,6 +78,17 @@ export class BuilderModelLiveLookupService {
 		}
 		const rawData = await this.credentialsService.decrypt(credential, true);
 
+		return await this.discoverModels(provider, rawData);
+	}
+
+	/**
+	 * Runs provider model discovery against a raw credential record (real or the
+	 * gateway synthetic credential), returning `{ name, value }` pairs.
+	 */
+	private async discoverModels(
+		provider: string,
+		rawData: object,
+	): Promise<Array<{ name: string; value: string }>> {
 		const { listModelsForProvider } = await import('@n8n/ai-utilities/model-discovery');
 		const mapped = mapCredentialForProvider(provider, { apiKey: '', ...rawData });
 		const apiKey = typeof mapped.apiKey === 'string' ? mapped.apiKey : '';

@@ -1,7 +1,8 @@
 import type { CredentialProvider } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
@@ -40,15 +41,24 @@ function makeAiService(proxyEnabled = false) {
 	return { isProxyEnabled: vi.fn().mockReturnValue(proxyEnabled) } as unknown as AiService;
 }
 
-function makeService(aiService = makeAiService()) {
+function makeAiGatewayService(supportedProviders: string[] = []) {
+	return {
+		getCredentialTypeForProvider: vi.fn(async (provider: string) =>
+			supportedProviders.includes(provider) ? `${provider}Api` : undefined,
+		),
+	} as unknown as AiGatewayService;
+}
+
+function makeService(aiService = makeAiService(), aiGatewayService = makeAiGatewayService()) {
 	const agentRepository = mock<AgentRepository>();
 	const agentSkillsService = mock<AgentSkillsService>();
 
 	return {
-		service: new AgentValidationService(agentRepository, aiService),
+		service: new AgentValidationService(agentRepository, aiService, aiGatewayService),
 		agentRepository,
 		agentSkillsService,
 		aiService,
+		aiGatewayService,
 	};
 }
 
@@ -334,5 +344,89 @@ describe('AgentValidationService', () => {
 		);
 
 		expect(result.missing).toContain('episodicMemory.credential');
+	});
+
+	it('accepts the n8n Connect tag on the main model when the gateway serves the provider', async () => {
+		const { service, agentRepository } = makeService(
+			makeAiService(),
+			makeAiGatewayService(['openai']),
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ ...runnableConfig, model: 'openai/gpt-5', credential: AI_GATEWAY_MANAGED_TAG }),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider(),
+		);
+
+		expect(result.missing).not.toContain('credential');
+	});
+
+	it('reports missing credential for the n8n Connect tag when the gateway does not serve the provider', async () => {
+		const { service, agentRepository } = makeService(makeAiService(), makeAiGatewayService([]));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ ...runnableConfig, model: 'xai/grok-4', credential: AI_GATEWAY_MANAGED_TAG }),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider(),
+		);
+
+		expect(result.missing).toContain('credential');
+	});
+
+	it('accepts the n8n Connect tag on difficulty models when the gateway serves the provider', async () => {
+		const { service, agentRepository } = makeService(
+			makeAiService(),
+			makeAiGatewayService(['openai']),
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				subAgents: {
+					modelsByDifficulty: {
+						low: { model: 'openai/gpt-5-mini', credential: AI_GATEWAY_MANAGED_TAG },
+					},
+				},
+			} as AgentJsonConfig),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.missing).not.toContain('subAgents.modelsByDifficulty.low.credential');
+	});
+
+	it('still reports missing for the n8n Connect tag on memory worker models (out of scope)', async () => {
+		const { service, agentRepository } = makeService(
+			makeAiService(),
+			makeAiGatewayService(['openai']),
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				memory: {
+					enabled: true,
+					observationalMemory: {
+						observerModel: { model: 'openai/gpt-4o-mini', credential: AI_GATEWAY_MANAGED_TAG },
+					},
+				},
+			} as AgentJsonConfig),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.missing).toContain('memory.observationalMemory.observerModel.credential');
 	});
 });

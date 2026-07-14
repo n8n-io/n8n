@@ -1,4 +1,3 @@
-import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type {
@@ -16,6 +15,7 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -25,6 +25,7 @@ import type { EventService } from '@/events/event.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
@@ -41,11 +42,10 @@ import { AgentPublishService } from '../agent-publish.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
-
 import type { AgentTaskService } from '../agent-task.service';
-import { AgentsService } from '../agents.service';
 import { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentValidationService } from '../agent-validation.service';
+import { AgentsService } from '../agents.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -62,8 +62,8 @@ import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-sna
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
+import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -278,7 +278,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<SubAgentCleanupService>(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory);
-		agentValidationService = new AgentValidationService(agentRepository, mock<AiService>());
+		agentValidationService = new AgentValidationService(
+			agentRepository,
+			mock<AiService>(),
+			mock<AiGatewayService>(),
+		);
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,

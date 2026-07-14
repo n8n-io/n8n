@@ -48,6 +48,7 @@ const {
 	projectId,
 	warnMissingCredentials = false,
 	disabled = false,
+	isManagedCredential = false,
 } = defineProps<{
 	selectedModel: AgentModelOption | null;
 	credentials: AgentCredentialsByProvider | null;
@@ -56,6 +57,8 @@ const {
 	projectId: string;
 	warnMissingCredentials?: boolean;
 	disabled?: boolean;
+	/** The selected model uses the n8n Connect (AI Gateway) managed credential. */
+	isManagedCredential?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -85,10 +88,18 @@ const selectedCredential = computed(() =>
 		: null,
 );
 
-const selectedCredentialName = computed(() => selectedCredential.value?.name);
+const selectedCredentialName = computed(() =>
+	isManagedCredential
+		? i18n.baseText('aiGateway.credentialMode.n8nConnect.title')
+		: selectedCredential.value?.name,
+);
 
 const isCredentialsMissing = computed(
-	() => warnMissingCredentials && selectedModel?.provider && !selectedCredential.value,
+	() =>
+		!isManagedCredential &&
+		warnMissingCredentials &&
+		selectedModel?.provider &&
+		!selectedCredential.value,
 );
 
 const selectedLabel = computed(
@@ -419,6 +430,7 @@ defineExpose({
 		:selected-label="selectedLabel"
 		:selected-credential-name="selectedCredentialName"
 		:credentials-missing="isCredentialsMissing"
+		:credential-badge-theme="isManagedCredential ? 'default' : undefined"
 		:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
 		:disabled="disabled"
 		data-test-id="agent-model-selector"

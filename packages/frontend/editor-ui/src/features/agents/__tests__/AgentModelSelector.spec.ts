@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -40,6 +39,7 @@ const baseText = vi.hoisted(() =>
 				'agents.modelSelector.moreModels': 'More models',
 				'agents.modelSelector.freeCredits.label': 'Use free OpenAI credits',
 				'agents.modelSelector.freeCredits.badge': 'free credits',
+				'aiGateway.credentialMode.n8nConnect.title': 'n8n Connect',
 				'agents.modelSelector.freeCredits.description':
 					'Get {credits} free OpenAI API credits. Try it with gpt-5-mini.',
 				'generic.loadingEllipsis': 'Loading...',
@@ -73,6 +73,7 @@ vi.mock('@n8n/design-system', async () => {
 				'selectedLabel',
 				'selectedCredentialName',
 				'credentialsMissing',
+				'credentialBadgeTheme',
 				'noMatchLabel',
 				'disabled',
 				'dataTestId',
@@ -135,7 +136,10 @@ const modelsByProvider: AgentModelsByProvider = {
 	},
 };
 
-async function mountSelector(credentials: Record<string, string | null>) {
+async function mountSelector(
+	credentials: Record<string, string | null>,
+	extraProps: { isManagedCredential?: boolean } = {},
+) {
 	const { default: AgentModelSelector } = await import('../components/AgentModelSelector.vue');
 	return mount(AgentModelSelector, {
 		props: {
@@ -145,6 +149,7 @@ async function mountSelector(credentials: Record<string, string | null>) {
 			isLoading: false,
 			projectId: 'project-1',
 			warnMissingCredentials: true,
+			...extraProps,
 		},
 	});
 }
@@ -186,6 +191,17 @@ describe('AgentModelSelector', () => {
 		freeAiCreditsState.claimingCredits.value = false;
 		freeAiCreditsState.claimCreditsAndGetCredential.mockReset();
 		canCreateCredentials.value = true;
+	});
+
+	it('shows n8n Connect (not "credentials missing") for a managed credential', async () => {
+		// No own credential for the provider, but the model uses the n8n Connect managed credential.
+		const wrapper = await mountSelector({ anthropic: null }, { isManagedCredential: true });
+		const dropdown = getDropdown(wrapper);
+
+		expect(dropdown.props('credentialsMissing')).toBe(false);
+		expect(dropdown.props('selectedCredentialName')).toBe('n8n Connect');
+		// Rendered as a neutral pill, not the danger "credentials missing" badge.
+		expect(dropdown.props('credentialBadgeTheme')).toBe('default');
 	});
 
 	it('surfaces a stale selected credential as missing', async () => {

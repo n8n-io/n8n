@@ -3,23 +3,34 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	AGENT_VECTOR_STORE_CREDENTIAL_TYPES,
 	AgentModelSchema,
+	AI_GATEWAY_MANAGED_TAG,
 	MANAGED_CREDENTIAL_TOKEN,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
+import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
+import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiService } from '@/services/ai.service';
+
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 import { AgentRepository } from './repositories/agent.repository';
-import { AiService } from '@/services/ai.service';
-import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 
 @Service()
 export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly aiService: AiService,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
+
+	/** Whether the model can be served by n8n Connect (licensed + provider supported). */
+	private async isAiGatewayModelSupported(model: string): Promise<boolean> {
+		const provider = getProviderPrefix(model);
+		if (!provider) return false;
+		return (await this.aiGatewayService.getCredentialTypeForProvider(provider)) !== undefined;
+	}
 
 	/**
 	 * Check whether an agent has the minimum config it needs to be run.
@@ -65,7 +76,13 @@ export class AgentValidationService {
 		} else {
 			try {
 				const credentialId = config.credential.trim();
-				if (!(await credentialExists(credentialId))) missing.push('credential');
+				if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+					if (!(await this.isAiGatewayModelSupported(config.model ?? ''))) {
+						missing.push('credential');
+					}
+				} else if (!(await credentialExists(credentialId))) {
+					missing.push('credential');
+				}
 			} catch {
 				// Runtime reconstruction surfaces permission/listing failures with the concrete error.
 			}
@@ -158,6 +175,7 @@ export class AgentValidationService {
 						`subAgents.modelsByDifficulty.${difficulty}`,
 						findCredential,
 						missing,
+						true,
 					);
 				}
 			}
@@ -179,6 +197,7 @@ export class AgentValidationService {
 			credentialId: string,
 		) => Promise<Awaited<ReturnType<CredentialProvider['list']>>[number] | undefined>,
 		missing: string[],
+		allowAiGatewayManaged = false,
 	) {
 		if (modelConfig === undefined || modelConfig === null) return;
 
@@ -194,6 +213,13 @@ export class AgentValidationService {
 		const credentialId = modelConfig.credential?.trim();
 		if (!credentialId) {
 			missing.push(`${path}.credential`);
+			return;
+		}
+
+		if (allowAiGatewayManaged && credentialId === AI_GATEWAY_MANAGED_TAG) {
+			if (!(await this.isAiGatewayModelSupported(modelConfig.model ?? ''))) {
+				missing.push(`${path}.credential`);
+			}
 			return;
 		}
 
