@@ -408,14 +408,19 @@ function updateNodesIssues() {
 // can't linger after switching the resolver or changing/toggling/adding a trigger.
 watch(
 	() => {
-		const doc = workflowDocumentStore.value;
-		const triggerSignature = doc.workflowTriggerNodes
+		const doc = workflowDocumentStore?.value;
+		const triggerSignature = (doc?.workflowTriggerNodes ?? [])
 			.filter((trigger) => !trigger.disabled)
 			.map((trigger) => `${trigger.type}:${JSON.stringify(trigger.parameters ?? {})}`)
 			.join('|');
-		return `${doc.settings?.credentialResolverId ?? ''}#${triggerSignature}`;
+		return `${doc?.settings?.credentialResolverId ?? ''}#${triggerSignature}`;
 	},
 	() => {
+		// The load path already computes credential issues once after the workflow
+		// loads (updateNodesIssues). Skip while still loading so this doesn't churn
+		// node issues during the document store's transient setup window, where
+		// NDV-dependent render code can still throw.
+		if (isLoading.value) return;
 		nodeHelpers.updateNodesCredentialsIssues();
 	},
 );
