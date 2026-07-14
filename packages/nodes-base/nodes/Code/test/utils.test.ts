@@ -6,7 +6,7 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { makeResolverFromLegacyOptions, NodeVM } from 'vm2';
 
-import { addPostExecutionWarning, generateScript } from '../utils';
+import { addPostExecutionWarning, generateScript, resolveExternalModule } from '../utils';
 
 it('should resolve external modules outside the process working directory', async () => {
 	const originalCwd = process.cwd();
@@ -18,6 +18,7 @@ it('should resolve external modules outside the process working directory', asyn
 		const resolver = makeResolverFromLegacyOptions({
 			external: { modules: ['lodash'], transitive: false },
 			builtin: [],
+			resolve: resolveExternalModule,
 		});
 		const vm = new NodeVM({ require: resolver });
 
