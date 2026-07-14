@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "private": true,
   "engines": {
     "node": ">=22.22",
@@ -31,6 +31,7 @@
     "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
     "format": "turbo run format && node scripts/format.mjs",
     "grind": "node scripts/grind.mjs",
+    "nathan": "node scripts/nathan.mjs",
     "agent:setup": "node scripts/agent-setup.mjs",
     "format:check": "turbo run format:check",
     "lint": "turbo run lint",

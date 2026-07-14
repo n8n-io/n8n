@@ -4727,7 +4727,7 @@ describe('POST /workflows/:workflowId/run', () => {
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${dbWorkflow.id}/run`)
-			.send({ workflowData: tamperedWorkflowData });
+			.send({ triggerToStartFrom: { name: 'Start' }, workflowData: tamperedWorkflowData });
 
 		// The endpoint should accept the request (the DB workflow exists)
 		// It should NOT use the tampered workflowData
@@ -4740,9 +4740,22 @@ describe('POST /workflows/:workflowId/run', () => {
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${nonExistentId}/run`)
-			.send({ workflowData: fakeWorkflow });
+			.send({ triggerToStartFrom: { name: 'Start' }, workflowData: fakeWorkflow });
 
 		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 400 when neither a trigger nor a destination node is provided', async () => {
+		const dbWorkflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${dbWorkflow.id}/run`)
+			.send({ startNodes: [] });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			'To run the workflow manually, specify either a trigger to start from or a destination node.',
+		);
 	});
 });
 
