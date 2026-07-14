@@ -1,0 +1,42 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/package-workflow-requirement.validator.test.ts
+  s_4a6d264bab1bf3::t_984381b758d5f4 43,85-88,103,114
+  s_4a6d264bab1bf3::t_3ef01501938366 1-42,44-79,81-84,89-102,104-112,115-125,127-144
+  s_4a6d264bab1bf3::t_0d402315137a89 126
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_4a6d264bab1bf3::t_4db171564a2502 1,123
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_4a6d264bab1bf3::t_3ef01501938366 16,48,106
+  s_4a6d264bab1bf3::t_4db171564a2502 108
+packages/cli/src/modules/n8n-packages/entities/workflow/package-workflow-requirement.validator.ts
+  s_4a6d264bab1bf3::t_3ef01501938366 1-41,43-44,46-56
+  s_4a6d264bab1bf3::t_984381b758d5f4 45
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/sub-workflow-requirements.test.ts
+  s_4a6d264bab1bf3::t_98782cfb6938bc 37,48
+packages/cli/src/modules/n8n-packages/entities/workflow/sub-workflow-requirements.ts
+  s_4a6d264bab1bf3::t_4db171564a2502 6,15-16,18,20
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_4a6d264bab1bf3::t_4db171564a2502 1,80
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_4a6d264bab1bf3::t_4db171564a2502 1,177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f431a937a881fd0e388d674e35600e4d7a8dc796",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4a6d264bab1bf3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5fda-f326-7b31-8e44-fb7594963b46",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
