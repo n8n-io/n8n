@@ -268,10 +268,12 @@ describe('emit-instance-ai', () => {
 			'buildSchemaContexts',
 			'collectDownstreamConsumers',
 			'describeAiRootShape',
+			'findEnvelopeKey',
 			'findOutputParserTargets',
 			'isAiRootNodeType',
 			'parsePinDataResponse',
-			'repairStructuredAgentOutput',
+			'repairStructuredOutput',
+			'resolveStructuredEnvelopeKey',
 			'workflowToMermaid',
 			// Display-options matching
 			'matchesDisplayOptions',
