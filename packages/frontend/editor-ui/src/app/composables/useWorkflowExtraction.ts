@@ -3,6 +3,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import {
 	extractReferencesInNodeExpressions,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
 	NodeHelpers,
 } from 'n8n-workflow';
 import type {
@@ -48,7 +49,7 @@ export function useWorkflowExtraction() {
 	const canvasOperations = useCanvasOperations();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
-	const { isSelectionExtractable } = useSelectionValidation();
+	const { expandSelectionWithSubNodes, isSelectionExtractable } = useSelectionValidation();
 
 	function showError(message: string) {
 		toast.showMessage({
@@ -91,6 +92,9 @@ export function useWorkflowExtraction() {
 		position: [number, number],
 		variables: Map<string, string>,
 	): Omit<INode, 'id'> {
+		const variableEntries = [...variables.entries()];
+		const variableNames = [...variables.keys()];
+
 		return {
 			parameters: {
 				workflowId: {
@@ -100,20 +104,18 @@ export function useWorkflowExtraction() {
 				},
 				workflowInputs: {
 					mappingMode: 'defineBelow',
-					value: Object.fromEntries(variables.entries().map(([k, v]) => [k, `={{ ${v} }}`])),
-					matchingColumns: [...variables.keys()],
-					schema: [
-						...variables.keys().map((x) => ({
-							id: x,
-							displayName: x,
-							required: false,
-							defaultMatch: false,
-							display: true,
-							canBeUsedToMatch: true,
-							removed: false,
-							// omitted type implicitly uses our `any` type
-						})),
-					],
+					value: Object.fromEntries(variableEntries.map(([k, v]) => [k, `={{ ${v} }}`])),
+					matchingColumns: variableNames,
+					schema: variableNames.map((x) => ({
+						id: x,
+						displayName: x,
+						required: false,
+						defaultMatch: false,
+						display: true,
+						canBeUsedToMatch: true,
+						removed: false,
+						// omitted type implicitly uses our `any` type
+					})),
 					attemptToConvertTypes: false,
 					convertFieldsToString: true,
 				},
@@ -272,6 +274,61 @@ export function useWorkflowExtraction() {
 		return [summedUp[0] / summedUp[2], summedUp[1] / summedUp[2]];
 	}
 
+	function getNonMainConnectionTargets(nodeName: string, connections: IConnections): string[] {
+		const nodeConnections = connections[nodeName];
+		if (!nodeConnections) return [];
+
+		const targets: string[] = [];
+		for (const [type, connectionsByOutputIndex] of Object.entries(nodeConnections)) {
+			if (type === NodeConnectionTypes.Main) continue;
+
+			for (const outputConnections of connectionsByOutputIndex) {
+				for (const connection of outputConnections ?? []) {
+					targets.push(connection.node);
+				}
+			}
+		}
+
+		return targets;
+	}
+
+	function getNodesToDeleteFromParent(subGraph: INodeUi[], connections: IConnections): INodeUi[] {
+		const subGraphNames = new Set(subGraph.map((node) => node.name));
+		const nonMainTargetsByNodeName = new Map(
+			subGraph.map((node) => [node.name, getNonMainConnectionTargets(node.name, connections)]),
+		);
+		const subNodeNames = new Set(
+			[...nonMainTargetsByNodeName.entries()]
+				.filter(([, targets]) => targets.some((target) => subGraphNames.has(target)))
+				.map(([nodeName]) => nodeName),
+		);
+
+		const preservedNodeNames = new Set(
+			[...subNodeNames].filter((nodeName) =>
+				(nonMainTargetsByNodeName.get(nodeName) ?? []).some((target) => !subGraphNames.has(target)),
+			),
+		);
+
+		let didAddPreservedNode = true;
+		while (didAddPreservedNode) {
+			didAddPreservedNode = false;
+
+			for (const nodeName of subNodeNames) {
+				if (preservedNodeNames.has(nodeName)) continue;
+
+				const shouldPreserve = (nonMainTargetsByNodeName.get(nodeName) ?? []).some((target) =>
+					preservedNodeNames.has(target),
+				);
+				if (!shouldPreserve) continue;
+
+				preservedNodeNames.add(nodeName);
+				didAddPreservedNode = true;
+			}
+		}
+
+		return subGraph.filter((node) => !preservedNodeNames.has(node.name));
+	}
+
 	async function tryCreateWorkflow(workflowData: WorkflowDataCreate): Promise<IWorkflowDb | null> {
 		try {
 			const createdWorkflow = await workflowsStore.createNewWorkflow(workflowData);
@@ -310,7 +367,7 @@ export function useWorkflowExtraction() {
 		executeWorkflowNodeData: AddedNode,
 		startId: string | undefined,
 		endId: string | undefined,
-		selection: INode[],
+		nodesToDelete: INode[],
 		selectionChildNodes: INode[],
 	) {
 		historyStore.startRecordingUndo();
@@ -325,7 +382,7 @@ export function useWorkflowExtraction() {
 		)[0];
 
 		addReplacementNodeToSelectionGroup(
-			selection.map((node) => node.id),
+			nodesToDelete.map((node) => node.id),
 			executeWorkflowNode.id,
 		);
 
@@ -344,7 +401,7 @@ export function useWorkflowExtraction() {
 			});
 
 		canvasOperations.deleteNodes(
-			selection.map((x) => x.id),
+			nodesToDelete.map((x) => x.id),
 			CANVAS_HISTORY_OPTIONS,
 		);
 
@@ -390,7 +447,8 @@ export function useWorkflowExtraction() {
 	}
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {
-		const result = isSelectionExtractable(nodeIds);
+		const expandedNodeIds = expandSelectionWithSubNodes(nodeIds);
+		const result = isSelectionExtractable(expandedNodeIds);
 
 		if (!result.valid) {
 			switch (result.reason) {
@@ -453,6 +511,11 @@ export function useWorkflowExtraction() {
 
 		let startNodeName = 'Start';
 		const subGraphNames = subGraph.map((x) => x.name);
+		const nodesToDelete = getNodesToDeleteFromParent(
+			subGraph,
+			workflowDocumentStore.value.connectionsBySourceNode,
+		);
+		const deletedNodeNames = nodesToDelete.map((node) => node.name);
 		while (subGraphNames.includes(startNodeName)) startNodeName += '_1';
 
 		let returnNodeName = 'Return';
@@ -484,9 +547,7 @@ export function useWorkflowExtraction() {
 
 		const { nodes: afterNodes, variables: afterVariables } = extractReferencesInNodeExpressions(
 			allAfterEndNodes,
-			allAfterEndNodes
-				.map((x) => x.name)
-				.concat(subGraphNames), // this excludes nodes that will remain in the parent workflow
+			allAfterEndNodes.map((x) => x.name).concat(deletedNodeNames),
 			executeWorkflowNodeName,
 			directAfterEndNodeNames,
 		);
@@ -504,7 +565,9 @@ export function useWorkflowExtraction() {
 		const createdWorkflow = await tryCreateWorkflow(workflowData);
 		if (createdWorkflow === null) return false;
 
-		const executeWorkflowPosition = computeAveragePosition(subGraph);
+		const executeWorkflowPosition = computeAveragePosition(
+			nodesToDelete.length > 0 ? nodesToDelete : subGraph,
+		);
 		const executeWorkflowNode = makeExecuteWorkflowNode(
 			createdWorkflow.id,
 			executeWorkflowNodeName,
@@ -513,9 +576,9 @@ export function useWorkflowExtraction() {
 		);
 		await replaceSelectionWithNode(
 			executeWorkflowNode,
-			subGraph.find((x) => x.name === start)?.id,
-			subGraph.find((x) => x.name === end)?.id,
-			subGraph,
+			nodesToDelete.find((x) => x.name === start)?.id,
+			nodesToDelete.find((x) => x.name === end)?.id,
+			nodesToDelete,
 			afterNodes,
 		);
 
