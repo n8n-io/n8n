@@ -14,7 +14,7 @@ const UQ_WORKFLOW_REQUEST_WORKFLOW = 'workflow_review_request_workflow_request_w
 const UQ_WORKFLOW_REQUEST_REVIEWERS = 'workflow_review_request_reviewers_request_user';
 const UQ_WORKFLOW_REQUEST_AUTHORS = 'workflow_review_request_authors_request_user';
 
-export class CreateWorkflowReviewRequestTables1784000000048 implements ReversibleMigration {
+export class CreateWorkflowReviewRequestTables1784000000049 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.createRequestTable(context);
 		await this.createWorkflowChildTable(context);
