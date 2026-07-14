@@ -8,6 +8,7 @@ import {
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
+import type { WorkflowId } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
@@ -116,6 +117,8 @@ export class WorkflowPublicationReconciler {
 							workflowIds: missing,
 						});
 						await this.outboxRepository.enqueueByWorkflowIds(missing);
+						// Drain directly rather than waiting for the next poll cycle. These are
+						// safe to call here, to recover more quickly.
 						this.outboxConsumer.startPolling();
 						await this.outboxConsumer.drainPending();
 					}
@@ -145,12 +148,12 @@ export class WorkflowPublicationReconciler {
 	 * the query (that publication is about to fix them), and the enqueue is
 	 * idempotent regardless.
 	 */
-	private async findMissingActiveWorkflows(): Promise<string[]> {
+	private async findMissingActiveWorkflows(): Promise<WorkflowId[]> {
 		const desiredByWorkflow = this.groupByWorkflow(
 			await this.triggerStatusRepository.findActivatedInMemoryTriggers(),
 		);
 
-		const missing: string[] = [];
+		const missing: WorkflowId[] = [];
 		for (const [workflowId, desiredNodeIds] of desiredByWorkflow) {
 			const registered = this.nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds(workflowId);
 			const hasMissing = [...desiredNodeIds].some((nodeId) => !registered.has(nodeId));
@@ -160,8 +163,8 @@ export class WorkflowPublicationReconciler {
 		return missing;
 	}
 
-	private groupByWorkflow(rows: Array<{ workflowId: string; nodeId: string }>) {
-		const byWorkflow = new Map<string, Set<string>>();
+	private groupByWorkflow(rows: Array<{ workflowId: WorkflowId; nodeId: string }>) {
+		const byWorkflow = new Map<WorkflowId, Set<string>>();
 		for (const { workflowId, nodeId } of rows) {
 			const nodeIds = byWorkflow.get(workflowId) ?? new Set<string>();
 			nodeIds.add(nodeId);
