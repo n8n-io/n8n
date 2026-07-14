@@ -354,10 +354,6 @@ red is harness-caused (per "A red is signal", above):
 - **Mock response shape** — the LLM-generated mock response can omit the real
   envelope, crashing a downstream parse/format node. Recurring, reproducible
   shapes to expect (all produce a red on a *correct* build):
-  - **OpenAI** mock returns a plain `{content: "..."}` instead of the Responses
-    API envelope (`output[0].content[0].text`), so a LangChain chain / **Structured
-    Output Parser** receives an empty response and crashes. Any build with an
-    OpenAI chat model feeding a structured-output/parser node can red on this.
   - **Gmail** mock returns headers as top-level capitalized fields (`From`,
     `Subject`) instead of under `payload.headers`, so a Code/Filter node reading
     the sender/subject gets empty strings (e.g. a "drop no-reply senders" safety
