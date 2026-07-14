@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/workflowActivated.test.ts
+  s_6cf22f6b043ef5::t_cf4630960eed24 159-160
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/workflowActivated.ts
+  s_6cf22f6b043ef5::t_0d8906a49a6059 25-34
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/workflowPartiallyActivated.test.ts
+  s_6cf22f6b043ef5::t_d69c4725e3b013 171-198
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/workflowPartiallyActivated.ts
+  s_6cf22f6b043ef5::t_82779c355a486f 36,41-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "1c52eae7861b1e1ac092fc76f22d685179c56e97",
+  "prompts": {},
+  "sessions": {
+    "s_6cf22f6b043ef5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be643ad0-d480-44dd-9baa-43bc3cd0cbe9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}
