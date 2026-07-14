@@ -638,6 +638,7 @@ type SnapshotServiceInternals = {
 		getEventsForRun: Mock;
 		getEventsForRuns: Mock;
 	};
+	eventLog: { getEventsForRuns: Mock };
 	instanceAiConfig: { durableLog: boolean };
 	tracing: { getTraceContext: Mock };
 	logger: { warn: Mock };
@@ -733,6 +734,7 @@ function createSnapshotService(): SnapshotServiceInternals {
 		getEventsForRun: vi.fn(() => []),
 		getEventsForRuns: vi.fn(() => []),
 	};
+	service.eventLog = { getEventsForRuns: vi.fn(async () => []) };
 	service.instanceAiConfig = { durableLog: false };
 	service.tracing = { getTraceContext: vi.fn(() => undefined) };
 	service.logger = { warn: vi.fn() };
@@ -1069,6 +1071,13 @@ describe('InstanceAiService — shutdown', () => {
 		// are left intact (via the delegated sandboxService) so a restarted
 		// process can reconnect to them.
 		expect(service.sandboxService.stopSandboxExpiryTimers).toHaveBeenCalledTimes(1);
+
+		// The durable-log flush must precede eventBus.clear(): clear() invalidates
+		// drain lifecycles, so the reverse order would drop unflushed segment tails.
+		expect(service.eventLog.flushAll).toHaveBeenCalledTimes(1);
+		expect(service.eventLog.flushAll.mock.invocationCallOrder[0]).toBeLessThan(
+			service.eventBus.clear.mock.invocationCallOrder[0],
+		);
 	});
 });
 
@@ -2482,6 +2491,34 @@ describe('InstanceAiService — agent tree snapshots', () => {
 				runId: 'run-background',
 				messageGroupId: 'group-old',
 			}),
+		);
+	});
+
+	it('reads snapshot input from the durable log instead of the bus when the flag is on', async () => {
+		const service = createSnapshotService();
+		service.instanceAiConfig.durableLog = true;
+		const logEvent: InstanceAiEvent = {
+			type: 'text-delta',
+			runId: 'run-1',
+			agentId: 'agent-001',
+			payload: { text: 'from the log' },
+		};
+		service.eventLog.getEventsForRuns.mockResolvedValue([logEvent]);
+		const snapshotStorage = {
+			getLatest: vi.fn(async () => undefined),
+			save: vi.fn(async () => {}),
+			updateLast: vi.fn(async () => {}),
+		};
+
+		await service.saveAgentTreeSnapshot('thread-a', 'run-1', snapshotStorage);
+
+		expect(service.eventLog.getEventsForRuns).toHaveBeenCalledWith('thread-a', ['run-1']);
+		expect(service.eventBus.getEventsForRun).not.toHaveBeenCalled();
+		expect(snapshotStorage.save).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({ textContent: 'from the log' }),
+			'run-1',
+			expect.any(Object),
 		);
 	});
 });
