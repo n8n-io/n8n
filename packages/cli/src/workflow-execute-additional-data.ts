@@ -380,6 +380,10 @@ export async function executeAgent(
 	);
 	const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
 
+	if (!additionalData.workflowId) {
+		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
+	}
+
 	// Scope session threads by workflow
 	const scopedThreadId = `wf:${additionalData.workflowId}:${threadId}`;
 

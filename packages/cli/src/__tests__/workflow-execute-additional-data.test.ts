@@ -1449,6 +1449,19 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(agentExecutionOrchestratorService.executeForWorkflow).not.toHaveBeenCalled();
 		});
 
+		it('throws when workflowId is missing even if projectId is present', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: undefined,
+			});
+
+			await expect(
+				executeAgent({ agentId: AGENT_ID }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
+			).rejects.toThrow('Cannot execute agent without a workflowId in additional data');
+			expect(agentExecutionOrchestratorService.executeForWorkflow).not.toHaveBeenCalled();
+		});
+
 		it('executes for trigger runs without any user', async () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				userId: undefined,
