@@ -6168,6 +6168,8 @@
 	"instanceAi.agentTree.error": "Error",
 	"instanceAi.error.title": "Something went wrong",
 	"instanceAi.error.technicalDetails": "Technical details",
+	"instanceAi.error.outOfCredits.title": "You've run out of AI credits",
+	"instanceAi.error.outOfCredits.upgrade": "Upgrade plan",
 	"instanceAi.artifactsPanel.title": "Artifacts",
 	"instanceAi.artifactsPanel.showPreview": "Show artifacts preview",
 	"instanceAi.artifactsPanel.hidePreview": "Hide artifacts preview",

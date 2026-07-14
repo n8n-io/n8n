@@ -1,4 +1,4 @@
-import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiErrorEvent, InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
@@ -24,6 +24,8 @@ import type {
 	InstanceAiTracingService,
 	MessageTraceFinalization,
 } from './tracing/instance-ai-tracing.service';
+
+type InstanceAiErrorCode = NonNullable<InstanceAiErrorEvent['payload']['code']>;
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -206,6 +208,7 @@ export class InstanceAiTerminalOutcomeService {
 			correlationId?: string;
 			workSummary?: WorkSummary;
 			errorMessage?: string;
+			errorCode?: InstanceAiErrorCode;
 			suppressCompletedFallback?: boolean;
 		} = {},
 	): TerminalResponseDecision | undefined {
@@ -221,6 +224,7 @@ export class InstanceAiTerminalOutcomeService {
 			{
 				workSummary: options.workSummary,
 				errorMessage: options.errorMessage,
+				errorCode: options.errorCode,
 				suppressCompletedFallback: options.suppressCompletedFallback,
 			},
 		);
