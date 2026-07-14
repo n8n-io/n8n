@@ -7,6 +7,7 @@ const removedNodeTypes = [
 	'@n8n/n8n-nodes-langchain.memoryMotorhead',
 	'n8n-nodes-base.orbit',
 	'@n8n/n8n-nodes-langchain.memoryZep',
+	'@n8n/n8n-nodes-langchain.vectorStoreZep',
 	'@n8n/n8n-nodes-langchain.vectorStoreZepInsert',
 	'@n8n/n8n-nodes-langchain.vectorStoreZepLoad',
 ];
