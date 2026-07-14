@@ -461,6 +461,7 @@ describe('GlobalConfig', () => {
 			jitterRatio: 0.1,
 			minIntervalSeconds: 0,
 			maxConcurrentPasses: 10,
+			triggerNodeMode: 'legacy',
 		},
 		evaluation: {
 			collectionsEnabled: false,

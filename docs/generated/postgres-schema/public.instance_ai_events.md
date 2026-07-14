@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | payload | text |  | false |  |  | JSON of the canonical InstanceAiEvent |
-| runId | varchar(64) |  | false |  |  |  |
+| runId | varchar(64) |  | false |  |  | Run that emitted the event — opaque ID from the agent runtime |
 | seq | integer |  | false |  |  | Per-thread monotonic sequence — the SSE replay cursor |
 | threadId | uuid |  | false |  | [public.instance_ai_threads](public.instance_ai_threads.md) |  |
 | type | varchar(64) |  | false |  |  | Event type discriminator, duplicated out of the payload |

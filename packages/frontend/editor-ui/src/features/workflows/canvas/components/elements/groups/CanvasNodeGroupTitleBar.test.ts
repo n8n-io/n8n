@@ -93,6 +93,33 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
+	describe('context menu', () => {
+		it('emits open:contextmenu with the group id on right-click', async () => {
+			const wrapper = render();
+			await fireEvent.contextMenu(wrapper.getByTestId('canvas-node-group'));
+
+			const emitted = wrapper.emitted()['open:contextmenu'] as Array<[string, MouseEvent]>;
+			expect(emitted).toHaveLength(1);
+			expect(emitted[0][0]).toBe('g1');
+			expect(emitted[0][1]).toBeInstanceOf(MouseEvent);
+		});
+
+		it('emits open:contextmenu when right-clicking the title preview', async () => {
+			const wrapper = render();
+			await fireEvent.contextMenu(wrapper.getByTestId('inline-edit-preview'));
+
+			expect(wrapper.emitted()['open:contextmenu']).toHaveLength(1);
+		});
+
+		it('does not emit open:contextmenu while the title is being edited', async () => {
+			const wrapper = render();
+			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
+			await fireEvent.contextMenu(wrapper.getByTestId('inline-edit-input'));
+
+			expect(wrapper.emitted()['open:contextmenu']).toBeUndefined();
+		});
+	});
+
 	describe('double-click to toggle collapse', () => {
 		it('emits toggle when the group body is double-clicked', async () => {
 			const wrapper = render();
@@ -231,6 +258,28 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
+	describe('deactivated state', () => {
+		it('shows the deactivated label next to the name when every member node is disabled', () => {
+			const wrapper = render({ data: makeData({ allNodesDisabled: true }) });
+			expect(wrapper.getByTestId('canvas-node-group-deactivated-label')).toHaveTextContent(
+				'(Deactivated)',
+			);
+		});
+
+		it('applies a hashed `deactivated` class for the toned-down title styling', () => {
+			const wrapper = render({ data: makeData({ allNodesDisabled: true }) });
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /deactivated/i.test(c))).toBe(true);
+		});
+
+		it('hides the deactivated label while any member node is enabled', () => {
+			const wrapper = render();
+			expect(wrapper.queryByTestId('canvas-node-group-deactivated-label')).toBeNull();
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /deactivated/i.test(c))).toBe(false);
+		});
+	});
+
 	describe('title rename + ungroup parity with old overlay', () => {
 		it('emits update:name on commit', async () => {
 			const wrapper = render({ data: makeData({ isCollapsed: false }) });
@@ -335,6 +384,15 @@ describe('CanvasNodeGroupTitleBar', () => {
 			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'));
 			expect(removeSelectedNodesMock).not.toHaveBeenCalled();
 		});
+
+		it('preserves selection on modifier-click (additive multi-select)', () => {
+			selectedNodesRef.value = [{ id: 'unrelated-node' }];
+			removeSelectedNodesMock.mockClear();
+			const wrapper = render();
+			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'), { metaKey: true });
+			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'), { ctrlKey: true });
+			expect(removeSelectedNodesMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('selection visual', () => {
@@ -350,6 +408,27 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const root = wrapper.getByTestId('canvas-node-group');
 			const hasSelectedClass = [...root.classList].some((c) => /selected/i.test(c));
 			expect(hasSelectedClass).toBe(true);
+		});
+
+		it('renders a full-group selection ring when expanded and selected', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }), selected: true });
+			expect(wrapper.getByTestId('canvas-node-group-selection-ring')).toBeInTheDocument();
+		});
+
+		it('does not render the selection ring when collapsed or unselected', () => {
+			const collapsedSelected = render({ data: makeData({ isCollapsed: true }), selected: true });
+			expect(
+				collapsedSelected.queryByTestId('canvas-node-group-selection-ring'),
+			).not.toBeInTheDocument();
+			collapsedSelected.unmount();
+
+			const expandedUnselected = render({
+				data: makeData({ isCollapsed: false }),
+				selected: false,
+			});
+			expect(
+				expandedUnselected.queryByTestId('canvas-node-group-selection-ring'),
+			).not.toBeInTheDocument();
 		});
 	});
 });

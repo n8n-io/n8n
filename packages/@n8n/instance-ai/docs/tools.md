@@ -675,72 +675,40 @@ sandbox) to consult these before planning or building non-trivial workflows.
 
 ## Agent Builder Tool
 
-### `agent_builder` *(conditional — requires the `agents` backend module)*
+### `build-agent` *(orchestration tool — requires the `agents` backend module)*
 
-A single router tool that lets the assistant **create and configure an n8n
-*Agent*** (the `AgentJsonConfig`: instructions, model, node/workflow/MCP/custom
-tools, skills, tasks, integrations, sub-agents). It is registered as a **deferred**
-tool and loaded on demand by the `agent-builder` skill; it is present only when the
-`agents` module is enabled (and the skill is only offered when the sandbox
-workspace is available, since config edits go through workspace files). All
-builder capabilities are exposed as `action`s on this one tool. See
-`docs/agent-builder.md` for the design.
-
-Config mutations are file-based: the assistant writes the agent config JSON to
-a workspace file (`src/agents/<slug>.agent.json`), edits it with the normal
-file tools, and persists it with `build_agent` — mirroring how workflow builds
-consume `.workflow.ts` sources. Validation stays host-side; the workspace is
-only the file medium.
+Delegates agent building to the agents-module builder chat
+(`AgentsBuilderService`) running as an embedded, **non-interactive** sub-agent:
+one conversational turn per call. Registered in `createOrchestrationTools`
+only when the host provides `builderDelegate` (agents module active). The
+builder's own prompt and tools drive the build, but its interactive tools
+(`ask_questions`, `ask_credential`, `ask_embedding_credential`,
+`configure_channel`) are excluded from this session — the builder cannot
+suspend mid-turn and must complete every call, reporting any open questions as
+plain text at the end of its reply (`builderReply`). Builder session state is
+keyed to instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and
+never appears in the agents-module builder UI.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `action` | string | yes | Which builder action to run (see below) |
-| …action fields | — | — | Each action carries its own fields (validated per action on dispatch) |
+| `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
+| `name` | string | no | Name for a NEW agent (first call only) |
+| `agentId` | string | no | Existing agent id to edit (first call only) |
+| `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
-**Returns**: shape depends on the action — typically `{ ok: true, … }` on success or
-`{ ok: false, errors: [{ path?, message }] }` on failure.
+**Returns**: `{ ok: true, builderReply, configUpdated }` on success, or
+`{ ok: false, error }`.
 
-**Actions**:
+**Relaying open questions:** since the builder cannot ask the user directly,
+any decision it needs (missing credential, channel setup, ambiguous model
+choice) comes back as text at the end of `builderReply`. The calling assistant
+is responsible for surfacing those questions to the user (via its own
+question tool/card if available) and sending the answers back through another
+`build-agent` call.
 
-| Action | Description |
-|--------|-------------|
-| `create_agent` | Create a new empty agent and bind the conversation to it. Call this first when no agent is targeted yet. |
-| `read_config` | Read the current agent config plus freshness metadata (`configHash`, `updatedAt`, `versionId`). Call before every `build_agent`; use its `config` to (re)materialize the config file. |
-| `build_agent` | Validate and persist the agent config from a workspace JSON file (`filePath`). Validates the schema, rejects empty instructions and unsupported native web search, enforces no `$fromAI` on stable dynamic selectors, and normalizes native web-search provider tools. Requires `baseConfigHash` (stale-write guard) and the runtime workspace. |
-| `search_nodes` | Search the node catalog for **agent-tool-capable** nodes (excludes triggers/hidden/HITL) to add as node tools. |
-| `get_node_types` | Get TypeScript type definitions for node types — exact parameter names, enums, credential types, and `@searchListMethod`/`@loadOptionsMethod`/`@builderHint` annotations. |
-| `get_resource_locator_options` | Resolve live options for a parameter behind a `resourceLocator` / `loadOptionsMethod` / `loadOptions` routing (stable IDs like Linear teamId, Slack channel, model). Returns each option's `parameterValue` to write into `nodeParameters` (instead of `$fromAI`). |
-| `create_skill` | Create a reusable, load-on-demand target-agent skill (name + routing description + structured body). Does not attach it — add the `{ type: "skill", id }` ref in the config file and `build_agent`. |
-| `create_task` | Create a recurring scheduled task (name + objective + cron) for the target agent. Adds a `{ type: "task" }` ref to the config. |
-| `build_custom_tool` | Compile and store a custom TypeScript tool (`export default new Tool(...)`), sandbox-validated. Register it by adding `{ type: "custom", id }` to `tools` in the config file and calling `build_agent`. |
-| `list_integration_types` | List chat-platform integration types with their supported credential types and builder guidance. |
-| `list_sub_agents` | List published same-project agents that can be attached as sub-agents. |
-| `list_agents` | List every agent in the target agent’s project (no published-only filter; use to discover agents to edit or see what exists). |
-| `list_workflows` | List workflows attachable as `type: "workflow"` tools (supported trigger types only). |
-| `search_mcp_servers` | Search the MCP registry for servers to attach (returns url, transport, auth, credential type, tools). |
-| `verify_mcp_server` | Test connectivity to an MCP server and list its tools before adding it to the config. |
-| `resolve_llm` | Resolve the agent's main LLM (provider/model/credential) non-interactively; returns `ok: false` with candidates when the choice is missing/ambiguous. |
-
-**Getting user input:** `configure_channel` is the only builder-specific interactive
-card — it renders the chat-channel setup UI inline in the chat so the user creates
-a new credential and connects (or skips) a channel. For every other user input (a
-choice, which credential, which model), use the native `ask-user` tool. Non-channel
-credentials are listed via the native `credentials` tool (`action: "list"`; +
-`ask-user` when several match); the main LLM via `resolve_llm` (+ `ask-user`
-fallback), then written into the config file and persisted with `build_agent`.
-
-**`configure_channel`** *(standalone, not a router action)*: interactive HITL tool
-that opens the agent chat-channel setup UI. Takes `{ integrationType }` (from
-`list_integration_types`; unsupported types are rejected). Suspends the run,
-renders the setup UI, and resumes with `{ connected: boolean }` — `false` means
-the user skipped, do not re-prompt. The setup UI persists the connection itself;
-do **not** call the `credentials` tool for a channel and do **not** write channel
-entries into `integrations`.
-
-**Targeting:** actions that mutate a specific agent require a bound agent; before one
-exists they return a structured error telling the model to `create_agent` first.
-`create_agent` is target-less; it binds the run to the new agent and persists the
-binding in thread metadata so follow-up turns keep editing the same agent.
+**Targeting:** the first call must pass `name` (new agent) or `agentId`
+(existing agent); the binding is then persisted to thread metadata so
+follow-up calls keep editing the same agent without repeating `name`/`agentId`.
 
 ## Other Domain Tools
 

@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/backend-test-utils",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-14T09:27:33.022Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1602,
+            1534,
+            1540
+          ],
+          "min": 1534,
+          "median": 1540,
+          "mean": 1558
+        },
+        "build": {
+          "runsMs": [
+            1601,
+            1556,
+            1617
+          ],
+          "min": 1556,
+          "median": 1601,
+          "mean": 1592
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-14T09:28:19.744Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            795,
+            748,
+            748
+          ],
+          "min": 748,
+          "median": 748,
+          "mean": 764
+        },
+        "build": {
+          "runsMs": [
+            758,
+            751,
+            737
+          ],
+          "min": 737,
+          "median": 751,
+          "mean": 749
+        }
+      }
+    }
+  }
+}

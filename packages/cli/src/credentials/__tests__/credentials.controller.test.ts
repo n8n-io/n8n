@@ -70,6 +70,7 @@ describe('CredentialsController', () => {
 	let getCredentialScopesSpy: MockInstance;
 	let updateSpy: MockInstance;
 	let createUnmanagedCredentialSpy: MockInstance;
+	let ensureCanManageEndUserCredentialSpy: MockInstance;
 	let findCredentialOwningProjectSpy: MockInstance;
 	let emitSpy: MockInstance;
 
@@ -102,6 +103,10 @@ describe('CredentialsController', () => {
 		getCredentialScopesSpy = vi.spyOn(credentialsService, 'getCredentialScopes');
 		updateSpy = vi.spyOn(credentialsService, 'update');
 		createUnmanagedCredentialSpy = vi.spyOn(credentialsService, 'createUnmanagedCredential');
+		// stubbed by default: the scope check needs real role/project data that unit tests don't wire up
+		ensureCanManageEndUserCredentialSpy = vi
+			.spyOn(credentialsService, 'ensureCanManageEndUserCredential')
+			.mockResolvedValue(undefined);
 		findCredentialOwningProjectSpy = sharedCredentialsRepository.findCredentialOwningProject;
 		emitSpy = eventService.emit;
 		// Set up credentialsRepository.create to return the input data
@@ -563,6 +568,7 @@ describe('CredentialsController', () => {
 			await credentialsController.updateCredentials(ownerReq);
 
 			// ASSERT
+			expect(ensureCanManageEndUserCredentialSpy).toHaveBeenCalledTimes(1);
 			expect(updateSpy).toHaveBeenCalledWith(
 				credentialId,
 				expect.objectContaining({

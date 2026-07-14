@@ -35,6 +35,17 @@ export interface TestRunSummaryDto {
 	updatedAt: string;
 }
 
+export interface TestRunDto {
+	id: string;
+	status: PublicTestRunStatus;
+	createdAt: string;
+}
+
+export interface TestRunCancelDto {
+	id: string;
+	status: 'cancelled';
+}
+
 export interface TestCaseExecutionDto {
 	id: string;
 	status: PublicTestCaseExecutionStatus;

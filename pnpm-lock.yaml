@@ -142,8 +142,8 @@ catalogs:
       specifier: ^0.6.0
       version: 0.6.0
     '@n8n_io/ai-assistant-sdk':
-      specifier: 1.24.0
-      version: 1.24.0
+      specifier: 1.25.0
+      version: 1.25.0
     '@openrouter/ai-sdk-provider':
       specifier: ^2.8.0
       version: 2.9.0
@@ -1210,7 +1210,7 @@ importers:
         version: link:../workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.24.0
+        version: 1.25.0
       axios:
         specifier: 1.18.0
         version: 1.18.0(debug@4.4.3)
@@ -1307,7 +1307,7 @@ importers:
         version: link:../permissions
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.24.0
+        version: 1.25.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1331,8 +1331,8 @@ importers:
         specifier: 1.34.1
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -1341,7 +1341,7 @@ importers:
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
-        version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+        version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -1407,14 +1407,14 @@ importers:
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
-        version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+        version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -1538,14 +1538,14 @@ importers:
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
-        version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+        version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
 
   packages/@n8n/benchmark:
     dependencies:
@@ -3654,7 +3654,7 @@ importers:
         version: 9.0.8
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.35.0
-        version: 8.35.0(@typescript-eslint/parser@8.35.0(eslint@8.57.1)(typescript@6.0.2))(eslint@8.57.1)(typescript@6.0.2)
+        version: 8.35.0(@typescript-eslint/parser@8.35.0(eslint@8.57.1)(typescript@7.0.2))(eslint@8.57.1)(typescript@7.0.2)
       chai:
         specifier: ^4.3.7
         version: 4.5.0
@@ -3693,10 +3693,10 @@ importers:
         version: 5.1.7
       ts-node:
         specifier: ^10.9.1
-        version: 10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2)
+        version: 10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@7.0.2)
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
 
   packages/@n8n/typescript-config: {}
 
@@ -3940,7 +3940,7 @@ importers:
         version: link:../@n8n/workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.24.0
+        version: 1.25.0
       '@n8n_io/license-sdk':
         specifier: 3.0.0
         version: 3.0.0
@@ -5046,6 +5046,43 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
+  packages/frontend/@n8n/frontend-module-sdk:
+    dependencies:
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../design-system
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
+    devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.2
+      unplugin-icons:
+        specifier: catalog:frontend
+        version: 23.0.1(@vue/compiler-sfc@3.5.26)
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vue-tsc:
+        specifier: ^2.2.8
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+
   packages/frontend/@n8n/i18n:
     dependencies:
       n8n-workflow:
@@ -5418,6 +5455,9 @@ importers:
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../@n8n/design-system
+      '@n8n/frontend-module-sdk':
+        specifier: workspace:*
+        version: link:../@n8n/frontend-module-sdk
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../@n8n/i18n
@@ -9600,8 +9640,8 @@ packages:
       sqlite3:
         optional: true
 
-  '@n8n_io/ai-assistant-sdk@1.24.0':
-    resolution: {integrity: sha512-4T34TFh51Kept8WkoCkvOiboOls9ErsQDSUjPF3bMsdazrVL83VhO9FlQW7dSyfo0bTSRKDN6NcaKN7SQ9s6Rg==}
+  '@n8n_io/ai-assistant-sdk@1.25.0':
+    resolution: {integrity: sha512-7V4dwVuHIkLdwd7Cx0k1miwr3KttC4rLQ+zVLftBMmSDx6n+0/W4a8BGhwrVHNx6uQwA1UGEWz+wSfO+gtBA4Q==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@3.0.0':
@@ -21665,8 +21705,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.3.6:
-    resolution: {integrity: sha512-FkljacAwJ9BUoSUdpFe3VDy0sGigNlTH9+2zcXUWmZOjN8swiCkl3t48wOJun0OsUd2cEIda1l04tsxMiKIIrQ==}
+  vue-component-type-helpers@3.3.7:
+    resolution: {integrity: sha512-Skkhw9agYSgsWqv7bxSOGJZa9SaiJbZVGdXuFWnrzKaQYHnw9qbjD630rw6RyMqDbp54nfLCLw5SZA55if7JLg==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -24784,7 +24824,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.18.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.18.0(debug@4.4.3))
+      axios-retry: 4.5.0(axios@1.18.0)
       chalk: 4.1.2
       commander: 13.1.0
       date-fns: 2.30.0
@@ -26529,7 +26569,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n_io/ai-assistant-sdk@1.24.0': {}
+  '@n8n_io/ai-assistant-sdk@1.25.0': {}
 
   '@n8n_io/license-sdk@3.0.0':
     dependencies:
@@ -27690,7 +27730,7 @@ snapshots:
   '@rudderstack/rudder-sdk-node@3.0.5':
     dependencies:
       axios: 1.18.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.18.0(debug@4.4.3))
+      axios-retry: 4.5.0(axios@1.18.0)
       component-type: 2.0.0
       join-component: 1.1.0
       lodash.clonedeep: 4.5.0
@@ -28484,7 +28524,7 @@ snapshots:
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
       type-fest: 2.19.0
       vue: 3.5.26(typescript@6.0.2)
-      vue-component-type-helpers: 3.3.6
+      vue-component-type-helpers: 3.3.7
 
   '@stryker-mutator/api@9.6.1':
     dependencies:
@@ -29591,20 +29631,20 @@ snapshots:
       '@types/node': 20.19.41
     optional: true
 
-  '@typescript-eslint/eslint-plugin@8.35.0(@typescript-eslint/parser@8.35.0(eslint@8.57.1)(typescript@6.0.2))(eslint@8.57.1)(typescript@6.0.2)':
+  '@typescript-eslint/eslint-plugin@8.35.0(@typescript-eslint/parser@8.35.0(eslint@8.57.1)(typescript@7.0.2))(eslint@8.57.1)(typescript@7.0.2)':
     dependencies:
       '@eslint-community/regexpp': 4.12.1
-      '@typescript-eslint/parser': 8.35.0(eslint@8.57.1)(typescript@6.0.2)
+      '@typescript-eslint/parser': 8.35.0(eslint@8.57.1)(typescript@7.0.2)
       '@typescript-eslint/scope-manager': 8.35.0
-      '@typescript-eslint/type-utils': 8.35.0(eslint@8.57.1)(typescript@6.0.2)
-      '@typescript-eslint/utils': 8.35.0(eslint@8.57.1)(typescript@6.0.2)
+      '@typescript-eslint/type-utils': 8.35.0(eslint@8.57.1)(typescript@7.0.2)
+      '@typescript-eslint/utils': 8.35.0(eslint@8.57.1)(typescript@7.0.2)
       '@typescript-eslint/visitor-keys': 8.35.0
       eslint: 8.57.1
       graphemer: 1.4.0
       ignore: 7.0.5
       natural-compare: 1.4.0
-      ts-api-utils: 2.1.0(typescript@6.0.2)
-      typescript: 6.0.2
+      ts-api-utils: 2.1.0(typescript@7.0.2)
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -29625,15 +29665,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/parser@8.35.0(eslint@8.57.1)(typescript@6.0.2)':
+  '@typescript-eslint/parser@8.35.0(eslint@8.57.1)(typescript@7.0.2)':
     dependencies:
       '@typescript-eslint/scope-manager': 8.35.0
       '@typescript-eslint/types': 8.35.0
-      '@typescript-eslint/typescript-estree': 8.35.0(typescript@6.0.2)
+      '@typescript-eslint/typescript-estree': 8.35.0(typescript@7.0.2)
       '@typescript-eslint/visitor-keys': 8.35.0
       debug: 4.4.3(supports-color@8.1.1)
       eslint: 8.57.1
-      typescript: 6.0.2
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -29667,6 +29707,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@typescript-eslint/project-service@8.35.0(typescript@7.0.2)':
+    dependencies:
+      '@typescript-eslint/tsconfig-utils': 8.35.0(typescript@7.0.2)
+      '@typescript-eslint/types': 8.35.0
+      debug: 4.4.3(supports-color@8.1.1)
+      typescript: 7.0.2
+    transitivePeerDependencies:
+      - supports-color
+
   '@typescript-eslint/rule-tester@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)':
     dependencies:
       '@typescript-eslint/parser': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
@@ -29694,14 +29743,18 @@ snapshots:
     dependencies:
       typescript: 6.0.2
 
-  '@typescript-eslint/type-utils@8.35.0(eslint@8.57.1)(typescript@6.0.2)':
+  '@typescript-eslint/tsconfig-utils@8.35.0(typescript@7.0.2)':
     dependencies:
-      '@typescript-eslint/typescript-estree': 8.35.0(typescript@6.0.2)
-      '@typescript-eslint/utils': 8.35.0(eslint@8.57.1)(typescript@6.0.2)
+      typescript: 7.0.2
+
+  '@typescript-eslint/type-utils@8.35.0(eslint@8.57.1)(typescript@7.0.2)':
+    dependencies:
+      '@typescript-eslint/typescript-estree': 8.35.0(typescript@7.0.2)
+      '@typescript-eslint/utils': 8.35.0(eslint@8.57.1)(typescript@7.0.2)
       debug: 4.4.3(supports-color@8.1.1)
       eslint: 8.57.1
-      ts-api-utils: 2.1.0(typescript@6.0.2)
-      typescript: 6.0.2
+      ts-api-utils: 2.1.0(typescript@7.0.2)
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -29750,14 +29803,30 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/utils@8.35.0(eslint@8.57.1)(typescript@6.0.2)':
+  '@typescript-eslint/typescript-estree@8.35.0(typescript@7.0.2)':
+    dependencies:
+      '@typescript-eslint/project-service': 8.35.0(typescript@7.0.2)
+      '@typescript-eslint/tsconfig-utils': 8.35.0(typescript@7.0.2)
+      '@typescript-eslint/types': 8.35.0
+      '@typescript-eslint/visitor-keys': 8.35.0
+      debug: 4.4.3(supports-color@8.1.1)
+      fast-glob: 3.3.3
+      is-glob: 4.0.3
+      minimatch: 9.0.9
+      semver: 7.7.3
+      ts-api-utils: 2.1.0(typescript@7.0.2)
+      typescript: 7.0.2
+    transitivePeerDependencies:
+      - supports-color
+
+  '@typescript-eslint/utils@8.35.0(eslint@8.57.1)(typescript@7.0.2)':
     dependencies:
       '@eslint-community/eslint-utils': 4.7.0(eslint@8.57.1)
       '@typescript-eslint/scope-manager': 8.35.0
       '@typescript-eslint/types': 8.35.0
-      '@typescript-eslint/typescript-estree': 8.35.0(typescript@6.0.2)
+      '@typescript-eslint/typescript-estree': 8.35.0(typescript@7.0.2)
       eslint: 8.57.1
-      typescript: 6.0.2
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -30815,7 +30884,7 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.18.0(debug@4.4.3)):
+  axios-retry@4.5.0(axios@1.18.0):
     dependencies:
       axios: 1.18.0(debug@4.4.3)
       is-retry-allowed: 2.2.0
@@ -39930,6 +39999,10 @@ snapshots:
     dependencies:
       typescript: 6.0.2
 
+  ts-api-utils@2.1.0(typescript@7.0.2):
+    dependencies:
+      typescript: 7.0.2
+
   ts-dedent@2.2.0: {}
 
   ts-error@1.0.6: {}
@@ -39984,6 +40057,27 @@ snapshots:
       diff: 8.0.3
       make-error: 1.3.6
       typescript: 6.0.2
+      v8-compile-cache-lib: 3.0.1
+      yn: 3.1.1
+    optionalDependencies:
+      '@swc/core': 1.15.8(@swc/helpers@0.5.17)
+    optional: true
+
+  ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@7.0.2):
+    dependencies:
+      '@cspotcode/source-map-support': 0.8.1
+      '@tsconfig/node10': 1.0.11
+      '@tsconfig/node12': 1.0.11
+      '@tsconfig/node14': 1.0.3
+      '@tsconfig/node16': 1.0.4
+      '@types/node': 20.19.41
+      acorn: 8.14.0
+      acorn-walk: 8.3.4
+      arg: 4.1.3
+      create-require: 1.1.1
+      diff: 8.0.3
+      make-error: 1.3.6
+      typescript: 7.0.2
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
     optionalDependencies:
@@ -40660,7 +40754,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.3.6: {}
+  vue-component-type-helpers@3.3.7: {}
 
   vue-demi@0.14.10(vue@3.5.26(typescript@6.0.2)):
     dependencies:

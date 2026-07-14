@@ -13,7 +13,9 @@ export class CreateInstanceAiEventsTable1784000000046 implements ReversibleMigra
 			.withColumns(
 				column('threadId').uuid.primary,
 				column('seq').int.primary.comment('Per-thread monotonic sequence — the SSE replay cursor'),
-				column('runId').varchar(64).notNull,
+				column('runId')
+					.varchar(64)
+					.notNull.comment('Run that emitted the event — opaque ID from the agent runtime'),
 				column('type')
 					.varchar(64)
 					.notNull.comment('Event type discriminator, duplicated out of the payload'),
