@@ -16,8 +16,11 @@ each handler's `spec/` directory.
 
 1. **Handler** — `handlers/<feature>/<feature>.handler.ts`
    - Export middleware arrays keyed by `x-eov-operation-id`.
-   - Tag the first middleware with `__apiKeyScope` and add `x-required-scope` in
-     the path YAML (see `scope-parity.test.ts`).
+   - For scope-protected endpoints, use `publicApiScope()` or
+     `apiKeyHasScopeWithGlobalScopeFallback()` (they tag the scope-enforcement
+     middleware with `__apiKeyScope`) and add matching `x-required-scope` in the
+     path YAML; use `none` for endpoints without an API-key scope (see
+     `scope-parity.test.ts`).
    - **Delegate to the same service/controller layer as the internal REST API.**
      Parse input with `@n8n/api-types` DTOs, call `Container.get(SomeService)` or
      `Container.get(SomeController)`, map errors — do not reach into repositories
@@ -29,7 +32,7 @@ each handler's `spec/` directory.
 3. **Register path** — add a `$ref` entry under `paths:` in `openapi.yml`.
 4. **Request types** — add a namespace in `packages/cli/src/public-api/types.ts`
    when the handler needs typed query/body params.
-5. **Coverage manifest** — if the endpoint is user-facing, add it to
+5. **Coverage manifest** — add every new OpenAPI endpoint to
    `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
 
 ## `tags` array in `openapi.yml`
