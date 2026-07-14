@@ -80,6 +80,7 @@ import {
 } from '../harness/runner';
 import {
 	extractErrorMessage,
+	isTransientNetworkError,
 	MAX_EXEC_ATTEMPTS,
 	shouldRetryScenarioExecution,
 } from '../harness/transient-error';
@@ -104,6 +105,39 @@ import { caseDisplayPrompt, conversationUserTurnsAsText } from '../utils/convers
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
+
+/** Attempts (initial + retries) for a build hitting transient network errors. */
+const MAX_BUILD_ATTEMPTS = 3;
+
+/** Framework-noise share above which a baseline capture gets a quality warning. */
+const BASELINE_MAX_FRAMEWORK_NOISE_RATE = 0.05;
+
+/** Count framework-noise trials and cases that failed on nothing but noise. */
+function assessFrameworkNoise(
+	evaluation: MultiRunEvaluation,
+	slugByTestCase?: Map<WorkflowTestCase, string>,
+): { frameworkTrials: number; totalTrials: number; fullyNoisyCases: string[] } {
+	let frameworkTrials = 0;
+	let totalTrials = 0;
+	const fullyNoisyCases: string[] = [];
+	for (const tc of evaluation.testCases) {
+		let caseFramework = 0;
+		let caseTotal = 0;
+		for (const sa of tc.executionScenarios) {
+			for (const run of sa.runs) {
+				if (run.incomplete) continue;
+				caseTotal++;
+				if (!run.success && run.failureCategory === 'framework_issue') caseFramework++;
+			}
+		}
+		frameworkTrials += caseFramework;
+		totalTrials += caseTotal;
+		if (caseTotal > 0 && caseFramework === caseTotal) {
+			fullyNoisyCases.push(slugByTestCase?.get(tc.testCase) ?? caseDisplayPrompt(tc.testCase));
+		}
+	}
+	return { frameworkTrials, totalTrials, fullyNoisyCases };
+}
 
 /** Target input shape with the iteration index we inject for multi-run. */
 type TargetInputs = DatasetExampleInputs & { _iteration?: number };
@@ -458,6 +492,28 @@ async function main(): Promise<void> {
 		console.log(
 			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
 		);
+
+		// Advisory only: findLatestBaseline trusts the newest experiment by
+		// prefix, so surface elevated harness noise for the humans reading the log.
+		if (args.experimentName?.startsWith('instance-ai-baseline')) {
+			const { frameworkTrials, totalTrials, fullyNoisyCases } = assessFrameworkNoise(
+				evaluation,
+				slugByTestCase,
+			);
+			const noiseRate = totalTrials > 0 ? frameworkTrials / totalTrials : 0;
+			if (noiseRate > BASELINE_MAX_FRAMEWORK_NOISE_RATE || fullyNoisyCases.length > 0) {
+				console.warn(
+					`Baseline quality warning: ${String(frameworkTrials)}/${String(totalTrials)} trials (${(noiseRate * 100).toFixed(1)}%) failed for harness reasons` +
+						' (lane transport, seeding, timeouts) rather than agent behavior' +
+						(fullyNoisyCases.length > 0
+							? `; cases with only framework failures: ${fullyNoisyCases.join(', ')}`
+							: '') +
+						'. This experiment becomes the comparison target for future runs, but those scenarios will' +
+						' under-count the agent — deltas against them may reflect harness noise, not regressions or' +
+						' improvements. Consider fixing the noise and re-capturing.',
+				);
+			}
+		}
 	} finally {
 		// Per-lane cleanup: each lane only holds the workflows built/fetched on it,
 		// so delete them via that lane's own client (multi-lane MCP builds spread
@@ -557,6 +613,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	> & { timeoutMs: number };
 	interface LaneState {
 		runner: Lane;
+		laneNum: number;
 		activeBuilds: number;
 		inflightKeys: Set<string>;
 		tracedBuild: (buildArgs: BuildArgs) => Promise<BuildResult>;
@@ -574,6 +631,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
 		return {
 			runner: lane,
+			laneNum,
 			activeBuilds: 0,
 			inflightKeys: new Set<string>(),
 			tracedBuild: traceable(
@@ -630,14 +688,49 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		};
 	});
 
+	// Direct fetch (not N8nClient) so a hung lane can't stall the probe.
+	async function laneHealthy(lane: LaneState): Promise<boolean> {
+		try {
+			const res = await fetch(`${lane.runner.baseUrl}/healthz/readiness`, {
+				signal: AbortSignal.timeout(5_000),
+			});
+			return res.ok;
+		} catch {
+			return false;
+		}
+	}
+
+	// A build that sat out its timeout against a dead lane reports "Run timed
+	// out", not "fetch failed" — so any failed build also health-probes its lane.
+	async function isTransportFailure(build: BuildResult, lane: LaneState): Promise<boolean> {
+		if (build.success) return false;
+		if (build.error !== undefined && isTransientNetworkError(build.error)) return true;
+		return !(await laneHealthy(lane));
+	}
+
 	// Work-stealing: each build acquires a lane that isn't already running its
-	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use the
-	// lane that built their workflow.
-	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS);
+	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use
+	// the lane that built their workflow. Health options quarantine a dead lane
+	// instead of letting its instant failures attract the whole queue.
+	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS, {
+		probe: laneHealthy,
+		onQuarantine: (lane) =>
+			logger.error(
+				`[lane ${String(lane.laneNum)}] quarantined after consecutive transport failures; probing ${lane.runner.baseUrl} for recovery`,
+			),
+		onReadmit: (lane) => logger.info(`[lane ${String(lane.laneNum)}] healthy again — re-admitted`),
+		onAllQuarantined: () =>
+			logger.error('All lanes quarantined — builds paused pending lane recovery'),
+	});
 	const buildCache = new Map<
 		string,
 		Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }>
 	>();
+	// Transport-evicted builds leave buildCache before any cleanup pass sees
+	// them, but their artifacts (restored workflows, data tables, thread — and
+	// with it the sandbox) are real. Stash them for the end-of-run drain; the
+	// lane may be mid-restart at eviction time, so immediate cleanup can't work.
+	const orphanedBuilds: Array<{ build: BuildResult; client: N8nClient }> = [];
 	const buildDurations = new Map<string, number>();
 
 	async function getOrBuild(
@@ -676,6 +769,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					// LLM-judged bookkeeping below needs only the fetched JSON, and
 					// holding the slot through it would idle the lane's build capacity.
 					allocator.release(lane, fileSlug);
+				}
+				{
+					const transient = await isTransportFailure(build, lane);
+					if (!build.success) build.transportFailure = transient;
+					allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
 				}
 				const buildDurationMs = Date.now() - start;
 				// Cleanup registration happens inside buildWorkflowViaMcpOnLane (as soon
@@ -728,39 +826,72 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			}
 			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
 			// the build cache dedupes scenarios within one file.
-			const lane = await allocator.acquire(fileSlug);
 			const entry = testCaseByFileSlug.get(fileSlug);
 			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
-			try {
-				const start = Date.now();
-				const timeoutMs = effectiveTimeoutMs(entry.complexity, args.timeoutMs);
-				if (timeoutMs !== args.timeoutMs) {
-					logger.info(
-						`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
-					);
-				}
-				const build = await lane.tracedBuild({
-					conversation: entry.conversation,
-					messageBudget: entry.messageBudget,
-					credentials: entry.credentials,
-					seedFile: entry.seedFile,
-					priorConversation: entry.priorConversation,
-					seedThread: entry.seedThread,
-					executionScenarios: entry.executionScenarios,
-					outcomeExpectations: entry.outcomeExpectations,
-					timeoutMs,
-				});
-				const buildDurationMs = Date.now() - start;
-				buildDurations.set(key, buildDurationMs);
-				stashTranscript(build);
-				stashBuildExpectations(key, fileSlug, build, false);
-				stashRunDebug(lane.runner.client, build);
-				return { build, lane, buildDurationMs };
-			} finally {
-				allocator.release(lane, fileSlug);
+			const timeoutMs = effectiveTimeoutMs(entry.complexity, args.timeoutMs);
+			if (timeoutMs !== args.timeoutMs) {
+				logger.info(
+					`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
+				);
 			}
+			// Transport failures are not agent verdicts — retry on a different lane
+			// instead of recording 0-score rows for every scenario of the case.
+			let lane = await allocator.acquire(fileSlug);
+			let build: BuildResult;
+			let buildDurationMs: number;
+			for (let attempt = 1; ; attempt++) {
+				const start = Date.now();
+				try {
+					build = await lane.tracedBuild({
+						conversation: entry.conversation,
+						messageBudget: entry.messageBudget,
+						credentials: entry.credentials,
+						seedFile: entry.seedFile,
+						priorConversation: entry.priorConversation,
+						seedThread: entry.seedThread,
+						executionScenarios: entry.executionScenarios,
+						outcomeExpectations: entry.outcomeExpectations,
+						timeoutMs,
+					});
+				} finally {
+					allocator.release(lane, fileSlug);
+				}
+				buildDurationMs = Date.now() - start;
+				const transient =
+					(await isTransportFailure(build, lane)) ||
+					(!build.success && allocator.wasQuarantinedSince(lane, start));
+				if (!build.success) build.transportFailure = transient;
+				allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
+				if (!transient || attempt >= MAX_BUILD_ATTEMPTS) break;
+				logger.warn(
+					`Build ${fileSlug} attempt ${String(attempt)}/${String(MAX_BUILD_ATTEMPTS)} failed transiently on lane ${String(lane.laneNum)} (${build.error ?? 'unknown'}); retrying on another lane`,
+				);
+				lane = await allocator.acquire(fileSlug, { not: lane });
+			}
+			buildDurations.set(key, buildDurationMs);
+			stashTranscript(build);
+			stashBuildExpectations(key, fileSlug, build, false);
+			stashRunDebug(lane.runner.client, build);
+			logger.info(
+				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
+			);
+			// Only the pairwise flow reads captured events — drop the largest chunk
+			// of each BuildResult from the run-long cache.
+			build.events = undefined;
+			return { build, lane, buildDurationMs };
 		})();
 		buildCache.set(key, promise);
+		// Evict transport-failed builds so a later scenario rebuilds. Agent build
+		// failures stay cached — they are the verdict; rebuilding just multiplies cost.
+		void promise.then(
+			({ build, lane }) => {
+				if (build.transportFailure) {
+					orphanedBuilds.push({ build, client: lane.runner.client });
+					buildCache.delete(key);
+				}
+			},
+			() => buildCache.delete(key),
+		);
 		return await promise;
 	}
 
@@ -812,8 +943,56 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		);
 	}
 
+	// Rows remaining per `iteration:fileSlug` build. When the last row of a
+	// build finishes, its backend artifacts (workflow, data tables, thread — and
+	// with the thread its sandbox) are deleted right away instead of at the end
+	// of the run: sandboxes have no auto-cleanup, so end-of-run-only deletion
+	// let the sandbox runner grow to ~15 GB over a full N=10 baseline.
+	// --keep-workflows deliberately keeps everything, thread/sandbox included —
+	// it's a debugging flag for small filtered runs, not baselines.
+	const remainingRowsByKey = new Map<string, number>();
+
+	function rowsPerCase(fileSlug: string): number {
+		const scenarios = testCaseByFileSlug.get(fileSlug)?.executionScenarios?.length ?? 0;
+		return Math.max(1, scenarios); // scenario-less cases get one build-only row
+	}
+
+	async function releaseCaseRow(iteration: number, fileSlug: string): Promise<void> {
+		const key = `${String(iteration)}:${fileSlug}`;
+		const remaining = (remainingRowsByKey.get(key) ?? rowsPerCase(fileSlug)) - 1;
+		remainingRowsByKey.set(key, remaining);
+		if (remaining > 0 || args.keepWorkflows) return;
+		const cached = buildCache.get(key);
+		if (!cached) return; // evicted (transport failure) — nothing to clean
+		try {
+			const { build, lane } = await cached;
+			// Run-debug capture reads the thread — let it settle before deletion.
+			if (build.threadId) await runDebugByThreadId.get(build.threadId)?.catch(() => {});
+			const clean = await cleanupBuild(lane.runner.client, build, logger);
+			if (!clean) {
+				// Leave the entry in buildCache — the end-of-run pass retries it.
+				logger.verbose(
+					`  [cleanup] ${fileSlug} (iteration ${String(iteration)}) incomplete, retrying at end of run`,
+				);
+				return;
+			}
+			buildCache.delete(key);
+			logger.verbose(`  [cleanup] ${fileSlug} (iteration ${String(iteration)}) artifacts deleted`);
+		} catch {
+			// Best-effort — a failed cleanup must never fail the row.
+		}
+	}
+
 	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
 		const iteration = inputs._iteration ?? 0;
+		try {
+			return await targetRow(inputs, iteration);
+		} finally {
+			await releaseCaseRow(iteration, inputs.testCaseFile);
+		}
+	};
+
+	const targetRow = async (inputs: TargetInputs, iteration: number): Promise<TargetOutput> => {
 		const scenario: ExecutionScenario = {
 			name: inputs.scenarioName,
 			description: inputs.scenarioDescription,
@@ -872,9 +1051,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				passed: false,
 				score: 0,
 				reasoning: `Build failed: ${build.error ?? 'unknown'}`,
-				// Seeding failures are a harness setup problem, not an agent build
-				// failure — keep them out of the agent's build_failure bucket.
-				failureCategory: build.seedingFailed ? 'framework_issue' : 'build_failure',
+				// Seeding and transport failures are harness problems, not agent build
+				// failures — keep them out of the agent's build_failure bucket.
+				failureCategory:
+					build.seedingFailed || build.transportFailure ? 'framework_issue' : 'build_failure',
 				execErrors: build.error ? [build.error] : [],
 				buildDurationMs,
 				execDurationMs: 0,
@@ -1133,6 +1313,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		};
 	} finally {
 		if (!args.keepWorkflows) {
+			// Entries still here had no rows run, or their per-case cleanup failed
+			// (releaseCaseRow leaves those cached so this pass can retry them).
 			await Promise.all(
 				[...buildCache.values()].map(async (promise) => {
 					try {
@@ -1140,6 +1322,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						await cleanupBuild(lane.runner.client, build, logger);
 					} catch {
 						// Best-effort
+					}
+				}),
+			);
+			await Promise.all(
+				orphanedBuilds.map(async ({ build, client }) => {
+					try {
+						await cleanupBuild(client, build, logger);
+					} catch {
+						// Best-effort — the lane may still be unreachable
 					}
 				}),
 			);

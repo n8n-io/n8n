@@ -17,7 +17,11 @@ import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.servi
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
 import { OAuthTokenService } from '../oauth-token.service';
+import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
+import type { McpConfig } from '@/modules/mcp/mcp.config';
+import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import type { UrlService } from '@/services/url.service';
 
 const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 const TEST_RESOURCE_URL = 'https://n8n.example.com/mcp-server/http';
@@ -1087,6 +1091,64 @@ describe('OAuthServerService', () => {
 			await expect(
 				(multiResourceService as any).resolveAndValidateResourceIndicator(
 					'https://n8n.example.com/webhook/wf-2/mcp',
+				),
+			).rejects.toThrow(InvalidTargetError);
+		});
+	});
+
+	// Chain test with the real MCP protected resource: the resource generated
+	// from the configured MCP base URL must pass indicator validation.
+	describe('resource indicator validation with a configured MCP base URL', () => {
+		const makeConfiguredService = () => {
+			const urlService = mock<UrlService>();
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+			const mcpConfig = mock<McpConfig>();
+			mcpConfig.baseUrl = 'https://n8n-mcp.example.com';
+			const mcpResource = new McpProtectedResource(
+				urlService,
+				mock<McpSettingsService>(),
+				mcpConfig,
+			);
+			expect(mcpResource.getResourceUrl()).toBe('https://n8n-mcp.example.com/mcp-server/http');
+
+			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			configuredRegistry.register(mcpResource);
+
+			return new OAuthServerService(
+				logger,
+				mockInstance(GlobalConfig),
+				oauthSessionService,
+				oauthClientRepository,
+				tokenService,
+				authorizationCodeService,
+				userConsentRepository,
+				configuredRegistry,
+			);
+		};
+
+		it('should accept the resource generated from the configured base URL', async () => {
+			const configuredService = makeConfiguredService();
+			expect(
+				await (configuredService as any).resolveAndValidateResourceIndicator(
+					'https://n8n-mcp.example.com/mcp-server/http',
+				),
+			).toBe('https://n8n-mcp.example.com/mcp-server/http');
+		});
+
+		it('should keep accepting the instance-base-URL-derived resource', async () => {
+			const configuredService = makeConfiguredService();
+			expect(
+				await (configuredService as any).resolveAndValidateResourceIndicator(
+					'https://n8n.example.com/mcp-server/http',
+				),
+			).toBe('https://n8n.example.com/mcp-server/http');
+		});
+
+		it('should reject resources on hosts that are not configured', async () => {
+			const configuredService = makeConfiguredService();
+			await expect(
+				(configuredService as any).resolveAndValidateResourceIndicator(
+					'https://other.example.com/mcp-server/http',
 				),
 			).rejects.toThrow(InvalidTargetError);
 		});

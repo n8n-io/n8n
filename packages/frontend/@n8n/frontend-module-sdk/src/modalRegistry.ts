@@ -1,4 +1,4 @@
-import type { ModalDefinition } from '@/app/moduleInitializer/module.types';
+import type { ModalDefinition } from './module.types';
 
 const modals = new Map<string, ModalDefinition>();
 const listeners = new Set<(modals: Map<string, ModalDefinition>) => void>();

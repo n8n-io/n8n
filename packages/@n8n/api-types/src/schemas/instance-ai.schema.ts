@@ -570,9 +570,26 @@ export const statusPayloadSchema = z.object({
 	message: z.string().describe('Transient status message. Empty string clears the indicator.'),
 });
 
+/** Machine-readable error classes the UI can render a tailored state for. */
+export const INSTANCE_AI_ERROR_CODES = ['quota_exhausted'] as const;
+
+export type InstanceAiErrorCode = (typeof INSTANCE_AI_ERROR_CODES)[number];
+
+/** Whether `code` is a class the UI recognizes and has a tailored state for.
+ *  Consumers narrow the permissive wire `code` (a plain string, for forward
+ *  compatibility) through this before rendering a code-specific state. */
+export function isKnownInstanceAiErrorCode(code: string | undefined): code is InstanceAiErrorCode {
+	return code !== undefined && INSTANCE_AI_ERROR_CODES.some((known) => known === code);
+}
+
 export const errorPayloadSchema = z.object({
 	content: z.string(),
 	statusCode: z.number().optional(),
+	/** Set when the failure maps to a known class (e.g. out of credits) so the UI
+	 *  can tailor it. Kept a plain string (not an enum) so an error event carrying
+	 *  a code a newer service added still parses on older clients instead of being
+	 *  dropped wholesale — recognized codes are matched via isKnownInstanceAiErrorCode. */
+	code: z.string().optional(),
 	provider: z.string().optional(),
 	technicalDetails: z.string().optional(),
 });
@@ -1029,6 +1046,10 @@ export interface InstanceAiAgentNode {
 	error?: string;
 	errorDetails?: {
 		statusCode?: number;
+		/** Mirrors {@link errorPayloadSchema} `code` — lets the UI render a tailored error
+		 *  state. A plain string (not the enum) so an unrecognized code from a newer
+		 *  service is preserved; recognized codes are matched via isKnownInstanceAiErrorCode. */
+		code?: string;
 		provider?: string;
 		technicalDetails?: string;
 	};
@@ -1479,6 +1500,14 @@ export interface InstanceAiEvalMockedCredential {
  *     silently run the rewrite.
  */
 export const EVAL_VENDOR_SDK_INTERCEPTION_FLAG = '085_eval_vendor_sdk_interception';
+
+/** The config-evaluations experiment that surfaces/runs config evals in the UI.
+ *  Instance AI's config-based eval tool + skill are gated on it so it can't
+ *  create evals the user has no UI to run. Mirrors the editor-ui wizard. */
+export const CONFIG_EVALUATIONS_FLAG = '088_config_evaluations';
+
+/** Enabled arm of `CONFIG_EVALUATIONS_FLAG` (matches the editor-ui experiment). */
+export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

@@ -3,6 +3,11 @@ vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
 	return {
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
+		isQuotaExhaustedError: (error: unknown) =>
+			typeof error === 'object' &&
+			error !== null &&
+			'errorCode' in error &&
+			error.errorCode === 'quota_exhausted',
 		McpClientManager: class {
 			getRegularTools = vi.fn().mockResolvedValue({});
 			disconnect = vi.fn();
@@ -32,6 +37,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			},
 			loadSkill: vi.fn(),
 		})),
+		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
@@ -798,6 +804,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			adapterService: {
 				createContext: Mock;
 				getNodeDefinitionDirs: Mock;
+				isConfigEvalsEnabled: Mock;
 			};
 			sourceControlPreferencesService: { getPreferences: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
@@ -843,6 +850,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.adapterService = {
 			createContext: vi.fn(() => ({})),
 			getNodeDefinitionDirs: vi.fn(() => []),
+			isConfigEvalsEnabled: vi.fn().mockResolvedValue(true),
 		};
 		service.sourceControlPreferencesService = {
 			getPreferences: vi.fn(() => ({ branchReadOnly: false })),

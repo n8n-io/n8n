@@ -13,7 +13,11 @@ import type { RefreshToken } from '../database/entities/oauth-refresh-token.enti
 import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
 import { OAuthTokenService } from '../oauth-token.service';
+import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
+import type { McpConfig } from '@/modules/mcp/mcp.config';
+import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import type { UrlService } from '@/services/url.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
@@ -751,6 +755,70 @@ describe('OAuthTokenService', () => {
 			const result = await scopedService.verifyOAuthAccessToken(accessToken);
 
 			expect(result.scopes).toEqual(['workflow:read']);
+		});
+	});
+
+	// Chain test with the real MCP protected resource, matching the middleware's
+	// gate (expectedAudience = getResourceUrl(), which is derived from the
+	// configured MCP base URL when set).
+	describe('audience gate with a configured MCP base URL', () => {
+		const CONFIGURED_RESOURCE_URL = 'https://n8n-mcp.example.com/mcp-server/http';
+
+		let configuredService: OAuthTokenService;
+
+		beforeAll(() => {
+			const urlService = mock<UrlService>();
+			urlService.getInstanceBaseUrl.mockReturnValue(TEST_BASE_URL);
+			const mcpConfig = mock<McpConfig>();
+			mcpConfig.baseUrl = 'https://n8n-mcp.example.com';
+			const mcpResource = new McpProtectedResource(
+				urlService,
+				mock<McpSettingsService>(),
+				mcpConfig,
+			);
+
+			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			configuredRegistry.register(mcpResource);
+
+			configuredService = new OAuthTokenService(
+				logger,
+				jwtService,
+				userRepository,
+				accessTokenRepository,
+				refreshTokenRepository,
+				configuredRegistry,
+			);
+		});
+
+		it.each([
+			['the configured resource URL', CONFIGURED_RESOURCE_URL],
+			['the instance-base-URL-derived resource URL', TEST_RESOURCE_URL],
+			['the legacy audience', LEGACY_AUDIENCE],
+		])('should accept a token whose aud is %s', async (_, audience) => {
+			const token = jwtService.sign({
+				sub: 'user-123',
+				aud: audience,
+				client_id: 'client-456',
+			});
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token, clientId: 'client-456', userId: 'user-123' }),
+			);
+
+			await expect(
+				configuredService.verifyAccessToken(token, CONFIGURED_RESOURCE_URL),
+			).resolves.toMatchObject({ clientId: 'client-456' });
+		});
+
+		it('should reject a token whose aud is an unconfigured host', async () => {
+			const token = jwtService.sign({
+				sub: 'user-123',
+				aud: 'https://other.example.com/mcp-server/http',
+				client_id: 'client-456',
+			});
+
+			await expect(
+				configuredService.verifyAccessToken(token, CONFIGURED_RESOURCE_URL),
+			).rejects.toThrow('JWT Verification Failed');
 		});
 	});
 });
