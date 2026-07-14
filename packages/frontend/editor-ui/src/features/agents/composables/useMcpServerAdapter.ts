@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { NodeHelpers } from 'n8n-workflow';
-import type { INode, INodeCredentials, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeCredentials, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { AgentJsonMcpServerConfig } from '../types';
@@ -48,42 +48,25 @@ function slugify(value: string): string {
 	return normalized || 'mcp-server';
 }
 
-function resolveDefaultParameter(nodeType: INodeTypeDescription, name: string): unknown {
-	const matches = nodeType.properties.filter((candidate) => candidate.name === name);
-	if (matches.length === 0) {
-		return undefined;
-	}
-
-	const property = pickVersionedProperty(nodeType, matches);
-	if (!('default' in property)) {
-		return undefined;
-	}
-	return property.default;
-}
-
 /**
+ * Materializes the node type's default parameter values at its latest version.
  * Several node properties are declared multiple times under the same name, each
  * gated to a different `@version` range (e.g. the MCP `serverTransport` default
- * is `sse` on v1.1 but `httpStreamable` from v1.2 on). A plain `.find()` would
- * return the first declaration regardless of version. Since a newly added
- * server always targets the node's latest version, prefer the declaration whose
- * display conditions match that version, falling back to the LAST declaration
- * rather than the first.
+ * is `sse` on v1.1 but `httpStreamable` from v1.2 on); `getNodeParameters`
+ * resolves which declaration applies. `returnNoneDisplayed` keeps defaults of
+ * parameters hidden behind other conditions (e.g. `sseEndpoint`).
  */
-function pickVersionedProperty(
-	nodeType: INodeTypeDescription,
-	matches: INodeProperties[],
-): INodeProperties {
-	if (matches.length === 1) {
-		return matches[0];
-	}
-
-	const latestVersion = pickLatestVersion(nodeType.version);
-	const versioned = matches.find((candidate) =>
-		NodeHelpers.displayParameter({}, candidate, { typeVersion: latestVersion }, nodeType),
+function resolveDefaultParameters(nodeType: INodeTypeDescription): INodeParameters {
+	return (
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			{},
+			true,
+			true,
+			{ typeVersion: pickLatestVersion(nodeType.version) },
+			nodeType,
+		) ?? {}
 	);
-
-	return versioned ?? matches[matches.length - 1];
 }
 
 function resolveDefaultTimeout(nodeType: INodeTypeDescription): number | undefined {
@@ -171,9 +154,12 @@ function resolveMetadata(
 	return Object.keys(metadata).length > 0 ? metadata : undefined;
 }
 
-function resolveDefaultAuthentication(nodeType: INodeTypeDescription): string {
-	const authentication = resolveDefaultParameter(nodeType, 'authentication');
-	if (typeof authentication === 'string' && authentication.length > 0) {
+function resolveDefaultAuthentication(
+	nodeType: INodeTypeDescription,
+	defaults: INodeParameters,
+): string {
+	const authentication = toStringValue(defaults.authentication);
+	if (authentication) {
 		return authentication;
 	}
 
@@ -222,12 +208,12 @@ export function isMcpRelatedNodeType(nodeTypeName: string): boolean {
 }
 
 export function nodeTypeToNewMcpServer(nodeType: INodeTypeDescription): AgentJsonMcpServerConfig {
-	const endpointUrlDefault = resolveDefaultParameter(nodeType, 'endpointUrl');
-	const sseEndpointDefault = resolveDefaultParameter(nodeType, 'sseEndpoint');
-	const endpointUrl = toStringValue(endpointUrlDefault) ?? toStringValue(sseEndpointDefault) ?? '';
+	const defaults = resolveDefaultParameters(nodeType);
+	const endpointUrl =
+		toStringValue(defaults.endpointUrl) ?? toStringValue(defaults.sseEndpoint) ?? '';
 
-	const authentication = resolveDefaultAuthentication(nodeType);
-	const serverTransport = resolveDefaultParameter(nodeType, 'serverTransport');
+	const authentication = resolveDefaultAuthentication(nodeType, defaults);
+	const serverTransport = defaults.serverTransport;
 	const metadata = isMcpRegistryNodeType(nodeType.name)
 		? { nodeTypeName: nodeType.name }
 		: undefined;
