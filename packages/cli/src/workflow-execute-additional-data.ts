@@ -380,8 +380,8 @@ export async function executeAgent(
 	);
 	const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
 
-	// Scope workflow session threads by project
-	const scopedThreadId = `workflow:project-${projectId}:${threadId}`;
+	// Scope session threads by workflow
+	const scopedThreadId = `wf:${additionalData.workflowId}:${threadId}`;
 
 	if (source.inlineAgent) {
 		return await agentExecutionOrchestratorService.executeInlineForWorkflow(
