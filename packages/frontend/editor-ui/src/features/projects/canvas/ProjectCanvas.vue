@@ -9,7 +9,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 
 import { DEBOUNCE_TIME, getDebounceTime, MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nRadioButtons } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
@@ -22,6 +22,7 @@ import type { WorkflowListEventMap } from '@/features/core/folders/folders.types
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 
+import ProjectAtlas from './components/ProjectAtlas.vue';
 import ProjectCanvasContainer from './components/ProjectCanvasContainer.vue';
 import type { ProjectCanvasMenuItem } from './components/ProjectCanvasContextMenu.vue';
 import ProjectCanvasContextMenu from './components/ProjectCanvasContextMenu.vue';
@@ -193,6 +194,13 @@ const relationshipTypeOptions: Array<{ label: string; value: WorkflowRelationTyp
 	{ label: i18n.baseText('projectCanvas.filter.callsWorkflow'), value: 'calls-workflow' },
 	{ label: i18n.baseText('projectCanvas.filter.usesAsTool'), value: 'uses-as-tool' },
 	{ label: i18n.baseText('projectCanvas.filter.handlesErrors'), value: 'handles-errors-for' },
+];
+
+type CanvasTab = 'canvas' | 'atlas';
+const activeTab = ref<CanvasTab>('canvas');
+const tabOptions = [
+	{ label: i18n.baseText('projectCanvas.tabs.canvas'), value: 'canvas' },
+	{ label: i18n.baseText('projectCanvas.tabs.atlas'), value: 'atlas' },
 ];
 
 const initialising = ref(true);
@@ -1410,7 +1418,13 @@ defineExpose({
 			<h2 class="project-canvas__title" data-testid="project-canvas-title">
 				{{ projectName }}
 			</h2>
-			<div class="project-canvas__create">
+			<N8nRadioButtons
+				v-model="activeTab"
+				:options="tabOptions"
+				size="small"
+				data-testid="project-canvas-tabs"
+			/>
+			<div v-if="activeTab === 'canvas'" class="project-canvas__create">
 				<N8nButton
 					type="secondary"
 					size="mini"
@@ -1430,7 +1444,7 @@ defineExpose({
 					{{ i18n.baseText('projectCanvas.create.folder') }}
 				</N8nButton>
 			</div>
-			<div class="project-canvas__filters">
+			<div v-if="activeTab === 'canvas'" class="project-canvas__filters">
 				<label
 					v-for="opt in relationshipTypeOptions"
 					:key="opt.value"
@@ -1447,7 +1461,8 @@ defineExpose({
 			</div>
 		</div>
 
-		<div class="project-canvas__canvas-area">
+		<!-- keep the canvas mounted across tab switches so vue-flow state survives -->
+		<div v-show="activeTab === 'canvas'" class="project-canvas__canvas-area">
 			<div v-if="showLoading" class="project-canvas__loading">
 				{{ i18n.baseText('projectCanvas.loading') }}
 			</div>
@@ -1492,6 +1507,10 @@ defineExpose({
 				@select="onContextMenuSelect"
 				@close="contextMenuOpen = false"
 			/>
+		</div>
+
+		<div v-if="activeTab === 'atlas'" class="project-canvas__canvas-area">
+			<ProjectAtlas :project-id="projectId" />
 		</div>
 	</div>
 </template>
