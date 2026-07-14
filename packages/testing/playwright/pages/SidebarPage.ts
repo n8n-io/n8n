@@ -41,11 +41,14 @@ export class SidebarPage extends BasePage {
 	}
 
 	async clickWorkflowsLink(): Promise<void> {
-		await this.container.getByRole('link', { name: 'Workflows' }).click();
+		// Not scoped to `this.container` (#side-menu): after selecting a project these
+		// links render as project-header tabs in the main content area, outside the sidebar.
+		await this.page.getByRole('link', { name: 'Workflows' }).click();
 	}
 
 	async clickCredentialsLink(): Promise<void> {
-		await this.container.getByRole('link', { name: 'Credentials' }).click();
+		// See clickWorkflowsLink: the link can live in the project header, not the sidebar.
+		await this.page.getByRole('link', { name: 'Credentials' }).click();
 	}
 
 	getProjectButtonInUniversalAdd(): Locator {
