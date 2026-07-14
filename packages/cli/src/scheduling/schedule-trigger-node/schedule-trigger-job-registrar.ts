@@ -323,12 +323,12 @@ export class ScheduleTriggerJobRegistrar {
 
 	/**
 	 * Delete the workflow's durable jobs within a caller-owned transaction, so a
-	 * publication deactivation removes them atomically with its `active = false`
-	 * write, on the main handling the request. Durable rows are DB state; their
-	 * removal must not depend on a leader hand-off landing, or a lost one leaves
-	 * jobs firing a workflow already marked inactive. Keyed by workflow and
-	 * idempotent like {@link removeWorkflow}, so the leader's later per-node
-	 * teardown finds nothing left to do.
+	 * publication deactivation commits their removal atomically with its
+	 * `active = false` write instead of routing through the leader. Durable rows
+	 * are DB state: their removal must not depend on a leader hand-off landing,
+	 * or a lost one leaves jobs firing a workflow already marked inactive. Keyed
+	 * and idempotent like {@link removeWorkflow}, so the leader's later
+	 * per-node teardown finds nothing left to do.
 	 *
 	 * @param manager The transaction the caller's deactivation writes run in.
 	 * @param workflowId The deactivating workflow whose durable jobs to delete.

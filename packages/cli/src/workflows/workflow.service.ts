@@ -1481,11 +1481,9 @@ export class WorkflowService {
 
 			await this.outboxRepository.enqueue(workflowId, deactivatedVersionId, trx);
 
-			// Delete the workflow's durable Schedule Trigger jobs here, in the same
-			// transaction and on this request-handling main. The leader's outbox
-			// handler still tears down the in-memory triggers, but durable jobs are DB
-			// state: routing their removal through the leader risks a lost hand-off
-			// leaving them firing a workflow now marked inactive.
+			// Durable jobs are DB state, so their removal commits here rather than
+			// waiting on the leader's outbox handler: a lost hand-off would otherwise
+			// leave them firing a workflow already marked inactive.
 			await this.scheduleTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
 		});
 

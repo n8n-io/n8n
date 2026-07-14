@@ -1227,7 +1227,7 @@ describe('WorkflowService', () => {
 			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
 		});
 
-		test('deactivating through the outbox removes the durable schedule jobs in the same transaction, not via the leader', async () => {
+		test('deactivating through the outbox removes the durable schedule jobs in the same transaction, without routing through the leader', async () => {
 			globalConfigMock.workflows.useWorkflowPublicationService = true;
 
 			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
@@ -1248,7 +1248,7 @@ describe('WorkflowService', () => {
 
 			await workflowService.deactivateWorkflow(user, WORKFLOW_ID);
 
-			// active=false and the durable-job removal commit together, on this main
+			// active=false and the durable-job removal commit in the same transaction
 			expect(trx.update).toHaveBeenCalledWith(
 				WorkflowEntity,
 				{ id: WORKFLOW_ID },
@@ -1258,7 +1258,7 @@ describe('WorkflowService', () => {
 				trx,
 				WORKFLOW_ID,
 			);
-			// teardown is not routed through the leader-only in-memory manager
+			// in-memory teardown is left to the leader, not run here
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
 		});
 	});

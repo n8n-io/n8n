@@ -361,7 +361,7 @@ describe('DurableJobProvisioner', () => {
 	});
 
 	describe('deprovisionWorkflowInTransaction', () => {
-		it("deletes the workflow scope through the caller's manager, opening no transaction of its own", async () => {
+		it("deletes the whole workflow scope through the caller's manager, without opening a transaction of its own", async () => {
 			const callerManager = mock<EntityManager>();
 
 			await provisioner.deprovisionWorkflowInTransaction(callerManager, 'wf', 'schedule-trigger');
