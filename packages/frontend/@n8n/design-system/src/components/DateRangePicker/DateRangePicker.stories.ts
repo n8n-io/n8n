@@ -1,4 +1,4 @@
-import { today } from '@internationalized/date';
+import { CalendarDateTime, today } from '@internationalized/date';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
@@ -55,6 +55,30 @@ export const SingleDateSelection: Story = {
 				<template #trigger>
 					<N8nButton variant="subtle" icon="calendar">
 						{{ formatDateValue(range.start, { locale: 'en-GB' }) || 'Select date' }}
+					</N8nButton>
+				</template>
+			</DateRangePicker>
+		`,
+	}),
+};
+
+export const WithTimeSelection: Story = {
+	render: () => ({
+		components: { DateRangePicker, N8nButton },
+		setup() {
+			const now = today('UTC');
+			const range = ref({
+				start: new CalendarDateTime(now.year, now.month, now.day, 9, 0, 0),
+				end: new CalendarDateTime(now.year, now.month, now.day, 17, 0, 0),
+			});
+
+			return { range, formatDateRangeValue };
+		},
+		template: `
+			<DateRangePicker v-model="range" show-time locale="en-GB">
+				<template #trigger>
+					<N8nButton variant="subtle" icon="calendar">
+						{{ formatDateRangeValue(range, { locale: 'en-GB', includeTime: true }) || 'Select date and time' }}
 					</N8nButton>
 				</template>
 			</DateRangePicker>

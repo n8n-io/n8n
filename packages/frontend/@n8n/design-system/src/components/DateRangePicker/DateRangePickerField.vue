@@ -1,27 +1,26 @@
 <script setup lang="ts">
 import type { DateValue } from '@internationalized/date';
 import { injectDateRangePickerRootContext } from 'reka-ui';
-import { computed, inject, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import N8nInput from '../N8nInput';
+import { useDateRangePickerContext } from './dateRangePicker.context';
 import {
-	N8N_DATE_RANGE_PICKER_ACTIVE_FIELD,
-	N8N_DATE_RANGE_PICKER_SINGLE,
-} from './dateRangePicker.context';
-import { formatDateValue, isDateValueInBounds, parseDateValue } from './datePicker.utils';
+	formatDateValue,
+	formatTimeValue,
+	isDateValueInBounds,
+	parseDateValue,
+	parseTimeValue,
+	toDateTimeValue,
+} from './datePicker.utils';
 
 const rootContext = injectDateRangePickerRootContext();
-const activeField = inject(N8N_DATE_RANGE_PICKER_ACTIVE_FIELD);
-const single = inject(N8N_DATE_RANGE_PICKER_SINGLE);
-
-if (!activeField) {
-	throw new Error('DateRangePickerField must be used within N8nDateRangePicker');
-}
+const { activeField, single, showTime } = useDateRangePickerContext();
 
 watch(
 	() => rootContext.modelValue.value,
 	(range) => {
-		if (single?.value) {
+		if (single.value) {
 			activeField.value = 'start';
 			return;
 		}
@@ -38,7 +37,9 @@ watch(
 	{ deep: true, immediate: true },
 );
 
-const includeTime = computed(() => {
+const includeTimeInDateField = computed(() => {
+	if (showTime.value) return false;
+
 	const granularity = rootContext.granularity.value;
 	if (granularity && granularity !== 'day') return true;
 
@@ -48,13 +49,17 @@ const includeTime = computed(() => {
 
 const formatOptions = computed(() => ({
 	locale: rootContext.locale.value,
-	includeTime: includeTime.value,
+	includeTime: includeTimeInDateField.value,
 }));
 
 const startText = ref('');
 const endText = ref('');
+const startTimeText = ref('');
+const endTimeText = ref('');
 const editingStart = ref(false);
 const editingEnd = ref(false);
+const editingStartTime = ref(false);
+const editingEndTime = ref(false);
 
 function syncStartText() {
 	startText.value = formatDateValue(rootContext.modelValue.value.start, formatOptions.value);
@@ -64,10 +69,19 @@ function syncEndText() {
 	endText.value = formatDateValue(rootContext.modelValue.value.end, formatOptions.value);
 }
 
+function syncStartTimeText() {
+	startTimeText.value = formatTimeValue(rootContext.modelValue.value.start);
+}
+
+function syncEndTimeText() {
+	endTimeText.value = formatTimeValue(rootContext.modelValue.value.end);
+}
+
 watch(
 	() => rootContext.modelValue.value.start,
 	() => {
 		if (!editingStart.value) syncStartText();
+		if (!editingStartTime.value) syncStartTimeText();
 	},
 	{ immediate: true },
 );
@@ -76,6 +90,7 @@ watch(
 	() => rootContext.modelValue.value.end,
 	() => {
 		if (!editingEnd.value) syncEndText();
+		if (!editingEndTime.value) syncEndTimeText();
 	},
 	{ immediate: true },
 );
@@ -128,6 +143,16 @@ function updateRange(start: DateValue | undefined, end: DateValue | undefined) {
 	rootContext.onDateChange({ start, end });
 }
 
+function withExistingTime(parsed: DateValue, existing: DateValue | undefined): DateValue {
+	if (!showTime.value) return parsed;
+
+	return toDateTimeValue(parsed, {
+		hour: existing && 'hour' in existing ? existing.hour : 0,
+		minute: existing && 'minute' in existing ? existing.minute : 0,
+		second: existing && 'second' in existing ? existing.second : 0,
+	});
+}
+
 function commitField(type: 'start' | 'end') {
 	const currentStart = rootContext.modelValue.value.start;
 	const currentEnd = rootContext.modelValue.value.end;
@@ -140,34 +165,79 @@ function commitField(type: 'start' | 'end') {
 		return;
 	}
 
-	if (!isValidDate(parsed)) {
+	const nextValue = withExistingTime(parsed, type === 'start' ? currentStart : currentEnd);
+
+	if (!isValidDate(nextValue)) {
 		if (type === 'start') syncStartText();
 		else syncEndText();
 		return;
 	}
 
-	if (single?.value) {
-		updateRange(parsed.copy(), parsed.copy());
+	if (single.value) {
+		updateRange(nextValue.copy(), nextValue.copy());
 		return;
 	}
 
 	if (type === 'start') {
-		const nextEnd = currentEnd && currentEnd.compare(parsed) < 0 ? undefined : currentEnd?.copy();
-		if (!isValidRange(parsed, nextEnd)) {
+		const nextEnd =
+			currentEnd && currentEnd.compare(nextValue) < 0 ? undefined : currentEnd?.copy();
+		if (!isValidRange(nextValue, nextEnd)) {
 			syncStartText();
 			return;
 		}
-		updateRange(parsed.copy(), nextEnd?.copy());
+		updateRange(nextValue.copy(), nextEnd?.copy());
 		return;
 	}
 
 	const nextStart =
-		currentStart && parsed.compare(currentStart) < 0 ? undefined : currentStart?.copy();
-	if (!isValidRange(nextStart, parsed)) {
+		currentStart && nextValue.compare(currentStart) < 0 ? undefined : currentStart?.copy();
+	if (!isValidRange(nextStart, nextValue)) {
 		syncEndText();
 		return;
 	}
-	updateRange(nextStart?.copy(), parsed.copy());
+	updateRange(nextStart?.copy(), nextValue.copy());
+}
+
+function commitTimeField(type: 'start' | 'end') {
+	const currentStart = rootContext.modelValue.value.start;
+	const currentEnd = rootContext.modelValue.value.end;
+	const current = type === 'start' ? currentStart : currentEnd;
+	const text = type === 'start' ? startTimeText.value : endTimeText.value;
+	const parsedTime = parseTimeValue(text);
+
+	if (!current || !parsedTime) {
+		if (type === 'start') syncStartTimeText();
+		else syncEndTimeText();
+		return;
+	}
+
+	const nextValue = toDateTimeValue(current, parsedTime);
+
+	if (!isValidDate(nextValue)) {
+		if (type === 'start') syncStartTimeText();
+		else syncEndTimeText();
+		return;
+	}
+
+	if (single.value) {
+		updateRange(nextValue.copy(), nextValue.copy());
+		return;
+	}
+
+	if (type === 'start') {
+		if (!isValidRange(nextValue, currentEnd)) {
+			syncStartTimeText();
+			return;
+		}
+		updateRange(nextValue.copy(), currentEnd?.copy());
+		return;
+	}
+
+	if (!isValidRange(currentStart, nextValue)) {
+		syncEndTimeText();
+		return;
+	}
+	updateRange(currentStart?.copy(), nextValue.copy());
 }
 
 function onStartFocus() {
@@ -189,6 +259,26 @@ function onEndBlur() {
 	editingEnd.value = false;
 	commitField('end');
 }
+
+function onStartTimeFocus() {
+	editingStartTime.value = true;
+	activeField.value = 'start';
+}
+
+function onStartTimeBlur() {
+	editingStartTime.value = false;
+	commitTimeField('start');
+}
+
+function onEndTimeFocus() {
+	editingEndTime.value = true;
+	activeField.value = 'end';
+}
+
+function onEndTimeBlur() {
+	editingEndTime.value = false;
+	commitTimeField('end');
+}
 </script>
 
 <template>
@@ -196,23 +286,44 @@ function onEndBlur() {
 		:class="[$style.DateFields, single && $style.DateFieldsSingle]"
 		:data-invalid="isInvalid ? '' : undefined"
 	>
-		<N8nInput
-			v-model="startText"
-			size="small"
-			:class="[$style.DateFieldInput, activeField === 'start' && $style.DateFieldInputActive]"
-			:aria-label="single ? 'Date' : 'Start date'"
-			@focus="onStartFocus"
-			@blur="onStartBlur"
-		/>
-		<N8nInput
-			v-if="!single"
-			v-model="endText"
-			size="small"
-			:class="[$style.DateFieldInput, activeField === 'end' && $style.DateFieldInputActive]"
-			aria-label="End date"
-			@focus="onEndFocus"
-			@blur="onEndBlur"
-		/>
+		<div :class="$style.DateFieldGroup">
+			<N8nInput
+				v-model="startText"
+				size="small"
+				:class="[$style.DateFieldInput, activeField === 'start' && $style.DateFieldInputActive]"
+				:aria-label="single ? 'Date' : 'Start date'"
+				@focus="onStartFocus"
+				@blur="onStartBlur"
+			/>
+			<input
+				v-if="showTime"
+				v-model="startTimeText"
+				type="time"
+				:class="[$style.TimeFieldInput, activeField === 'start' && $style.DateFieldInputActive]"
+				:aria-label="single ? 'Time' : 'Start time'"
+				@focus="onStartTimeFocus"
+				@blur="onStartTimeBlur"
+			/>
+		</div>
+		<div v-if="!single" :class="$style.DateFieldGroup">
+			<N8nInput
+				v-model="endText"
+				size="small"
+				:class="[$style.DateFieldInput, activeField === 'end' && $style.DateFieldInputActive]"
+				aria-label="End date"
+				@focus="onEndFocus"
+				@blur="onEndBlur"
+			/>
+			<input
+				v-if="showTime"
+				v-model="endTimeText"
+				type="time"
+				:class="[$style.TimeFieldInput, activeField === 'end' && $style.DateFieldInputActive]"
+				aria-label="End time"
+				@focus="onEndTimeFocus"
+				@blur="onEndTimeBlur"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -228,9 +339,40 @@ function onEndBlur() {
 	grid-template-columns: minmax(0, 1fr);
 }
 
+.DateFieldGroup {
+	display: flex;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
 .DateFieldInput {
 	width: 100%;
 	min-width: 0;
+	flex: 1;
+}
+
+.TimeFieldInput {
+	box-sizing: border-box;
+	width: 5.5rem;
+	flex-shrink: 0;
+	height: var(--spacing--xl);
+	padding: 0 var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius--2xs);
+	background: var(--background--surface);
+	color: var(--text-color);
+	font-size: var(--font-size--xs);
+	font-family: inherit;
+	outline: none;
+}
+
+.TimeFieldInput:hover {
+	border-color: var(--border-color--strong);
+}
+
+.TimeFieldInput:focus {
+	border-color: var(--focus--border-color);
+	box-shadow: 0 0 0 var(--focus--border-width) var(--focus--outline-color);
 }
 
 .DateFieldInput :global(input) {
@@ -246,8 +388,13 @@ function onEndBlur() {
 
 .DateFieldInputActive :global(.n8n-input__wrapper),
 .DateFieldInputActive :global(.n8n-input__wrapper:focus-within),
-.DateFieldInputActive :global(.n8n-input__wrapper:hover:not(:focus-within)) {
+.DateFieldInputActive :global(.n8n-input__wrapper:hover:not(:focus-within)),
+.TimeFieldInput.DateFieldInputActive {
 	outline: none;
 	box-shadow: inset 0 0 0 2px var(--color--purple-400);
+}
+
+.TimeFieldInput.DateFieldInputActive {
+	border-color: var(--color--purple-400);
 }
 </style>

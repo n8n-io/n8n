@@ -150,6 +150,25 @@ describe('N8nDateRangePicker', () => {
 		expect(lastUpdate?.end?.compare(tomorrow)).toBe(0);
 	});
 
+	it('extends the auto-selected today range when Enter is pressed on a day', async () => {
+		const { container, emitted } = render(DateRangePicker);
+		const popover = await openCalendarPopover(container);
+
+		const todayDate = today(getLocalTimeZone());
+		const tomorrow = todayDate.add({ days: 1 });
+		const tomorrowCell = popover.querySelector(
+			`[data-value="${tomorrow.toString()}"]`,
+		) as HTMLElement;
+
+		expect(tomorrowCell).toBeTruthy();
+		tomorrowCell.focus();
+		await userEvent.keyboard('{Enter}');
+
+		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
+		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
+		expect(lastUpdate?.end?.compare(tomorrow)).toBe(0);
+	});
+
 	it('alternates active field between end and start after each selection', async () => {
 		const { container, emitted } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
@@ -262,6 +281,73 @@ describe('N8nDateRangePicker', () => {
 
 		expect(calendar.querySelector('[aria-label="Start date"]')).toBeVisible();
 		expect(calendar.querySelector('[aria-label="End date"]')).toBeVisible();
+	});
+
+	describe('showTime prop', () => {
+		it('should render time inputs next to each date when showTime is true', async () => {
+			const { container } = render(DateRangePicker, {
+				props: {
+					showTime: true,
+					modelValue: {
+						start: new CalendarDateTime(2023, 1, 1, 9, 30, 0),
+						end: new CalendarDateTime(2023, 1, 7, 17, 0, 0),
+					},
+				},
+			});
+			const calendar = await openCalendarPopover(container);
+
+			expect(calendar.querySelector('[aria-label="Start date"]')).toBeVisible();
+			expect(calendar.querySelector('[aria-label="End date"]')).toBeVisible();
+			expect(calendar.querySelector('[aria-label="Start time"]')).toBeVisible();
+			expect(calendar.querySelector('[aria-label="End time"]')).toBeVisible();
+			expect(calendar.querySelector('[aria-label="Start time"]')).toHaveValue('09:30');
+			expect(calendar.querySelector('[aria-label="End time"]')).toHaveValue('17:00');
+		});
+
+		it('should render a single time input when single and showTime are true', async () => {
+			const { container, queryByLabelText, getByLabelText } = render(DateRangePicker, {
+				props: {
+					single: true,
+					showTime: true,
+					modelValue: {
+						start: new CalendarDateTime(2023, 1, 1, 12, 0, 0),
+						end: new CalendarDateTime(2023, 1, 1, 12, 0, 0),
+					},
+				},
+			});
+			await openCalendarPopover(container);
+
+			expect(getByLabelText('Date')).toBeVisible();
+			expect(getByLabelText('Time')).toBeVisible();
+			expect(queryByLabelText('End date')).not.toBeInTheDocument();
+			expect(queryByLabelText('End time')).not.toBeInTheDocument();
+		});
+
+		it('preserves existing time when selecting a new day', async () => {
+			const todayDate = today(getLocalTimeZone());
+			const start = new CalendarDateTime(todayDate.year, todayDate.month, todayDate.day, 9, 30, 0);
+			const end = new CalendarDateTime(todayDate.year, todayDate.month, todayDate.day, 17, 0, 0);
+			const tomorrow = todayDate.add({ days: 1 });
+
+			const { container, emitted } = render(DateRangePicker, {
+				props: {
+					showTime: true,
+					modelValue: { start, end },
+				},
+			});
+			const popover = await openCalendarPopover(container);
+
+			const tomorrowCell = popover.querySelector(
+				`[data-value^="${tomorrow.toString()}"]`,
+			) as HTMLElement;
+			expect(tomorrowCell).toBeTruthy();
+
+			await userEvent.click(tomorrowCell);
+
+			const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
+			expect(lastUpdate?.start?.toString()).toBe(start.toString());
+			expect(lastUpdate?.end?.toString()).toBe(`${tomorrow.toString()}T17:00:00`);
+		});
 	});
 
 	describe('hideInputs prop', () => {

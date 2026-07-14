@@ -1,22 +1,13 @@
 <script setup lang="ts">
+import type { DateValue } from '@internationalized/date';
 import { injectDateRangePickerRootContext } from 'reka-ui';
-import { inject, ref } from 'vue';
+import { ref } from 'vue';
 
-import {
-	N8N_DATE_RANGE_PICKER_ACTIVE_FIELD,
-	N8N_DATE_RANGE_PICKER_SINGLE,
-	N8N_DATE_RANGE_PICKER_SKIP_NEXT_CELL_CLICK,
-} from './dateRangePicker.context';
-import {
-	applyActiveFieldSelection,
-	getNextActiveFieldAfterSelection,
-	parseCalendarCellDate,
-} from './datePicker.utils';
+import { useDateRangePickerContext } from './dateRangePicker.context';
+import { parseCalendarCellDate, resolveDateSelection } from './datePicker.utils';
 
 const rootContext = injectDateRangePickerRootContext();
-const activeField = inject(N8N_DATE_RANGE_PICKER_ACTIVE_FIELD);
-const skipNextCellClick = inject(N8N_DATE_RANGE_PICKER_SKIP_NEXT_CELL_CLICK);
-const single = inject(N8N_DATE_RANGE_PICKER_SINGLE);
+const { activeField, skipNextCellClick, single, showTime } = useDateRangePickerContext();
 const blockedCellInteraction = ref(false);
 
 function isCalendarCellTarget(event: Event): HTMLElement | null {
@@ -36,7 +27,7 @@ function isPlaceholderDayCell(target: HTMLElement): boolean {
 }
 
 function shouldSkipPlaceholderCellInteraction(target: HTMLElement): boolean {
-	if (!skipNextCellClick?.value) return false;
+	if (!skipNextCellClick.value) return false;
 
 	return isPlaceholderDayCell(target);
 }
@@ -44,6 +35,19 @@ function shouldSkipPlaceholderCellInteraction(target: HTMLElement): boolean {
 function blockCalendarCellEvent(event: Event) {
 	event.preventDefault();
 	event.stopImmediatePropagation();
+}
+
+function applySelection(selectedDate: DateValue) {
+	const selection = resolveDateSelection({
+		selected: selectedDate,
+		range: rootContext.modelValue.value,
+		activeField: activeField.value,
+		single: single.value,
+		preserveTime: showTime.value,
+	});
+
+	rootContext.onDateChange(selection.range);
+	activeField.value = selection.nextActiveField;
 }
 
 function handleCalendarPointerDownCapture(event: PointerEvent) {
@@ -71,7 +75,7 @@ function handleCalendarClickCapture(event: MouseEvent) {
 		return;
 	}
 
-	if (skipNextCellClick?.value) {
+	if (skipNextCellClick.value) {
 		skipNextCellClick.value = false;
 	}
 
@@ -79,21 +83,30 @@ function handleCalendarClickCapture(event: MouseEvent) {
 	if (!selectedDate) return;
 
 	blockCalendarCellEvent(event);
+	applySelection(selectedDate);
+}
 
-	if (single?.value) {
-		rootContext.onDateChange({
-			start: selectedDate.copy(),
-			end: selectedDate.copy(),
-		});
+function handleCalendarKeydownCapture(event: KeyboardEvent) {
+	if (event.key !== 'Enter' && event.key !== ' ') return;
+
+	const target = isCalendarCellTarget(event);
+	if (!target) return;
+
+	if (shouldSkipPlaceholderCellInteraction(target)) {
+		skipNextCellClick.value = false;
+		blockCalendarCellEvent(event);
 		return;
 	}
 
-	if (!activeField?.value) return;
+	if (skipNextCellClick.value) {
+		skipNextCellClick.value = false;
+	}
 
-	const rangeBefore = rootContext.modelValue.value;
+	const selectedDate = parseCalendarCellDate(target);
+	if (!selectedDate) return;
 
-	rootContext.onDateChange(applyActiveFieldSelection(activeField.value, selectedDate, rangeBefore));
-	activeField.value = getNextActiveFieldAfterSelection(activeField.value);
+	blockCalendarCellEvent(event);
+	applySelection(selectedDate);
 }
 </script>
 
@@ -102,6 +115,7 @@ function handleCalendarClickCapture(event: MouseEvent) {
 		@pointerdown.prevent
 		@pointerdown.capture="handleCalendarPointerDownCapture"
 		@click.capture="handleCalendarClickCapture"
+		@keydown.capture="handleCalendarKeydownCapture"
 	>
 		<slot />
 	</div>

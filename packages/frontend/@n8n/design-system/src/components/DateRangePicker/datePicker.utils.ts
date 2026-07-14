@@ -220,8 +220,97 @@ export function applyActiveFieldSelection(
 	return { start, end };
 }
 
+export function hasTimeComponent(value: DateValue | undefined): value is CalendarDateTime {
+	return value !== undefined && 'hour' in value;
+}
+
+export function formatTimeValue(value: DateValue | undefined): string {
+	if (!hasTimeComponent(value)) return '';
+
+	return `${String(value.hour).padStart(2, '0')}:${String(value.minute).padStart(2, '0')}`;
+}
+
+export function parseTimeValue(input: string): { hour: number; minute: number } | undefined {
+	const trimmed = input.trim();
+	const match = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
+	if (!match) return undefined;
+
+	const hour = Number(match[1]);
+	const minute = Number(match[2]);
+	if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return undefined;
+
+	return { hour, minute };
+}
+
+export function toDateTimeValue(
+	value: DateValue,
+	time: { hour?: number; minute?: number; second?: number } = {},
+): CalendarDateTime {
+	if (hasTimeComponent(value)) {
+		return new CalendarDateTime(
+			value.year,
+			value.month,
+			value.day,
+			time.hour ?? value.hour,
+			time.minute ?? value.minute,
+			time.second ?? value.second,
+		);
+	}
+
+	return new CalendarDateTime(
+		value.year,
+		value.month,
+		value.day,
+		time.hour ?? 0,
+		time.minute ?? 0,
+		time.second ?? 0,
+	);
+}
+
+export function mergeDatePreservingTime(selected: DateValue, existing?: DateValue): DateValue {
+	if (!hasTimeComponent(existing) && !hasTimeComponent(selected)) {
+		return selected.copy();
+	}
+
+	return toDateTimeValue(selected, {
+		hour: hasTimeComponent(existing) ? existing.hour : 0,
+		minute: hasTimeComponent(existing) ? existing.minute : 0,
+		second: hasTimeComponent(existing) ? existing.second : 0,
+	});
+}
+
 export function getNextActiveFieldAfterSelection(activeField: 'start' | 'end'): 'start' | 'end' {
 	return activeField === 'start' ? 'end' : 'start';
+}
+
+export function resolveDateSelection(options: {
+	selected: DateValue;
+	range: { start?: DateValue; end?: DateValue };
+	activeField: 'start' | 'end';
+	single?: boolean;
+	preserveTime?: boolean;
+}): { range: { start?: DateValue; end?: DateValue }; nextActiveField: 'start' | 'end' } {
+	const { selected, range, activeField, single = false, preserveTime = false } = options;
+
+	if (single) {
+		const singleDate = preserveTime ? mergeDatePreservingTime(selected, range.start) : selected;
+		return {
+			range: {
+				start: singleDate.copy(),
+				end: singleDate.copy(),
+			},
+			nextActiveField: 'start',
+		};
+	}
+
+	const withTime = preserveTime
+		? mergeDatePreservingTime(selected, activeField === 'end' ? range.end : range.start)
+		: selected;
+
+	return {
+		range: applyActiveFieldSelection(activeField, withTime, range),
+		nextActiveField: getNextActiveFieldAfterSelection(activeField),
+	};
 }
 
 export function parseCalendarCellDate(element: Element): DateValue | undefined {
@@ -231,7 +320,13 @@ export function parseCalendarCellDate(element: Element): DateValue | undefined {
 	try {
 		return parseDate(value);
 	} catch {
-		return undefined;
+		// Date-time cell values include a time segment (e.g. 2026-07-15T00:00).
+		const datePart = value.split('T')[0];
+		try {
+			return parseDate(datePart);
+		} catch {
+			return undefined;
+		}
 	}
 }
 

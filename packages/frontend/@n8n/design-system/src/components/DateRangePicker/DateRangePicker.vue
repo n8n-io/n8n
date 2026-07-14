@@ -24,11 +24,7 @@ import IconButton from '../N8nIconButton';
 import N8nDateRangePickerCalendarWrapper from './DateRangePickerCalendarWrapper.vue';
 import N8nDateRangePickerClearButton from './DateRangePickerClearButton.vue';
 import N8nDateRangePickerField from './DateRangePickerField.vue';
-import {
-	N8N_DATE_RANGE_PICKER_ACTIVE_FIELD,
-	N8N_DATE_RANGE_PICKER_SINGLE,
-	N8N_DATE_RANGE_PICKER_SKIP_NEXT_CELL_CLICK,
-} from './dateRangePicker.context';
+import { N8N_DATE_RANGE_PICKER_CONTEXT } from './dateRangePicker.context';
 import N8nDateRangePickerOpenHandler from './DateRangePickerOpenHandler.vue';
 import N8nDateRangePickerTodayButton from './DateRangePickerTodayButton.vue';
 import { formatMonthYearHeading, formatWeekdayTwoLetters } from './datePicker.utils';
@@ -41,6 +37,7 @@ const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
 	hourCycle: 24,
 	hideInputs: false,
 	single: false,
+	showTime: false,
 });
 
 const emit = defineEmits<N8nDateRangePickerRootEmits>();
@@ -57,9 +54,16 @@ const forwarded = useForwardPropsEmits(props, emit);
 const activeCalendarField = ref<'start' | 'end'>('end');
 const skipNextCellClick = ref(false);
 const showInputs = computed(() => !props.hideInputs);
-provide(N8N_DATE_RANGE_PICKER_ACTIVE_FIELD, activeCalendarField);
-provide(N8N_DATE_RANGE_PICKER_SKIP_NEXT_CELL_CLICK, skipNextCellClick);
-provide(N8N_DATE_RANGE_PICKER_SINGLE, toRef(props, 'single'));
+const effectiveGranularity = computed(() => {
+	if (props.showTime) return props.granularity ?? 'minute';
+	return props.granularity;
+});
+provide(N8N_DATE_RANGE_PICKER_CONTEXT, {
+	activeField: activeCalendarField,
+	skipNextCellClick,
+	single: toRef(props, 'single'),
+	showTime: toRef(props, 'showTime'),
+});
 
 function blurFocusedCalendarCell() {
 	const active = document.activeElement;
@@ -77,7 +81,7 @@ function markPageNavigation() {
 </script>
 
 <template>
-	<DateRangePickerRoot v-bind="forwarded">
+	<DateRangePickerRoot v-bind="forwarded" :granularity="effectiveGranularity">
 		<N8nDateRangePickerOpenHandler />
 		<DateRangePickerTrigger as-child>
 			<slot name="trigger">
@@ -87,7 +91,10 @@ function markPageNavigation() {
 
 		<DateRangePickerContent align="start" :side-offset="5" :class="$style.PopoverContent">
 			<DateRangePickerCalendar v-slot="{ weekDays, grid }" :class="$style.Calendar">
-				<div :class="$style.PopoverInner" :data-active-field="activeCalendarField">
+				<div
+					:class="[$style.PopoverInner, showTime && $style.PopoverInnerWithTime]"
+					:data-active-field="activeCalendarField"
+				>
 					<div v-if="showInputs" :class="$style.DateFieldWrapper">
 						<N8nDateRangePickerField :class="$style.DateField"></N8nDateRangePickerField>
 						<div :class="$style.DateFieldError">Outside of allowed range</div>
@@ -400,6 +407,10 @@ function markPageNavigation() {
 
 .PopoverInner {
 	width: calc(7 * var(--date-range-picker--cell-size));
+}
+
+.PopoverInnerWithTime {
+	width: max(calc(7 * var(--date-range-picker--cell-size)), 18rem);
 }
 
 .PopoverContent[data-state='open'][data-side='top'] {

@@ -5,10 +5,15 @@ import {
 	formatDateRangeValue,
 	formatDateValue,
 	formatMonthYearHeading,
+	formatTimeValue,
 	formatWeekdayTwoLetters,
 	getNextActiveFieldAfterSelection,
+	mergeDatePreservingTime,
 	parseDateValue,
+	parseTimeValue,
 	createTodayRange,
+	resolveDateSelection,
+	toDateTimeValue,
 } from './datePicker.utils';
 
 describe('datePicker.utils', () => {
@@ -146,6 +151,92 @@ describe('datePicker.utils', () => {
 
 		it('moves to start after selecting end', () => {
 			expect(getNextActiveFieldAfterSelection('end')).toBe('start');
+		});
+	});
+
+	describe('resolveDateSelection', () => {
+		it('sets both ends in single mode', () => {
+			const selected = new CalendarDate(2025, 6, 15);
+
+			const result = resolveDateSelection({
+				selected,
+				range: {},
+				activeField: 'end',
+				single: true,
+			});
+
+			expect(result.range.start?.compare(selected)).toBe(0);
+			expect(result.range.end?.compare(selected)).toBe(0);
+			expect(result.nextActiveField).toBe('start');
+		});
+
+		it('applies the active field and flips to the next one', () => {
+			const start = new CalendarDate(2025, 6, 10);
+			const selected = new CalendarDate(2025, 6, 20);
+
+			const result = resolveDateSelection({
+				selected,
+				range: { start, end: start },
+				activeField: 'end',
+			});
+
+			expect(result.range.start?.compare(start)).toBe(0);
+			expect(result.range.end?.compare(selected)).toBe(0);
+			expect(result.nextActiveField).toBe('start');
+		});
+
+		it('preserves time when requested', () => {
+			const existing = new CalendarDateTime(2025, 6, 10, 17, 30, 0);
+			const selected = new CalendarDate(2025, 6, 20);
+
+			const result = resolveDateSelection({
+				selected,
+				range: { start: existing, end: existing },
+				activeField: 'end',
+				preserveTime: true,
+			});
+
+			expect(result.range.end?.toString()).toBe('2025-06-20T17:30:00');
+		});
+	});
+
+	describe('formatTimeValue', () => {
+		it('returns empty string for date-only values', () => {
+			expect(formatTimeValue(new CalendarDate(2025, 6, 15))).toBe('');
+		});
+
+		it('formats hours and minutes with leading zeros', () => {
+			expect(formatTimeValue(new CalendarDateTime(2025, 6, 15, 9, 5, 0))).toBe('09:05');
+		});
+	});
+
+	describe('parseTimeValue', () => {
+		it('parses a valid HH:mm string', () => {
+			expect(parseTimeValue('14:30')).toEqual({ hour: 14, minute: 30 });
+		});
+
+		it('returns undefined for invalid input', () => {
+			expect(parseTimeValue('25:00')).toBeUndefined();
+			expect(parseTimeValue('abc')).toBeUndefined();
+		});
+	});
+
+	describe('mergeDatePreservingTime', () => {
+		it('keeps the existing time when merging a new calendar date', () => {
+			const selected = new CalendarDate(2025, 6, 20);
+			const existing = new CalendarDateTime(2025, 6, 15, 9, 30, 0);
+
+			const result = mergeDatePreservingTime(selected, existing);
+
+			expect(result.toString()).toBe('2025-06-20T09:30:00');
+		});
+	});
+
+	describe('toDateTimeValue', () => {
+		it('applies the provided time onto a date', () => {
+			const result = toDateTimeValue(new CalendarDate(2025, 6, 15), { hour: 8, minute: 15 });
+
+			expect(result.toString()).toBe('2025-06-15T08:15:00');
 		});
 	});
 });

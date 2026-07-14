@@ -2,14 +2,15 @@
 import { injectDateRangePickerRootContext } from 'reka-ui';
 
 import N8nButton from '../N8nButton';
-import { getTodayDateValue, isDateSelectable } from './datePicker.utils';
+import { useDateRangePickerContext } from './dateRangePicker.context';
+import { getTodayDateValue, isDateSelectable, resolveDateSelection } from './datePicker.utils';
 
 const rootContext = injectDateRangePickerRootContext();
+const { activeField, single, showTime } = useDateRangePickerContext();
 
 function goToToday() {
 	const todayDate = getTodayDateValue({
 		granularity: rootContext.granularity.value,
-		referenceStart: rootContext.modelValue.value.start,
 	});
 
 	rootContext.onPlaceholderChange(todayDate.copy());
@@ -24,13 +25,16 @@ function goToToday() {
 		return;
 	}
 
-	const currentEnd = rootContext.modelValue.value.end;
-	const nextEnd = currentEnd && currentEnd.compare(todayDate) < 0 ? undefined : currentEnd?.copy();
-
-	rootContext.onDateChange({
-		start: todayDate.copy(),
-		end: nextEnd?.copy(),
+	const selection = resolveDateSelection({
+		selected: todayDate,
+		range: rootContext.modelValue.value,
+		activeField: activeField.value,
+		single: single.value,
+		preserveTime: showTime.value,
 	});
+
+	rootContext.onDateChange(selection.range);
+	activeField.value = selection.nextActiveField;
 }
 </script>
 
