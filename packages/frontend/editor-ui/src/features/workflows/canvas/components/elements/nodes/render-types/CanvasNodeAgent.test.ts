@@ -159,6 +159,7 @@ describe('CanvasNodeAgent', () => {
 			model: { provider: 'anthropic', model: 'claude-opus-4-8' },
 			channels: [{ type: 'slack' }],
 			tools: [{ type: 'node', name: 'get_available_dates' }],
+			mcpServers: [],
 			skills: [{ id: 's1', name: 'PR Reviewer' }],
 			tasks: [{ id: 't1', name: 'Weekly Summary', enabled: true }],
 		};
@@ -191,6 +192,7 @@ describe('CanvasNodeAgent', () => {
 			model: null,
 			channels: [],
 			tools: [],
+			mcpServers: [],
 			skills: [],
 			tasks: [],
 		};
@@ -223,6 +225,7 @@ describe('CanvasNodeAgent', () => {
 			model: null,
 			channels: [],
 			tools: [],
+			mcpServers: [],
 			skills: [],
 			tasks: [],
 		};

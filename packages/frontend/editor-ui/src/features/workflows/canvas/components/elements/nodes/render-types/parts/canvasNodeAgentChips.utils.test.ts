@@ -9,6 +9,7 @@ function makeSummary(overrides: Partial<AgentCapabilitySummary> = {}): AgentCapa
 		model: null,
 		channels: [],
 		tools: [],
+		mcpServers: [],
 		skills: [],
 		tasks: [],
 		...overrides,
