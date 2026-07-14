@@ -1,6 +1,8 @@
 import { inject, type InjectionKey, type Ref, type ShallowRef } from 'vue';
 import type { injectDateRangePickerRootContext } from 'reka-ui';
 
+import type { DatePickerHourCycle } from './datePicker.utils';
+
 export type DateRangePickerActiveField = 'start' | 'end';
 
 export type DateRangePickerRekaRoot = ReturnType<typeof injectDateRangePickerRootContext>;
@@ -9,6 +11,7 @@ export type DateRangePickerContext = {
 	activeField: Ref<DateRangePickerActiveField>;
 	single: Ref<boolean>;
 	showTime: Ref<boolean>;
+	hourCycle: Ref<DatePickerHourCycle>;
 	/** Set under DateRangePickerRoot so the parent can call reka APIs. */
 	rekaRoot: ShallowRef<DateRangePickerRekaRoot | null>;
 };

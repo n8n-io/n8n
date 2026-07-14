@@ -85,3 +85,27 @@ export const WithTimeSelection: Story = {
 		`,
 	}),
 };
+
+export const WithTimeSelection12Hour: Story = {
+	render: () => ({
+		components: { DateRangePicker, N8nButton },
+		setup() {
+			const now = today('UTC');
+			const range = ref({
+				start: new CalendarDateTime(now.year, now.month, now.day, 9, 0, 0),
+				end: new CalendarDateTime(now.year, now.month, now.day, 17, 0, 0),
+			});
+
+			return { range, formatDateRangeValue };
+		},
+		template: `
+			<DateRangePicker v-model="range" show-time :hour-cycle="12" locale="en-US">
+				<template #trigger>
+					<N8nButton variant="subtle" icon="calendar">
+						{{ formatDateRangeValue(range, { locale: 'en-US', includeTime: true, hourCycle: 12 }) || 'Select date and time' }}
+					</N8nButton>
+				</template>
+			</DateRangePicker>
+		`,
+	}),
+};

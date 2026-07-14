@@ -5,6 +5,8 @@ import {
 	formatDateValue,
 	formatMonthYearHeading,
 	formatTimeValue,
+	isDateRangeValid,
+	isDateSelectable,
 	mergeDatePreservingTime,
 	parseDateValue,
 	parseTimeValue,
@@ -19,16 +21,24 @@ describe('datePicker.utils', () => {
 			expect(formatDateValue(undefined)).toBe('');
 		});
 
-		it('formats a date with locale-aware month names', () => {
+		it('formats a date as MMM dd, yyyy', () => {
 			const date = new CalendarDate(2025, 6, 15);
 
-			expect(formatDateValue(date, { locale: 'en-GB' })).toMatch(/15.*Jun.*2025/);
+			expect(formatDateValue(date, { locale: 'en-GB' })).toBe('Jun 15, 2025');
+		});
+
+		it('zero-pads single-digit days', () => {
+			const date = new CalendarDate(2025, 6, 5);
+
+			expect(formatDateValue(date)).toBe('Jun 05, 2025');
 		});
 
 		it('includes time when requested', () => {
 			const date = new CalendarDateTime(2025, 6, 15, 14, 30, 0);
 
-			expect(formatDateValue(date, { locale: 'en-GB', includeTime: true })).toMatch(/14:30/);
+			expect(formatDateValue(date, { locale: 'en-GB', includeTime: true })).toMatch(
+				/^Jun 15, 2025, .*14:30/,
+			);
 		});
 	});
 
@@ -40,8 +50,8 @@ describe('datePicker.utils', () => {
 		it('formats a single-day range as one date', () => {
 			const date = new CalendarDate(2025, 6, 15);
 
-			expect(formatDateRangeValue({ start: date, end: date }, { locale: 'en-GB' })).toMatch(
-				/15.*Jun.*2025/,
+			expect(formatDateRangeValue({ start: date, end: date }, { locale: 'en-GB' })).toBe(
+				'Jun 15, 2025',
 			);
 		});
 
@@ -54,7 +64,7 @@ describe('datePicker.utils', () => {
 				{ locale: 'en-GB' },
 			);
 
-			expect(result).toMatch(/10.*Jan.*–.*15.*Jun.*2025/);
+			expect(result).toBe('Jan 10 – Jun 15, 2025');
 		});
 
 		it('includes both years when the range spans years', () => {
@@ -66,7 +76,7 @@ describe('datePicker.utils', () => {
 				{ locale: 'en-GB' },
 			);
 
-			expect(result).toMatch(/2024.*–.*2025/);
+			expect(result).toBe('Dec 20, 2024 – Jan 05, 2025');
 		});
 	});
 
@@ -79,8 +89,52 @@ describe('datePicker.utils', () => {
 			expect(parsed?.day).toBe(15);
 		});
 
-		it('returns undefined for invalid input', () => {
+		it('parses MMM dd, yyyy formatted dates', () => {
+			const parsed = parseDateValue('Jun 15, 2025');
+
+			expect(parsed?.year).toBe(2025);
+			expect(parsed?.month).toBe(6);
+			expect(parsed?.day).toBe(15);
+		});
+
+		it('rejects malformed or ambiguous dates instead of guessing', () => {
+			expect(parseDateValue('Jul 30,2026')).toBeUndefined();
+			expect(parseDateValue('Jul 30,99')).toBeUndefined();
+			expect(parseDateValue('Jul 30, 99')).toBeUndefined();
 			expect(parseDateValue('not-a-date')).toBeUndefined();
+		});
+	});
+
+	describe('isDateRangeValid', () => {
+		it('allows incomplete ranges', () => {
+			expect(isDateRangeValid(new CalendarDate(2025, 6, 15), undefined)).toBe(true);
+			expect(isDateRangeValid(undefined, new CalendarDate(2025, 6, 15))).toBe(true);
+		});
+
+		it('rejects ranges where start is after end', () => {
+			expect(isDateRangeValid(new CalendarDate(2025, 6, 20), new CalendarDate(2025, 6, 15))).toBe(
+				false,
+			);
+		});
+
+		it('rejects ranges that include an unavailable date', () => {
+			const unavailable = new CalendarDate(2025, 6, 17);
+
+			expect(
+				isDateRangeValid(new CalendarDate(2025, 6, 15), new CalendarDate(2025, 6, 20), {
+					isDateUnavailable: (date) => date.compare(unavailable) === 0,
+				}),
+			).toBe(false);
+		});
+	});
+
+	describe('isDateSelectable', () => {
+		it('rejects dates outside bounds', () => {
+			expect(
+				isDateSelectable(new CalendarDate(2025, 1, 1), {
+					minValue: new CalendarDate(2025, 6, 1),
+				}),
+			).toBe(false);
 		});
 	});
 
@@ -183,19 +237,36 @@ describe('datePicker.utils', () => {
 			expect(formatTimeValue(new CalendarDate(2025, 6, 15))).toBe('');
 		});
 
-		it('formats hours and minutes with leading zeros', () => {
+		it('formats hours and minutes with leading zeros in 24-hour mode', () => {
 			expect(formatTimeValue(new CalendarDateTime(2025, 6, 15, 9, 5, 0))).toBe('09:05');
+			expect(formatTimeValue(new CalendarDateTime(2025, 6, 15, 17, 0, 0), 24)).toBe('17:00');
+		});
+
+		it('formats times with AM/PM in 12-hour mode', () => {
+			expect(formatTimeValue(new CalendarDateTime(2025, 6, 15, 0, 0, 0), 12)).toBe('12:00 AM');
+			expect(formatTimeValue(new CalendarDateTime(2025, 6, 15, 9, 5, 0), 12)).toBe('09:05 AM');
+			expect(formatTimeValue(new CalendarDateTime(2025, 6, 15, 12, 0, 0), 12)).toBe('12:00 PM');
+			expect(formatTimeValue(new CalendarDateTime(2025, 6, 15, 17, 30, 0), 12)).toBe('05:30 PM');
 		});
 	});
 
 	describe('parseTimeValue', () => {
-		it('parses a valid HH:mm string', () => {
+		it('parses a valid HH:mm string in 24-hour mode', () => {
 			expect(parseTimeValue('14:30')).toEqual({ hour: 14, minute: 30 });
+		});
+
+		it('parses AM/PM strings in 12-hour mode', () => {
+			expect(parseTimeValue('12:00 AM', 12)).toEqual({ hour: 0, minute: 0 });
+			expect(parseTimeValue('09:05 AM', 12)).toEqual({ hour: 9, minute: 5 });
+			expect(parseTimeValue('12:00 PM', 12)).toEqual({ hour: 12, minute: 0 });
+			expect(parseTimeValue('5:30 pm', 12)).toEqual({ hour: 17, minute: 30 });
 		});
 
 		it('returns undefined for invalid input', () => {
 			expect(parseTimeValue('25:00')).toBeUndefined();
 			expect(parseTimeValue('abc')).toBeUndefined();
+			expect(parseTimeValue('13:00 AM', 12)).toBeUndefined();
+			expect(parseTimeValue('14:30', 12)).toBeUndefined();
 		});
 	});
 

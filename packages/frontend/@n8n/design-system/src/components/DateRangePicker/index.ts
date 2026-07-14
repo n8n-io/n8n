@@ -14,6 +14,9 @@ export type N8nDateRangePickerProps = DateRangePickerRootProps & {
 	hideInputs?: boolean;
 	single?: boolean;
 	showTime?: boolean;
+	/** 24-hour (`24`, default) or 12-hour with AM/PM (`12`) time fields when `showTime` is enabled. */
+	hourCycle?: 12 | 24;
 };
 export type N8nDateRangePickerRootEmits = DateRangePickerRootEmits & PopoverRootEmits;
 export type { DateRange, DateValue } from 'reka-ui';
+export type { DatePickerHourCycle } from './datePicker.utils';

@@ -37,6 +37,7 @@ import {
 	isEmptyDateRange,
 	parseCalendarCellDate,
 	resolveDateSelection,
+	type DatePickerHourCycle,
 } from './datePicker.utils';
 import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
 
@@ -76,6 +77,7 @@ const skipNextCellClick = ref(false);
 const blockedCellInteraction = ref(false);
 const rekaRoot = shallowRef<DateRangePickerRekaRoot | null>(null);
 const showInputs = computed(() => !props.hideInputs);
+const hourCycle = computed<DatePickerHourCycle>(() => (props.hourCycle === 12 ? 12 : 24));
 const effectiveGranularity = computed(() => {
 	if (props.showTime) return props.granularity ?? 'minute';
 	return props.granularity;
@@ -84,6 +86,7 @@ provide(N8N_DATE_RANGE_PICKER_CONTEXT, {
 	activeField: activeCalendarField,
 	single: toRef(props, 'single'),
 	showTime: toRef(props, 'showTime'),
+	hourCycle,
 	rekaRoot,
 });
 
@@ -249,9 +252,12 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 					:class="[$style.PopoverInner, showTime && $style.PopoverInnerWithTime]"
 					:data-active-field="activeCalendarField"
 				>
+					<div v-if="$slots.presets" :class="$style.Presets">
+						<slot name="presets" />
+					</div>
+
 					<div v-if="showInputs" :class="$style.DateFieldWrapper">
-						<N8nDateRangePickerField :class="$style.DateField"></N8nDateRangePickerField>
-						<div :class="$style.DateFieldError">Outside of allowed range</div>
+						<N8nDateRangePickerField />
 					</div>
 
 					<DateRangePickerHeader :class="$style.CalendarHeader">
@@ -344,23 +350,6 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 <style lang="css" module>
 .DateFieldWrapper {
 	width: 100%;
-}
-
-.DateField {
-	width: 100%;
-	min-width: 0;
-}
-
-.DateField[data-invalid] + .DateFieldError {
-	display: block;
-}
-
-.DateFieldError {
-	color: var(--text-color--danger);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-	margin-top: var(--spacing--3xs);
-	display: none;
 }
 
 .FooterWrapper {

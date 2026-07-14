@@ -323,6 +323,23 @@ describe('N8nDateRangePicker', () => {
 			expect(queryByLabelText('End time')).not.toBeInTheDocument();
 		});
 
+		it('formats time with AM/PM when hourCycle is 12', async () => {
+			const { container } = render(DateRangePicker, {
+				props: {
+					showTime: true,
+					hourCycle: 12,
+					modelValue: {
+						start: new CalendarDateTime(2023, 1, 1, 9, 30, 0),
+						end: new CalendarDateTime(2023, 1, 7, 17, 0, 0),
+					},
+				},
+			});
+			const calendar = await openCalendarPopover(container);
+
+			expect(calendar.querySelector('[aria-label="Start time"]')).toHaveValue('09:30 AM');
+			expect(calendar.querySelector('[aria-label="End time"]')).toHaveValue('05:00 PM');
+		});
+
 		it('preserves existing time when selecting a new day', async () => {
 			const todayDate = today(getLocalTimeZone());
 			const start = new CalendarDateTime(todayDate.year, todayDate.month, todayDate.day, 9, 30, 0);
