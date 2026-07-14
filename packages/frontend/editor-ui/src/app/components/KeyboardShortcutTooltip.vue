@@ -17,7 +17,7 @@ withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 		<template #content>
 			<div :class="$style.shortcut">
 				<div :class="$style.label">{{ label }}</div>
-				<N8nKeyboardShortcut v-if="shortcut" v-bind="shortcut" />
+				<N8nKeyboardShortcut v-if="shortcut" :class="$style.keyboardShortcut" v-bind="shortcut" />
 			</div>
 		</template>
 		<slot />
@@ -37,6 +37,12 @@ withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 }
 
 .label {
+	// Allow the label to wrap within the tooltip's max-width instead of
+	// overflowing and being clipped mid-word (e.g. "Convert 4 nodes to sub-workf").
+	min-width: 0;
+}
+
+.keyboardShortcut {
 	flex-shrink: 0;
 }
 </style>
