@@ -579,11 +579,11 @@ export class InstanceAiService {
 				publish: (threadId, event) => this.eventBus.publish(threadId, event),
 				getEventsForRun: async (threadId, runId) =>
 					this.instanceAiConfig.durableLog
-						? await this.eventLog.getEventsForRuns(threadId, [runId])
+						? await this.readDurableEventsForRuns(threadId, [runId])
 						: this.eventBus.getEventsForRun(threadId, runId),
 				getEventsForRuns: async (threadId, runIds) =>
 					this.instanceAiConfig.durableLog
-						? await this.eventLog.getEventsForRuns(threadId, runIds)
+						? await this.readDurableEventsForRuns(threadId, runIds)
 						: this.eventBus.getEventsForRuns(threadId, runIds),
 			},
 			dbSnapshotStorage: this.dbSnapshotStorage,
@@ -5397,6 +5397,21 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Read-own-writes barrier for decision reads from the durable log: settle
+	 * the thread's drain (including open coalesce buffers) so everything
+	 * published before this call is visible to the read. Used at run
+	 * boundaries — terminal-guard inputs and snapshot builds — where closing
+	 * the open segment early is correct anyway.
+	 */
+	private async readDurableEventsForRuns(
+		threadId: string,
+		runIds: string[],
+	): Promise<InstanceAiEvent[]> {
+		await this.eventLog.flush(threadId);
+		return await this.eventLog.getEventsForRuns(threadId, runIds);
+	}
+
+	/**
 	 * Build an agent tree from in-memory events and persist it as a thread metadata snapshot.
 	 * @param isUpdate If true, updates the existing snapshot for this runId (background task completion).
 	 */
@@ -5419,11 +5434,11 @@ export class InstanceAiService {
 					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
 				}
 				events = this.instanceAiConfig.durableLog
-					? await this.eventLog.getEventsForRuns(threadId, groupRunIds)
+					? await this.readDurableEventsForRuns(threadId, groupRunIds)
 					: this.eventBus.getEventsForRuns(threadId, groupRunIds);
 			} else {
 				events = this.instanceAiConfig.durableLog
-					? await this.eventLog.getEventsForRuns(threadId, [runId])
+					? await this.readDurableEventsForRuns(threadId, [runId])
 					: this.eventBus.getEventsForRun(threadId, runId);
 			}
 			// Durable-log flag on: the tree input comes from the DB, so long runs can
