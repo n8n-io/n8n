@@ -1,6 +1,10 @@
-// Pull-based lane allocator. Each lane caps at `maxConcurrentBuilds` and never
-// runs the same key twice concurrently — pairing those rules eliminates the
-// same-key concentration that breaks the agent under load.
+// Pull-based lane allocator. Lane load counts every work unit — builds and
+// scenario executions alike — capped at `laneConcurrency`, and a lane never
+// runs the same build key twice concurrently. Builds may run on any lane
+// (least-loaded wins); scenario executions are pinned to the lane holding
+// their workflow and wait for a slot there via `acquireOn`. Counting both
+// kinds of work is what stops a lane that falls behind on scenario
+// executions from continuing to win new builds while its backlog grows.
 //
 // A dead lane fails builds in milliseconds, making it permanently the
 // least-loaded lane — it would swallow the whole remaining queue. Consecutive
@@ -8,14 +12,18 @@
 // once its backend responds; all-lanes-quarantined aborts after a grace period.
 
 export interface AllocatableLane {
-	activeBuilds: number;
+	activeWork: number;
 	inflightKeys: Set<string>;
 }
 
 interface Waiter<L> {
-	key: string;
+	/** Build waiters carry a same-key exclusion key; pinned waiters carry none. */
+	key?: string;
+	/** Pinned waiters (scenario executions) can only run on this lane. */
+	lane?: L;
 	resolve: (lane: L) => void;
 	reject: (error: Error) => void;
+	deadline?: NodeJS.Timeout;
 }
 
 export interface LaneHealthOptions<L> {
@@ -23,7 +31,8 @@ export interface LaneHealthOptions<L> {
 	probe: (lane: L) => Promise<boolean>;
 	/** Delay between health probes of a quarantined lane. */
 	probeIntervalMs?: number;
-	/** Consecutive transient build failures before a lane is quarantined. */
+	/** Consecutive transient failures (builds or scenario executions) before a
+	 *  lane is quarantined. */
 	quarantineThreshold?: number;
 	/** How long ALL lanes may stay quarantined before acquires abort. */
 	allQuarantinedGraceMs?: number;
@@ -51,7 +60,7 @@ export class LaneAllocator<L extends AllocatableLane> {
 
 	constructor(
 		private readonly lanes: L[],
-		private readonly maxConcurrentBuilds: number,
+		private readonly laneConcurrency: number,
 		private readonly health?: LaneHealthOptions<L>,
 	) {}
 
@@ -69,15 +78,46 @@ export class LaneAllocator<L extends AllocatableLane> {
 		});
 	}
 
-	release(lane: L, key: string): void {
-		lane.activeBuilds--;
-		lane.inflightKeys.delete(key);
+	/** Waits for a work slot on this specific lane (scenario executions are
+	 *  pinned to the lane that built their workflow). A quarantined lane keeps
+	 *  its pinned waiters queued until re-admission — the workflow survives a
+	 *  container restart — bounded by `deadlineMs`. */
+	async acquireOn(lane: L, opts?: { deadlineMs?: number }): Promise<void> {
+		if (this.aborted) throw this.aborted;
+		if (this.canServe(lane, undefined)) {
+			this.markBusy(lane, undefined);
+			return;
+		}
+		await new Promise<L>((resolve, reject) => {
+			const waiter: Waiter<L> = { lane, resolve, reject };
+			if (opts?.deadlineMs !== undefined) {
+				const deadlineMs = opts.deadlineMs;
+				waiter.deadline = setTimeout(() => {
+					const i = this.waiters.indexOf(waiter);
+					if (i !== -1) this.waiters.splice(i, 1);
+					reject(
+						new Error(
+							`no lane slot within ${String(deadlineMs)}ms (${this.quarantined.has(lane) ? 'lane quarantined' : 'lane at capacity'})`,
+						),
+					);
+				}, deadlineMs);
+				waiter.deadline.unref?.();
+			}
+			this.waiters.push(waiter);
+		});
+	}
+
+	release(lane: L, key?: string): void {
+		lane.activeWork--;
+		if (key !== undefined) lane.inflightKeys.delete(key);
 		this.wakeNext(lane);
 	}
 
-	/** A completed build — even one the agent failed — is 'ok'; only
-	 *  network-level failures count toward quarantine. */
-	reportBuildOutcome(lane: L, outcome: 'ok' | 'transient-failure'): void {
+	/** A completed build or scenario execution — even one the agent failed —
+	 *  is 'ok'; only network-level failures count toward quarantine. Scenario
+	 *  executions must report too: in a scenario-only phase (e.g. a run's
+	 *  tail) they are the only signal left that a lane has died. */
+	reportOutcome(lane: L, outcome: 'ok' | 'transient-failure'): void {
 		if (outcome === 'ok') {
 			this.consecutiveFailures.delete(lane);
 			return;
@@ -146,14 +186,19 @@ export class LaneAllocator<L extends AllocatableLane> {
 			this.allQuarantinedTimer = undefined;
 		}
 		this.health?.onReadmit?.(lane);
-		// A re-admitted lane is idle — wake every waiter it can serve.
+		// A re-admitted lane starts with its queued pinned work counted, so the
+		// least-loaded policy sees the backlog instead of dogpiling fresh builds
+		// onto the lane that just died. Wake every waiter it can serve.
 		let woke = true;
 		while (woke) woke = this.wakeNext(lane);
 	}
 
 	private abort(error: Error): void {
 		this.aborted = error;
-		for (const w of this.waiters.splice(0)) w.reject(error);
+		for (const w of this.waiters.splice(0)) {
+			if (w.deadline) clearTimeout(w.deadline);
+			w.reject(error);
+		}
 	}
 
 	private findFree(key: string, not?: L): L | undefined {
@@ -161,31 +206,33 @@ export class LaneAllocator<L extends AllocatableLane> {
 		// filling lane 0 to cap before touching lane 1. Avoids hot-spotting.
 		let best: L | undefined;
 		for (const lane of this.lanes) {
-			if (lane === not || !this.canRun(lane, key)) continue;
-			if (best === undefined || lane.activeBuilds < best.activeBuilds) best = lane;
+			if (lane === not || !this.canServe(lane, key)) continue;
+			if (best === undefined || lane.activeWork < best.activeWork) best = lane;
 		}
 		return best;
 	}
 
-	private canRun(lane: L, key: string): boolean {
+	private canServe(lane: L, key: string | undefined): boolean {
 		return (
 			!this.quarantined.has(lane) &&
-			lane.activeBuilds < this.maxConcurrentBuilds &&
-			!lane.inflightKeys.has(key)
+			lane.activeWork < this.laneConcurrency &&
+			(key === undefined || !lane.inflightKeys.has(key))
 		);
 	}
 
-	private markBusy(lane: L, key: string): void {
-		lane.activeBuilds++;
-		lane.inflightKeys.add(key);
+	private markBusy(lane: L, key: string | undefined): void {
+		lane.activeWork++;
+		if (key !== undefined) lane.inflightKeys.add(key);
 	}
 
 	private wakeNext(lane: L): boolean {
 		// Wake the first waiter this lane can now serve. FIFO ordering.
 		for (let i = 0; i < this.waiters.length; i++) {
 			const w = this.waiters[i];
-			if (this.canRun(lane, w.key)) {
+			if (w.lane !== undefined && w.lane !== lane) continue;
+			if (this.canServe(lane, w.key)) {
 				this.waiters.splice(i, 1);
+				if (w.deadline) clearTimeout(w.deadline);
 				this.markBusy(lane, w.key);
 				w.resolve(lane);
 				return true;

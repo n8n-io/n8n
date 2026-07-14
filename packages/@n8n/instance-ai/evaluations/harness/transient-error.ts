@@ -30,9 +30,17 @@ export function extractErrorMessage(error: unknown): string {
 		: baseError.message;
 }
 
+/** Abort reason for a lane's in-flight HTTP work when the lane is quarantined.
+ *  Distinct wording matters: it must not look like a client-side timeout
+ *  (`isExecutionTimeout`), and it must classify as transient so builds fail
+ *  over and scenario executions retry after the lane recovers. */
+export const LANE_QUARANTINED_ABORT = 'lane quarantined mid-request';
+
 /** Network-level failures worth retrying — none indicate a builder or mock defect. */
 export function isTransientNetworkError(message: string): boolean {
-	return /fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(message);
+	return /fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up|lane quarantined/i.test(
+		message,
+	);
 }
 
 /**

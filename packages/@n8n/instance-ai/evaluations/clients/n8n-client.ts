@@ -129,6 +129,11 @@ export class N8nApiError extends Error {
 export class N8nClient {
 	private sessionCookie?: string;
 
+	/** When set (per-lane clients), every request also aborts on this signal —
+	 *  quarantining a lane fails its in-flight HTTP work immediately instead of
+	 *  letting each request run out its own timeout against a dead backend. */
+	laneSignal?: () => AbortSignal;
+
 	constructor(private readonly baseUrl: string) {}
 
 	// -- Auth ----------------------------------------------------------------
@@ -697,11 +702,18 @@ export class N8nClient {
 
 		const method = options.method ?? 'GET';
 
+		const signals: AbortSignal[] = [];
+		if (options.timeoutMs) signals.push(AbortSignal.timeout(options.timeoutMs));
+		const laneSignal = this.laneSignal?.();
+		if (laneSignal) signals.push(laneSignal);
+
 		const res = await fetch(`${this.baseUrl}${path}`, {
 			method,
 			headers,
 			body: options.body ? JSON.stringify(options.body) : undefined,
-			...(options.timeoutMs ? { signal: AbortSignal.timeout(options.timeoutMs) } : {}),
+			...(signals.length > 0
+				? { signal: signals.length === 1 ? signals[0] : AbortSignal.any(signals) }
+				: {}),
 		});
 
 		if (!res.ok) {

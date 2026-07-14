@@ -41,7 +41,7 @@ on:
         type: string
         default: '3'
       eval-concurrency:
-        description: 'Concurrent scenario executions in the verifier (empty = lanes * 2). Raise it to push throughput, but too high starves the shared Anthropic budget and causes verifier/MCP timeouts.'
+        description: 'Concurrent work units per lane in the verifier — builds + scenario executions (empty = 2). Raise it to push throughput, but too high starves the shared Anthropic budget and causes verifier/MCP timeouts.'
         required: false
         type: string
         default: ''
@@ -99,7 +99,7 @@ on:
           - '5'
         default: '3'
       eval-concurrency:
-        description: 'Concurrent scenario executions in the verifier (empty = lanes * 2). Raise it to push throughput, but too high starves the shared Anthropic budget and causes verifier/MCP timeouts.'
+        description: 'Concurrent work units per lane in the verifier — builds + scenario executions (empty = 2). Raise it to push throughput, but too high starves the shared Anthropic budget and causes verifier/MCP timeouts.'
         required: false
         default: ''
       build-model:
@@ -259,12 +259,12 @@ jobs:
           EVAL_CONCURRENCY: ${{ inputs.eval-concurrency }}
           EXPERIMENT_NAME: ${{ inputs.experiment-name }}
         run: |
-          # Default concurrency to lanes * 2. Each lane already caps builds at 4,
-          # but running all lanes flat-out (lanes * 4) floods the shared Anthropic
-          # budget — builds, verifier checks, and AI-node mocks all contend — which
-          # surfaces as verifier/MCP timeouts. lanes * 2 keeps that in check.
-          CONCURRENCY="${EVAL_CONCURRENCY:-$((LANES * 2))}"
-          echo "Lanes: $LANES | eval concurrency: $CONCURRENCY"
+          # 2 work units per lane (half the CLI default of 4): builds, verifier
+          # checks, and AI-node mocks all draw on the shared Anthropic budget, and
+          # running lanes flat-out surfaces as verifier/MCP timeouts. The CLI
+          # derives the total in-flight cap from lane count x this.
+          LANE_CONCURRENCY="${EVAL_CONCURRENCY:-2}"
+          echo "Lanes: $LANES | lane concurrency: $LANE_CONCURRENCY"
 
           # --dataset + --baseline-prefix keep the MCP cohort isolated from the
           # Instance AI dataset/baseline in LangSmith (both halves required).
@@ -278,7 +278,7 @@ jobs:
             --build-via-mcp
             --tier "${TIER:-mcp}"
             --iterations "${ITERATIONS:-3}"
-            --concurrency "$CONCURRENCY"
+            --lane-concurrency "$LANE_CONCURRENCY"
             --timeout-ms 1500000
             --dataset mcp-workflow-evals
             --baseline-prefix mcp-baseline-

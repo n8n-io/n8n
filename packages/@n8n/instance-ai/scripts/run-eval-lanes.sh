@@ -26,7 +26,7 @@ IMAGE="n8nio/n8n:local"
 BUILD_IMAGE=false
 SKIP_EVAL=false
 KEEP_CONTAINERS=false
-EVAL_CONCURRENCY="" # auto = instance-count * 4
+LANE_CONCURRENCY="" # empty = CLI default (4 work units per lane)
 EVAL_ITERATIONS=1
 EVAL_TIER=""
 ENV_FILE=".env.local"
@@ -47,7 +47,7 @@ Options:
   --image NAME        Docker image (default: n8nio/n8n:local)
   --build             Build docker image before starting lanes
   --env-file PATH     Env file relative to repo root (default: .env.local)
-  --concurrency N     Eval scenario concurrency (default: instance-count * 4)
+  --lane-concurrency N  Concurrent work per lane, builds + scenario executions (default: CLI default 4)
   --iterations N      Eval iterations per case (default: 3)
   --tier NAME         Eval tier filter (default: none; use "pr" for PR suite)
   --skip-eval         Only start + seed lanes; do not run evals
@@ -224,9 +224,12 @@ while [[ $# -gt 0 ]]; do
 			ENV_FILE="${2:-}"
 			shift 2
 			;;
-		--concurrency)
-			EVAL_CONCURRENCY="${2:-}"
+		--lane-concurrency)
+			LANE_CONCURRENCY="${2:-}"
 			shift 2
+			;;
+		--concurrency)
+			die "--concurrency was replaced by --lane-concurrency (per lane; the CLI derives the global cap from lane count)"
 			;;
 		--iterations)
 			EVAL_ITERATIONS="${2:-}"
@@ -272,10 +275,6 @@ done
 ((INSTANCE_COUNT >= 1)) || die "--instance-count must be >= 1"
 [[ "$START_PORT" =~ ^[0-9]+$ ]] || die "--start-port must be a number"
 ((START_PORT >= 1 && START_PORT <= 65535)) || die "invalid --start-port"
-
-if [[ -z "$EVAL_CONCURRENCY" ]]; then
-	EVAL_CONCURRENCY=$((INSTANCE_COUNT * 4))
-fi
 
 ENV_FILE_PATH="${REPO_ROOT}/${ENV_FILE}"
 EVAL_PKG_DIR="${REPO_ROOT}/packages/@n8n/instance-ai"
@@ -383,7 +382,7 @@ fi
 log "running eval:instance-ai"
 log "  lanes:       ${INSTANCE_COUNT}"
 log "  base-url:    ${BASE_URL_CSV}"
-log "  concurrency: ${EVAL_CONCURRENCY}"
+log "  lane-concurrency: ${LANE_CONCURRENCY:-4 (default)}"
 log "  iterations:  ${EVAL_ITERATIONS}"
 log "  tier:        ${EVAL_TIER:-<none>}"
 
@@ -392,10 +391,13 @@ cd "$EVAL_PKG_DIR"
 ARGS=(
 	pnpm eval:instance-ai
 	--base-url "$BASE_URL_CSV"
-	--concurrency "$EVAL_CONCURRENCY"
 	--iterations "$EVAL_ITERATIONS"
 	--verbose
 )
+
+if [[ -n "$LANE_CONCURRENCY" ]]; then
+	ARGS+=(--lane-concurrency "$LANE_CONCURRENCY")
+fi
 
 if [[ -n "$EVAL_TIER" ]]; then
 	ARGS+=(--tier "$EVAL_TIER")

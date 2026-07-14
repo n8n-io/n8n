@@ -145,7 +145,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--output-dir` | cwd | Where to write `eval-results.json` |
 | `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name. Synced from the JSON test cases (honoring `--filter`/`--exclude`/`--tier`) before each run — point an isolated cohort (e.g. MCP) at its own dataset to avoid writing to the shared one |
 | `--baseline-prefix` | `instance-ai-baseline-` | Experiment-name prefix the regression comparison uses to find the baseline. Override (e.g. `mcp-baseline-`) so a cohort compares against its own baselines instead of the Instance AI one |
-| `--concurrency` | `16` | Max concurrent scenarios (builds are separately capped at 4) |
+| `--lane-concurrency` | `4` | Max concurrent work on one lane — builds and scenario executions both count. The global in-flight cap is derived (lanes × (this + 1)), so there is no second number to keep in sync with the lane count |
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
 | `--iterations` | `1` | Run each test case N times with fresh builds |
 | `--tier` | — | Filter to test cases whose `datasets` array contains this value (e.g. `--tier pr` for the PR-time set). Combines with `--filter`/`--exclude`. |
@@ -425,8 +425,8 @@ which starts + seeds the lanes and forwards everything after `--`):
 
 ```bash
 # 6 lanes; build via MCP + verify the mcp tier, one experiment.
-# --concurrency 12 = lanes * 2 (the script's own default is lanes * 4).
-./scripts/run-eval-lanes.sh --instance-count 6 --tier mcp --concurrency 12 -- \
+# --lane-concurrency 2 halves the default per-lane load (see budget note below).
+./scripts/run-eval-lanes.sh --instance-count 6 --tier mcp --lane-concurrency 2 -- \
   --build-via-mcp \
   --dataset mcp-workflow-evals \
   --baseline-prefix mcp-baseline-
@@ -440,18 +440,18 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
   --build-via-mcp \
   --tier mcp \
   --iterations 3 \
-  --concurrency 4 \
+  --lane-concurrency 2 \
   --dataset mcp-workflow-evals \
   --baseline-prefix mcp-baseline-
 ```
 
 In CI this is what `ci-mcp-evals.yml` runs (see `test-evals-mcp.yml`): a single
-job starts `lanes` containers and runs one `--build-via-mcp` process, defaulting
-`--concurrency` to `lanes * 2`. Use the same ratio locally: `claude` builds,
-mock generation, and the verifier all draw on one Anthropic budget, and running
-lanes flat-out at `lanes * 4` (each lane's per-lane build cap) starves it,
-surfacing as verifier/MCP timeouts. Treat `lanes * 4` as an aggressive upper
-bound for keys with rate-limit headroom, not the starting point.
+job starts `lanes` containers and runs one `--build-via-mcp` process with
+`--lane-concurrency 2` (half the CLI default). Use the same setting locally:
+`claude` builds, mock generation, and the verifier all draw on one Anthropic
+budget, and running lanes flat-out at the default of 4 starves it, surfacing as
+verifier/MCP timeouts. Treat 4 as an aggressive upper bound for keys with
+rate-limit headroom, not the starting point.
 
 ## Discovery evals
 
@@ -794,7 +794,7 @@ Suite pass rates typically sit between 40–65%; most failures are `builder_issu
 
 **`Wrong username or password` on login.** Your instance has no owner. Run the `rest/e2e/reset` curl from [Quick start](#quick-start) (needs `E2E_TESTS=true` on the server).
 
-**`Have reached end of quota` mid-run.** You're hitting the hosted AI proxy's per-tenant quota. Set `N8N_AI_ASSISTANT_BASE_URL=""` to hit Anthropic directly with your `N8N_INSTANCE_AI_MODEL_API_KEY`. Also consider lowering `--concurrency`.
+**`Have reached end of quota` mid-run.** You're hitting the hosted AI proxy's per-tenant quota. Set `N8N_AI_ASSISTANT_BASE_URL=""` to hit Anthropic directly with your `N8N_INSTANCE_AI_MODEL_API_KEY`. Also consider lowering `--lane-concurrency`.
 
 **All scenarios timing out.** Check that the server is up (`curl localhost:5678/healthz`) and that `N8N_INSTANCE_AI_MODEL_API_KEY` is set. A full build is ~60–180s; timeouts past `--timeout-ms` usually mean the agent is looping.
 
