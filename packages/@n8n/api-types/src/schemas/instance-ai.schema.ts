@@ -1480,6 +1480,14 @@ export interface InstanceAiEvalMockedCredential {
  */
 export const EVAL_VENDOR_SDK_INTERCEPTION_FLAG = '085_eval_vendor_sdk_interception';
 
+/** The config-evaluations experiment that surfaces/runs config evals in the UI.
+ *  Instance AI's config-based eval tool + skill are gated on it so it can't
+ *  create evals the user has no UI to run. Mirrors the editor-ui wizard. */
+export const CONFIG_EVALUATIONS_FLAG = '088_config_evaluations';
+
+/** Enabled arm of `CONFIG_EVALUATIONS_FLAG` (matches the editor-ui experiment). */
+export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
+
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
  * server) during evaluation. Populated for every AI root the server intercepts;
