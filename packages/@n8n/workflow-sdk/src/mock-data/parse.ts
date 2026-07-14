@@ -1,6 +1,6 @@
-import { AGENT_NODE_TYPE } from './ai-root-shapes';
+import { resolveStructuredEnvelopeKey } from './ai-root-shapes';
 import { findOutputParserTargets } from './context';
-import type { PinData } from './types';
+import type { NodeSchemaContext, PinData } from './types';
 import type { WorkflowJSON } from '../types/base';
 
 /**
@@ -57,42 +57,53 @@ function tryParseJsonContainer(text: string): Record<string, unknown> | unknown[
 }
 
 /**
- * Deterministically repair pinned items for AGENT roots that have a
- * structured output parser attached. The Agent filter lives HERE, not at the
- * call sites: Agent is the only root type that wraps parser output in an
- * `{ output: ... }` envelope — chainLlm unwraps it flat, so wrapping its
- * items would corrupt downstream references.
- * Two LLM failure modes observed in eval runs: `output` emitted as a
+ * Deterministically repair pinned items for parser-target roots that wrap
+ * the parsed object in an envelope key. The envelope is derived from the
+ * root's resolved `with-parser` `__schema__` variant — Agent and ChainLlm
+ * both declare `output` (the structured output parser itself emits that
+ * wrapper); a root whose variant declares no envelope is left untouched.
+ * Two LLM failure modes observed in eval runs: the envelope emitted as a
  * JSON-encoded string (downstream `$json.output.field` resolves undefined),
- * and the parsed fields spread flat at the top level with no `output`
- * envelope. Both are mechanical fixes — the prompt asks for the right shape,
- * this guarantees it. Returns a new object; the input is not mutated.
+ * and the parsed fields spread flat at the top level with no envelope.
+ * Both are mechanical fixes — the prompt asks for the right shape, this
+ * guarantees it. Returns a new object; the input is not mutated.
  */
-export function repairStructuredAgentOutput(pinData: PinData, workflow: WorkflowJSON): PinData {
+export function repairStructuredOutput(
+	pinData: PinData,
+	workflow: WorkflowJSON,
+	schemaContexts?: NodeSchemaContext[],
+): PinData {
 	const nodeTypeByName = new Map(
 		workflow.nodes.filter((node) => node.name).map((node) => [node.name, node.type] as const),
+	);
+	const schemaByName = new Map(
+		(schemaContexts ?? []).map((ctx) => [ctx.nodeName, ctx.schema] as const),
 	);
 	const repaired: PinData = { ...pinData };
 
 	for (const nodeName of findOutputParserTargets(workflow).keys()) {
 		const items = repaired[nodeName];
-		if (!items || nodeTypeByName.get(nodeName) !== AGENT_NODE_TYPE) continue;
+		const nodeType = nodeTypeByName.get(nodeName);
+		if (!items || !nodeType) continue;
+		const envelopeKey = resolveStructuredEnvelopeKey(nodeType, schemaByName.get(nodeName));
+		if (!envelopeKey) continue;
 
 		repaired[nodeName] = items.map((item) => {
 			const json = item.json;
 			if (typeof json !== 'object' || json === null || Array.isArray(json)) return item;
 			const record = json as Record<string, unknown>;
 
-			if (typeof record.output === 'string') {
-				const parsed = tryParseJsonContainer(record.output);
+			const value = record[envelopeKey];
+			if (typeof value === 'string') {
+				const parsed = tryParseJsonContainer(value);
 				if (parsed !== undefined) {
-					return { ...item, json: { ...record, output: parsed } };
+					return { ...item, json: { ...record, [envelopeKey]: parsed } };
 				}
 				return item;
 			}
 
-			if (!('output' in record)) {
-				return { ...item, json: { output: record } };
+			if (!(envelopeKey in record)) {
+				return { ...item, json: { [envelopeKey]: record } };
 			}
 
 			return item;

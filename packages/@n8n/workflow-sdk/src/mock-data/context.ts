@@ -15,12 +15,14 @@ export function buildSchemaContexts(
 		const params = node.parameters as Record<string, unknown> | undefined;
 		const resource = typeof params?.resource === 'string' ? params.resource : undefined;
 		const operation = typeof params?.operation === 'string' ? params.operation : undefined;
+		const outputParser = node.name ? outputParserTargets?.get(node.name) : undefined;
 
 		const schema = outputSchemaLookup?.({
 			type: node.type,
 			typeVersion: node.typeVersion,
 			resource,
 			operation,
+			hasOutputParser: outputParser !== undefined,
 		});
 
 		return {
@@ -30,7 +32,7 @@ export function buildSchemaContexts(
 			resource,
 			operation,
 			schema,
-			outputParser: node.name ? outputParserTargets?.get(node.name) : undefined,
+			outputParser,
 		};
 	});
 }

@@ -4,7 +4,7 @@ import { MemorySaver } from '@langchain/langgraph';
 import type { OutputSchemaLookup } from '@n8n/workflow-sdk';
 import fs from 'fs';
 import { Client } from 'langsmith/client';
-import { loadOutputSchema } from 'n8n-core';
+import { loadOutputSchema, OUTPUT_PARSER_SCHEMA_VARIANT } from 'n8n-core';
 import { jsonParse, type INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
@@ -259,7 +259,7 @@ export function createNodeSchemaLookup(): OutputSchemaLookup | undefined {
 	}
 	if (packages.size === 0) return undefined;
 
-	return ({ type, typeVersion, resource, operation }) => {
+	return ({ type, typeVersion, resource, operation, hasOutputParser }) => {
 		const [packageName, shortType] = type.split('.');
 		if (!shortType) return undefined;
 		const pkg = packages.get(packageName);
@@ -272,6 +272,7 @@ export function createNodeSchemaLookup(): OutputSchemaLookup | undefined {
 			resource,
 			operation,
 			versionFallback: true,
+			variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
 		});
 	};
 }

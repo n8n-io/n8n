@@ -172,6 +172,36 @@ describe('output-schema-resolver', () => {
 			);
 		});
 
+		it('prefers the variant layout and falls through to plain output.json', () => {
+			const plain = writeSchema('v2.0.0/output.json');
+			const variant = writeSchema('v2.0.0/output.with-parser.json');
+
+			expect(
+				resolveOutputSchemaPath({
+					nodeDir,
+					version: 2,
+					versionFallback: true,
+					variant: 'with-parser',
+				}),
+			).toBe(variant);
+			// Without the variant option the plain layout still wins.
+			expect(resolveOutputSchemaPath({ nodeDir, version: 2, versionFallback: true })).toBe(plain);
+			// An unknown variant falls through to output.json instead of failing.
+			expect(
+				resolveOutputSchemaPath({ nodeDir, version: 2, versionFallback: true, variant: 'other' }),
+			).toBe(plain);
+			// A variant path may not escape the __schema__ directory.
+			writeFileSync(path.join(nodeDir, 'output.leak.json'), '{}');
+			expect(
+				resolveOutputSchemaPath({
+					nodeDir,
+					version: 2,
+					versionFallback: true,
+					variant: 'leak/../../../output.leak',
+				}),
+			).toBe(plain);
+		});
+
 		it('returns undefined when __schema__ does not exist', () => {
 			expect(
 				resolveOutputSchemaPath({

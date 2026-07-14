@@ -254,6 +254,7 @@ describe('generateSimulationFixtures', () => {
 			typeVersion: 2.3,
 			resource: 'message',
 			operation: 'post',
+			hasOutputParser: false,
 		});
 		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
 			.content[0].text;

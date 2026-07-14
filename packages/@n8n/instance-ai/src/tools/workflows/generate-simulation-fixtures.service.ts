@@ -26,7 +26,7 @@ import {
 	buildSchemaContexts,
 	findOutputParserTargets,
 	parsePinDataResponse,
-	repairStructuredAgentOutput,
+	repairStructuredOutput,
 } from '@n8n/workflow-sdk';
 import { getParentNodes, mapConnectionsByDestination, type IConnections } from 'n8n-workflow';
 import { z } from 'zod';
@@ -201,10 +201,11 @@ export async function generateSimulationFixtures(
 
 	// Shared normalization + envelope repair, matching the eval pin-data paths:
 	// wrap-or-passthrough items, then mechanically fix the two known LLM
-	// failure modes for Agent-with-parser roots (JSON-encoded `output` string,
-	// parsed fields spread flat without the `output` envelope).
+	// failure modes for envelope-wrapping parser roots (JSON-encoded envelope
+	// string, parsed fields spread flat without the envelope) — the envelope
+	// key comes from each root's with-parser `__schema__` variant.
 	let pinData = parsePinDataResponse(JSON.stringify(result.data), nodeNames);
-	pinData = repairStructuredAgentOutput(pinData, input.workflow);
+	pinData = repairStructuredOutput(pinData, input.workflow, schemaContexts);
 
 	const fixtures: SimulationFixtures = {};
 	for (const name of nodeNames) {

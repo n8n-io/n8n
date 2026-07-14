@@ -654,6 +654,9 @@ export function discoverSchemasForNode(
 			// JSON files directly in the version directory (nodes without resource/operation)
 			if (entry.isFile() && entry.name.endsWith('.json')) {
 				const operationName = entry.name.replace('.json', '');
+				// `output.<variant>.json` files are context-conditional layout
+				// variants (e.g. with-parser), not operations — skip them here.
+				if (operationName.includes('.')) continue;
 				const filePath = path.join(versionDir, entry.name);
 
 				try {

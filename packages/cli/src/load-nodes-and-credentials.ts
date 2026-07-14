@@ -20,6 +20,7 @@ import {
 	CUSTOM_NODES_PACKAGE_NAME,
 	resolveOutputSchemaPath,
 	loadOutputSchema,
+	OUTPUT_PARSER_SCHEMA_VARIANT,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -285,7 +286,7 @@ export class LoadNodesAndCredentials {
 	 * community nodes and production installs alike.
 	 */
 	createOutputSchemaLookup(): OutputSchemaLookup {
-		return ({ type, typeVersion, resource, operation }) => {
+		return ({ type, typeVersion, resource, operation, hasOutputParser }) => {
 			const nodePath = this.known.nodes[type]?.sourcePath;
 			if (!nodePath) return undefined;
 
@@ -295,6 +296,7 @@ export class LoadNodesAndCredentials {
 				resource,
 				operation,
 				versionFallback: true,
+				variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
 			});
 		};
 	}

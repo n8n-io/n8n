@@ -1,4 +1,8 @@
-import { AGENT_NODE_TYPE, describeAiRootShape, isAiRootNodeType } from './ai-root-shapes';
+import {
+	describeAiRootShape,
+	isAiRootNodeType,
+	resolveStructuredEnvelopeKey,
+} from './ai-root-shapes';
 import { collectDownstreamConsumers } from './context';
 import { workflowToMermaid } from './mermaid';
 import type { NodeSchemaContext, PinDataGenerationInstructions } from './types';
@@ -13,7 +17,7 @@ RULES:
 4. When no schema is provided, generate a realistic response based on the node type, resource, and operation.
 5. Use realistic but clearly fake values (e.g., "jane@example.com", "proj_abc123").
 6. Dates and timestamps MUST be derived from the "## Date anchors" block at the end of the prompt — never from training data. Workflows compare pinned data against the real execution clock ($now, Date.now()); values months in the past get silently filtered out, and HTTP mocks generated later use the same anchors, so stale years make "stored matches current" comparisons impossible. When the data description mentions a relative window ("last 24 hours", "past 2 weeks"), place timestamps safely INSIDE it, never on the boundary.
-7. AI root nodes (Agent/Chain) have NODE-TYPE-SPECIFIC output shapes — follow each node's "AI ROOT OUTPUT SHAPE" instruction exactly and never invent a different envelope key. Summary: agent wraps in { "output": ... } (a parsed object matching the parser schema when one is attached, otherwise a plain text string — never a JSON-encoded string); chainLlm uses { "text": "<string>" } without a parser, or the parsed fields FLAT at the top level of json when a parser is attached (no wrapper key); chainRetrievalQa uses { "response": "<string>" }; chainSummarization uses { "output": { "output_text": "<summary>" } }; informationExtractor wraps the extracted fields in { "output": <object> }; textClassifier passes the input item through unchanged; sentimentAnalysis is the input item plus a "sentimentAnalysis" object.
+7. AI root nodes (Agent/Chain) have NODE-TYPE-SPECIFIC output shapes — follow each node's schema or "AI ROOT OUTPUT SHAPE" instruction exactly and never invent a different envelope key. Summary: agent wraps in { "output": ... } (a parsed object matching the parser schema when one is attached, otherwise a plain text string — never a JSON-encoded string); chainLlm uses { "text": "<string>" } without a parser, or { "output": <parsed object> } like agent when a parser is attached; chainRetrievalQa uses { "response": "<string>" }; chainSummarization uses { "output": { "output_text": "<summary>" } }; informationExtractor wraps the extracted fields in { "output": <object> }; textClassifier passes the input item through unchanged; sentimentAnalysis is the input item plus a "sentimentAnalysis" object.
 8. CRITICAL: If a "Test Scenario" section is provided, it is the authoritative test state and OVERRIDES everything else, including the general data context and your own sense of realism. When it describes stored/previous records (e.g. "the store already holds a record with status X"), exact values, counts, literal substrings, or that stored data matches current data, reproduce those constraints EXACTLY — never substitute more "interesting" or more typical data. A boring no-change/empty/matching case is usually the point of the test.
 9. Return ONLY a valid JSON object, no explanation or markdown fencing.
 10. CRITICAL: You MUST generate data for EVERY node listed in "Nodes Requiring Mock Data". Never skip a node, even if the test scenario describes an empty or error response. An empty response is still valid data.`;
@@ -37,17 +41,15 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 
 	const isAiRoot = isAiRootNodeType(ctx.nodeType);
 	if (isAiRoot) {
-		// Roots with a static `__schema__` shape are covered by the schema
-		// section below; the prose is for graph-conditional shapes (see
-		// `describeAiRootShape`) and the no-schema fallback.
+		// Roots with a `__schema__` shape (including `with-parser` variants) are
+		// covered by the schema section below; the prose is for shapes that can't
+		// be files (see `describeAiRootShape`) and the no-schema fallback.
 		if (!ctx.schema) {
-			lines.push(
-				`- AI ROOT OUTPUT SHAPE: every item MUST be ${describeAiRootShape(ctx.nodeType, ctx.outputParser !== undefined)}`,
-			);
+			lines.push(`- AI ROOT OUTPUT SHAPE: every item MUST be ${describeAiRootShape(ctx.nodeType)}`);
 		}
 		if (ctx.outputParser?.schemaText) {
-			const target =
-				ctx.nodeType === AGENT_NODE_TYPE ? 'The `output` object' : 'The top-level `json` fields';
+			const envelopeKey = resolveStructuredEnvelopeKey(ctx.nodeType, ctx.schema);
+			const target = envelopeKey ? `The \`${envelopeKey}\` object` : 'The top-level `json` fields';
 			const label = ctx.outputParser.schemaIsExample
 				? `- ${target} must have the same shape and field names as this example:`
 				: `- ${target} must conform to this JSON Schema (use its exact field names):`;

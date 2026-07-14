@@ -40,26 +40,16 @@ export function isAiRootNodeType(nodeType: string): boolean {
 }
 
 /**
- * Per-root-type pinned item shape, for the roots whose shape can't live in a
- * static `__schema__/v<X>/output.json` file (nodes-langchain ships those for
- * chainRetrievalQa, chainSummarization, informationExtractor,
- * sentimentAnalysis, openAiAssistant — the prompt embeds them via the schema
- * lookup and skips this prose). What stays here is graph-conditional: Agent
- * and ChainLlm reshape based on an attached output parser, textClassifier is
- * a pure input passthrough. Getting the key wrong silently breaks every
- * downstream `$json.<key>` reference (observed: chainLlm pinned with
- * `output` → empty Slack digest).
+ * Per-root-type pinned item shape for the roots whose shape can't live in a
+ * `__schema__` file at all: textClassifier is a pure input passthrough and
+ * vendor nodes emit their API response. Every other root's shape (including
+ * the parser-conditional Agent/ChainLlm variants) ships as
+ * `__schema__/v<X>/output[.with-parser].json` in nodes-langchain — the prompt
+ * embeds those via the schema lookup and only falls back to this prose when
+ * no schema resolves (missing/stale package build).
  */
-export function describeAiRootShape(nodeType: string, hasParser: boolean): string {
+export function describeAiRootShape(nodeType: string): string {
 	switch (nodeType) {
-		case AGENT_NODE_TYPE:
-			return hasParser
-				? '`{ "json": { "output": <parsed object> } }` — `output` is a parsed JSON object, NOT a JSON-encoded string, and its fields must NOT appear at the top level of `json`.'
-				: '`{ "json": { "output": "<final response text>" } }` — `output` is a plain text STRING, never an object: downstream nodes interpolate it directly into messages.';
-		case '@n8n/n8n-nodes-langchain.chainLlm':
-			return hasParser
-				? 'the parsed fields FLAT at the top level of `json` — chainLlm unwraps parser output, so there is NO `output` or `text` wrapper key.'
-				: '`{ "json": { "text": "<final response text>" } }` — the key is `text` (chainLlm has NO `output` key), and it is a plain string.';
 		case '@n8n/n8n-nodes-langchain.textClassifier':
 			return 'the INPUT item passed through UNCHANGED (this node routes items to a category branch without reshaping them) — emit a plausible input item, no classification wrapper key.';
 		default:
@@ -68,4 +58,42 @@ export function describeAiRootShape(nodeType: string, hasParser: boolean): strin
 			}
 			return '`{ "json": { "output": "<final response text>" } }`.';
 	}
+}
+
+/**
+ * The single required object-typed property that wraps a root's structured
+ * output (e.g. `output` for Agent and ChainLlm — the structured output
+ * parser itself emits the `{ output: ... }` wrapper since parser v1.1), read
+ * from a resolved `with-parser` `__schema__` variant. A root whose variant
+ * declares no such property gets `undefined` and is never repaired.
+ */
+export function findEnvelopeKey(schema: Record<string, unknown> | undefined): string | undefined {
+	if (!schema || typeof schema.properties !== 'object' || schema.properties === null) {
+		return undefined;
+	}
+	const required: unknown[] = Array.isArray(schema.required) ? schema.required : [];
+	const candidates = Object.entries(schema.properties as Record<string, unknown>).filter(
+		([key, definition]) =>
+			required.includes(key) &&
+			typeof definition === 'object' &&
+			definition !== null &&
+			(definition as Record<string, unknown>).type === 'object',
+	);
+	return candidates.length === 1 ? candidates[0][0] : undefined;
+}
+
+/**
+ * Envelope key for a parser-target root: schema-derived when the lookup
+ * resolved a variant, with a hardcoded Agent/ChainLlm fallback so the
+ * known-critical `output` envelope survives environments without
+ * `__schema__` files (community installs, stale builds).
+ */
+export function resolveStructuredEnvelopeKey(
+	nodeType: string,
+	schema: Record<string, unknown> | undefined,
+): string | undefined {
+	if (schema) return findEnvelopeKey(schema);
+	return nodeType === AGENT_NODE_TYPE || nodeType === '@n8n/n8n-nodes-langchain.chainLlm'
+		? 'output'
+		: undefined;
 }

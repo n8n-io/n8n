@@ -20,7 +20,20 @@ export interface OutputSchemaRef {
 	 * newest-first, then newer majors nearest-first. Default false.
 	 */
 	versionFallback?: boolean;
+	/**
+	 * Output-layout variant for nodes whose shape depends on workflow context
+	 * (e.g. an attached output parser): probes `v<X>/output.<variant>.json`
+	 * before the plain `v<X>/output.json`. Only meaningful for refs without
+	 * resource/operation, and only with `versionFallback`.
+	 */
+	variant?: string;
 }
+
+/**
+ * Variant name for AI roots with an `ai_outputParser` attached — their items
+ * carry the parser's fields instead of the plain-text shape.
+ */
+export const OUTPUT_PARSER_SCHEMA_VARIANT = 'with-parser';
 
 /**
  * Node-type-aware schema lookup. Generation code depends on this shape so it
@@ -31,6 +44,8 @@ export type OutputSchemaLookup = (node: {
 	typeVersion: number;
 	resource?: string;
 	operation?: string;
+	/** Node has an `ai_outputParser` attached — resolves the `with-parser` layout variant. */
+	hasOutputParser?: boolean;
 }) => Record<string, unknown> | undefined;
 
 /** Pad "1" / "1.2" to the on-disk "1.0.0" / "1.2.0" directory format. */
@@ -91,7 +106,7 @@ function orderFallbackCandidates(dirNames: string[], target: number[]): string[]
  * nodes such as Webhook).
  */
 export function resolveOutputSchemaPath(ref: OutputSchemaRef): string | undefined {
-	const { nodeDir, version, resource, operation, versionFallback } = ref;
+	const { nodeDir, version, resource, operation, versionFallback, variant } = ref;
 	const schemaBaseDir = path.join(nodeDir, '__schema__');
 	const exactVersionDir = `v${padVersion(version)}`;
 
@@ -123,6 +138,12 @@ export function resolveOutputSchemaPath(ref: OutputSchemaRef): string | undefine
 		const filePath = buildPath(versionDir);
 		if (filePath && existsSync(filePath)) return filePath;
 		if (!hasDiscriminators) {
+			// The requested variant wins over the plain layout; a version dir
+			// without the variant file falls through to its `output.json`.
+			if (variant) {
+				const variantPath = buildPath(versionDir, `output.${variant}`);
+				if (variantPath && existsSync(variantPath)) return variantPath;
+			}
 			const outputPath = buildPath(versionDir, 'output');
 			if (outputPath && existsSync(outputPath)) return outputPath;
 		}

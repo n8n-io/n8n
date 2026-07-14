@@ -24,12 +24,12 @@ import {
 	findOutputParserTargets,
 	parsePinDataResponse,
 	PIN_DATA_SYSTEM_PROMPT,
-	repairStructuredAgentOutput,
+	repairStructuredOutput,
 } from '@n8n/workflow-sdk';
 import { OperationalError } from 'n8n-workflow';
 
 // Re-exports: existing consumers/tests import these from this module.
-export { findOutputParserTargets, repairStructuredAgentOutput } from '@n8n/workflow-sdk';
+export { findOutputParserTargets, repairStructuredOutput } from '@n8n/workflow-sdk';
 
 type PinData = Record<string, Array<Record<string, unknown>>>;
 
@@ -105,7 +105,8 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 		);
 	}
 
-	// Envelope repair for Agent-with-parser roots; the shared helper scopes
-	// itself to Agent nodes (chainLlm output must stay flat).
-	return repairStructuredAgentOutput(pinData, workflow);
+	// Envelope repair for parser-target roots; the shared helper derives the
+	// envelope key from each root's with-parser `__schema__` variant
+	// (`output` for both agent and chainLlm).
+	return repairStructuredOutput(pinData, workflow, contexts);
 }

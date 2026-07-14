@@ -27,7 +27,7 @@ import {
 	findOutputParserTargets,
 	parsePinDataResponse,
 	PIN_DATA_SYSTEM_PROMPT,
-	repairStructuredAgentOutput,
+	repairStructuredOutput,
 	workflowToMermaid as workflowToMermaidShared,
 } from '@n8n/workflow-sdk';
 import {
@@ -203,9 +203,10 @@ export async function generateEvalPinData(
 
 		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
 
-		// Envelope repair for Agent-with-parser roots; the shared helper scopes
-		// itself to Agent nodes (chainLlm output must stay flat).
-		const repaired = repairStructuredAgentOutput(pinData, workflowJson);
+		// Envelope repair for parser-target roots; the shared helper derives the
+		// envelope key from each root's with-parser `__schema__` variant
+		// (`output` for both agent and chainLlm).
+		const repaired = repairStructuredOutput(pinData, workflowJson, contexts);
 
 		const generatedCount = Object.keys(repaired).length;
 		logger?.verbose(
