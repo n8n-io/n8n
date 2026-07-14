@@ -13,6 +13,7 @@ packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
   s_f1ec53985243f9::t_63ec88f45fda0f 646
   s_f1ec53985243f9::t_5ab5f69f49cafd 644-645,647-653
   s_f1ec53985243f9::t_fb8b5d169848a6 654
+  s_940f6f0f564f8d::t_35488095f2abc3 643
 packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
   s_6772ebb7c730a0::t_9d426d6e12a17d 2
   s_6772ebb7c730a0::t_409e0f594a4c0b 420-430,436-448
@@ -51,6 +52,14 @@ packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
       "agent_id": {
         "tool": "claude",
         "id": "9c7453c5-2df8-4a2e-b79c-e770a1476905",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_940f6f0f564f8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb96cd42-0ff4-4e0e-bc9e-4e4a61bee23f",
         "model": "claude-opus-4-8"
       },
       "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
