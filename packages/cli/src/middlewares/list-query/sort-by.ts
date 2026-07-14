@@ -3,11 +3,11 @@ import { validateSync } from 'class-validator';
 import type { RequestHandler } from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { appendListQueryOptions } from '@/requests.js';
-import * as ResponseHelper from '@/response-helper.js';
-import { toError } from '@/utils.js';
+import { appendListQueryOptions } from '@/requests';
+import * as ResponseHelper from '@/response-helper';
+import { toError } from '@/utils';
 
-import { WorkflowSorting } from './dtos/workflow.sort-by.dto.js';
+import { WorkflowSorting } from './dtos/workflow.sort-by.dto';
 
 export const sortByQueryMiddleware: RequestHandler = (req, res, next) => {
 	const { sortBy } = req.query;

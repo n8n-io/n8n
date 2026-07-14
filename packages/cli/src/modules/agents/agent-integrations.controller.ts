@@ -10,18 +10,18 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service.js';
-import { AgentPublishService } from './agent-publish.service.js';
-import { AgentRunnableStateService } from './agent-runnable-state.service.js';
-import { ChatIntegrationRegistry } from './integrations/agent-chat-integration.js';
-import { ChatIntegrationService } from './integrations/chat-integration.service.js';
-import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder.js';
-import { SlackAppSetupService } from './integrations/slack-app-setup.service.js';
-import { AgentRepository } from './repositories/agent.repository.js';
+import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
+import { AgentPublishService } from './agent-publish.service';
+import { AgentRunnableStateService } from './agent-runnable-state.service';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
+import { SlackAppSetupService } from './integrations/slack-app-setup.service';
+import { AgentRepository } from './repositories/agent.repository';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentIntegrationsController {

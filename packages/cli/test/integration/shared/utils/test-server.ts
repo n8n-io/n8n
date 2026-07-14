@@ -9,22 +9,22 @@ import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
-import { AuthHandlerRegistry } from '@/auth/auth-handler.registry.js';
-import { AuthService } from '@/auth/auth.service.js';
-import { AUTH_COOKIE_NAME } from '@/constants.js';
-import { ControllerRegistry } from '@/controller.registry.js';
-import { License } from '@/license.js';
-import { rawBodyReader, bodyParser } from '@/middlewares/index.js';
-import { PostHogClient } from '@/posthog/index.js';
-import { Push } from '@/push/index.js';
-import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy.js';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry.js';
-import { Telemetry } from '@/telemetry/index.js';
-import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util.js';
-import { LicenseMocker } from '@test-integration/license.js';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
+import { AuthService } from '@/auth/auth.service';
+import { AUTH_COOKIE_NAME } from '@/constants';
+import { ControllerRegistry } from '@/controller.registry';
+import { License } from '@/license';
+import { rawBodyReader, bodyParser } from '@/middlewares';
+import { PostHogClient } from '@/posthog';
+import { Push } from '@/push';
+import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
+import { Telemetry } from '@/telemetry';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { LicenseMocker } from '@test-integration/license';
 
-import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants.js';
-import type { SetupProps, TestServer } from '../types.js';
+import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
+import type { SetupProps, TestServer } from '../types';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.

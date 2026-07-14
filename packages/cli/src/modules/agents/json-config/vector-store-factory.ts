@@ -3,7 +3,7 @@ import { VectorStore } from '@n8n/agents';
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 
-import { resolveEmbeddingProviderOptionsFromCredential } from './embedding-credential.js';
+import { resolveEmbeddingProviderOptionsFromCredential } from './embedding-credential';
 
 /** Reads a required string field off a resolved credential, throwing a clear error if it's missing. */
 function requireCredentialField(

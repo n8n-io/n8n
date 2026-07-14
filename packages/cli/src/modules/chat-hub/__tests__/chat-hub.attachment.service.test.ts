@@ -2,10 +2,10 @@ import type { ChatAttachment } from '@n8n/api-types';
 import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { ChatHubAttachmentService } from '../chat-hub.attachment.service.js';
-import type { ChatHubMessageRepository } from '../chat-message.repository.js';
+import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
+import type { ChatHubMessageRepository } from '../chat-message.repository';
 
 describe('ChatHubAttachmentService', () => {
 	const binaryDataService = mock<BinaryDataService>();

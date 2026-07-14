@@ -3,12 +3,12 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service.js';
-import { AgentCustomToolsService } from '../agent-custom-tools.service.js';
-import type { Agent } from '../entities/agent.entity.js';
-import type { AgentRepository } from '../repositories/agent.repository.js';
+import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { Agent } from '../entities/agent.entity';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

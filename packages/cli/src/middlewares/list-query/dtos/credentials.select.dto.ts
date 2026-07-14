@@ -1,4 +1,4 @@
-import { BaseSelect } from './base.select.dto.js';
+import { BaseSelect } from './base.select.dto';
 
 export class CredentialsSelect extends BaseSelect {
 	static get selectableFields() {

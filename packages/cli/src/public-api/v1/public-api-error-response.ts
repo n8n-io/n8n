@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 
-import { classifyHttpError } from '@/errors/http-error-classifier.js';
-import { serializePublicApiError } from '@/errors/http-error-serializers.js';
+import { classifyHttpError } from '@/errors/http-error-classifier';
+import { serializePublicApiError } from '@/errors/http-error-serializers';
 
 /**
  * Maps errors from the public API stack to HTTP responses. Used by the

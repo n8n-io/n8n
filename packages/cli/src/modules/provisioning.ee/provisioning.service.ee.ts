@@ -20,20 +20,16 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { EventService } from '@/events/event.service.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
-import { ProjectService } from '@/services/project.service.ee.js';
-import { UserService } from '@/services/user.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { UserService } from '@/services/user.service';
 
-import { PROVISIONING_PREFERENCES_DB_KEY } from './constants.js';
-import { RoleMappingRuleService } from './role-mapping-rule.service.ee.js';
-import type {
-	RoleMappingConfig,
-	ResolvedRoles,
-	RoleResolverContext,
-} from './role-resolver-types.js';
-import { RoleResolverService } from './role-resolver.service.ee.js';
+import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
+import { RoleMappingRuleService } from './role-mapping-rule.service.ee';
+import type { RoleMappingConfig, ResolvedRoles, RoleResolverContext } from './role-resolver-types';
+import { RoleResolverService } from './role-resolver.service.ee';
 
 @Service()
 export class ProvisioningService {

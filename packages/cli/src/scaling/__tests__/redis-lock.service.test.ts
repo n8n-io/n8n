@@ -6,9 +6,9 @@ import { OperationalError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@/services/redis-client.service.js';
+import type { RedisClientService } from '@/services/redis-client.service';
 
-import { RedisLockService } from '../redis-lock.service.js';
+import { RedisLockService } from '../redis-lock.service';
 
 const PREFIX = 'n8n';
 const NS = LockNamespace.CREDENTIALS;

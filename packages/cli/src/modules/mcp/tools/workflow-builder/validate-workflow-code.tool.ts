@@ -1,14 +1,14 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { NodeTypes } from '@/node-types.js';
-import type { Telemetry } from '@/telemetry/index.js';
+import type { NodeTypes } from '@/node-types';
+import type { Telemetry } from '@/telemetry';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
-import { getSdkReferenceHint } from '../workflow-validation.utils.js';
-import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check.js';
-import { CODE_BUILDER_VALIDATE_TOOL } from './constants.js';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getSdkReferenceHint } from '../workflow-validation.utils';
+import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+import { CODE_BUILDER_VALIDATE_TOOL } from './constants';
 
 const inputSchema = {
 	code: z

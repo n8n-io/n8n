@@ -1,8 +1,8 @@
 import type { DeleteResult, EntityManager, Repository } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceAiPendingConfirmation } from '../../entities/instance-ai-pending-confirmation.entity.js';
-import { InstanceAiPendingConfirmationRepository } from '../instance-ai-pending-confirmation.repository.js';
+import type { InstanceAiPendingConfirmation } from '../../entities/instance-ai-pending-confirmation.entity';
+import { InstanceAiPendingConfirmationRepository } from '../instance-ai-pending-confirmation.repository';
 
 function makeRow(
 	overrides: Partial<InstanceAiPendingConfirmation> = {},

@@ -1,5 +1,5 @@
-import { createNode, createWorkflow } from '../../../__tests__/test-helpers.js';
-import { ExecuteWorkflowEachModeRule } from '../execute-workflow-each-mode.rule.js';
+import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
+import { ExecuteWorkflowEachModeRule } from '../execute-workflow-each-mode.rule';
 
 describe('ExecuteWorkflowEachModeRule', () => {
 	let rule: ExecuteWorkflowEachModeRule;

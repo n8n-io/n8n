@@ -3,7 +3,7 @@ import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
-import { InfisicalProvider } from '../infisical.js';
+import { InfisicalProvider } from '../infisical';
 
 const SITE_URL = 'https://app.infisical.com';
 const PROJECT_ID = 'project-123';

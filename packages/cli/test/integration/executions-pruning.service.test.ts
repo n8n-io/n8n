@@ -7,14 +7,14 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence.js';
-import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 
 import {
 	annotateExecution,
 	createExecution,
 	createSuccessfulExecution,
-} from './shared/db/executions.js';
+} from './shared/db/executions';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: ExecutionsPruningService;

@@ -1,4 +1,4 @@
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry.js';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';

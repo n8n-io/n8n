@@ -2,13 +2,13 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { DummyProvider } from '@test/external-secrets/utils.js';
+import { DummyProvider } from '@test/external-secrets/utils';
 
-import { ExternalSecretsProviderConnectionManager } from '../external-secrets-provider-connection-manager.ee.js';
-import type { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service.js';
-import type { ExternalSecretsProviderRegistry } from '../provider-registry.service.js';
-import type { ExternalSecretsRetryManager } from '../retry-manager.service.js';
-import type { SecretsProvider, SecretsProviderSettings } from '../types.js';
+import { ExternalSecretsProviderConnectionManager } from '../external-secrets-provider-connection-manager.ee';
+import type { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
+import type { ExternalSecretsProviderRegistry } from '../provider-registry.service';
+import type { ExternalSecretsRetryManager } from '../retry-manager.service';
+import type { SecretsProvider, SecretsProviderSettings } from '../types';
 
 describe('ExternalSecretsProviderConnectionManager', () => {
 	let manager: ExternalSecretsProviderConnectionManager;

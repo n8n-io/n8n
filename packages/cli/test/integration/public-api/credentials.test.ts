@@ -11,23 +11,23 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { CredentialsTester } from '@/services/credentials-tester.service.js';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
 	affixRoleToSaveCredential,
 	createCredentials,
 	getCredentialSharings,
-} from '../shared/db/credentials.js';
-import { createCustomRoleWithScopeSlugs } from '../shared/db/roles.js';
+} from '../shared/db/credentials';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import {
 	addApiKey,
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
 	createUser,
-} from '../shared/db/users.js';
-import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+} from '../shared/db/users';
+import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 let owner: User;
 let member: User;

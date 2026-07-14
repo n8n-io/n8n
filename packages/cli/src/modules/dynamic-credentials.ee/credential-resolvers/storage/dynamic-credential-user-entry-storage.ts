@@ -1,9 +1,9 @@
 import { CredentialResolverHandle } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
-import { ICredentialEntriesStorage } from './storage-interface.js';
-import { DynamicCredentialUserEntry } from '../../database/entities/dynamic-credential-user-entry.js';
-import { DynamicCredentialUserEntryRepository } from '../../database/repositories/dynamic-credential-user-entry.repository.js';
+import { ICredentialEntriesStorage } from './storage-interface';
+import { DynamicCredentialUserEntry } from '../../database/entities/dynamic-credential-user-entry';
+import { DynamicCredentialUserEntryRepository } from '../../database/repositories/dynamic-credential-user-entry.repository';
 
 /**
  * Storage implementation for user-specific dynamic credential entries.

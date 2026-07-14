@@ -19,22 +19,22 @@ import { jsonParse, UserError } from 'n8n-workflow';
 import type * as openidClientTypes from 'openid-client';
 import { inspect } from 'util';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
-import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder.js';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
-import { JwtService } from '@/services/jwt.service.js';
-import { UrlService } from '@/services/url.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { JwtService } from '@/services/jwt.service';
+import { UrlService } from '@/services/url.service';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	reloadAuthenticationMethod,
 	setCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers.js';
+} from '@/sso.ee/sso-helpers';
 
-import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants.js';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 
 const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	clientId: '',

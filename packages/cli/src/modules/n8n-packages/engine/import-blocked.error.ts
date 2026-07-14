@@ -1,7 +1,7 @@
-import { ConflictError } from '@/errors/response-errors/conflict.error.js';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
-import type { BlockingIssue } from '../n8n-packages.types.js';
+import type { BlockingIssue } from '../n8n-packages.types';
 
 export function toImportBlockedError(
 	issues: BlockingIssue[],

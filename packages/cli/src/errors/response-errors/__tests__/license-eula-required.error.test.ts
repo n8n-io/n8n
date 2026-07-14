@@ -1,4 +1,4 @@
-import { LicenseEulaRequiredError } from '../license-eula-required.error.js';
+import { LicenseEulaRequiredError } from '../license-eula-required.error';
 
 describe('LicenseEulaRequiredError', () => {
 	it('should create error with correct message and meta', () => {

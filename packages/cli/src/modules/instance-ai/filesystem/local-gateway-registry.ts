@@ -5,7 +5,7 @@ import type {
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import { LocalGateway } from './local-gateway.js';
+import { LocalGateway } from './local-gateway';
 
 interface UserGatewayState {
 	gateway: LocalGateway;

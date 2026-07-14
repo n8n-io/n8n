@@ -1,7 +1,7 @@
 import type { User, WorkflowHistory } from '@n8n/db';
 
-import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error.js';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 /**
  * Retrieves a single workflow history version for MCP operations, translating a

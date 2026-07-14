@@ -18,17 +18,17 @@ import type { ModelConfig } from '@n8n/instance-ai';
 import type { IUserSettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
-import { EventService } from '@/events/event.service.js';
-import { AiService } from '@/services/ai.service.js';
-import { UserService } from '@/services/user.service.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { EventService } from '@/events/event.service';
+import { AiService } from '@/services/ai.service';
+import { UserService } from '@/services/user.service';
 
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
 	normalizeSandboxProvider,
-} from './sandbox-provider.js';
+} from './sandbox-provider';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 

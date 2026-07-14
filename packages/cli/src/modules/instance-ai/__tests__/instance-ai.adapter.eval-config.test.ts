@@ -18,7 +18,7 @@ import type { UpsertEvaluationConfigInput } from '@n8n/instance-ai';
 import {
 	buildEvaluationConfigDto,
 	evaluationConfigToSummary,
-} from '../instance-ai.adapter.service.js';
+} from '../instance-ai.adapter.service';
 
 const baseCorrectness: UpsertEvaluationConfigInput = {
 	name: 'Answer quality',

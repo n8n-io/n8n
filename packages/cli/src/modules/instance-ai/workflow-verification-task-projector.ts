@@ -12,12 +12,12 @@ import {
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
 
-import type { InProcessEventBus } from './event-bus/in-process-event-bus.js';
-import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory.js';
+import type { InProcessEventBus } from './event-bus/in-process-event-bus';
+import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import {
 	parseWorkflowBuildOutcome,
 	type WorkflowVerificationObligationService,
-} from './workflow-verification-obligation-service.js';
+} from './workflow-verification-obligation-service';
 
 const BUILD_DESCRIPTION = 'Build workflow';
 const VERIFY_DESCRIPTION = 'Verify workflow';

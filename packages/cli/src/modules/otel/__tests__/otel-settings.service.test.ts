@@ -2,8 +2,8 @@
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { OTEL_SETTINGS_KEY, OtelSettingsService } from '../otel-settings.service.js';
-import { OtelConfig } from '../otel.config.js';
+import { OTEL_SETTINGS_KEY, OtelSettingsService } from '../otel-settings.service';
+import { OtelConfig } from '../otel.config';
 
 describe('OtelSettingsService', () => {
 	const settingsRepository = mock<SettingsRepository>();

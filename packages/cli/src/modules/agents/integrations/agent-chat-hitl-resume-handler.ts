@@ -3,14 +3,11 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { ActionEvent, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
-import type {
-	BridgeResumeExecutionContext,
-	PlatformAgentContext,
-} from './agent-chat-integration.js';
-import type { AgentChatMessageContextBridge } from './agent-chat-message-context.js';
-import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer.js';
-import type { CallbackStore } from './callback-store.js';
-import type { InternalThread } from './types.js';
+import type { BridgeResumeExecutionContext, PlatformAgentContext } from './agent-chat-integration';
+import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
+import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
+import type { CallbackStore } from './callback-store';
+import type { InternalThread } from './types';
 
 interface ResumeExecutor {
 	resumeForChat(config: {

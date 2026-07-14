@@ -1,7 +1,7 @@
 import http from 'node:http';
 import request from 'supertest';
 
-import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server.js';
+import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server';
 
 describe('TaskBrokerServer', () => {
 	const { agent, server } = setupBrokerTestServer({

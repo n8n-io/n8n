@@ -1,9 +1,9 @@
 import { TypedEmitter } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 
-import { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error.js';
+import { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
 
-import type { TaskRunnerProcessBase } from './task-runner-process-base.js';
+import type { TaskRunnerProcessBase } from './task-runner-process-base';
 
 const MAX_RESTARTS = 5;
 const RESTARTS_WINDOW = 2 * Time.seconds.toMilliseconds;

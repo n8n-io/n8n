@@ -2,13 +2,13 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import { CredentialsRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { DynamicCredentialUserEntry } from '@/modules/dynamic-credentials.ee/database/entities/dynamic-credential-user-entry.js';
-import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository.js';
-import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository.js';
+import { DynamicCredentialUserEntry } from '@/modules/dynamic-credentials.ee/database/entities/dynamic-credential-user-entry';
+import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
+import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository';
 
-import { createDynamicCredentialResolver } from './shared/db-helpers.js';
-import { createCredentials } from '../shared/db/credentials.js';
-import { createUser } from '../shared/db/users.js';
+import { createDynamicCredentialResolver } from './shared/db-helpers';
+import { createCredentials } from '../shared/db/credentials';
+import { createUser } from '../shared/db/users';
 
 describe('DynamicCredentialUserEntryRepository', () => {
 	let repository: DynamicCredentialUserEntryRepository;

@@ -1,9 +1,9 @@
-import { TRIGGER_COUNT_EXCLUDED_NODES } from '@/constants.js';
+import { TRIGGER_COUNT_EXCLUDED_NODES } from '@/constants';
 import { Service } from '@n8n/di';
 import type { INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
-import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 
 @Service()
 export class TriggerCountService {

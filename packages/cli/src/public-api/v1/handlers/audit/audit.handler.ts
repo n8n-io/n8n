@@ -1,9 +1,9 @@
 import { Container } from '@n8n/di';
 
-import type { AuditRequest } from '@/public-api/types.js';
+import type { AuditRequest } from '@/public-api/types';
 
-import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
-import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware.js';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
 
 type AuditHandlers = {
 	generateAudit: PublicAPIEndpoint<AuditRequest.Generate>;

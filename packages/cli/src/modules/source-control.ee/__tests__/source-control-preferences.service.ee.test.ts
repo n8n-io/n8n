@@ -7,10 +7,10 @@ import os from 'os';
 import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { SourceControlPreferencesService } from '../source-control-preferences.service.ee.js';
-import type { SourceControlPreferences } from '../types/source-control-preferences.js';
+import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '../types/source-control-preferences';
 
 // Restore real fs modules for these tests since we need actual file operations
 vi.unmock('node:fs');

@@ -2,8 +2,8 @@ import {
 	buildOidcClaimsContext,
 	buildSamlClaimsContext,
 	withProjectContext,
-} from '../claims-context.builder.js';
-import type { ProjectInfo, RoleResolverContext } from '../role-resolver-types.js';
+} from '../claims-context.builder';
+import type { ProjectInfo, RoleResolverContext } from '../role-resolver-types';
 
 describe('claims-context.builder', () => {
 	describe('buildOidcClaimsContext', () => {

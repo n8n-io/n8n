@@ -2,8 +2,8 @@ import type { User } from '@n8n/db';
 import type { INode, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
-import type { CredentialsService } from '@/credentials/credentials.service.js';
-import type { NodeTypes } from '@/node-types.js';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { NodeTypes } from '@/node-types';
 
 export interface CredentialAssignment {
 	nodeName: string;

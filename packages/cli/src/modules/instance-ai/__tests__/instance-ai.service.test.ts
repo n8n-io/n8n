@@ -188,13 +188,13 @@ import type { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
 
-import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service.js';
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
 	InstanceAiTerminalOutcomeService,
 	type InstanceAiTerminalOutcomeServiceOptions,
-} from '../instance-ai-terminal-outcome.service.js';
-import { InstanceAiService } from '../instance-ai.service.js';
-import { InstanceAiSandboxService } from '../sandbox/index.js';
+} from '../instance-ai-terminal-outcome.service';
+import { InstanceAiService } from '../instance-ai.service';
+import { InstanceAiSandboxService } from '../sandbox';
 
 type ServiceInternals = {
 	pendingCheckpointReentries: Map<string, Set<string>>;

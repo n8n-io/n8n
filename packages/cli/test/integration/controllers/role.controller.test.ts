@@ -2,12 +2,12 @@ import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type Role } from '@n8n/permissions';
 
-import { RoleService } from '@/services/role.service.js';
+import { RoleService } from '@/services/role.service';
 
-import { cleanupRolesAndScopes } from '../shared/db/roles.js';
-import { createMember, createOwner } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import { setupTestServer } from '../shared/utils/index.js';
+import { cleanupRolesAndScopes } from '../shared/db/roles';
+import { createMember, createOwner } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import { setupTestServer } from '../shared/utils';
 
 describe('RoleController', () => {
 	const roleService = mockInstance(RoleService);

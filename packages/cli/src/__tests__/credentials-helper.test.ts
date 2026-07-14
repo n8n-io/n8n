@@ -42,14 +42,14 @@ vi.mock('n8n-nodes-base/credentials/common/token-request', () => ({
 	TOKEN_REQUEST_TIMEOUT: 30_000,
 }));
 
-import { CredentialTypes } from '@/credential-types.js';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
-import { CredentialsHelper } from '@/credentials-helper.js';
-import type { CredentialsOverwrites } from '@/credentials-overwrites.js';
-import { CredentialNotFoundError } from '@/errors/credential-not-found.error.js';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
-import type { AiGatewayService } from '@/services/ai-gateway.service.js';
+import { CredentialTypes } from '@/credential-types';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { CredentialsHelper } from '@/credentials-helper';
+import type { CredentialsOverwrites } from '@/credentials-overwrites';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 describe('CredentialsHelper', () => {
 	const nodeTypes = mock<INodeTypes>();

@@ -11,12 +11,12 @@ import type { InstanceSettings } from 'n8n-core';
 import type { MockInstance, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
-import type { Push } from '@/push/index.js';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import type { Push } from '@/push';
 
-import { CheckService, computeDiff } from '../checks/check.service.js';
-import type { InstanceRegistryService } from '../instance-registry.service.js';
-import { REGISTRY_CONSTANTS } from '../instance-registry.types.js';
+import { CheckService, computeDiff } from '../checks/check.service';
+import type { InstanceRegistryService } from '../instance-registry.service';
+import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 
 const makeLogger = () => {
 	const logger = mock<Logger>();

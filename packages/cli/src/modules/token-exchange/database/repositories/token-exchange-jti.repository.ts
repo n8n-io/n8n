@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 import assert from 'node:assert';
 
-import { TokenExchangeJti } from '../entities/token-exchange-jti.entity.js';
+import { TokenExchangeJti } from '../entities/token-exchange-jti.entity';
 
 @Service()
 export class TokenExchangeJtiRepository extends Repository<TokenExchangeJti> {

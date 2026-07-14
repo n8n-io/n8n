@@ -2,18 +2,18 @@ import type { Mocked } from 'vitest';
 import type { SerializableAgentState } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
-import type { AgentCheckpoint } from '../entities/agent-checkpoint.entity.js';
+import type { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentsService } from '../agents.service.js';
-import type { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository.js';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage.js';
-import type { N8nMemory } from '../integrations/n8n-memory.js';
-import type { NodeCatalogService } from '@/node-catalog/index.js';
+import type { AgentsService } from '../agents.service';
+import type { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import type { N8nMemory } from '../integrations/n8n-memory';
+import type { NodeCatalogService } from '@/node-catalog';
 
-import { AgentsBuilderService } from '../builder/agents-builder.service.js';
-import type { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service.js';
-import type { AgentsBuilderSettingsService } from '../builder/agents-builder-settings.service.js';
+import { AgentsBuilderService } from '../builder/agents-builder.service';
+import type { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
+import type { AgentsBuilderSettingsService } from '../builder/agents-builder-settings.service';
 
 function suspendedCheckpoint(threadId: string): SerializableAgentState {
 	return {

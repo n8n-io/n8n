@@ -1,9 +1,9 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service.js';
+import type { CacheService } from '@/services/cache/cache.service';
 
-import { CollaborationState } from '../collaboration.state.js';
+import { CollaborationState } from '../collaboration.state';
 
 const origDate = global.Date;
 

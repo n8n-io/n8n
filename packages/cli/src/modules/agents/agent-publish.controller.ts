@@ -8,8 +8,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { AgentPublishService } from './agent-publish.service.js';
-import { AgentRunnableStateService } from './agent-runnable-state.service.js';
+import { AgentPublishService } from './agent-publish.service';
+import { AgentRunnableStateService } from './agent-runnable-state.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentPublishController {

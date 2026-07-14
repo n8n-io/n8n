@@ -1,8 +1,8 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Post, RestController, GlobalScope } from '@n8n/decorators';
 
-import { License } from '@/license.js';
-import { WorkerStatusService } from '@/scaling/worker-status.service.ee.js';
+import { License } from '@/license';
+import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
 @RestController('/orchestration')
 export class OrchestrationController {

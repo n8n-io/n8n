@@ -6,9 +6,9 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { RoleService } from '@/services/role.service.js';
+import type { RoleService } from '@/services/role.service';
 
-import { WorkflowFinderService } from '../workflow-finder.service.js';
+import { WorkflowFinderService } from '../workflow-finder.service';
 
 /** Minimal projection of the row shape `findWorkflowIdsByFolder` selects. */
 type FolderRow = { workflow: { id: string; parentFolder: { id: string } | null } };

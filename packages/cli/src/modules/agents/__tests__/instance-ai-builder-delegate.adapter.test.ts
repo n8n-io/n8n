@@ -2,17 +2,17 @@ import type { CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import * as checkAccess from '@/permissions.ee/check-access.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import * as checkAccess from '@/permissions.ee/check-access';
 
-import type { AgentsService } from '../agents.service.js';
-import type { AgentsBuilderService } from '../builder/agents-builder.service.js';
-import type { Agent } from '../entities/agent.entity.js';
+import type { AgentsService } from '../agents.service';
+import type { AgentsBuilderService } from '../builder/agents-builder.service';
+import type { Agent } from '../entities/agent.entity';
 import {
 	INSTANCE_AI_BUILDER_ADDENDUM,
 	InstanceAiBuilderDelegateAdapterService,
 	NON_INTERACTIVE_EXCLUDED_TOOL_NAMES,
-} from '../instance-ai-builder-delegate.adapter.js';
+} from '../instance-ai-builder-delegate.adapter';
 
 function setup() {
 	const agentsService = mock<AgentsService>();

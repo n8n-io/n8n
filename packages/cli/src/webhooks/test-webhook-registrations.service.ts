@@ -8,8 +8,8 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
-import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants.js';
-import { CacheService } from '@/services/cache/cache.service.js';
+import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
+import { CacheService } from '@/services/cache/cache.service';
 
 const TEST_WEBHOOK_REGISTRATION_VERSION = 1;
 

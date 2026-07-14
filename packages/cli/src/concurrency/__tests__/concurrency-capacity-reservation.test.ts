@@ -3,9 +3,9 @@ import { mock } from 'vitest-mock-extended';
 import type {
 	CapacityTarget,
 	ConcurrencyControlService,
-} from '@/concurrency/concurrency-control.service.js';
+} from '@/concurrency/concurrency-control.service';
 
-import { ConcurrencyCapacityReservation } from '../concurrency-capacity-reservation.js';
+import { ConcurrencyCapacityReservation } from '../concurrency-capacity-reservation';
 
 describe('ConcurrencyCapacityReservation', () => {
 	const concurrencyControlService = mock<ConcurrencyControlService>();

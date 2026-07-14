@@ -3,11 +3,11 @@ import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-uti
 import { type User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
-import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils.js';
+import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
 
-import { createOwnerWithApiKey } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils/index.js';
+import { createOwnerWithApiKey } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['publicApi'],

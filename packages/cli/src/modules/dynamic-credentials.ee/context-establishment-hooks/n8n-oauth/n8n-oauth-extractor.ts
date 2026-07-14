@@ -7,7 +7,7 @@ import {
 	IContextEstablishmentHook,
 } from '@n8n/decorators';
 import { Cipher } from 'n8n-core';
-import { EncryptedMetadataSchema, N8NOAuth2ExtractorMetadataSchema } from './metadata.js';
+import { EncryptedMetadataSchema, N8NOAuth2ExtractorMetadataSchema } from './metadata';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse } from 'n8n-workflow';
 

@@ -10,17 +10,17 @@ import { stringify } from 'flatted';
 import type { INode, IRunExecutionData, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 import { createRunExecutionData, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
-import { WaitTracker } from '@/wait-tracker.js';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { WaitTracker } from '@/wait-tracker';
 
-import { createExecution } from './shared/db/executions.js';
+import { createExecution } from './shared/db/executions';
 import {
 	createMember,
 	createMemberWithApiKey,
 	createOwner,
 	createOwnerWithApiKey,
-} from './shared/db/users.js';
-import { setupTestServer } from './shared/utils/index.js';
+} from './shared/db/users';
+import { setupTestServer } from './shared/utils';
 
 mockInstance(WaitTracker);
 mockInstance(ConcurrencyControlService, {

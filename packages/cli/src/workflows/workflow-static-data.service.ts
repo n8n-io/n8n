@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IDataObject, Workflow } from 'n8n-workflow';
 
-import { isWorkflowIdValid } from '@/utils.js';
+import { isWorkflowIdValid } from '@/utils';
 
 @Service()
 export class WorkflowStaticDataService {

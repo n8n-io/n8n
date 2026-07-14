@@ -2,7 +2,7 @@ import type { InterruptibleToolContext } from '@n8n/agents';
 import { channelConfigSchema } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
-import { buildConfigureChannelTool } from '../configure-channel.tool.js';
+import { buildConfigureChannelTool } from '../configure-channel.tool';
 
 interface TestCtx {
 	resumeData?: unknown;

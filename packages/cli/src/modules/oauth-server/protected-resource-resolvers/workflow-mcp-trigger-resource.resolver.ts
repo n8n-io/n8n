@@ -1,8 +1,8 @@
-import { MCP_TRIGGER_NODE_TYPE } from '@/constants.js';
-import type { ProtectedResourceResolver } from '@/services/protected-resource.registry.js';
-import { UrlService } from '@/services/url.service.js';
-import { WebhookService } from '@/webhooks/webhook.service.js';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
+import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
+import { WebhookService } from '@/webhooks/webhook.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { User, WorkflowRepository } from '@n8n/db';
@@ -13,7 +13,7 @@ import {
 	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
-} from './utils.js';
+} from './utils';
 
 @Service()
 export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceResolver {

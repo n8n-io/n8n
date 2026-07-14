@@ -1,6 +1,6 @@
 import { UnexpectedError } from 'n8n-workflow';
 
-import { isIntegerString } from '@/utils.js';
+import { isIntegerString } from '@/utils';
 
 export class Pagination {
 	static fromString(rawTake: string, rawSkip: string) {

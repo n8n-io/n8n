@@ -3,8 +3,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { AgentConfigService } from './agent-config.service.js';
-import { AgentCustomToolsService } from './agent-custom-tools.service.js';
+import { AgentConfigService } from './agent-config.service';
+import { AgentCustomToolsService } from './agent-custom-tools.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsConfigController {

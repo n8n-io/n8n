@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error.js';
+import { ResponseError } from './abstract/response.error';
 
 export class ServiceUnavailableError extends ResponseError {
 	constructor(message: string, errorCode = 503) {

@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-import { resolveEventLogPath, type EventLogProcessType } from '../resolve-event-log-path.js';
+import { resolveEventLogPath, type EventLogProcessType } from '../resolve-event-log-path';
 
 vi.unmock('node:fs');
 

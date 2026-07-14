@@ -1,6 +1,6 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 
-import { MemoryInstanceStorage } from '../memory-storage.js';
+import { MemoryInstanceStorage } from '../memory-storage';
 
 const makeRegistration = (overrides: Partial<InstanceRegistration> = {}): InstanceRegistration => ({
 	schemaVersion: 1 as const,

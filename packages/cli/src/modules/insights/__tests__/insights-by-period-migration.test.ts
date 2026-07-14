@@ -8,7 +8,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import { BOUNDARY_TEST_VALUES, insertPreMigrationPeriodData } from './migration-test-setup.js';
+import { BOUNDARY_TEST_VALUES, insertPreMigrationPeriodData } from './migration-test-setup';
 
 const MIGRATION_NAME = 'ChangeValueTypesForInsights1759399811000';
 

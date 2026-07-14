@@ -4,9 +4,9 @@ import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { ProjectService } from '@/services/project.service.ee.js';
+import { ProjectService } from '@/services/project.service.ee';
 
-import { DataTableRepository } from './data-table.repository.js';
+import { DataTableRepository } from './data-table.repository';
 
 @Service()
 export class DataTableAggregateService {

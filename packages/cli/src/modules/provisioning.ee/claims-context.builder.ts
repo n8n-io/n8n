@@ -1,4 +1,4 @@
-import type { ProjectInfo, RoleResolverContext } from './role-resolver-types.js';
+import type { ProjectInfo, RoleResolverContext } from './role-resolver-types';
 
 export function buildOidcClaimsContext(
 	idTokenClaims: Record<string, unknown>,

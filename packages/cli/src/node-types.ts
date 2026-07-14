@@ -8,9 +8,9 @@ import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } 
 import { deepCopy, NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
-import { LoadNodesAndCredentials } from './load-nodes-and-credentials.js';
-import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation/index.js';
-import { shouldAssignExecuteMethod } from './utils.js';
+import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
+import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
+import { shouldAssignExecuteMethod } from './utils';
 
 const stripToolSuffix = (nodeType: string) =>
 	nodeType.replace(/HitlTool$/, '').replace(/Tool$/, '');

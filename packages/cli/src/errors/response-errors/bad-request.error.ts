@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error.js';
+import { ResponseError } from './abstract/response.error';
 
 export class BadRequestError extends ResponseError {
 	constructor(message: string, errorCode?: number, hint?: string, cause?: unknown) {

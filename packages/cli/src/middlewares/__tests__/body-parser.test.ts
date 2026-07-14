@@ -2,9 +2,9 @@ import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 import { Readable } from 'stream';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { rawBodyReader } from '../body-parser.js';
+import { rawBodyReader } from '../body-parser';
 
 /** Build a request backed by a real readable stream carrying `payload`. */
 const mockRequest = (payload = '', headers: Record<string, string> = {}) => {

@@ -3,9 +3,9 @@ import type { SourceType } from '@n8n/db';
 import { FileLocation } from 'n8n-core';
 import path from 'node:path';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import type { AgentFile } from './entities/agent-file.entity.js';
+import type { AgentFile } from './entities/agent-file.entity';
 
 // Local sandbox disk mirroring the DB-backed knowledge files, so repeated
 // reads/searches avoid re-fetching from BinaryDataService each time.

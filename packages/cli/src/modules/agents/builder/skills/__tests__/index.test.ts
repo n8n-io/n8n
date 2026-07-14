@@ -1,6 +1,6 @@
 import { CONFIGURE_CHANNEL_TOOL_NAME } from '@n8n/api-types';
 
-import { getBuilderRuntimeSkills } from '../index.js';
+import { getBuilderRuntimeSkills } from '../index';
 
 describe('getBuilderRuntimeSkills', () => {
 	it('includes the integrations skill by default', () => {

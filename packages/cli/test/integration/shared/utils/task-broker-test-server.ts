@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent';
 
-import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server.js';
+import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
 
 export interface TestTaskBrokerServer {
 	server: TaskBrokerServer;

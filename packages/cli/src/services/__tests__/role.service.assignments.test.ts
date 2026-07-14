@@ -4,10 +4,10 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { RoleRepository, ScopeRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { RoleCacheService } from '@/services/role-cache.service.js';
-import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service.js';
-import { RoleService } from '@/services/role.service.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { RoleCacheService } from '@/services/role-cache.service';
+import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
+import { RoleService } from '@/services/role.service';
 
 describe('RoleService.getRoleAssignments and getRoleProjectMembers', () => {
 	const licenseState = mock<LicenseState>();

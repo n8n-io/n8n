@@ -1,2 +1,2 @@
-export * from './rule.types.js';
-export type * from './detection.types.js';
+export * from './rule.types';
+export type * from './detection.types';

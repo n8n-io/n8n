@@ -1,11 +1,11 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service.js';
+import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 
-import { mapToCommunityPackage, mapToCommunityPackageList } from './community-packages.mapper.js';
-import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
-import { publicApiScope } from '../../shared/middlewares/global.middleware.js';
+import { mapToCommunityPackage, mapToCommunityPackageList } from './community-packages.mapper';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
 type InstallPackageRequest = AuthenticatedRequest<
 	{},

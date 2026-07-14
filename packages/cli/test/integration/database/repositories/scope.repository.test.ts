@@ -3,7 +3,7 @@ import { type Scope, ScopeRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope as ScopeType } from '@n8n/permissions';
 
-import { createScope, createScopes, createTestScopes } from '../../shared/db/roles.js';
+import { createScope, createScopes, createTestScopes } from '../../shared/db/roles';
 
 describe('ScopeRepository', () => {
 	let scopeRepository: ScopeRepository;

@@ -1,7 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import { TaskRunnerDockerImageRule } from '../task-runner-docker-image.rule.js';
+import { TaskRunnerDockerImageRule } from '../task-runner-docker-image.rule';
 
 describe('TaskRunnerDockerImageRule', () => {
 	let rule: TaskRunnerDockerImageRule;

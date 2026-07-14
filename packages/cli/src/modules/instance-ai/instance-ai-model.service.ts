@@ -5,12 +5,12 @@ import { Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
 import { nanoid } from 'nanoid';
 
-import { N8N_VERSION } from '@/constants.js';
-import { AiService } from '@/services/ai.service.js';
-import { ProxyTokenManager } from '@/services/proxy-token-manager.js';
-import { createAiProxyFetch } from '@/utils/ai-proxy-fetch.js';
+import { N8N_VERSION } from '@/constants';
+import { AiService } from '@/services/ai.service';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
-import { InstanceAiSettingsService } from './instance-ai-settings.service.js';
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
 
 /**
  * Resolves the language model the Instance AI agent runs against and reports

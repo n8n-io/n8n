@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 
-import { ChatIntegrationRegistry } from './agent-chat-integration.js';
-import { loadChatSdk } from './esm-loader.js';
+import { ChatIntegrationRegistry } from './agent-chat-integration';
+import { loadChatSdk } from './esm-loader';
 import type { ButtonStyle, CardElement } from 'chat';
 
 type ComponentText = string | { text?: string; [key: string]: unknown };

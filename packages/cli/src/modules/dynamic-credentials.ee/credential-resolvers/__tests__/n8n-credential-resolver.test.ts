@@ -6,10 +6,10 @@ import {
 import type { Cipher } from 'n8n-core';
 import type { Mocked } from 'vitest';
 
-import type { N8NIdentifier } from '../identifiers/n8n-identifier.js';
-import { N8NCredentialResolver } from '../n8n-credential-resolver.js';
-import { testCredentialResolverContract, testHelpers } from './resolver-contract-tests.js';
-import type { DynamicCredentialUserEntryStorage } from '../storage/dynamic-credential-user-entry-storage.js';
+import type { N8NIdentifier } from '../identifiers/n8n-identifier';
+import { N8NCredentialResolver } from '../n8n-credential-resolver';
+import { testCredentialResolverContract, testHelpers } from './resolver-contract-tests';
+import type { DynamicCredentialUserEntryStorage } from '../storage/dynamic-credential-user-entry-storage';
 
 describe('N8NCredentialResolver', () => {
 	let mockLogger: Mocked<Logger>;

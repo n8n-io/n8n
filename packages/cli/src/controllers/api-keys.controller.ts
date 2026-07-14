@@ -18,10 +18,10 @@ import {
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { EventService } from '@/events/event.service.js';
-import { isApiEnabled } from '@/public-api/index.js';
-import { PublicApiKeyService } from '@/services/public-api-key.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { isApiEnabled } from '@/public-api';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isApiEnabled()) {

@@ -2,15 +2,15 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentDbMessage } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity.js';
-import type { InstanceAiThread } from '../../entities/instance-ai-thread.entity.js';
-import type { InstanceAiMessageRepository } from '../../repositories/instance-ai-message.repository.js';
-import type { InstanceAiObservationCursorRepository } from '../../repositories/instance-ai-observation-cursor.repository.js';
-import type { InstanceAiObservationLockRepository } from '../../repositories/instance-ai-observation-lock.repository.js';
-import type { InstanceAiObservationRepository } from '../../repositories/instance-ai-observation.repository.js';
-import type { InstanceAiResourceRepository } from '../../repositories/instance-ai-resource.repository.js';
-import type { InstanceAiThreadRepository } from '../../repositories/instance-ai-thread.repository.js';
-import { TypeORMAgentMemory } from '../typeorm-agent-memory.js';
+import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
+import type { InstanceAiThread } from '../../entities/instance-ai-thread.entity';
+import type { InstanceAiMessageRepository } from '../../repositories/instance-ai-message.repository';
+import type { InstanceAiObservationCursorRepository } from '../../repositories/instance-ai-observation-cursor.repository';
+import type { InstanceAiObservationLockRepository } from '../../repositories/instance-ai-observation-lock.repository';
+import type { InstanceAiObservationRepository } from '../../repositories/instance-ai-observation.repository';
+import type { InstanceAiResourceRepository } from '../../repositories/instance-ai-resource.repository';
+import type { InstanceAiThreadRepository } from '../../repositories/instance-ai-thread.repository';
+import { TypeORMAgentMemory } from '../typeorm-agent-memory';
 
 function makeMessageRow(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMessage {
 	return {

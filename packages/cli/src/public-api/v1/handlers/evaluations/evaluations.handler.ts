@@ -6,22 +6,22 @@ import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { PaymentRequiredError } from '@/errors/response-errors/payment-required.error.js';
-import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee.js';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { PaymentRequiredError } from '@/errors/response-errors/payment-required.error';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { toTestCaseExecutionDto, toTestRunSummaryDto } from './evaluations.mapper.js';
-import type { TestRunRequest } from '../../../types.js';
-import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
+import { toTestCaseExecutionDto, toTestRunSummaryDto } from './evaluations.mapper';
+import type { TestRunRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	projectScope,
 	publicApiScope,
 	validCursor,
-} from '../../shared/middlewares/global.middleware.js';
-import { encodeNextCursor } from '../../shared/services/pagination.service.js';
+} from '../../shared/middlewares/global.middleware';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type EvaluationsHandlers = {
 	getTestRuns: PublicAPIEndpoint<TestRunRequest.GetMany>;

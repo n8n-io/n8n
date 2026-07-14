@@ -7,13 +7,13 @@ import {
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createDataTable } from '@test-integration/db/data-tables.js';
-import { createOwner, createMember, createAdmin } from '@test-integration/db/users.js';
-import type { SuperAgentTest } from '@test-integration/types.js';
-import * as utils from '@test-integration/utils/index.js';
+import { createDataTable } from '@test-integration/db/data-tables';
+import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
+import type { SuperAgentTest } from '@test-integration/types';
+import * as utils from '@test-integration/utils';
 
-import { DataTableColumnRepository } from '../data-table-column.repository.js';
-import { mockDataTableSizeValidator } from './test-helpers.js';
+import { DataTableColumnRepository } from '../data-table-column.repository';
+import { mockDataTableSizeValidator } from './test-helpers';
 
 let owner: User;
 let member: User;

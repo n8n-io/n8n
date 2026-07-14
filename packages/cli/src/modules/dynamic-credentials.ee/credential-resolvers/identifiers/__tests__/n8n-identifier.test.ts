@@ -3,11 +3,11 @@ import type { User } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
-import type { AuthService } from '@/auth/auth.service.js';
-import { AuthError } from '@/errors/response-errors/auth.error.js';
-import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service.js';
+import type { AuthService } from '@/auth/auth.service';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
-import { N8NIdentifier } from '../n8n-identifier.js';
+import { N8NIdentifier } from '../n8n-identifier';
 
 describe('N8NIdentifier', () => {
 	let identifier: N8NIdentifier;

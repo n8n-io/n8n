@@ -9,12 +9,12 @@ import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { collectExpressionDefaults, findDisallowedChatToolExpressions } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { NodeTypes } from '@/node-types.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NodeTypes } from '@/node-types';
 
-import type { ChatHubTool } from './chat-hub-tool.entity.js';
-import { ChatHubToolRepository } from './chat-hub-tool.repository.js';
+import type { ChatHubTool } from './chat-hub-tool.entity';
+import { ChatHubToolRepository } from './chat-hub-tool.repository';
 
 @Service()
 export class ChatHubToolService {

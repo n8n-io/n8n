@@ -4,8 +4,8 @@ import type { Workflow, WorkflowSettings } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service.js';
-import { RedactionContextHook } from '../redaction-context-hook.js';
+import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
+import { RedactionContextHook } from '../redaction-context-hook';
 
 describe('RedactionContextHook', () => {
 	let service: MockProxy<InstanceRedactionEnforcementService>;

@@ -9,8 +9,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
-import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper.js';
-import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server.js';
+import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
+import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
 
 const mockLogger = {
 	info: vi.fn(),

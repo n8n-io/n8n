@@ -3,11 +3,11 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createOwner, createMember } from '@test-integration/db/users.js';
-import { setupTestServer } from '@test-integration/utils/index.js';
+import { createOwner, createMember } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository.js';
-import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository.js';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
 const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-server', 'mcp'] });
 

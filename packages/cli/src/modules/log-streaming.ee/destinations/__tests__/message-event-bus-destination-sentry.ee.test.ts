@@ -4,7 +4,7 @@ import type { MessageEventBusDestinationSentryOptions } from 'n8n-workflow';
 import {
 	MessageEventBusDestinationSentry,
 	isMessageEventBusDestinationSentryOptions,
-} from '../message-event-bus-destination-sentry.ee.js';
+} from '../message-event-bus-destination-sentry.ee';
 
 describe('MessageEventBusDestinationSentry', () => {
 	describe('isMessageEventBusDestinationSentryOptions', () => {

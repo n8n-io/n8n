@@ -43,18 +43,18 @@ import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { sendErrorResponse } from '@/response-helper.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { sendErrorResponse } from '@/response-helper';
 
-import { ChatHubAgentService } from './chat-hub-agent.service.js';
-import { extractAuthenticationMetadata } from './chat-hub-extractor.js';
-import { ChatHubToolService } from './chat-hub-tool.service.js';
-import { ChatHubUploadMiddleware } from './chat-hub-upload.middleware.js';
-import { ChatHubAttachmentService } from './chat-hub.attachment.service.js';
-import { ChatHubModelsService } from './chat-hub.models.service.js';
-import { ChatHubService } from './chat-hub.service.js';
-import { ChatModelsRequestDto } from './dto/chat-models-request.dto.js';
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { extractAuthenticationMetadata } from './chat-hub-extractor';
+import { ChatHubToolService } from './chat-hub-tool.service';
+import { ChatHubUploadMiddleware } from './chat-hub-upload.middleware';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { ChatHubModelsService } from './chat-hub.models.service';
+import { ChatHubService } from './chat-hub.service';
+import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 
 const chatHubUploadMiddleware = Container.get(ChatHubUploadMiddleware);
 

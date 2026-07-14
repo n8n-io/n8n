@@ -5,10 +5,10 @@ import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { SecuritySettingsService } from '@/services/security-settings.service.js';
-import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service.js';
+import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { SecuritySettingsService } from '@/services/security-settings.service';
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 @RestController('/settings/security')
 export class SecuritySettingsController {

@@ -2,11 +2,11 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage.js';
+import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage';
 
-import { createDynamicCredentialResolver } from './shared/db-helpers.js';
-import { createCredentials } from '../shared/db/credentials.js';
-import { createUser } from '../shared/db/users.js';
+import { createDynamicCredentialResolver } from './shared/db-helpers';
+import { createCredentials } from '../shared/db/credentials';
+import { createUser } from '../shared/db/users';
 
 describe('DynamicCredentialUserEntryStorage', () => {
 	let storage: DynamicCredentialUserEntryStorage;

@@ -5,14 +5,14 @@ import type { CryptoKey } from 'jose';
 import { CompactEncrypt, compactDecrypt, importJWK } from 'jose';
 import { InstanceSettings } from 'n8n-core';
 
-import { CacheService } from '@/services/cache/cache.service.js';
+import { CacheService } from '@/services/cache/cache.service';
 
-import { OAuthJweKeyService } from '../oauth-jwe-key.service.js';
+import { OAuthJweKeyService } from '../oauth-jwe-key.service';
 import {
 	JWE_KEY_ALGORITHMS,
 	JWE_KEY_CACHE_KEY,
 	JWE_PRIVATE_KEY_TYPE,
-} from '../oauth-jwe.constants.js';
+} from '../oauth-jwe.constants';
 
 beforeAll(async () => {
 	mockInstance(InstanceSettings, {

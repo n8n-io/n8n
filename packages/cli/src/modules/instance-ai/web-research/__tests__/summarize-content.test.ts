@@ -1,6 +1,6 @@
 import type { FetchedPage } from '@n8n/instance-ai';
 
-import { maybeSummarize } from '../summarize-content.js';
+import { maybeSummarize } from '../summarize-content';
 
 function createPage(contentLength: number): FetchedPage {
 	return {

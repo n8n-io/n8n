@@ -9,9 +9,9 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController, GlobalScope, Query, Post, Param } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { BreakingChangeService } from './breaking-changes.service.js';
+import { BreakingChangeService } from './breaking-changes.service';
 
 @RestController('/breaking-changes')
 export class BreakingChangesController {

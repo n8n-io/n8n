@@ -3,7 +3,7 @@ import type { DatabaseConfig, PrometheusMetricsConfig } from '@n8n/config';
 import { DbConnectionMetrics, type DbConnection, type DbPoolStats } from '@n8n/db';
 import promClient from 'prom-client';
 
-import { PrometheusDbPoolMetricsService } from '../db-pool-metrics.service.js';
+import { PrometheusDbPoolMetricsService } from '../db-pool-metrics.service';
 
 vi.mock('prom-client');
 

@@ -12,9 +12,9 @@ import type {
 	RelatedExecution,
 } from 'n8n-workflow';
 
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee.js';
-import { ExecutionPersistence } from '@/executions/execution-persistence.js';
-import { OwnershipService } from '@/services/ownership.service.js';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { OwnershipService } from '@/services/ownership.service';
 import {
 	getLastExecutedNodeData,
 	getLastExecutedNodeRuns,
@@ -28,8 +28,8 @@ import {
 	validateWorkflowNodeGroups,
 	validateWorkflowStructure,
 	WorkflowStructureBadRequestError,
-} from '@/workflow-helpers.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+} from '@/workflow-helpers';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { mock } from 'vitest-mock-extended';
 
 describe('workflow-helpers', () => {

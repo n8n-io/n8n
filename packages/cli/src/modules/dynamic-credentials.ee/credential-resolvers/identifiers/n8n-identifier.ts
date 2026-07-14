@@ -1,10 +1,10 @@
 import { Service } from '@n8n/di';
 import type { ICredentialContext } from 'n8n-workflow';
-import { ITokenIdentifier } from './identifier-interface.js';
-import { AuthService } from '@/auth/auth.service.js';
+import { ITokenIdentifier } from './identifier-interface';
+import { AuthService } from '@/auth/auth.service';
 import { z } from 'zod';
 import { CredentialResolverError } from '@n8n/decorators';
-import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service.js';
+import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
 const ManualExecutionMetadataSchema = z.object({
 	source: z.literal('manual-execution'),

@@ -1,6 +1,6 @@
 import { WorkflowEntity } from '@n8n/db';
 
-import { dropRedactionPolicy } from '@/workflows/utils.js';
+import { dropRedactionPolicy } from '@/workflows/utils';
 
 describe('dropRedactionPolicy', () => {
 	it('removes redactionPolicy when present', () => {

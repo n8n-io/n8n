@@ -10,15 +10,15 @@ import {
 import { Container } from '@n8n/di';
 import type { MockInstance } from 'vitest';
 
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
-import { Telemetry } from '@/telemetry/index.js';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { Telemetry } from '@/telemetry';
 import {
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
 	createMember,
-} from '@test-integration/db/users.js';
-import { setupTestServer } from '@test-integration/utils/index.js';
+} from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 
 describe('Projects in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });

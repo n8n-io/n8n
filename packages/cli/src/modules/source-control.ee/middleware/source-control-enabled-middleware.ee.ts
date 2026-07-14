@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { RequestHandler } from 'express';
 
-import { SourceControlPreferencesService } from '../source-control-preferences.service.ee.js';
+import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 
 export const sourceControlEnabledMiddleware: RequestHandler = (_req, res, next) => {
 	const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);

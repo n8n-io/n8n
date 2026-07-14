@@ -26,8 +26,8 @@ import type {
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager.js';
-import type { ExternalHooks } from '@/external-hooks.js';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { ExternalHooks } from '@/external-hooks';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;

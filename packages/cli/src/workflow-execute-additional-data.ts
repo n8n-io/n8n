@@ -46,29 +46,29 @@ import {
 	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions.js';
-import { CredentialsHelper } from '@/credentials-helper.js';
-import { EventService } from '@/events/event.service.js';
-import type { AiEventPayload } from '@/events/maps/ai.event-map.js';
-import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks.js';
-import { ExecutionPersistence } from '@/executions/execution-persistence.js';
-import { isManualOrChatExecution } from '@/executions/execution.utils.js';
-import { FailedRunFactory } from '@/executions/failed-run-factory.js';
+import { ActiveExecutions } from '@/active-executions';
+import { CredentialsHelper } from '@/credentials-helper';
+import { EventService } from '@/events/event.service';
+import type { AiEventPayload } from '@/events/maps/ai.event-map';
+import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { isManualOrChatExecution } from '@/executions/execution.utils';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
-} from '@/executions/pre-execution-checks/index.js';
-import type { UpdateExecutionPayload } from '@/interfaces.js';
-import { NodeTypes } from '@/node-types.js';
-import { Push } from '@/push/index.js';
-import { UrlService } from '@/services/url.service.js';
-import { TaskRequester } from '@/task-runners/task-managers/task-requester.js';
-import { findSubworkflowStart } from '@/utils.js';
-import { objectToError } from '@/utils/object-to-error.js';
-import * as WorkflowHelpers from '@/workflow-helpers.js';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
+} from '@/executions/pre-execution-checks';
+import type { UpdateExecutionPayload } from '@/interfaces';
+import { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
+import { UrlService } from '@/services/url.service';
+import { TaskRequester } from '@/task-runners/task-managers/task-requester';
+import { findSubworkflowStart } from '@/utils';
+import { objectToError } from '@/utils/object-to-error';
+import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
-import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service.js';
+import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 export function getRunData(
 	workflowData: IWorkflowBase,

@@ -2,12 +2,12 @@ import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import z from 'zod';
 
-import type { TagService } from '@/services/tag.service.js';
-import type { Telemetry } from '@/telemetry/index.js';
+import type { TagService } from '@/services/tag.service';
+import type { Telemetry } from '@/telemetry';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types.js';
-import { createLimitSchema } from './schemas.js';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { createLimitSchema } from './schemas';
 
 const MAX_RESULTS = 500;
 

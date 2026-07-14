@@ -18,13 +18,13 @@ import {
 import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import type { EventNamesAuditType } from '@/eventbus/event-message-classes/index.js';
-import type { EventPayloadAudit } from '@/eventbus/event-message-classes/event-message-audit.js';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
-import { Push } from '@/push/index.js';
+import type { EventNamesAuditType } from '@/eventbus/event-message-classes';
+import type { EventPayloadAudit } from '@/eventbus/event-message-classes/event-message-audit';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { Push } from '@/push';
 
-import { InstanceRegistryService } from '../instance-registry.service.js';
-import { REGISTRY_CONSTANTS } from '../instance-registry.types.js';
+import { InstanceRegistryService } from '../instance-registry.service';
+import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 
 /**
  * Leader-only service that reconciles cluster state and runs health checks

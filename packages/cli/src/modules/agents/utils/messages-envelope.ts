@@ -1,7 +1,7 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import type { AgentChatMessagesResponse, AgentPersistedMessageDto } from '@n8n/api-types';
 
-import { messagesToDto } from '../agent-message-mapper.js';
+import { messagesToDto } from '../agent-message-mapper';
 
 type MessageContentPart = AgentPersistedMessageDto['content'][number];
 

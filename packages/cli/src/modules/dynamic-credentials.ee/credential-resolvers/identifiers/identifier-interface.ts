@@ -1,6 +1,6 @@
 import type { ICredentialContext } from 'n8n-workflow';
 
-import { CredentialResolutionError } from '../../errors/credential-resolution.error.js';
+import { CredentialResolutionError } from '../../errors/credential-resolution.error';
 
 /**
  * Error thrown when token identifier validation or resolution fails.

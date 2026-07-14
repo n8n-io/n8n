@@ -1,9 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { EventService } from '@/events/event.service.js';
+import { EventService } from '@/events/event.service';
 
-import { ChatHubAgentService } from './chat-hub-agent.service.js';
+import { ChatHubAgentService } from './chat-hub-agent.service';
 
 @Service()
 export class ChatHubEventRelay {

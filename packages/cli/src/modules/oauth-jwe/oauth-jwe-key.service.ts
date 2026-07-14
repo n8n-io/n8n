@@ -8,7 +8,7 @@ import { exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service.js';
+import { CacheService } from '@/services/cache/cache.service';
 
 import {
 	JWE_KEY_ALGORITHMS,
@@ -16,7 +16,7 @@ import {
 	JWE_KEY_USE,
 	JWE_PRIVATE_KEY_TYPE,
 	type JweKeyAlgorithm,
-} from './oauth-jwe.constants.js';
+} from './oauth-jwe.constants';
 
 type OAuthJweKeyEntry = {
 	algorithm: JweKeyAlgorithm;

@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan, MoreThanOrEqual, Or, Repository } from '@n8n/typeorm';
 
-import { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity.js';
+import { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
 
 @Service()
 export class InstanceAiPendingConfirmationRepository extends Repository<InstanceAiPendingConfirmation> {

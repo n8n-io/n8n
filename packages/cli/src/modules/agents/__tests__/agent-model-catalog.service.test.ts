@@ -2,8 +2,8 @@ import type { User } from '@n8n/db';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentModelCatalogService } from '../agent-model-catalog.service.js';
-import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service.js';
+import { AgentModelCatalogService } from '../agent-model-catalog.service';
+import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
 
 const fetchProviderCatalog = vi.fn();
 vi.mock('@n8n/agents', () => ({

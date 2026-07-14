@@ -3,7 +3,7 @@ import type { IRunExecutionData } from 'n8n-workflow';
 import {
 	RuntimeCredentialProxyService,
 	type RuntimeCredentialProvider,
-} from '@/services/runtime-credential-proxy.service.js';
+} from '@/services/runtime-credential-proxy.service';
 
 const runExecutionData = {} as IRunExecutionData;
 

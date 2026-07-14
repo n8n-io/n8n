@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
 import type { Cluster, ClusterOptions, RedisOptions } from 'ioredis';
 
-import type { RedisClientType } from '../scaling/redis/redis.types.js';
+import type { RedisClientType } from '../scaling/redis/redis.types';
 
 type RedisEventMap = {
 	'connection-lost': number;

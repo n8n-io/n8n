@@ -5,13 +5,9 @@ import { ApiKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TokenExpiredError } from 'jsonwebtoken';
 
-import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types.js';
-import { JwtService } from './jwt.service.js';
-import {
-	API_KEY_AUDIENCE,
-	API_KEY_ISSUER,
-	PREFIX_LEGACY_API_KEY,
-} from './public-api-key.service.js';
+import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
+import { JwtService } from './jwt.service';
+import { API_KEY_AUDIENCE, API_KEY_ISSUER, PREFIX_LEGACY_API_KEY } from './public-api-key.service';
 
 const API_KEY_HEADER = 'x-n8n-api-key';
 const LAST_USED_AT_THROTTLE_MS = 1 * Time.minutes.toMilliseconds;

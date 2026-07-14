@@ -1,34 +1,31 @@
 import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
-import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check.js';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants.js';
-import { validateWorkflowCredentialReferences } from './credential-validation.js';
-import {
-	autoPopulateNodeCredentials,
-	stripNullCredentialStubs,
-} from './credentials-auto-assign.js';
-import { validateDataTableReferencesForWorkflow } from './data-table-validation.js';
-import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used.js';
+import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import { validateWorkflowCredentialReferences } from './credential-validation';
+import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
+import { validateDataTableReferencesForWorkflow } from './data-table-validation';
+import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import {
 	buildCreateVersionMetadata,
 	resolveVersionMetadata,
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
-} from './version-metadata.js';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
-import { getSdkReferenceHint } from '../workflow-validation.utils.js';
+} from './version-metadata';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getSdkReferenceHint } from '../workflow-validation.utils';
 
-import type { CredentialsService } from '@/credentials/credentials.service.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service.js';
-import type { NodeTypes } from '@/node-types.js';
-import type { UrlService } from '@/services/url.service.js';
-import type { Telemetry } from '@/telemetry/index.js';
-import { resolveNodeWebhookIds } from '@/workflow-helpers.js';
-import type { WorkflowCreationService } from '@/workflows/workflow-creation.service.js';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { NodeTypes } from '@/node-types';
+import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
+import { resolveNodeWebhookIds } from '@/workflow-helpers';
+import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
 

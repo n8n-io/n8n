@@ -9,8 +9,8 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { DiffMetaData, DiffRule, RULES, SKIP_RULES, sleep } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
-import { EventService } from '@/events/event.service.js';
-import { RelayEventMap } from '@/events/maps/relay.event-map.js';
+import { EventService } from '@/events/event.service';
+import { RelayEventMap } from '@/events/maps/relay.event-map';
 
 /**
  * Responsible for compacting auto saved workflow history entries in the database.

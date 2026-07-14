@@ -2,12 +2,12 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User, WorkflowEntity } from '@n8n/db';
 import type { Mock } from 'vitest';
 
-import { CollaborationService } from '@/collaboration/collaboration.service.js';
-import { Telemetry } from '@/telemetry/index.js';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
-import { WorkflowService } from '@/workflows/workflow.service.js';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { Telemetry } from '@/telemetry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
-import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool.js';
+import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive Workflow' },

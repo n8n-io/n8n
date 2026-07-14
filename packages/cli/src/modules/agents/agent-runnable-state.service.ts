@@ -1,12 +1,12 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { CredentialsService } from '@/credentials/credentials.service.js';
+import { CredentialsService } from '@/credentials/credentials.service';
 
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider.js';
-import { AgentPublishService } from './agent-publish.service.js';
-import { AgentValidationService } from './agent-validation.service.js';
-import type { Agent } from './entities/agent.entity.js';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentPublishService } from './agent-publish.service';
+import { AgentValidationService } from './agent-validation.service';
+import type { Agent } from './entities/agent.entity';
 
 @Service()
 export class AgentRunnableStateService {

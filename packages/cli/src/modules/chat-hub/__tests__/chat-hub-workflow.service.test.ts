@@ -6,21 +6,21 @@ import { type IBinaryData, type INode, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workfl
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { ChatHubAgent } from '../chat-hub-agent.entity.js';
-import type { ChatHubAgentRepository } from '../chat-hub-agent.repository.js';
-import type { ChatHubCredentialsService } from '../chat-hub-credentials.service.js';
-import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor.js';
-import { ChatHubMessage } from '../chat-hub-message.entity.js';
-import { ChatHubSession } from '../chat-hub-session.entity.js';
-import type { ChatHubToolService } from '../chat-hub-tool.service.js';
-import { ChatHubWorkflowService } from '../chat-hub-workflow.service.js';
-import { ChatHubAttachmentService } from '../chat-hub.attachment.service.js';
-import { NODE_NAMES } from '../chat-hub.constants.js';
-import type { ChatHubSettingsService } from '../chat-hub.settings.service.js';
-import type { SemanticSearchOptions } from '../chat-hub.types.js';
-import type { ChatHubMessageRepository } from '../chat-message.repository.js';
+import type { ChatHubAgent } from '../chat-hub-agent.entity';
+import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
+import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
+import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
+import { ChatHubMessage } from '../chat-hub-message.entity';
+import { ChatHubSession } from '../chat-hub-session.entity';
+import type { ChatHubToolService } from '../chat-hub-tool.service';
+import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
+import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
+import { NODE_NAMES } from '../chat-hub.constants';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service';
+import type { SemanticSearchOptions } from '../chat-hub.types';
+import type { ChatHubMessageRepository } from '../chat-message.repository';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();

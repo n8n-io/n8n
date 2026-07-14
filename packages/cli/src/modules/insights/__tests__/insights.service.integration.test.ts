@@ -16,12 +16,12 @@ import type { MockInstance, Mocked } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils.js';
-import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository.js';
-import { InsightsCollectionService } from '../insights-collection.service.js';
-import type { InsightsCompactionService } from '../insights-compaction.service.js';
-import type { InsightsPruningService } from '../insights-pruning.service.js';
-import { InsightsService } from '../insights.service.js';
+import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
+import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsCollectionService } from '../insights-collection.service';
+import type { InsightsCompactionService } from '../insights-compaction.service';
+import type { InsightsPruningService } from '../insights-pruning.service';
+import { InsightsService } from '../insights.service';
 
 describe('InsightsService (Integration)', () => {
 	beforeAll(async () => {

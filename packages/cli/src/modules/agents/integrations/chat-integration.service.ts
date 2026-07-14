@@ -10,24 +10,24 @@ import { Container, Service } from '@n8n/di';
 import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map.js';
-import { UrlService } from '@/services/url.service.js';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { UrlService } from '@/services/url.service';
 
-import { AgentChatBridge } from './agent-chat-bridge.js';
+import { AgentChatBridge } from './agent-chat-bridge';
 import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
-} from './agent-chat-integration.js';
-import { AgentChatSubscriptionStateService } from './agent-chat-subscription-state.service.js';
-import { ComponentMapper, type ShortenCallback } from './component-mapper.js';
-import { loadChatSdk, loadMemoryState } from './esm-loader.js';
-import { buildIntegrationConnectionId } from './integration-tools.js';
-import { channelIntegrationRecorder } from './recording/channel-integration-recorder.js';
-import { recordAdapterCalls } from './recording/recording-adapter.js';
-import type { Agent } from '../entities/agent.entity.js';
-import { AgentRepository } from '../repositories/agent.repository.js';
+} from './agent-chat-integration';
+import { AgentChatSubscriptionStateService } from './agent-chat-subscription-state.service';
+import { ComponentMapper, type ShortenCallback } from './component-mapper';
+import { loadChatSdk, loadMemoryState } from './esm-loader';
+import { buildIntegrationConnectionId } from './integration-tools';
+import { channelIntegrationRecorder } from './recording/channel-integration-recorder';
+import { recordAdapterCalls } from './recording/recording-adapter';
+import type { Agent } from '../entities/agent.entity';
+import { AgentRepository } from '../repositories/agent.repository';
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces

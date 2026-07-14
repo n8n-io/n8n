@@ -1,6 +1,6 @@
-import type { CredentialResolution, CredentialResolutionFailure } from './credential.types.js';
-import type { CredentialMissingMode } from '../../n8n-packages.types.js';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema.js';
+import type { CredentialResolution, CredentialResolutionFailure } from './credential.types';
+import type { CredentialMissingMode } from '../../n8n-packages.types';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export function canStubNotFoundFailure(failure: CredentialResolutionFailure): boolean {
 	return failure.kind === 'not_found' && failure.targetId === undefined;

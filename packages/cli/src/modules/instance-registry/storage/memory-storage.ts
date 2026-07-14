@@ -1,6 +1,6 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 
-import type { InstanceStorage } from './instance-storage.interface.js';
+import type { InstanceStorage } from './instance-storage.interface';
 
 /**
  * In-memory storage backend for single-instance deployments.

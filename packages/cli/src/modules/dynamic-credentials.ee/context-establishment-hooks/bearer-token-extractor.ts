@@ -6,7 +6,7 @@ import {
 	IContextEstablishmentHook,
 } from '@n8n/decorators';
 
-import { HttpHeaderExtractor } from './http-header-extractor.js';
+import { HttpHeaderExtractor } from './http-header-extractor';
 
 /**
  * Extracts bearer tokens from the Authorization HTTP header.

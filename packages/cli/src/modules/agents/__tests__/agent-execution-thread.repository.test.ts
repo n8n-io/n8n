@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import { mock } from 'vitest-mock-extended';
 
-import { mockEntityManager } from '@test/mocking.js';
+import { mockEntityManager } from '@test/mocking';
 
-import { AgentExecutionThread } from '../entities/agent-execution-thread.entity.js';
-import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository.js';
+import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 
 const entityManager = mockEntityManager(AgentExecutionThread);
 const mockDataSource = { manager: entityManager };

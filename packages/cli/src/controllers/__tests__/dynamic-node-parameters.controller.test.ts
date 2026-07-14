@@ -14,9 +14,9 @@ import type {
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { DynamicNodeParametersController } from '@/controllers/dynamic-node-parameters.controller.js';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
-import * as AdditionalData from '@/workflow-execute-additional-data.js';
+import { DynamicNodeParametersController } from '@/controllers/dynamic-node-parameters.controller';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import * as AdditionalData from '@/workflow-execute-additional-data';
 
 describe('DynamicNodeParametersController', () => {
 	let service: Mocked<DynamicNodeParametersService>;

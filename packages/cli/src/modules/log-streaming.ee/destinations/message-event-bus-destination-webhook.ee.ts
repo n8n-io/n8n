@@ -20,13 +20,13 @@ import type {
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 
-import { CredentialsHelper } from '@/credentials-helper.js';
+import { CredentialsHelper } from '@/credentials-helper';
 import type {
 	MessageEventBus,
 	MessageWithCallback,
-} from '@/eventbus/message-event-bus/message-event-bus.js';
+} from '@/eventbus/message-event-bus/message-event-bus';
 
-import { MessageEventBusDestination } from './message-event-bus-destination.ee.js';
+import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,

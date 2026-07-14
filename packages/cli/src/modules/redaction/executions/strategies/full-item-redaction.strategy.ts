@@ -6,12 +6,12 @@ import type {
 	ITaskDataConnections,
 } from 'n8n-workflow';
 
-import type { RedactableExecution } from '@/executions/execution-redaction.js';
+import type { RedactableExecution } from '@/executions/execution-redaction';
 
 import type {
 	IExecutionRedactionStrategy,
 	RedactionContext,
-} from '../execution-redaction.interfaces.js';
+} from '../execution-redaction.interfaces';
 
 @Service()
 export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {

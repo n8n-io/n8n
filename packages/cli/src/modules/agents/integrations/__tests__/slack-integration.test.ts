@@ -1,5 +1,5 @@
-import { SlackIntegration } from '../platforms/slack-integration.js';
-import type { ChatInstance } from '../chat-integration.service.js';
+import { SlackIntegration } from '../platforms/slack-integration';
+import type { ChatInstance } from '../chat-integration.service';
 
 describe('SlackIntegration', () => {
 	let integration: SlackIntegration;

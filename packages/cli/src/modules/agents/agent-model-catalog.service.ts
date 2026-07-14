@@ -5,8 +5,8 @@ import { Service } from '@n8n/di';
 
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 
-import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service.js';
-import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults.js';
+import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
+import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 
 /** Google's models API returns ids as `models/<id>`; the AI SDK expects the bare id. */
 const GOOGLE_MODEL_ID_PREFIX = 'models/';

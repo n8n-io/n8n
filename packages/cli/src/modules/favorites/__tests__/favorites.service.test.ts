@@ -9,14 +9,14 @@ import {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
-import type { AgentRepository } from '@/modules/agents/repositories/agent.repository.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
-import type { UserFavorite } from '../database/entities/user-favorite.entity.js';
-import type { UserFavoriteRepository } from '../database/repositories/user-favorite.repository.js';
-import { FavoritesService } from '../favorites.service.js';
+import type { UserFavorite } from '../database/entities/user-favorite.entity';
+import type { UserFavoriteRepository } from '../database/repositories/user-favorite.repository';
+import { FavoritesService } from '../favorites.service';
 
 const makeUserFavorite = (overrides: Partial<UserFavorite> = {}): UserFavorite =>
 	({

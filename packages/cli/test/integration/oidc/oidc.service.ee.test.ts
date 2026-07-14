@@ -23,15 +23,15 @@ beforeAll(async () => {
 	real_odic_client = await vi.importActual<typeof import('openid-client')>('openid-client');
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { License } from '@/license.js';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
-import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants.js';
-import { OidcService } from '@/modules/sso-oidc/oidc.service.ee.js';
-import { JwtService } from '@/services/jwt.service.js';
-import { createCustomRoleWithScopes, createScope } from '@test-integration/db/roles.js';
-import { createUser } from '@test-integration/db/users.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { License } from '@/license';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';
+import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
+import { JwtService } from '@/services/jwt.service';
+import { createCustomRoleWithScopes, createScope } from '@test-integration/db/roles';
+import { createUser } from '@test-integration/db/users';
 
 beforeAll(async () => {
 	await testDb.init();

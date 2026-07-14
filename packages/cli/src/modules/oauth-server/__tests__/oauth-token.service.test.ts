@@ -6,18 +6,18 @@ import { UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { JwtService } from '@/services/jwt.service.js';
+import { JwtService } from '@/services/jwt.service';
 
-import type { AccessToken } from '../database/entities/oauth-access-token.entity.js';
-import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity.js';
-import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository.js';
-import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository.js';
-import { OAuthTokenService } from '../oauth-token.service.js';
-import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource.js';
-import type { McpConfig } from '@/modules/mcp/mcp.config.js';
-import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service.js';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry.js';
-import type { UrlService } from '@/services/url.service.js';
+import type { AccessToken } from '../database/entities/oauth-access-token.entity';
+import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
+import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
+import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
+import { OAuthTokenService } from '../oauth-token.service';
+import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
+import type { McpConfig } from '@/modules/mcp/mcp.config';
+import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import type { UrlService } from '@/services/url.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());

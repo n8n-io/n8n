@@ -19,8 +19,8 @@ import { UnexpectedError } from 'n8n-workflow';
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
-import { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
-import { formatWorkflow } from '@/workflows/workflow.formatter.js';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -30,7 +30,7 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 	SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE,
-} from './constants.js';
+} from './constants';
 import {
 	getCredentialExportPath,
 	getDataTableExportPath,
@@ -42,18 +42,18 @@ import {
 	readTagAndMappingsFromSourceControlFile,
 	sourceControlFoldersExistCheck,
 	sanitizeCredentialData,
-} from './source-control-helper.ee.js';
-import { SourceControlScopedService } from './source-control-scoped.service.js';
-import type { ExportResult } from './types/export-result.js';
-import type { ExportableCredential } from './types/exportable-credential.js';
-import type { DataTableResourceOwner, ExportableDataTable } from './types/exportable-data-table.js';
-import type { ExportableFolder } from './types/exportable-folders.js';
-import { ExportableProject } from './types/exportable-project.js';
-import { ExportableVariable } from './types/exportable-variable.js';
-import type { ExportableWorkflow } from './types/exportable-workflow.js';
-import type { RemoteResourceOwner } from './types/resource-owner.js';
-import type { SourceControlContext } from './types/source-control-context.js';
-import { VariablesService } from '../../environments.ee/variables/variables.service.ee.js';
+} from './source-control-helper.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
+import type { ExportResult } from './types/export-result';
+import type { ExportableCredential } from './types/exportable-credential';
+import type { DataTableResourceOwner, ExportableDataTable } from './types/exportable-data-table';
+import type { ExportableFolder } from './types/exportable-folders';
+import { ExportableProject } from './types/exportable-project';
+import { ExportableVariable } from './types/exportable-variable';
+import type { ExportableWorkflow } from './types/exportable-workflow';
+import type { RemoteResourceOwner } from './types/resource-owner';
+import type { SourceControlContext } from './types/source-control-context';
+import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 
 @Service()
 export class SourceControlExportService {

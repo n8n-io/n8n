@@ -13,12 +13,12 @@ import type {
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
-import type { ActiveExecutions } from '@/active-executions.js';
-import type { NodeTypes } from '@/node-types.js';
-import type { PostHogClient } from '@/posthog/index.js';
-import type { WorkflowRunner } from '@/workflow-runner.js';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
-import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
+import type { ActiveExecutions } from '@/active-executions';
+import type { NodeTypes } from '@/node-types';
+import type { PostHogClient } from '@/posthog';
+import type { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 // ---------------------------------------------------------------------------
 // Mocks — must be before the import of the class under test
@@ -93,17 +93,17 @@ vi.mock('n8n-workflow', async () => {
 // Import SUT and mocked modules (after vi.mock calls)
 // ---------------------------------------------------------------------------
 
-import { EvalExecutionService } from '../execution.service.js';
-import { createLlmMockHandler } from '../mock-handler.js';
-import { generatePinData } from '../pin-data-generator.js';
+import { EvalExecutionService } from '../execution.service';
+import { createLlmMockHandler } from '../mock-handler';
+import { generatePinData } from '../pin-data-generator';
 import {
 	detectBinaryDependencies,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	partitionAiRoots,
-} from '../workflow-analysis.js';
-import type { MockHints } from '../workflow-analysis.js';
+} from '../workflow-analysis';
+import type { MockHints } from '../workflow-analysis';
 
 // ---------------------------------------------------------------------------
 // Helpers

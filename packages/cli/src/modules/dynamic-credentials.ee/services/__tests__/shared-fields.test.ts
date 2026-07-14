@@ -6,9 +6,9 @@ import {
 } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
-import type { CredentialTypes } from '@/credential-types.js';
+import type { CredentialTypes } from '@/credential-types';
 
-import { extractSharedFields, getChangedSharedFields } from '../shared-fields.js';
+import { extractSharedFields, getChangedSharedFields } from '../shared-fields';
 
 describe('extractSharedFields', () => {
 	describe('with only static fields', () => {

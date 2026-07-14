@@ -2,7 +2,7 @@ import {
 	assertEveryRequestedEntityAccessible,
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
-} from '../package-export.errors.js';
+} from '../package-export.errors';
 
 describe('assertEveryRequestedEntityAccessible', () => {
 	it('does not throw when every requested id was found', async () => {

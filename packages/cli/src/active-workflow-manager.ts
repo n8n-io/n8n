@@ -4,7 +4,7 @@ import {
 	TRIGGER_COUNT_EXCLUDED_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
-} from '@/constants.js';
+} from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
@@ -40,23 +40,23 @@ import {
 } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
-import { ActivationErrorsService } from '@/activation-errors.service.js';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { NodeTypes } from '@/node-types.js';
-import { Push } from '@/push/index.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
-import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map.js';
-import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.js';
-import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.js';
-import { ActiveWorkflowsService } from '@/services/active-workflows.service.js';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
-import { WebhookService } from '@/webhooks/webhook.service.js';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
-import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory.js';
-import { getErrorDescription, getErrorNodeId } from '@/workflows/utils.js';
-import { formatWorkflow } from '@/workflows/workflow.formatter.js';
+import { ActivationErrorsService } from '@/activation-errors.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ExternalHooks } from '@/external-hooks';
+import { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { ActiveWorkflowsService } from '@/services/active-workflows.service';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { WebhookService } from '@/webhooks/webhook.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
+import { getErrorDescription, getErrorNodeId } from '@/workflows/utils';
+import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;

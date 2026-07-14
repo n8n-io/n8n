@@ -5,9 +5,9 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error.js';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
-import * as discoverService from '../discover.service.js';
+import * as discoverService from '../discover.service';
 
 // Loaded dynamically (handler routes are arrays of middleware + handler) and
 // typed loosely so the suite can invoke individual entries by index.

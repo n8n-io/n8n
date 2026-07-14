@@ -24,13 +24,13 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
-import { userHasScopes } from '@/permissions.ee/check-access.js';
-import { OwnershipService } from '@/services/ownership.service.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { OwnershipService } from '@/services/ownership.service';
 
-import { DataTableAggregateService } from './data-table-aggregate.service.js';
-import { DataTableService } from './data-table.service.js';
+import { DataTableAggregateService } from './data-table-aggregate.service';
+import { DataTableService } from './data-table.service';
 
 const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTable',

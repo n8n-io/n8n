@@ -9,10 +9,10 @@ import {
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults.js';
-import { AgentRepository } from './repositories/agent.repository.js';
-import { AiService } from '@/services/ai.service.js';
-import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids.js';
+import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
+import { AgentRepository } from './repositories/agent.repository';
+import { AiService } from '@/services/ai.service';
+import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 
 @Service()
 export class AgentValidationService {

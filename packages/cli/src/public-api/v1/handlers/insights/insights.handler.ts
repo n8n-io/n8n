@@ -4,13 +4,13 @@ import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { InsightsService } from '@/modules/insights/insights.service.js';
-import type { InsightsRequest } from '@/public-api/types.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InsightsService } from '@/modules/insights/insights.service';
+import type { InsightsRequest } from '@/public-api/types';
 
-import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
-import { publicApiScope } from '../../shared/middlewares/global.middleware.js';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
 const handleError = (error: unknown) => {
 	if (error instanceof UserError) {

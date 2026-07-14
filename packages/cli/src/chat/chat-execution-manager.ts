@@ -15,15 +15,15 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { NotFoundError } from '../errors/response-errors/not-found.error.js';
-import { ExecutionPersistence } from '../executions/execution-persistence.js';
-import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data.js';
-import { preserveInputOverride } from '../workflow-helpers.js';
-import { WorkflowRunner } from '../workflow-runner.js';
-import type { ChatMessage } from './chat-service.types.js';
-import { redirectIfToolExecutor } from './utils.js';
-import { NodeTypes } from '../node-types.js';
-import { OwnershipService } from '../services/ownership.service.js';
+import { NotFoundError } from '../errors/response-errors/not-found.error';
+import { ExecutionPersistence } from '../executions/execution-persistence';
+import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
+import { preserveInputOverride } from '../workflow-helpers';
+import { WorkflowRunner } from '../workflow-runner';
+import type { ChatMessage } from './chat-service.types';
+import { redirectIfToolExecutor } from './utils';
+import { NodeTypes } from '../node-types';
+import { OwnershipService } from '../services/ownership.service';
 
 @Service()
 export class ChatExecutionManager {

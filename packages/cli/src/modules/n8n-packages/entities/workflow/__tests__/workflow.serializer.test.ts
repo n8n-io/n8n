@@ -1,5 +1,5 @@
-import type { SerializedWorkflow } from '../../../spec/serialized/workflow.schema.js';
-import { WorkflowSerializer } from '../workflow.serializer.js';
+import type { SerializedWorkflow } from '../../../spec/serialized/workflow.schema';
+import { WorkflowSerializer } from '../workflow.serializer';
 
 const wire = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkflow => ({
 	id: 'wf-source-id',

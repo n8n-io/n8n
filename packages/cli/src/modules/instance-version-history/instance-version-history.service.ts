@@ -2,16 +2,16 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { N8N_VERSION } from '@/constants.js';
+import { N8N_VERSION } from '@/constants';
 
-import { InstanceVersionHistoryRepository } from './database/repositories/instance-version-history.repository.js';
-import type { SemVer, VersionEntry } from './instance-version-history.types.js';
+import { InstanceVersionHistoryRepository } from './database/repositories/instance-version-history.repository';
+import type { SemVer, VersionEntry } from './instance-version-history.types';
 import {
 	compareVersions,
 	formatVersion,
 	parseVersion,
 	versionGte,
-} from './instance-version-history.types.js';
+} from './instance-version-history.types';
 
 @Service()
 export class InstanceVersionHistoryService {

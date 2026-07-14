@@ -2,18 +2,18 @@ import type { Mocked } from 'vitest';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service';
 
-import { AgentsCredentialProvider } from '../adapters/agents-credential-provider.js';
-import type { AgentPublishService } from '../agent-publish.service.js';
-import { AgentRunnableStateService } from '../agent-runnable-state.service.js';
-import type { AgentsService } from '../agents.service.js';
-import type { AgentValidationService } from '../agent-validation.service.js';
-import { AgentsController } from '../agents.controller.js';
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import type { AgentPublishService } from '../agent-publish.service';
+import { AgentRunnableStateService } from '../agent-runnable-state.service';
+import type { AgentsService } from '../agents.service';
+import type { AgentValidationService } from '../agent-validation.service';
+import { AgentsController } from '../agents.controller';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
-} from './test-utils/controller-route-metadata.js';
+} from './test-utils/controller-route-metadata';
 
 function makeController({
 	agentsService = mock<

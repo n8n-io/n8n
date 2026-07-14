@@ -5,22 +5,22 @@ import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { z } from 'zod';
 
-import { CredentialTypes } from '@/credential-types.js';
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee.js';
-import { CredentialsHelper } from '@/credentials-helper.js';
-import { CredentialNotFoundError } from '@/errors/credential-not-found.error.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { CredentialsHelper } from '@/credentials-helper';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { toPublicApiCredentialResponse } from './credentials.mapper.js';
+import { toPublicApiCredentialResponse } from './credentials.mapper';
 import {
 	validCredentialsProperties,
 	validCredentialType,
 	validCredentialTypeForUpdate,
 	validCredentialsPropertiesForUpdate,
-} from './credentials.middleware.js';
+} from './credentials.middleware';
 import {
 	buildSharedForCredential,
 	CredentialsIsNotUpdatableError,
@@ -31,16 +31,16 @@ import {
 	saveCredential,
 	toJsonSchema,
 	updateCredential,
-} from './credentials.service.js';
-import type { CredentialTypeRequest, CredentialRequest } from '../../../types.js';
-import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
+} from './credentials.service';
+import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	apiKeyHasScopeWithGlobalScopeFallback,
 	projectScope,
 	validCursor,
-} from '../../shared/middlewares/global.middleware.js';
-import { encodeNextCursor } from '../../shared/services/pagination.service.js';
+} from '../../shared/middlewares/global.middleware';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type CredentialsHandlers = {
 	getCredentials: PublicAPIEndpoint<CredentialRequest.GetAll>;

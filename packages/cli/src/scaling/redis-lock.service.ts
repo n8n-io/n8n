@@ -10,7 +10,7 @@ import type { Cluster, Redis } from 'ioredis';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createHash, randomUUID } from 'node:crypto';
 
-import { RedisClientService } from '@/services/redis-client.service.js';
+import { RedisClientService } from '@/services/redis-client.service';
 import { OnShutdown } from '@n8n/decorators';
 
 const COMMAND_TIMEOUT_MS = 5_000;

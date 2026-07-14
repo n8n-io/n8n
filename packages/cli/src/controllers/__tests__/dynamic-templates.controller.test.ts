@@ -1,9 +1,9 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { DynamicTemplatesController } from '@/controllers/dynamic-templates.controller.js';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
-import type { DynamicTemplatesService } from '@/services/dynamic-templates.service.js';
+import { DynamicTemplatesController } from '@/controllers/dynamic-templates.controller';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { DynamicTemplatesService } from '@/services/dynamic-templates.service';
 
 describe('DynamicTemplatesController', () => {
 	const mockDynamicTemplatesService = mock<DynamicTemplatesService>();

@@ -9,7 +9,7 @@ import { Service } from '@n8n/di';
 import { Cipher, type CipherAlgorithm } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 type KeyInfo = { id: string; value: string; algorithm: string };
 

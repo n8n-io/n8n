@@ -6,18 +6,18 @@ import { UserError } from 'n8n-workflow';
 import { PassThrough } from 'node:stream';
 import type { Mocked } from 'vitest';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ConflictError } from '@/errors/response-errors/conflict.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { EventService } from '@/events/event.service.js';
-import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
-} from '@/modules/n8n-packages/entities/package-export.errors.js';
-import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service.js';
-import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware.js';
+} from '@/modules/n8n-packages/entities/package-export.errors';
+import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
 const mockMiddleware = vi.fn(async (_req: unknown, _res: unknown, next: unknown) =>
 	(next as () => void)(),

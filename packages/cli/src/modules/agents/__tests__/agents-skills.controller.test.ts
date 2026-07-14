@@ -1,8 +1,8 @@
-import { AgentsSkillsController } from '../agents-skills.controller.js';
+import { AgentsSkillsController } from '../agents-skills.controller';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
-} from './test-utils/controller-route-metadata.js';
+} from './test-utils/controller-route-metadata';
 
 describe('AgentsSkillsController route access scopes', () => {
 	expectProjectScopedAgentRoutes(AgentsSkillsController);

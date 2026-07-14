@@ -5,16 +5,16 @@ import type { ErrorReporter } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service.js';
+import type { CacheService } from '@/services/cache/cache.service';
 
-import { N8N_VERSION } from '../../../constants.js';
-import { RuleRegistry } from '../breaking-changes.rule-registry.service.js';
-import { BreakingChangeService } from '../breaking-changes.service.js';
-import { createNode, createWorkflow } from './test-helpers.js';
-import { FileAccessRule } from '../rules/v2/file-access.rule.js';
-import { ProcessEnvAccessRule } from '../rules/v2/process-env-access.rule.js';
-import { RemovedNodesRule } from '../rules/v2/removed-nodes.rule.js';
-import { WaitNodeSubworkflowRule } from '../rules/v2/wait-node-subworkflow.rule.js';
+import { N8N_VERSION } from '../../../constants';
+import { RuleRegistry } from '../breaking-changes.rule-registry.service';
+import { BreakingChangeService } from '../breaking-changes.service';
+import { createNode, createWorkflow } from './test-helpers';
+import { FileAccessRule } from '../rules/v2/file-access.rule';
+import { ProcessEnvAccessRule } from '../rules/v2/process-env-access.rule';
+import { RemovedNodesRule } from '../rules/v2/removed-nodes.rule';
+import { WaitNodeSubworkflowRule } from '../rules/v2/wait-node-subworkflow.rule';
 
 describe('BreakingChangeService', () => {
 	const logger = mockLogger();

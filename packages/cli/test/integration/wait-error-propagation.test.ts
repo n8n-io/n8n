@@ -4,11 +4,11 @@ import { Container } from '@n8n/di';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
-import { createOwner } from './shared/db/users.js';
-import * as utils from './shared/utils/index.js';
-import { loadNodesFromDist } from './shared/utils/node-types-data.js';
+import { createOwner } from './shared/db/users';
+import * as utils from './shared/utils';
+import { loadNodesFromDist } from './shared/utils/node-types-data';
 
 const SUB_ERROR_MESSAGE = 'Error from sub-workflow after webhook resume';
 

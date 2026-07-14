@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import type { IdentityProviderInstance } from 'samlify';
 import type { XMLFileInfo, XMLLintOptions, XMLValidationResult } from 'xmllint-wasm';
 
-import { InvalidSamlMetadataError } from './errors/invalid-saml-metadata.error.js';
+import { InvalidSamlMetadataError } from './errors/invalid-saml-metadata.error';
 
 @Service()
 export class SamlValidator {

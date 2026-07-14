@@ -12,9 +12,9 @@ import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies 
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
-import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history.js';
+import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 
-import { createTestRun } from '../../shared/db/evaluation.js';
+import { createTestRun } from '../../shared/db/evaluation';
 
 // Test helper functions
 async function shareWorkflowsToProject(

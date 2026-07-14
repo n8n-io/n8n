@@ -20,26 +20,26 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { ActiveExecutions } from '@/active-executions.js';
-import { DuplicateExecutionError } from '@/errors/duplicate-execution.error.js';
-import type { EventService } from '@/events/event.service.js';
-import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow.js';
-import type { ExecutionService } from '@/executions/execution.service.js';
+import type { ActiveExecutions } from '@/active-executions';
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
+import type { EventService } from '@/events/event.service';
+import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
+import type { ExecutionService } from '@/executions/execution.service';
 import type {
 	ScheduleTriggerCollectionSession,
 	ScheduleTriggerJobRegistrar,
-} from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.js';
-import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
+} from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type {
 	PublishedWorkflowDataForExecution,
 	WorkflowPublishedDataService,
-} from '@/workflows/workflow-published-data.service.js';
-import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
+} from '@/workflows/workflow-published-data.service';
+import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import {
 	TriggerExecutionContextFactory,
 	type TriggerFailureHandler,
-} from '../trigger-execution-context.factory.js';
+} from '../trigger-execution-context.factory';
 
 vi.mock('@/execution-lifecycle/execute-error-workflow');
 

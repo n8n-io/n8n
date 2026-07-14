@@ -27,8 +27,8 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
-import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service.js';
-import { InstanceAiService } from '../instance-ai.service.js';
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
+import { InstanceAiService } from '../instance-ai.service';
 
 /**
  * Regression: planned-task workflow runs (build agent, checkpoint verifications)

@@ -12,11 +12,11 @@ import { mock } from 'vitest-mock-extended';
 import {
 	createN8nDelegateSubAgentTool,
 	formatSubAgentToolOutput,
-} from '../delegate-sub-agent-tool.js';
+} from '../delegate-sub-agent-tool';
 import type {
 	SubAgentForegroundResult,
 	SubAgentForegroundRunner,
-} from '../sub-agent-foreground-runner.js';
+} from '../sub-agent-foreground-runner';
 
 const projectId = 'project-1';
 

@@ -1,1 +1,1 @@
-export { PrometheusMetricsService } from './prometheus.service.js';
+export { PrometheusMetricsService } from './prometheus.service';

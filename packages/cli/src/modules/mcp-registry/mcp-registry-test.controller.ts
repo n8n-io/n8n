@@ -1,12 +1,12 @@
 import { Post, RestController } from '@n8n/decorators';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import { McpRegistryServerEntity } from './registry/mcp-registry-server.entity.js';
-import { McpRegistryServerRepository } from './registry/mcp-registry-server.repository.js';
-import { McpRegistryService } from './registry/mcp-registry.service.js';
-import { toEntity } from './registry/mcp-registry.types.js';
-import { notionMockServer, linearMockServer } from './registry/mock-servers.js';
+import { McpRegistryServerEntity } from './registry/mcp-registry-server.entity';
+import { McpRegistryServerRepository } from './registry/mcp-registry-server.repository';
+import { McpRegistryService } from './registry/mcp-registry.service';
+import { toEntity } from './registry/mcp-registry.types';
+import { notionMockServer, linearMockServer } from './registry/mock-servers';
 
 /**
  * Test-only endpoints for seeding MCP registry data in E2E tests.

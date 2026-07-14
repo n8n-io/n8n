@@ -4,10 +4,10 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import { CacheService } from '@/services/cache/cache.service.js';
+import { CacheService } from '@/services/cache/cache.service';
 
-import type { PrometheusMetricsCollector } from './base.js';
-import { CachedMetricQuery } from './cached-metric-query.js';
+import type { PrometheusMetricsCollector } from './base';
+import { CachedMetricQuery } from './cached-metric-query';
 
 /**
  * Tracks the active workflow count via a Gauge, queried lazily on each scrape.

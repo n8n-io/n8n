@@ -10,13 +10,13 @@ import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee.js';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 
-import { MockProviders, createDummyProvider } from '../../shared/external-secrets/utils.js';
-import { createAdmin, createMember, createOwner } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils/index.js';
+import { MockProviders, createDummyProvider } from '../../shared/external-secrets/utils';
+import { createAdmin, createMember, createOwner } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils';
 
 const mockProvidersInstance = new MockProviders();
 // Register mock providers for types used in tests

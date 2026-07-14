@@ -1,6 +1,6 @@
 import { OperationalError } from 'n8n-workflow';
 
-import type { Agent } from '../entities/agent.entity.js';
+import type { Agent } from '../entities/agent.entity';
 
 export function getPublishedAgentSnapshot(agentEntity: Agent): Agent {
 	const activeVersionSchema = agentEntity.activeVersion?.schema;

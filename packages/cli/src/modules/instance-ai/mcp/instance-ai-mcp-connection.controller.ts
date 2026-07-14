@@ -19,13 +19,13 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
-import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 
-import { InstanceAiMcpRegistryService } from './instance-ai-mcp-registry.service.js';
-import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity.js';
+import { InstanceAiMcpRegistryService } from './instance-ai-mcp-registry.service';
+import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
 
 interface ServerMetadata {
 	title: string;

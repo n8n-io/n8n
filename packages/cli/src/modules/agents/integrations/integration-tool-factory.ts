@@ -7,16 +7,16 @@ import {
 	DEFAULT_INTEGRATION_CONTEXT_TOOL_DEFINITIONS,
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
-} from './integration-tool-definitions.js';
+} from './integration-tool-definitions';
 import {
 	buildActionToolDescription,
 	buildContextToolDescription,
-} from './integration-tool-descriptions.js';
+} from './integration-tool-descriptions';
 import {
 	executeActionToolBatch,
 	executeActionToolOperation,
 	executeContextToolOperation,
-} from './integration-tool-execution.js';
+} from './integration-tool-execution';
 import {
 	buildActionInputSchema,
 	buildContextInputSchema,
@@ -24,7 +24,7 @@ import {
 	type RawContextToolInput,
 	toSingleActionOperation,
 	toSingleContextOperation,
-} from './integration-tool-schema.js';
+} from './integration-tool-schema';
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
@@ -35,7 +35,7 @@ import type {
 	IntegrationMessageContextStore,
 	IntegrationToolConnectionDescriptor,
 	IntegrationToolConnectionSource,
-} from './integration-tool-types.js';
+} from './integration-tool-types';
 
 export interface IntegrationToolCapabilities {
 	contextQueries?: IntegrationContextQuery[];

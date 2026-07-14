@@ -14,12 +14,12 @@ import {
 import { TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { InstanceSettings } from 'n8n-core';
 
-import type { OtelConnectionParams } from './otel-settings.service.js';
-import { OtelSettingsService } from './otel-settings.service.js';
-import { OtelConfig } from './otel.config.js';
-import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants.js';
+import type { OtelConnectionParams } from './otel-settings.service';
+import { OtelSettingsService } from './otel-settings.service';
+import { OtelConfig } from './otel.config';
+import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
 
-import { N8N_VERSION } from '@/constants.js';
+import { N8N_VERSION } from '@/constants';
 
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
 

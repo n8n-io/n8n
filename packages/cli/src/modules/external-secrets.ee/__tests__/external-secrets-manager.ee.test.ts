@@ -4,17 +4,17 @@ import type { Cipher } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { DummyProvider, MockProviders } from '@test/external-secrets/utils.js';
+import { DummyProvider, MockProviders } from '@test/external-secrets/utils';
 
-import { ExternalSecretsManager } from '../external-secrets-manager.ee.js';
-import { ExternalSecretsProviderConnectionManager } from '../external-secrets-provider-connection-manager.ee.js';
-import type { ExternalSecretsConfig } from '../external-secrets.config.js';
-import { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service.js';
-import { ExternalSecretsProviderRegistry } from '../provider-registry.service.js';
-import { ExternalSecretsRetryManager } from '../retry-manager.service.js';
-import { ExternalSecretsSecretsCache } from '../secrets-cache.service.js';
-import type { ExternalSecretsSettingsStore } from '../settings-store.service.js';
-import type { ExternalSecretsSettings, SecretsProvider } from '../types.js';
+import { ExternalSecretsManager } from '../external-secrets-manager.ee';
+import { ExternalSecretsProviderConnectionManager } from '../external-secrets-provider-connection-manager.ee';
+import type { ExternalSecretsConfig } from '../external-secrets.config';
+import { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
+import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
+import { ExternalSecretsRetryManager } from '../retry-manager.service';
+import { ExternalSecretsSecretsCache } from '../secrets-cache.service';
+import type { ExternalSecretsSettingsStore } from '../settings-store.service';
+import type { ExternalSecretsSettings, SecretsProvider } from '../types';
 
 const createDeferred = () => {
 	let resolve!: () => void;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { McpRegistryServerEntity } from './mcp-registry-server.entity.js';
+import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
 
 type McpRegistryServerUpsertRow = Pick<
 	McpRegistryServerEntity,

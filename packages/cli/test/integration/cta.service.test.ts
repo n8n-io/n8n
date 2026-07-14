@@ -3,10 +3,10 @@ import type { User } from '@n8n/db';
 import { StatisticsNames } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CtaService } from '@/services/cta.service.js';
+import { CtaService } from '@/services/cta.service';
 
-import { createUser } from './shared/db/users.js';
-import { createWorkflowStatisticsItem } from './shared/db/workflow-statistics.js';
+import { createUser } from './shared/db/users';
+import { createWorkflowStatisticsItem } from './shared/db/workflow-statistics';
 
 describe('CtaService', () => {
 	let ctaService: CtaService;

@@ -17,10 +17,10 @@ import {
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service.js';
-import { UserService } from '@/services/user.service.js';
+import { EventService } from '@/events/event.service';
+import { UserService } from '@/services/user.service';
 
-import { OwnershipService } from './ownership.service.js';
+import { OwnershipService } from './ownership.service';
 
 const isStatusRootExecution = {
 	success: true,

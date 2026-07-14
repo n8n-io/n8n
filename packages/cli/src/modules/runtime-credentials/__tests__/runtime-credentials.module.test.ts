@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { RuntimeCredentialsModule } from '../runtime-credentials.module.js';
+import { RuntimeCredentialsModule } from '../runtime-credentials.module';
 
 describe('RuntimeCredentialsModule', () => {
 	let module: RuntimeCredentialsModule;

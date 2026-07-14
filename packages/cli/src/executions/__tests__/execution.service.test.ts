@@ -13,21 +13,21 @@ import { mock } from 'vitest-mock-extended';
 import type { IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 
-import type { ActiveExecutions } from '@/active-executions.js';
-import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
-import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error.js';
-import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error.js';
-import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
-import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service.js';
-import { ExecutionService } from '@/executions/execution.service.js';
-import type { ExecutionRequest } from '@/executions/execution.types.js';
-import type { ExecutionStopService } from '@/scaling/execution-stop.service.js';
-import { ScalingService } from '@/scaling/scaling.service.js';
-import type { Job } from '@/scaling/scaling.types.js';
-import type { WaitTracker } from '@/wait-tracker.js';
-import type { WorkflowRunner } from '@/workflow-runner.js';
+import type { ActiveExecutions } from '@/active-executions';
+import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+import { ExecutionService } from '@/executions/execution.service';
+import type { ExecutionRequest } from '@/executions/execution.types';
+import type { ExecutionStopService } from '@/scaling/execution-stop.service';
+import { ScalingService } from '@/scaling/scaling.service';
+import type { Job } from '@/scaling/scaling.types';
+import type { WaitTracker } from '@/wait-tracker';
+import type { WorkflowRunner } from '@/workflow-runner';
 
 describe('ExecutionService', () => {
 	const scalingService = mockInstance(ScalingService);

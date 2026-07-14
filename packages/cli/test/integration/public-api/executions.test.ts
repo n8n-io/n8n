@@ -12,13 +12,13 @@ import { Container } from '@n8n/di';
 import { type ExecutionStatus } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 
-import { ActiveExecutions } from '@/active-executions.js';
-import type { ActiveWorkflowManager } from '@/active-workflow-manager.js';
-import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error.js';
-import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error.js';
-import { ConflictError } from '@/errors/response-errors/conflict.error.js';
-import { ExecutionService } from '@/executions/execution.service.js';
-import { Telemetry } from '@/telemetry/index.js';
+import { ActiveExecutions } from '@/active-executions';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ExecutionService } from '@/executions/execution.service';
+import { Telemetry } from '@/telemetry';
 
 import {
 	createAnnotationTags,
@@ -27,10 +27,10 @@ import {
 	createExecution,
 	createManyExecutions,
 	createSuccessfulExecution,
-} from '../shared/db/executions.js';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+} from '../shared/db/executions';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 let owner: User;
 let user1: User;

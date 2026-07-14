@@ -9,20 +9,20 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
-} from '@/constants.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { EventService } from '@/events/event.service.js';
-import type { UserLike } from '@/events/maps/relay.event-map.js';
-import { Push } from '@/push/index.js';
+} from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import type { UserLike } from '@/events/maps/relay.event-map';
+import { Push } from '@/push';
 
-import { CommunityNodeTypesService } from './community-node-types.service.js';
-import { CommunityPackagesConfig } from './community-packages.config.js';
-import { CommunityPackagesService, isValidVersionSpecifier } from './community-packages.service.js';
-import type { CommunityPackages } from './community-packages.types.js';
-import type { InstalledPackages } from './installed-packages.entity.js';
-import { executeNpmCommand, isNpmExecErrorWithStdout } from './npm-utils.js';
+import { CommunityNodeTypesService } from './community-node-types.service';
+import { CommunityPackagesConfig } from './community-packages.config';
+import { CommunityPackagesService, isValidVersionSpecifier } from './community-packages.service';
+import type { CommunityPackages } from './community-packages.types';
+import type { InstalledPackages } from './installed-packages.entity';
+import { executeNpmCommand, isNpmExecErrorWithStdout } from './npm-utils';
 
 const {
 	PACKAGE_NOT_INSTALLED,

@@ -1,6 +1,6 @@
 import { CREDENTIAL_BLANKING_VALUE, type INodeProperties } from 'n8n-workflow';
 
-import { RedactionService } from '../redaction.service.ee.js';
+import { RedactionService } from '../redaction.service.ee';
 
 function createProperty(name: string, isPassword = false): INodeProperties {
 	return {

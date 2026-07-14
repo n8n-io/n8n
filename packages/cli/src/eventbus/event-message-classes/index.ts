@@ -1,11 +1,11 @@
-import type { EventMessageAiNode } from './event-message-ai-node.js';
-import type { EventMessageAudit } from './event-message-audit.js';
-import type { EventMessageExecution } from './event-message-execution.js';
-import type { EventMessageGeneric } from './event-message-generic.js';
-import type { EventMessageNode } from './event-message-node.js';
-import type { EventMessageQueue } from './event-message-queue.js';
-import type { EventMessageRunner } from './event-message-runner.js';
-import type { EventMessageWorkflow } from './event-message-workflow.js';
+import type { EventMessageAiNode } from './event-message-ai-node';
+import type { EventMessageAudit } from './event-message-audit';
+import type { EventMessageExecution } from './event-message-execution';
+import type { EventMessageGeneric } from './event-message-generic';
+import type { EventMessageNode } from './event-message-node';
+import type { EventMessageQueue } from './event-message-queue';
+import type { EventMessageRunner } from './event-message-runner';
+import type { EventMessageWorkflow } from './event-message-workflow';
 
 export const eventNamesAiNodes = [
 	'n8n.ai.memory.get.messages',

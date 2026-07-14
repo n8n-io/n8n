@@ -1,10 +1,10 @@
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
-import type { EphemeralNodeExecutor } from '@/node-execution/index.js';
-import { NodeTypes } from '@/node-types.js';
+import type { EphemeralNodeExecutor } from '@/node-execution';
+import { NodeTypes } from '@/node-types';
 
-import { resolveNodeTool } from '../node-tool-factory.js';
+import { resolveNodeTool } from '../node-tool-factory';
 
 // The node-tool-factory imports the DI `Container` to look up NodeTypes inside
 // `resolveInputSchema` (for auto-seeding a `{ input: string }` schema on

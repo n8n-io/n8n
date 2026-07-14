@@ -5,9 +5,9 @@ import {
 	getWorkflowById,
 } from '@n8n/backend-test-utils';
 
-import { UnpublishWorkflowCommand } from '@/commands/unpublish/workflow.js';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { setupTestCommand } from '@test-integration/utils/test-command.js';
+import { UnpublishWorkflowCommand } from '@/commands/unpublish/workflow';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(UnpublishWorkflowCommand);

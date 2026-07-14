@@ -8,13 +8,13 @@ import type {
 	IExecutionContext,
 } from 'n8n-workflow';
 
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee.js';
-import { UrlService } from '@/services/url.service.js';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { UrlService } from '@/services/url.service';
 
 import { ExecutionContextService } from 'n8n-core';
-import { AuthorizeIntentService } from './authorize-intent.service.js';
-import { CredentialResolverWorkflowService } from './credential-resolver-workflow.service.js';
-import { DynamicCredentialService } from './dynamic-credential.service.js';
+import { AuthorizeIntentService } from './authorize-intent.service';
+import { CredentialResolverWorkflowService } from './credential-resolver-workflow.service';
+import { DynamicCredentialService } from './dynamic-credential.service';
 
 @Service()
 export class CredentialCheckProxyService implements DynamicCredentialCheckProxyProvider {

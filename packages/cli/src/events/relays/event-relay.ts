@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 
-import { EventService } from '@/events/event.service.js';
-import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 @Service()
 export class EventRelay {

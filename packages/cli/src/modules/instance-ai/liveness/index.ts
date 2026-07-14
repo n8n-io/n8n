@@ -11,4 +11,4 @@ export {
 	type InstanceAiLivenessTimedOutActiveRun,
 	type InstanceAiLivenessTimedOutSuspendedRun,
 	type InstanceAiLivenessTimedOutTask,
-} from './instance-ai-liveness.service.js';
+} from './instance-ai-liveness.service';

@@ -1,4 +1,4 @@
-import { TaskRunnerTaskTimeoutRule } from '../task-runner-task-timeout.rule.js';
+import { TaskRunnerTaskTimeoutRule } from '../task-runner-task-timeout.rule';
 
 describe('TaskRunnerTaskTimeoutRule', () => {
 	let rule: TaskRunnerTaskTimeoutRule;

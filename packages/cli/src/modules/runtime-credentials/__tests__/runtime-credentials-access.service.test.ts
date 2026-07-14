@@ -2,7 +2,7 @@ import type { Cipher } from 'n8n-core';
 import type { IRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { RuntimeCredentialsAccessService } from '../runtime-credentials-access.service.js';
+import { RuntimeCredentialsAccessService } from '../runtime-credentials-access.service';
 
 const ENCRYPTED_BLOB = 'encrypted-blob-placeholder';
 

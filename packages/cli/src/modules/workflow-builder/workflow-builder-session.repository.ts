@@ -12,7 +12,7 @@ import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-import { WorkflowBuilderSession } from './workflow-builder-session.entity.js';
+import { WorkflowBuilderSession } from './workflow-builder-session.entity';
 
 @Service()
 export class WorkflowBuilderSessionRepository

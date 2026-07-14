@@ -1,6 +1,6 @@
 import type { WorkflowEntity } from '@n8n/db';
 
-import { DataTableRequirementsExtractor } from '../data-table-requirements.extractor.js';
+import { DataTableRequirementsExtractor } from '../data-table-requirements.extractor';
 
 function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	return {

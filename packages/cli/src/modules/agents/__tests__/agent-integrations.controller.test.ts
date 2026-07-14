@@ -1,23 +1,23 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service.js';
-import { AgentIntegrationsController } from '../agent-integrations.controller.js';
-import type { AgentPublishService } from '../agent-publish.service.js';
-import { AgentRunnableStateService } from '../agent-runnable-state.service.js';
-import type { AgentValidationService } from '../agent-validation.service.js';
-import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration.js';
-import type { ChatIntegrationService } from '../integrations/chat-integration.service.js';
-import type { SlackAppSetupService } from '../integrations/slack-app-setup.service.js';
-import type { AgentRepository } from '../repositories/agent.repository.js';
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { AgentIntegrationsController } from '../agent-integrations.controller';
+import type { AgentPublishService } from '../agent-publish.service';
+import { AgentRunnableStateService } from '../agent-runnable-state.service';
+import type { AgentValidationService } from '../agent-validation.service';
+import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
+import type { AgentRepository } from '../repositories/agent.repository';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
-} from './test-utils/controller-route-metadata.js';
+} from './test-utils/controller-route-metadata';
 
 const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook', 'handleSlackAppOAuthCallback']);
 

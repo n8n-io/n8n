@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 
-import { TokenExchangeJtiRepository } from '../database/repositories/token-exchange-jti.repository.js';
+import { TokenExchangeJtiRepository } from '../database/repositories/token-exchange-jti.repository';
 
 const GRACE_PERIOD_MS = 60_000;
 

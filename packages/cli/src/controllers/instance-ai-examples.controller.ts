@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { jsonParse } from 'n8n-workflow';
 
-import { CLI_DIR } from '@/constants.js';
+import { CLI_DIR } from '@/constants';
 
 interface ExampleNode {
 	name: string;

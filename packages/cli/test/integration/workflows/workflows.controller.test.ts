@@ -39,27 +39,27 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
-import { CollaborationService } from '@/collaboration/collaboration.service.js';
-import { EventService } from '@/events/event.service.js';
-import { ProjectService } from '@/services/project.service.ee.js';
-import { WorkflowValidationService } from '@/workflows/workflow-validation.service.js';
-import { createFolder } from '@test-integration/db/folders.js';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { EventService } from '@/events/event.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { createFolder } from '@test-integration/db/folders';
 
-import { saveCredential } from '../shared/db/credentials.js';
-import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles.js';
-import { assignTagToWorkflow, createTag } from '../shared/db/tags.js';
+import { saveCredential } from '../shared/db/credentials';
+import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
+import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import {
 	createChatUser,
 	createManyUsers,
 	createMember,
 	createOwner,
 	createUser,
-} from '../shared/db/users.js';
-import { createWorkflowHistoryItem } from '../shared/db/workflow-history.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
-import { makeWorkflow, MOCK_PINDATA } from '../shared/utils//index.js';
+} from '../shared/db/users';
+import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
+import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 let owner: User;
 let member: User;

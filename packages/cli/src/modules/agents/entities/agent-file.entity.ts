@@ -1,7 +1,7 @@
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
-import { Agent } from './agent.entity.js';
+import { Agent } from './agent.entity';
 
 @Entity({ name: 'agent_files' })
 @Index(['agentId', 'createdAt'])

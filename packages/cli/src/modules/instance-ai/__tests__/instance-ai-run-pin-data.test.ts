@@ -5,7 +5,7 @@ import {
 	buildInstanceAiRunPinDataPlan,
 	getPrunedVerificationPinData,
 	sdkPinDataToRuntime,
-} from '../instance-ai-run-pin-data.js';
+} from '../instance-ai-run-pin-data';
 
 function makeTriggerNode(type: string, name: string): INode {
 	return {

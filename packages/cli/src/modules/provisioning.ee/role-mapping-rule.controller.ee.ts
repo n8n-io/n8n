@@ -19,13 +19,13 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { EventService } from '@/events/event.service.js';
+import { EventService } from '@/events/event.service';
 
 import type {
 	RoleMappingRuleListResponse,
 	RoleMappingRuleResponse,
-} from './role-mapping-rule.service.ee.js';
-import { RoleMappingRuleService } from './role-mapping-rule.service.ee.js';
+} from './role-mapping-rule.service.ee';
+import { RoleMappingRuleService } from './role-mapping-rule.service.ee';
 
 @RestController('/role-mapping-rule')
 export class RoleMappingRuleController {

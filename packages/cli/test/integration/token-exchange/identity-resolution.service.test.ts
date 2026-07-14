@@ -8,15 +8,15 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service.js';
+import { EventService } from '@/events/event.service';
 import {
 	IdentityResolutionService,
 	qualifiedProviderId,
-} from '@/modules/token-exchange/services/identity-resolution.service.js';
-import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service.js';
-import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas.js';
+} from '@/modules/token-exchange/services/identity-resolution.service';
+import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
+import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas';
 
-import { createOwner, createUser } from '../shared/db/users.js';
+import { createOwner, createUser } from '../shared/db/users';
 
 let service: IdentityResolutionService;
 let userRepository: UserRepository;

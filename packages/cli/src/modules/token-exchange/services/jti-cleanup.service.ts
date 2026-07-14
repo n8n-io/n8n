@@ -4,8 +4,8 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { TokenExchangeJtiRepository } from '../database/repositories/token-exchange-jti.repository.js';
-import { TokenExchangeConfig } from '../token-exchange.config.js';
+import { TokenExchangeJtiRepository } from '../database/repositories/token-exchange-jti.repository';
+import { TokenExchangeConfig } from '../token-exchange.config';
 
 @Service()
 export class JtiCleanupService {

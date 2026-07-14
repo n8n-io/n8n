@@ -1,6 +1,6 @@
 import type { Readable } from 'stream';
 
-import type { WebhookResponseHeaders } from './webhook-response-headers.js';
+import type { WebhookResponseHeaders } from './webhook-response-headers';
 
 export const WebhookResponseTag = Symbol('WebhookResponse');
 

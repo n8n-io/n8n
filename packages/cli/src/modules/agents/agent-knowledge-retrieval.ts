@@ -1,7 +1,7 @@
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { z } from 'zod';
 
-import { hasControlCharacter } from './agent-knowledge-storage.js';
+import { hasControlCharacter } from './agent-knowledge-storage';
 
 const MAX_SEARCH_PATTERN_LENGTH = 500;
 const MAX_GLOB_PATTERN_LENGTH = 255;

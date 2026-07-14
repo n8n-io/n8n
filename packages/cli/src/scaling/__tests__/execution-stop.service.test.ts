@@ -3,9 +3,9 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { ManualExecutionCancelledError } from 'n8n-workflow';
 
-import type { ActiveExecutions } from '@/active-executions.js';
-import { ExecutionStopService } from '@/scaling/execution-stop.service.js';
-import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { ActiveExecutions } from '@/active-executions';
+import { ExecutionStopService } from '@/scaling/execution-stop.service';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 describe('ExecutionStopService', () => {
 	const publisher = mock<Publisher>();

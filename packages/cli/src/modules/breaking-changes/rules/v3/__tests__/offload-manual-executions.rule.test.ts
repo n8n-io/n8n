@@ -1,7 +1,7 @@
 import type { ExecutionsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import { OffloadManualExecutionsRule } from '../offload-manual-executions.rule.js';
+import { OffloadManualExecutionsRule } from '../offload-manual-executions.rule';
 
 describe('OffloadManualExecutionsRule', () => {
 	let rule: OffloadManualExecutionsRule;

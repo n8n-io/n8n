@@ -7,7 +7,7 @@ import { join as pathJoin } from 'path';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { NodeMailer } from '@/user-management/email/node-mailer.js';
+import { NodeMailer } from '@/user-management/email/node-mailer';
 
 // This suite reads real template files; opt out of the global node:fs/promises mock.
 vi.unmock('node:fs/promises');

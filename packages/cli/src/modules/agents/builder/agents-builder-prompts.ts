@@ -1,7 +1,7 @@
-import { getConfigMutationPrompt } from './prompts/config-mutation.prompt.js';
-import { getLlmSelectionPrompt } from './prompts/llm-selection.prompt.js';
-import { MEMORY_PROMPT } from './prompts/memory.prompt.js';
-import { TOOLS_PROMPT } from './prompts/tools.prompt.js';
+import { getConfigMutationPrompt } from './prompts/config-mutation.prompt';
+import { getLlmSelectionPrompt } from './prompts/llm-selection.prompt';
+import { MEMORY_PROMPT } from './prompts/memory.prompt';
+import { TOOLS_PROMPT } from './prompts/tools.prompt';
 
 export function getAgentStateSection(
 	configJson: string,

@@ -2,16 +2,16 @@ import type { Project, SlimProject, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialTypes } from '@/credential-types.js';
-import type { CredentialsService } from '@/credentials/credentials.service.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { CredentialTypes } from '@/credential-types';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import type { CredentialMatcherContext, UsableCredential } from '../credential-matcher.js';
-import { CredentialMatcherFactory } from '../credential-matcher-factory.js';
-import { createFailure } from '../credential.types.js';
-import { IdBasedCredentialMatcher } from '../id-based-credential-matcher.js';
-import { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher.js';
-import { TypeOnlyCredentialMatcher } from '../type-only-credential-matcher.js';
+import type { CredentialMatcherContext, UsableCredential } from '../credential-matcher';
+import { CredentialMatcherFactory } from '../credential-matcher-factory';
+import { createFailure } from '../credential.types';
+import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
+import { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher';
+import { TypeOnlyCredentialMatcher } from '../type-only-credential-matcher';
 
 const usable = (id: string, type = 'githubApi'): UsableCredential =>
 	({ id, type }) as UsableCredential;

@@ -3,18 +3,18 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { BinaryDataConfig } from 'n8n-core';
 
-import { ActiveExecutions } from '@/active-executions.js';
-import { DeprecationService } from '@/deprecation/deprecation.service.js';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
-import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay.js';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
-import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry.js';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service.js';
-import { JwtService } from '@/services/jwt.service.js';
-import { WebhookServer } from '@/webhooks/webhook-server.js';
+import { ActiveExecutions } from '@/active-executions';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { JwtService } from '@/services/jwt.service';
+import { WebhookServer } from '@/webhooks/webhook-server';
 
-import { BaseCommand } from './base-command.js';
+import { BaseCommand } from './base-command';
 
 @Command({
 	name: 'webhook',

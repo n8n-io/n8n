@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { DataRequestResponseBuilder } from '../data-request-response-builder.js';
+import { DataRequestResponseBuilder } from '../data-request-response-builder';
 
 const additionalData = mock<PartialAdditionalData>({
 	formWaitingBaseUrl: 'http://localhost:5678/form-waiting',

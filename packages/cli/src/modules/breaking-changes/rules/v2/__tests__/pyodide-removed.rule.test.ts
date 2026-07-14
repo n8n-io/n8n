@@ -1,6 +1,6 @@
-import { createNode, createWorkflow } from '../../../__tests__/test-helpers.js';
-import { BreakingChangeCategory } from '../../../types/index.js';
-import { PyodideRemovedRule } from '../pyodide-removed.rule.js';
+import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
+import { BreakingChangeCategory } from '../../../types';
+import { PyodideRemovedRule } from '../pyodide-removed.rule';
 
 describe('PyodideRemovedRule', () => {
 	let rule: PyodideRemovedRule;

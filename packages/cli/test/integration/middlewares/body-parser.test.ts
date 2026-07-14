@@ -4,8 +4,8 @@ import { createServer } from 'http';
 import request from 'supertest';
 import { gzipSync, deflateSync } from 'zlib';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { rawBodyReader, bodyParser } from '@/middlewares/body-parser.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { rawBodyReader, bodyParser } from '@/middlewares/body-parser';
 
 describe('bodyParser', () => {
 	const server = createServer((req, res) => {

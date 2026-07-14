@@ -2,7 +2,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { RuntimeCredentialProxyService } from '@/services/runtime-credential-proxy.service.js';
+import { RuntimeCredentialProxyService } from '@/services/runtime-credential-proxy.service';
 
 function isFeatureFlagEnabled(): boolean {
 	return process.env.N8N_ENV_FEAT_RUNTIME_CREDENTIALS === 'true';

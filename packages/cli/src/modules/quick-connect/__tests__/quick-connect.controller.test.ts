@@ -2,8 +2,8 @@ import type { GetQuickConnectApiKeyDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { QuickConnectController } from '../quick-connect.controller.js';
-import type { QuickConnectService } from '../quick-connect.service.js';
+import { QuickConnectController } from '../quick-connect.controller';
+import type { QuickConnectService } from '../quick-connect.service';
 
 describe('QuickConnectController', () => {
 	let controller: QuickConnectController;

@@ -4,9 +4,9 @@ import { ErrorReporter } from 'n8n-core';
 import { createRunExecutionData, type ITaskData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 
-import { saveExecutionProgress } from '../save-execution-progress.js';
+import { saveExecutionProgress } from '../save-execution-progress';
 
 describe('saveExecutionProgress', () => {
 	mockInstance(Logger);

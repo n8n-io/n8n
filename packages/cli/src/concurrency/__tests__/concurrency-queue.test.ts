@@ -1,6 +1,6 @@
 import { sleep } from 'n8n-workflow';
 
-import { ConcurrencyQueue } from '../concurrency-queue.js';
+import { ConcurrencyQueue } from '../concurrency-queue';
 
 describe('ConcurrencyQueue', () => {
 	beforeAll(() => {

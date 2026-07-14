@@ -12,7 +12,7 @@ import { z } from 'zod';
 import {
 	cleanStoredUserMessage,
 	extractEditorContextWorkflowAttachments,
-} from './internal-messages.js';
+} from './internal-messages';
 
 type RunSnapshots = AgentTreeSnapshot[];
 

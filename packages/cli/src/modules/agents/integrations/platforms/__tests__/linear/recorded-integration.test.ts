@@ -6,8 +6,8 @@ import {
 	createLinearReplayContext,
 	type LinearAgentSessionEventFixture,
 	type LinearReplayFixtures,
-} from '../../../__tests__/helpers/linear/replay-test-context.js';
-import type { ChannelIntegrationRecord } from '../../../recording/channel-integration-recorder.js';
+} from '../../../__tests__/helpers/linear/replay-test-context';
+import type { ChannelIntegrationRecord } from '../../../recording/channel-integration-recorder';
 
 const recordedSession = jsonParse<ChannelIntegrationRecord[]>(
 	readFileSync(join(__dirname, '../../../__tests__/fixtures/linear/recorded-session.json'), 'utf8'),

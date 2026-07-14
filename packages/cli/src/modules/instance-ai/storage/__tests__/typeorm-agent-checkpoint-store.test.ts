@@ -4,9 +4,9 @@ import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceAiCheckpoint } from '../../entities/instance-ai-checkpoint.entity.js';
-import type { InstanceAiCheckpointRepository } from '../../repositories/instance-ai-checkpoint.repository.js';
-import { TypeORMAgentCheckpointStore } from '../typeorm-agent-checkpoint-store.js';
+import type { InstanceAiCheckpoint } from '../../entities/instance-ai-checkpoint.entity';
+import type { InstanceAiCheckpointRepository } from '../../repositories/instance-ai-checkpoint.repository';
+import { TypeORMAgentCheckpointStore } from '../typeorm-agent-checkpoint-store';
 
 function makeState(overrides: Partial<SerializableAgentState> = {}): SerializableAgentState {
 	return {

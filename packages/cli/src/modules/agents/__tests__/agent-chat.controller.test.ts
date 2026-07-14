@@ -1,20 +1,20 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentChatController } from '../agent-chat.controller.js';
-import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service.js';
-import type { AgentExecutionService } from '../agent-execution.service.js';
-import type { AgentTestChatService } from '../agent-test-chat.service.js';
-import type { AgentsService } from '../agents.service.js';
-import type { AgentValidationService } from '../agent-validation.service.js';
-import type { AgentsBuilderService } from '../builder/agents-builder.service.js';
+import { AgentChatController } from '../agent-chat.controller';
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentTestChatService } from '../agent-test-chat.service';
+import type { AgentsService } from '../agents.service';
+import type { AgentValidationService } from '../agent-validation.service';
+import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
-} from './test-utils/controller-route-metadata.js';
+} from './test-utils/controller-route-metadata';
 
 function makeController() {
 	const agentsService =

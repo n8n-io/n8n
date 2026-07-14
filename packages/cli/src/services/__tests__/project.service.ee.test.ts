@@ -16,13 +16,13 @@ import type { EntityManager } from '@n8n/typeorm';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface.js';
-import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service.js';
-import type { AgentRepository } from '@/modules/agents/repositories/agent.repository.js';
+import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
+import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
+import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
-import type { OwnershipService } from '../ownership.service.js';
-import { ProjectService } from '../project.service.ee.js';
-import type { RoleService } from '../role.service.js';
+import type { OwnershipService } from '../ownership.service';
+import { ProjectService } from '../project.service.ee';
+import type { RoleService } from '../role.service';
 
 describe('ProjectService', () => {
 	const manager = mock<EntityManager>();

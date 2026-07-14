@@ -1,7 +1,7 @@
 import { Command } from '@n8n/decorators';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command.js';
+import { BaseCommand } from '../base-command';
 
 // interface WorkflowGenerationDatasetItem {
 // 	prompt: string;

@@ -7,12 +7,12 @@ import {
 import type { Project, User, Role } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 
-import { UserManagementMailer } from '@/user-management/email/index.js';
+import { UserManagementMailer } from '@/user-management/email';
 
-import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles.js';
-import { createAdmin, createOwner, createMember, createUser } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
+import { createAdmin, createOwner, createMember, createUser } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 /**
  * Shared test setup and utilities for access control tests

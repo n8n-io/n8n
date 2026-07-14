@@ -4,12 +4,12 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 
-import { FolderService } from '@/services/folder.service.js';
+import { FolderService } from '@/services/folder.service';
 
-import { createFolder } from '../shared/db/folders.js';
-import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { createFolder } from '../shared/db/folders';
+import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 let owner: User;
 let member: User;

@@ -3,8 +3,8 @@ import { Tool } from '@n8n/agents/tool';
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 import { z } from 'zod';
 
-import { BUILDER_TOOLS } from '../builder-tool-names.js';
-import { LLM_PROVIDER_DEFAULTS, type LlmProviderDefault } from './llm-provider-defaults.js';
+import { BUILDER_TOOLS } from '../builder-tool-names';
+import { LLM_PROVIDER_DEFAULTS, type LlmProviderDefault } from './llm-provider-defaults';
 
 export interface ModelLookup {
 	list(

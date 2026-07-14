@@ -1,7 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
 
-import { InsightsByPeriod } from '../insights-by-period.js';
-import type { PeriodUnit, TypeUnit } from '../insights-shared.js';
+import { InsightsByPeriod } from '../insights-by-period';
+import type { PeriodUnit, TypeUnit } from '../insights-shared';
 
 beforeAll(async () => {
 	await testDb.init();

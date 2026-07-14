@@ -1,23 +1,23 @@
 import { Service } from '@n8n/di';
 
-import { CredentialImporter } from '../entities/credential/credential-importer.js';
-import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode.js';
+import { CredentialImporter } from '../entities/credential/credential-importer';
+import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
 	CredentialResolution,
 	CredentialResolutionFailure,
-} from '../entities/credential/credential.types.js';
-import { FolderImporter } from '../entities/folder/folder-importer.js';
-import type { FolderImportPlan, PreparedFolder } from '../entities/folder/folder-import.types.js';
+} from '../entities/credential/credential.types';
+import { FolderImporter } from '../entities/folder/folder-importer';
+import type { FolderImportPlan, PreparedFolder } from '../entities/folder/folder-import.types';
 import type {
 	PreparedWorkflow,
 	WorkflowImportOutcome,
 	WorkflowImportPlan,
-} from '../entities/workflow/workflow-import.types.js';
-import { WorkflowImporter } from '../entities/workflow/workflow-importer.js';
-import { WorkflowPublisher } from '../entities/workflow/workflow-publisher.js';
-import { createBindings } from '../n8n-packages.types.js';
+} from '../entities/workflow/workflow-import.types';
+import { WorkflowImporter } from '../entities/workflow/workflow-importer';
+import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
+import { createBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
 	ImportContext,
@@ -25,8 +25,8 @@ import type {
 	ImportFolderProperties,
 	ImportWorkflowProperties,
 	PackageImportBindings,
-} from '../n8n-packages.types.js';
-import { toImportBlockedError } from './import-blocked.error.js';
+} from '../n8n-packages.types';
+import { toImportBlockedError } from './import-blocked.error';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;

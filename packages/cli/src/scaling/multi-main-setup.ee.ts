@@ -7,7 +7,7 @@ import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
 
-import { LeaderElectionClient } from '@/scaling/leader-election-client.js';
+import { LeaderElectionClient } from '@/scaling/leader-election-client';
 
 type MultiMainEvents = {
 	/**

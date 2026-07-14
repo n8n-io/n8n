@@ -5,17 +5,17 @@ import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { AuthError } from '@/errors/response-errors/auth.error.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { EventService } from '@/events/event.service.js';
-import type { AuthlessRequest } from '@/requests.js';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import type { AuthlessRequest } from '@/requests';
 
-import { TokenExchangeService } from '../../services/token-exchange.service.js';
-import { TokenExchangeConfig } from '../../token-exchange.config.js';
-import { TokenExchangeAuthError } from '../../token-exchange.errors.js';
-import { TOKEN_EXCHANGE_GRANT_TYPE } from '../../token-exchange.schemas.js';
-import { TokenExchangeFailureReason, type IssuedTokenResult } from '../../token-exchange.types.js';
-import { TokenExchangeController } from '../token-exchange.controller.js';
+import { TokenExchangeService } from '../../services/token-exchange.service';
+import { TokenExchangeConfig } from '../../token-exchange.config';
+import { TokenExchangeAuthError } from '../../token-exchange.errors';
+import { TOKEN_EXCHANGE_GRANT_TYPE } from '../../token-exchange.schemas';
+import { TokenExchangeFailureReason, type IssuedTokenResult } from '../../token-exchange.types';
+import { TokenExchangeController } from '../token-exchange.controller';
 
 describe('TokenExchangeController', () => {
 	mockInstance(ErrorReporter);

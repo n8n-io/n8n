@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-import { hasUpdateIssueField } from '../integration-helpers.js';
+import { hasUpdateIssueField } from '../integration-helpers';
 import type {
 	IntegrationActionDefinition,
 	IntegrationContextQueryDefinition,
-} from '../integration-tool-types.js';
+} from '../integration-tool-types';
 
 const searchLimitSchema = z
 	.number()

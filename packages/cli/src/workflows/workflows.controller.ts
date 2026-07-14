@@ -41,31 +41,31 @@ import express from 'express';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
-import { CollaborationService } from '../collaboration/collaboration.service.js';
-import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service.js';
-import { WorkflowCreationService } from './workflow-creation.service.js';
-import { createWorkflowEntityFromPayload } from './workflow-entity-mapper.js';
-import { WorkflowExecutionService } from './workflow-execution.service.js';
-import { WorkflowFinderService } from './workflow-finder.service.js';
-import { WorkflowRequest } from './workflow.request.js';
-import { WorkflowService } from './workflow.service.js';
-import { EnterpriseWorkflowService } from './workflow.service.ee.js';
+import { CollaborationService } from '../collaboration/collaboration.service';
+import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
+import { WorkflowCreationService } from './workflow-creation.service';
+import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
+import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowRequest } from './workflow.request';
+import { WorkflowService } from './workflow.service';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
 
-import { AuthService } from '@/auth/auth.service.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { EventService } from '@/events/event.service.js';
-import { ExecutionService } from '@/executions/execution.service.js';
-import { IWorkflowResponse } from '@/interfaces.js';
-import { License } from '@/license.js';
-import { listQueryMiddleware } from '@/middlewares/index.js';
-import { userHasScopes } from '@/permissions.ee/check-access.js';
-import * as ResponseHelper from '@/response-helper.js';
-import { NamingService } from '@/services/naming.service.js';
-import { ProjectService } from '@/services/project.service.ee.js';
-import { UserManagementMailer } from '@/user-management/email/index.js';
-import * as utils from '@/utils.js';
+import { AuthService } from '@/auth/auth.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { ExecutionService } from '@/executions/execution.service';
+import { IWorkflowResponse } from '@/interfaces';
+import { License } from '@/license';
+import { listQueryMiddleware } from '@/middlewares';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import * as ResponseHelper from '@/response-helper';
+import { NamingService } from '@/services/naming.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { UserManagementMailer } from '@/user-management/email';
+import * as utils from '@/utils';
 
 @RestController('/workflows')
 export class WorkflowsController {

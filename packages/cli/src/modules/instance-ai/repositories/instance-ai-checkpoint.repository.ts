@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, Repository } from '@n8n/typeorm';
 
-import { InstanceAiCheckpoint } from '../entities/instance-ai-checkpoint.entity.js';
+import { InstanceAiCheckpoint } from '../entities/instance-ai-checkpoint.entity';
 
 @Service()
 export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpoint> {

@@ -5,7 +5,7 @@ import type {
 	OffsetPagination,
 	PaginationCursorDecoded,
 	PaginationOffsetDecoded,
-} from '../../../types.js';
+} from '../../../types';
 
 export const decodeCursor = (cursor: string): PaginationOffsetDecoded | PaginationCursorDecoded => {
 	return jsonParse(Buffer.from(cursor, 'base64').toString());

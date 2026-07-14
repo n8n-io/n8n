@@ -3,8 +3,8 @@ import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { FirecrawlQuickConnect } from '../quick-connect.config.js';
-import { IQuickConnectHandler } from './handler.interface.js';
+import { FirecrawlQuickConnect } from '../quick-connect.config';
+import { IQuickConnectHandler } from './handler.interface';
 
 const FIRECRAWL_API_BASE_URL = 'https://api.firecrawl.dev';
 

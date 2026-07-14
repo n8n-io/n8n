@@ -7,10 +7,10 @@ import type { ICredentialType } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialTypes } from '@/credential-types.js';
-import { CredentialsOverwrites } from '@/credentials-overwrites.js';
-import type { ICredentialsOverwrite } from '@/interfaces.js';
-import { StaticAuthService } from '@/services/static-auth-service.js';
+import type { CredentialTypes } from '@/credential-types';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import type { ICredentialsOverwrite } from '@/interfaces';
+import { StaticAuthService } from '@/services/static-auth-service';
 
 describe('CredentialsOverwrites', () => {
 	const testCredentialType = mock<ICredentialType>({ name: 'test', extends: ['parent'] });

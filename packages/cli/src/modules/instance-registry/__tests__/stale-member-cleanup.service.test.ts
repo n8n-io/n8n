@@ -2,9 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceRegistryService } from '../instance-registry.service.js';
-import { REGISTRY_CONSTANTS } from '../instance-registry.types.js';
-import { StaleMemberCleanupService } from '../stale-member-cleanup.service.js';
+import type { InstanceRegistryService } from '../instance-registry.service';
+import { REGISTRY_CONSTANTS } from '../instance-registry.types';
+import { StaleMemberCleanupService } from '../stale-member-cleanup.service';
 
 const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 const instanceSettings = mock<InstanceSettings>({ isLeader: true });

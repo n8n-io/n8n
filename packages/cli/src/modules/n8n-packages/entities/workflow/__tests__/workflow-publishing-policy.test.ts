@@ -1,5 +1,5 @@
-import { decideWorkflowPublishingAction } from '../workflow-publishing-policy.js';
-import { WorkflowPublishingPolicy } from '../workflow-publishing-policy.types.js';
+import { decideWorkflowPublishingAction } from '../workflow-publishing-policy';
+import { WorkflowPublishingPolicy } from '../workflow-publishing-policy.types';
 
 describe('decideWorkflowPublishingAction', () => {
 	it.each([

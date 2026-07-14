@@ -10,16 +10,16 @@ import type { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
-import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../../constants.js';
-import { DynamicCredentialResolver } from '../../database/entities/credential-resolver.js';
-import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository.js';
-import { DynamicCredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error.js';
-import { SystemResolverModificationError } from '../../errors/system-resolver-modification.error.js';
-import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service.js';
-import { DynamicCredentialResolverService } from '../credential-resolver.service.js';
-import type { ResolverConfigExpressionService } from '../resolver-config-expression.service.js';
+import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../../constants';
+import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
+import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
+import { DynamicCredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
+import { SystemResolverModificationError } from '../../errors/system-resolver-modification.error';
+import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
+import { DynamicCredentialResolverService } from '../credential-resolver.service';
+import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
 
 describe('DynamicCredentialResolverService', () => {
 	let service: DynamicCredentialResolverService;

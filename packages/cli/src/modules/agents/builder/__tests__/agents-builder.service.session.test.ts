@@ -4,16 +4,16 @@ import type { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentsService } from '../../agents.service.js';
-import type { Agent as AgentEntity } from '../../entities/agent.entity.js';
-import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage.js';
-import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory.js';
-import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository.js';
-import type { NodeCatalogService } from '@/node-catalog/index.js';
+import type { AgentsService } from '../../agents.service';
+import type { Agent as AgentEntity } from '../../entities/agent.entity';
+import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
+import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
+import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
+import type { NodeCatalogService } from '@/node-catalog';
 
-import { AgentsBuilderService, resolveBuilderThreadId } from '../agents-builder.service.js';
-import type { AgentsBuilderSettingsService } from '../agents-builder-settings.service.js';
-import type { AgentsBuilderToolsService } from '../agents-builder-tools.service.js';
+import { AgentsBuilderService, resolveBuilderThreadId } from '../agents-builder.service';
+import type { AgentsBuilderSettingsService } from '../agents-builder-settings.service';
+import type { AgentsBuilderToolsService } from '../agents-builder-tools.service';
 
 describe('resolveBuilderThreadId', () => {
 	it('defaults to the builder thread prefix', () => {

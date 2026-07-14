@@ -3,12 +3,12 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service.js';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
-import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee.js';
-import { Telemetry } from '@/telemetry/index.js';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users.js';
-import { setupTestServer } from '@test-integration/utils/index.js';
+import { EventService } from '@/events/event.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
+import { Telemetry } from '@/telemetry';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 
 describe('POST /source-control/pull (Public API)', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });

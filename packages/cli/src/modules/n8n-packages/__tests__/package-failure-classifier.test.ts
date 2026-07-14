@@ -1,16 +1,16 @@
 import { UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ConflictError } from '@/errors/response-errors/conflict.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
-} from '../entities/package-export.errors.js';
-import { classifyPackageFailure } from '../package-failure-classifier.js';
+} from '../entities/package-export.errors';
+import { classifyPackageFailure } from '../package-failure-classifier';
 
 describe('classifyPackageFailure', () => {
 	test.each([

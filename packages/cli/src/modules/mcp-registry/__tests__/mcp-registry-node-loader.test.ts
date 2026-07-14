@@ -3,22 +3,22 @@ import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-
 import type { INodeType, INodeTypeDescription, NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 const logger = mock<Logger>();
 
-import { McpRegistryNodeLoader } from '../mcp-registry-node-loader.js';
+import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import {
 	LANGCHAIN_PACKAGE_NAME,
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
-} from '../node-description-transform.js';
-import type { McpRegistryServer } from '../registry/mcp-registry.types.js';
+} from '../node-description-transform';
+import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
 	gmailDirectExtendMockServer,
 	notionMockServer,
 	slackExtendingMockServer,
-} from '../registry/mock-servers.js';
+} from '../registry/mock-servers';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',

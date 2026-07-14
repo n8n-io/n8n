@@ -47,14 +47,14 @@ vi.mock('node:util', async () => {
 	};
 });
 
-import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants.js';
+import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 import {
 	executeNpmCommand,
 	verifyIntegrity,
 	checkIfVersionExistsOrThrow,
 	executeNpmRequest,
-} from '../npm-utils.js';
+} from '../npm-utils';
 
 describe('executeNpmCommand', () => {
 	const originalPlatform = process.platform;

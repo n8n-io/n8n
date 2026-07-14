@@ -10,11 +10,11 @@ import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createMember, createOwner } from '@test-integration/db/users.js';
+import { createMember, createOwner } from '@test-integration/db/users';
 
-import { N8nPackagesService } from '../n8n-packages.service.js';
-import { FORMAT_VERSION } from '../spec/constants.js';
-import { readExport } from './utils/tar-support.js';
+import { N8nPackagesService } from '../n8n-packages.service';
+import { FORMAT_VERSION } from '../spec/constants';
+import { readExport } from './utils/tar-support';
 
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);

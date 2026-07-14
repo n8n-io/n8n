@@ -1,6 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 
-import { SamlValidator } from '../saml-validator.js';
+import { SamlValidator } from '../saml-validator';
 
 describe('saml-validator', () => {
 	const validator = new SamlValidator(mock());

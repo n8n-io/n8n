@@ -2,10 +2,10 @@ import type { GlobalConfig } from '@n8n/config';
 import type { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { AuthService } from '@/auth/auth.service.js';
-import type { MfaService } from '@/mfa/mfa.service.js';
-import type { JwtService } from '@/services/jwt.service.js';
-import type { UrlService } from '@/services/url.service.js';
+import { AuthService } from '@/auth/auth.service';
+import type { MfaService } from '@/mfa/mfa.service';
+import type { JwtService } from '@/services/jwt.service';
+import type { UrlService } from '@/services/url.service';
 
 describe('AuthService Browser ID Whitelist', () => {
 	let authService: AuthService;

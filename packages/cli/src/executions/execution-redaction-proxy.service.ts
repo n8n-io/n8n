@@ -4,7 +4,7 @@ import type {
 	ExecutionRedaction,
 	ExecutionRedactionOptions,
 	RedactableExecution,
-} from './execution-redaction.js';
+} from './execution-redaction';
 
 @Service()
 export class ExecutionRedactionServiceProxy implements ExecutionRedaction {

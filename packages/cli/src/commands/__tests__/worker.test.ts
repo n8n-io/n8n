@@ -8,18 +8,18 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions.js';
-import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
-import type { EventService } from '@/events/event.service.js';
-import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry.js';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service.js';
-import { WorkerServer } from '@/scaling/worker-server.js';
-import { WorkerStatusService } from '@/scaling/worker-status.service.ee.js';
-import { RedisClientService } from '@/services/redis-client.service.js';
+import { ActiveExecutions } from '@/active-executions';
+import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { EventService } from '@/events/event.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { WorkerServer } from '@/scaling/worker-server';
+import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
+import { RedisClientService } from '@/services/redis-client.service';
 
-import { Worker } from '../worker.js';
+import { Worker } from '../worker';
 
 vi.mock('@/crash-journal');
 

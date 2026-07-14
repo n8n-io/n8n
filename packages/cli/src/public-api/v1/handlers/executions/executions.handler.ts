@@ -7,26 +7,26 @@ import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions.js';
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
-import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error.js';
-import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error.js';
-import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ConflictError } from '@/errors/response-errors/conflict.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { EventService } from '@/events/event.service.js';
-import { ExecutionPersistence } from '@/executions/execution-persistence.js';
-import type { RedactableExecution } from '@/executions/execution-redaction.js';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service.js';
-import { ExecutionService } from '@/executions/execution.service.js';
+import { ActiveExecutions } from '@/active-executions';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { RedactableExecution } from '@/executions/execution-redaction';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+import { ExecutionService } from '@/executions/execution.service';
 
-import { getExecutionTags, mapAnnotationTags, updateExecutionTags } from './executions.service.js';
-import type { ExecutionRequest } from '../../../types.js';
-import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
-import { publicApiScope, validCursor } from '../../shared/middlewares/global.middleware.js';
-import { encodeNextCursor } from '../../shared/services/pagination.service.js';
-import { getSharedWorkflowIds } from '../workflows/workflows.service.js';
+import { getExecutionTags, mapAnnotationTags, updateExecutionTags } from './executions.service';
+import type { ExecutionRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { publicApiScope, validCursor } from '../../shared/middlewares/global.middleware';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { getSharedWorkflowIds } from '../workflows/workflows.service';
 
 const handleError = (error: unknown) => {
 	if (error instanceof QueuedExecutionRetryError || error instanceof AbortedExecutionRetryError) {

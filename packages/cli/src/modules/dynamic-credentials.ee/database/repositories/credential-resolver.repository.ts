@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { DynamicCredentialResolver } from '../entities/credential-resolver.js';
+import { DynamicCredentialResolver } from '../entities/credential-resolver';
 
 @Service()
 export class DynamicCredentialResolverRepository extends Repository<DynamicCredentialResolver> {

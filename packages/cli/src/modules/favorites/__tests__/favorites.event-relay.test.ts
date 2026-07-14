@@ -1,10 +1,10 @@
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service.js';
-import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
-import { FavoritesEventRelay } from '../favorites.event-relay.js';
-import type { FavoritesService } from '../favorites.service.js';
+import { FavoritesEventRelay } from '../favorites.event-relay';
+import type { FavoritesService } from '../favorites.service';
 
 describe('FavoritesEventRelay', () => {
 	const eventService = new EventService();

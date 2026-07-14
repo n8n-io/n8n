@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { License } from '@/license.js';
+import { License } from '@/license';
 
 export function getWorkflowHistoryLicensePruneTime() {
 	return Container.get(License).getWorkflowHistoryPruneLimit();

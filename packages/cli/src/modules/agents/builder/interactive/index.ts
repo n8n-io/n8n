@@ -1,4 +1,4 @@
-export { buildAskCredentialTool, buildAskEmbeddingCredentialTool } from './ask-credential.tool.js';
-export { buildAskQuestionsTool } from './ask-questions.tool.js';
-export { buildConfigureChannelTool } from './configure-channel.tool.js';
-export { buildResolveLlmTool } from './resolve-llm.tool.js';
+export { buildAskCredentialTool, buildAskEmbeddingCredentialTool } from './ask-credential.tool';
+export { buildAskQuestionsTool } from './ask-questions.tool';
+export { buildConfigureChannelTool } from './configure-channel.tool';
+export { buildResolveLlmTool } from './resolve-llm.tool';

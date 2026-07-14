@@ -1,9 +1,9 @@
 import { Container } from '@n8n/di';
 
-import { createOwner } from '@test-integration/db/users.js';
-import * as utils from '@test-integration/utils/index.js';
+import { createOwner } from '@test-integration/db/users';
+import * as utils from '@test-integration/utils';
 
-import { McpServerApiKeyService } from '../mcp-api-key.service.js';
+import { McpServerApiKeyService } from '../mcp-api-key.service';
 
 // Regression guard for IAM-574: ApiKeyAuthStrategy must be registered regardless
 // of whether the public API is enabled, otherwise MCP API keys stop working on

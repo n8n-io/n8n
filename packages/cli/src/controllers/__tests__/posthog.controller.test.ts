@@ -2,7 +2,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { ClientRequest } from 'node:http';
 import { vi } from 'vitest';
 
-import { maskIp, setPostHogProxyHeaders } from '../posthog.controller.js';
+import { maskIp, setPostHogProxyHeaders } from '../posthog.controller';
 
 describe('maskIp', () => {
 	test.each([

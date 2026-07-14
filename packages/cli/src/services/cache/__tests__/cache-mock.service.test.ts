@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { CacheService } from '@/services/cache/cache.service.js';
+import { CacheService } from '@/services/cache/cache.service';
 
 const cacheService = Container.get(CacheService);
 const store = mock<NonNullable<CacheService['cache']>['store']>({ isCacheable: () => true });

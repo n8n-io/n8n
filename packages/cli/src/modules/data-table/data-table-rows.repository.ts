@@ -25,8 +25,8 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
-import { DataTableColumn } from './data-table-column.entity.js';
-import { DataTableUserTableName } from './data-table.types.js';
+import { DataTableColumn } from './data-table-column.entity';
+import { DataTableUserTableName } from './data-table.types';
 import {
 	escapeLikeSpecials,
 	extractInsertedIds,
@@ -37,7 +37,7 @@ import {
 	quoteIdentifier,
 	toSqliteGlobFromPercent,
 	toTableName,
-} from './utils/sql-utils.js';
+} from './utils/sql-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;

@@ -1,4 +1,4 @@
-import { isoDateProperty } from '../integration-helpers.js';
+import { isoDateProperty } from '../integration-helpers';
 
 describe('integration helpers', () => {
 	describe('isoDateProperty', () => {

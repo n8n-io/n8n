@@ -3,8 +3,8 @@ import type { INode, INodeExecutionData } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { RuntimeCredentialsContextHook } from '../runtime-credentials-context-hook.js';
-import type { RuntimeCredentialsService, StripResult } from '../runtime-credentials.service.js';
+import { RuntimeCredentialsContextHook } from '../runtime-credentials-context-hook';
+import type { RuntimeCredentialsService, StripResult } from '../runtime-credentials.service';
 
 describe('RuntimeCredentialsContextHook', () => {
 	let service: MockProxy<RuntimeCredentialsService>;

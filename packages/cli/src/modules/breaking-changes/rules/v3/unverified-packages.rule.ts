@@ -1,12 +1,12 @@
 import { BreakingChangeRule } from '@n8n/decorators';
 
-import { CommunityPackagesConfig } from '../../../community-packages/community-packages.config.js';
+import { CommunityPackagesConfig } from '../../../community-packages/community-packages.config';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
 	InstanceDetectionReport,
-} from '../../types/index.js';
-import { BreakingChangeCategory } from '../../types/index.js';
+} from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @BreakingChangeRule({ version: 'v3' })
 export class UnverifiedPackagesRule implements IBreakingChangeInstanceRule {

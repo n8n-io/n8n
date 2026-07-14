@@ -8,8 +8,8 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Post, RestController, Body } from '@n8n/decorators';
 import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow';
 
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
-import { getBase } from '@/workflow-execute-additional-data.js';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
 
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {

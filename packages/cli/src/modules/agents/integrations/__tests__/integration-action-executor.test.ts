@@ -52,12 +52,12 @@ import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
-} from '../agent-chat-integration.js';
-import { ChatIntegrationActionExecutor } from '../integration-action-executor.js';
-import { getIntegrationToolConnectionDescriptors } from '../integration-tools.js';
-import { LinearIntegration } from '../platforms/linear-integration.js';
-import { SlackIntegration } from '../platforms/slack-integration.js';
-import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service.js';
+} from '../agent-chat-integration';
+import { ChatIntegrationActionExecutor } from '../integration-action-executor';
+import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
+import { LinearIntegration } from '../platforms/linear-integration';
+import { SlackIntegration } from '../platforms/slack-integration';
+import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 

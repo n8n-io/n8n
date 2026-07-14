@@ -4,7 +4,7 @@ import type { INode } from 'n8n-workflow';
 import OpenAI from 'openai';
 import type { Mock } from 'vitest';
 
-import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server.js';
+import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
 
 const mockLogger = {
 	info: vi.fn(),

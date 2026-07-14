@@ -1,4 +1,4 @@
-import { CredentialResolutionError } from './credential-resolution.error.js';
+import { CredentialResolutionError } from './credential-resolution.error';
 
 /**
  * Thrown when a credential is marked as resolvable but has no resolver configured

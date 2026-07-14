@@ -4,7 +4,7 @@ import type { SettingsRepository } from '@n8n/db';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { OidcInstanceSettingsLoader } from '../../loaders/sso/oidc.instance-settings-loader.js';
+import { OidcInstanceSettingsLoader } from '../../loaders/sso/oidc.instance-settings-loader';
 
 describe('OidcInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });

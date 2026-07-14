@@ -1,8 +1,8 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { AbstractPush } from './abstract.push.js';
-import type { PushRequest, PushResponse } from './types.js';
+import { AbstractPush } from './abstract.push';
+import type { PushRequest, PushResponse } from './types';
 
 type Connection = { req: PushRequest; res: PushResponse };
 

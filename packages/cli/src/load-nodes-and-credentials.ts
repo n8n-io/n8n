@@ -35,8 +35,8 @@ import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-w
 import path from 'path';
 import picocolors from 'picocolors';
 
-import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants.js';
-import { createAiTools, createHitlTools } from '@/tool-generation/index.js';
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import { createAiTools, createHitlTools } from '@/tool-generation';
 
 @Service()
 export class LoadNodesAndCredentials {

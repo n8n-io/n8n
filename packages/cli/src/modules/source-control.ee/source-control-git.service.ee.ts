@@ -16,17 +16,17 @@ import type {
 	StatusResult,
 } from 'simple-git';
 
-import { OwnershipService } from '@/services/ownership.service.js';
+import { OwnershipService } from '@/services/ownership.service';
 
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH,
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_ORIGIN,
-} from './constants.js';
-import { sourceControlFoldersExistCheck } from './source-control-helper.ee.js';
-import { SourceControlPreferencesService } from './source-control-preferences.service.ee.js';
-import type { SourceControlPreferences } from './types/source-control-preferences.js';
+} from './constants';
+import { sourceControlFoldersExistCheck } from './source-control-helper.ee';
+import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import type { SourceControlPreferences } from './types/source-control-preferences';
 
 /**
  * Service for interacting with locally cloned git repositories.

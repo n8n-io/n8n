@@ -3,9 +3,9 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { z } from 'zod';
 
-import { OwnershipService } from '@/services/ownership.service.js';
+import { OwnershipService } from '@/services/ownership.service';
 
-import { InstanceBootstrappingError } from '../instance-bootstrapping.error.js';
+import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 
 /** Bcrypt hash format: $2b$NN$<53 base64 chars> (60 chars total) */
 const BCRYPT_HASH_RE = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;

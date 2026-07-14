@@ -4,9 +4,9 @@ import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { InProcessEventBus } from '../in-process-event-bus.js';
+import { InProcessEventBus } from '../in-process-event-bus';
 
 function makeEvent(type: string, runId: string): InstanceAiEvent {
 	return {

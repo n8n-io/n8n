@@ -60,19 +60,19 @@ import { LICENSE_FEATURES, Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
-import { extractResolvedNodeParameters } from './extract-resolved-node-parameters.js';
-import { InstanceAiSettingsService } from './instance-ai-settings.service.js';
-import { WorkflowTemplatesService } from './workflow-templates.service.js';
+import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { WorkflowTemplatesService } from './workflow-templates.service';
 import {
 	buildInstanceAiRunPinDataPlan,
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
-} from './instance-ai-run-pin-data.js';
+} from './instance-ai-run-pin-data';
 import {
 	resolveBuiltinNodeDefinitionDirs,
 	listNodeDiscriminators,
-} from './node-definition-resolver.js';
-import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research/index.js';
+} from './node-definition-resolver';
+import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import {
 	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
@@ -116,40 +116,40 @@ import {
 	calculateWorkflowChecksum,
 } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions.js';
-import { ConflictError } from '@/errors/response-errors/conflict.error.js';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service.js';
-import { EventService } from '@/events/event.service.js';
-import { ExecutionPersistence } from '@/executions/execution-persistence.js';
-import { License } from '@/license.js';
-import { PostHogClient } from '@/posthog/index.js';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { NodeTypes } from '@/node-types.js';
-import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider.js';
-import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter.js';
-import { NodeCatalogService } from '@/node-catalog/index.js';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
-import { DataTableService } from '@/modules/data-table/data-table.service.js';
-import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform.js';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
-import { userHasScopes } from '@/permissions.ee/check-access.js';
+import { ActiveExecutions } from '@/active-executions';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
+import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { License } from '@/license';
+import { PostHogClient } from '@/posthog';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
+import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { NodeCatalogService } from '@/node-catalog';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableService } from '@/modules/data-table/data-table.service';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
-import { AiGatewayService } from '@/services/ai-gateway.service.js';
-import { FolderService } from '@/services/folder.service.js';
-import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service.js';
-import { ProjectService } from '@/services/project.service.ee.js';
-import { RoleService } from '@/services/role.service.js';
+import { AiGatewayService } from '@/services/ai-gateway.service';
+import { FolderService } from '@/services/folder.service';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 import { InstanceSettings } from 'n8n-core';
-import { TagService } from '@/services/tag.service.js';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
-import { WorkflowService } from '@/workflows/workflow.service.js';
-import { getRequiredRedactionScopes } from '@/workflows/utils.js';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee.js';
-import { Telemetry } from '@/telemetry/index.js';
-import { WorkflowRunner } from '@/workflow-runner.js';
+import { TagService } from '@/services/tag.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowService } from '@/workflows/workflow.service';
+import { getRequiredRedactionScopes } from '@/workflows/utils';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { Telemetry } from '@/telemetry';
+import { WorkflowRunner } from '@/workflow-runner';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 

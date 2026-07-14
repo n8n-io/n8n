@@ -6,12 +6,12 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
-import type { License } from '@/license.js';
+import type { License } from '@/license';
 import {
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_SSH_FOLDER,
-} from '@/modules/source-control.ee/constants.js';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
+} from '@/modules/source-control.ee/constants';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 
 import {
 	areSameCredentials,
@@ -26,9 +26,9 @@ import {
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
 	sourceControlFoldersExistCheck,
-} from '../source-control-helper.ee.js';
-import type { StatusExportableCredential } from '../types/exportable-credential.js';
-import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id.js';
+} from '../source-control-helper.ee';
+import type { StatusExportableCredential } from '../types/exportable-credential';
+import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
 function createWorkflowVersion(
 	overrides: Partial<SourceControlWorkflowVersionId> = {},

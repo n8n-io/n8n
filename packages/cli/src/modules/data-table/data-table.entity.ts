@@ -1,7 +1,7 @@
 import { Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from '@n8n/typeorm';
 
-import { DataTableColumn } from './data-table-column.entity.js';
+import { DataTableColumn } from './data-table-column.entity';
 
 @Entity()
 @Index(['name', 'projectId'], { unique: true })

@@ -19,8 +19,8 @@ import {
 	INSTANCE_AI_RUN_TIMEOUT_REASON,
 	InstanceAiLivenessService,
 	type InstanceAiLivenessSweepResult,
-} from '../liveness/index.js';
-import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details.js';
+} from '../liveness';
+import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details';
 
 type TestSuspendedRun = {
 	runId: string;

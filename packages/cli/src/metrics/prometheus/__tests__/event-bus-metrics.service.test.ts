@@ -5,9 +5,9 @@ import { mock } from 'vitest-mock-extended';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
-import { PrometheusEventBusMetricsService } from '../event-bus-metrics.service.js';
+import { PrometheusEventBusMetricsService } from '../event-bus-metrics.service';
 
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 vi.mock('prom-client');
 

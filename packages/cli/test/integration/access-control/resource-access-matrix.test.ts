@@ -9,12 +9,12 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User, Role } from '@n8n/db';
 
-import { UserManagementMailer } from '@/user-management/email/index.js';
+import { UserManagementMailer } from '@/user-management/email';
 
-import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles.js';
-import { createOwner, createMember } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
+import { createOwner, createMember } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows', 'credentials'],

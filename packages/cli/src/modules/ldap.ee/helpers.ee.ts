@@ -13,7 +13,7 @@ import { validate } from 'jsonschema';
 import type { Entry as LdapUser } from 'ldapts';
 import { randomString } from 'n8n-workflow';
 
-import { BINARY_AD_ATTRIBUTES, LDAP_CONFIG_SCHEMA } from './constants.js';
+import { BINARY_AD_ATTRIBUTES, LDAP_CONFIG_SCHEMA } from './constants';
 
 /**
  * Validate the structure of the LDAP configuration schema

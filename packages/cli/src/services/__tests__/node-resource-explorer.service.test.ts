@@ -4,10 +4,10 @@ import type { ProjectRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
-import type { NodeTypes } from '@/node-types.js';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
-import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service.js';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { NodeTypes } from '@/node-types';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 
 vi.mock('@/workflow-execute-additional-data', () => ({
 	getBase: vi.fn().mockResolvedValue({ additional: 'data' }),

@@ -3,14 +3,14 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import {
 	createN8nPackageMulterOptions,
 	getPackageUploadFile,
 	listUploadFiles,
 	resolveImportPackageUpload,
-} from '../../utils/import-package-upload.js';
+} from '../../utils/import-package-upload';
 
 function makeFile(fieldname: string, buffer: Buffer = Buffer.from('data')): Express.Multer.File {
 	return { fieldname, buffer } as Express.Multer.File;

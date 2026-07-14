@@ -1,13 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
-import { InstanceSettingsLoaderService } from '../instance-settings-loader.service.js';
-import type { CommunityPackagesInstanceSettingsLoader } from '../loaders/community-packages.instance-settings-loader.js';
-import type { LogStreamingInstanceSettingsLoader } from '../loaders/log-streaming.instance-settings-loader.js';
-import type { McpSettingsLoader } from '../loaders/mcp-settings.loader.js';
-import type { OwnerInstanceSettingsLoader } from '../loaders/owner.instance-settings-loader.js';
-import type { SecurityPolicyInstanceSettingsLoader } from '../loaders/security-policy.instance-settings-loader.js';
-import type { SsoInstanceSettingsLoader } from '../loaders/sso/sso.instance-settings-loader.js';
+import { InstanceSettingsLoaderService } from '../instance-settings-loader.service';
+import type { CommunityPackagesInstanceSettingsLoader } from '../loaders/community-packages.instance-settings-loader';
+import type { LogStreamingInstanceSettingsLoader } from '../loaders/log-streaming.instance-settings-loader';
+import type { McpSettingsLoader } from '../loaders/mcp-settings.loader';
+import type { OwnerInstanceSettingsLoader } from '../loaders/owner.instance-settings-loader';
+import type { SecurityPolicyInstanceSettingsLoader } from '../loaders/security-policy.instance-settings-loader';
+import type { SsoInstanceSettingsLoader } from '../loaders/sso/sso.instance-settings-loader';
 
 describe('InstanceSettingsLoaderService', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });

@@ -3,8 +3,8 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
-import { ImportService } from '../../services/import.service.js';
-import { BaseCommand } from '../base-command.js';
+import { ImportService } from '../../services/import.service';
+import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
 	inputDir: z

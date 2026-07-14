@@ -4,8 +4,8 @@ import { Request } from 'express';
 import { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { AuthService } from '@/auth/auth.service.js';
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error.js';
+import { AuthService } from '@/auth/auth.service';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 class AuthSourceQuerySchema extends Z.class({
 	authSource: z.enum(['bearer', 'cookie']).optional(),

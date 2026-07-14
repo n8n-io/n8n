@@ -1,8 +1,8 @@
 import type { InsertQueryBuilder } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceAiThreadGrant } from '../../entities/instance-ai-thread-grant.entity.js';
-import { InstanceAiThreadGrantRepository } from '../instance-ai-thread-grant.repository.js';
+import type { InstanceAiThreadGrant } from '../../entities/instance-ai-thread-grant.entity';
+import { InstanceAiThreadGrantRepository } from '../instance-ai-thread-grant.repository';
 
 function buildRepo() {
 	return Object.create(

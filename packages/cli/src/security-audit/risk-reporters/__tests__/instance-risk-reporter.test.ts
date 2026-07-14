@@ -4,8 +4,8 @@ import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { N8N_VERSION } from '@/constants.js';
-import { InstanceRiskReporter } from '@/security-audit/risk-reporters/instance-risk-reporter.js';
+import { N8N_VERSION } from '@/constants';
+import { InstanceRiskReporter } from '@/security-audit/risk-reporters/instance-risk-reporter';
 
 describe('InstanceRiskReporter', () => {
 	const VERSIONS_ENDPOINT = 'https://api.n8n.io/api/versions/';

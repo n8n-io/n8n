@@ -6,8 +6,8 @@
  */
 import { camelCase } from 'change-case';
 
-import type { McpRegistryServer } from './mcp-registry.types.js';
-import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform.js';
+import type { McpRegistryServer } from './mcp-registry.types';
+import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
 
 export interface McpRegistrySearchResult {
 	name: string;

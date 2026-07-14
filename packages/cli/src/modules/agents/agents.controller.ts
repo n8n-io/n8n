@@ -12,10 +12,10 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentRunnableStateService } from './agent-runnable-state.service.js';
-import { AgentsService } from './agents.service.js';
+import { AgentRunnableStateService } from './agent-runnable-state.service';
+import { AgentsService } from './agents.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsController {

@@ -10,7 +10,7 @@ import {
 	type ApiKeyScope,
 } from '@n8n/permissions';
 
-import { PublicApiKeyService } from '@/services/public-api-key.service.js';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import {
 	addApiKey,
@@ -19,9 +19,9 @@ import {
 	createOwnerWithApiKey,
 	createUser,
 	createUserShell,
-} from './shared/db/users.js';
-import type { SuperAgentTest } from './shared/types.js';
-import * as utils from './shared/utils//index.js';
+} from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;

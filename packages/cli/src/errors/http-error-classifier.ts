@@ -1,7 +1,7 @@
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error.js';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
 export const enum HttpErrorKind {
 	responseError = 'responseError',

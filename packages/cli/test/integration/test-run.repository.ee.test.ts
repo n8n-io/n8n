@@ -3,7 +3,7 @@ import { TestRunRepository } from '@n8n/db';
 import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createTestCaseExecution, createTestRun } from '@test-integration/db/evaluation.js';
+import { createTestCaseExecution, createTestRun } from '@test-integration/db/evaluation';
 
 describe('TestRunRepository', () => {
 	let testRunRepository: TestRunRepository;

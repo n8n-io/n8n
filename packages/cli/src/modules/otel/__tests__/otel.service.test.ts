@@ -6,10 +6,10 @@ import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service.js';
-import type { OtelConfig } from '../otel.config.js';
-import { ATTR, OTEL_TEST_SPAN_NAME } from '../otel.constants.js';
-import { OtelService } from '../otel.service.js';
+import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
+import type { OtelConfig } from '../otel.config';
+import { ATTR, OTEL_TEST_SPAN_NAME } from '../otel.constants';
+import { OtelService } from '../otel.service';
 
 const start = vi.fn();
 const shutdown = vi.fn();

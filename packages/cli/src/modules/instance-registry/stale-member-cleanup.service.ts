@@ -3,8 +3,8 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { InstanceRegistryService } from './instance-registry.service.js';
-import { REGISTRY_CONSTANTS } from './instance-registry.types.js';
+import { InstanceRegistryService } from './instance-registry.service';
+import { REGISTRY_CONSTANTS } from './instance-registry.types';
 
 @Service()
 export class StaleMemberCleanupService {

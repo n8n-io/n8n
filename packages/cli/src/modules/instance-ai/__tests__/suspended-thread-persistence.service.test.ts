@@ -1,11 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity.js';
+import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
 import {
 	SuspendedThreadPersistenceService,
 	type PendingConfirmationStore,
-} from '../suspended-thread-persistence.service.js';
+} from '../suspended-thread-persistence.service';
 
 type Mocks = {
 	logger: MockProxy<Logger>;

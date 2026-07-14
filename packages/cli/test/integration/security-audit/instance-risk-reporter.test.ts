@@ -7,10 +7,10 @@ import nock from 'nock';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import * as constants from '@/constants.js';
-import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants.js';
-import { SecurityAuditService } from '@/security-audit/security-audit.service.js';
-import { toReportTitle } from '@/security-audit/utils.js';
+import * as constants from '@/constants';
+import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
+import { toReportTitle } from '@/security-audit/utils';
 
 import {
 	getRiskSection,
@@ -18,7 +18,7 @@ import {
 	MOCK_09990_N8N_VERSION,
 	simulateOutdatedInstanceOnce,
 	simulateUpToDateInstance,
-} from './utils.js';
+} from './utils';
 
 let securityAuditService: SecurityAuditService;
 let originalN8nVersion: string;

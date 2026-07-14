@@ -10,13 +10,13 @@ import { ErrorReporter } from 'n8n-core';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 
-import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee.js';
-import { Telemetry } from '@/telemetry/index.js';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
+import { Telemetry } from '@/telemetry';
 
-import { createTestCaseExecution, createTestRun } from '../shared/db/evaluation.js';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { createTestCaseExecution, createTestRun } from '../shared/db/evaluation';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;

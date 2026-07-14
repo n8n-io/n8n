@@ -1,6 +1,6 @@
 import type { ExecuteAgentWorkflowContext, IRunExecutionData, ITaskData } from 'n8n-workflow';
 
-import { createWorkflowContextTool } from '../workflow-context-tool.js';
+import { createWorkflowContextTool } from '../workflow-context-tool';
 
 function makeCtx() {
 	return {

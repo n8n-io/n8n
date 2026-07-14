@@ -1,6 +1,6 @@
-import type { WorkflowCredentialRequirement } from '../credential/credential.types.js';
-import type { WorkflowDataTableRequirement } from '../data-table/data-table.types.js';
-import { mergeRequirements } from '../requirements.types.js';
+import type { WorkflowCredentialRequirement } from '../credential/credential.types';
+import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
+import { mergeRequirements } from '../requirements.types';
 
 function cred(credentialId: string, workflowId: string): WorkflowCredentialRequirement {
 	return {

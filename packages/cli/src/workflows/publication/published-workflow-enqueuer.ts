@@ -4,7 +4,7 @@ import { WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
-import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer.js';
+import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 
 /**
  * Enqueues a publication outbox record for every active workflow, on leader

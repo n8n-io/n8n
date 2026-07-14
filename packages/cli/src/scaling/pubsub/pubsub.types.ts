@@ -1,7 +1,7 @@
-import type { Resolve } from '@/utlity.types.js';
+import type { Resolve } from '@/utlity.types';
 
-import type { PubSubCommandMap, PubSubWorkerResponseMap } from './pubsub.event-map.js';
-import type { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants.js';
+import type { PubSubCommandMap, PubSubWorkerResponseMap } from './pubsub.event-map';
+import type { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
 
 export namespace PubSub {
 	// ----------------------------------

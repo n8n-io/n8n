@@ -1,6 +1,6 @@
 import type { DataTableColumnType } from 'n8n-workflow';
 
-import type { DataTableColumn } from '../data-table-column.entity.js';
+import type { DataTableColumn } from '../data-table-column.entity';
 import {
 	addColumnQuery,
 	deleteColumnQuery,
@@ -9,7 +9,7 @@ import {
 	normalizeValueForDatabase,
 	quoteIdentifier,
 	toSqliteGlobFromPercent,
-} from '../utils/sql-utils.js';
+} from '../utils/sql-utils';
 
 describe('sql-utils', () => {
 	describe('normalizeRows', () => {

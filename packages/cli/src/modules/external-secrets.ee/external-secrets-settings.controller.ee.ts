@@ -4,12 +4,12 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, GlobalScope, Middleware, Post, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { EventService } from '@/events/event.service.js';
-import { sendErrorResponse } from '@/response-helper.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { sendErrorResponse } from '@/response-helper';
 
-import { ExternalSecretsSettingsService } from './external-secrets-settings.service.ee.js';
-import { ExternalSecretsConfig } from './external-secrets.config.js';
+import { ExternalSecretsSettingsService } from './external-secrets-settings.service.ee';
+import { ExternalSecretsConfig } from './external-secrets.config';
 
 @RestController('/external-secrets/settings')
 export class ExternalSecretsSettingsController {

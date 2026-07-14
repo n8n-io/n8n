@@ -1,7 +1,7 @@
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { LicenseController } from '../license.controller.js';
+import { LicenseController } from '../license.controller';
 
 describe('LicenseController route access scopes', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(

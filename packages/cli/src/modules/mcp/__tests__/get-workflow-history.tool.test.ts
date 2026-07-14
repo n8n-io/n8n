@@ -3,12 +3,12 @@ import type { WorkflowHistory } from '@n8n/db';
 import { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 
-import { Telemetry } from '@/telemetry/index.js';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
+import { Telemetry } from '@/telemetry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import { createWorkflow } from './mock.utils.js';
-import { createGetWorkflowHistoryTool } from '../tools/get-workflow-history.tool.js';
+import { createWorkflow } from './mock.utils';
+import { createGetWorkflowHistoryTool } from '../tools/get-workflow-history.tool';
 
 type VersionMetadata = Omit<WorkflowHistory, 'nodes' | 'connections' | 'nodeGroups'>;
 

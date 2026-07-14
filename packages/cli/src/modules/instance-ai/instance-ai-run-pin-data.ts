@@ -11,9 +11,9 @@ import {
 	type WorkflowExecutionMockDataSource,
 } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 
-import { createTriggerExecutionData } from './trigger-run-data.js';
+import { createTriggerExecutionData } from './trigger-run-data';
 
 export interface InstanceAiRunPinDataPlan {
 	runPinData?: IPinData;

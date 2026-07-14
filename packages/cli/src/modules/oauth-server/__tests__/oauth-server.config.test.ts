@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { OAuthServerConfig } from '../oauth-server.config.js';
+import { OAuthServerConfig } from '../oauth-server.config';
 
 describe('OAuthServerConfig', () => {
 	beforeEach(() => {

@@ -1,8 +1,8 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service.js';
+import type { CacheService } from '@/services/cache/cache.service';
 
-import { CachedMetricQuery } from '../cached-metric-query.js';
+import { CachedMetricQuery } from '../cached-metric-query';
 
 describe('CachedMetricQuery', () => {
 	const cacheService = mock<CacheService>();

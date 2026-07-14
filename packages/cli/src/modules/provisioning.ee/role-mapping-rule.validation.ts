@@ -1,6 +1,6 @@
 import type { Role } from '@n8n/db';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 export function assertRoleCompatibleWithMappingType(
 	role: Role,

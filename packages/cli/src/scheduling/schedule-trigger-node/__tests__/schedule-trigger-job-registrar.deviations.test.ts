@@ -23,8 +23,8 @@ import type { Cron, CronExpression, INode, Workflow } from 'n8n-workflow';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { DurableJobProvisioner } from '../../durable-job-provisioner.js';
-import { ScheduleTriggerJobRegistrar } from '../schedule-trigger-job-registrar.js';
+import type { DurableJobProvisioner } from '../../durable-job-provisioner';
+import { ScheduleTriggerJobRegistrar } from '../schedule-trigger-job-registrar';
 
 /** Flatten a schedule into the per-kind columns a row stores; absent fields are null. */
 const flatten = (schedule: ScheduleDefinition) => ({

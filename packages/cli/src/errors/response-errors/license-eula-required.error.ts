@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error.js';
+import { ResponseError } from './abstract/response.error';
 
 /**
  * Error thrown when license activation requires EULA acceptance.

@@ -1,9 +1,9 @@
 import { Service } from '@n8n/di';
 import type { IDataObject } from 'n8n-workflow';
 
-import { ExternalSecretsManager } from './external-secrets-manager.ee.js';
-import { RedactionService } from './redaction.service.ee.js';
-import type { ExternalSecretsRequest, SecretsProvider } from './types.js';
+import { ExternalSecretsManager } from './external-secrets-manager.ee';
+import { RedactionService } from './redaction.service.ee';
+import type { ExternalSecretsRequest, SecretsProvider } from './types';
 
 @Service()
 export class ExternalSecretsService {

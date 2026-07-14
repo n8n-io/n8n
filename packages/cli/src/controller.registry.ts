@@ -15,22 +15,22 @@ import { Container, Service } from '@n8n/di';
 import { Router } from 'express';
 
 import type { Application, Request, Response, RequestHandler } from 'express';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error.js';
-import { License } from '@/license.js';
-import { userHasScopes } from '@/permissions.ee/check-access.js';
-import { send } from '@/response-helper.js';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import { License } from '@/license';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { send } from '@/response-helper';
 
-import { AbstractServer } from './abstract-server.js';
-import { NotFoundError } from './errors/response-errors/not-found.error.js';
-import { CorsService } from './services/cors-service.js';
-import { LastActiveAtService } from './services/last-active-at.service.js';
-import { RateLimitService } from './services/rate-limit.service.js';
+import { AbstractServer } from './abstract-server';
+import { NotFoundError } from './errors/response-errors/not-found.error';
+import { CorsService } from './services/cors-service';
+import { LastActiveAtService } from './services/last-active-at.service';
+import { RateLimitService } from './services/rate-limit.service';
 
-import { AuthService } from '@/auth/auth.service.js';
+import { AuthService } from '@/auth/auth.service';
 
 @Service()
 export class ControllerRegistry {

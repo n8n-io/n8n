@@ -7,11 +7,11 @@ import type { IRun, IWorkflowBase } from 'n8n-workflow';
 import { parse as semverParse } from 'semver';
 import request, { type Response } from 'supertest';
 
-import { N8N_VERSION } from '@/constants.js';
-import { EventService } from '@/events/event.service.js';
-import { CacheService } from '@/services/cache/cache.service.js';
+import { N8N_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
+import { CacheService } from '@/services/cache/cache.service';
 
-import { setupTestServer } from './shared/utils/index.js';
+import { setupTestServer } from './shared/utils';
 
 vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 

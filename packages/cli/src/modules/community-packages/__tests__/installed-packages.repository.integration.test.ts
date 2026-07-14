@@ -2,10 +2,10 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import type { PackageDirectoryLoader } from 'n8n-core';
 
-import { NODE_PACKAGE_PREFIX } from '@/constants.js';
+import { NODE_PACKAGE_PREFIX } from '@/constants';
 
-import { InstalledNodesRepository } from '../installed-nodes.repository.js';
-import { InstalledPackagesRepository } from '../installed-packages.repository.js';
+import { InstalledNodesRepository } from '../installed-nodes.repository';
+import { InstalledPackagesRepository } from '../installed-packages.repository';
 
 const PACKAGE_NAME = `${NODE_PACKAGE_PREFIX}test`;
 

@@ -7,7 +7,7 @@ import path from 'node:path';
 import picocolors from 'picocolors';
 import { z, ZodError } from 'zod';
 
-import './zod-alias-support.js';
+import './zod-alias-support';
 
 /**
  * Registry that manages CLI commands, their execution, and metadata.

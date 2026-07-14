@@ -6,17 +6,17 @@ import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
 import { jsonStringify, sleep, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
-import { WsStatusCodes } from '@/constants.js';
-import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer.js';
+import { WsStatusCodes } from '@/constants';
+import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import type {
 	DisconnectAnalyzer,
 	DisconnectReason,
 	TaskBrokerServerInitRequest,
 	TaskBrokerServerInitResponse,
-} from '@/task-runners/task-broker/task-broker-types.js';
-import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events.js';
+} from '@/task-runners/task-broker/task-broker-types';
+import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
-import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service.js';
+import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;

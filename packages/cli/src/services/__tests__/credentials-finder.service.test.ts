@@ -19,9 +19,9 @@ import { In } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
-import { RoleService } from '../role.service.js';
+import { RoleService } from '../role.service';
 
 describe('CredentialsFinderService', () => {
 	const roleService = mockInstance(RoleService);

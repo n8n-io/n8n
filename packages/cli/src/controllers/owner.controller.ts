@@ -3,11 +3,11 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, GlobalScope, Post, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service.js';
-import { PostHogClient } from '@/posthog/index.js';
-import { BannerService } from '@/services/banner.service.js';
-import { OwnershipService } from '@/services/ownership.service.js';
-import { UserService } from '@/services/user.service.js';
+import { AuthService } from '@/auth/auth.service';
+import { PostHogClient } from '@/posthog';
+import { BannerService } from '@/services/banner.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { UserService } from '@/services/user.service';
 
 @RestController('/owner')
 export class OwnerController {

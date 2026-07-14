@@ -1,4 +1,4 @@
-import { CredentialResolutionError } from './credential-resolution.error.js';
+import { CredentialResolutionError } from './credential-resolution.error';
 
 /**
  * Thrown when dynamic credential resolution is attempted but no execution context

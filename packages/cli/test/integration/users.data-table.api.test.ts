@@ -2,13 +2,13 @@ import { testDb, getPersonalProject } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
-import { toTableName } from '@/modules/data-table/utils/sql-utils.js';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { toTableName } from '@/modules/data-table/utils/sql-utils';
 
-import { createDataTable } from './shared/db/data-tables.js';
-import { createMember, createOwner } from './shared/db/users.js';
-import type { SuperAgentTest } from './shared/types.js';
-import * as utils from './shared/utils//index.js';
+import { createDataTable } from './shared/db/data-tables';
+import { createMember, createOwner } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['users'],

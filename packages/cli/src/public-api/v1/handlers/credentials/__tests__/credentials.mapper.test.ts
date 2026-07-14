@@ -1,7 +1,7 @@
 import { UnexpectedError } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { toPublicApiCredentialResponse } from '../credentials.mapper.js';
+import { toPublicApiCredentialResponse } from '../credentials.mapper';
 
 type MapperInput = Parameters<typeof toPublicApiCredentialResponse>[0];
 

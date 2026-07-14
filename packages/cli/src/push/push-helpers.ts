@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 
-import type { PushRequest, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types.js';
+import type { PushRequest, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 
 export function isPushRequest(req: Request): req is PushRequest {
 	return 'pushRef' in req.query && typeof req.query.pushRef === 'string';

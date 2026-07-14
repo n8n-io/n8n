@@ -6,12 +6,12 @@ import type {
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import type { ProjectService } from '@/services/project.service.ee.js';
-import type { RoleService } from '@/services/role.service.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { RoleService } from '@/services/role.service';
 
-import { SecretsProviderAccessCheckService } from '../secret-provider-access-check.service.ee.js';
+import { SecretsProviderAccessCheckService } from '../secret-provider-access-check.service.ee';
 
 describe('SecretsProviderAccessCheckService', () => {
 	const connectionRepository = mock<SecretsProviderConnectionRepository>();

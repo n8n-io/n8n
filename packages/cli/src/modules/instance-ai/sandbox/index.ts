@@ -6,4 +6,4 @@ export {
 	type InstanceAiSandboxServiceOptions,
 	type InstanceAiSandboxSettings,
 	type RuntimeSandboxEntry,
-} from './instance-ai-sandbox.service.js';
+} from './instance-ai-sandbox.service';

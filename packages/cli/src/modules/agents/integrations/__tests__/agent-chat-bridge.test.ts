@@ -4,15 +4,15 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
 
-import { AgentChatBridge } from '../agent-chat-bridge.js';
+import { AgentChatBridge } from '../agent-chat-bridge';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
-} from '../agent-chat-integration.js';
-import type { ComponentMapper } from '../component-mapper.js';
-import type { IntegrationMessageContextService } from '../integration-message-context.service.js';
-import { SlackIntegration } from '../platforms/slack-integration.js';
+} from '../agent-chat-integration';
+import type { ComponentMapper } from '../component-mapper';
+import type { IntegrationMessageContextService } from '../integration-message-context.service';
+import { SlackIntegration } from '../platforms/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 

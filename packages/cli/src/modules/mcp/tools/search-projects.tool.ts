@@ -2,11 +2,11 @@ import type { LicenseState } from '@n8n/backend-common';
 import type { ProjectRepository, User } from '@n8n/db';
 import z from 'zod';
 
-import type { Telemetry } from '@/telemetry/index.js';
+import type { Telemetry } from '@/telemetry';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types.js';
-import { createLimitSchema } from './schemas.js';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { createLimitSchema } from './schemas';
 
 const MAX_RESULTS = 100;
 

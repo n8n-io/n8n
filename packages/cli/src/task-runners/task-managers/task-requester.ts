@@ -20,13 +20,13 @@ import type {
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { EventService } from '@/events/event.service.js';
-import { NodeTypes } from '@/node-types.js';
-import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error.js';
-import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error.js';
+import { EventService } from '@/events/event.service';
+import { NodeTypes } from '@/node-types';
+import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
+import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error';
 
-import { DataRequestResponseBuilder } from './data-request-response-builder.js';
-import { DataRequestResponseStripper } from './data-request-response-stripper.js';
+import { DataRequestResponseBuilder } from './data-request-response-builder';
+import { DataRequestResponseStripper } from './data-request-response-stripper';
 
 export type RequestAccept = (jobId: string) => void;
 export type RequestReject = (reason: string | Error) => void;

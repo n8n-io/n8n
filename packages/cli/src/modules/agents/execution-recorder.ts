@@ -3,7 +3,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
-import type { ToolRegistry } from './tool-registry.js';
+import type { ToolRegistry } from './tool-registry';
 
 /**
  * Walk a nodeParameters tree and substitute templated values with what the

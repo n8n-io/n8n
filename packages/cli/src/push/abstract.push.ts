@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
 
-import type { OnPushMessage } from '@/push/types.js';
+import type { OnPushMessage } from '@/push/types';
 
 export interface AbstractPushEvents {
 	message: OnPushMessage;

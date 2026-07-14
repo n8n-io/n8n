@@ -3,7 +3,7 @@ import { createTeamProject, linkUserToProject, randomEmail, testDb } from '@n8n/
 import { ProjectRelationRepository, type User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createAdmin, createChatUser, createMember, createOwner } from './shared/db/users.js';
+import { createAdmin, createChatUser, createMember, createOwner } from './shared/db/users';
 
 describe('UserRepository', () => {
 	let userRepository: UserRepository;

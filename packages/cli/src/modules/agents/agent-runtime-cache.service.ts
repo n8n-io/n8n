@@ -6,20 +6,20 @@ import type { User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import type { IAgentConfigurationTelemetryProperties } from '@/interfaces.js';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
-import { TtlMap } from '@/utils/ttl-map.js';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { IAgentConfigurationTelemetryProperties } from '@/interfaces';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { TtlMap } from '@/utils/ttl-map';
 
-import { buildAgentConfigurationTelemetry } from './agent-telemetry.js';
-import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service.js';
-import type { Agent } from './entities/agent.entity.js';
-import { AgentRepository } from './repositories/agent.repository.js';
-import type { ToolRegistry } from './tool-registry.js';
-import { createAgentCredentialProvider } from './utils/agent-credential-provider.js';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot.js';
+import { buildAgentConfigurationTelemetry } from './agent-telemetry';
+import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
+import type { Agent } from './entities/agent.entity';
+import { AgentRepository } from './repositories/agent.repository';
+import type { ToolRegistry } from './tool-registry';
+import { createAgentCredentialProvider } from './utils/agent-credential-provider';
+import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 
 export interface GetRuntimeParams {
 	agentId: string;

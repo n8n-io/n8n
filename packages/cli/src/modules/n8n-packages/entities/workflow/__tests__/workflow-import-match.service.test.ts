@@ -1,9 +1,9 @@
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { WorkflowImportMatchService } from '../workflow-import-match.service.js';
+import { WorkflowImportMatchService } from '../workflow-import-match.service';
 
 function workflow(attrs: {
 	id: string;

@@ -3,14 +3,14 @@ import type { Logger } from '@n8n/backend-common';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import type { ProjectService } from '@/services/project.service.ee.js';
-import type { WorkflowService } from '@/workflows/workflow.service.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
-import type { PersistedWorkflowPlanItem } from '../workflow-import.types.js';
-import { WorkflowPublisher } from '../workflow-publisher.js';
-import { WorkflowPublishingPolicy } from '../workflow-publishing-policy.types.js';
+import type { PersistedWorkflowPlanItem } from '../workflow-import.types';
+import { WorkflowPublisher } from '../workflow-publisher';
+import { WorkflowPublishingPolicy } from '../workflow-publishing-policy.types';
 
 // The publish/unpublish matrix is covered end-to-end by
 // `import-package.integration.test.ts`. These unit tests cover the permission

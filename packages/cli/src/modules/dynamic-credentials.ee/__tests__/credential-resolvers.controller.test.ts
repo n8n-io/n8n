@@ -3,18 +3,18 @@ import { CredentialResolverValidationError } from '@n8n/decorators';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { SYSTEM_RESOLVER_ID } from '../constants.js';
-import { IdentifierValidationError } from '../credential-resolvers/identifiers/identifier-interface.js';
-import { CredentialResolversController } from '../credential-resolvers.controller.js';
-import type { DynamicCredentialResolver } from '../database/entities/credential-resolver.js';
-import { CredentialResolutionError } from '../errors/credential-resolution.error.js';
-import { DynamicCredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error.js';
-import { SystemResolverModificationError } from '../errors/system-resolver-modification.error.js';
-import type { DynamicCredentialResolverService } from '../services/credential-resolver.service.js';
+import { SYSTEM_RESOLVER_ID } from '../constants';
+import { IdentifierValidationError } from '../credential-resolvers/identifiers/identifier-interface';
+import { CredentialResolversController } from '../credential-resolvers.controller';
+import type { DynamicCredentialResolver } from '../database/entities/credential-resolver';
+import { CredentialResolutionError } from '../errors/credential-resolution.error';
+import { DynamicCredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
+import { SystemResolverModificationError } from '../errors/system-resolver-modification.error';
+import type { DynamicCredentialResolverService } from '../services/credential-resolver.service';
 
 describe('CredentialResolversController', () => {
 	const service = mock<DynamicCredentialResolverService>();

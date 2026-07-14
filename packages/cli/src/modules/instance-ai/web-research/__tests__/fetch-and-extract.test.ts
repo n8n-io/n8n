@@ -14,7 +14,7 @@ import dns from 'node:dns';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo, LookupFunction } from 'node:net';
 
-import { fetchAndExtract } from '../fetch-and-extract.js';
+import { fetchAndExtract } from '../fetch-and-extract';
 
 // The SSRF interceptor hands `validateUrl` a `URL` object (not a string), so we
 // match on its `href` rather than comparing against a raw string.

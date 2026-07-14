@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 
-import { renderAuthor } from '../repositories/agent-history.repository.js';
+import { renderAuthor } from '../repositories/agent-history.repository';
 
 const userWith = (firstName: string | null, lastName: string | null): User =>
 	({ firstName, lastName }) as User;

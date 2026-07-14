@@ -3,7 +3,7 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command.js';
+import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Unpublish all workflows').optional(),

@@ -7,17 +7,13 @@ import { Cipher, CipherAes256GCM, CipherAes256CBC, EncryptionKeyProxy } from 'n8
 import type { InstanceSettings } from 'n8n-core';
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
 
-import {
-	buildSharedForCredential,
-	toJsonSchema,
-	updateCredential,
-} from '../credentials.service.js';
+import { buildSharedForCredential, toJsonSchema, updateCredential } from '../credentials.service';
 
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
-import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee.js';
-import * as checkAccess from '@/permissions.ee/check-access.js';
-import type { IDependency } from '@/public-api/types.js';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import * as checkAccess from '@/permissions.ee/check-access';
+import type { IDependency } from '@/public-api/types';
 
 // Set up real Cipher with mocked InstanceSettings for encryption
 const cipher = new Cipher(

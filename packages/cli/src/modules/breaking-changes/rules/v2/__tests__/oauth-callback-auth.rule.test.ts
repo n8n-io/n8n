@@ -1,4 +1,4 @@
-import { OAuthCallbackAuthRule } from '../oauth-callback-auth.rule.js';
+import { OAuthCallbackAuthRule } from '../oauth-callback-auth.rule';
 
 describe('OAuthCallbackAuthRule', () => {
 	let rule: OAuthCallbackAuthRule;

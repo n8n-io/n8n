@@ -2,19 +2,19 @@ import type { Project, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import type { FolderFinderService } from '@/services/folder-finder.service.js';
-import type { ProjectService } from '@/services/project.service.ee.js';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { FolderFinderService } from '@/services/folder-finder.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { PackageWriter } from '../../../io/package-writer.js';
-import type { FolderExporter } from '../../folder/folder.exporter.js';
+import type { PackageWriter } from '../../../io/package-writer';
+import type { FolderExporter } from '../../folder/folder.exporter';
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
-} from '../../package-export.errors.js';
-import type { WorkflowExporter } from '../../workflow/workflow.exporter.js';
-import { ProjectExporter } from '../project.exporter.js';
-import { ProjectSerializer } from '../project.serializer.js';
+} from '../../package-export.errors';
+import type { WorkflowExporter } from '../../workflow/workflow.exporter';
+import { ProjectExporter } from '../project.exporter';
+import { ProjectSerializer } from '../project.serializer';
 
 const user = mock<User>({ id: 'user-1' });
 

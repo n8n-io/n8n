@@ -5,12 +5,12 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import { TypeToNumber } from '../database/entities/insights-shared.js';
-import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository.js';
-import { InsightsController } from '../insights.controller.js';
+import { TypeToNumber } from '../database/entities/insights-shared';
+import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsController } from '../insights.controller';
 
 function expectDatesClose(actual: Date, expected: Date, maxDriftMs?: number) {
 	const maxDrift = maxDriftMs ?? 60000; // default to 1 minute

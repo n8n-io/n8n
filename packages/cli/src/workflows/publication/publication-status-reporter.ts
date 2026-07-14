@@ -8,14 +8,14 @@ import {
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 
-import { ActivationErrorsService } from '@/activation-errors.service.js';
-import { Push } from '@/push/index.js';
+import { ActivationErrorsService } from '@/activation-errors.service';
+import { Push } from '@/push';
 import type {
 	FailedTriggerPublicationStatus,
 	PublicationResult,
 	PublicationSkipReason,
 	TriggerPublicationStatus,
-} from '@/workflows/publication/publication-result.js';
+} from '@/workflows/publication/publication-result';
 
 /**
  * Turns a {@link PublicationResult} into terminal state. This is the only place

@@ -6,8 +6,8 @@ import { mock } from 'vitest-mock-extended';
 import {
 	ChatHubExecutionStore,
 	type ChatHubExecutionContext,
-} from '@/modules/chat-hub/chat-hub-execution-store.service.js';
-import type { RedisClientService } from '@/services/redis-client.service.js';
+} from '@/modules/chat-hub/chat-hub-execution-store.service';
+import type { RedisClientService } from '@/services/redis-client.service';
 
 const EXECUTION_ID = '12345678';
 const SESSION_ID = 'bbbbbbbb-2222-4000-8000-000000000002';

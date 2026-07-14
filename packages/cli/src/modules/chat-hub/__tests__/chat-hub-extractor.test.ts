@@ -5,7 +5,7 @@ import type { INodeExecutionData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ChatHubExtractor } from '../chat-hub-extractor.js';
+import { ChatHubExtractor } from '../chat-hub-extractor';
 
 // Helper function to create trigger items
 const createTriggerItem = (data: Record<string, unknown>): INodeExecutionData => ({

@@ -12,11 +12,11 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentTaskService } from './agent-task.service.js';
-import type { Agent } from './entities/agent.entity.js';
-import { AgentRepository } from './repositories/agent.repository.js';
+import { AgentTaskService } from './agent-task.service';
+import type { Agent } from './entities/agent.entity';
+import { AgentRepository } from './repositories/agent.repository';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentTasksController {

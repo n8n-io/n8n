@@ -4,9 +4,9 @@ import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import type { CheckService } from '../checks/check.service.js';
-import { InstanceRegistryController } from '../instance-registry.controller.js';
-import type { InstanceRegistryService } from '../instance-registry.service.js';
+import type { CheckService } from '../checks/check.service';
+import { InstanceRegistryController } from '../instance-registry.controller';
+import type { InstanceRegistryService } from '../instance-registry.service';
 
 const makeRegistration = (overrides: Partial<InstanceRegistration> = {}): InstanceRegistration => ({
 	schemaVersion: 1,

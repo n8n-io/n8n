@@ -4,11 +4,11 @@ import type { Cipher } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_NAME, SYSTEM_RESOLVER_TYPE } from '../../constants.js';
-import { DynamicCredentialResolver } from '../../database/entities/credential-resolver.js';
-import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository.js';
-import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service.js';
-import { N8nResolverSeeder } from '../n8n-resolver-seeder.service.js';
+import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_NAME, SYSTEM_RESOLVER_TYPE } from '../../constants';
+import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
+import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
+import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
+import { N8nResolverSeeder } from '../n8n-resolver-seeder.service';
 
 describe('N8nResolverSeeder', () => {
 	const repository = mock<DynamicCredentialResolverRepository>();

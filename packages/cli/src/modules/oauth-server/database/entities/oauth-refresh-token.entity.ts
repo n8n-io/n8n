@@ -1,7 +1,7 @@
 import { User, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
 
-import { OAuthClient } from './oauth-client.entity.js';
+import { OAuthClient } from './oauth-client.entity';
 
 @Entity('oauth_refresh_tokens')
 export class RefreshToken extends WithTimestamps {

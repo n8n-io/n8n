@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-import { ChannelIntegrationRecorder } from '../recording/channel-integration-recorder.js';
+import { ChannelIntegrationRecorder } from '../recording/channel-integration-recorder';
 
 describe('ChannelIntegrationRecorder', () => {
 	let recordingDir: string;

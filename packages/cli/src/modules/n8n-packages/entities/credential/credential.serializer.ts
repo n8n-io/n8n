@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import {
 	serializedCredentialSchema,
 	type SerializedCredential,
-} from '../../spec/serialized/credential.schema.js';
+} from '../../spec/serialized/credential.schema';
 
 @Service()
 export class CredentialSerializer {

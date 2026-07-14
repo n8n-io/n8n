@@ -3,7 +3,7 @@ import {
 	TOKEN_EXCHANGE_GRANT_TYPE,
 	TokenExchangeRequestSchema,
 	TrustedKeySourceSchema,
-} from '../token-exchange.schemas.js';
+} from '../token-exchange.schemas';
 
 describe('token-exchange.schemas', () => {
 	describe('ExternalTokenClaimsSchema', () => {

@@ -1,6 +1,6 @@
 import { ServerError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
-import { AuthError } from '@/errors/response-errors/auth.error.js';
+import { AuthError } from '@/errors/response-errors/auth.error';
 
 // The wording references MCP because the instance MCP server is currently the
 // only protected resource; clients registered via its DCR endpoint see this

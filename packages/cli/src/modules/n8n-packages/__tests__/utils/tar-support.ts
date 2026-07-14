@@ -2,7 +2,7 @@ import { jsonParse } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 import { Parser, type ReadEntry } from 'tar';
 
-import type { PackageManifest } from '../../spec/manifest.schema.js';
+import type { PackageManifest } from '../../spec/manifest.schema';
 
 export interface UnpackedEntry {
 	name: string;

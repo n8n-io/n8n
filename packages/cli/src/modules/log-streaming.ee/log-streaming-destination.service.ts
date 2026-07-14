@@ -5,18 +5,18 @@ import { Service } from '@n8n/di';
 import type { DeleteResult } from '@n8n/typeorm';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
-import type { EventMessageTypes } from '@/eventbus/index.js';
-import type { EventMessageConfirmSource } from '@/eventbus/event-message-classes/event-message-confirm.js';
+import type { EventMessageTypes } from '@/eventbus';
+import type { EventMessageConfirmSource } from '@/eventbus/event-message-classes/event-message-confirm';
 import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,
-} from '@/eventbus/event-message-classes/event-message-generic.js';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+} from '@/eventbus/event-message-classes/event-message-generic';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { EventDestinationsRepository } from './database/repositories/event-destination.repository.js';
-import { messageEventBusDestinationFromDb } from './destinations/message-event-bus-destination-from-db.js';
-import { MessageEventBusDestination } from './destinations/message-event-bus-destination.ee.js';
+import { EventDestinationsRepository } from './database/repositories/event-destination.repository';
+import { messageEventBusDestinationFromDb } from './destinations/message-event-bus-destination-from-db';
+import { MessageEventBusDestination } from './destinations/message-event-bus-destination.ee';
 
 /**
  * Service to handle all log streaming destination operations including:

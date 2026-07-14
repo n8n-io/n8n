@@ -6,11 +6,11 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error.js';
-import { EventService } from '@/events/event.service.js';
-import { License } from '@/license.js';
-import { UrlService } from '@/services/url.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
+import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { UrlService } from '@/services/url.service';
 
 const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 

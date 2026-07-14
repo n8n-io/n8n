@@ -8,7 +8,7 @@ import { trace } from '@opentelemetry/api';
 import promClient from 'prom-client';
 import { mock } from 'vitest-mock-extended';
 
-import { ExpressionObservabilityProvider } from '../expression-observability.provider.js';
+import { ExpressionObservabilityProvider } from '../expression-observability.provider';
 
 const scopedLogger = mock<Logger>();
 

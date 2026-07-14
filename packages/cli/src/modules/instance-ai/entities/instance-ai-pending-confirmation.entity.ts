@@ -1,8 +1,8 @@
 import { DateTimeColumn, User, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
-import { InstanceAiCheckpoint } from './instance-ai-checkpoint.entity.js';
-import { InstanceAiThread } from './instance-ai-thread.entity.js';
+import { InstanceAiCheckpoint } from './instance-ai-checkpoint.entity';
+import { InstanceAiThread } from './instance-ai-thread.entity';
 
 export type InstanceAiPendingConfirmationKind = 'suspended' | 'inline';
 

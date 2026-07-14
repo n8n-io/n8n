@@ -1,13 +1,13 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
-import { TrustedKeySourceRepository } from '@/modules/token-exchange/database/repositories/trusted-key-source.repository.js';
-import { TrustedKeyRepository } from '@/modules/token-exchange/database/repositories/trusted-key.repository.js';
+import { TrustedKeySourceRepository } from '@/modules/token-exchange/database/repositories/trusted-key-source.repository';
+import { TrustedKeyRepository } from '@/modules/token-exchange/database/repositories/trusted-key.repository';
 import type {
 	TrustedKeyData,
 	TrustedKeySourceStatus,
 	TrustedKeySourceType,
-} from '@/modules/token-exchange/token-exchange.schemas.js';
+} from '@/modules/token-exchange/token-exchange.schemas';
 
 const makeSource = (
 	overrides: Partial<{

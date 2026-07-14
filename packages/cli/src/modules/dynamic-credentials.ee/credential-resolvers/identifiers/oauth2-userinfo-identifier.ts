@@ -4,11 +4,11 @@ import { Service } from '@n8n/di';
 import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { CacheService } from '@/services/cache/cache.service.js';
+import { CacheService } from '@/services/cache/cache.service';
 
-import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface.js';
-import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client.js';
-import { OAuth2OptionsSchema, sha256 } from './oauth2-utils.js';
+import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
+import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
+import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
 // Use minimum of 30 seconds to avoid cache thrashing
 // Cap at 5 minutes to ensure periodic revalidation

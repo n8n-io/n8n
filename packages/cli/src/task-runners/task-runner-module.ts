@@ -7,18 +7,18 @@ import { ErrorReporter } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
-import { EventService } from '@/events/event.service.js';
-import type { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error.js';
-import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server.js';
-import type { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js.js';
-import type { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py.js';
-import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector.js';
+import { EventService } from '@/events/event.service';
+import type { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import type { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
+import type { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
+import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
 
-import { MissingAuthTokenError } from './errors/missing-auth-token.error.js';
-import { MissingRequirementsError } from './errors/missing-requirements.error.js';
-import type { TaskBrokerServer } from './task-broker/task-broker-server.js';
-import type { LocalTaskRequester } from './task-managers/local-task-requester.js';
-import { TaskRequester } from './task-managers/task-requester.js';
+import { MissingAuthTokenError } from './errors/missing-auth-token.error';
+import { MissingRequirementsError } from './errors/missing-requirements.error';
+import type { TaskBrokerServer } from './task-broker/task-broker-server';
+import type { LocalTaskRequester } from './task-managers/local-task-requester';
+import { TaskRequester } from './task-managers/task-requester';
 
 /**
  * Module responsible for loading and starting task runner. Task runner can be

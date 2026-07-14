@@ -3,7 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import {
 	RoleDeletionCheckProxy,
 	type RoleDeletionChecker,
-} from '@/services/role-deletion-check-proxy.service.js';
+} from '@/services/role-deletion-check-proxy.service';
 
 describe('RoleDeletionCheckProxy', () => {
 	it('reports no blockers when no provider is registered', async () => {

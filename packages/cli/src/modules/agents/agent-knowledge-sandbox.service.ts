@@ -10,10 +10,10 @@ import { OperationalError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { AiService } from '@/services/ai.service.js';
-import { TtlMap } from '@/utils/ttl-map.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { AiService } from '@/services/ai.service';
+import { TtlMap } from '@/utils/ttl-map';
 
 import {
 	buildMirrorFinalizeCommand,
@@ -28,8 +28,8 @@ import {
 	parseRipgrepCountOutput,
 	parseRipgrepFilesOutput,
 	parseRipgrepOutput,
-} from './agent-knowledge-commands.js';
-import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate.js';
+} from './agent-knowledge-commands';
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import {
 	assertValidKnowledgeFilePath,
 	DEFAULT_GLOB_FILES_LIMIT,
@@ -44,14 +44,14 @@ import {
 	type ReadKnowledgeResult,
 	type SearchKnowledgeRequest,
 	type SearchKnowledgeResult,
-} from './agent-knowledge-retrieval.js';
+} from './agent-knowledge-retrieval';
 import {
 	assertKnowledgePathSegment,
 	KNOWLEDGE_MIRROR_FILES_DIR,
 	storageFileNameForOriginalFileName,
-} from './agent-knowledge-storage.js';
-import { AgentFileRepository } from './repositories/agent-file.repository.js';
-import { AgentRepository } from './repositories/agent.repository.js';
+} from './agent-knowledge-storage';
+import { AgentFileRepository } from './repositories/agent-file.repository';
+import { AgentRepository } from './repositories/agent.repository';
 
 interface AgentKnowledgeCommandResult {
 	exitCode: number;

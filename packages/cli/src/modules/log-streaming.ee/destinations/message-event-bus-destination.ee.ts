@@ -11,13 +11,13 @@ import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-wo
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { AbstractEventMessage } from '@/eventbus/event-message-classes/abstract-event-message.js';
-import { eventMessageGenericDestinationTestEvent } from '@/eventbus/event-message-classes/event-message-generic.js';
+import type { AbstractEventMessage } from '@/eventbus/event-message-classes/abstract-event-message';
+import { eventMessageGenericDestinationTestEvent } from '@/eventbus/event-message-classes/event-message-generic';
 import type {
 	MessageEventBus,
 	MessageWithCallback,
-} from '@/eventbus/message-event-bus/message-event-bus.js';
-import { CircuitBreaker } from '@/utils/circuit-breaker.js';
+} from '@/eventbus/message-event-bus/message-event-bus';
+import { CircuitBreaker } from '@/utils/circuit-breaker';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.

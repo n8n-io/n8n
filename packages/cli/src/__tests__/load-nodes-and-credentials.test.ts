@@ -7,7 +7,7 @@ import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { LoadNodesAndCredentials } from '../load-nodes-and-credentials.js';
+import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 
 vi.mock('lodash/debounce', () => ({ default: (fn: () => void) => fn }));
 

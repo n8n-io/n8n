@@ -1,14 +1,14 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 
-import type { SourceControlCommit } from './source-control-commit.js';
-import type { SourceControlDisconnect } from './source-control-disconnect.js';
-import type { SourceControlGenerateKeyPair } from './source-control-generate-key-pair.js';
-import type { SourceControlGetStatus } from './source-control-get-status.js';
-import type { SourceControlPreferences } from './source-control-preferences.js';
-import type { SourceControlPush } from './source-control-push.js';
-import type { SourceControlSetBranch } from './source-control-set-branch.js';
-import type { SourceControlSetReadOnly } from './source-control-set-read-only.js';
-import type { SourceControlStage } from './source-control-stage.js';
+import type { SourceControlCommit } from './source-control-commit';
+import type { SourceControlDisconnect } from './source-control-disconnect';
+import type { SourceControlGenerateKeyPair } from './source-control-generate-key-pair';
+import type { SourceControlGetStatus } from './source-control-get-status';
+import type { SourceControlPreferences } from './source-control-preferences';
+import type { SourceControlPush } from './source-control-push';
+import type { SourceControlSetBranch } from './source-control-set-branch';
+import type { SourceControlSetReadOnly } from './source-control-set-read-only';
+import type { SourceControlStage } from './source-control-stage';
 
 export declare namespace SourceControlRequest {
 	type UpdatePreferences = AuthenticatedRequest<{}, {}, Partial<SourceControlPreferences>, {}>;

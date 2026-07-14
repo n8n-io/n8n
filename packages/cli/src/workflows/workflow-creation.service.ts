@@ -13,30 +13,30 @@ import { Service } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error.js';
-import { EventService } from '@/events/event.service.js';
-import type { WorkflowActionSource } from '@/events/maps/relay.event-map.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { validateEntity } from '@/generic-helpers.js';
-import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service.js';
-import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy.js';
-import { NodeTypes } from '@/node-types.js';
-import { userHasScopes } from '@/permissions.ee/check-access.js';
-import { FolderService } from '@/services/folder.service.js';
-import { ProjectService } from '@/services/project.service.ee.js';
-import { TagService } from '@/services/tag.service.js';
-import * as WorkflowHelpers from '@/workflow-helpers.js';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
+import { EventService } from '@/events/event.service';
+import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
+import { ExternalHooks } from '@/external-hooks';
+import { validateEntity } from '@/generic-helpers';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy';
+import { NodeTypes } from '@/node-types';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { FolderService } from '@/services/folder.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { TagService } from '@/services/tag.service';
+import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { dropRedactionPolicy } from './utils.js';
-import { WorkflowFinderService } from './workflow-finder.service.js';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service.js';
-import { WorkflowValidationService } from './workflow-validation.service.js';
-import { EnterpriseWorkflowService } from './workflow.service.ee.js';
+import { dropRedactionPolicy } from './utils';
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+import { WorkflowValidationService } from './workflow-validation.service';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
 
 @Service()
 export class WorkflowCreationService {

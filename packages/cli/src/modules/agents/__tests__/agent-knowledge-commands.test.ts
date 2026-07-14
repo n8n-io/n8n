@@ -8,15 +8,12 @@ import {
 	parseReadKnowledgeOutput,
 	parseRipgrepCountOutput,
 	parseRipgrepOutput,
-} from '../agent-knowledge-commands.js';
-import {
-	KNOWLEDGE_MIRROR_FILES_DIR,
-	KNOWLEDGE_MIRROR_MANIFEST,
-} from '../agent-knowledge-storage.js';
+} from '../agent-knowledge-commands';
+import { KNOWLEDGE_MIRROR_FILES_DIR, KNOWLEDGE_MIRROR_MANIFEST } from '../agent-knowledge-storage';
 import {
 	searchKnowledgeInputSchema,
 	type AgentKnowledgeFileReference,
-} from '../agent-knowledge-retrieval.js';
+} from '../agent-knowledge-retrieval';
 
 const mobyDickFile: AgentKnowledgeFileReference = {
 	file: 'moby-dick.txt',

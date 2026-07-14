@@ -13,10 +13,10 @@ import pLimit from 'p-limit';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { EventService } from '@/events/event.service.js';
-import { IWorkflowToImport } from '@/interfaces.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { IWorkflowToImport } from '@/interfaces';
 
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
@@ -24,29 +24,29 @@ import {
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
-} from './constants.js';
-import { SourceControlContextFactory } from './source-control-context.factory.js';
-import { SourceControlExportService } from './source-control-export.service.ee.js';
-import { SourceControlGitService } from './source-control-git.service.ee.js';
+} from './constants';
+import { SourceControlContextFactory } from './source-control-context.factory';
+import { SourceControlExportService } from './source-control-export.service.ee';
+import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	getTagsPath,
 	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromPullResult,
 	normalizeAndValidateSourceControlledFilePath,
 	sourceControlFoldersExistCheck,
-} from './source-control-helper.ee.js';
-import { SourceControlImportService } from './source-control-import.service.ee.js';
-import { SourceControlPreferencesService } from './source-control-preferences.service.ee.js';
+} from './source-control-helper.ee';
+import { SourceControlImportService } from './source-control-import.service.ee';
+import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import {
 	filterByType,
 	getDeletedResources,
 	getNonDeletedResources,
-} from './source-control-resource-helper.js';
-import { SourceControlScopedService } from './source-control-scoped.service.js';
-import { SourceControlStatusService } from './source-control-status.service.ee.js';
-import type { ImportResult } from './types/import-result.js';
-import type { SourceControlGetStatus } from './types/source-control-get-status.js';
-import type { SourceControlPreferences } from './types/source-control-preferences.js';
+} from './source-control-resource-helper';
+import { SourceControlScopedService } from './source-control-scoped.service';
+import { SourceControlStatusService } from './source-control-status.service.ee';
+import type { ImportResult } from './types/import-result';
+import type { SourceControlGetStatus } from './types/source-control-get-status';
+import type { SourceControlPreferences } from './types/source-control-preferences';
 
 @Service()
 export class SourceControlService {

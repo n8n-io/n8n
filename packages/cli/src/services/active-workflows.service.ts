@@ -4,9 +4,9 @@ import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { ActivationErrorsService } from '@/activation-errors.service.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { ActivationErrorsService } from '@/activation-errors.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 @Service()
 export class ActiveWorkflowsService {

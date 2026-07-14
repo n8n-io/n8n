@@ -8,17 +8,17 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { FolderNotFoundError } from '@/errors/folder-not-found.error.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { FolderService } from '@/services/folder.service.js';
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { FolderService } from '@/services/folder.service';
 
-import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
-} from '../../shared/middlewares/global.middleware.js';
-import { assertProjectScope } from '../../shared/services/utils.service.js';
+} from '../../shared/middlewares/global.middleware';
+import { assertProjectScope } from '../../shared/services/utils.service';
 
 const handleError = (error: unknown) => {
 	if (error instanceof FolderNotFoundError) {

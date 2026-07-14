@@ -10,19 +10,19 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { JwtService } from '@/services/jwt.service.js';
+import { JwtService } from '@/services/jwt.service';
 import type {
 	OAuthTokenVerifier,
 	UserWithContext,
-} from '@/services/oauth-token-verifier-proxy.service.js';
-import type { ProtectedResource } from '@/services/protected-resource.registry.js';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry.js';
+} from '@/services/oauth-token-verifier-proxy.service';
+import type { ProtectedResource } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
-import { AccessToken } from './database/entities/oauth-access-token.entity.js';
-import { RefreshToken } from './database/entities/oauth-refresh-token.entity.js';
-import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository.js';
-import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository.js';
-import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors.js';
+import { AccessToken } from './database/entities/oauth-access-token.entity';
+import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
+import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
+import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 
 /**
  * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.

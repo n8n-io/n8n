@@ -18,19 +18,19 @@ import {
 	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
 
-import { DbSnapshotStorage } from './storage/db-snapshot-storage.js';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
 	parseStoredMessages,
-} from './message-parser.js';
-import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository.js';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository.js';
-import { TypeORMAgentMemory } from './storage/typeorm-agent-memory.js';
+} from './message-parser';
+import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
+import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 
 export interface InstanceAiThreadLaunchMetadata {
 	source: InstanceAiThreadSourcePersisted;

@@ -3,7 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { OnePasswordProvider, type OnePasswordContext } from '../one-password.js';
+import { OnePasswordProvider, type OnePasswordContext } from '../one-password';
 
 const mockListVaults = vi.fn();
 const mockListItems = vi.fn();

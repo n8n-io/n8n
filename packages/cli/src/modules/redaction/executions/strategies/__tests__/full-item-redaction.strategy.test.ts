@@ -1,10 +1,10 @@
 import type { IRunExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { RedactableExecution } from '@/executions/execution-redaction.js';
+import type { RedactableExecution } from '@/executions/execution-redaction';
 
-import type { RedactionContext } from '../../execution-redaction.interfaces.js';
-import { FullItemRedactionStrategy } from '../full-item-redaction.strategy.js';
+import type { RedactionContext } from '../../execution-redaction.interfaces';
+import { FullItemRedactionStrategy } from '../full-item-redaction.strategy';
 
 const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContext => ({
 	user: { id: 'user-1' } as RedactionContext['user'],

@@ -1,6 +1,6 @@
-import type { DataTable } from '@/modules/data-table/data-table.entity.js';
+import type { DataTable } from '@/modules/data-table/data-table.entity';
 
-import { DataTableSerializer } from '../data-table.serializer.js';
+import { DataTableSerializer } from '../data-table.serializer';
 
 function makeDataTable(overrides: Partial<DataTable> = {}): DataTable {
 	return {

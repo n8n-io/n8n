@@ -13,26 +13,26 @@ import type { CredentialsEntity, User, WorkflowEntity, WorkflowRepository } from
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import type { ActiveExecutions } from '@/active-executions.js';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
-import type { EphemeralNodeExecutor } from '@/node-execution/index.js';
-import type { OauthService } from '@/oauth/oauth.service.js';
-import { userHasScopes } from '@/permissions.ee/check-access.js';
-import type { AiService } from '@/services/ai.service.js';
-import type { UrlService } from '@/services/url.service.js';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { ActiveExecutions } from '@/active-executions';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { OauthService } from '@/oauth/oauth.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import type { AiService } from '@/services/ai.service';
+import type { UrlService } from '@/services/url.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service.js';
-import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service.js';
-import type { Agent } from '../entities/agent.entity.js';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage.js';
-import type { N8nMemory } from '../integrations/n8n-memory.js';
-import type * as FromJsonConfig from '../json-config/from-json-config.js';
-import type { ToolExecutor } from '../json-config/from-json-config.js';
-import type { AgentFileRepository } from '../repositories/agent-file.repository.js';
-import type { AgentRepository } from '../repositories/agent.repository.js';
-import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime.js';
-import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner.js';
+import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
+import type { Agent } from '../entities/agent.entity';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import type { N8nMemory } from '../integrations/n8n-memory';
+import type * as FromJsonConfig from '../json-config/from-json-config';
+import type { ToolExecutor } from '../json-config/from-json-config';
+import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),

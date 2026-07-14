@@ -6,9 +6,9 @@ import {
 	DATABASE_REPORT,
 	DB_QUERY_PARAMS_DOCS_URL,
 	SQL_NODE_TYPES_WITH_QUERY_PARAMS,
-} from '@/security-audit/constants.js';
-import type { RiskReporter, Risk } from '@/security-audit/types.js';
-import { toFlaggedNode } from '@/security-audit/utils.js';
+} from '@/security-audit/constants';
+import type { RiskReporter, Risk } from '@/security-audit/types';
+import { toFlaggedNode } from '@/security-audit/utils';
 
 @Service()
 export class DatabaseRiskReporter implements RiskReporter {

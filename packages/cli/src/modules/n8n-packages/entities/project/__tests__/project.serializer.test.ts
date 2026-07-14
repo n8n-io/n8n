@@ -1,7 +1,7 @@
 import type { Project } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ProjectSerializer } from '../project.serializer.js';
+import { ProjectSerializer } from '../project.serializer';
 
 describe('ProjectSerializer', () => {
 	const serializer = new ProjectSerializer();

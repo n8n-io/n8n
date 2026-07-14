@@ -2,7 +2,7 @@ import { IMPORT_PACKAGE_REQUEST_FORM_FIELDS } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 /**
  * Allowed keys on `req.body` after multipart parsing. Includes `package` because

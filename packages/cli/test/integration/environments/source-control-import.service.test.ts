@@ -39,17 +39,17 @@ import { readFile } from 'node:fs/promises';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { IWorkflowToImport } from '@/interfaces.js';
-import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory.js';
-import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee.js';
-import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service.js';
-import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential.js';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
-import { createFolder } from '@test-integration/db/folders.js';
-import { assignTagToWorkflow, createTag } from '@test-integration/db/tags.js';
+import type { IWorkflowToImport } from '@/interfaces';
+import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
+import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
+import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
+import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { createFolder } from '@test-integration/db/folders';
+import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 
-import { createCredentials, saveCredential } from '../shared/db/credentials.js';
-import { createAdmin, createMember, createOwner, getGlobalOwner } from '../shared/db/users.js';
+import { createCredentials, saveCredential } from '../shared/db/credentials';
+import { createAdmin, createMember, createOwner, getGlobalOwner } from '../shared/db/users';
 
 vi.mock('fast-glob');
 

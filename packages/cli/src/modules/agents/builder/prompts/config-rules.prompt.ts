@@ -4,7 +4,7 @@ import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer.js';
+import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer';
 
 const BuilderPromptMemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,

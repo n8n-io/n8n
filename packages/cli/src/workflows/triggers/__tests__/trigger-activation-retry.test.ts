@@ -3,7 +3,7 @@ import { WebhookPathTakenError } from 'n8n-workflow';
 import {
 	isTransientActivationError,
 	retryTriggerActivation,
-} from '@/workflows/triggers/trigger-activation-retry.js';
+} from '@/workflows/triggers/trigger-activation-retry';
 
 vi.mock('n8n-workflow', async () => ({
 	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),

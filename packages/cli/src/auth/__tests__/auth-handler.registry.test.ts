@@ -4,7 +4,7 @@ import type { IPasswordAuthHandler, AuthHandlerEntryMetadata } from '@n8n/decora
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { AuthHandlerRegistry } from '@/auth/auth-handler.registry.js';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 
 describe('AuthHandlerRegistry', () => {
 	let registry: AuthHandlerRegistry;

@@ -1,4 +1,4 @@
-import { getUserFacingErrorMessage } from '../instance-ai.service.js';
+import { getUserFacingErrorMessage } from '../instance-ai.service';
 
 describe('getUserFacingErrorMessage', () => {
 	it('maps a sandbox "Endpoint not allowed" failure to a clear, retryable message', () => {

@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import {
 	CredentialDependencyService,
 	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
-} from '@/credentials/credential-dependency.service.js';
+} from '@/credentials/credential-dependency.service';
 
 describe('CredentialDependencyService', () => {
 	const credentialDependencyRepository = mock<CredentialDependencyRepository>();

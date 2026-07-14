@@ -21,7 +21,7 @@ import type PCancelable from 'p-cancelable';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ManualExecutionService } from '@/manual-execution.service.js';
+import { ManualExecutionService } from '@/manual-execution.service';
 
 vi.mock('n8n-core');
 

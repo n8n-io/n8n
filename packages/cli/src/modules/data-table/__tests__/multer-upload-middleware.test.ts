@@ -33,12 +33,12 @@ vi.mock('multer', () => {
 	return { __esModule: true, default: multerMock };
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import type { DataTableSizeValidator } from '../data-table-size-validator.service.js';
-import type { DataTableRepository } from '../data-table.repository.js';
-import { MulterUploadMiddleware } from '../multer-upload-middleware.js';
-import type { AuthenticatedRequestWithFile } from '../types.js';
+import type { DataTableSizeValidator } from '../data-table-size-validator.service';
+import type { DataTableRepository } from '../data-table.repository';
+import { MulterUploadMiddleware } from '../multer-upload-middleware';
+import type { AuthenticatedRequestWithFile } from '../types';
 
 const fs = fsPromises as unknown as {
 	readdir: Mock;

@@ -4,11 +4,11 @@ import { Container } from '@n8n/di';
 import nock from 'nock';
 import { v4 as uuid } from 'uuid';
 
-import * as constants from '@/constants.js';
-import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity.js';
-import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity.js';
-import type { Risk } from '@/security-audit/types.js';
-import { toReportTitle } from '@/security-audit/utils.js';
+import * as constants from '@/constants';
+import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
+import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
+import type { Risk } from '@/security-audit/types';
+import { toReportTitle } from '@/security-audit/utils';
 
 type GetSectionKind<C extends Risk.Category> = C extends 'instance'
 	? Risk.InstanceSection

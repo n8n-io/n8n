@@ -3,12 +3,12 @@ import type { ApiKey, ApiKeyRepository, User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import type { UserManagementMailer } from '@/user-management/email/index.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { UserManagementMailer } from '@/user-management/email';
 
-import type { JwtService } from '../jwt.service.js';
-import { PublicApiKeyService } from '../public-api-key.service.js';
+import type { JwtService } from '../jwt.service';
+import { PublicApiKeyService } from '../public-api-key.service';
 
 vi.mock('@n8n/permissions', async () => ({
 	...(await vi.importActual<typeof import('@n8n/permissions')>('@n8n/permissions')),

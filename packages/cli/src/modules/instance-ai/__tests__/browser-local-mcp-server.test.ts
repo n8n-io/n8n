@@ -5,10 +5,7 @@ import type { BrowserToolkit, ToolContext, ToolDefinition } from '@n8n/mcp-brows
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import {
-	BrowserLocalMcpServer,
-	type BrowserDomainGate,
-} from '../browser/browser-local-mcp-server.js';
+import { BrowserLocalMcpServer, type BrowserDomainGate } from '../browser/browser-local-mcp-server';
 
 const RUN_ID = 'run-1';
 

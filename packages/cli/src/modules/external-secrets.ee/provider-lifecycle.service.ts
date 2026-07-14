@@ -2,8 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { ExternalSecretsProviders } from './external-secrets-providers.ee.js';
-import type { SecretsProvider, SecretsProviderSettings } from './types.js';
+import { ExternalSecretsProviders } from './external-secrets-providers.ee';
+import type { SecretsProvider, SecretsProviderSettings } from './types';
 
 interface ProviderInitResult {
 	success: boolean;

@@ -5,10 +5,10 @@ import type {
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import { Telemetry } from '@/telemetry/index.js';
+import { Telemetry } from '@/telemetry';
 
-import { LocalGatewayRegistry, type LocalGateway } from './filesystem/index.js';
-import { InstanceAiSettingsService } from './instance-ai-settings.service.js';
+import { LocalGatewayRegistry, type LocalGateway } from './filesystem';
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
 
 /** Tool category advertised by the local gateway for browser automation tools. */
 export const BROWSER_TOOL_CATEGORY = 'browser';

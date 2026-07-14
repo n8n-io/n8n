@@ -49,15 +49,15 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { ChatHubAgentRepository } from './chat-hub-agent.repository.js';
-import { ChatHubCredentialsService } from './chat-hub-credentials.service.js';
-import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor.js';
-import { ChatHubMessage } from './chat-hub-message.entity.js';
-import { ChatHubToolService } from './chat-hub-tool.service.js';
-import { ChatHubAttachmentService } from './chat-hub.attachment.service.js';
+import { ChatHubAgentRepository } from './chat-hub-agent.repository';
+import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
+import { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubToolService } from './chat-hub-tool.service';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import {
 	CHAT_TRIGGER_NODE_MIN_VERSION,
 	getModelMetadata,
@@ -67,8 +67,8 @@ import {
 	TOOLS_AGENT_NODE_MIN_VERSION,
 	type ChatHubInputModality,
 	type InternalModelMetadata,
-} from './chat-hub.constants.js';
-import { ChatHubSettingsService } from './chat-hub.settings.service.js';
+} from './chat-hub.constants';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	chatTriggerParamsShape,
 	MessageRecord,
@@ -76,9 +76,9 @@ import {
 	type ContentBlock,
 	type ChatTriggerResponseMode,
 	type SemanticSearchOptions,
-} from './chat-hub.types.js';
-import { getMaxContextWindowTokens } from './context-limits.js';
-import { inE2ETests } from '../../constants.js';
+} from './chat-hub.types';
+import { getMaxContextWindowTokens } from './context-limits';
+import { inE2ETests } from '../../constants';
 
 @Service()
 export class ChatHubWorkflowService {

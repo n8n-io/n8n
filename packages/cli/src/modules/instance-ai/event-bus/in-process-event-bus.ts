@@ -7,8 +7,8 @@ import type { InstanceAiEventBus, StoredEvent } from '@n8n/instance-ai';
 import { EventEmitter } from 'node:events';
 import { InstanceSettings } from 'n8n-core';
 
-import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 const MAX_EVENTS_PER_THREAD = 500;
 const MAX_BYTES_PER_THREAD = 2 * 1024 * 1024; // 2 MB

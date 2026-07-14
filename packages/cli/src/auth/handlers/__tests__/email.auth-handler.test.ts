@@ -2,11 +2,11 @@ import type { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { AuthError } from '@/errors/response-errors/auth.error.js';
-import type { EventService } from '@/events/event.service.js';
-import type { PasswordUtility } from '@/services/password.utility.js';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import type { EventService } from '@/events/event.service';
+import type { PasswordUtility } from '@/services/password.utility';
 
-import { EmailAuthHandler } from '../email.auth-handler.js';
+import { EmailAuthHandler } from '../email.auth-handler';
 
 describe('EmailAuthHandler', () => {
 	const userRepository = mock<UserRepository>();

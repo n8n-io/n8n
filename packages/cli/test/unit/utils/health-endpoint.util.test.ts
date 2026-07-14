@@ -3,7 +3,7 @@ import type { GlobalConfig } from '@n8n/config';
 import {
 	resolveBackendHealthEndpointPath,
 	resolveFrontendHealthEndpointPath,
-} from '@/utils/health-endpoint.util.js';
+} from '@/utils/health-endpoint.util';
 
 describe('resolveBackendHealthEndpointPath', () => {
 	it('should always return bare health endpoint regardless of N8N_PATH', () => {

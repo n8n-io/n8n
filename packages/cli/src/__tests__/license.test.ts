@@ -6,8 +6,8 @@ import type { InstanceSettings } from 'n8n-core';
 import type { MockedClass } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { N8N_VERSION } from '@/constants.js';
-import { License } from '@/license.js';
+import { N8N_VERSION } from '@/constants';
+import { License } from '@/license';
 
 vi.mock('@n8n_io/license-sdk');
 

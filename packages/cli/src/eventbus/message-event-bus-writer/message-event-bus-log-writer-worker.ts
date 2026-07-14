@@ -2,7 +2,7 @@ import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } f
 import { stat } from 'fs/promises';
 import { isMainThread, parentPort } from 'worker_threads';
 
-import type { MessageEventBusLogWriterOptions } from './message-event-bus-log-writer.js';
+import type { MessageEventBusLogWriterOptions } from './message-event-bus-log-writer';
 
 let logFileBasePath = '';
 let loggingPaused = true;

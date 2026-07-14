@@ -5,9 +5,9 @@ import { Container } from '@n8n/di';
 import { nanoid } from 'nanoid';
 import { v4 as uuid } from 'uuid';
 
-import { createOwner, createMember } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { createOwner, createMember } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
 

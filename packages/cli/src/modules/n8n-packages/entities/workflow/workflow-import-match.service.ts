@@ -2,7 +2,7 @@ import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 export interface WorkflowIdConflict {
 	sourceWorkflowId: string;

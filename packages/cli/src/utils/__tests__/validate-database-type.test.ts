@@ -3,7 +3,7 @@ import {
 	supportedTypesForImport,
 	validateDbTypeForExportEntities,
 	validateDbTypeForImportEntities,
-} from '../validate-database-type.js';
+} from '../validate-database-type';
 
 describe('validateDbTypeForExportEntities', () => {
 	it('should throw an error if the database type is not supported', () => {

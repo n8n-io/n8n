@@ -10,16 +10,16 @@ import {
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service.js';
-import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
-import { saveCredential } from '@test-integration/db/credentials.js';
-import { createFolder } from '@test-integration/db/folders.js';
-import { createMember, createOwner } from '@test-integration/db/users.js';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { saveCredential } from '@test-integration/db/credentials';
+import { createFolder } from '@test-integration/db/folders';
+import { createMember, createOwner } from '@test-integration/db/users';
 
-import { N8nPackagesService } from '../n8n-packages.service.js';
-import { FORMAT_VERSION } from '../spec/constants.js';
-import { readExport } from './utils/tar-support.js';
-import { buildWorkflowReferencingCredential } from './utils/test-builders.js';
+import { N8nPackagesService } from '../n8n-packages.service';
+import { FORMAT_VERSION } from '../spec/constants';
+import { readExport } from './utils/tar-support';
+import { buildWorkflowReferencingCredential } from './utils/test-builders';
 
 let service: N8nPackagesService;
 

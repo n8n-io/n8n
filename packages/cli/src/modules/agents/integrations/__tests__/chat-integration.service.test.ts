@@ -8,20 +8,20 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { StateAdapter } from 'chat';
 
-import type { CredentialsService } from '@/credentials/credentials.service.js';
-import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
-import type { UrlService } from '@/services/url.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { UrlService } from '@/services/url.service';
 
-import type { Agent } from '../../entities/agent.entity.js';
-import type { AgentRepository } from '../../repositories/agent.repository.js';
+import type { Agent } from '../../entities/agent.entity';
+import type { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
-} from '../agent-chat-integration.js';
-import type { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service.js';
-import { ChatIntegrationService } from '../chat-integration.service.js';
-import * as esmLoader from '../esm-loader.js';
+} from '../agent-chat-integration';
+import type { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service';
+import { ChatIntegrationService } from '../chat-integration.service';
+import * as esmLoader from '../esm-loader';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 /**

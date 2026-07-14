@@ -3,19 +3,19 @@ import { Service } from '@n8n/di';
 import { NextFunction, Response, Request } from 'express';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { AuthError } from '@/errors/response-errors/auth.error.js';
-import { JwtService } from '@/services/jwt.service.js';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { JwtService } from '@/services/jwt.service';
 import {
 	OAuthTokenVerifierProxy,
 	type TelemetryAuthContext,
 	type UserWithContext,
-} from '@/services/oauth-token-verifier-proxy.service.js';
-import { Telemetry } from '@/telemetry/index.js';
+} from '@/services/oauth-token-verifier-proxy.service';
+import { Telemetry } from '@/telemetry';
 
-import { McpServerApiKeyService } from './mcp-api-key.service.js';
-import { McpProtectedResource } from './mcp-protected-resource.js';
-import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants.js';
-import { getClientInfo } from './mcp.utils.js';
+import { McpServerApiKeyService } from './mcp-api-key.service';
+import { McpProtectedResource } from './mcp-protected-resource';
+import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
+import { getClientInfo } from './mcp.utils';
 
 /**
  * MCP Server Middleware Service

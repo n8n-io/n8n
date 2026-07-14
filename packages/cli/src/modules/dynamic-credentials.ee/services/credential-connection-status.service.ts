@@ -9,12 +9,12 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 
-import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface.js';
-import { RoleService } from '@/services/role.service.js';
+import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
+import { RoleService } from '@/services/role.service';
 
-import { SYSTEM_RESOLVER_ID } from '../constants.js';
-import { DynamicCredentialUserEntry } from '../database/entities/dynamic-credential-user-entry.js';
-import { DynamicCredentialUserEntryRepository } from '../database/repositories/dynamic-credential-user-entry.repository.js';
+import { SYSTEM_RESOLVER_ID } from '../constants';
+import { DynamicCredentialUserEntry } from '../database/entities/dynamic-credential-user-entry';
+import { DynamicCredentialUserEntryRepository } from '../database/repositories/dynamic-credential-user-entry.repository';
 
 type CredentialUserPair = { credentialId: string; userId: string };
 

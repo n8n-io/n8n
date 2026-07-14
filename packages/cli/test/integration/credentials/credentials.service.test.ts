@@ -7,11 +7,11 @@ import {
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
-import { CredentialsService } from '@/credentials/credentials.service.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 
-import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials.js';
-import { createMember } from '../shared/db/users.js';
+import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
+import { createMember } from '../shared/db/users';
 
 const credentialPayload = randomCredentialPayload();
 let memberWhoOwnsCredential: User;

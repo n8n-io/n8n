@@ -7,8 +7,8 @@ import { parse as parseUrl } from 'url';
 import type { WebSocket } from 'ws';
 import { Server as WebSocketServer } from 'ws';
 
-import { ChatService } from './chat-service.js';
-import type { ChatRequest } from './chat-service.types.js';
+import { ChatService } from './chat-service';
+import type { ChatRequest } from './chat-service.types';
 
 interface ExpressApplication extends Application {
 	handle: (req: any, res: any) => void;

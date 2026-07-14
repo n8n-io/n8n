@@ -1,6 +1,6 @@
 import type { WorkflowEntity } from '@n8n/db';
 
-import { decideWorkflowConflictAction } from '../workflow-conflict-policy.js';
+import { decideWorkflowConflictAction } from '../workflow-conflict-policy';
 
 const existing = { id: 'local-1', name: 'Existing' } as WorkflowEntity;
 

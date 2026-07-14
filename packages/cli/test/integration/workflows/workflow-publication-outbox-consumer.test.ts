@@ -12,21 +12,21 @@ import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.n
 import type { INode, INodeTypeData } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveExecutions } from '@/active-executions.js';
-import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
-import { ExecutionService } from '@/executions/execution.service.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { Push } from '@/push/index.js';
-import { OwnershipService } from '@/services/ownership.service.js';
-import { PublishedWorkflowEnqueuer } from '@/workflows/publication/published-workflow-enqueuer.js';
-import { PublishedWorkflowTriggerDeactivator } from '@/workflows/publication/published-workflow-trigger-deactivator.js';
-import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock.js';
-import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer.js';
-import { WorkflowService } from '@/workflows/workflow.service.js';
+import { ActiveExecutions } from '@/active-executions';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ExecutionService } from '@/executions/execution.service';
+import { ExternalHooks } from '@/external-hooks';
+import { Push } from '@/push';
+import { OwnershipService } from '@/services/ownership.service';
+import { PublishedWorkflowEnqueuer } from '@/workflows/publication/published-workflow-enqueuer';
+import { PublishedWorkflowTriggerDeactivator } from '@/workflows/publication/published-workflow-trigger-deactivator';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
+import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
+import { WorkflowService } from '@/workflows/workflow.service';
 
-import { createOwner } from '../shared/db/users.js';
-import { createWorkflowHistoryItem } from '../shared/db/workflow-history.js';
-import * as utils from '../shared/utils//index.js';
+import { createOwner } from '../shared/db/users';
+import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+import * as utils from '../shared/utils/';
 
 // Peripheral services with side effects we don't exercise here; the webhook
 // service is left real so non-webhook (schedule) triggers enumerate to zero

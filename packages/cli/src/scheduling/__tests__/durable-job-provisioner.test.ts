@@ -9,7 +9,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import type { Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { DurableJobProvisioner } from '../durable-job-provisioner.js';
+import { DurableJobProvisioner } from '../durable-job-provisioner';
 
 const CLOCK = new Date('2026-01-05T09:00:00.000Z');
 const FIRE_AT = new Date('2026-02-01T00:00:00.000Z');

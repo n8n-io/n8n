@@ -1,4 +1,4 @@
-import { LlmJudgeProviderRegistry } from '../llm-judge-provider-registry.js';
+import { LlmJudgeProviderRegistry } from '../llm-judge-provider-registry';
 
 describe('LlmJudgeProviderRegistry (fixed-list)', () => {
 	const registry = new LlmJudgeProviderRegistry();

@@ -5,13 +5,13 @@ import type {
 	MessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
 
-import { N8N_VERSION } from '@/constants.js';
+import { N8N_VERSION } from '@/constants';
 import type {
 	MessageEventBus,
 	MessageWithCallback,
-} from '@/eventbus/message-event-bus/message-event-bus.js';
+} from '@/eventbus/message-event-bus/message-event-bus';
 
-import { MessageEventBusDestination } from './message-event-bus-destination.ee.js';
+import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 
 export const isMessageEventBusDestinationSentryOptions = (
 	candidate: unknown,

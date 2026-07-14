@@ -6,13 +6,13 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
-import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants.js';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
-import type { License } from '@/license.js';
-import { AiGatewayService } from '@/services/ai-gateway.service.js';
+import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import type { License } from '@/license';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Project, User, UserRepository } from '@n8n/db';
-import type { OwnershipService } from '@/services/ownership.service.js';
-import type { UrlService } from '@/services/url.service.js';
+import type { OwnershipService } from '@/services/ownership.service';
+import type { UrlService } from '@/services/url.service';
 
 const INSTANCE_BASE_URL = 'https://my-n8n.example.com';
 

@@ -4,8 +4,8 @@ import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
 	InstanceDetectionReport,
-} from '../../types/index.js';
-import { BreakingChangeCategory } from '../../types/index.js';
+} from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @BreakingChangeRule({ version: 'v3' })
 export class WorkflowImportUrlRemovedRule implements IBreakingChangeInstanceRule {

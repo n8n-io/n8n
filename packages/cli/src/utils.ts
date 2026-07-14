@@ -1,7 +1,7 @@
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
 import type { INode, INodeType, Workflow } from 'n8n-workflow';
 
-import { STARTING_NODES } from '@/constants.js';
+import { STARTING_NODES } from '@/constants';
 
 /**
  * Returns if the given id is a valid workflow id

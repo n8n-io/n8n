@@ -3,9 +3,9 @@ import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { strict } from 'assert';
 
-import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository.js';
-import { InsightsConfig } from './insights.config.js';
-import { INSIGHTS_MAX_AGE_DAYS_CAP, INSIGHTS_MAX_AGE_DAYS_DEFAULT } from './insights.constants.js';
+import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
+import { InsightsConfig } from './insights.config';
+import { INSIGHTS_MAX_AGE_DAYS_CAP, INSIGHTS_MAX_AGE_DAYS_DEFAULT } from './insights.constants';
 
 @Service()
 export class InsightsPruningService {

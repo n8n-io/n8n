@@ -3,7 +3,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { AgentsService } from './agents.service.js';
+import { AgentsService } from './agents.service';
 
 /**
  * Global (cross-project) agents list endpoint.

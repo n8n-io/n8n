@@ -23,10 +23,10 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types.js';
-import { CacheService } from '@/services/cache/cache.service.js';
+import { NodeTypes } from '@/node-types';
+import { CacheService } from '@/services/cache/cache.service';
 
-import type { Method } from './webhook.types.js';
+import type { Method } from './webhook.types';
 
 @Service()
 export class WebhookService {

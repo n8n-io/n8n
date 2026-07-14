@@ -14,15 +14,15 @@ import { OWNER_API_KEY_SCOPES } from '@n8n/permissions';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service.js';
-import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service.js';
-import { executeNpmCommand } from '@/modules/community-packages/npm-utils.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { executeNpmCommand } from '@/modules/community-packages/npm-utils';
 
-import { COMMUNITY_PACKAGE_VERSION } from '../shared/constants.js';
-import { addApiKey, createOwner } from '../shared/db/users.js';
-import { setupTestServer } from '../shared/utils/index.js';
-import { mockPackage, mockPackageName } from '../shared/utils/community-nodes.js';
+import { COMMUNITY_PACKAGE_VERSION } from '../shared/constants';
+import { addApiKey, createOwner } from '../shared/db/users';
+import { setupTestServer } from '../shared/utils';
+import { mockPackage, mockPackageName } from '../shared/utils/community-nodes';
 
 const COMMUNITY_PACKAGE_API_SCOPES: ApiKeyScope[] = [
 	'communityPackage:install',

@@ -6,7 +6,7 @@ import { PostHog } from 'posthog-node';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { PostHogClient } from '@/posthog/index.js';
+import { PostHogClient } from '@/posthog';
 
 vi.mock('posthog-node');
 

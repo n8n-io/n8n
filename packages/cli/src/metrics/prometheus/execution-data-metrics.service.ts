@@ -3,10 +3,10 @@ import { Service } from '@n8n/di';
 import { StorageConfig } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { EventService } from '@/events/event.service.js';
+import { EventService } from '@/events/event.service';
 
-import type { PrometheusMetricsCollector } from './base.js';
-import { DURATION_BUCKETS_SECONDS, SIZE_BUCKETS_BYTES } from './constant.js';
+import type { PrometheusMetricsCollector } from './base';
+import { DURATION_BUCKETS_SECONDS, SIZE_BUCKETS_BYTES } from './constant';
 
 /**
  * Tracks execution data read/write counts, durations, and unreadable bundle counts.

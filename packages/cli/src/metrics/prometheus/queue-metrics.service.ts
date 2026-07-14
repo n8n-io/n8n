@@ -3,9 +3,9 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { EventService } from '@/events/event.service.js';
+import { EventService } from '@/events/event.service';
 
-import type { PrometheusMetricsCollector } from './base.js';
+import type { PrometheusMetricsCollector } from './base';
 
 /**
  * Tracks scaling-mode queue job gauges and counters (waiting, active, completed, failed).

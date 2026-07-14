@@ -1,7 +1,7 @@
 import { User, WithTimestamps } from '@n8n/db';
 import { Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
-import { InstanceAiThread } from './instance-ai-thread.entity.js';
+import { InstanceAiThread } from './instance-ai-thread.entity';
 
 /**
  * Durable "always allow" grants the user has approved within a thread — e.g.

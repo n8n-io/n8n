@@ -2,14 +2,14 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { WorkflowEntity } from '@n8n/db';
 import type { Request, Response } from 'express';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import type { DynamicCredentialCorsService } from '../services/dynamic-credential-cors.service.js';
-import type { DynamicCredentialWebService } from '../services/dynamic-credential-web.service.js';
-import { WorkflowStatusController } from '../workflow-status.controller.js';
-import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service.js';
-import type { UrlService } from '@/services/url.service.js';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { DynamicCredentialCorsService } from '../services/dynamic-credential-cors.service';
+import type { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
+import { WorkflowStatusController } from '../workflow-status.controller';
+import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service';
+import type { UrlService } from '@/services/url.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { GlobalConfig } from '@n8n/config';
 
 vi.mock('../utils', () => ({

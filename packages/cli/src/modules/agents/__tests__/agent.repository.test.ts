@@ -2,10 +2,10 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
-import { mockEntityManager } from '@test/mocking.js';
+import { mockEntityManager } from '@test/mocking';
 
-import { Agent } from '../entities/agent.entity.js';
-import { AgentRepository } from '../repositories/agent.repository.js';
+import { Agent } from '../entities/agent.entity';
+import { AgentRepository } from '../repositories/agent.repository';
 
 const entityManager = mockEntityManager(Agent);
 const mockDataSource = { manager: entityManager };

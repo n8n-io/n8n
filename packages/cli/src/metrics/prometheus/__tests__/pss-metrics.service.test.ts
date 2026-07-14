@@ -4,7 +4,7 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { readFileSync } from 'node:fs';
 import promClient from 'prom-client';
 
-import { PrometheusPssMetricsService } from '../pss-metrics.service.js';
+import { PrometheusPssMetricsService } from '../pss-metrics.service';
 
 vi.mock('prom-client');
 vi.mock('node:fs');

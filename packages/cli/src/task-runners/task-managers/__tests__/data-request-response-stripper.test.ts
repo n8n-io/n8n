@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { DataRequestResponseStripper } from '../data-request-response-stripper.js';
+import { DataRequestResponseStripper } from '../data-request-response-stripper';
 
 const triggerNode: INode = mock<INode>({
 	name: 'Trigger',

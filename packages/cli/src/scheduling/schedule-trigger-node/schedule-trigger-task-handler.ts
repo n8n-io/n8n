@@ -7,11 +7,11 @@ import { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { DuplicateExecutionError } from '@/errors/duplicate-execution.error.js';
-import { EventService } from '@/events/event.service.js';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
-import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory.js';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
+import { EventService } from '@/events/event.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import {
 	buildScheduleTriggerItem,
@@ -19,7 +19,7 @@ import {
 	SCHEDULE_TRIGGER_TASK_TYPE,
 	scheduleTriggerDeduplicationKey,
 	type ScheduleTriggerTaskPayload,
-} from './schedule-trigger-task.js';
+} from './schedule-trigger-task';
 
 /**
  * Turns a due schedule-trigger occurrence into a real workflow execution.

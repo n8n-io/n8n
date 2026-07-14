@@ -5,12 +5,12 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { EventService } from '@/events/event.service.js';
-import { CacheService } from '@/services/cache/cache.service.js';
+import { EventService } from '@/events/event.service';
+import { CacheService } from '@/services/cache/cache.service';
 
-import type { PrometheusMetricsCollector } from './base.js';
-import { CachedMetricQuery } from './cached-metric-query.js';
-import { DURATION_BUCKETS_SECONDS } from './constant.js';
+import type { PrometheusMetricsCollector } from './base';
+import { CachedMetricQuery } from './cached-metric-query';
+import { DURATION_BUCKETS_SECONDS } from './constant';
 
 const ALL_STATUSES = Object.values(WorkflowPublicationOutboxStatus);
 const ACTIVE_STATUSES = [

@@ -5,7 +5,7 @@ import type { InstanceType } from '@n8n/constants';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { DeprecationService } from '../deprecation.service.js';
+import { DeprecationService } from '../deprecation.service';
 
 describe('DeprecationService', () => {
 	const logger = mock<Logger>();

@@ -3,10 +3,10 @@ import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_NAME, SYSTEM_RESOLVER_TYPE } from '../constants.js';
-import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service.js';
-import { DynamicCredentialResolver } from '../database/entities/credential-resolver.js';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository.js';
+import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_NAME, SYSTEM_RESOLVER_TYPE } from '../constants';
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { DynamicCredentialResolver } from '../database/entities/credential-resolver';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 
 /**
  * Seeds the system-managed `credential-resolver.n8n-1.0` row that every other

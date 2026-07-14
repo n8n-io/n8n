@@ -1,12 +1,12 @@
 import type { RuntimeSkill } from '@n8n/agents';
 import { CONFIGURE_CHANNEL_TOOL_NAME } from '@n8n/api-types';
 
-import { integrationsSkill } from './integrations.skill.js';
-import { mcpSkill } from './mcp.skill.js';
-import { resourceLocatorsSkill } from './resource-locators.skill.js';
-import { subAgentsSkill } from './sub-agents.skill.js';
-import { targetSkillsSkill } from './target-skills.skill.js';
-import { targetTasksSkill } from './target-tasks.skill.js';
+import { integrationsSkill } from './integrations.skill';
+import { mcpSkill } from './mcp.skill';
+import { resourceLocatorsSkill } from './resource-locators.skill';
+import { subAgentsSkill } from './sub-agents.skill';
+import { targetSkillsSkill } from './target-skills.skill';
+import { targetTasksSkill } from './target-tasks.skill';
 
 /**
  * `excludeTools` mirrors `BuilderSessionOptions.excludeTools` (e.g. the

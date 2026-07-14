@@ -5,15 +5,15 @@ import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
 import { jsonStringify, UserError } from 'n8n-workflow';
 
-import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error.js';
-import { REDIS_TTL_KEY_MISSING } from '@/services/cache/cache.constants.js';
+import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
+import { REDIS_TTL_KEY_MISSING } from '@/services/cache/cache.constants';
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
 	MaybeHash,
 	Hash,
-} from '@/services/cache/cache.types.js';
-import { isObject } from '@/utils.js';
+} from '@/services/cache/cache.types';
+import { isObject } from '@/utils';
 
 type CacheEvents = {
 	'metrics.cache.hit': never;

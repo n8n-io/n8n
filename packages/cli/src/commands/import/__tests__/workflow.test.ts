@@ -2,10 +2,10 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import '@/zod-alias-support.js';
-import { ImportService } from '@/services/import.service.js';
+import '@/zod-alias-support';
+import { ImportService } from '@/services/import.service';
 
-import { ImportWorkflowsCommand } from '../workflow.js';
+import { ImportWorkflowsCommand } from '../workflow';
 
 vi.mock('@/services/import.service');
 

@@ -1,7 +1,7 @@
 import type { RedisOptions } from 'ioredis';
 import type { IProcessedDataConfig } from 'n8n-workflow';
 
-import type { schema } from './schema.js';
+import type { schema } from './schema';
 
 // -----------------------------------
 //          transformers

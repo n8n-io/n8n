@@ -3,14 +3,14 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service';
 
-import { AgentConfigService } from '../agent-config.service.js';
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service.js';
-import type { AgentSkillsService } from '../agent-skills.service.js';
-import type { Agent } from '../entities/agent.entity.js';
-import type { AgentTaskRepository } from '../repositories/agent-task.repository.js';
-import type { AgentRepository } from '../repositories/agent.repository.js';
+import { AgentConfigService } from '../agent-config.service';
+import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import type { AgentSkillsService } from '../agent-skills.service';
+import type { Agent } from '../entities/agent.entity';
+import type { AgentTaskRepository } from '../repositories/agent-task.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

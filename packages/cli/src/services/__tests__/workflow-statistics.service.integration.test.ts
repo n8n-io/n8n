@@ -26,11 +26,11 @@ import {
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service.js';
-import { OwnershipService } from '@/services/ownership.service.js';
-import { UserService } from '@/services/user.service.js';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service.js';
-import { createUser } from '@test-integration/db/users.js';
+import { EventService } from '@/events/event.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { UserService } from '@/services/user.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { createUser } from '@test-integration/db/users';
 
 describe('WorkflowStatisticsService', () => {
 	describe('workflowExecutionCompleted', () => {

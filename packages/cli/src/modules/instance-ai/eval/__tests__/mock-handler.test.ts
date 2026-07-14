@@ -110,14 +110,14 @@ import { fileTypeFromBuffer } from 'file-type';
 import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import { fetchApiDocs } from '../api-docs.js';
+import { fetchApiDocs } from '../api-docs';
 import {
 	buildDateAnchors,
 	createLlmMockHandler,
 	extractDateFilterConstraints,
 	findDateFilterViolations,
-} from '../mock-handler.js';
-import { extractNodeConfig } from '../node-config.js';
+} from '../mock-handler';
+import { extractNodeConfig } from '../node-config';
 
 // `restoreMocks: true` in the root vi.config wipes `.mockImplementation` set
 // inside vi.mock factories before every test, so re-apply the mocks that

@@ -6,7 +6,7 @@ import {
 	buildUpdateVersionMetadata,
 	MAX_VERSION_NAME_LENGTH,
 	resolveVersionMetadata,
-} from '../tools/workflow-builder/version-metadata.js';
+} from '../tools/workflow-builder/version-metadata';
 
 const makeNode = (id: string, name: string, parameters: INode['parameters'] = {}): INode => ({
 	id,

@@ -4,11 +4,11 @@ import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import type { AxiosError } from 'axios';
 import { InstanceSettings } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { LicenseRequest } from '@/requests.js';
-import { UrlService } from '@/services/url.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { LicenseRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
 
-import { LicenseService } from './license.service.js';
+import { LicenseService } from './license.service';
 
 @RestController('/license')
 export class LicenseController {

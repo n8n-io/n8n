@@ -8,10 +8,10 @@ import {
 	DATABASE_REPORT,
 	SQL_NODE_TYPES,
 	SQL_NODE_TYPES_WITH_QUERY_PARAMS,
-} from '@/security-audit/constants.js';
-import { SecurityAuditService } from '@/security-audit/security-audit.service.js';
+} from '@/security-audit/constants';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
 
-import { getRiskSection, saveManualTriggerWorkflow } from './utils.js';
+import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 
 let securityAuditService: SecurityAuditService;
 

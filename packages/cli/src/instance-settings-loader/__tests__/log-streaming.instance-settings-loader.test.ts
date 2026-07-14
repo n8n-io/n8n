@@ -5,10 +5,10 @@ import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository.js';
+import type { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
 
-import { InstanceBootstrappingError } from '../instance-bootstrapping.error.js';
-import { LogStreamingInstanceSettingsLoader } from '../loaders/log-streaming.instance-settings-loader.js';
+import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
+import { LogStreamingInstanceSettingsLoader } from '../loaders/log-streaming.instance-settings-loader';
 
 const UUID_A = '11111111-1111-4111-8111-111111111111';
 

@@ -1,7 +1,7 @@
 import type { Readable } from 'node:stream';
 import { Parser, type ReadEntry } from 'tar';
 
-import { TarPackageWriter } from '../tar/tar-package-writer.js';
+import { TarPackageWriter } from '../tar/tar-package-writer';
 
 async function streamToBuffer(stream: Readable): Promise<Buffer> {
 	const chunks: Buffer[] = [];

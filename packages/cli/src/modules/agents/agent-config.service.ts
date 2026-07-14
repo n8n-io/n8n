@@ -11,21 +11,21 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError, type INodeParameters } from 'n8n-workflow';
 
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver.js';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service.js';
-import { AgentSkillsService } from './agent-skills.service.js';
-import type { Agent } from './entities/agent.entity.js';
-import { syncAgentIntegrations } from './integrations/integrations-sync.js';
-import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition.js';
-import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials.js';
-import { AgentTaskRepository } from './repositories/agent-task.repository.js';
-import { AgentRepository } from './repositories/agent.repository.js';
-import { createAgentCredentialProvider } from './utils/agent-credential-provider.js';
-import { markAgentDraftDirty } from './utils/agent-draft.utils.js';
-import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver.js';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSkillsService } from './agent-skills.service';
+import type { Agent } from './entities/agent.entity';
+import { syncAgentIntegrations } from './integrations/integrations-sync';
+import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
+import { AgentTaskRepository } from './repositories/agent-task.repository';
+import { AgentRepository } from './repositories/agent.repository';
+import { createAgentCredentialProvider } from './utils/agent-credential-provider';
+import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
 @Service()
 export class AgentConfigService {

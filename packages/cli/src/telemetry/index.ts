@@ -14,17 +14,17 @@ import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
-import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants.js';
+import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import type {
 	IAgentConfigurationTelemetryProperties,
 	IAgentExecutionTrackProperties,
 	IAgentTurnFinishedTrackProperties,
 	IExecutionTrackProperties,
-} from '@/interfaces.js';
-import { License } from '@/license.js';
-import { PostHogClient } from '@/posthog/index.js';
+} from '@/interfaces';
+import { License } from '@/license';
+import { PostHogClient } from '@/posthog';
 
-import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee.js';
+import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 
 type ExecutionTrackDataKey =
 	| 'manual_error'

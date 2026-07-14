@@ -2,7 +2,7 @@ import type { ExecutionsConfig } from '@n8n/config';
 import type { BinaryDataConfig } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { BinaryDataStorageRule } from '../binary-data-storage.rule.js';
+import { BinaryDataStorageRule } from '../binary-data-storage.rule';
 
 describe('BinaryDataStorageRule', () => {
 	let rule: BinaryDataStorageRule;

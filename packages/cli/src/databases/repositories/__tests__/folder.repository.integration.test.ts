@@ -4,9 +4,9 @@ import { FolderRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import { createFolder } from '@test-integration/db/folders.js';
-import { createTag } from '@test-integration/db/tags.js';
-import { createMember, createOwner } from '@test-integration/db/users.js';
+import { createFolder } from '@test-integration/db/folders';
+import { createTag } from '@test-integration/db/tags';
+import { createMember, createOwner } from '@test-integration/db/users';
 
 describe('FolderRepository', () => {
 	let folderRepository: FolderRepository;

@@ -10,10 +10,10 @@ import {
 	type StartNodeParams,
 	type EndNodeParams,
 	isEndNodeError,
-} from './execution-level-tracer.types.js';
-import { OtelSettingsService } from './otel-settings.service.js';
-import { ATTR } from './otel.constants.js';
-import type { TracingContext } from './tracing-context.js';
+} from './execution-level-tracer.types';
+import { OtelSettingsService } from './otel-settings.service';
+import { ATTR } from './otel.constants';
+import type { TracingContext } from './tracing-context';
 
 const TRACER_NAME = 'n8n-workflow';
 const UNKNOWN_ERROR_TYPE = 'UnknownError';

@@ -16,15 +16,15 @@ import type { EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { type EventService } from '@/events/event.service.js';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
-import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee.js';
-import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee.js';
-import { type Publisher } from '@/scaling/pubsub/publisher.service.js';
-import { type ProjectService } from '@/services/project.service.ee.js';
-import { type UserService } from '@/services/user.service.js';
+import { type EventService } from '@/events/event.service';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
+import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
+import { type Publisher } from '@/scaling/pubsub/publisher.service';
+import { type ProjectService } from '@/services/project.service.ee';
+import { type UserService } from '@/services/user.service';
 
-import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants.js';
+import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsEntityManager = mock<EntityManager>();

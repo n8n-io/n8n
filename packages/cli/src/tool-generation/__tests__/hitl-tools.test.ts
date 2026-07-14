@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
-import { convertNodeToHitlTool, createHitlTools, hasSendAndWaitOperation } from '../hitl-tools.js';
+import { convertNodeToHitlTool, createHitlTools, hasSendAndWaitOperation } from '../hitl-tools';
 
 describe('hitl-tools', () => {
 	describe('hasSendAndWaitOperation', () => {

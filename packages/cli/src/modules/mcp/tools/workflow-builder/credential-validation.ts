@@ -2,11 +2,11 @@ import type { User } from '@n8n/db';
 import type { INode, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
-import type { CredentialsService } from '@/credentials/credentials.service.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import type { NodeTypes } from '@/node-types.js';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { NodeTypes } from '@/node-types';
 
-import type { PartialUpdateOperation } from './workflow-operations.js';
+import type { PartialUpdateOperation } from './workflow-operations';
 
 export interface CredentialValidationFailure {
 	ok: false;

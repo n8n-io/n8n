@@ -1,7 +1,7 @@
 import { MAX_AGENT_FILES_PER_UPLOAD } from '@n8n/api-types';
 import multer from 'multer';
 
-import { describeMulterError, isAllowedAgentFile } from '../agent-upload.middleware.js';
+import { describeMulterError, isAllowedAgentFile } from '../agent-upload.middleware';
 
 describe('AgentUploadMiddleware', () => {
 	it.each(['data.csv', 'notes.md', 'notes.markdown', 'document.pdf', 'plain.txt'])(

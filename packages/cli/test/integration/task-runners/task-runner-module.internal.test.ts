@@ -1,10 +1,10 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { InternalTaskRunnerDisconnectAnalyzer } from '@/task-runners/internal-task-runner-disconnect-analyzer.js';
-import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server.js';
-import { TaskRunnerModule } from '@/task-runners/task-runner-module.js';
-import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py.js';
+import { InternalTaskRunnerDisconnectAnalyzer } from '@/task-runners/internal-task-runner-disconnect-analyzer';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
 // Direct method replacement (not vi.spyOn) because the root vi config
 // enables `restoreMocks: true` which restores spies between tests, but

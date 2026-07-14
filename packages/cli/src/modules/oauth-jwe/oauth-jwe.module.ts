@@ -3,7 +3,7 @@ import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy.js';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 
 function isFeatureFlagEnabled(): boolean {
 	return process.env.N8N_ENV_FEAT_OAUTH2_JWE === 'true';

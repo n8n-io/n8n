@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import { validateOriginHeaders } from '../origin-validator.js';
+import { validateOriginHeaders } from '../origin-validator';
 
 describe('validateOriginHeaders', () => {
 	const host = 'example.com';

@@ -1,6 +1,6 @@
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 
-import { InstanceAiMemoryService } from '../instance-ai-memory.service.js';
+import { InstanceAiMemoryService } from '../instance-ai-memory.service';
 
 const mockListMessages = vi.fn();
 const mockGetThread = vi.fn();

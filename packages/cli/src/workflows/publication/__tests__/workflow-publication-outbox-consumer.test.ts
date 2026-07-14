@@ -4,12 +4,12 @@ import type { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } f
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings, Span, Tracing } from 'n8n-core';
 
-import type { EventService } from '@/events/event.service.js';
-import type { PublicationResult } from '@/workflows/publication/publication-result.js';
-import type { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter.js';
-import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock.js';
-import type { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier.js';
-import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer.js';
+import type { EventService } from '@/events/event.service';
+import type { PublicationResult } from '@/workflows/publication/publication-result';
+import type { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
+import type { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
+import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 
 describe('WorkflowPublicationOutboxConsumer', () => {
 	const logger = mock<Logger>();

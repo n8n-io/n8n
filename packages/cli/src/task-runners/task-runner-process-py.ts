@@ -6,9 +6,9 @@ import { access } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
-import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service.js';
-import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events.js';
-import { TaskRunnerProcessBase } from './task-runner-process-base.js';
+import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
+import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
+import { TaskRunnerProcessBase } from './task-runner-process-base';
 
 const asyncExec = promisify(exec);
 

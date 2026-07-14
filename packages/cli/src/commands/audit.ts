@@ -5,10 +5,10 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UserError } from 'n8n-workflow';
 import z from 'zod';
 
-import { RISK_CATEGORIES } from '@/security-audit/constants.js';
-import type { Risk } from '@/security-audit/types.js';
+import { RISK_CATEGORIES } from '@/security-audit/constants';
+import type { Risk } from '@/security-audit/types';
 
-import { BaseCommand } from './base-command.js';
+import { BaseCommand } from './base-command';
 
 const flagsSchema = z.object({
 	categories: z

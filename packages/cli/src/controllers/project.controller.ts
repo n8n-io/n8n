@@ -26,18 +26,18 @@ import type { Scope } from '@n8n/permissions';
 import { In, Not } from '@n8n/typeorm';
 import { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { EventService } from '@/events/event.service.js';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
-import type { ProjectRequest } from '@/requests.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import type { ProjectRequest } from '@/requests';
 import {
 	ProjectService,
 	TeamProjectOverQuotaError,
 	UnlicensedProjectRoleError,
-} from '@/services/project.service.ee.js';
-import { UserManagementMailer } from '@/user-management/email/index.js';
+} from '@/services/project.service.ee';
+import { UserManagementMailer } from '@/user-management/email';
 
 @RestController('/projects')
 export class ProjectController {

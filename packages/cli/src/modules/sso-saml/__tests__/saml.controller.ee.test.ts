@@ -6,17 +6,17 @@ import { type Response } from 'express';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { AuthService } from '@/auth/auth.service.js';
-import type { EventService } from '@/events/event.service.js';
-import type { AuthlessRequest } from '@/requests.js';
-import type { UrlService } from '@/services/url.service.js';
-import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers.js';
+import type { AuthService } from '@/auth/auth.service';
+import type { EventService } from '@/events/event.service';
+import type { AuthlessRequest } from '@/requests';
+import type { UrlService } from '@/services/url.service';
+import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 
-import { extractTestIdFromRelayState, isConnectionTestRequest } from '../saml-helpers.js';
-import { SamlController } from '../saml.controller.ee.js';
-import type { SamlService } from '../saml.service.ee.js';
-import { getServiceProviderConfigTestReturnUrl } from '../service-provider.ee.js';
-import type { SamlUserAttributes } from '../types.js';
+import { extractTestIdFromRelayState, isConnectionTestRequest } from '../saml-helpers';
+import { SamlController } from '../saml.controller.ee';
+import type { SamlService } from '../saml.service.ee';
+import { getServiceProviderConfigTestReturnUrl } from '../service-provider.ee';
+import type { SamlUserAttributes } from '../types';
 
 // Mock the saml-helpers module
 vi.mock('../saml-helpers', () => ({

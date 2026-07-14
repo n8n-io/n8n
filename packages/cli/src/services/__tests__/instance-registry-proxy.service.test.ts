@@ -1,8 +1,8 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceRegistryProvider } from '../instance-registry-proxy.service.js';
-import { InstanceRegistryProxyService } from '../instance-registry-proxy.service.js';
+import type { InstanceRegistryProvider } from '../instance-registry-proxy.service';
+import { InstanceRegistryProxyService } from '../instance-registry-proxy.service';
 
 const makeRegistration = (overrides: Partial<InstanceRegistration> = {}): InstanceRegistration => ({
 	schemaVersion: 1,

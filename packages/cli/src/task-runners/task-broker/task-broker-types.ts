@@ -2,7 +2,7 @@ import type { TaskRunner } from '@n8n/task-runner';
 import type { Response } from 'express';
 import type WebSocket from 'ws';
 
-import type { AuthlessRequest } from '../../requests.js';
+import type { AuthlessRequest } from '../../requests';
 
 export interface DisconnectAnalyzer {
 	isCloudDeployment: boolean;

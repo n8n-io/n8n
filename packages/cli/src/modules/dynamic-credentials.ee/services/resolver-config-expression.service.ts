@@ -4,8 +4,8 @@ import { getNonWorkflowAdditionalKeys } from 'n8n-core';
 import type { INode, INodeParameters } from 'n8n-workflow';
 import { isNodeParameters, Workflow } from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types.js';
-import { getBase } from '@/workflow-execute-additional-data.js';
+import { NodeTypes } from '@/node-types';
+import { getBase } from '@/workflow-execute-additional-data';
 
 /**
  * Service for resolving expressions in credential resolver configurations.

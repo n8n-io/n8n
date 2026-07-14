@@ -1,6 +1,6 @@
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { ExecutionRef } from './types.js';
+import type { ExecutionRef } from './types';
 
 /**
  * Thrown when an update targets an execution whose data bundle is

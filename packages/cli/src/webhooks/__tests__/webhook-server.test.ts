@@ -7,8 +7,8 @@ import type express from 'express';
 import type * as http from 'node:http';
 import { mock } from 'vitest-mock-extended';
 
-import { ChatServer } from '@/chat/chat-server.js';
-import { WebhookServer } from '@/webhooks/webhook-server.js';
+import { ChatServer } from '@/chat/chat-server';
+import { WebhookServer } from '@/webhooks/webhook-server';
 
 const mockApp = mock<express.Application>();
 vi.mock('express', async () => ({ __esModule: true, default: () => mockApp }));

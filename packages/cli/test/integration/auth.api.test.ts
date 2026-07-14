@@ -4,17 +4,17 @@ import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import validator from 'validator';
 
-import config from '@/config/index.js';
-import { AUTH_COOKIE_NAME } from '@/constants.js';
-import { EventService } from '@/events/event.service.js';
-import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
-import { MfaService } from '@/mfa/mfa.service.js';
-import { JwtService } from '@/services/jwt.service.js';
+import config from '@/config';
+import { AUTH_COOKIE_NAME } from '@/constants';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { MfaService } from '@/mfa/mfa.service';
+import { JwtService } from '@/services/jwt.service';
 
-import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants.js';
-import { createUser, createUserShell } from './shared/db/users.js';
-import type { SuperAgentTest } from './shared/types.js';
-import * as utils from './shared/utils//index.js';
+import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
+import { createUser, createUserShell } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;

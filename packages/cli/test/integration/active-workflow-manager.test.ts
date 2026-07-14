@@ -20,20 +20,20 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ActiveExecutions } from '@/active-executions.js';
-import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
-import { ExecutionService } from '@/executions/execution.service.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { NodeTypes } from '@/node-types.js';
-import { Push } from '@/push/index.js';
-import { OwnershipService } from '@/services/ownership.service.js';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
-import { WebhookService } from '@/webhooks/webhook.service.js';
-import * as AdditionalData from '@/workflow-execute-additional-data.js';
-import { WorkflowService } from '@/workflows/workflow.service.js';
+import { ActiveExecutions } from '@/active-executions';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ExecutionService } from '@/executions/execution.service';
+import { ExternalHooks } from '@/external-hooks';
+import { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
+import { OwnershipService } from '@/services/ownership.service';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { WebhookService } from '@/webhooks/webhook.service';
+import * as AdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowService } from '@/workflows/workflow.service';
 
-import { createOwner } from './shared/db/users.js';
-import * as utils from './shared/utils//index.js';
+import { createOwner } from './shared/db/users';
+import * as utils from './shared/utils/';
 
 mockInstance(ActiveExecutions);
 mockInstance(Push);

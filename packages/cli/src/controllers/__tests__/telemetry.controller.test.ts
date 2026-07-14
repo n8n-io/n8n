@@ -33,7 +33,7 @@ vi.mock('http-proxy-middleware', () => ({
 	fixRequestBody: mockFixRequestBody,
 }));
 
-import { TelemetryController } from '../telemetry.controller.js';
+import { TelemetryController } from '../telemetry.controller';
 
 const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 	TelemetryController as never,

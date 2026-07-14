@@ -9,19 +9,19 @@ import { jsonParse, UnexpectedError, CHAT_NODE_TYPE, CHAT_TOOL_NODE_TYPE } from 
 import { type RawData, WebSocket } from 'ws';
 import { z } from 'zod';
 
-import { ChatExecutionManager } from './chat-execution-manager.js';
+import { ChatExecutionManager } from './chat-execution-manager';
 import {
 	chatMessageSchema,
 	type ChatMessage,
 	type ChatRequest,
 	Session,
-} from './chat-service.types.js';
+} from './chat-service.types';
 import {
 	getLastNodeExecuted,
 	getLastNodeMessage,
 	getMessage,
 	shouldResumeImmediately,
-} from './utils.js';
+} from './utils';
 
 const CHECK_FOR_RESPONSE_INTERVAL = 3000;
 const DRAIN_TIMEOUT = 50;

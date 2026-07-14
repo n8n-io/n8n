@@ -11,7 +11,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ExternalHooks } from '@/external-hooks.js';
+import { ExternalHooks } from '@/external-hooks';
 
 // `ExternalHooks` loads hook files via `require(<path>)`. Vitest cannot mock a
 // path that doesn't resolve to a real module, so write a real fixture that

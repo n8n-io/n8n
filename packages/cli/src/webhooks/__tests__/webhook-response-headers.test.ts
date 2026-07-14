@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers.js';
+import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
 
 describe('WebhookResponseHeaders', () => {
 	describe('set()', () => {

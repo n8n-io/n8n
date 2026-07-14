@@ -15,14 +15,14 @@ import {
 } from 'n8n-workflow';
 import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
-import { DataTableColumn } from './data-table-column.entity.js';
-import { DataTableDDLService } from './data-table-ddl.service.js';
-import { DataTable } from './data-table.entity.js';
-import { DataTableUserTableName } from './data-table.types.js';
-import { DataTableNameConflictError } from './errors/data-table-name-conflict.error.js';
-import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error.js';
-import { DataTableValidationError } from './errors/data-table-validation.error.js';
-import { isValidColumnName, toTableId, toTableName } from './utils/sql-utils.js';
+import { DataTableColumn } from './data-table-column.entity';
+import { DataTableDDLService } from './data-table-ddl.service';
+import { DataTable } from './data-table.entity';
+import { DataTableUserTableName } from './data-table.types';
+import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
+import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
+import { DataTableValidationError } from './errors/data-table-validation.error';
+import { isValidColumnName, toTableId, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataTableRepository extends Repository<DataTable> {

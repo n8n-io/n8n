@@ -13,12 +13,12 @@ import {
 	PROJECT_VIEWER_ROLE_SLUG,
 } from '@n8n/permissions';
 
-import { UserManagementMailer } from '@/user-management/email/index.js';
+import { UserManagementMailer } from '@/user-management/email';
 
-import { cleanupRolesAndScopes } from '../shared/db/roles.js';
-import { createOwner, createMember } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { cleanupRolesAndScopes } from '../shared/db/roles';
+import { createOwner, createMember } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 /**
  * Built-in Role Matrix Testing

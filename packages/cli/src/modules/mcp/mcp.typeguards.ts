@@ -3,7 +3,7 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import type { JSONRPCRequest } from './mcp.types.js';
+import type { JSONRPCRequest } from './mcp.types';
 
 type UnknownRecord = Record<string, unknown>;
 

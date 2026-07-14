@@ -5,10 +5,10 @@ import { UnexpectedError } from 'n8n-workflow';
 import {
 	ExternalSecretsProviderLifecycle,
 	type ProviderConnectResult,
-} from './provider-lifecycle.service.js';
-import { ExternalSecretsProviderRegistry } from './provider-registry.service.js';
-import { ExternalSecretsRetryManager } from './retry-manager.service.js';
-import type { SecretsProvider, SecretsProviderSettings } from './types.js';
+} from './provider-lifecycle.service';
+import { ExternalSecretsProviderRegistry } from './provider-registry.service';
+import { ExternalSecretsRetryManager } from './retry-manager.service';
+import type { SecretsProvider, SecretsProviderSettings } from './types';
 
 @Service()
 export class ExternalSecretsProviderConnectionManager {

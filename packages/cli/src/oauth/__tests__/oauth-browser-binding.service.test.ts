@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import {
 	OAUTH_BINDING_COOKIE_NAME,
 	OAuthBrowserBindingService,
-} from '@/oauth/oauth-browser-binding.service.js';
+} from '@/oauth/oauth-browser-binding.service';
 
 const makeConfig = (
 	overrides: Partial<{

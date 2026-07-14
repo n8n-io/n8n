@@ -22,16 +22,16 @@ vi.mock('openid-client', async (importOriginal) => {
 	};
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
-import type { JwtService } from '@/services/jwt.service.js';
-import type { UrlService } from '@/services/url.service.js';
-import * as ssoHelpers from '@/sso.ee/sso-helpers.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { JwtService } from '@/services/jwt.service';
+import type { UrlService } from '@/services/url.service';
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
-import { OIDC_PREFERENCES_DB_KEY } from '../constants.js';
-import { OidcService } from '../oidc.service.ee.js';
+import { OIDC_PREFERENCES_DB_KEY } from '../constants';
+import { OidcService } from '../oidc.service.ee';
 
 describe('OidcService', () => {
 	let oidcService: OidcService;

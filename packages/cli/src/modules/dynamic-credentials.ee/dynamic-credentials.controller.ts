@@ -8,25 +8,25 @@ import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { EventService } from '@/events/event.service.js';
-import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service.js';
-import { UrlService } from '@/services/url.service.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
+import { UrlService } from '@/services/url.service';
 
-import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository.js';
-import { DynamicCredentialsConfig } from './dynamic-credentials.config.js';
+import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
+import { DynamicCredentialsConfig } from './dynamic-credentials.config';
 import {
 	AuthorizeIntentService,
 	CredentialConnectionStatusService,
 	DynamicCredentialResolverRegistry,
 	DynamicCredentialService,
-} from './services/index.js';
-import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service.js';
-import { DynamicCredentialWebService } from './services/dynamic-credential-web.service.js';
-import { getDynamicCredentialMiddlewares } from './utils.js';
+} from './services';
+import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
+import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
+import { getDynamicCredentialMiddlewares } from './utils';
 
 const dynamicCredentialsConfig = Container.get(DynamicCredentialsConfig);
 

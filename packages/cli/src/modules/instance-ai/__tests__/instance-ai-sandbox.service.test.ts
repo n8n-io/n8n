@@ -24,7 +24,7 @@ import {
 	type InstanceAiSandboxRunState,
 	type InstanceAiSandboxServiceOptions,
 	type InstanceAiSandboxSettings,
-} from '../sandbox/index.js';
+} from '../sandbox';
 
 const fakeUser = { id: 'user-1' } as User;
 

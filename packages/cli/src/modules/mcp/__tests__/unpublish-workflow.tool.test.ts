@@ -2,13 +2,13 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 
-import { CollaborationService } from '@/collaboration/collaboration.service.js';
-import { Telemetry } from '@/telemetry/index.js';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
-import { WorkflowService } from '@/workflows/workflow.service.js';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { Telemetry } from '@/telemetry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
-import { createWorkflow } from './mock.utils.js';
-import { createUnpublishWorkflowTool } from '../tools/unpublish-workflow.tool.js';
+import { createWorkflow } from './mock.utils';
+import { createUnpublishWorkflowTool } from '../tools/unpublish-workflow.tool';
 
 describe('unpublish-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

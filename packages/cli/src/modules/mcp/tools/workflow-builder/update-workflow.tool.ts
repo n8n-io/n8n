@@ -5,43 +5,43 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
-import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check.js';
-import { MCP_UPDATE_WORKFLOW_TOOL } from './constants.js';
-import { validateCredentialReferences } from './credential-validation.js';
-import { autoPopulateNodeCredentials } from './credentials-auto-assign.js';
-import { validateDataTableReferencesForUpdate } from './data-table-validation.js';
-import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used.js';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
+import { validateCredentialReferences } from './credential-validation';
+import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import { validateDataTableReferencesForUpdate } from './data-table-validation';
+import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import {
 	buildUpdateVersionMetadata,
 	resolveVersionMetadata,
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
-} from './version-metadata.js';
+} from './version-metadata';
 import {
 	applyOperations,
 	partialUpdateOperationSchema,
 	toWorkflowSlice,
 	workflowSettingsObjectSchema,
 	type PartialUpdateOperation,
-} from './workflow-operations.js';
+} from './workflow-operations';
 
-import type { CollaborationService } from '@/collaboration/collaboration.service.js';
-import type { CredentialsService } from '@/credentials/credentials.service.js';
-import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error.js';
-import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker.js';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service.js';
-import type { NodeTypes } from '@/node-types.js';
-import type { TagService } from '@/services/tag.service.js';
-import type { UrlService } from '@/services/url.service.js';
-import type { Telemetry } from '@/telemetry/index.js';
-import { resolveNodeWebhookIds } from '@/workflow-helpers.js';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
-import type { WorkflowService } from '@/workflows/workflow.service.js';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { NodeTypes } from '@/node-types';
+import type { TagService } from '@/services/tag.service';
+import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
+import { resolveNodeWebhookIds } from '@/workflow-helpers';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { getMcpWorkflow } from '../workflow-validation.utils.js';
+import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
 

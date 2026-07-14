@@ -4,11 +4,11 @@ import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import type { SecuritySettingsService } from '@/services/security-settings.service.js';
-import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { SecuritySettingsService } from '@/services/security-settings.service';
+import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
-import { SecuritySettingsController } from '../security-settings.controller.js';
+import { SecuritySettingsController } from '../security-settings.controller';
 
 describe('SecuritySettingsController', () => {
 	const securitySettingsService = mock<SecuritySettingsService>();

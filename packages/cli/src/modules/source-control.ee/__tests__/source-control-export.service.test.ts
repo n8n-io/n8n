@@ -23,12 +23,12 @@ import fsp from 'node:fs/promises';
 vi.mock('node:fs/promises');
 import { captor, mock } from 'vitest-mock-extended';
 
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
-import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee.js';
-import { SourceControlExportService } from '../source-control-export.service.ee.js';
-import type { SourceControlScopedService } from '../source-control-scoped.service.js';
-import { SourceControlContext } from '../types/source-control-context.js';
+import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee';
+import { SourceControlExportService } from '../source-control-export.service.ee';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
+import { SourceControlContext } from '../types/source-control-context';
 
 describe('SourceControlExportService', () => {
 	const cipher = Container.get(Cipher);

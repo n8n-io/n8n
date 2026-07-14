@@ -2,16 +2,16 @@ import { PullWorkFolderRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service.js';
+import { EventService } from '@/events/event.service';
 import {
 	getTrackingInformationFromPullResult,
 	isSourceControlLicensed,
-} from '@/modules/source-control.ee/source-control-helper.ee.js';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
-import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee.js';
+} from '@/modules/source-control.ee/source-control-helper.ee';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 
-import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
-import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware.js';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
 
 type SourceControlHandlers = {
 	pull: PublicAPIEndpoint<AuthenticatedRequest>;

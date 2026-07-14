@@ -1,10 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { FolderRepository, User } from '@n8n/db';
 
-import { ProjectService } from '@/services/project.service.ee.js';
-import { Telemetry } from '@/telemetry/index.js';
+import { ProjectService } from '@/services/project.service.ee';
+import { Telemetry } from '@/telemetry';
 
-import { createSearchFoldersTool } from '../tools/search-folders.tool.js';
+import { createSearchFoldersTool } from '../tools/search-folders.tool';
 
 describe('search-folders MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

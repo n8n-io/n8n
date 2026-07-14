@@ -1,13 +1,13 @@
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import { McpRegistryTestController } from '../mcp-registry-test.controller.js';
-import { McpRegistryServerEntity } from '../registry/mcp-registry-server.entity.js';
-import type { McpRegistryServerRepository } from '../registry/mcp-registry-server.repository.js';
-import type { McpRegistryService } from '../registry/mcp-registry.service.js';
-import { toEntity } from '../registry/mcp-registry.types.js';
-import { notionMockServer, linearMockServer } from '../registry/mock-servers.js';
+import { McpRegistryTestController } from '../mcp-registry-test.controller';
+import { McpRegistryServerEntity } from '../registry/mcp-registry-server.entity';
+import type { McpRegistryServerRepository } from '../registry/mcp-registry-server.repository';
+import type { McpRegistryService } from '../registry/mcp-registry.service';
+import { toEntity } from '../registry/mcp-registry.types';
+import { notionMockServer, linearMockServer } from '../registry/mock-servers';
 
 describe('McpRegistryTestController', () => {
 	const deleteQueryBuilder = {

@@ -15,20 +15,20 @@ import {
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventNamesTypes } from '@/eventbus/event-message-classes/index.js';
-import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit.js';
-import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic.js';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
-import { ExecutionRecoveryService } from '@/executions/execution-recovery.service.js';
-import type { MessageEventBusDestinationSentry } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-sentry.ee.js';
-import type { MessageEventBusDestinationSyslog } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-syslog.ee.js';
-import type { MessageEventBusDestinationWebhook } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee.js';
-import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { EventNamesTypes } from '@/eventbus/event-message-classes';
+import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import type { MessageEventBusDestinationSentry } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-sentry.ee';
+import type { MessageEventBusDestinationSyslog } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-syslog.ee';
+import type { MessageEventBusDestinationWebhook } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { createUser } from './shared/db/users.js';
-import type { SuperAgentTest } from './shared/types.js';
-import * as utils from './shared/utils/index.js';
+import { createUser } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils';
 
 vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 

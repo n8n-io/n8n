@@ -1,4 +1,4 @@
-import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-classifier.js';
+import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-classifier';
 
 const GENERIC_PUBLIC_MESSAGE = 'Internal server error';
 

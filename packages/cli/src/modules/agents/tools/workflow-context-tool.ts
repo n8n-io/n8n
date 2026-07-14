@@ -8,7 +8,7 @@ import {
 	queryItems,
 	ITEM_SHAPE_HINT,
 	QUERY_WHEN_TRUNCATED_HINT,
-} from './agent-data-utils.js';
+} from './agent-data-utils';
 
 const DESCRIPTION =
 	'Inspect data produced by OTHER earlier nodes in this workflow. ' +

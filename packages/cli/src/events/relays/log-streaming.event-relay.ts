@@ -3,11 +3,11 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
-import { EventService } from '@/events/event.service.js';
-import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map.js';
-import { EventRelay } from '@/events/relays/event-relay.js';
-import { assertNever } from '@/utils.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
+import { EventRelay } from '@/events/relays/event-relay';
+import { assertNever } from '@/utils';
 
 type WorkflowExecutedEvent = RelayEventMap['workflow-executed'];
 type WorkflowExecutedEventWithUser = WorkflowExecutedEvent & { user: UserLike };

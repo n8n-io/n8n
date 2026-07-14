@@ -1,4 +1,4 @@
-import { EvaluationMetrics } from '../evaluation-metrics.ee.js';
+import { EvaluationMetrics } from '../evaluation-metrics.ee';
 
 describe('EvaluationMetrics', () => {
 	test('should aggregate metrics correctly', () => {

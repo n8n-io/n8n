@@ -6,7 +6,7 @@ import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
 	normalizeSandboxProvider,
 	requireN8nSandboxServiceUrl,
-} from '../sandbox-provider.js';
+} from '../sandbox-provider';
 
 describe('sandbox-provider', () => {
 	describe('normalizeSandboxProvider', () => {

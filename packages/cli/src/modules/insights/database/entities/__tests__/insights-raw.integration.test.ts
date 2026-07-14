@@ -2,10 +2,10 @@ import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/bac
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import { createMetadata, createRawInsightsEvent } from './db-utils.js';
-import { InsightsRawRepository } from '../../repositories/insights-raw.repository.js';
-import { InsightsRaw } from '../insights-raw.js';
-import type { TypeUnit } from '../insights-shared.js';
+import { createMetadata, createRawInsightsEvent } from './db-utils';
+import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
+import { InsightsRaw } from '../insights-raw';
+import type { TypeUnit } from '../insights-shared';
 
 let insightsRawRepository: InsightsRawRepository;
 

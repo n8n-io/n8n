@@ -12,9 +12,9 @@ import {
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
 
-import type { ChatHubAgent } from './chat-hub-agent.entity.js';
-import type { ChatHubMessage } from './chat-hub-message.entity.js';
-import type { ChatHubTool } from './chat-hub-tool.entity.js';
+import type { ChatHubAgent } from './chat-hub-agent.entity';
+import type { ChatHubMessage } from './chat-hub-message.entity';
+import type { ChatHubTool } from './chat-hub-tool.entity';
 
 export interface IChatHubSession {
 	id: string;

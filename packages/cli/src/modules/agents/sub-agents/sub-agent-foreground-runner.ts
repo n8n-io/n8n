@@ -15,12 +15,12 @@ import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { AgentExecutionService } from '../agent-execution.service.js';
-import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry.js';
-import type { MessageRecord } from '../execution-recorder.js';
-import { ExecutionRecorder } from '../execution-recorder.js';
-import { streamAgentChunks } from '../utils/agent-stream.js';
-import { SubAgentSourceResolver } from './sub-agent-source-resolver.js';
+import { AgentExecutionService } from '../agent-execution.service';
+import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
+import type { MessageRecord } from '../execution-recorder';
+import { ExecutionRecorder } from '../execution-recorder';
+import { streamAgentChunks } from '../utils/agent-stream';
+import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
 export interface SubAgentForegroundRunContext {
 	projectId: string;

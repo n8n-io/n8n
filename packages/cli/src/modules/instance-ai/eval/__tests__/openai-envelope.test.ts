@@ -8,7 +8,7 @@ import {
 	forwardTranslateToSseChunks,
 	isStreamRequested,
 	reverseTranslateOpenAiRequest,
-} from '../openai-envelope.js';
+} from '../openai-envelope';
 
 describe('reverseTranslateOpenAiRequest', () => {
 	it('emits the synthetic OpenAI URL and POST method', () => {

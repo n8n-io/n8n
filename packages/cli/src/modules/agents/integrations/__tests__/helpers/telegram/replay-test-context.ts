@@ -7,17 +7,17 @@ import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { UrlService } from '@/services/url.service.js';
+import type { UrlService } from '@/services/url.service';
 
-import type { AgentRepository } from '../../../../repositories/agent.repository.js';
-import type { ChatInstance } from '../../../chat-integration.service.js';
-import { ComponentMapper } from '../../../component-mapper.js';
-import type { ChatIntegrationActionExecutor } from '../../../integration-action-executor.js';
+import type { AgentRepository } from '../../../../repositories/agent.repository';
+import type { ChatInstance } from '../../../chat-integration.service';
+import { ComponentMapper } from '../../../component-mapper';
+import type { ChatIntegrationActionExecutor } from '../../../integration-action-executor';
 import type {
 	getIntegrationToolConnectionDescriptors,
 	IntegrationMessageContext,
-} from '../../../integration-tools.js';
-import { TelegramIntegration } from '../../../platforms/telegram-integration.js';
+} from '../../../integration-tools';
+import { TelegramIntegration } from '../../../platforms/telegram-integration';
 import {
 	createReplayContextSetup,
 	installFetchStub,
@@ -26,7 +26,7 @@ import {
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
 	sendJsonWebhook,
-} from '../replay-test-helpers.js';
+} from '../replay-test-helpers';
 
 export interface TelegramUserFixture {
 	id: number;

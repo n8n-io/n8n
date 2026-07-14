@@ -1,8 +1,8 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service.js';
+import type { CacheService } from '@/services/cache/cache.service';
 
-import { AuthorizeIntentService, type AuthorizeIntent } from '../authorize-intent.service.js';
+import { AuthorizeIntentService, type AuthorizeIntent } from '../authorize-intent.service';
 
 describe('AuthorizeIntentService', () => {
 	const cacheService = mock<CacheService>();

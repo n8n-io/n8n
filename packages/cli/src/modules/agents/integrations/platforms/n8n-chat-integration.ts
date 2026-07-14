@@ -8,15 +8,15 @@ import {
 	AgentChatIntegration,
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
-} from '../agent-chat-integration.js';
-import { respondInputSchema } from '../integration-action-executor.js';
-import { INTEGRATION_ERROR_CODES } from '../integration-error-codes.js';
-import { integrationError, unsupportedQuery } from '../integration-helpers.js';
+} from '../agent-chat-integration';
+import { respondInputSchema } from '../integration-action-executor';
+import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
+import { integrationError, unsupportedQuery } from '../integration-helpers';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
-} from '../integration-tool-definitions.js';
-import type { IntegrationActionResult } from '../integration-tools.js';
+} from '../integration-tool-definitions';
+import type { IntegrationActionResult } from '../integration-tools';
 
 /**
  * The in-app chat channel ("n8n Chat").

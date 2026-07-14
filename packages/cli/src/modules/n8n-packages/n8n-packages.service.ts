@@ -2,33 +2,33 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { Readable } from 'node:stream';
 
-import { N8N_VERSION } from '@/constants.js';
-import { EventService } from '@/events/event.service.js';
+import { N8N_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
 
-import { N8nPackageParser } from './engine/n8n-package-parser.js';
-import { ProjectPackageImporter } from './engine/project-package-importer.js';
-import { WorkflowPackageImporter } from './engine/workflow-package-importer.js';
-import { CredentialExporter } from './entities/credential/credential.exporter.js';
-import { DataTableExporter } from './entities/data-table/data-table.exporter.js';
-import { FolderExporter } from './entities/folder/folder.exporter.js';
-import { ProjectExporter } from './entities/project/project.exporter.js';
-import { mergeRequirements } from './entities/requirements.types.js';
-import { WorkflowExporter } from './entities/workflow/workflow.exporter.js';
-import { TarPackageReader } from './io/tar/tar-package-reader.js';
-import { TarPackageWriter } from './io/tar/tar-package-writer.js';
-import { PackageImportConfig } from './n8n-packages.config.js';
+import { N8nPackageParser } from './engine/n8n-package-parser';
+import { ProjectPackageImporter } from './engine/project-package-importer';
+import { WorkflowPackageImporter } from './engine/workflow-package-importer';
+import { CredentialExporter } from './entities/credential/credential.exporter';
+import { DataTableExporter } from './entities/data-table/data-table.exporter';
+import { FolderExporter } from './entities/folder/folder.exporter';
+import { ProjectExporter } from './entities/project/project.exporter';
+import { mergeRequirements } from './entities/requirements.types';
+import { WorkflowExporter } from './entities/workflow/workflow.exporter';
+import { TarPackageReader } from './io/tar/tar-package-reader';
+import { TarPackageWriter } from './io/tar/tar-package-writer';
+import { PackageImportConfig } from './n8n-packages.config';
 import type {
 	ExportPackageRequest,
 	ImportPackageRequest,
 	ImportResult,
-} from './n8n-packages.types.js';
-import { FORMAT_VERSION } from './spec/constants.js';
+} from './n8n-packages.types';
+import { FORMAT_VERSION } from './spec/constants';
 import {
 	type ManifestEntry,
 	type PackageManifest,
 	packageManifestSchema,
-} from './spec/manifest.schema.js';
-import type { PackageRequirements } from './spec/requirements.schema.js';
+} from './spec/manifest.schema';
+import type { PackageRequirements } from './spec/requirements.schema';
 
 @Service()
 export class N8nPackagesService {

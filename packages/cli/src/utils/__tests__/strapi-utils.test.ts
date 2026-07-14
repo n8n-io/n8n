@@ -2,7 +2,7 @@ import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 
-import { paginatedRequest, buildStrapiUpdateQuery } from '../strapi-utils.js';
+import { paginatedRequest, buildStrapiUpdateQuery } from '../strapi-utils';
 
 const page = <T>(
 	data: Array<{ id: number; attributes: T }>,

@@ -15,12 +15,12 @@ import {
 	type ReadKnowledgeRequest,
 	type SearchKnowledgeMatch,
 	type SearchKnowledgeRequest,
-} from './agent-knowledge-retrieval.js';
+} from './agent-knowledge-retrieval';
 import {
 	assertKnowledgePathSegment,
 	KNOWLEDGE_MIRROR_FILES_DIR,
 	KNOWLEDGE_MIRROR_MANIFEST,
-} from './agent-knowledge-storage.js';
+} from './agent-knowledge-storage';
 
 const COMMAND_TIMEOUT_SECONDS = 20;
 export const MIRROR_SYNC_TIMEOUT_SECONDS = 120;

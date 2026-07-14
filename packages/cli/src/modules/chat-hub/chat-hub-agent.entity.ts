@@ -15,7 +15,7 @@ import {
 	type Relation,
 } from '@n8n/typeorm';
 
-import type { ChatHubTool } from './chat-hub-tool.entity.js';
+import type { ChatHubTool } from './chat-hub-tool.entity';
 
 export interface IChatHubAgent {
 	id: string;

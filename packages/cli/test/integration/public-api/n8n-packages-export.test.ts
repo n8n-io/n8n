@@ -3,12 +3,12 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { EventService } from '@/events/event.service.js';
-import { createFolder } from '@test-integration/db/folders.js';
+import { EventService } from '@/events/event.service';
+import { createFolder } from '@test-integration/db/folders';
 
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 

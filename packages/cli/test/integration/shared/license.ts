@@ -1,7 +1,7 @@
 import type { LicenseProvider, LicenseState } from '@n8n/backend-common';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 
-import type { License } from '@/license.js';
+import type { License } from '@/license';
 
 export interface LicenseMockDefaults {
 	features?: BooleanLicenseFeature[];

@@ -4,18 +4,18 @@ import { Container } from '@n8n/di';
 import { BinaryDataConfig } from 'n8n-core';
 import type { Mock, MockInstance } from 'vitest';
 
-import { DeprecationService } from '@/deprecation/deprecation.service.js';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
-import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay.js';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry.js';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service.js';
-import { JwtService } from '@/services/jwt.service.js';
-import { RedisClientService } from '@/services/redis-client.service.js';
-import { WebhookServer } from '@/webhooks/webhook-server.js';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { JwtService } from '@/services/jwt.service';
+import { RedisClientService } from '@/services/redis-client.service';
+import { WebhookServer } from '@/webhooks/webhook-server';
 
-import { BaseCommand } from '../base-command.js';
-import { Webhook } from '../webhook.js';
+import { BaseCommand } from '../base-command';
+import { Webhook } from '../webhook';
 
 vi.mock('@/scaling/scaling.service', () => ({
 	ScalingService: class {},

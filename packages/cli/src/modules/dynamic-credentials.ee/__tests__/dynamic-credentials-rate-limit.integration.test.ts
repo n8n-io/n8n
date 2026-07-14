@@ -14,14 +14,14 @@ import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee.js';
-import { OauthService } from '@/oauth/oauth.service.js';
-import * as utils from '@test-integration/utils/index.js';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { OauthService } from '@/oauth/oauth.service';
+import * as utils from '@test-integration/utils';
 
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository.js';
-import { DynamicCredentialsConfig } from '../dynamic-credentials.config.js';
-import { DynamicCredentialResolverRegistry } from '../services/index.js';
-import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service.js';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
+import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
+import { DynamicCredentialResolverRegistry } from '../services';
+import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service';
 
 // Enable dynamic credentials feature flag
 process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';

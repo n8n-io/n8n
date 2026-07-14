@@ -1,6 +1,6 @@
 import type { INode } from 'n8n-workflow';
 
-import { computeTriggerDiff } from '@/workflows/publication/trigger-diff.js';
+import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
 
 describe('computeTriggerDiff', () => {
 	function makeNode(id: string, overrides: Partial<INode> = {}): INode {

@@ -2,10 +2,10 @@ import { jsonParse } from 'n8n-workflow';
 import path from 'node:path';
 import { Parser, type ReadEntry } from 'tar';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import type { PackageManifest } from '../../spec/manifest.schema.js';
-import type { PackageReader } from '../package-reader.js';
+import type { PackageManifest } from '../../spec/manifest.schema';
+import type { PackageReader } from '../package-reader';
 
 const MANIFEST_PATH = 'manifest.json';
 const ALLOWED_PATH_CHARS = /^[a-zA-Z0-9._/-]+$/;

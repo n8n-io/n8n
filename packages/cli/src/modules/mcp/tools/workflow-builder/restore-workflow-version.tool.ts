@@ -2,18 +2,18 @@ import { type User, WorkflowEntity } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import z from 'zod';
 
-import type { CollaborationService } from '@/collaboration/collaboration.service.js';
-import type { Telemetry } from '@/telemetry/index.js';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
-import type { WorkflowService } from '@/workflows/workflow.service.js';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { Telemetry } from '@/telemetry';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
-import { WorkflowAccessError } from '../../mcp.errors.js';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
-import { getMcpWorkflowVersion } from '../workflow-history.utils.js';
-import { getMcpWorkflow } from '../workflow-validation.utils.js';
-import { buildRestoreVersionMetadata } from './version-metadata.js';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import { WorkflowAccessError } from '../../mcp.errors';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getMcpWorkflowVersion } from '../workflow-history.utils';
+import { getMcpWorkflow } from '../workflow-validation.utils';
+import { buildRestoreVersionMetadata } from './version-metadata';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to restore'),

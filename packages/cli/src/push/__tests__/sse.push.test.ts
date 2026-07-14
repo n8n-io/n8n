@@ -2,8 +2,8 @@ import { type PushMessage } from '@n8n/api-types';
 import EventEmitter from 'node:events';
 import { mock } from 'vitest-mock-extended';
 
-import { SSEPush } from '@/push/sse.push.js';
-import type { PushRequest, PushResponse } from '@/push/types.js';
+import { SSEPush } from '@/push/sse.push';
+import type { PushRequest, PushResponse } from '@/push/types';
 
 vi.useFakeTimers();
 

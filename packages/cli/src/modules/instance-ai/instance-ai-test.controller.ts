@@ -3,11 +3,11 @@ import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators'
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import { InstanceAiMemoryService } from './instance-ai-memory.service.js';
-import { InstanceAiService } from './instance-ai.service.js';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository.js';
+import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiService } from './instance-ai.service';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 
 /**
  * Test-only endpoints for trace replay in Instance AI e2e tests.

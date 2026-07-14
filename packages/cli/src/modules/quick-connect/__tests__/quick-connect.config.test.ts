@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { QuickConnectConfig } from '../quick-connect.config.js';
+import { QuickConnectConfig } from '../quick-connect.config';
 
 describe('QuickConnectConfig', () => {
 	beforeEach(() => {

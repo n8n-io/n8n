@@ -25,28 +25,28 @@ import { Container } from '@n8n/di';
 import type express from 'express';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
-import { TEMPLATES_DIR } from '@/constants.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
+import { TEMPLATES_DIR } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import {
 	EC_TEST_CERTIFICATE,
 	EC_TEST_PRIVATE_KEY,
 	RSA_MISMATCHED_CERTIFICATE,
 	RSA_TEST_CERTIFICATE,
 	RSA_TEST_PRIVATE_KEY,
-} from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures.js';
-import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers.js';
-import { SamlService } from '@/modules/sso-saml/saml.service.ee.js';
+} from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
+import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
+import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers.js';
-import { createHandlebarsEngine } from '@/utils/handlebars.util.js';
+} from '@/sso.ee/sso-helpers';
+import { createHandlebarsEngine } from '@/utils/handlebars.util';
 
-import { sampleConfig, sampleMetadata } from './sample-metadata.js';
-import { createOwner, createUser } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { sampleConfig, sampleMetadata } from './sample-metadata';
+import { createOwner, createUser } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 let someUser: User;
 let owner: User;

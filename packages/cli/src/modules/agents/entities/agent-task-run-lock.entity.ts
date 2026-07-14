@@ -1,7 +1,7 @@
 import { DateTimeColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, type Relation } from '@n8n/typeorm';
 
-import { Agent } from './agent.entity.js';
+import { Agent } from './agent.entity';
 
 /** Distributed lock for a scheduled task run, shared by all main instances. */
 @Entity({ name: 'agent_task_run_lock' })

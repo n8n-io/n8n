@@ -4,13 +4,13 @@ import {
 	getMcpRegistryCredentialTypeName,
 	serverToNodeDescription,
 	serverToCredentialDescription,
-} from '../node-description-transform.js';
-import type { McpRegistryServer } from '../registry/mcp-registry.types.js';
+} from '../node-description-transform';
+import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
 	gmailDirectExtendMockServer,
 	notionMockServer,
 	slackExtendingMockServer,
-} from '../registry/mock-servers.js';
+} from '../registry/mock-servers';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',

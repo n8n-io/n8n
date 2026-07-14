@@ -8,7 +8,7 @@ import { dirname, isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
 import { valid } from 'semver';
 
-import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants.js';
+import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 const asyncExecFile = promisify(execFile);
 

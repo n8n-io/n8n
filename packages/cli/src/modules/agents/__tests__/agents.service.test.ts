@@ -5,20 +5,20 @@ import type { ProjectRelationRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import type { AgentKnowledgeService } from '../agent-knowledge.service.js';
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service.js';
-import { AgentTaskService } from '../agent-task.service.js';
-import type { AgentTestChatService } from '../agent-test-chat.service.js';
-import { AgentsService } from '../agents.service.js';
-import type { AgentTask } from '../entities/agent-task.entity.js';
-import type { Agent } from '../entities/agent.entity.js';
-import { ChatIntegrationService } from '../integrations/chat-integration.service.js';
-import type { AgentTaskRepository } from '../repositories/agent-task.repository.js';
-import type { AgentRepository } from '../repositories/agent.repository.js';
-import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service.js';
-import type { EventService } from '@/events/event.service.js';
+import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentTaskService } from '../agent-task.service';
+import type { AgentTestChatService } from '../agent-test-chat.service';
+import { AgentsService } from '../agents.service';
+import type { AgentTask } from '../entities/agent-task.entity';
+import type { Agent } from '../entities/agent.entity';
+import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { AgentTaskRepository } from '../repositories/agent-task.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
+import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
+import type { EventService } from '@/events/event.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

@@ -2,10 +2,10 @@ import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/bac
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import { InsightsConfig } from '@/modules/insights/insights.config.js';
+import { InsightsConfig } from '@/modules/insights/insights.config';
 
-import { createCompactedInsightsEvent, createMetadata } from '../../entities/__tests__/db-utils.js';
-import { InsightsByPeriodRepository } from '../insights-by-period.repository.js';
+import { createCompactedInsightsEvent, createMetadata } from '../../entities/__tests__/db-utils';
+import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 
 describe('InsightsByPeriodRepository', () => {
 	beforeAll(async () => {

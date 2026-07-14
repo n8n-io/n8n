@@ -4,16 +4,16 @@ import type { WorkflowExecuteAfterContext, WorkflowExecuteResumeContext } from '
 import type { IRun } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { ChatExecutionManager } from '@/chat/chat-execution-manager.js';
-import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	ChatHubExecutionStore,
 	ChatHubExecutionContext,
-} from '@/modules/chat-hub/chat-hub-execution-store.service.js';
-import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-execution-watcher.service.js';
-import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service.js';
-import type { ChatHubMessageRepository } from '@/modules/chat-hub/chat-message.repository.js';
-import type { ChatStreamService } from '@/modules/chat-hub/chat-stream.service.js';
+} from '@/modules/chat-hub/chat-hub-execution-store.service';
+import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-execution-watcher.service';
+import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service';
+import type { ChatHubMessageRepository } from '@/modules/chat-hub/chat-message.repository';
+import type { ChatStreamService } from '@/modules/chat-hub/chat-stream.service';
 
 const EXECUTION_ID = '12345678';
 const SESSION_ID = 'bbbbbbbb-2222-4000-8000-000000000002';

@@ -4,9 +4,9 @@ import type { LicenseMetricsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
-import type { CacheService } from '@/services/cache/cache.service.js';
+import type { CacheService } from '@/services/cache/cache.service';
 
-import { PrometheusWorkflowStatisticsMetricsService } from '../workflow-statistics-metrics.service.js';
+import { PrometheusWorkflowStatisticsMetricsService } from '../workflow-statistics-metrics.service';
 
 vi.mock('prom-client');
 

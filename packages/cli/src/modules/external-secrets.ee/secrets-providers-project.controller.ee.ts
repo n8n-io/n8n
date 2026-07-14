@@ -20,12 +20,12 @@ import {
 } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { sendErrorResponse } from '@/response-helper.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { sendErrorResponse } from '@/response-helper';
 
-import { ExternalSecretsConfig } from './external-secrets.config.js';
-import { SecretsProviderAccessCheckService } from './secret-provider-access-check.service.ee.js';
-import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee.js';
+import { ExternalSecretsConfig } from './external-secrets.config';
+import { SecretsProviderAccessCheckService } from './secret-provider-access-check.service.ee';
+import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
 
 @RestController('/secret-providers/projects')
 export class SecretProvidersProjectController {

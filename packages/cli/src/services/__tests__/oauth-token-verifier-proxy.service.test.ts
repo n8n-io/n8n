@@ -1,8 +1,8 @@
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { OAuthTokenVerifier } from '../oauth-token-verifier-proxy.service.js';
-import { OAuthTokenVerifierProxy } from '../oauth-token-verifier-proxy.service.js';
+import type { OAuthTokenVerifier } from '../oauth-token-verifier-proxy.service';
+import { OAuthTokenVerifierProxy } from '../oauth-token-verifier-proxy.service';
 
 describe('OAuthTokenVerifierProxy', () => {
 	it('should fail verification gracefully when no provider is registered', async () => {

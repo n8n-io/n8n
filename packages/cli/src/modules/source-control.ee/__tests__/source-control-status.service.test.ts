@@ -16,19 +16,19 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import type { EventService } from '@/events/event.service.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { EventService } from '@/events/event.service';
 
-import type { SourceControlContextFactory } from '../source-control-context.factory.js';
-import type { SourceControlGitService } from '../source-control-git.service.ee.js';
-import * as sourceControlHelper from '../source-control-helper.ee.js';
-import type { SourceControlImportService } from '../source-control-import.service.ee.js';
-import { SourceControlPreferencesService } from '../source-control-preferences.service.ee.js';
-import { SourceControlStatusService } from '../source-control-status.service.ee.js';
-import type { StatusExportableCredential } from '../types/exportable-credential.js';
-import type { ExportableProjectWithFileName } from '../types/exportable-project.js';
-import { SourceControlContext } from '../types/source-control-context.js';
-import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id.js';
+import type { SourceControlContextFactory } from '../source-control-context.factory';
+import type { SourceControlGitService } from '../source-control-git.service.ee';
+import * as sourceControlHelper from '../source-control-helper.ee';
+import type { SourceControlImportService } from '../source-control-import.service.ee';
+import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import { SourceControlStatusService } from '../source-control-status.service.ee';
+import type { StatusExportableCredential } from '../types/exportable-credential';
+import type { ExportableProjectWithFileName } from '../types/exportable-project';
+import { SourceControlContext } from '../types/source-control-context';
+import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
 // Reuse typed user mocks at module scope to avoid performance issues related to recreating nested proxy mocks per test
 const globalAdminUser = mock<User>({ role: GLOBAL_ADMIN_ROLE });

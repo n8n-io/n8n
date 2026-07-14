@@ -4,9 +4,9 @@ import type { Server as HttpServer, IncomingMessage } from 'http';
 import { mock, mockReset } from 'vitest-mock-extended';
 import type { WebSocket, WebSocketServer } from 'ws';
 
-import { ChatServer } from '../chat-server.js';
-import type { ChatService } from '../chat-service.js';
-import type { ChatRequest } from '../chat-service.types.js';
+import { ChatServer } from '../chat-server';
+import type { ChatService } from '../chat-service';
+import type { ChatRequest } from '../chat-service.types';
 
 vi.mock('ws', () => ({
 	Server: vi.fn(function () {}),

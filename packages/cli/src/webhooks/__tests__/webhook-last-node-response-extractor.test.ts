@@ -6,7 +6,7 @@ import assert from 'node:assert';
 import { Readable } from 'node:stream';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import { extractWebhookLastNodeResponse } from '../webhook-last-node-response-extractor.js';
+import { extractWebhookLastNodeResponse } from '../webhook-last-node-response-extractor';
 
 describe('extractWebhookLastNodeResponse', () => {
 	let lastNodeTaskData: MockProxy<ITaskData>;

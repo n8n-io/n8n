@@ -4,8 +4,8 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import nock from 'nock';
 
-import type { FirecrawlQuickConnect } from '../../quick-connect.config.js';
-import { FirecrawlHandler } from '../firecrawl.handler.js';
+import type { FirecrawlQuickConnect } from '../../quick-connect.config';
+import { FirecrawlHandler } from '../firecrawl.handler';
 
 describe('FirecrawlHandler', () => {
 	let handler: FirecrawlHandler;

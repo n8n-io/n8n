@@ -3,10 +3,10 @@ import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Body, Post, ProjectScope, RestController } from '@n8n/decorators';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { PostHogClient } from '@/posthog/index.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { PostHogClient } from '@/posthog';
 
-import { EvalInsightsService } from './eval-insights.service.js';
+import { EvalInsightsService } from './eval-insights.service';
 
 type CollectionParam = { workflowId: string; collectionId: string };
 

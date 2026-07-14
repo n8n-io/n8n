@@ -12,8 +12,8 @@ import type {
 	BatchWorkflowDetectionReport,
 	BreakingChangeRuleMetadata,
 	IBreakingChangeBatchWorkflowRule,
-} from '../../types/index.js';
-import { BreakingChangeCategory } from '../../types/index.js';
+} from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 interface ParentWorkflowInfo {
 	parentWorkflowId: string;

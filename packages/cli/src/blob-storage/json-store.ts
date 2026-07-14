@@ -1,8 +1,8 @@
 import chunk from 'lodash/chunk';
 import { jsonParse, jsonStringify, UnexpectedError } from 'n8n-workflow';
 
-import { SkippedEntryDeletionError } from './skipped-entry-deletion.error.js';
-import type { ByteStore, JsonEntry, JsonStoreOptions, StorageLocation, Stored } from './types.js';
+import { SkippedEntryDeletionError } from './skipped-entry-deletion.error';
+import type { ByteStore, JsonEntry, JsonStoreOptions, StorageLocation, Stored } from './types';
 
 const CORRUPT_ENTRY = Symbol('corruptEntry');
 

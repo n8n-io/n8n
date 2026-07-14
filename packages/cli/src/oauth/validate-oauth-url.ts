@@ -1,4 +1,4 @@
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const ALLOWED_OAUTH_URL_PROTOCOLS = ['http:', 'https:'];
 

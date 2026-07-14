@@ -2,7 +2,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 /**
  * Signals the leader to drain the publication outbox immediately after a record

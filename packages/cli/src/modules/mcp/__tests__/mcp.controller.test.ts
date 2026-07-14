@@ -7,7 +7,7 @@ import type { Request } from 'express';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 // eslint-disable-next-line import-x/order
-import { McpServerMiddlewareService } from '../mcp-server-middleware.service.js';
+import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
 
 const mockAuthMiddleware = vi.fn().mockImplementation(async function (_req, _res, next) {
 	next();
@@ -21,12 +21,12 @@ mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware)
 // this set, so the controller is imported dynamically in `beforeEach` instead.
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
-import { McpConfig } from '../mcp.config.js';
-import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller.js';
-import { McpService } from '../mcp.service.js';
-import { McpSettingsService } from '../mcp.settings.service.js';
-import { Telemetry } from '@/telemetry/index.js';
-import type { UserConnectedToMCPEventPayload } from '../mcp.types.js';
+import { McpConfig } from '../mcp.config';
+import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
+import { McpService } from '../mcp.service';
+import { McpSettingsService } from '../mcp.settings.service';
+import { Telemetry } from '@/telemetry';
+import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
 vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {

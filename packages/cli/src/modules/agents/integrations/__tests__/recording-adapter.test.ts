@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 
-import type { ChannelIntegrationRecorder } from '../recording/channel-integration-recorder.js';
-import { recordAdapterCalls } from '../recording/recording-adapter.js';
+import type { ChannelIntegrationRecorder } from '../recording/channel-integration-recorder';
+import { recordAdapterCalls } from '../recording/recording-adapter';
 
 describe('recordAdapterCalls', () => {
 	function enabledRecorder(recordApiCall: Mock): ChannelIntegrationRecorder {

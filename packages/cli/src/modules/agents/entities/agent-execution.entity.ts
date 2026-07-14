@@ -1,8 +1,8 @@
 import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
-import { AgentExecutionThread } from './agent-execution-thread.entity.js';
-import type { TimelineEvent } from '../execution-recorder.js';
+import { AgentExecutionThread } from './agent-execution-thread.entity';
+import type { TimelineEvent } from '../execution-recorder';
 
 export type AgentExecutionStatus = 'success' | 'error';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';

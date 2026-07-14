@@ -6,10 +6,10 @@ import {
 } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import type { MfaService } from '@/mfa/mfa.service.js';
-import type { SecuritySettingsService } from '@/services/security-settings.service.js';
+import type { MfaService } from '@/mfa/mfa.service';
+import type { SecuritySettingsService } from '@/services/security-settings.service';
 
-import { SecurityPolicyInstanceSettingsLoader } from '../loaders/security-policy.instance-settings-loader.js';
+import { SecurityPolicyInstanceSettingsLoader } from '../loaders/security-policy.instance-settings-loader';
 
 describe('SecurityPolicyInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });

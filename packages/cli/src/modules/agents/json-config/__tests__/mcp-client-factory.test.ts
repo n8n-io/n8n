@@ -4,9 +4,9 @@ import type { CustomFetch } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
-import type { OauthService } from '@/oauth/oauth.service.js';
+import type { OauthService } from '@/oauth/oauth.service';
 
-import { buildMcpClientForServer, mapApprovalToSdk } from '../mcp-client-factory.js';
+import { buildMcpClientForServer, mapApprovalToSdk } from '../mcp-client-factory';
 
 // ---------------------------------------------------------------------------
 // Module mocks

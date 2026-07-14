@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 
-import type { SecretsProvider } from './types.js';
+import type { SecretsProvider } from './types';
 
 /**
  * Manages the collection of active secrets providers

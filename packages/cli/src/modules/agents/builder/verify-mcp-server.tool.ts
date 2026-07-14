@@ -4,10 +4,10 @@ import { McpAuthenticationSchemaTypes } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { z } from 'zod';
 
-import type { OauthService } from '@/oauth/oauth.service.js';
+import type { OauthService } from '@/oauth/oauth.service';
 
-import { BUILDER_TOOLS } from './builder-tool-names.js';
-import { buildMcpClientForServer } from '../json-config/mcp-client-factory.js';
+import { BUILDER_TOOLS } from './builder-tool-names';
+import { buildMcpClientForServer } from '../json-config/mcp-client-factory';
 
 export interface VerifyMcpServerDeps {
 	credentialProvider: CredentialProvider;

@@ -1,8 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 
-import { ImportService } from '@/services/import.service.js';
+import { ImportService } from '@/services/import.service';
 
-import { ImportEntitiesCommand } from '../entities.js';
+import { ImportEntitiesCommand } from '../entities';
 
 vi.mock('@/services/import.service');
 

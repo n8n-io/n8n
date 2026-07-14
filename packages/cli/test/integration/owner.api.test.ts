@@ -10,10 +10,10 @@ import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import validator from 'validator';
 
-import { OwnershipService } from '@/services/ownership.service.js';
+import { OwnershipService } from '@/services/ownership.service';
 
-import { createUserShell } from './shared/db/users.js';
-import * as utils from './shared/utils//index.js';
+import { createUserShell } from './shared/db/users';
+import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 

@@ -1,4 +1,4 @@
-import { generateSlug } from './slug.utils.js';
+import { generateSlug } from './slug.utils';
 
 export class UniqueFilenameAllocator {
 	private readonly used = new Set<string>();

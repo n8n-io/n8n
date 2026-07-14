@@ -1,7 +1,7 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 /** A workflow that can be attached to an agent as a `type: "workflow"` tool. */
 export interface AttachableWorkflow {

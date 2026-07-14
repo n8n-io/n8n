@@ -11,8 +11,8 @@ import { LRUCache } from 'lru-cache';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import * as path from 'path';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 
 export type NodeFilter = (nodeId: string) => boolean;
 

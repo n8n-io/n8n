@@ -1,4 +1,4 @@
-import { EvalTimings } from '../eval-timings.js';
+import { EvalTimings } from '../eval-timings';
 
 function makeLogger() {
 	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };

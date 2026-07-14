@@ -7,10 +7,10 @@ import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { combineScopes, getAuthPrincipalScopes, hasGlobalScope } from '@n8n/permissions';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { ProjectService } from '@/services/project.service.ee.js';
-import { RoleService } from '@/services/role.service.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class SecretsProviderAccessCheckService {

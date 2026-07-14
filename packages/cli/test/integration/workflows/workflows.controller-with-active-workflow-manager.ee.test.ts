@@ -6,10 +6,10 @@ import {
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 
-import { Telemetry } from '@/telemetry/index.js';
+import { Telemetry } from '@/telemetry';
 
-import { createUser } from '../shared/db/users.js';
-import * as utils from '../shared/utils//index.js';
+import { createUser } from '../shared/db/users';
+import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 

@@ -15,12 +15,12 @@ import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { UM_FIX_INSTRUCTION } from '@/constants.js';
-import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces.js';
-import { ImportService } from '@/services/import.service.js';
-import { EventService } from '@/events/event.service.js';
+import { UM_FIX_INSTRUCTION } from '@/constants';
+import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
+import { ImportService } from '@/services/import.service';
+import { EventService } from '@/events/event.service';
 
-import { BaseCommand } from '../base-command.js';
+import { BaseCommand } from '../base-command';
 
 function assertHasWorkflowsToImport(
 	workflows: unknown[],

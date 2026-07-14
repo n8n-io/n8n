@@ -10,22 +10,22 @@ import { hasGlobalScope } from '@n8n/permissions';
 import * as express from 'express';
 import type { PullResult } from 'simple-git';
 
-import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants.js';
-import { sourceControlEnabledMiddleware } from './middleware/source-control-enabled-middleware.ee.js';
-import { SourceControlContextFactory } from './source-control-context.factory.js';
-import { getRepoType } from './source-control-helper.ee.js';
-import { SourceControlPreferencesService } from './source-control-preferences.service.ee.js';
-import { SourceControlScopedService } from './source-control-scoped.service.js';
-import { SourceControlService } from './source-control.service.ee.js';
-import type { ImportResult } from './types/import-result.js';
-import { SourceControlRequest } from './types/requests.js';
-import { SourceControlGetStatus } from './types/source-control-get-status.js';
-import type { SourceControlPreferences } from './types/source-control-preferences.js';
+import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
+import { sourceControlEnabledMiddleware } from './middleware/source-control-enabled-middleware.ee';
+import { SourceControlContextFactory } from './source-control-context.factory';
+import { getRepoType } from './source-control-helper.ee';
+import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
+import { SourceControlService } from './source-control.service.ee';
+import type { ImportResult } from './types/import-result';
+import { SourceControlRequest } from './types/requests';
+import { SourceControlGetStatus } from './types/source-control-get-status';
+import type { SourceControlPreferences } from './types/source-control-preferences';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { EventService } from '@/events/event.service.js';
-import { IWorkflowToImport } from '@/interfaces.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { IWorkflowToImport } from '@/interfaces';
 
 @RestController('/source-control')
 export class SourceControlController {

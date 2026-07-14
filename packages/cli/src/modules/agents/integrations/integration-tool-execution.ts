@@ -2,8 +2,8 @@ import type { InterruptibleToolContext, ToolContext } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
 import type { z } from 'zod';
 
-import { messageSchema, type IntegrationCardComponent } from './integration-tool-definitions.js';
-import { INTEGRATION_ERROR_CODES } from './integration-error-codes.js';
+import { messageSchema, type IntegrationCardComponent } from './integration-tool-definitions';
+import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import type {
 	IntegrationAction,
 	IntegrationActionExecutor,
@@ -13,8 +13,8 @@ import type {
 	IntegrationContextQuery,
 	IntegrationContextQueryExecutor,
 	IntegrationToolConnectionDescriptor,
-} from './integration-tool-types.js';
-import type { RawActionToolOperation, RawContextToolOperation } from './integration-tool-schema.js';
+} from './integration-tool-types';
+import type { RawActionToolOperation, RawContextToolOperation } from './integration-tool-schema';
 
 export async function executeContextToolOperation(params: {
 	operation: RawContextToolOperation;

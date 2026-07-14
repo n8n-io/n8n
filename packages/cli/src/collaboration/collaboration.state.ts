@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import type { Workflow } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service.js';
+import { CacheService } from '@/services/cache/cache.service';
 
 // clientId -> "userId|lastSeen"
 type WorkflowCacheHash = Record<string, string>;

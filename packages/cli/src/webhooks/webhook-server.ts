@@ -1,7 +1,7 @@
 import { Container, Service } from '@n8n/di';
 
-import { AbstractServer } from '@/abstract-server.js';
-import { ChatServer } from '@/chat/chat-server.js';
+import { AbstractServer } from '@/abstract-server';
+import { ChatServer } from '@/chat/chat-server';
 
 @Service()
 export class WebhookServer extends AbstractServer {

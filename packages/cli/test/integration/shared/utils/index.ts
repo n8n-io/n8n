@@ -26,12 +26,12 @@ import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { AUTH_COOKIE_NAME } from '@/constants.js';
-import { ExecutionService } from '@/executions/execution.service.js';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { Push } from '@/push/index.js';
+import { AUTH_COOKIE_NAME } from '@/constants';
+import { ExecutionService } from '@/executions/execution.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Push } from '@/push';
 
-export { setupTestServer } from './test-server.js';
+export { setupTestServer } from './test-server';
 
 // ----------------------------------
 //          initializers
@@ -181,7 +181,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 //           community nodes
 // ----------------------------------
 
-export * from './community-nodes.js';
+export * from './community-nodes';
 
 // ----------------------------------
 //           workflow

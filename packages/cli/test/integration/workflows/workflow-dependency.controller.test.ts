@@ -6,9 +6,9 @@ import {
 import { WorkflowDependencyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { saveCredential } from '../shared/db/credentials.js';
-import { createMember, createOwner } from '../shared/db/users.js';
-import * as utils from '../shared/utils/index.js';
+import { saveCredential } from '../shared/db/credentials';
+import { createMember, createOwner } from '../shared/db/users';
+import * as utils from '../shared/utils';
 
 let testServer: ReturnType<typeof utils.setupTestServer>;
 let depRepo: WorkflowDependencyRepository;

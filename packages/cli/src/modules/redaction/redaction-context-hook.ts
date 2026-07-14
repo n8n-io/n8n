@@ -7,7 +7,7 @@ import {
 } from '@n8n/decorators';
 import { policyToChannels, type RedactionSource } from 'n8n-workflow';
 
-import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service.js';
+import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
 
 @ContextEstablishmentHook({
 	alwaysExecute: true,

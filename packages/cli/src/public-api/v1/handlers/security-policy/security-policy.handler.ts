@@ -2,17 +2,17 @@ import { UpdateSecurityPolicyDto, type SecurityPolicyResponse } from '@n8n/api-t
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ConflictError } from '@/errors/response-errors/conflict.error.js';
-import type { SecurityPolicyReadResult } from '@/services/security-settings.service.js';
-import { SecuritySettingsService } from '@/services/security-settings.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import type { SecurityPolicyReadResult } from '@/services/security-settings.service';
+import { SecuritySettingsService } from '@/services/security-settings.service';
 
-import type { SecurityPolicyRequest } from '../../../types.js';
-import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
+import type { SecurityPolicyRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
-} from '../../shared/middlewares/global.middleware.js';
+} from '../../shared/middlewares/global.middleware';
 
 const toResponse = (settings: SecurityPolicyReadResult): SecurityPolicyResponse => settings;
 

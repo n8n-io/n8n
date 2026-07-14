@@ -3,8 +3,8 @@ import type { CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
-import { DuplicateExecutionError } from '@/errors/duplicate-execution.error.js';
-import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 describe('ExecutionPersistence', () => {
 	let executionPersistence: ExecutionPersistence;

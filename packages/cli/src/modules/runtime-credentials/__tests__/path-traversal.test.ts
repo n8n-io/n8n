@@ -1,6 +1,6 @@
 import type { IDataObject } from 'n8n-workflow';
 
-import { extractAndClear } from '../path-traversal.js';
+import { extractAndClear } from '../path-traversal';
 
 type Case = {
 	name: string;

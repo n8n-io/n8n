@@ -3,8 +3,8 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { PublishedWorkflowEnqueuer } from '@/workflows/publication/published-workflow-enqueuer.js';
-import type { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer.js';
+import { PublishedWorkflowEnqueuer } from '@/workflows/publication/published-workflow-enqueuer';
+import type { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 
 describe('PublishedWorkflowEnqueuer', () => {
 	const logger = mock<Logger>();

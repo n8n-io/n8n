@@ -13,11 +13,11 @@ import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { EventService } from '@/events/event.service.js';
-import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service.js';
-import { retryUntil } from '@test-integration/retry-until.js';
+import { EventService } from '@/events/event.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { retryUntil } from '@test-integration/retry-until';
 
-import { createOwner } from '../shared/db/users.js';
+import { createOwner } from '../shared/db/users';
 
 let workflowIndexService: WorkflowIndexService;
 let eventService: EventService;

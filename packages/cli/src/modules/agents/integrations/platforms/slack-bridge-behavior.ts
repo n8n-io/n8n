@@ -7,8 +7,8 @@ import type {
 	BridgeResumeExecutionContext,
 	BridgeStatusHandle,
 	PlatformAgentContext,
-} from '../agent-chat-integration.js';
-import type { ChatInstance } from '../chat-integration.service.js';
+} from '../agent-chat-integration';
+import type { ChatInstance } from '../chat-integration.service';
 
 const SLACK_THINKING_STATUS = 'Thinking...';
 const SLACK_STATUS_RETRY_DELAY_MS = 750;

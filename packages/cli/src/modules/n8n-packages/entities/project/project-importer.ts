@@ -3,11 +3,11 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { ProjectService } from '@/services/project.service.ee.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ProjectService } from '@/services/project.service.ee';
 
-import type { PreparedProject, ProjectPlanItem } from './project-import.types.js';
-import type { ImportedProjectSummary } from '../../n8n-packages.types.js';
+import type { PreparedProject, ProjectPlanItem } from './project-import.types';
+import type { ImportedProjectSummary } from '../../n8n-packages.types';
 
 @Service()
 export class ProjectImporter {

@@ -2,15 +2,15 @@ import { readFileSync } from 'fs';
 import { jsonParse } from 'n8n-workflow';
 import { join } from 'path';
 
-import { runSharedChannelIntegrationContract } from './helpers/channel-integration-contract.js';
+import { runSharedChannelIntegrationContract } from './helpers/channel-integration-contract';
 import {
 	createSlackReplayContext,
 	type SlackReplayFixtures,
-} from './helpers/slack/replay-test-context.js';
+} from './helpers/slack/replay-test-context';
 import {
 	createTelegramReplayContext,
 	type TelegramReplayFixtures,
-} from './helpers/telegram/replay-test-context.js';
+} from './helpers/telegram/replay-test-context';
 
 const slackFixtures = jsonParse<SlackReplayFixtures>(
 	readFileSync(join(__dirname, 'fixtures/slack/basic.json'), 'utf8'),

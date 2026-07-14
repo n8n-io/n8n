@@ -16,8 +16,8 @@ import { existsSync, readFileSync, readdirSync } from 'fs';
 import { OperationalError } from 'n8n-workflow';
 import { join } from 'path';
 
-import { buildDateAnchors } from './date-anchors.js';
-import { isAiRootNodeType } from './workflow-analysis.js';
+import { buildDateAnchors } from './date-anchors';
+import { isAiRootNodeType } from './workflow-analysis';
 
 type PinData = Record<string, Array<Record<string, unknown>>>;
 

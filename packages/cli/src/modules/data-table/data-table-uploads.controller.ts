@@ -2,11 +2,11 @@ import { Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { CsvParserService } from './csv-parser.service.js';
-import { MulterUploadMiddleware } from './multer-upload-middleware.js';
-import { AuthenticatedRequestWithFile, hasStringProperty } from './types.js';
+import { CsvParserService } from './csv-parser.service';
+import { MulterUploadMiddleware } from './multer-upload-middleware';
+import { AuthenticatedRequestWithFile, hasStringProperty } from './types';
 
 const uploadMiddleware = Container.get(MulterUploadMiddleware);
 

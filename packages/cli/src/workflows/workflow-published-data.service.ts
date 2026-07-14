@@ -8,7 +8,7 @@ import {
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { CacheService } from '@/services/cache/cache.service.js';
+import { CacheService } from '@/services/cache/cache.service';
 
 export type { PublishedWorkflowDataForExecution };
 

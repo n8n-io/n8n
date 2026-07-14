@@ -6,12 +6,12 @@ import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import type { ICredentialContext, INode, IRunExecutionData } from 'n8n-workflow';
 
-import type { AuthService } from '@/auth/auth.service.js';
-import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service.js';
+import type { AuthService } from '@/auth/auth.service';
+import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
-import { N8NIdentifier } from '../../../credential-resolvers/identifiers/n8n-identifier.js';
-import { N8NOAuth2Extractor, N8N_OAUTH_EXTRACTOR_NAME } from '../n8n-oauth-extractor.js';
-import { N8nOAuthIdentitySeeder } from '../n8n-oauth-seeder.js';
+import { N8NIdentifier } from '../../../credential-resolvers/identifiers/n8n-identifier';
+import { N8NOAuth2Extractor, N8N_OAUTH_EXTRACTOR_NAME } from '../n8n-oauth-extractor';
+import { N8nOAuthIdentitySeeder } from '../n8n-oauth-seeder';
 
 const TOKEN = 'super-secret-oauth-token';
 const RESOURCE = 'https://host/mcp/workflow-a';

@@ -10,19 +10,19 @@ import type { EntityManager } from '@n8n/typeorm';
 import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentCustomToolsService } from './agent-custom-tools.service.js';
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service.js';
-import { AgentTask } from './entities/agent-task.entity.js';
-import type { Agent } from './entities/agent.entity.js';
-import { ChatIntegrationService } from './integrations/chat-integration.service.js';
-import { AgentHistoryRepository } from './repositories/agent-history.repository.js';
-import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository.js';
-import { AgentRepository } from './repositories/agent.repository.js';
-import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service.js';
-import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids.js';
+import { AgentCustomToolsService } from './agent-custom-tools.service';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentTask } from './entities/agent-task.entity';
+import type { Agent } from './entities/agent.entity';
+import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentHistoryRepository } from './repositories/agent-history.repository';
+import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
+import { AgentRepository } from './repositories/agent.repository';
+import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
+import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 
 export interface PublishAgentOptions {
 	syncIntegrations?: boolean;

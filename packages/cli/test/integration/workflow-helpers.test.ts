@@ -6,8 +6,8 @@ import type { IRun, INode, ITaskData } from 'n8n-workflow';
 import { createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import * as WorkflowHelpers from '@/workflow-helpers.js';
-import { createExecution } from '@test-integration/db/executions.js';
+import * as WorkflowHelpers from '@/workflow-helpers';
+import { createExecution } from '@test-integration/db/executions';
 
 describe('workflow-helpers', () => {
 	let executionRepository: ExecutionRepository;

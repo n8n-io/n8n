@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { PrometheusInstanceRoleMetricsService } from '../instance-role-metrics.service.js';
+import { PrometheusInstanceRoleMetricsService } from '../instance-role-metrics.service';
 
 vi.mock('prom-client');
 

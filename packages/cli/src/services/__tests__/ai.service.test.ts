@@ -10,10 +10,10 @@ import type { IUser } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { N8N_VERSION } from '@/constants.js';
-import type { License } from '@/license.js';
+import { N8N_VERSION } from '@/constants';
+import type { License } from '@/license';
 
-import { AiService } from '../ai.service.js';
+import { AiService } from '../ai.service';
 
 vi.mock('@n8n_io/ai-assistant-sdk', () => ({
 	AiAssistantClient: vi.fn(),

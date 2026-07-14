@@ -1,7 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import { SettingsFilePermissionsRule } from '../settings-file-permissions.rule.js';
+import { SettingsFilePermissionsRule } from '../settings-file-permissions.rule';
 
 describe('SettingsFilePermissionsRule', () => {
 	let rule: SettingsFilePermissionsRule;

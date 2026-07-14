@@ -22,11 +22,11 @@ import {
 } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { UserManagementMailer } from '@/user-management/email/index.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UserManagementMailer } from '@/user-management/email';
 
-import { JwtService } from './jwt.service.js';
+import { JwtService } from './jwt.service';
 
 export const API_KEY_AUDIENCE: ApiKeyAudience = 'public-api';
 export const API_KEY_ISSUER = 'n8n';

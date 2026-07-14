@@ -1,10 +1,10 @@
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ConflictError } from '@/errors/response-errors/conflict.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type {
 	Project,
 	ProjectRepository,

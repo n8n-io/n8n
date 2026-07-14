@@ -1,6 +1,6 @@
 import { Get, RestController } from '@n8n/decorators';
 
-import { FrontendService } from '@/services/frontend.service.js';
+import { FrontendService } from '@/services/frontend.service';
 
 @RestController('/module-settings')
 export class ModuleSettingsController {

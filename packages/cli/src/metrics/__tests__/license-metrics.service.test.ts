@@ -1,7 +1,7 @@
 import type { LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { LicenseMetricsService } from '@/metrics/license-metrics.service.js';
+import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 describe('LicenseMetricsService', () => {
 	const workflowRepository = mock<WorkflowRepository>();

@@ -3,7 +3,7 @@ import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { buildVectorStore, buildVectorStoreBackend } from '../vector-store-factory.js';
+import { buildVectorStore, buildVectorStoreBackend } from '../vector-store-factory';
 
 type EmbeddingProviderOpts = { apiKey?: string; baseURL?: string };
 

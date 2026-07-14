@@ -9,11 +9,11 @@ import {
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { License } from '@/license.js';
-import { ProjectService } from '@/services/project.service.ee.js';
-import { LicenseMocker } from '@test-integration/license.js';
+import { License } from '@/license';
+import { ProjectService } from '@/services/project.service.ee';
+import { LicenseMocker } from '@test-integration/license';
 
-import { createUser } from './shared/db/users.js';
+import { createUser } from './shared/db/users';
 
 describe('ProjectService', () => {
 	let projectService: ProjectService;

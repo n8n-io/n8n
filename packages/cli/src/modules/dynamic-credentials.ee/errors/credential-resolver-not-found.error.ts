@@ -1,6 +1,6 @@
 import { UserError } from 'n8n-workflow';
 
-import { CredentialResolutionError } from './credential-resolution.error.js';
+import { CredentialResolutionError } from './credential-resolution.error';
 
 /** Thrown by the resolver CRUD API when a resolver with the given ID does not exist. */
 export class DynamicCredentialResolverNotFoundError extends UserError {

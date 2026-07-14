@@ -3,8 +3,8 @@ import { CommandMetadata, type CommandClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import argvParser from 'yargs-parser';
 
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
-import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 
 mockInstance(MessageEventBus);
 

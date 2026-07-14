@@ -1,7 +1,7 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import type { ClusterCheckContext, ClusterStateDiff } from '@n8n/decorators';
 
-import { VersionMismatchCheck } from '../checks/version-mismatch.check.js';
+import { VersionMismatchCheck } from '../checks/version-mismatch.check';
 
 const makeInstance = (override: Partial<InstanceRegistration> = {}): InstanceRegistration => ({
 	schemaVersion: 1 as const,

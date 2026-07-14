@@ -6,20 +6,20 @@ import { In } from '@n8n/typeorm';
 import type { DataTableInfoById } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
-import { EventService } from '@/events/event.service.js';
-import { RoleService } from '@/services/role.service.js';
+import { EventService } from '@/events/event.service';
+import { RoleService } from '@/services/role.service';
 
-import type { DataTableColumn } from '../data-table-column.entity.js';
-import { DataTableColumnRepository } from '../data-table-column.repository.js';
-import { DataTableCsvImportService } from '../data-table-csv-import.service.js';
-import { DataTableRowsRepository } from '../data-table-rows.repository.js';
-import { DataTableSizeValidator } from '../data-table-size-validator.service.js';
-import type { DataTable } from '../data-table.entity.js';
-import { DataTableRepository } from '../data-table.repository.js';
-import { DataTableService } from '../data-table.service.js';
-import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error.js';
-import { DataTableNotFoundError } from '../errors/data-table-not-found.error.js';
-import { DataTableValidationError } from '../errors/data-table-validation.error.js';
+import type { DataTableColumn } from '../data-table-column.entity';
+import { DataTableColumnRepository } from '../data-table-column.repository';
+import { DataTableCsvImportService } from '../data-table-csv-import.service';
+import { DataTableRowsRepository } from '../data-table-rows.repository';
+import { DataTableSizeValidator } from '../data-table-size-validator.service';
+import type { DataTable } from '../data-table.entity';
+import { DataTableRepository } from '../data-table.repository';
+import { DataTableService } from '../data-table.service';
+import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
+import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
+import { DataTableValidationError } from '../errors/data-table-validation.error';
 
 describe('DataTableService', () => {
 	let dataTableService: DataTableService;

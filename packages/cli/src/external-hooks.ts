@@ -15,9 +15,9 @@ import type { IRun, IWorkflowBase, Workflow, WorkflowExecuteMode } from 'n8n-wor
 import { UnexpectedError } from 'n8n-workflow';
 import type clientOAuth1 from 'oauth-1.0a';
 
-import type { AbstractServer } from '@/abstract-server.js';
-import type { Config } from '@/config/index.js';
-import type { WorkflowHookContextService } from '@/workflow-hook-context.service.js';
+import type { AbstractServer } from '@/abstract-server';
+import type { Config } from '@/config';
+import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 type Repositories = {
 	User: UserRepository;

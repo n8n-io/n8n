@@ -10,21 +10,21 @@ import type { Server } from 'http';
 import isbot from 'isbot';
 import { TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-core';
 
-import config from '@/config/index.js';
-import { N8N_VERSION, TEMPLATES_DIR } from '@/constants.js';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares/index.js';
-import { sendErrorResponse } from '@/response-helper.js';
-import { createHandlebarsEngine } from '@/utils/handlebars.util.js';
-import { LiveWebhooks } from '@/webhooks/live-webhooks.js';
-import { TelegramInteractionWebhooks } from '@/webhooks/telegram-interaction-webhooks.js';
-import { TestWebhooks } from '@/webhooks/test-webhooks.js';
-import { WaitingForms } from '@/webhooks/waiting-forms.js';
-import { WaitingWebhooks } from '@/webhooks/waiting-webhooks.js';
-import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler.js';
+import config from '@/config';
+import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { ExternalHooks } from '@/external-hooks';
+import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
+import { sendErrorResponse } from '@/response-helper';
+import { createHandlebarsEngine } from '@/utils/handlebars.util';
+import { LiveWebhooks } from '@/webhooks/live-webhooks';
+import { TelegramInteractionWebhooks } from '@/webhooks/telegram-interaction-webhooks';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+import { WaitingForms } from '@/webhooks/waiting-forms';
+import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 
-import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util.js';
+import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
 
 @Service()
 export abstract class AbstractServer {

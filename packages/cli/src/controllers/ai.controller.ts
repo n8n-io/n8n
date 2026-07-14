@@ -23,18 +23,18 @@ import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
-import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants.js';
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error.js';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error.js';
-import { AiGatewayService } from '@/services/ai-gateway.service.js';
-import { AiUsageService } from '@/services/ai-usage.service.js';
-import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service.js';
-import { AiService } from '@/services/ai.service.js';
-import { UserService } from '@/services/user.service.js';
+import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
+import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiUsageService } from '@/services/ai-usage.service';
+import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
+import { AiService } from '@/services/ai.service';
+import { UserService } from '@/services/user.service';
 
 export type FlushableResponse = Response & { flush: () => void };
 

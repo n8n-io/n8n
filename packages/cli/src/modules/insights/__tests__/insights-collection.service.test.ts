@@ -11,11 +11,11 @@ import { DateTime } from 'luxon';
 import type { IRun } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { InsightsMetadata } from '../database/entities/insights-metadata.js';
-import type { InsightsMetadataRepository } from '../database/repositories/insights-metadata.repository.js';
-import type { InsightsRawRepository } from '../database/repositories/insights-raw.repository.js';
-import { InsightsCollectionService } from '../insights-collection.service.js';
-import type { InsightsConfig } from '../insights.config.js';
+import type { InsightsMetadata } from '../database/entities/insights-metadata';
+import type { InsightsMetadataRepository } from '../database/repositories/insights-metadata.repository';
+import type { InsightsRawRepository } from '../database/repositories/insights-raw.repository';
+import { InsightsCollectionService } from '../insights-collection.service';
+import type { InsightsConfig } from '../insights.config';
 
 describe('initialization safeguards', () => {
 	let insightsCollectionService: InsightsCollectionService;

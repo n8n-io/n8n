@@ -4,10 +4,10 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate.js';
-import { AgentKnowledgeService } from './agent-knowledge.service.js';
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentSandboxController {

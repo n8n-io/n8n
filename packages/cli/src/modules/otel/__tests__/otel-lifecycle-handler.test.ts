@@ -9,18 +9,14 @@ import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
 
-import type { OwnershipService } from '@/services/ownership.service.js';
+import type { OwnershipService } from '@/services/ownership.service';
 
-import type { ExecutionLevelTracer } from '../execution-level-tracer.js';
-import {
-	OtelLifecycleHandler,
-	countInputItems,
-	countOutputItems,
-} from '../otel-lifecycle-handler.js';
-import type { OtelSettingsService } from '../otel-settings.service.js';
-import type { OtelConfig } from '../otel.config.js';
-import type { OtelService } from '../otel.service.js';
-import type { TracingContext, TraceContextService } from '../tracing-context.js';
+import type { ExecutionLevelTracer } from '../execution-level-tracer';
+import { OtelLifecycleHandler, countInputItems, countOutputItems } from '../otel-lifecycle-handler';
+import type { OtelSettingsService } from '../otel-settings.service';
+import type { OtelConfig } from '../otel.config';
+import type { OtelService } from '../otel.service';
+import type { TracingContext, TraceContextService } from '../tracing-context';
 
 const emptyExecutionData = {
 	resultData: { runData: {}, pinData: {} },

@@ -1,13 +1,13 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 
-import { CacheService } from '@/services/cache/cache.service.js';
+import { CacheService } from '@/services/cache/cache.service';
 
-import { BadRequestError } from '../../../../errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '../../../../errors/response-errors/forbidden.error.js';
-import type { AuthlessRequest } from '../../../../requests.js';
-import { TaskBrokerAuthController } from '../task-broker-auth.controller.js';
-import { TaskBrokerAuthService } from '../task-broker-auth.service.js';
+import { BadRequestError } from '../../../../errors/response-errors/bad-request.error';
+import { ForbiddenError } from '../../../../errors/response-errors/forbidden.error';
+import type { AuthlessRequest } from '../../../../requests';
+import { TaskBrokerAuthController } from '../task-broker-auth.controller';
+import { TaskBrokerAuthService } from '../task-broker-auth.service';
 
 describe('TaskBrokerAuthController', () => {
 	const globalConfig = mockInstance(GlobalConfig, {

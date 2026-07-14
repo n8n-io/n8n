@@ -8,16 +8,16 @@ import {
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
-import { WaitTracker } from '@/wait-tracker.js';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { WaitTracker } from '@/wait-tracker';
 
 import {
 	createSuccessfulExecution,
 	createWaitingExecution,
 	getAllExecutions,
-} from './shared/db/executions.js';
-import { createMember, createOwner } from './shared/db/users.js';
-import { setupTestServer } from './shared/utils/index.js';
+} from './shared/db/executions';
+import { createMember, createOwner } from './shared/db/users';
+import { setupTestServer } from './shared/utils';
 
 mockInstance(WaitTracker);
 mockInstance(ConcurrencyControlService, {

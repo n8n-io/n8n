@@ -29,21 +29,21 @@ import type {
 import { sleep, Workflow, WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { ActivationErrorsService } from '@/activation-errors.service.js';
-import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
-import { DuplicateExecutionError } from '@/errors/duplicate-execution.error.js';
-import type { EventService } from '@/events/event.service.js';
-import type { ExecutionService } from '@/executions/execution.service.js';
-import type { NodeTypes } from '@/node-types.js';
-import type { Push } from '@/push/index.js';
-import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { ActivationErrorsService } from '@/activation-errors.service';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
+import type { EventService } from '@/events/event.service';
+import type { ExecutionService } from '@/executions/execution.service';
+import type { NodeTypes } from '@/node-types';
+import type { Push } from '@/push';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type {
 	ScheduleTriggerCollectionSession,
 	ScheduleTriggerJobRegistrar,
-} from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.js';
-import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory.js';
-import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
-import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
+} from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
+import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 describe('ActiveWorkflowManager', () => {
 	const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';

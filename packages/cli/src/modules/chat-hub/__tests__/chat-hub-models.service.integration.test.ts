@@ -12,9 +12,9 @@ import { BinaryDataService } from 'n8n-core';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { createMember } from '@test-integration/db/users.js';
+import { createMember } from '@test-integration/db/users';
 
-import { ChatHubModelsService } from '../chat-hub.models.service.js';
+import { ChatHubModelsService } from '../chat-hub.models.service';
 
 mockInstance(BinaryDataService);
 

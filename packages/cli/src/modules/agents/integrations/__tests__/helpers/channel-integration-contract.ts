@@ -1,12 +1,12 @@
 import type { Mock } from 'vitest';
 
-import type { ChatIntegrationActionExecutor } from '../../integration-action-executor.js';
-import { createIntegrationContextTool } from '../../integration-tools.js';
+import type { ChatIntegrationActionExecutor } from '../../integration-action-executor';
+import { createIntegrationContextTool } from '../../integration-tools';
 import type {
 	IntegrationMessageContext,
 	IntegrationMessageContextStore,
 	IntegrationToolConnectionDescriptor,
-} from '../../integration-tools.js';
+} from '../../integration-tools';
 
 export interface ChannelIntegrationReplayScenario {
 	name: string;

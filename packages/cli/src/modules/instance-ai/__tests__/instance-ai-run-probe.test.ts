@@ -1,4 +1,4 @@
-import { InstanceAiRunProbe } from '../instance-ai-run-probe.js';
+import { InstanceAiRunProbe } from '../instance-ai-run-probe';
 
 describe('InstanceAiRunProbe', () => {
 	it('defaults to 0 when no provider is registered', () => {

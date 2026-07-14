@@ -8,14 +8,14 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { APIResponseError, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
 
-import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import type { AiGatewayService } from '@/services/ai-gateway.service.js';
-import type { AiUsageService } from '@/services/ai-usage.service.js';
-import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service.js';
-import type { AiService } from '@/services/ai.service.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { AiUsageService } from '@/services/ai-usage.service';
+import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
+import type { AiService } from '@/services/ai.service';
 
-import { AiController, type FlushableResponse } from '../ai.controller.js';
+import { AiController, type FlushableResponse } from '../ai.controller';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();

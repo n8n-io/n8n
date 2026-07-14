@@ -4,15 +4,15 @@ import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service.js';
-import { NodeTypes } from '@/node-types.js';
-import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/security-audit/constants.js';
-import { PackagesRepository } from '@/security-audit/security-audit.repository.js';
-import { SecurityAuditService } from '@/security-audit/security-audit.service.js';
-import { toReportTitle } from '@/security-audit/utils.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { NodeTypes } from '@/node-types';
+import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/security-audit/constants';
+import { PackagesRepository } from '@/security-audit/security-audit.repository';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
+import { toReportTitle } from '@/security-audit/utils';
 
-import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils.js';
+import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
 
 const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 nodesAndCredentials.getCustomDirectories.mockReturnValue([]);

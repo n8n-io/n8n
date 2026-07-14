@@ -2,7 +2,7 @@ import type { EvalMockHttpResponse } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { extractToolCalls, type NormalizedToolCall } from './openai-envelope.js';
+import { extractToolCalls, type NormalizedToolCall } from './openai-envelope';
 
 // Translation between the OpenAI Responses API (`/v1/responses`) wire format
 // and the shape `createLlmMockHandler` consumes/emits. The Responses API is

@@ -7,10 +7,10 @@ import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy, jsonParse } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/credential-types.js';
-import type { ICredentialsOverwrite } from '@/interfaces.js';
+import { CredentialTypes } from '@/credential-types';
+import type { ICredentialsOverwrite } from '@/interfaces';
 
-import { StaticAuthService } from './services/static-auth-service.js';
+import { StaticAuthService } from './services/static-auth-service';
 
 const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
 

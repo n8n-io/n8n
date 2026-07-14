@@ -5,9 +5,9 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { INode } from 'n8n-workflow';
 import { displayParameter, UserError } from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types.js';
-import { OwnershipService } from '@/services/ownership.service.js';
-import { ProjectService } from '@/services/project.service.ee.js';
+import { NodeTypes } from '@/node-types';
+import { OwnershipService } from '@/services/ownership.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 class InvalidCredentialError extends UserError {
 	override description = 'Please recreate the credential.';

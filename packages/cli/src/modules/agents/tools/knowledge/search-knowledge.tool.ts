@@ -1,6 +1,6 @@
 import { Tool } from '@n8n/agents/tool';
 
-import type { AgentKnowledgeSandboxService } from '../../agent-knowledge-sandbox.service.js';
+import type { AgentKnowledgeSandboxService } from '../../agent-knowledge-sandbox.service';
 import {
 	globKnowledgeFilesInputSchema,
 	MAX_READ_RANGES,
@@ -9,7 +9,7 @@ import {
 	type GlobKnowledgeFilesResult,
 	type ReadKnowledgeResult,
 	type SearchKnowledgeResult,
-} from '../../agent-knowledge-retrieval.js';
+} from '../../agent-knowledge-retrieval';
 
 interface KnowledgeToolErrorOutput {
 	error: string;

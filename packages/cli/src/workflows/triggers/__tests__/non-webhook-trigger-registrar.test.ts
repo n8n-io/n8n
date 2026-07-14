@@ -7,11 +7,11 @@ import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow
 import type {
 	ScheduleTriggerCollectionSession,
 	ScheduleTriggerJobRegistrar,
-} from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.js';
-import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar.js';
-import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory.js';
+} from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
+import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
-import { createWorkflow, logger, node } from './trigger-test-utils.js';
+import { createWorkflow, logger, node } from './trigger-test-utils';
 
 describe('NonWebhookTriggerRegistrar', () => {
 	const tracing = mock<Tracing>();

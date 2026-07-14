@@ -4,10 +4,10 @@ import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
-import { createOwner } from '../shared/db/users.js';
-import { createWorkflowHistoryItem } from '../shared/db/workflow-history.js';
+import { createOwner } from '../shared/db/users';
+import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 
 let workflowPublishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowPublishedDataService: WorkflowPublishedDataService;

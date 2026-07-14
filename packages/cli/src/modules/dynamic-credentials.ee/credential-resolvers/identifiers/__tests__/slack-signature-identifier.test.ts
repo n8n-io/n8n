@@ -2,8 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import { createHmac } from 'crypto';
 import type { Mocked } from 'vitest';
 
-import { IdentifierValidationError } from '../identifier-interface.js';
-import { SlackSignatureIdentifier } from '../slack-signature-identifier.js';
+import { IdentifierValidationError } from '../identifier-interface';
+import { SlackSignatureIdentifier } from '../slack-signature-identifier';
 
 const TEST_SIGNING_SECRET = 'test-slack-signing-secret-abc123';
 

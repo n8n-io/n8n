@@ -1,7 +1,7 @@
 import { CredentialsEntity, WithTimestamps } from '@n8n/db';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
-import { DynamicCredentialResolver } from './credential-resolver.js';
+import { DynamicCredentialResolver } from './credential-resolver';
 
 @Entity({
 	name: 'dynamic_credential_entry',

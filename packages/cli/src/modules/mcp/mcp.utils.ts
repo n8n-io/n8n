@@ -3,9 +3,9 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Request } from 'express';
 import type { INode } from 'n8n-workflow';
 
-import { SUPPORTED_MCP_TRIGGERS, SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants.js';
-import { isJSONRPCRequest } from './mcp.typeguards.js';
-import type { McpClientInfo } from './mcp.types.js';
+import { SUPPORTED_MCP_TRIGGERS, SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
+import { isJSONRPCRequest } from './mcp.typeguards';
+import type { McpClientInfo } from './mcp.types';
 
 type McpExecutionMode = 'manual' | 'production';
 

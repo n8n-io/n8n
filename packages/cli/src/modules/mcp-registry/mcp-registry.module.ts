@@ -3,7 +3,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 @BackendModule({ name: 'mcp-registry' })
 export class McpRegistryModule implements ModuleInterface {

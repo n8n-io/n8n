@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import type { Mock, MockInstance } from 'vitest';
 
-import { createJitterMiddleware } from '../jitter.js';
+import { createJitterMiddleware } from '../jitter';
 
 describe('createJitterMiddleware', () => {
 	let mockReq: Request;

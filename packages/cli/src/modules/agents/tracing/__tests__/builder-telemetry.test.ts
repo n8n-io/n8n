@@ -4,7 +4,7 @@ import {
 	buildBuilderTelemetry,
 	isLangSmithEnabled,
 	resolveModelIdForTelemetry,
-} from '../builder-telemetry.js';
+} from '../builder-telemetry';
 
 const baseOptions = {
 	agentId: 'agent-1',

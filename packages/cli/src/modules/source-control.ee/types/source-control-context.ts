@@ -1,7 +1,7 @@
 import type { Project, User } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
 
-import type { RemoteResourceOwner } from './resource-owner.js';
+import type { RemoteResourceOwner } from './resource-owner';
 
 export class SourceControlContext {
 	private readonly _hasAccessToAllProjects: boolean;

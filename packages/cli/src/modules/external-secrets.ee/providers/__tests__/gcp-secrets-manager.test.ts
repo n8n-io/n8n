@@ -5,8 +5,8 @@ import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { GcpSecretsManager } from '../gcp-secrets-manager/gcp-secrets-manager.js';
-import type { GcpSecretsManagerContext } from '../gcp-secrets-manager/types.js';
+import { GcpSecretsManager } from '../gcp-secrets-manager/gcp-secrets-manager';
+import type { GcpSecretsManagerContext } from '../gcp-secrets-manager/types';
 
 vi.mock('@google-cloud/secret-manager');
 

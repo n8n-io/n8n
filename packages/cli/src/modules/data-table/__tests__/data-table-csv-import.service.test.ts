@@ -2,12 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import type { Mocked } from 'vitest';
 
-import { CsvParserService } from '../csv-parser.service.js';
-import type { DataTableColumn } from '../data-table-column.entity.js';
-import { DataTableCsvImportService } from '../data-table-csv-import.service.js';
-import { DataTableFileCleanupService } from '../data-table-file-cleanup.service.js';
-import { FileUploadError } from '../errors/data-table-file-upload.error.js';
-import { DataTableValidationError } from '../errors/data-table-validation.error.js';
+import { CsvParserService } from '../csv-parser.service';
+import type { DataTableColumn } from '../data-table-column.entity';
+import { DataTableCsvImportService } from '../data-table-csv-import.service';
+import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
+import { FileUploadError } from '../errors/data-table-file-upload.error';
+import { DataTableValidationError } from '../errors/data-table-validation.error';
 
 describe('DataTableCsvImportService', () => {
 	let service: DataTableCsvImportService;

@@ -8,8 +8,8 @@ import { InstanceSettings } from 'n8n-core';
 import { sleep, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { EventService } from '@/events/event.service.js';
-import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service.js';
+import { EventService } from '@/events/event.service';
+import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 
 describe('compacting cycle', () => {
 	let compactionService: WorkflowHistoryCompactionService;

@@ -38,8 +38,8 @@ vi.mock('@n8n/instance-ai', async () => {
 
 import type { ModelConfig } from '@n8n/instance-ai';
 
-import { withCurrentDateTime, AUTO_FOLLOW_UP_MESSAGE } from '../internal-messages.js';
-import { InstanceAiService } from '../instance-ai.service.js';
+import { withCurrentDateTime, AUTO_FOLLOW_UP_MESSAGE } from '../internal-messages';
+import { InstanceAiService } from '../instance-ai.service';
 
 /**
  * Regression: stored user messages carry service-injected blocks (the

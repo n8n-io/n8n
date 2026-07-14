@@ -1,6 +1,6 @@
 import { UserError } from 'n8n-workflow';
 
-import type { TaskRunner } from '@/task-runners/task-broker/task-broker.service.js';
+import type { TaskRunner } from '@/task-runners/task-broker/task-broker.service';
 
 export class TaskRunnerOomError extends UserError {
 	description: string;

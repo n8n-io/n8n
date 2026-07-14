@@ -7,22 +7,22 @@ import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { CommitResult, PullResult, PushResult } from 'simple-git';
 
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
-import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import type { EventService } from '@/events/event.service.js';
-import type { SourceControlExportService } from '../source-control-export.service.ee.js';
-import type { SourceControlGitService } from '../source-control-git.service.ee.js';
-import type { SourceControlImportService } from '../source-control-import.service.ee.js';
-import type { SourceControlContextFactory } from '../source-control-context.factory.js';
-import type { SourceControlScopedService } from '../source-control-scoped.service.js';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { EventService } from '@/events/event.service';
+import type { SourceControlExportService } from '../source-control-export.service.ee';
+import type { SourceControlGitService } from '../source-control-git.service.ee';
+import type { SourceControlImportService } from '../source-control-import.service.ee';
+import type { SourceControlContextFactory } from '../source-control-context.factory';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
-} from '../constants.js';
-import { sourceControlFoldersExistCheck } from '../source-control-helper.ee.js';
-import type { ExportResult } from '../types/export-result.js';
+} from '../constants';
+import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
+import type { ExportResult } from '../types/export-result';
 
 // Mock the status service to avoid complex dependency issues
 const mockStatusService = {

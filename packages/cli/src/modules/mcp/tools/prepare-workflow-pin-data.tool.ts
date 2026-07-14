@@ -10,14 +10,14 @@ import type { INodeExecutionData } from 'n8n-workflow';
 import { isTriggerNode, jsonStringify } from 'n8n-workflow';
 import z from 'zod';
 
-import type { ExecutionService } from '@/executions/execution.service.js';
-import type { NodeTypes } from '@/node-types.js';
-import type { Telemetry } from '@/telemetry/index.js';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { ExecutionService } from '@/executions/execution.service';
+import type { NodeTypes } from '@/node-types';
+import type { Telemetry } from '@/telemetry';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types.js';
-import { getMcpWorkflow } from './workflow-validation.utils.js';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to generate test pin data for'),

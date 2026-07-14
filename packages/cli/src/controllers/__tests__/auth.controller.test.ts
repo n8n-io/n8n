@@ -9,24 +9,24 @@ import type { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { AuthHandlerRegistry } from '@/auth/auth-handler.registry.js';
-import { AuthService } from '@/auth/auth.service.js';
-import type { EmailAuthHandler } from '@/auth/handlers/email.auth-handler.js';
-import config from '@/config/index.js';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
-import { AuthError } from '@/errors/response-errors/auth.error.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { EventService } from '@/events/event.service.js';
-import { License } from '@/license.js';
-import { MfaService } from '@/mfa/mfa.service.js';
-import { LdapService } from '@/modules/ldap.ee/ldap.service.ee.js';
-import { PostHogClient } from '@/posthog/index.js';
-import type { AuthlessRequest } from '@/requests.js';
-import { UserService } from '@/services/user.service.js';
-import * as ssoHelpers from '@/sso.ee/sso-helpers.js';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
+import { AuthService } from '@/auth/auth.service';
+import type { EmailAuthHandler } from '@/auth/handlers/email.auth-handler';
+import config from '@/config';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { MfaService } from '@/mfa/mfa.service';
+import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
+import { PostHogClient } from '@/posthog';
+import type { AuthlessRequest } from '@/requests';
+import { UserService } from '@/services/user.service';
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
-import { AuthController } from '../auth.controller.js';
+import { AuthController } from '../auth.controller';
 
 describe('AuthController', () => {
 	mockInstance(Logger);

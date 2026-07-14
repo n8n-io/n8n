@@ -10,12 +10,12 @@ import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse } from 'n8n-workflow';
 
-import { CredentialsOverwrites } from '@/credentials-overwrites.js';
-import { EventService } from '@/events/event.service.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy.js';
-import { OauthService, OauthVersion } from '@/oauth/oauth.service.js';
-import { OAuthRequest } from '@/requests.js';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
+import { OauthService, OauthVersion } from '@/oauth/oauth.service';
+import { OAuthRequest } from '@/requests';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController {

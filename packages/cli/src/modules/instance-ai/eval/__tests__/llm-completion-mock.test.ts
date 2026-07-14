@@ -64,7 +64,7 @@ import { Container } from '@n8n/di';
 import { createEvalAgent, Tool } from '@n8n/instance-ai';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import { createLlmCompletionMockHandler } from '../llm-completion-mock.js';
+import { createLlmCompletionMockHandler } from '../llm-completion-mock';
 
 // `restoreMocks: true` wipes factory `.mockImplementation`s before each test.
 function reapplyMockImplementations() {

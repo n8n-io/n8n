@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import * as ssoHelpers from '@/sso.ee/sso-helpers.js';
-import { InvitationController } from '../invitation.controller.js';
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
+import { InvitationController } from '../invitation.controller';
 import type { AcceptInvitationRequestDto } from '@n8n/api-types';
 import { InviteUsersRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -10,20 +10,20 @@ import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_ADMIN_ROLE } from '@n8n/d
 import type { User, PublicUser, AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 
-import config from '@/config/index.js';
-import type { AuthlessRequest } from '@/requests.js';
+import config from '@/config';
+import type { AuthlessRequest } from '@/requests';
 import { v4 as uuidv4 } from 'uuid';
-import { AuthService } from '@/auth/auth.service.js';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { EventService } from '@/events/event.service.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { License } from '@/license.js';
-import { PostHogClient } from '@/posthog/index.js';
-import { OwnershipService } from '@/services/ownership.service.js';
-import { PasswordUtility } from '@/services/password.utility.js';
-import { UserService } from '@/services/user.service.js';
+import { AuthService } from '@/auth/auth.service';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { License } from '@/license';
+import { PostHogClient } from '@/posthog';
+import { OwnershipService } from '@/services/ownership.service';
+import { PasswordUtility } from '@/services/password.utility';
+import { UserService } from '@/services/user.service';
 
 describe('InvitationController', () => {
 	const logger: Logger = mockInstance(Logger);

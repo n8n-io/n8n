@@ -26,25 +26,25 @@ import { AzureBlobConfig } from 'n8n-core/dist/binary-data/azure-blob/azure-blob
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Expression, sleep, UnexpectedError } from 'n8n-workflow';
 
-import type { AbstractServer } from '@/abstract-server.js';
-import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants.js';
-import * as CrashJournal from '@/crash-journal.js';
-import { getDataDeduplicationService } from '@/deduplication/index.js';
-import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee.js';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
-import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay.js';
-import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay.js';
-import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store.js';
-import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { License } from '@/license.js';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config.js';
-import { NodeTypes } from '@/node-types.js';
-import { PostHogClient } from '@/posthog/index.js';
-import { ShutdownService } from '@/shutdown/shutdown.service.js';
-import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util.js';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.js';
+import type { AbstractServer } from '@/abstract-server';
+import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
+import * as CrashJournal from '@/crash-journal';
+import { getDataDeduplicationService } from '@/deduplication';
+import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
+import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
+import { ExternalHooks } from '@/external-hooks';
+import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
+import { ShutdownService } from '@/shutdown/shutdown.service';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;

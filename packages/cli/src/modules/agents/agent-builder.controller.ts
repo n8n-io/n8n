@@ -7,21 +7,21 @@ import {
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider.js';
-import { messagesToDto } from './agent-message-mapper.js';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { messagesToDto } from './agent-message-mapper';
 import {
 	type FlushableResponse,
 	initSseStream,
 	pumpChunks,
 	type ToolEventCallbacks,
-} from './agent-sse-stream.js';
-import { AgentsService } from './agents.service.js';
-import { AgentsBuilderService } from './builder/agents-builder.service.js';
-import { BUILDER_TOOLS } from './builder/builder-tool-names.js';
-import { withOpenSuspensions } from './utils/messages-envelope.js';
+} from './agent-sse-stream';
+import { AgentsService } from './agents.service';
+import { AgentsBuilderService } from './builder/agents-builder.service';
+import { BUILDER_TOOLS } from './builder/builder-tool-names';
+import { withOpenSuspensions } from './utils/messages-envelope';
 
 /**
  * Builder side-effects: when the LLM streams arguments for `build_custom_tool`

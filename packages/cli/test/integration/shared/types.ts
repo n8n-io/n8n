@@ -5,7 +5,7 @@ import type { Application } from 'express';
 import type { Server } from 'http';
 import type TestAgent from 'supertest/lib/agent';
 
-import type { LicenseMocker } from './license.js';
+import type { LicenseMocker } from './license';
 
 type EndpointGroup =
 	| 'health'

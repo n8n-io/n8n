@@ -1,4 +1,4 @@
-import type { TOKEN_EXCHANGE_GRANT_TYPE } from './token-exchange.schemas.js';
+import type { TOKEN_EXCHANGE_GRANT_TYPE } from './token-exchange.schemas';
 
 export const TokenExchangeFailureReason = {
 	InvalidSignature: 'invalid_signature',

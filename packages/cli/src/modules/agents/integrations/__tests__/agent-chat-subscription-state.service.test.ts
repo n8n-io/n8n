@@ -4,10 +4,10 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 import type { StateAdapter, Lock, QueueEntry } from 'chat';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service.js';
-import type { AgentChatSubscriptionRepository } from '../../repositories/agent-chat-subscription.repository.js';
+import { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service';
+import type { AgentChatSubscriptionRepository } from '../../repositories/agent-chat-subscription.repository';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 const slackIntegration: AgentIntegrationConfig = {

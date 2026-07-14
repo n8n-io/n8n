@@ -17,12 +17,12 @@ import { Service } from '@n8n/di';
 import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
 import { Not } from '@n8n/typeorm/find-options/operator/Not';
 
-import config from '@/config/index.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { EventService } from '@/events/event.service.js';
-import { CacheService } from '@/services/cache/cache.service.js';
+import config from '@/config';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { CacheService } from '@/services/cache/cache.service';
 
-import { PasswordUtility } from './password.utility.js';
+import { PasswordUtility } from './password.utility';
 
 @Service()
 export class OwnershipService {

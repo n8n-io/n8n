@@ -1,6 +1,6 @@
-import { createNode, createWorkflow } from '../../../__tests__/test-helpers.js';
-import { BreakingChangeCategory } from '../../../types/index.js';
-import { FileAccessRule } from '../file-access.rule.js';
+import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
+import { BreakingChangeCategory } from '../../../types';
+import { FileAccessRule } from '../file-access.rule';
 
 describe('FileAccessRule', () => {
 	let rule: FileAccessRule;

@@ -5,10 +5,10 @@ import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users.js';
+import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 
-import { JwtService } from '../jwt.service.js';
-import { PublicApiKeyService } from '../public-api-key.service.js';
+import { JwtService } from '../jwt.service';
+import { PublicApiKeyService } from '../public-api-key.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 

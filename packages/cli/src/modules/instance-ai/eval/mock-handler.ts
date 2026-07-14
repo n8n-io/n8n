@@ -15,15 +15,15 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from '
 import { synthesizeBinaryFixture } from 'n8n-core';
 import { z } from 'zod';
 
-import { fetchApiDocs } from './api-docs.js';
-import { buildDateAnchors } from './date-anchors.js';
-import { findMockQuirks } from './mock-quirks.js';
-import { extractNodeConfig } from './node-config.js';
-import { redactBinaryBody } from './request-binary-redactor.js';
-import { redactSecretKeys, truncateForLlm } from './request-sanitizer.js';
+import { fetchApiDocs } from './api-docs';
+import { buildDateAnchors } from './date-anchors';
+import { findMockQuirks } from './mock-quirks';
+import { extractNodeConfig } from './node-config';
+import { redactBinaryBody } from './request-binary-redactor';
+import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
 
 // Re-export: existing consumers/tests import buildDateAnchors from this module.
-export { buildDateAnchors } from './date-anchors.js';
+export { buildDateAnchors } from './date-anchors';
 
 // ---------------------------------------------------------------------------
 // System prompt

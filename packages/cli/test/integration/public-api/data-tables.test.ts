@@ -4,12 +4,12 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity.js';
+import type { DataTable } from '@/modules/data-table/data-table.entity';
 
-import { createDataTable } from '../shared/db/data-tables.js';
-import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { createDataTable } from '../shared/db/data-tables';
+import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 let owner: User;
 let member: User;

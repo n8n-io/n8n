@@ -6,20 +6,20 @@ import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { EventService } from '@/events/event.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
-} from '@/modules/n8n-packages/entities/package-export.errors.js';
-import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service.js';
-import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier.js';
-import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload.js';
+} from '@/modules/n8n-packages/entities/package-export.errors';
+import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier';
+import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload';
 
-import type { PackageRequest } from '../../../types.js';
-import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
-import { publicApiCompositeScope } from '../../shared/middlewares/global.middleware.js';
+import type { PackageRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { publicApiCompositeScope } from '../../shared/middlewares/global.middleware';
 
 const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export';
 

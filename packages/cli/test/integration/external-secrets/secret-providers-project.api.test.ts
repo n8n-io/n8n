@@ -10,17 +10,17 @@ import { Cipher } from 'n8n-core';
 import type { Response } from 'superagent';
 import { mock } from 'vitest-mock-extended';
 
-import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee.js';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 
 import {
 	DummyProvider,
 	MockProviders,
 	createDummyProvider,
-} from '../../shared/external-secrets/utils.js';
-import { createAdmin, createMember, createOwner } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import { setupTestServer } from '../shared/utils/index.js';
+} from '../../shared/external-secrets/utils';
+import { createAdmin, createMember, createOwner } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import { setupTestServer } from '../shared/utils';
 
 const mockProvidersInstance = new MockProviders();
 mockProvidersInstance.setProviders({

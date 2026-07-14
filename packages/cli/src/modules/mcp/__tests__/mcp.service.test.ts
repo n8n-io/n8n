@@ -29,30 +29,30 @@ import {
 } from '@n8n/mcp-apps/server';
 import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 
-import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants.js';
-import { ActiveExecutions } from '@/active-executions.js';
-import { CollaborationService } from '@/collaboration/collaboration.service.js';
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { ExecutionService } from '@/executions/execution.service.js';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service.js';
-import { NodeCatalogService } from '@/node-catalog/index.js';
-import { NodeTypes } from '@/node-types.js';
-import { PostHogClient } from '@/posthog/index.js';
-import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service.js';
-import { ProjectService } from '@/services/project.service.ee.js';
-import { RoleService } from '@/services/role.service.js';
-import { TagService } from '@/services/tag.service.js';
-import { UrlService } from '@/services/url.service.js';
-import { Telemetry } from '@/telemetry/index.js';
-import { WorkflowRunner } from '@/workflow-runner.js';
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service.js';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker.js';
-import { WorkflowService } from '@/workflows/workflow.service.js';
+import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
+import { ActiveExecutions } from '@/active-executions';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ExecutionService } from '@/executions/execution.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { NodeCatalogService } from '@/node-catalog';
+import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
+import { TagService } from '@/services/tag.service';
+import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
+import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import { WorkflowService } from '@/workflows/workflow.service';
 
-import { McpService } from '../mcp.service.js';
+import { McpService } from '../mcp.service';
 
 describe('McpService', () => {
 	let mcpService: McpService;

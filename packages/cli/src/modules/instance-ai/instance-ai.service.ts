@@ -97,29 +97,29 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants.js';
-import { EventService } from '@/events/event.service.js';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
-import { AiService } from '@/services/ai.service.js';
-import { ProxyTokenManager } from '@/services/proxy-token-manager.js';
-import { UrlService } from '@/services/url.service.js';
-import { Telemetry } from '@/telemetry/index.js';
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { AiService } from '@/services/ai.service';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
 
-import { composeLocalMcpServers } from './browser/composite-local-mcp-server.js';
-import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service.js';
-import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service.js';
-import { InProcessEventBus } from './event-bus/in-process-event-bus.js';
-import { InstanceAiCreditService } from './instance-ai-credit.service.js';
-import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service.js';
-import { InstanceAiMemoryService } from './instance-ai-memory.service.js';
-import { InstanceAiModelService } from './instance-ai-model.service.js';
-import { InstanceAiRunProbe } from './instance-ai-run-probe.js';
-import { InstanceAiSettingsService } from './instance-ai-settings.service.js';
-import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service.js';
-import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome.service.js';
-import { InstanceAiAdapterService } from './instance-ai.adapter.service.js';
+import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
+import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
+import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiCreditService } from './instance-ai-credit.service';
+import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
+import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiModelService } from './instance-ai-model.service';
+import { InstanceAiRunProbe } from './instance-ai-run-probe';
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
+import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome.service';
+import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	EDITOR_CONTEXT_OPEN_TAG,
@@ -128,15 +128,15 @@ import {
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
 	withCurrentDateTime,
-} from './internal-messages.js';
-import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness/index.js';
-import { InstanceAiMcpRegistryService } from './mcp/index.js';
-import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service.js';
+} from './internal-messages';
+import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
+import { InstanceAiMcpRegistryService } from './mcp';
+import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
-} from './observability.js';
-import { resolveOutputRedaction } from './output-redaction-config.js';
+} from './observability';
+import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -147,30 +147,30 @@ import {
 	type PlannedTaskView,
 	type PlannedWorkflowVerificationGate,
 	type PlannedWorkflowVerificationTracker,
-} from './planned-task-action-runner.js';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository.js';
-import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository.js';
-import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox/index.js';
-import { DbIterationLogStorage } from './storage/db-iteration-log-storage.js';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage.js';
-import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store.js';
-import { TypeORMAgentMemory } from './storage/typeorm-agent-memory.js';
+} from './planned-task-action-runner';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
+import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
+import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
+import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
+import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
+import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import {
 	SuspendedRunRestorer,
 	type RebuildSuspendedRunOutcome,
 	type ResumableOrphan,
-} from './suspended-run-restorer.service.js';
-import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service.js';
+} from './suspended-run-restorer.service';
+import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
 import {
 	InstanceAiTracingService,
 	type MessageTraceFinalization,
 	type OrchestratorResumeReason,
-} from './tracing/index.js';
+} from './tracing';
 import {
 	parseWorkflowBuildOutcome,
 	WorkflowVerificationObligationService,
-} from './workflow-verification-obligation-service.js';
-import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector.js';
+} from './workflow-verification-obligation-service';
+import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 import { lazyImport } from '@n8n/utils/dist/lazy-import';
 
 function getErrorMessage(error: unknown): string {

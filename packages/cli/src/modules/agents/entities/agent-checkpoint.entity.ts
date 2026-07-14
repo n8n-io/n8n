@@ -1,7 +1,7 @@
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
-import { Agent } from './agent.entity.js';
+import { Agent } from './agent.entity';
 
 @Entity({ name: 'agent_checkpoints' })
 export class AgentCheckpoint extends WithTimestamps {

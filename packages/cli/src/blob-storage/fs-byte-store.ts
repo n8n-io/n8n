@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import type { ByteStore, ByteStoreKey } from './types.js';
+import type { ByteStore, ByteStoreKey } from './types';
 
 @Service()
 export class FsByteStore implements ByteStore {

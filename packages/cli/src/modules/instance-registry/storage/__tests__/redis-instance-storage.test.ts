@@ -5,16 +5,16 @@ import type { Redis as SingleNodeClient } from 'ioredis';
 import { jsonStringify } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@/services/redis-client.service.js';
+import type { RedisClientService } from '@/services/redis-client.service';
 
-import { REDIS_KEY_PATTERNS, REGISTRY_CONSTANTS } from '../../instance-registry.types.js';
+import { REDIS_KEY_PATTERNS, REGISTRY_CONSTANTS } from '../../instance-registry.types';
 import {
 	CLEANUP_SCRIPT,
 	READ_ALL_SCRIPT,
 	REGISTER_SCRIPT,
 	UNREGISTER_SCRIPT,
-} from '../lua-scripts.js';
-import { RedisInstanceStorage } from '../redis-instance-storage.js';
+} from '../lua-scripts';
+import { RedisInstanceStorage } from '../redis-instance-storage';
 
 const PREFIX = 'n8n';
 

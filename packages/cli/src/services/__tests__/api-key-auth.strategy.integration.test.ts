@@ -8,13 +8,13 @@ import { DateTime } from 'luxon';
 import { randomString } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types.js';
-import { createOwnerWithApiKey } from '@test-integration/db/users.js';
-import { retryUntil } from '@test-integration/retry-until.js';
+import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
+import { createOwnerWithApiKey } from '@test-integration/db/users';
+import { retryUntil } from '@test-integration/retry-until';
 
-import { ApiKeyAuthStrategy } from '../api-key-auth.strategy.js';
-import { JwtService } from '../jwt.service.js';
-import { API_KEY_ISSUER } from '../public-api-key.service.js';
+import { ApiKeyAuthStrategy } from '../api-key-auth.strategy';
+import { JwtService } from '../jwt.service';
+import { API_KEY_ISSUER } from '../public-api-key.service';
 
 const mockReqWith = (apiKey: string): AuthenticatedRequest =>
 	mock<AuthenticatedRequest>({

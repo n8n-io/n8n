@@ -3,7 +3,7 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import path from 'path';
 
-import type { ScopeTaggedMiddleware } from '../../shared/middlewares/global.middleware.js';
+import type { ScopeTaggedMiddleware } from '../../shared/middlewares/global.middleware';
 
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'] as const;
 

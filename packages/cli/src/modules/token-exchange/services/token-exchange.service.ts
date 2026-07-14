@@ -4,25 +4,25 @@ import { Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 
-import { JwtService } from '@/services/jwt.service.js';
+import { JwtService } from '@/services/jwt.service';
 
-import { TokenExchangeConfig } from '../token-exchange.config.js';
-import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors.js';
+import { TokenExchangeConfig } from '../token-exchange.config';
+import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors';
 import type {
 	ExternalTokenClaims,
 	ResolvedTrustedKey,
 	TokenExchangeRequest,
-} from '../token-exchange.schemas.js';
-import { ExternalTokenClaimsSchema } from '../token-exchange.schemas.js';
+} from '../token-exchange.schemas';
+import { ExternalTokenClaimsSchema } from '../token-exchange.schemas';
 import {
 	TOKEN_EXCHANGE_ISSUER,
 	TokenExchangeFailureReason,
 	type IssuedJwtPayload,
 	type IssuedTokenResult,
-} from '../token-exchange.types.js';
-import { IdentityResolutionService } from './identity-resolution.service.js';
-import { JtiStoreService } from './jti-store.service.js';
-import { TrustedKeyService } from './trusted-key.service.js';
+} from '../token-exchange.types';
+import { IdentityResolutionService } from './identity-resolution.service';
+import { JtiStoreService } from './jti-store.service';
+import { TrustedKeyService } from './trusted-key.service';
 
 const MAX_TOKEN_LIFETIME_SECONDS = 60;
 const MIN_REMAINING_LIFETIME_SECONDS = 5;

@@ -1,16 +1,16 @@
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { FolderService } from '@/services/folder.service.js';
+import { FolderService } from '@/services/folder.service';
 
-import { decideMatchedFolder } from './folder-conflict-policy.js';
+import { decideMatchedFolder } from './folder-conflict-policy';
 import type {
 	FolderImportContext,
 	FolderImportPlan,
 	FolderPlanItem,
 	PreparedFolder,
-} from './folder-import.types.js';
-import type { FolderConflict, ImportedFolderSummary } from '../../n8n-packages.types.js';
+} from './folder-import.types';
+import type { FolderConflict, ImportedFolderSummary } from '../../n8n-packages.types';
 
 interface ExistingFolder {
 	projectId: string;

@@ -4,14 +4,14 @@ import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types.js';
+import { NodeTypes } from '@/node-types';
 
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
 	WorkflowDetectionReport,
-} from '../../types/index.js';
-import { BreakingChangeCategory } from '../../types/index.js';
+} from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @BreakingChangeRule({ version: 'v3' })
 export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowRule {

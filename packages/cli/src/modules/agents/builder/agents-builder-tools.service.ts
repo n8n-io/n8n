@@ -30,40 +30,40 @@ import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import { CredentialTypes } from '@/credential-types.js';
-import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
-import { NodeTypes } from '@/node-types.js';
-import { OauthService } from '@/oauth/oauth.service.js';
-import { AiService } from '@/services/ai.service.js';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
-import { createAiMcpFetch } from '@/utils/ai-proxy-fetch.js';
+import { CredentialTypes } from '@/credential-types';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { NodeTypes } from '@/node-types';
+import { OauthService } from '@/oauth/oauth.service';
+import { AiService } from '@/services/ai.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
-import { AgentConfigService } from '../agent-config.service.js';
-import { AgentCustomToolsService } from '../agent-custom-tools.service.js';
-import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service.js';
-import { AgentSkillsService } from '../agent-skills.service.js';
-import { AgentTaskService } from '../agent-task.service.js';
-import { AgentsToolsService } from '../agents-tools.service.js';
-import { AgentsService } from '../agents.service.js';
-import { AttachableWorkflowsService } from '../attachable-workflows.service.js';
-import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service.js';
-import { BUILDER_TOOLS } from './builder-tool-names.js';
-import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool.js';
+import { AgentConfigService } from '../agent-config.service';
+import { AgentCustomToolsService } from '../agent-custom-tools.service';
+import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { AgentSkillsService } from '../agent-skills.service';
+import { AgentTaskService } from '../agent-task.service';
+import { AgentsToolsService } from '../agents-tools.service';
+import { AgentsService } from '../agents.service';
+import { AttachableWorkflowsService } from '../attachable-workflows.service';
+import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
+import { BUILDER_TOOLS } from './builder-tool-names';
+import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
 import {
 	buildAskCredentialTool,
 	buildAskEmbeddingCredentialTool,
 	buildAskQuestionsTool,
 	buildConfigureChannelTool,
 	buildResolveLlmTool,
-} from './interactive/index.js';
-import type { ModelLookup } from './interactive/resolve-llm.tool.js';
-import { buildSearchMcpServersTool } from './search-mcp-servers.tool.js';
-import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template.js';
-import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template.js';
-import { buildVerifyMcpServerTool } from './verify-mcp-server.tool.js';
-import { composeJsonConfig } from '../json-config/agent-config-composition.js';
-import { AgentRepository } from '../repositories/agent.repository.js';
-import { AgentSecureRuntime } from '../runtime/agent-secure-runtime.js';
+} from './interactive';
+import type { ModelLookup } from './interactive/resolve-llm.tool';
+import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
+import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
+import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
+import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { AgentRepository } from '../repositories/agent.repository';
+import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',

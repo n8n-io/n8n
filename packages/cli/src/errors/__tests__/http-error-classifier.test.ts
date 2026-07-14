@@ -1,11 +1,11 @@
 import { BadRequest } from 'express-openapi-validator/dist/framework/types';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { classifyHttpError, HttpErrorKind, isResponseError } from '../http-error-classifier.js';
+import { classifyHttpError, HttpErrorKind, isResponseError } from '../http-error-classifier';
 
 describe('classifyHttpError', () => {
 	it('tags ResponseError with kind responseError and http fields', () => {

@@ -1,4 +1,4 @@
-import { generateSlug } from '../slug.utils.js';
+import { generateSlug } from '../slug.utils';
 
 describe('generateSlug', () => {
 	it('lower-cases and hyphenates the name', () => {

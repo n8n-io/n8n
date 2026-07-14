@@ -1,4 +1,4 @@
-import { WorkflowActivationBadRequestError } from './workflow-activation-bad-request.error.js';
+import { WorkflowActivationBadRequestError } from './workflow-activation-bad-request.error';
 
 /**
  * Error thrown when a workflow fails validation before activation.

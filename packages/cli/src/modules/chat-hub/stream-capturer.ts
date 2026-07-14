@@ -4,7 +4,7 @@ import type { ServerResponse } from 'http';
 import type { StructuredChunk } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { ChatHubMessage } from './chat-hub-message.entity.js';
+import type { ChatHubMessage } from './chat-hub-message.entity';
 
 type End = ServerResponse['end'];
 

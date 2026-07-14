@@ -7,10 +7,10 @@ import { exportJWK, generateKeyPair } from 'jose';
 import type { JWK } from 'jose';
 import { Cipher } from 'n8n-core';
 
-import { CacheService } from '@/services/cache/cache.service.js';
+import { CacheService } from '@/services/cache/cache.service';
 
-import { OAuthJweKeyService } from '../oauth-jwe-key.service.js';
-import { JWE_KEY_ALGORITHMS, JWE_PRIVATE_KEY_TYPE } from '../oauth-jwe.constants.js';
+import { OAuthJweKeyService } from '../oauth-jwe-key.service';
+import { JWE_KEY_ALGORITHMS, JWE_PRIVATE_KEY_TYPE } from '../oauth-jwe.constants';
 
 const ALGORITHM = JWE_KEY_ALGORITHMS[0];
 

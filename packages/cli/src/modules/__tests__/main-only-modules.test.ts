@@ -1,13 +1,13 @@
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import '../sso-oidc/sso-oidc.module.js';
-import '../sso-saml/sso-saml.module.js';
-import '../source-control.ee/source-control.module.js';
-import '../provisioning.ee/provisioning.module.js';
-import '../breaking-changes/breaking-changes.module.js';
-import '../mcp/mcp.module.js';
-import '../oauth-server/oauth-server.module.js';
+import '../sso-oidc/sso-oidc.module';
+import '../sso-saml/sso-saml.module';
+import '../source-control.ee/source-control.module';
+import '../provisioning.ee/provisioning.module';
+import '../breaking-changes/breaking-changes.module';
+import '../mcp/mcp.module';
+import '../oauth-server/oauth-server.module';
 
 describe('main-only modules', () => {
 	const metadata = Container.get(ModuleMetadata);

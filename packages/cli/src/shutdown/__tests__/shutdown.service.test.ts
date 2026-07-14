@@ -6,7 +6,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ShutdownService } from '../shutdown.service.js';
+import { ShutdownService } from '../shutdown.service';
 
 class MockComponent {
 	onShutdown() {}

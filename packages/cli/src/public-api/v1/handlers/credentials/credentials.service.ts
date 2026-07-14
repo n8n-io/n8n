@@ -12,18 +12,18 @@ import {
 	type INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { CredentialsService } from '@/credentials/credentials.service.js';
+import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	validateAccessToReferencedSecretProviders,
 	validateExternalSecretsPermissions,
-} from '@/credentials/validation.js';
-import { EventService } from '@/events/event.service.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
-import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee.js';
+} from '@/credentials/validation';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 
-import { toPublicApiCredentialResponse } from './credentials.mapper.js';
-import type { IDependency, IJsonSchema } from '../../../types.js';
+import { toPublicApiCredentialResponse } from './credentials.mapper';
+import type { IDependency, IJsonSchema } from '../../../types';
 
 export class CredentialsIsNotUpdatableError extends BaseError {}
 

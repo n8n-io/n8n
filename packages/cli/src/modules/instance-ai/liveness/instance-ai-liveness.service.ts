@@ -7,7 +7,7 @@ import {
 	type InstanceAiLivenessTimeoutReason,
 } from '@n8n/instance-ai';
 
-import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details.js';
+import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details';
 
 export const INSTANCE_AI_RUN_TIMEOUT_REASON = 'timeout';
 

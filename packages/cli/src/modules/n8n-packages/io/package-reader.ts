@@ -1,4 +1,4 @@
-import type { PackageManifest } from '../spec/manifest.schema.js';
+import type { PackageManifest } from '../spec/manifest.schema';
 
 export interface PackageReader {
 	readManifest(): Promise<PackageManifest>;

@@ -4,22 +4,22 @@ import type { Project, User } from '@n8n/db';
 import { FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
-import { createFolder } from '@test-integration/db/folders.js';
-import { createOwner } from '@test-integration/db/users.js';
-import { LicenseMocker } from '@test-integration/license.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { createFolder } from '@test-integration/db/folders';
+import { createOwner } from '@test-integration/db/users';
+import { LicenseMocker } from '@test-integration/license';
 
-import { N8nPackagesService } from '../n8n-packages.service.js';
-import type { FolderConflictPolicy, ImportPackageRequest } from '../n8n-packages.types.js';
+import { N8nPackagesService } from '../n8n-packages.service';
+import type { FolderConflictPolicy, ImportPackageRequest } from '../n8n-packages.types';
 import {
 	buildEntityPackageBuffer,
 	credentialRequirementsFromWorkflows,
 	serializedFolder,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
-} from './fixtures/package-fixtures.js';
+} from './fixtures/package-fixtures';
 
 type FolderImportParams = {
 	user: User;

@@ -1,12 +1,9 @@
 import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import {
-	FILESYSTEM_INTERACTION_NODE_TYPES,
-	FILESYSTEM_REPORT,
-} from '@/security-audit/constants.js';
-import type { RiskReporter, Risk } from '@/security-audit/types.js';
-import { getNodeTypes } from '@/security-audit/utils.js';
+import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/security-audit/constants';
+import type { RiskReporter, Risk } from '@/security-audit/types';
+import { getNodeTypes } from '@/security-audit/utils';
 
 @Service()
 export class FilesystemRiskReporter implements RiskReporter {

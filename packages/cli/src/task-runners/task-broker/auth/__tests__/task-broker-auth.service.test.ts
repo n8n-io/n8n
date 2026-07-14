@@ -3,11 +3,11 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { sleep } from 'n8n-workflow';
 
-import config from '@/config/index.js';
-import { CacheService } from '@/services/cache/cache.service.js';
-import { retryUntil } from '@test-integration/retry-until.js';
+import config from '@/config';
+import { CacheService } from '@/services/cache/cache.service';
+import { retryUntil } from '@test-integration/retry-until';
 
-import { TaskBrokerAuthService } from '../task-broker-auth.service.js';
+import { TaskBrokerAuthService } from '../task-broker-auth.service';
 
 describe('TaskBrokerAuthService', () => {
 	config.set('taskRunners.authToken', 'random-secret');

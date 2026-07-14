@@ -20,7 +20,7 @@ import {
 	type InstanceAiTracingEventBus,
 	type InstanceAiTracingRunState,
 	type InstanceAiTracingSnapshotStorage,
-} from '../tracing/index.js';
+} from '../tracing';
 
 type FakeTraceRun = {
 	id: string;

@@ -2,7 +2,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { IRunData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { extractTokenUsage } from '../utils.ee.js';
+import { extractTokenUsage } from '../utils.ee';
 
 type TokenUsage = {
 	completionTokens: number;

@@ -1,7 +1,7 @@
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { DockerOnlyDeploymentRule } from '../docker-only-deployment.rule.js';
+import { DockerOnlyDeploymentRule } from '../docker-only-deployment.rule';
 
 describe('DockerOnlyDeploymentRule', () => {
 	describe('detect()', () => {

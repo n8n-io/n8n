@@ -6,21 +6,21 @@ vi.mock('../npm-utils', async () => ({
 import { mockInstance } from '@n8n/backend-test-utils';
 import path from 'path';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service.js';
-import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity.js';
-import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity.js';
-import { executeNpmCommand } from '@/modules/community-packages/npm-utils.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
+import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
+import { executeNpmCommand } from '@/modules/community-packages/npm-utils';
 
-import { COMMUNITY_PACKAGE_VERSION } from '../../../../test/integration/shared/constants.js';
-import { createOwner } from '../../../../test/integration/shared/db/users.js';
-import type { SuperAgentTest } from '../../../../test/integration/shared/types.js';
+import { COMMUNITY_PACKAGE_VERSION } from '../../../../test/integration/shared/constants';
+import { createOwner } from '../../../../test/integration/shared/db/users';
+import type { SuperAgentTest } from '../../../../test/integration/shared/types';
 import {
 	setupTestServer,
 	mockPackage,
 	mockNode,
 	mockPackageName,
-} from '../../../../test/integration/shared/utils/index.js';
+} from '../../../../test/integration/shared/utils';
 
 const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,

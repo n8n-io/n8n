@@ -1,4 +1,4 @@
-import { TunnelOptionRule } from '../tunnel-option.rule.js';
+import { TunnelOptionRule } from '../tunnel-option.rule';
 
 describe('TunnelOptionRule', () => {
 	let rule: TunnelOptionRule;

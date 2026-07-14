@@ -7,19 +7,19 @@ import { mock } from 'vitest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
-import type { CredentialTypes } from '@/credential-types.js';
-import type { CredentialsOverwrites } from '@/credentials-overwrites.js';
-import type { License } from '@/license.js';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import type { MfaService } from '@/mfa/mfa.service.js';
-import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config.js';
-import type { PushConfig } from '@/push/push.config.js';
-import type { AiUsageService } from '@/services/ai-usage.service.js';
-import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service.js';
-import type { UrlService } from '@/services/url.service.js';
-import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service.js';
-import type { UserManagementMailer } from '@/user-management/email/index.js';
-import type { OwnershipService } from '../ownership.service.js';
+import type { CredentialTypes } from '@/credential-types';
+import type { CredentialsOverwrites } from '@/credentials-overwrites';
+import type { License } from '@/license';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { MfaService } from '@/mfa/mfa.service';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import type { PushConfig } from '@/push/push.config';
+import type { AiUsageService } from '@/services/ai-usage.service';
+import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
+import type { UrlService } from '@/services/url.service';
+import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
+import type { UserManagementMailer } from '@/user-management/email';
+import type { OwnershipService } from '../ownership.service';
 
 // Mock the workflow history helper functions to avoid DI container issues in tests
 vi.mock('@/workflows/workflow-history/workflow-history-helper', () => ({

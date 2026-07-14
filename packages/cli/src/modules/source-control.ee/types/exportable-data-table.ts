@@ -2,7 +2,7 @@ import type {
 	PersonalResourceOwner,
 	StatusResourceOwner,
 	TeamResourceOwner,
-} from './resource-owner.js';
+} from './resource-owner';
 
 export interface ExportableDataTableColumn {
 	id: string;

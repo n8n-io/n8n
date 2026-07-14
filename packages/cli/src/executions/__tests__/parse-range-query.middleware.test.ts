@@ -2,8 +2,8 @@ import type { NextFunction } from 'express';
 import type * as express from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExecutionRequest } from '@/executions/execution.types.js';
-import { parseRangeQuery } from '@/executions/parse-range-query.middleware.js';
+import type { ExecutionRequest } from '@/executions/execution.types';
+import { parseRangeQuery } from '@/executions/parse-range-query.middleware';
 
 describe('`parseRangeQuery` middleware', () => {
 	const res = mock<express.Response>({

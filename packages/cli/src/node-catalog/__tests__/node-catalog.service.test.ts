@@ -3,9 +3,9 @@ import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
-import { NodeCatalogService } from '../node-catalog.service.js';
+import { NodeCatalogService } from '../node-catalog.service';
 
 const MockNodeTypeParser = vi.fn();
 const mockSetSchemaBaseDirs = vi.fn();

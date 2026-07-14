@@ -2,17 +2,17 @@ import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { OtelLifecycleHandler } from '../otel-lifecycle-handler.js';
-import { OtelSettingsController } from '../otel-settings.controller.js';
+import type { OtelLifecycleHandler } from '../otel-lifecycle-handler';
+import { OtelSettingsController } from '../otel-settings.controller';
 import type {
 	OtelConnectionParams,
 	OtelSettingsResponse,
 	OtelSettingsService,
-} from '../otel-settings.service.js';
-import type { OtelConfig } from '../otel.config.js';
-import type { OtelService } from '../otel.service.js';
+} from '../otel-settings.service';
+import type { OtelConfig } from '../otel.config';
+import type { OtelService } from '../otel.service';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 const req = mock<AuthenticatedRequest>();
 const res = mock<Response>();

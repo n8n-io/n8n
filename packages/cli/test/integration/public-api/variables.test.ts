@@ -1,14 +1,14 @@
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User, Variables } from '@n8n/db';
 
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users.js';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import {
 	createProjectVariable,
 	createVariable,
 	getVariableByIdOrFail,
-} from '@test-integration/db/variables.js';
-import { setupTestServer } from '@test-integration/utils/index.js';
+} from '@test-integration/db/variables';
+import { setupTestServer } from '@test-integration/utils';
 
 describe('Variables in Public API', () => {
 	let owner: User;

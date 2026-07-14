@@ -1,5 +1,5 @@
-import type { Agent } from '../entities/agent.entity.js';
-import type { AgentRepository } from '../repositories/agent.repository.js';
+import type { Agent } from '../entities/agent.entity';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 export type SubAgentConfigRef = { agentId: string; useWhen?: string };
 

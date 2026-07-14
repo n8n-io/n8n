@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { InstanceAiThreadGrant } from '../entities/instance-ai-thread-grant.entity.js';
+import { InstanceAiThreadGrant } from '../entities/instance-ai-thread-grant.entity';
 
 @Service()
 export class InstanceAiThreadGrantRepository extends Repository<InstanceAiThreadGrant> {

@@ -3,9 +3,9 @@ import type { WorkflowsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import type { ActiveWorkflowTriggers, ErrorReporter } from 'n8n-core';
 
-import { PublishedWorkflowTriggerDeactivator } from '@/workflows/publication/published-workflow-trigger-deactivator.js';
-import type { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock.js';
-import type { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer.js';
+import { PublishedWorkflowTriggerDeactivator } from '@/workflows/publication/published-workflow-trigger-deactivator';
+import type { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
+import type { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 
 describe('PublishedWorkflowTriggerDeactivator', () => {
 	const logger = mock<Logger>();

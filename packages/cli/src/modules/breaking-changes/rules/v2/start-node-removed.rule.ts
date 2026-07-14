@@ -7,8 +7,8 @@ import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
 	WorkflowDetectionReport,
-} from '../../types/index.js';
-import { BreakingChangeCategory } from '../../types/index.js';
+} from '../../types';
+import { BreakingChangeCategory } from '../../types';
 
 @BreakingChangeRule({ version: 'v2' })
 export class StartNodeRemovedRule implements IBreakingChangeWorkflowRule {

@@ -14,11 +14,11 @@ import {
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_SSH_KEY_NAME,
-} from './constants.js';
-import { generateSshKeyPair, isSourceControlLicensed } from './source-control-helper.ee.js';
-import { SourceControlConfig } from './source-control.config.js';
-import type { KeyPairType } from './types/key-pair-type.js';
-import { SourceControlPreferences } from './types/source-control-preferences.js';
+} from './constants';
+import { generateSshKeyPair, isSourceControlLicensed } from './source-control-helper.ee';
+import { SourceControlConfig } from './source-control.config';
+import type { KeyPairType } from './types/key-pair-type';
+import { SourceControlPreferences } from './types/source-control-preferences';
 
 @Service()
 export class SourceControlPreferencesService {

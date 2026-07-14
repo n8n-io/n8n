@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { BINARY_IN_JSON_PROPERTY, createRunExecutionData } from 'n8n-workflow';
 
-import { sumBinaryDataBytes } from '../sum-binary-data-bytes.js';
+import { sumBinaryDataBytes } from '../sum-binary-data-bytes';
 
 const binary = (over: Partial<IBinaryData>): IBinaryData =>
 	({ data: '', mimeType: 'application/octet-stream', ...over }) as IBinaryData;

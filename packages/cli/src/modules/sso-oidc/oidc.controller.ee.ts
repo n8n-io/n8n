@@ -6,17 +6,17 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service.js';
-import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { EventService } from '@/events/event.service.js';
-import { AuthlessRequest } from '@/requests.js';
-import { UrlService } from '@/services/url.service.js';
+import { AuthService } from '@/auth/auth.service';
+import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { AuthlessRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
 
-import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from './constants.js';
-import { OidcService } from './oidc.service.ee.js';
-import { renderOidcTestFailure, renderOidcTestSuccess } from './views/oidc-test-result.js';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from './constants';
+import { OidcService } from './oidc.service.ee';
+import { renderOidcTestFailure, renderOidcTestSuccess } from './views/oidc-test-result';
 
 @RestController('/sso/oidc')
 export class OidcController {

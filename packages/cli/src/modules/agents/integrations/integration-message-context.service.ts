@@ -8,9 +8,9 @@ import type {
 	IntegrationSubjectPerson,
 	IntegrationMessageContextStore,
 	IntegrationMessageTarget,
-} from './integration-tools.js';
-import { AgentResourceRepository } from '../repositories/agent-resource.repository.js';
-import { AgentThreadRepository } from '../repositories/agent-thread.repository.js';
+} from './integration-tools';
+import { AgentResourceRepository } from '../repositories/agent-resource.repository';
+import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
 

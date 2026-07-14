@@ -1,8 +1,8 @@
 import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import '../rules/index.js';
-import type { IBreakingChangeRule } from '../types/index.js';
+import '../rules';
+import type { IBreakingChangeRule } from '../types';
 
 describe('Breaking change rules auto-discovery', () => {
 	it('should register all rules grouped by version', () => {

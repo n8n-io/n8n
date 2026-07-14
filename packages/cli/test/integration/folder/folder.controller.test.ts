@@ -18,21 +18,21 @@ import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permiss
 import { DateTime } from 'luxon';
 import { PROJECT_ROOT, UnexpectedError } from 'n8n-workflow';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
-import { OwnershipService } from '@/services/ownership.service.js';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { OwnershipService } from '@/services/ownership.service';
 import {
 	createCredentials,
 	getCredentialSharings,
 	saveCredential,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
-} from '@test-integration/db/credentials.js';
-import { createFolder } from '@test-integration/db/folders.js';
-import { createTag } from '@test-integration/db/tags.js';
+} from '@test-integration/db/credentials';
+import { createFolder } from '@test-integration/db/folders';
+import { createTag } from '@test-integration/db/tags';
 
-import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 let owner: User;
 let member: User;

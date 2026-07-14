@@ -8,17 +8,17 @@ import multer from 'multer';
 import { nanoid } from 'nanoid';
 import { extname } from 'path';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { DataTableSizeValidator } from './data-table-size-validator.service.js';
-import { DataTableRepository } from './data-table.repository.js';
+import { DataTableSizeValidator } from './data-table-size-validator.service';
+import { DataTableRepository } from './data-table.repository';
 import {
 	type AuthenticatedRequestWithFile,
 	type MulterDestinationCallback,
 	type MulterFilenameCallback,
 	type UploadMiddleware,
-} from './types.js';
-import { formatBytes } from './utils/size-utils.js';
+} from './types';
+import { formatBytes } from './utils/size-utils';
 
 const ALLOWED_EXTENSIONS = ['.csv'];
 

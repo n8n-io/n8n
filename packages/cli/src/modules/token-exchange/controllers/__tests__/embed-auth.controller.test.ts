@@ -3,14 +3,14 @@ import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { AuthService } from '@/auth/auth.service.js';
-import type { EventService } from '@/events/event.service.js';
-import type { AuthlessRequest } from '@/requests.js';
-import type { UrlService } from '@/services/url.service.js';
+import type { AuthService } from '@/auth/auth.service';
+import type { EventService } from '@/events/event.service';
+import type { AuthlessRequest } from '@/requests';
+import type { UrlService } from '@/services/url.service';
 
-import type { TokenExchangeService } from '../../services/token-exchange.service.js';
-import type { TokenExchangeConfig } from '../../token-exchange.config.js';
-import { EmbedAuthController } from '../embed-auth.controller.js';
+import type { TokenExchangeService } from '../../services/token-exchange.service';
+import type { TokenExchangeConfig } from '../../token-exchange.config';
+import { EmbedAuthController } from '../embed-auth.controller';
 
 const config = mock<TokenExchangeConfig>({ embedEnabled: true });
 const tokenExchangeService = mock<TokenExchangeService>();

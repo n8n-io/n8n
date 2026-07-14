@@ -1,10 +1,10 @@
-import { createSlackReplayContext } from '../../../__tests__/helpers/slack/replay-test-context.js';
+import { createSlackReplayContext } from '../../../__tests__/helpers/slack/replay-test-context';
 import {
 	slackEventCallback,
 	slackReplayFixtures,
 	slackUser,
-} from '../../../__tests__/helpers/slack/synthetic-fixtures.js';
-import { SlackIntegration } from '../../slack-integration.js';
+} from '../../../__tests__/helpers/slack/synthetic-fixtures';
+import { SlackIntegration } from '../../slack-integration';
 
 describe('Slack channel integration scenarios', () => {
 	it('handles Slack URL verification without an active connection', () => {

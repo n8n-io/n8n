@@ -39,26 +39,26 @@ import type {
 import assert from 'node:assert';
 import pLimit from 'p-limit';
 
-import { ActiveExecutions } from '@/active-executions.js';
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
+import { ActiveExecutions } from '@/active-executions';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import {
 	getEvaluationConcurrencyLimitSource,
 	resolveEvaluationConcurrencyLimit,
-} from '@/evaluation.ee/evaluation-concurrency.helper.js';
-import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee.js';
+} from '@/evaluation.ee/evaluation-concurrency.helper';
+import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import {
 	checkNodeParameterNotEmpty,
 	extractTokenUsage,
-} from '@/evaluation.ee/test-runner/utils.ee.js';
-import { EventService } from '@/events/event.service.js';
-import { License } from '@/license.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
-import { Telemetry } from '@/telemetry/index.js';
-import { WorkflowRunner } from '@/workflow-runner.js';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
+} from '@/evaluation.ee/test-runner/utils.ee';
+import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Telemetry } from '@/telemetry';
+import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee.js';
-import { WorkflowCompilerService } from './workflow-compiler.service.js';
+import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee';
+import { WorkflowCompilerService } from './workflow-compiler.service';
 
 export interface TestRunMetadata {
 	testRunId: string;

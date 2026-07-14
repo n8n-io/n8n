@@ -1,6 +1,6 @@
-import { createNode, createWorkflow } from '../../../__tests__/test-helpers.js';
-import { BreakingChangeCategory } from '../../../types/index.js';
-import { StartNodeRemovedRule } from '../start-node-removed.rule.js';
+import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
+import { BreakingChangeCategory } from '../../../types';
+import { StartNodeRemovedRule } from '../start-node-removed.rule';
 
 describe('StartNodeRemovedRule', () => {
 	let rule: StartNodeRemovedRule;

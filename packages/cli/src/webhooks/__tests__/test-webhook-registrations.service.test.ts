@@ -1,9 +1,9 @@
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service.js';
-import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service.js';
-import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service.js';
+import type { CacheService } from '@/services/cache/cache.service';
+import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
+import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 describe('TestWebhookRegistrationsService', () => {
 	const cacheService = mock<CacheService>();

@@ -5,20 +5,20 @@ import { response as Response } from 'express';
 import nock from 'nock';
 import { parse as parseQs } from 'querystring';
 
-import { CredentialsHelper } from '@/credentials-helper.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { OauthService, type OauthFlowState } from '@/oauth/oauth.service.js';
-import { MAX_CSRF_AGE } from '@/oauth/types.js';
-import { CacheService } from '@/services/cache/cache.service.js';
+import { CredentialsHelper } from '@/credentials-helper';
+import { ExternalHooks } from '@/external-hooks';
+import { OauthService, type OauthFlowState } from '@/oauth/oauth.service';
+import { MAX_CSRF_AGE } from '@/oauth/types';
+import { CacheService } from '@/services/cache/cache.service';
 import {
 	decryptCredentialData,
 	getCredentialById,
 	saveCredential,
 	shareCredentialWithUsers,
-} from '@test-integration/db/credentials.js';
-import { createMember, createOwner } from '@test-integration/db/users.js';
-import type { SuperAgentTest } from '@test-integration/types.js';
-import { setupTestServer } from '@test-integration/utils/index.js';
+} from '@test-integration/db/credentials';
+import { createMember, createOwner } from '@test-integration/db/users';
+import type { SuperAgentTest } from '@test-integration/types';
+import { setupTestServer } from '@test-integration/utils';
 
 describe('OAuth2 API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['oauth2'] });

@@ -6,18 +6,18 @@ import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
-import { AuthError } from '@/errors/response-errors/auth.error.js';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
-import { PasswordUtility } from '@/services/password.utility.js';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { PasswordUtility } from '@/services/password.utility';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers.js';
+} from '@/sso.ee/sso-helpers';
 
-import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee.js';
-import type { SamlAttributeMapping, SamlUserAttributes } from './types.js';
+import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
+import type { SamlAttributeMapping, SamlUserAttributes } from './types';
 
 // can only toggle between email and saml, not directly to e.g. ldap
 export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {

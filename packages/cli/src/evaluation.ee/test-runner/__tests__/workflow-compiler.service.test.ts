@@ -1,8 +1,8 @@
 import type { EvaluationConfig } from '@n8n/db';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { LlmJudgeProviderRegistry } from '../../llm-judge-provider-registry.js';
-import { WorkflowCompilerService } from '../workflow-compiler.service.js';
+import { LlmJudgeProviderRegistry } from '../../llm-judge-provider-registry';
+import { WorkflowCompilerService } from '../workflow-compiler.service';
 
 const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
 

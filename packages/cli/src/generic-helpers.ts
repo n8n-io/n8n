@@ -7,8 +7,8 @@ import type {
 } from '@n8n/db';
 import { validate } from 'class-validator';
 
-import type { PersonalizationSurveyAnswersV4 } from './controllers/survey-answers.dto.js';
-import { BadRequestError } from './errors/response-errors/bad-request.error.js';
+import type { PersonalizationSurveyAnswersV4 } from './controllers/survey-answers.dto';
+import { BadRequestError } from './errors/response-errors/bad-request.error';
 
 export async function validateEntity(
 	entity:

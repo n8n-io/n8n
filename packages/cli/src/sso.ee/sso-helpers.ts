@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { isAuthProviderType, SettingsRepository, type AuthProviderType } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import config from '@/config/index.js';
+import config from '@/config';
 
 /**
  * Only one authentication method can be active at a time. This function sets

@@ -33,48 +33,48 @@ import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { ActiveExecutions } from '@/active-executions.js';
-import { N8N_VERSION } from '@/constants.js';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
-import { EphemeralNodeExecutor } from '@/node-execution/index.js';
-import { OauthService } from '@/oauth/oauth.service.js';
-import { userHasScopes } from '@/permissions.ee/check-access.js';
-import { AiService } from '@/services/ai.service.js';
-import { ProxyTokenManager } from '@/services/proxy-token-manager.js';
-import { UrlService } from '@/services/url.service.js';
-import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch.js';
-import { WorkflowRunner } from '@/workflow-runner.js';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { ActiveExecutions } from '@/active-executions';
+import { N8N_VERSION } from '@/constants';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { EphemeralNodeExecutor } from '@/node-execution';
+import { OauthService } from '@/oauth/oauth.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { AiService } from '@/services/ai.service';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { UrlService } from '@/services/url.service';
+import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate.js';
-import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service.js';
-import { Agent } from './entities/agent.entity.js';
-import { ChatIntegrationRegistry } from './integrations/agent-chat-integration.js';
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
+import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
+import { Agent } from './entities/agent.entity';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
 	getIntegrationToolConnectionDescriptors,
 	type IntegrationToolConnectionDescriptor,
-} from './integrations/integration-tools.js';
-import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage.js';
-import { N8nMemory } from './integrations/n8n-memory.js';
+} from './integrations/integration-tools';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { N8nMemory } from './integrations/n8n-memory';
 import {
 	buildFromJson,
 	buildProviderToolsForModel,
 	type MemoryFactory,
 	type ManagedEmbeddingProviderOptions,
 	type ToolResolver,
-} from './json-config/from-json-config.js';
-import { buildMcpClientForServer } from './json-config/mcp-client-factory.js';
-import { resolveCredentialAwareModelConfig } from './json-config/model-config.js';
-import { AgentFileRepository } from './repositories/agent-file.repository.js';
-import { AgentRepository } from './repositories/agent.repository.js';
-import { AgentSecureRuntime } from './runtime/agent-secure-runtime.js';
-import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool.js';
-import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner.js';
-import { buildToolRegistry, type ToolRegistry } from './tool-registry.js';
-import { createGetEnvironmentTool } from './tools/environment-tool.js';
-import { resolveUniqueSubAgents } from './utils/sub-agent-resolver.js';
+} from './json-config/from-json-config';
+import { buildMcpClientForServer } from './json-config/mcp-client-factory';
+import { resolveCredentialAwareModelConfig } from './json-config/model-config';
+import { AgentFileRepository } from './repositories/agent-file.repository';
+import { AgentRepository } from './repositories/agent.repository';
+import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
+import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
+import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
+import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { createGetEnvironmentTool } from './tools/environment-tool';
+import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {

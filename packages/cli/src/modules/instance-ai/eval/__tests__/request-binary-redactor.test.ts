@@ -1,6 +1,6 @@
 import FormData from 'form-data';
 
-import { redactBinaryBody } from '../request-binary-redactor.js';
+import { redactBinaryBody } from '../request-binary-redactor';
 
 describe('redactBinaryBody', () => {
 	describe('passthrough cases', () => {

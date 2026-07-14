@@ -11,7 +11,7 @@ import {
 	type Relation,
 } from '@n8n/typeorm';
 
-import type { Agent } from './agent.entity.js';
+import type { Agent } from './agent.entity';
 
 /**
  * Immutable snapshot of an agent's published state. Created on publish and

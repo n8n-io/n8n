@@ -5,14 +5,14 @@ import { GLOBAL_MEMBER_ROLE, type AuthenticatedRequest, type User } from '@n8n/d
 import { type Request, type Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { AuthService } from '@/auth/auth.service.js';
-import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants.js';
-import type { EventService } from '@/events/event.service.js';
-import type { AuthlessRequest } from '@/requests.js';
-import type { UrlService } from '@/services/url.service.js';
+import type { AuthService } from '@/auth/auth.service';
+import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import type { EventService } from '@/events/event.service';
+import type { AuthlessRequest } from '@/requests';
+import type { UrlService } from '@/services/url.service';
 
-import { OidcController } from '../oidc.controller.ee.js';
-import type { OidcService } from '../oidc.service.ee.js';
+import { OidcController } from '../oidc.controller.ee';
+import type { OidcService } from '../oidc.service.ee';
 
 const authService = mock<AuthService>();
 const eventService = mock<EventService>();

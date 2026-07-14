@@ -10,14 +10,10 @@ import { ExecutionMetadataRepository, ExecutionRepository, WorkflowRepository } 
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionService } from '@/executions/execution.service.js';
+import { ExecutionService } from '@/executions/execution.service';
 
-import {
-	annotateExecution,
-	createAnnotationTags,
-	createExecution,
-} from './shared/db/executions.js';
-import { createMember, createOwner } from './shared/db/users.js';
+import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
+import { createMember, createOwner } from './shared/db/users';
 
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;

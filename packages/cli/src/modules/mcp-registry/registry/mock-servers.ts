@@ -1,4 +1,4 @@
-import type { McpRegistryServer } from './mcp-registry.types.js';
+import type { McpRegistryServer } from './mcp-registry.types';
 
 export const notionMockServer: McpRegistryServer = {
 	name: 'com.notion/mcp',

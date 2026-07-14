@@ -3,7 +3,7 @@ import {
 	buildScheduleTriggerItem,
 	isScheduleTriggerTaskPayload,
 	scheduleTriggerDeduplicationKey,
-} from '../schedule-trigger-task.js';
+} from '../schedule-trigger-task';
 
 describe('isScheduleTriggerTaskPayload', () => {
 	test('accepts a payload with workflowId and nodeId', () => {

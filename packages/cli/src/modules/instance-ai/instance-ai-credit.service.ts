@@ -6,11 +6,11 @@ import { InstanceSettings } from 'n8n-core';
 import { sleep, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { Push } from '@/push/index.js';
-import { AiService } from '@/services/ai.service.js';
-import { Telemetry } from '@/telemetry/index.js';
+import { Push } from '@/push';
+import { AiService } from '@/services/ai.service';
+import { Telemetry } from '@/telemetry';
 
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository.js';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);

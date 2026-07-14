@@ -4,8 +4,8 @@ import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { McpSettingsLoader } from '@/instance-settings-loader/loaders/mcp-settings.loader.js';
-import { McpSettingsService } from '@/modules/mcp/mcp.settings.service.js';
+import { McpSettingsLoader } from '@/instance-settings-loader/loaders/mcp-settings.loader';
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 
 const SETTINGS_KEY = 'mcp.access.enabled';
 

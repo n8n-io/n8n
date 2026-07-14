@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionTypes } from 'n8n-workflow';
 
-import { copyCredentialSupport, isFullDescription, setToolCodex } from './utils.js';
+import { copyCredentialSupport, isFullDescription, setToolCodex } from './utils';
 
 /**
  * Find the index of the last callout property in a list of properties.

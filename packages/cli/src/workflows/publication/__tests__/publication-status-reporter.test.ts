@@ -9,9 +9,9 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
-import type { ActivationErrorsService } from '@/activation-errors.service.js';
-import type { Push } from '@/push/index.js';
-import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter.js';
+import type { ActivationErrorsService } from '@/activation-errors.service';
+import type { Push } from '@/push';
+import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 
 describe('PublicationStatusReporter', () => {
 	const logger = mock<Logger>();

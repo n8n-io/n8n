@@ -8,15 +8,15 @@ import type {
 } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
-import type { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface.js';
-import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import type { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
-import type { DynamicCredentialResolver } from '../../database/entities/credential-resolver.js';
-import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository.js';
-import { CredentialStorageError } from '../../errors/credential-storage.error.js';
-import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service.js';
-import { DynamicCredentialStorageService } from '../dynamic-credential-storage.service.js';
+import type { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
+import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
+import { CredentialStorageError } from '../../errors/credential-storage.error';
+import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
+import { DynamicCredentialStorageService } from '../dynamic-credential-storage.service';
 
 describe('DynamicCredentialStorageService', () => {
 	let service: DynamicCredentialStorageService;

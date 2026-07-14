@@ -18,9 +18,9 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester.js';
-import { TaskRunnerModule } from '@/task-runners/task-runner-module.js';
-import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py.js';
+import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
 // `restoreMocks: true` in the root vi config restores spies between tests,
 // but the Python runtime check is invoked from inner describes' `beforeAll`

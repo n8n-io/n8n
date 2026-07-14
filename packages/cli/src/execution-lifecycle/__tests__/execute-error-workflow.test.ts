@@ -7,11 +7,11 @@ import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { createRunExecutionData, NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { OwnershipService } from '@/services/ownership.service.js';
-import { UrlService } from '@/services/url.service.js';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
+import { OwnershipService } from '@/services/ownership.service';
+import { UrlService } from '@/services/url.service';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
-import { executeErrorWorkflow } from '../execute-error-workflow.js';
+import { executeErrorWorkflow } from '../execute-error-workflow';
 
 describe('executeErrorWorkflow', () => {
 	mockInstance(Logger);

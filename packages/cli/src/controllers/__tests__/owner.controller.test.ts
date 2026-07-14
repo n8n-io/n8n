@@ -1,13 +1,13 @@
 import type { DismissBannerRequestDto } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
-import type { AuthService } from '@/auth/auth.service.js';
-import { OwnerController } from '@/controllers/owner.controller.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import type { PostHogClient } from '@/posthog/index.js';
-import type { BannerService } from '@/services/banner.service.js';
-import type { OwnershipService } from '@/services/ownership.service.js';
-import type { UserService } from '@/services/user.service.js';
+import type { AuthService } from '@/auth/auth.service';
+import { OwnerController } from '@/controllers/owner.controller';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { PostHogClient } from '@/posthog';
+import type { BannerService } from '@/services/banner.service';
+import type { OwnershipService } from '@/services/ownership.service';
+import type { UserService } from '@/services/user.service';
 
 describe('OwnerController', () => {
 	const authService = mock<AuthService>();

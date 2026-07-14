@@ -6,9 +6,9 @@ import promClient from 'prom-client';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { PrometheusSchedulerMetricsService } from '../scheduler-metrics.service.js';
+import { PrometheusSchedulerMetricsService } from '../scheduler-metrics.service';
 
-import type { CacheService } from '@/services/cache/cache.service.js';
+import type { CacheService } from '@/services/cache/cache.service';
 
 vi.mock('prom-client');
 

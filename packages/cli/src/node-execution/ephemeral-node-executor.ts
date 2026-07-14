@@ -24,9 +24,9 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { NodeTypes } from '@/node-types.js';
-import { withExpressionIsolate } from '@/utils.js';
-import { getBase } from '@/workflow-execute-additional-data.js';
+import { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
+import { getBase } from '@/workflow-execute-additional-data';
 
 /** Minimal tool shape for constructing an in-memory single-node execution. */
 export type EphemeralWorkflowToolLike = {

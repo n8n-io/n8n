@@ -5,10 +5,10 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
-import { N8N_VERSION } from '@/constants.js';
+import { N8N_VERSION } from '@/constants';
 
-import { REGISTRY_CONSTANTS } from './instance-registry.types.js';
-import type { InstanceStorage } from './storage/instance-storage.interface.js';
+import { REGISTRY_CONSTANTS } from './instance-registry.types';
+import type { InstanceStorage } from './storage/instance-storage.interface';
 
 /**
  * Core service for instance lifecycle management in the Instance Registry.

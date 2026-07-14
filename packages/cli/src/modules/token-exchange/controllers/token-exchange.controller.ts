@@ -5,19 +5,16 @@ import type { Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { z, ZodError } from 'zod';
 
-import { AuthError } from '@/errors/response-errors/auth.error.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { EventService } from '@/events/event.service.js';
-import { AuthlessRequest } from '@/requests.js';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { AuthlessRequest } from '@/requests';
 
-import { TokenExchangeService } from '../services/token-exchange.service.js';
-import { TokenExchangeConfig } from '../token-exchange.config.js';
-import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors.js';
-import {
-	TOKEN_EXCHANGE_GRANT_TYPE,
-	TokenExchangeRequestSchema,
-} from '../token-exchange.schemas.js';
-import { TokenExchangeFailureReason } from '../token-exchange.types.js';
+import { TokenExchangeService } from '../services/token-exchange.service';
+import { TokenExchangeConfig } from '../token-exchange.config';
+import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors';
+import { TOKEN_EXCHANGE_GRANT_TYPE, TokenExchangeRequestSchema } from '../token-exchange.schemas';
+import { TokenExchangeFailureReason } from '../token-exchange.types';
 
 const configService = Container.get(TokenExchangeConfig);
 

@@ -16,8 +16,8 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service.js';
-import { RedactionContextHook } from '../redaction-context-hook.js';
+import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
+import { RedactionContextHook } from '../redaction-context-hook';
 
 /**
  * Wires the real RedactionContextHook, ExecutionContextService and

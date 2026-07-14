@@ -25,18 +25,15 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { N8N_VERSION } from '@/constants.js';
-import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
-import { EventService } from '@/events/event.service.js';
-import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
-import {
-	TelemetryEventRelay,
-	getSemanticVersioning,
-} from '@/events/relays/telemetry.event-relay.js';
-import type { License } from '@/license.js';
-import { OtelConfig } from '@/modules/otel/otel.config.js';
-import type { NodeTypes } from '@/node-types.js';
-import type { Telemetry } from '@/telemetry/index.js';
+import { N8N_VERSION } from '@/constants';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
+import type { License } from '@/license';
+import { OtelConfig } from '@/modules/otel/otel.config';
+import type { NodeTypes } from '@/node-types';
+import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 

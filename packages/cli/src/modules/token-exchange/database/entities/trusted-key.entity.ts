@@ -2,7 +2,7 @@ import { DateTimeColumn } from '@n8n/db';
 import type { Relation } from '@n8n/typeorm';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
-import { TrustedKeySourceEntity } from './trusted-key-source.entity.js';
+import { TrustedKeySourceEntity } from './trusted-key-source.entity';
 
 @Entity('trusted_key')
 export class TrustedKeyEntity {

@@ -4,14 +4,14 @@ import type { User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { createOwner } from '@test-integration/db/users.js';
-import { setupTestServer } from '@test-integration/utils/index.js';
+import { createOwner } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 
-import { SUPPORTED_SCOPES } from '@/modules/mcp/mcp-protected-resource.js';
-import { McpSettingsService } from '@/modules/mcp/mcp.settings.service.js';
+import { SUPPORTED_SCOPES } from '@/modules/mcp/mcp-protected-resource';
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 
-import { OAuthServerConfig } from '../oauth-server.config.js';
-import type { OAuthController as OAuthControllerClass } from '../oauth.controller.js';
+import { OAuthServerConfig } from '../oauth-server.config';
+import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 

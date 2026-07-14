@@ -5,18 +5,18 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { StateAdapter } from 'chat';
 
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 
 import {
 	AgentChatSubscriptionStateAdapter,
 	scopeKey,
 	type SubscriptionAction,
-} from './agent-chat-subscription-state.adapter.js';
+} from './agent-chat-subscription-state.adapter';
 import {
 	AgentChatSubscriptionRepository,
 	type AgentChatSubscriptionScope,
-} from '../repositories/agent-chat-subscription.repository.js';
+} from '../repositories/agent-chat-subscription.repository';
 
 interface CreateStateAdapterOptions {
 	agentId: string;

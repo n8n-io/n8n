@@ -5,11 +5,11 @@ import type express from 'express';
 import { validate } from 'jsonschema';
 import type { IDataObject } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/credential-types.js';
-import { CredentialsHelper } from '@/credentials-helper.js';
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsHelper } from '@/credentials-helper';
 
-import { getCredential, toJsonSchema } from './credentials.service.js';
-import type { CredentialRequest } from '../../../types.js';
+import { getCredential, toJsonSchema } from './credentials.service';
+import type { CredentialRequest } from '../../../types';
 
 /**
  * Helper function to validate credential data against a credential type schema

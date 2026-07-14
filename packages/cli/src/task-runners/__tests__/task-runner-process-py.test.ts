@@ -4,8 +4,8 @@ import { TaskRunnersConfig } from '@n8n/config';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import { mock } from 'vitest-mock-extended';
 
-import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service.js';
-import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py.js';
+import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
+import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
 // Source imports `spawn` from `node:child_process` as an ESM binding, so mutating
 // `require('child_process').spawn` does not intercept it — mock the module instead.

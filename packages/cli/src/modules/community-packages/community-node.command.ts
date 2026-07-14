@@ -5,14 +5,14 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { z } from 'zod';
 
-import { BaseCommand } from '@/commands/base-command.js';
-import { CredentialsService } from '@/credentials/credentials.service.js';
+import { BaseCommand } from '@/commands/base-command';
+import { CredentialsService } from '@/credentials/credentials.service';
 
-import { CommunityPackagesService } from './community-packages.service.js';
-import { InstalledNodes } from './installed-nodes.entity.js';
-import { InstalledNodesRepository } from './installed-nodes.repository.js';
-import { InstalledPackages } from './installed-packages.entity.js';
-import { executeNpmCommand } from './npm-utils.js';
+import { CommunityPackagesService } from './community-packages.service';
+import { InstalledNodes } from './installed-nodes.entity';
+import { InstalledNodesRepository } from './installed-nodes.repository';
+import { InstalledPackages } from './installed-packages.entity';
+import { executeNpmCommand } from './npm-utils';
 
 const flagsSchema = z.object({
 	uninstall: z.boolean().describe('Uninstalls the node').optional(),

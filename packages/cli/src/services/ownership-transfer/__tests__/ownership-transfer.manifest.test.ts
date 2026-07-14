@@ -8,7 +8,7 @@ import '@n8n/db';
 import {
 	TRANSFERRED_PROJECT_RESOURCES,
 	NOT_TRANSFERRED_PROJECT_RESOURCES,
-} from '../ownership-transfer.manifest.js';
+} from '../ownership-transfer.manifest';
 
 const REPO_ROOT = path.resolve(__dirname, '../../../../../..');
 

@@ -3,7 +3,7 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command.js';
+import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
 	active: z.string().describe('Active state the workflow/s should be set to').optional(),

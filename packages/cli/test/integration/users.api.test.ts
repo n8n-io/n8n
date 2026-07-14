@@ -26,31 +26,25 @@ import {
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
-import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
-import { UsersController } from '@/controllers/users.controller.js';
-import { ExecutionService } from '@/executions/execution.service.js';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
-import { OwnershipService } from '@/services/ownership.service.js';
-import { Telemetry } from '@/telemetry/index.js';
-import { createFolder } from '@test-integration/db/folders.js';
-import { createRole } from '@test-integration/db/roles.js';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { UsersController } from '@/controllers/users.controller';
+import { ExecutionService } from '@/executions/execution.service';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { OwnershipService } from '@/services/ownership.service';
+import { Telemetry } from '@/telemetry';
+import { createFolder } from '@test-integration/db/folders';
+import { createRole } from '@test-integration/db/roles';
 
-import { SUCCESS_RESPONSE_BODY } from './shared/constants.js';
+import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	getCredentialById,
 	saveCredential,
 	shareCredentialWithUsers,
-} from './shared/db/credentials.js';
-import {
-	createAdmin,
-	createMember,
-	createOwner,
-	createUser,
-	getUserById,
-} from './shared/db/users.js';
-import type { SuperAgentTest } from './shared/types.js';
-import * as utils from './shared/utils//index.js';
-import { validateUser } from './shared/utils/users.js';
+} from './shared/db/credentials';
+import { createAdmin, createMember, createOwner, createUser, getUserById } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
+import { validateUser } from './shared/utils/users';
 
 mockInstance(Telemetry);
 mockInstance(ExecutionService);

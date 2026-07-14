@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 
-import type { QuickConnectOption } from '../quick-connect.config.js';
+import type { QuickConnectOption } from '../quick-connect.config';
 
 /**
  * Interface for quick connect handlers.

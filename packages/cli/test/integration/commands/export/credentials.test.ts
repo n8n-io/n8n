@@ -3,11 +3,11 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { ExportCredentialsCommand } from '@/commands/export/credentials.js';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { setupTestCommand } from '@test-integration/utils/test-command.js';
+import { ExportCredentialsCommand } from '@/commands/export/credentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { createCredentials } from '../../shared/db/credentials.js';
+import { createCredentials } from '../../shared/db/credentials';
 
 mockInstance(LoadNodesAndCredentials);
 

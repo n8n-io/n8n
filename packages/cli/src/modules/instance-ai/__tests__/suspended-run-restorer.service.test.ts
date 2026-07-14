@@ -4,7 +4,7 @@ import type { SuspendedRunState } from '@n8n/instance-ai';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
-import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity.js';
+import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
 import {
 	SuspendedRunRestorer,
 	type OrphanConfirmationStore,
@@ -13,7 +13,7 @@ import {
 	type RunSnapshotCanceller,
 	type SuspendedRunRebuilder,
 	type SuspendedRunStateRegistry,
-} from '../suspended-run-restorer.service.js';
+} from '../suspended-run-restorer.service';
 
 type Mocks = {
 	logger: MockProxy<Logger>;

@@ -8,10 +8,10 @@ import {
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 
-import { TestWebhooks } from '@/webhooks/test-webhooks.js';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
 
-import { createMember, createOwner } from '../shared/db/users.js';
-import { setupTestServer } from '../shared/utils/index.js';
+import { createMember, createOwner } from '../shared/db/users';
+import { setupTestServer } from '../shared/utils';
 
 const testWebhooks = mockInstance(TestWebhooks);
 

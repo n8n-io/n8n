@@ -11,15 +11,15 @@ import {
 	SYSTEM_RESOLVER_ID,
 	SYSTEM_RESOLVER_NAME,
 	SYSTEM_RESOLVER_TYPE,
-} from '@/modules/dynamic-credentials.ee/constants.js';
-import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository.js';
-import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service.js';
-import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service.js';
-import { Telemetry } from '@/telemetry/index.js';
+} from '@/modules/dynamic-credentials.ee/constants';
+import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
+import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
+import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
+import { Telemetry } from '@/telemetry';
 
-import { createUser } from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { createUser } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 

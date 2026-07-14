@@ -30,18 +30,18 @@ import {
 } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
-import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service.js';
-import { createFolder } from '@test-integration/db/folders.js';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
+import { createFolder } from '@test-integration/db/folders';
 
 import {
 	getCredentialById,
 	saveCredential,
 	shareCredentialWithProjects,
-} from './shared/db/credentials.js';
-import { createChatUser, createMember, createOwner, createUser } from './shared/db/users.js';
-import * as utils from './shared/utils//index.js';
+} from './shared/db/credentials';
+import { createChatUser, createMember, createOwner, createUser } from './shared/db/users';
+import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],

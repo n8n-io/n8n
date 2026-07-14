@@ -1,4 +1,4 @@
-import { ProxyTokenManager } from '../proxy-token-manager.js';
+import { ProxyTokenManager } from '../proxy-token-manager';
 
 /** Build a minimal JWT with the given `exp` (seconds since epoch). */
 function makeJwt(exp: number): string {

@@ -10,7 +10,7 @@ import {
 	CHAT_HUB_VECTOR_STORE_QDRANT_NODE_TYPE,
 } from 'n8n-workflow';
 
-import type { ChatTriggerResponseMode } from './chat-hub.types.js';
+import type { ChatTriggerResponseMode } from './chat-hub.types';
 
 export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
 

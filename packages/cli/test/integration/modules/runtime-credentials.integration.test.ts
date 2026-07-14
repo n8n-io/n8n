@@ -32,10 +32,10 @@ import type {
 import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowRunner } from '@/workflow-runner.js';
+import { WorkflowRunner } from '@/workflow-runner';
 
-import { createOwner } from '../shared/db/users.js';
-import * as utils from '../shared/utils/index.js';
+import { createOwner } from '../shared/db/users';
+import * as utils from '../shared/utils';
 
 // ---------------------------------------------------------------------------
 // Inline test nodes

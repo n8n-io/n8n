@@ -8,9 +8,9 @@ import {
 } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
 
-import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config.js';
-import type { ToolExecutor } from '../json-config/from-json-config.js';
-import { buildVectorStore } from '../json-config/vector-store-factory.js';
+import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
+import type { ToolExecutor } from '../json-config/from-json-config';
+import { buildVectorStore } from '../json-config/vector-store-factory';
 
 vi.mock('../json-config/vector-store-factory', () => ({
 	buildVectorStore: vi.fn(),

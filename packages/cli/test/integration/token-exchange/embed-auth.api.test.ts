@@ -7,12 +7,12 @@ import jwt from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
 import { generateKeyPairSync, randomUUID } from 'node:crypto';
 
-import { EventService } from '@/events/event.service.js';
-import { qualifiedProviderId } from '@/modules/token-exchange/services/identity-resolution.service.js';
-import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config.js';
+import { EventService } from '@/events/event.service';
+import { qualifiedProviderId } from '@/modules/token-exchange/services/identity-resolution.service';
+import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 
-import { createOwner, createUser } from '../shared/db/users.js';
-import * as utils from '../shared/utils/index.js';
+import { createOwner, createUser } from '../shared/db/users';
+import * as utils from '../shared/utils';
 
 // --- RSA key pair for signing test JWTs ---
 

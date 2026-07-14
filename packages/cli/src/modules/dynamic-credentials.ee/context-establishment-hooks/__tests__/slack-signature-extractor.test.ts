@@ -3,7 +3,7 @@ import type { ContextEstablishmentOptions } from '@n8n/decorators';
 import type { INodeExecutionData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
-import { SlackSignatureExtractor } from '../slack-signature-extractor.js';
+import { SlackSignatureExtractor } from '../slack-signature-extractor';
 
 function createSlackTriggerItem(
 	overrides: Partial<{

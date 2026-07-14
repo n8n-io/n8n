@@ -9,16 +9,16 @@ import { strict as assert } from 'node:assert';
 import http from 'node:http';
 import type { Server } from 'node:http';
 
-import { CredentialsOverwrites } from '@/credentials-overwrites.js';
-import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error.js';
-import { NonJsonBodyError } from '@/errors/non-json-body.error.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import type { ICredentialsOverwrite } from '@/interfaces.js';
-import { PrometheusMetricsService } from '@/metrics/prometheus/index.js';
-import { rawBodyReader, bodyParser } from '@/middlewares/index.js';
-import * as ResponseHelper from '@/response-helper.js';
-import { RedisClientService } from '@/services/redis-client.service.js';
-import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util.js';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error';
+import { NonJsonBodyError } from '@/errors/non-json-body.error';
+import { ExternalHooks } from '@/external-hooks';
+import type { ICredentialsOverwrite } from '@/interfaces';
+import { PrometheusMetricsService } from '@/metrics/prometheus';
+import { rawBodyReader, bodyParser } from '@/middlewares';
+import * as ResponseHelper from '@/response-helper';
+import { RedisClientService } from '@/services/redis-client.service';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 
 export type WorkerServerEndpointsConfig = {
 	/** Whether the health check endpoint is enabled. */

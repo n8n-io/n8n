@@ -7,7 +7,7 @@ import {
 	isWorkflowIdValid,
 	setMicrosoftObservabilityDefaults,
 	containsExpression,
-} from '../utils.js';
+} from '../utils';
 
 describe('shouldAssignExecuteMethod', () => {
 	it('should return true when node has no execute, poll, trigger, webhook (unless declarative), or methods', () => {

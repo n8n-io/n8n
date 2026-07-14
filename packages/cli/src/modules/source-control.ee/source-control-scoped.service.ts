@@ -11,11 +11,11 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import type { DataTable } from '@/modules/data-table/data-table.entity.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { DataTable } from '@/modules/data-table/data-table.entity';
 
-import { SourceControlContextFactory } from './source-control-context.factory.js';
-import { SourceControlContext } from './types/source-control-context.js';
+import { SourceControlContextFactory } from './source-control-context.factory';
+import { SourceControlContext } from './types/source-control-context';
 
 @Service()
 export class SourceControlScopedService {

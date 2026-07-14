@@ -1,5 +1,5 @@
-import type { ResolvedCredentialMatch, UsableCredential } from './credential-matcher.js';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema.js';
+import type { ResolvedCredentialMatch, UsableCredential } from './credential-matcher';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 function selectBestCandidate(
 	candidates: UsableCredential[],

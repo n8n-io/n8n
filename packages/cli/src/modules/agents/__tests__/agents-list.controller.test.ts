@@ -1,8 +1,8 @@
 import { mock } from 'vitest-mock-extended';
 import type { Response } from 'express';
 
-import type { AgentsService } from '../agents.service.js';
-import { AgentsListController } from '../agents-list.controller.js';
+import type { AgentsService } from '../agents.service';
+import { AgentsListController } from '../agents-list.controller';
 
 describe('AgentsListController', () => {
 	function makeController(agentsService = mock<AgentsService>()) {

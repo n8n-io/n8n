@@ -18,18 +18,18 @@ import { Not } from '@n8n/typeorm';
 import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
 
-import config from '@/config/index.js';
-import { saveLdapSynchronization } from '@/modules/ldap.ee/helpers.ee.js';
-import { LdapService } from '@/modules/ldap.ee/ldap.service.ee.js';
+import config from '@/config';
+import { saveLdapSynchronization } from '@/modules/ldap.ee/helpers.ee';
+import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
 import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers.js';
+} from '@/sso.ee/sso-helpers';
 
-import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users.js';
-import { createLdapConfig, defaultLdapConfig } from '../shared/ldap.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import * as utils from '../shared/utils//index.js';
+import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
+import { createLdapConfig, defaultLdapConfig } from '../shared/ldap';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 vi.mock('@/telemetry');
 

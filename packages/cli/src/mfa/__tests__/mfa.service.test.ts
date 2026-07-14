@@ -5,11 +5,11 @@ import type { Cipher } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service.js';
+import type { CacheService } from '@/services/cache/cache.service';
 
-import { MFA_ENFORCE_SETTING } from '../constants.js';
-import { MFA_CACHE_KEY, MfaService } from '../mfa.service.js';
-import type { TOTPService } from '../totp.service.js';
+import { MFA_ENFORCE_SETTING } from '../constants';
+import { MFA_CACHE_KEY, MfaService } from '../mfa.service';
+import type { TOTPService } from '../totp.service';
 
 describe('MfaService', () => {
 	let mfaService: MfaService;

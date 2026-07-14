@@ -6,10 +6,10 @@ import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 
-import { getDateRangesCommonTableExpressionQuery } from './insights-by-period-query.helper.js';
-import { InsightsByPeriod } from '../entities/insights-by-period.js';
-import type { PeriodUnit, TypeUnit } from '../entities/insights-shared.js';
-import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared.js';
+import { getDateRangesCommonTableExpressionQuery } from './insights-by-period-query.helper';
+import { InsightsByPeriod } from '../entities/insights-by-period';
+import type { PeriodUnit, TypeUnit } from '../entities/insights-shared';
+import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
 const displayTypeName = {

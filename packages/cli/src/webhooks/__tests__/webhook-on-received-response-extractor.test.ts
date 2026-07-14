@@ -1,7 +1,7 @@
 import type { IWebhookResponseData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor.js';
+import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor';
 
 describe('extractWebhookOnReceivedResponse', () => {
 	const webhookResultData = mock<IWebhookResponseData>();

@@ -16,7 +16,7 @@ import type {
 } from 'n8n-workflow';
 import * as assert from 'node:assert/strict';
 
-import { DeduplicationError } from '@/errors/deduplication.error.js';
+import { DeduplicationError } from '@/errors/deduplication.error';
 
 export class DeduplicationHelper implements IDataDeduplicator {
 	private static sortEntries(

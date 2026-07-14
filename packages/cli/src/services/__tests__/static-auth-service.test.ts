@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 
-import { StaticAuthService } from '../static-auth-service.js';
+import { StaticAuthService } from '../static-auth-service';
 
 describe('StaticAuthService', () => {
 	describe('getStaticAuthMiddleware', () => {

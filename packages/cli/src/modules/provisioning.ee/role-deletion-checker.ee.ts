@@ -1,7 +1,7 @@
 import { RoleMappingRuleRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { RoleDeletionChecker } from '@/services/role-deletion-check-proxy.service.js';
+import type { RoleDeletionChecker } from '@/services/role-deletion-check-proxy.service';
 
 /**
  * Blocks deletion of a custom role while it is still targeted by an SSO role

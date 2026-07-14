@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import type { Mock } from 'vitest';
 
-import { CorsService } from '../cors-service.js';
+import { CorsService } from '../cors-service';
 
 describe('CorsService', () => {
 	let corsService: CorsService;

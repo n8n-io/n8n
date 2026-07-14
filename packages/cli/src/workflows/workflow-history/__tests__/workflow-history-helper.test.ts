@@ -2,8 +2,8 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { License } from '@/license.js';
-import { getWorkflowHistoryPruneTime } from '@/workflows/workflow-history/workflow-history-helper.js';
+import { License } from '@/license';
+import { getWorkflowHistoryPruneTime } from '@/workflows/workflow-history/workflow-history-helper';
 
 let licensePruneTime = -1;
 const globalConfig = Container.get(GlobalConfig);

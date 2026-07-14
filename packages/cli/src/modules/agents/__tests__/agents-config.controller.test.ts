@@ -1,8 +1,8 @@
-import { AgentsConfigController } from '../agents-config.controller.js';
+import { AgentsConfigController } from '../agents-config.controller';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
-} from './test-utils/controller-route-metadata.js';
+} from './test-utils/controller-route-metadata';
 
 describe('AgentsConfigController route access scopes', () => {
 	expectProjectScopedAgentRoutes(AgentsConfigController);

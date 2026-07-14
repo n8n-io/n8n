@@ -1,4 +1,4 @@
-import { ForbiddenError } from './forbidden.error.js';
+import { ForbiddenError } from './forbidden.error';
 
 export class InvalidMfaCodeError extends ForbiddenError {
 	constructor(hint?: string) {

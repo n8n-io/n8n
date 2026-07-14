@@ -2,9 +2,9 @@ import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import config from '@/config/index.js';
+import config from '@/config';
 
-import { isSsoCurrentAuthenticationMethod, reloadAuthenticationMethod } from '../sso-helpers.js';
+import { isSsoCurrentAuthenticationMethod, reloadAuthenticationMethod } from '../sso-helpers';
 
 vi.mock('@/config');
 

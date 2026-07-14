@@ -1,13 +1,13 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
-import type { DisconnectErrorOptions } from '@/task-runners/task-broker/task-broker-types.js';
+import type { DisconnectErrorOptions } from '@/task-runners/task-broker/task-broker-types';
 
-import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer.js';
-import { TaskRunnerOomError } from './errors/task-runner-oom-error.js';
-import { SlidingWindowSignal } from './sliding-window-signal.js';
-import type { ExitReason, TaskRunnerProcessEventMap } from './task-runner-process-base.js';
-import { JsTaskRunnerProcess } from './task-runner-process-js.js';
+import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
+import { TaskRunnerOomError } from './errors/task-runner-oom-error';
+import { SlidingWindowSignal } from './sliding-window-signal';
+import type { ExitReason, TaskRunnerProcessEventMap } from './task-runner-process-base';
+import { JsTaskRunnerProcess } from './task-runner-process-js';
 
 /**
  * Analyzes the disconnect reason of a task runner process to provide a more

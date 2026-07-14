@@ -6,11 +6,11 @@ import { mock } from 'vitest-mock-extended';
 import type {
 	ProtectedResource,
 	ProtectedResourceRegistry,
-} from '@/services/protected-resource.registry.js';
-import type { UrlService } from '@/services/url.service.js';
+} from '@/services/protected-resource.registry';
+import type { UrlService } from '@/services/url.service';
 
-import { OAuthServerService } from '../oauth-server.service.js';
-import type { OAuthController as OAuthControllerClass } from '../oauth.controller.js';
+import { OAuthServerService } from '../oauth-server.service';
+import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
 
 // The controller module resolves `OAuthServerService` at import time, which
 // constructs TypeORM repositories (needs a live DataSource). Register a mock for

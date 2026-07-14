@@ -11,10 +11,10 @@ import RudderStack from '@rudderstack/rudder-sdk-node';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { AuthService } from '@/auth/auth.service.js';
-import type { Invitation } from '@/interfaces.js';
-import { HooksService } from '@/services/hooks.service.js';
-import type { UserService } from '@/services/user.service.js';
+import type { AuthService } from '@/auth/auth.service';
+import type { Invitation } from '@/interfaces';
+import { HooksService } from '@/services/hooks.service';
+import type { UserService } from '@/services/user.service';
 
 vi.mock('@rudderstack/rudder-sdk-node');
 

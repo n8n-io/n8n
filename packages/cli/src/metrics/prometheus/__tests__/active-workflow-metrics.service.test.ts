@@ -4,9 +4,9 @@ import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
-import type { CacheService } from '@/services/cache/cache.service.js';
+import type { CacheService } from '@/services/cache/cache.service';
 
-import { PrometheusActiveWorkflowMetricsService } from '../active-workflow-metrics.service.js';
+import { PrometheusActiveWorkflowMetricsService } from '../active-workflow-metrics.service';
 
 vi.mock('prom-client');
 

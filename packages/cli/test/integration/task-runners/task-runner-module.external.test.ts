@@ -2,10 +2,10 @@ import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer.js';
-import { MissingAuthTokenError } from '@/task-runners/errors/missing-auth-token.error.js';
-import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server.js';
-import { TaskRunnerModule } from '@/task-runners/task-runner-module.js';
+import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
+import { MissingAuthTokenError } from '@/task-runners/errors/missing-auth-token.error';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 describe('TaskRunnerModule in external mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);

@@ -2,9 +2,9 @@ import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, TagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createUserShell } from './shared/db/users.js';
-import type { SuperAgentTest } from './shared/types.js';
-import * as utils from './shared/utils//index.js';
+import { createUserShell } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 let authOwnerAgent: SuperAgentTest;
 

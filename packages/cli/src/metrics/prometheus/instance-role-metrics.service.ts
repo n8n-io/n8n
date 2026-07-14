@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import promClient, { Gauge } from 'prom-client';
 
-import type { PrometheusMetricsCollector } from './base.js';
+import type { PrometheusMetricsCollector } from './base';
 
 /**
  * Exposes `n8n_instance_role_leader` gauge (1 = leader, 0 = follower), updated on leader events.

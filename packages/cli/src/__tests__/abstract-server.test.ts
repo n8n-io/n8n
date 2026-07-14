@@ -5,8 +5,8 @@ import type express from 'express';
 import type * as http from 'node:http';
 import { mock } from 'vitest-mock-extended';
 
-import { AbstractServer } from '@/abstract-server.js';
-import { ExternalHooks } from '@/external-hooks.js';
+import { AbstractServer } from '@/abstract-server';
+import { ExternalHooks } from '@/external-hooks';
 
 const mockServer = mock<http.Server>();
 

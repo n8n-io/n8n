@@ -1,8 +1,8 @@
 import type { BuiltTool } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentKnowledgeSandboxService } from '../../../agent-knowledge-sandbox.service.js';
-import { createKnowledgeRetrievalTools } from '../search-knowledge.tool.js';
+import type { AgentKnowledgeSandboxService } from '../../../agent-knowledge-sandbox.service';
+import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';

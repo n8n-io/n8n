@@ -7,4 +7,4 @@ export {
 	type InstanceAiTracingSnapshotStorage,
 	type MessageTraceFinalization,
 	type OrchestratorResumeReason,
-} from './instance-ai-tracing.service.js';
+} from './instance-ai-tracing.service';

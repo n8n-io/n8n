@@ -1,7 +1,7 @@
 import type { ApiKeyScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 
-import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware.js';
+import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
 // Mock middleware factories before any handler is loaded via require()
 // The tagged wrapper must still have __apiKeyScope for introspection

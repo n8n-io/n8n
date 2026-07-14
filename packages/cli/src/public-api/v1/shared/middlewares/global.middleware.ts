@@ -6,13 +6,13 @@ import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { License } from '@/license.js';
-import { userHasScopes } from '@/permissions.ee/check-access.js';
-import type { PaginatedRequest } from '@/public-api/types.js';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { License } from '@/license';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import type { PaginatedRequest } from '@/public-api/types';
 
-import { decodeCursor } from '../services/pagination.service.js';
+import { decodeCursor } from '../services/pagination.service';
 
 const UNLIMITED_USERS_QUOTA = -1;
 

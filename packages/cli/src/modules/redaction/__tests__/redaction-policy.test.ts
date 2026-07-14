@@ -1,7 +1,7 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import type { WorkflowSettings } from 'n8n-workflow';
 
-import { policyForFloor, policyMeetsFloor } from '../redaction-policy.js';
+import { policyForFloor, policyMeetsFloor } from '../redaction-policy';
 
 type Policy = WorkflowSettings.RedactionPolicy;
 

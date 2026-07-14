@@ -4,7 +4,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
 import promClient from 'prom-client';
 
-import { PrometheusDnsCacheMetricsService } from '../dns-cache-metrics.service.js';
+import { PrometheusDnsCacheMetricsService } from '../dns-cache-metrics.service';
 
 vi.mock('prom-client');
 

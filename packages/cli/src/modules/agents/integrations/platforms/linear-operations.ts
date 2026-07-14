@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import type { ChatInstance } from '../chat-integration.service.js';
-import { INTEGRATION_ERROR_CODES } from '../integration-error-codes.js';
+import type { ChatInstance } from '../chat-integration.service';
+import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
 import {
 	booleanProperty,
 	hasUpdateIssueField,
@@ -15,14 +15,14 @@ import {
 	stringProperty,
 	unsupportedAction,
 	unsupportedQuery,
-} from '../integration-helpers.js';
+} from '../integration-helpers';
 import type {
 	IntegrationAction,
 	IntegrationActionResult,
 	IntegrationContextQuery,
 	IntegrationMessageSubject,
 	IntegrationToolConnectionDescriptor,
-} from '../integration-tools.js';
+} from '../integration-tools';
 
 const PLATFORM = 'linear';
 

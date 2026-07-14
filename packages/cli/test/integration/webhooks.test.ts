@@ -5,13 +5,13 @@ import { agent as testAgent } from 'supertest';
 import type SuperAgentTest from 'supertest/lib/agent';
 import { mock } from 'vitest-mock-extended';
 
-import { ExternalHooks } from '@/external-hooks.js';
-import { LiveWebhooks } from '@/webhooks/live-webhooks.js';
-import { TestWebhooks } from '@/webhooks/test-webhooks.js';
-import { WaitingForms } from '@/webhooks/waiting-forms.js';
-import { WaitingWebhooks } from '@/webhooks/waiting-webhooks.js';
-import { WebhookServer } from '@/webhooks/webhook-server.js';
-import type { IWebhookResponseCallbackData } from '@/webhooks/webhook.types.js';
+import { ExternalHooks } from '@/external-hooks';
+import { LiveWebhooks } from '@/webhooks/live-webhooks';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+import { WaitingForms } from '@/webhooks/waiting-forms';
+import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { WebhookServer } from '@/webhooks/webhook-server';
+import type { IWebhookResponseCallbackData } from '@/webhooks/webhook.types';
 
 let agent: SuperAgentTest;
 

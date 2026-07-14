@@ -7,20 +7,20 @@ import {
 } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { DataTableService } from '@/modules/data-table/data-table.service.js';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error.js';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
+import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 
-import type { DataTableRequest } from '../../../types.js';
-import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
+import type { DataTableRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	projectScope,
 	validCursor,
-} from '../../shared/middlewares/global.middleware.js';
-import { encodeNextCursor } from '../../shared/services/pagination.service.js';
+} from '../../shared/middlewares/global.middleware';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 const handleError = (error: unknown) => {
 	if (error instanceof DataTableNotFoundError) {

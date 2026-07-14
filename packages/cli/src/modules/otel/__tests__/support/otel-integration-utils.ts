@@ -12,12 +12,12 @@ import { createRunExecutionData } from 'n8n-workflow';
 import type { IDataObject, INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
 import path from 'path';
 
-import { WorkflowRunner } from '@/workflow-runner.js';
-import * as utils from '@test-integration/utils/index.js';
+import { WorkflowRunner } from '@/workflow-runner';
+import * as utils from '@test-integration/utils';
 
-import { OtelTestProvider } from './otel-test-provider.js';
-import { TestNodeWithTracing } from './test-node-with-tracing.js';
-import { OtelConfig } from '../../otel.config.js';
+import { OtelTestProvider } from './otel-test-provider';
+import { TestNodeWithTracing } from './test-node-with-tracing';
+import { OtelConfig } from '../../otel.config';
 
 const BASE_DIR = path.resolve(__dirname, '../../../../../..');
 

@@ -1,7 +1,7 @@
 import type { BinaryDataConfig } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { InMemoryBinaryDataRule } from '../in-memory-binary-data.rule.js';
+import { InMemoryBinaryDataRule } from '../in-memory-binary-data.rule';
 
 describe('InMemoryBinaryDataRule', () => {
 	let rule: InMemoryBinaryDataRule;

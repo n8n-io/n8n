@@ -5,8 +5,8 @@ import { EvaluationConfigRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { nanoid } from 'nanoid';
 
-import { EvaluationApiError } from './evaluation-api-error.js';
-import { EvaluationConfigValidator } from './evaluation-config-validator.js';
+import { EvaluationApiError } from './evaluation-api-error';
+import { EvaluationConfigValidator } from './evaluation-config-validator';
 
 @Service()
 export class EvaluationConfigService {

@@ -13,10 +13,10 @@ import type {
 } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { CredentialMissingIdError } from '@/errors/credential-missing-id.error.js';
-import { CredentialNotFoundError } from '@/errors/credential-not-found.error.js';
+import { CredentialMissingIdError } from '@/errors/credential-missing-id.error';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 
-import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper.js';
+import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
 
 const mockLogger = {
 	info: vi.fn(),

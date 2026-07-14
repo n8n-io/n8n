@@ -4,9 +4,9 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { z } from 'zod';
 
-import { SAML_PREFERENCES_DB_KEY } from '@/modules/sso-saml/constants.js';
+import { SAML_PREFERENCES_DB_KEY } from '@/modules/sso-saml/constants';
 
-import { InstanceBootstrappingError } from '../../instance-bootstrapping.error.js';
+import { InstanceBootstrappingError } from '../../instance-bootstrapping.error';
 
 const samlEnvSchema = z
 	.object({

@@ -5,24 +5,24 @@ import { Container } from '@n8n/di';
 import { BinaryDataConfig } from 'n8n-core';
 import { z } from 'zod';
 
-import { ActiveExecutions } from '@/active-executions.js';
-import { N8N_VERSION } from '@/constants.js';
-import { CredentialsOverwrites } from '@/credentials-overwrites.js';
-import { DeprecationService } from '@/deprecation/deprecation.service.js';
-import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic.js';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
-import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay.js';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { Publisher } from '@/scaling/pubsub/publisher.service.js';
-import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry.js';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service.js';
-import type { ScalingService } from '@/scaling/scaling.service.js';
-import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server.js';
-import { ExecutionStopService } from '@/scaling/execution-stop.service.js';
-import { WorkerStatusService } from '@/scaling/worker-status.service.ee.js';
-import { JwtService } from '@/services/jwt.service.js';
+import { ActiveExecutions } from '@/active-executions';
+import { N8N_VERSION } from '@/constants';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import type { ScalingService } from '@/scaling/scaling.service';
+import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server';
+import { ExecutionStopService } from '@/scaling/execution-stop.service';
+import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
+import { JwtService } from '@/services/jwt.service';
 
-import { BaseCommand } from './base-command.js';
+import { BaseCommand } from './base-command';
 
 const flagsSchema = z.object({
 	concurrency: z.number().int().default(10).describe('How many jobs can run in parallel.'),

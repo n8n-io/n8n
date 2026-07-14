@@ -5,12 +5,12 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller.js';
-import { CredentialsOverwrites } from '@/credentials-overwrites.js';
-import { EventService } from '@/events/event.service.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { OauthService } from '@/oauth/oauth.service.js';
-import type { OAuthRequest } from '@/requests.js';
+import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { OauthService } from '@/oauth/oauth.service';
+import type { OAuthRequest } from '@/requests';
 
 describe('OAuth1CredentialController', () => {
 	const oauthService = mockInstance(OauthService);

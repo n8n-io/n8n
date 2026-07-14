@@ -8,8 +8,8 @@ import type {
 import type { InstanceAiContext } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceAiThread } from '../entities/instance-ai-thread.entity.js';
-import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository.js';
+import type { InstanceAiThread } from '../entities/instance-ai-thread.entity';
+import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 // The adapter service (a value dependency of the service under test) pulls in
 // the heavy AI runtime at module-load time; stub it out.
@@ -19,8 +19,8 @@ vi.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData: vi.fn((value: unknown) => value),
 }));
 
-import type { InstanceAiAdapterService } from '../instance-ai.adapter.service.js';
-import { InstanceAiTemporaryWorkflowService } from '../instance-ai-temporary-workflow.service.js';
+import type { InstanceAiAdapterService } from '../instance-ai.adapter.service';
+import { InstanceAiTemporaryWorkflowService } from '../instance-ai-temporary-workflow.service';
 
 const fakeUser = mock<User>({ id: 'user-1' });
 

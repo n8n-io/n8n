@@ -1,5 +1,5 @@
-import { createNode, createWorkflow } from '../../../__tests__/test-helpers.js';
-import { GetPairedItemRule } from '../get-paired-item.rule.js';
+import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
+import { GetPairedItemRule } from '../get-paired-item.rule';
 
 describe('GetPairedItemRule', () => {
 	let rule: GetPairedItemRule;

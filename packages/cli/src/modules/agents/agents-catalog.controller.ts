@@ -8,11 +8,11 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, Param, ProjectScope, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service.js';
-import { AgentModelCatalogService } from './agent-model-catalog.service.js';
-import { filterOfferedAgentModelProviders } from './model-catalog.js';
+import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
+import { AgentModelCatalogService } from './agent-model-catalog.service';
+import { filterOfferedAgentModelProviders } from './model-catalog';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsCatalogController {

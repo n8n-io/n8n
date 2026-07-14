@@ -13,9 +13,9 @@ import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
 
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 
-import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
-import { WebhookService } from '@/webhooks/webhook.service.js';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { WebhookService } from '@/webhooks/webhook.service';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 function hasErrorDetail(error: unknown): error is Error & { detail: string } {
 	return (

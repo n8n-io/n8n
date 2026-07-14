@@ -9,13 +9,13 @@ import {
 } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { EventService } from '@/events/event.service.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { MfaService } from '@/mfa/mfa.service.js';
-import { MFA } from '@/requests.js';
+import { AuthService } from '@/auth/auth.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { MfaService } from '@/mfa/mfa.service';
+import { MFA } from '@/requests';
 
 @RestController('/mfa')
 export class MFAController {

@@ -5,9 +5,9 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { PrometheusQueueMetricsService } from '../queue-metrics.service.js';
+import { PrometheusQueueMetricsService } from '../queue-metrics.service';
 
-import type { EventService } from '@/events/event.service.js';
+import type { EventService } from '@/events/event.service';
 
 vi.mock('prom-client');
 

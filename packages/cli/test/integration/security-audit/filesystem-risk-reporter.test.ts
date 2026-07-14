@@ -4,13 +4,10 @@ import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	FILESYSTEM_INTERACTION_NODE_TYPES,
-	FILESYSTEM_REPORT,
-} from '@/security-audit/constants.js';
-import { SecurityAuditService } from '@/security-audit/security-audit.service.js';
+import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/security-audit/constants';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
 
-import { getRiskSection, saveManualTriggerWorkflow } from './utils.js';
+import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 
 let securityAuditService: SecurityAuditService;
 

@@ -1,6 +1,6 @@
 import { IsBoolean, IsHexColor, IsOptional, IsString, IsIn, Matches } from 'class-validator';
 
-import { KeyPairType } from './key-pair-type.js';
+import { KeyPairType } from './key-pair-type';
 
 export class SourceControlPreferences {
 	constructor(preferences: Partial<SourceControlPreferences> | undefined = undefined) {

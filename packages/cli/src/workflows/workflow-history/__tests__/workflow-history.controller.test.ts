@@ -4,13 +4,13 @@ import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error.js';
-import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error.js';
-import type { WorkflowHistoryRequest } from '@/requests.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
+import type { WorkflowHistoryRequest } from '@/requests';
 
-import { WorkflowHistoryController } from '../workflow-history.controller.js';
-import { WorkflowHistoryService } from '../workflow-history.service.js';
+import { WorkflowHistoryController } from '../workflow-history.controller';
+import { WorkflowHistoryService } from '../workflow-history.service';
 
 describe('WorkflowHistoryController', () => {
 	const historyService = mockInstance(WorkflowHistoryService);

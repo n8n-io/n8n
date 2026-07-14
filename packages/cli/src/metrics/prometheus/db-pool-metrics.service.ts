@@ -3,7 +3,7 @@ import { DbConnection, DbConnectionMetrics, type DbPoolStats } from '@n8n/db';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import type { PrometheusMetricsCollector } from './base.js';
+import type { PrometheusMetricsCollector } from './base';
 
 @Service()
 export class PrometheusDbPoolMetricsService implements PrometheusMetricsCollector {

@@ -1,8 +1,8 @@
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
 
-import { MAX_CSRF_AGE } from '@/oauth/types.js';
-import { CacheService } from '@/services/cache/cache.service.js';
+import { MAX_CSRF_AGE } from '@/oauth/types';
+import { CacheService } from '@/services/cache/cache.service';
 
 /**
  * A pending dynamic-credential authorization, captured at credential-gate time and

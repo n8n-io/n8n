@@ -2,9 +2,9 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import { EventService } from '@/events/event.service.js';
+import { EventService } from '@/events/event.service';
 
-import type { PrometheusMetricsCollector } from './base.js';
+import type { PrometheusMetricsCollector } from './base';
 
 /**
  * Tracks token exchange (RFC 8693) and embed login flow metrics. Always enabled.

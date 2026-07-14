@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { CommunityPackagesConfig } from '../community-packages.config.js';
+import { CommunityPackagesConfig } from '../community-packages.config';
 
 describe('CommunityPackagesConfig', () => {
 	let envSnapshot: NodeJS.ProcessEnv;

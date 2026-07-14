@@ -1,7 +1,7 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ObjectStoreService } from 'n8n-core';
 
-import type { ByteStore, ByteStoreKey } from './types.js';
+import type { ByteStore, ByteStoreKey } from './types';
 
 export class S3ByteStore implements ByteStore {
 	constructor(private readonly objectStore: ObjectStoreService) {}

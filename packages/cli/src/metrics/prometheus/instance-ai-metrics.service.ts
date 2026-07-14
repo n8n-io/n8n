@@ -2,11 +2,11 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import { EventService } from '@/events/event.service.js';
-import { InstanceAiRunProbe } from '@/modules/instance-ai/instance-ai-run-probe.js';
+import { EventService } from '@/events/event.service';
+import { InstanceAiRunProbe } from '@/modules/instance-ai/instance-ai-run-probe';
 
-import type { PrometheusMetricsCollector } from './base.js';
-import { DURATION_BUCKETS_SECONDS } from './constant.js';
+import type { PrometheusMetricsCollector } from './base';
+import { DURATION_BUCKETS_SECONDS } from './constant';
 
 /**
  * Tracks Instance AI run counts, durations, and tool-call outcomes, driven off the

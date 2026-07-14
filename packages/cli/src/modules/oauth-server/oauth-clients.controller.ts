@@ -9,9 +9,9 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Param, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { OAuthServerService } from './oauth-server.service.js';
+import { OAuthServerService } from './oauth-server.service';
 
 @RestController('/mcp/oauth-clients')
 export class OAuthClientsController {

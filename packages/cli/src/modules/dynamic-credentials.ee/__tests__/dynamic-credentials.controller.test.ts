@@ -6,22 +6,22 @@ import type { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee.js';
-import { EventService } from '@/events/event.service.js';
-import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver.js';
-import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository.js';
-import { DynamicCredentialsController } from '@/modules/dynamic-credentials.ee/dynamic-credentials.controller.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { EventService } from '@/events/event.service';
+import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
+import { DynamicCredentialsController } from '@/modules/dynamic-credentials.ee/dynamic-credentials.controller';
 import {
 	AuthorizeIntentService,
 	CredentialConnectionStatusService,
 	DynamicCredentialResolverRegistry,
 	DynamicCredentialService,
-} from '@/modules/dynamic-credentials.ee/services/index.js';
-import { OauthService } from '@/oauth/oauth.service.js';
-import { UrlService } from '@/services/url.service.js';
+} from '@/modules/dynamic-credentials.ee/services';
+import { OauthService } from '@/oauth/oauth.service';
+import { UrlService } from '@/services/url.service';
 
-import { DynamicCredentialWebService } from '../services/dynamic-credential-web.service.js';
+import { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 
 vi.mock('axios');
 

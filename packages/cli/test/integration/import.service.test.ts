@@ -24,11 +24,11 @@ import { v4 as uuid } from 'uuid';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service.js';
-import { ImportService } from '@/services/import.service.js';
-import type { WorkflowService } from '@/workflows/workflow.service.js';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { ImportService } from '@/services/import.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { createMember, createOwner } from './shared/db/users.js';
+import { createMember, createOwner } from './shared/db/users';
 
 describe('ImportService', () => {
 	let importService: ImportService;

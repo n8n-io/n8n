@@ -7,11 +7,11 @@ import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import type { PostHogClient } from '@/posthog/index.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { PostHogClient } from '@/posthog';
 
-import { EvalInsightsController } from '../eval-insights.controller.ee.js';
-import type { EvalInsightsService } from '../eval-insights.service.js';
+import { EvalInsightsController } from '../eval-insights.controller.ee';
+import type { EvalInsightsService } from '../eval-insights.service';
 
 describe('EvalInsightsController', () => {
 	let controller: EvalInsightsController;

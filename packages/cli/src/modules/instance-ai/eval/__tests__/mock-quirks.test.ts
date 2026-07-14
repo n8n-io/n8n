@@ -4,7 +4,7 @@ import {
 	MOCK_QUIRKS,
 	quirkMatches,
 	type MockQuirk,
-} from '../mock-quirks.js';
+} from '../mock-quirks';
 
 describe('quirkMatches', () => {
 	const serviceWide: MockQuirk = {

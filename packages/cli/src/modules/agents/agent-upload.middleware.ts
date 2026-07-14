@@ -9,7 +9,7 @@ import multer from 'multer';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const allowedAgentFileExtensions = new Set<string>(ALLOWED_AGENT_FILE_EXTENSIONS);
 

@@ -3,9 +3,9 @@ import type { DeploymentKey, User } from '@n8n/db';
 import { DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createMember, createOwner } from './shared/db/users.js';
-import type { SuperAgentTest } from './shared/types.js';
-import * as utils from './shared/utils//index.js';
+import { createMember, createOwner } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['encryption-keys'] });
 

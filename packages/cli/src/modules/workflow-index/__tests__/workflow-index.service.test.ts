@@ -9,9 +9,9 @@ import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service.js';
+import { EventService } from '@/events/event.service';
 
-import { WorkflowIndexService } from '../workflow-index.service.js';
+import { WorkflowIndexService } from '../workflow-index.service';
 
 describe('WorkflowIndexService', () => {
 	let service: WorkflowIndexService;

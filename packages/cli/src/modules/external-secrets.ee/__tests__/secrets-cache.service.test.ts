@@ -1,10 +1,10 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 
-import { AnotherDummyProvider, DummyProvider } from '@test/external-secrets/utils.js';
+import { AnotherDummyProvider, DummyProvider } from '@test/external-secrets/utils';
 
-import { EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS } from '../constants.js';
-import { ExternalSecretsProviderRegistry } from '../provider-registry.service.js';
-import { ExternalSecretsSecretsCache } from '../secrets-cache.service.js';
+import { EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS } from '../constants';
+import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
+import { ExternalSecretsSecretsCache } from '../secrets-cache.service';
 
 describe('SecretsCache', () => {
 	let cache: ExternalSecretsSecretsCache;

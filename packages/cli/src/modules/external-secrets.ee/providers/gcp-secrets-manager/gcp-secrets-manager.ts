@@ -7,16 +7,16 @@ import type {
 	GcpSecretsManagerContext,
 	GcpSecretAccountKey,
 	RawGcpSecretAccountKey,
-} from './types.js';
-import { DOCS_HELP_NOTICE } from '../../constants.js';
+} from './types';
+import { DOCS_HELP_NOTICE } from '../../constants';
 import {
 	buildFailureSummaryLogContext,
 	type LogContext,
 	logSecretsProviderOperationFailure,
 	type SafeContextValue,
 	type SecretsProviderOperationFailureParams,
-} from '../../errors/secrets-provider-errors.js';
-import { SecretsProvider } from '../../types.js';
+} from '../../errors/secrets-provider-errors';
+import { SecretsProvider } from '../../types';
 
 export class GcpSecretsManager extends SecretsProvider {
 	name = 'gcpSecretsManager';

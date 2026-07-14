@@ -7,13 +7,13 @@ import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller.js';
-import { CredentialsOverwrites } from '@/credentials-overwrites.js';
-import { EventService } from '@/events/event.service.js';
-import { ExternalHooks } from '@/external-hooks.js';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy.js';
-import { OauthService } from '@/oauth/oauth.service.js';
-import type { OAuthRequest } from '@/requests.js';
+import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
+import { OauthService } from '@/oauth/oauth.service';
+import type { OAuthRequest } from '@/requests';
 
 vi.mock('axios');
 vi.mock('@n8n/client-oauth2', async (importOriginal) => {

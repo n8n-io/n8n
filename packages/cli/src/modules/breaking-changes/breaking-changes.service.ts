@@ -14,16 +14,16 @@ import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service.js';
+import { CacheService } from '@/services/cache/cache.service';
 
-import { RuleRegistry } from './breaking-changes.rule-registry.service.js';
+import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import type {
 	IBreakingChangeBatchWorkflowRule,
 	IBreakingChangeInstanceRule,
 	IBreakingChangeRule,
 	IBreakingChangeWorkflowRule,
-} from './types/index.js';
-import { N8N_VERSION } from '../../constants.js';
+} from './types';
+import { N8N_VERSION } from '../../constants';
 
 interface WorkflowMetadata {
 	name: string;

@@ -4,17 +4,17 @@ import type { User } from '@n8n/db';
 import type { IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error.js';
-import type { EventService } from '@/events/event.service.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
+import type { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedactionOptions,
 	RedactableExecution,
-} from '@/executions/execution-redaction.js';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+} from '@/executions/execution-redaction';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { ExecutionRedactionService } from '../execution-redaction.service.js';
-import { FullItemRedactionStrategy } from '../strategies/full-item-redaction.strategy.js';
+import { ExecutionRedactionService } from '../execution-redaction.service';
+import { FullItemRedactionStrategy } from '../strategies/full-item-redaction.strategy';
 
 describe('ExecutionRedactionService', () => {
 	const logger = mockInstance(Logger);

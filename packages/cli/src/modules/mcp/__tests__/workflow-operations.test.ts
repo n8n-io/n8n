@@ -5,7 +5,7 @@ import {
 	partialUpdateOperationSchema,
 	toWorkflowSlice,
 	type PartialUpdateOperation,
-} from '../tools/workflow-builder/workflow-operations.js';
+} from '../tools/workflow-builder/workflow-operations';
 
 const makeNode = (overrides: Partial<INode> = {}): INode => ({
 	id: 'node-id',

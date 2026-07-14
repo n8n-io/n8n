@@ -4,8 +4,8 @@ import { DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { KeyManagerService } from '@/modules/encryption-key-manager/key-manager.service.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { KeyManagerService } from '@/modules/encryption-key-manager/key-manager.service';
 
 const makeKey = (overrides: Partial<DeploymentKey> = {}): DeploymentKey =>
 	({

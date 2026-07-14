@@ -4,18 +4,18 @@ import type { User } from '@n8n/db';
 import { FolderRepository, ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { createOwner } from '@test-integration/db/users.js';
-import { LicenseMocker } from '@test-integration/license.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { createOwner } from '@test-integration/db/users';
+import { LicenseMocker } from '@test-integration/license';
 
-import { N8nPackagesService } from '../n8n-packages.service.js';
-import type { ImportPackageRequest } from '../n8n-packages.types.js';
+import { N8nPackagesService } from '../n8n-packages.service';
+import type { ImportPackageRequest } from '../n8n-packages.types';
 import {
 	buildEntityPackageBuffer,
 	serializedFolder,
 	serializedProject,
 	serializedWorkflow,
-} from './fixtures/package-fixtures.js';
+} from './fixtures/package-fixtures';
 
 async function importProjects(user: User, packageBuffer: Buffer, apiKeyScopes?: string[]) {
 	const request: ImportPackageRequest = {

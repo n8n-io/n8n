@@ -14,7 +14,7 @@ import type {
 import { Tracing } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { createSchedulerTracer } from './scheduler-tracer.js';
+import { createSchedulerTracer } from './scheduler-tracer';
 
 /** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
 interface ProvisionScope {

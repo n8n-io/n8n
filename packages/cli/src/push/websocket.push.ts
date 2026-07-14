@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
-import { AbstractPush } from './abstract.push.js';
+import { AbstractPush } from './abstract.push';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;

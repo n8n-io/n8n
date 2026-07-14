@@ -3,9 +3,9 @@ import { WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import { License } from '@/license.js';
+import { License } from '@/license';
 
-import { getWorkflowHistoryPruneTime } from './workflow-history-helper.js';
+import { getWorkflowHistoryPruneTime } from './workflow-history-helper';
 
 @Service()
 export class WorkflowHistoryManager {

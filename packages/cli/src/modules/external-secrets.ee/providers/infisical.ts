@@ -8,15 +8,15 @@ import {
 import { Container } from '@n8n/di';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE } from '../constants.js';
+import { DOCS_HELP_NOTICE } from '../constants';
 import {
 	buildHttpProviderErrorContext,
 	logSecretsProviderOperationFailure,
 	type LogContext,
 	type SecretsProviderOperationFailureParams,
-} from '../errors/secrets-provider-errors.js';
-import type { SecretsProviderSettings } from '../types.js';
-import { SecretsProvider } from '../types.js';
+} from '../errors/secrets-provider-errors';
+import type { SecretsProviderSettings } from '../types';
+import { SecretsProvider } from '../types';
 
 export type InfisicalAuthMethod = 'universalAuth';
 

@@ -5,17 +5,17 @@ import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/dec
 import type { Response } from 'express';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate.js';
-import { AgentKnowledgeService } from './agent-knowledge.service.js';
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service.js';
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
+import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import {
 	AgentUploadMiddleware,
 	cleanupUploadedTempFiles,
 	describeMulterError,
-} from './agent-upload.middleware.js';
+} from './agent-upload.middleware';
 
 const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 

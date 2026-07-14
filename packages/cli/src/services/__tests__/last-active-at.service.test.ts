@@ -7,7 +7,7 @@ import { DateTime } from 'luxon';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { LastActiveAtService } from '@/services/last-active-at.service.js';
+import { LastActiveAtService } from '@/services/last-active-at.service';
 
 describe('LastActiveAtService', () => {
 	const userData = {

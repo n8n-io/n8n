@@ -15,11 +15,11 @@ import { Container } from '@n8n/di';
 import { mockInstance } from 'n8n-core/test/utils';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee.js';
-import { createTestRun, createTestCaseExecution } from '@test-integration/db/evaluation.js';
-import { createUserShell } from '@test-integration/db/users.js';
-import type { SuperAgentTest } from '@test-integration/types.js';
-import * as utils from '@test-integration/utils/index.js';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
+import { createTestRun, createTestCaseExecution } from '@test-integration/db/evaluation';
+import { createUserShell } from '@test-integration/db/users';
+import type { SuperAgentTest } from '@test-integration/types';
+import * as utils from '@test-integration/utils';
 
 let authOwnerAgent: SuperAgentTest;
 let workflowUnderTest: IWorkflowBase;

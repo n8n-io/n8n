@@ -3,14 +3,14 @@ import { validate } from 'jsonschema';
 import type { JsonObject } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import * as ResponseHelper from '@/response-helper.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import * as ResponseHelper from '@/response-helper';
 
 import {
 	allowedExecutionsQueryFilterFields as ALLOWED_FILTER_FIELDS,
 	schemaGetExecutionsQueryFilter as SCHEMA,
-} from './execution.service.js';
-import type { ExecutionRequest } from './execution.types.js';
+} from './execution.service';
+import type { ExecutionRequest } from './execution.types';
 
 const isValid = (arg: JsonObject) => validate(arg, SCHEMA).valid;
 

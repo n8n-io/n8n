@@ -2,11 +2,11 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { createAiProxyFetch } from '@/utils/ai-proxy-fetch.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
-import { mapCredentialForProvider } from '../json-config/credential-field-mapping.js';
+import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
 
 /**
  * Fetches a provider's live chat-model list for a credential, via the shared

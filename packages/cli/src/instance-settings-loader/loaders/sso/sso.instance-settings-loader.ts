@@ -5,12 +5,12 @@ import { Service } from '@n8n/di';
 import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers.js';
+} from '@/sso.ee/sso-helpers';
 
-import { OidcInstanceSettingsLoader } from './oidc.instance-settings-loader.js';
-import { ProvisioningInstanceSettingsLoader } from './provisioning.instance-settings-loader.js';
-import { SamlInstanceSettingsLoader } from './saml.instance-settings-loader.js';
-import { InstanceBootstrappingError } from '../../instance-bootstrapping.error.js';
+import { OidcInstanceSettingsLoader } from './oidc.instance-settings-loader';
+import { ProvisioningInstanceSettingsLoader } from './provisioning.instance-settings-loader';
+import { SamlInstanceSettingsLoader } from './saml.instance-settings-loader';
+import { InstanceBootstrappingError } from '../../instance-bootstrapping.error';
 
 @Service()
 export class SsoInstanceSettingsLoader {

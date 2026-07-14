@@ -6,11 +6,11 @@ import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
-import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared.js';
-import { NumberToType, TypeToNumber } from './database/entities/insights-shared.js';
-import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository.js';
-import { InsightsCompactionService } from './insights-compaction.service.js';
-import { InsightsPruningService } from './insights-pruning.service.js';
+import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
+import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
+import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
+import { InsightsCompactionService } from './insights-compaction.service';
+import { InsightsPruningService } from './insights-pruning.service';
 
 @Service()
 export class InsightsService {

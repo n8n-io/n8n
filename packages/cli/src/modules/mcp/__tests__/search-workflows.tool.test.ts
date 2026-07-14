@@ -10,12 +10,12 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { Telemetry } from '@/telemetry/index.js';
-import { WorkflowService } from '@/workflows/workflow.service.js';
+import { Telemetry } from '@/telemetry';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import z from 'zod';
-import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils.js';
-import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool.js';
+import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
+import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
 
 describe('search-workflows MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

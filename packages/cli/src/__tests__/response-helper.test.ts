@@ -1,8 +1,8 @@
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error.js';
-import { sendErrorResponse } from '@/response-helper.js';
+import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
+import { sendErrorResponse } from '@/response-helper';
 
 describe('sendErrorResponse', () => {
 	let mockResponse: Response;

@@ -7,7 +7,7 @@ import type { FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
-import { RoleService } from '@/services/role.service.js';
+import { RoleService } from '@/services/role.service';
 
 /**
  * Resolves folders by id for a user, enforcing access through the folder's home

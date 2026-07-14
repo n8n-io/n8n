@@ -5,8 +5,8 @@ import {
 	EVALUATION_TIER_DEFAULTS,
 	getEvaluationConcurrencyLimitSource,
 	resolveEvaluationConcurrencyLimit,
-} from '@/evaluation.ee/evaluation-concurrency.helper.js';
-import type { License } from '@/license.js';
+} from '@/evaluation.ee/evaluation-concurrency.helper';
+import type { License } from '@/license';
 
 const ENV_VAR = 'N8N_CONCURRENCY_EVALUATION_LIMIT';
 const QUOTA_KEY = 'quota:evaluations:concurrencyLimit';

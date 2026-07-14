@@ -14,12 +14,12 @@ import type {
 } from '@n8n/instance-ai';
 import { type Scope } from '@n8n/permissions';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { userHasScopes } from '@/permissions.ee/check-access.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { AgentsService } from './agents.service.js';
-import { AgentsBuilderService } from './builder/agents-builder.service.js';
-import type { BuilderSessionOptions } from './builder/agents-builder.service.js';
+import { AgentsService } from './agents.service';
+import { AgentsBuilderService } from './builder/agents-builder.service';
+import type { BuilderSessionOptions } from './builder/agents-builder.service';
 
 /**
  * Standard builder tools that require user interaction (chat cards). None of

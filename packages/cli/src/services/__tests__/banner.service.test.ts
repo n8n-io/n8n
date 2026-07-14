@@ -3,7 +3,7 @@ import type { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { BannerService } from '@/services/banner.service.js';
+import { BannerService } from '@/services/banner.service';
 
 describe('BannerService', () => {
 	const settingsRepo = mock<SettingsRepository>();

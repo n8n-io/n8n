@@ -9,23 +9,23 @@ import { ExecutionRepository, type IWorkflowDb } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IExecutionContext } from 'n8n-workflow';
 
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
-import { createOwner } from './shared/db/users.js';
+import { createOwner } from './shared/db/users';
 import {
 	validateRootContext,
 	validateChildContextInheritance,
 	validateContextInheritanceChain,
 	validateBasicContextStructure,
-} from './shared/execution-context-helpers.js';
-import * as utils from './shared/utils/index.js';
-import { loadNodesFromDist } from './shared/utils/node-types-data.js';
+} from './shared/execution-context-helpers';
+import * as utils from './shared/utils';
+import { loadNodesFromDist } from './shared/utils/node-types-data';
 import {
 	createSubWorkflowFixture,
 	createParentWorkflowFixture,
 	createMiddleWorkflowFixture,
 	createSimpleWorkflowFixture,
-} from './shared/workflow-fixtures.js';
+} from './shared/workflow-fixtures';
 
 // Fixtures are now imported from './shared/workflow-fixtures'
 

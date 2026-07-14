@@ -2,9 +2,9 @@ import type { CorsOptions, Method } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Request, Response } from 'express';
 
-import { CorsService } from '@/services/cors-service.js';
+import { CorsService } from '@/services/cors-service';
 
-import { DynamicCredentialsConfig } from '../dynamic-credentials.config.js';
+import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
 
 @Service()
 export class DynamicCredentialCorsService {

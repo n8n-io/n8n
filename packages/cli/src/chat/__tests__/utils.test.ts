@@ -15,7 +15,7 @@ import {
 	redirectIfToolExecutor,
 	getLastNodeMessage,
 	shouldResumeImmediately,
-} from '../utils.js';
+} from '../utils';
 
 // helpers --------------------------------------------------------
 const createMockExecution = (

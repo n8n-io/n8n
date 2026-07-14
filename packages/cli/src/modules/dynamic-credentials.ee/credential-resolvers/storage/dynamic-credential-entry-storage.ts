@@ -1,9 +1,9 @@
 import { CredentialResolverHandle } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
-import { ICredentialEntriesStorage } from './storage-interface.js';
-import { DynamicCredentialEntry } from '../../database/entities/dynamic-credential-entry.js';
-import { DynamicCredentialEntryRepository } from '../../database/repositories/dynamic-credential-entry.repository.js';
+import { ICredentialEntriesStorage } from './storage-interface';
+import { DynamicCredentialEntry } from '../../database/entities/dynamic-credential-entry';
+import { DynamicCredentialEntryRepository } from '../../database/repositories/dynamic-credential-entry.repository';
 
 @Service()
 export class DynamicCredentialEntryStorage implements ICredentialEntriesStorage {

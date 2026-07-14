@@ -1,15 +1,15 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import type { AgentTaskService } from '../agent-task.service.js';
-import { AgentTasksController } from '../agent-tasks.controller.js';
-import type { AgentRepository } from '../repositories/agent.repository.js';
+import type { AgentTaskService } from '../agent-task.service';
+import { AgentTasksController } from '../agent-tasks.controller';
+import type { AgentRepository } from '../repositories/agent.repository';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
-} from './test-utils/controller-route-metadata.js';
+} from './test-utils/controller-route-metadata';
 
 function makeController({
 	agentTaskService = mock<AgentTaskService>(),

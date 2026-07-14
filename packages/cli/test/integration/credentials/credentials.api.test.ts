@@ -21,9 +21,9 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { createCredentialsFromCredentialsEntity } from '@/credentials-helper.js';
-import { CredentialsTester } from '@/services/credentials-tester.service.js';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
 	decryptCredentialData,
@@ -31,16 +31,16 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
-} from '../shared/db/credentials.js';
+} from '../shared/db/credentials';
 import {
 	createAdmin,
 	createChatUser,
 	createManyUsers,
 	createMember,
 	createOwner,
-} from '../shared/db/users.js';
-import type { SuperAgentTest } from '../shared/types.js';
-import { initCredentialsTypes, setupTestServer } from '../shared/utils/index.js';
+} from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import { initCredentialsTypes, setupTestServer } from '../shared/utils';
 
 // Vitest's asymmetric matchers are chai-based and rely on their `this` context, so they
 // can't be destructured off `expect` (a bare `const { any } = expect` throws "Cannot read

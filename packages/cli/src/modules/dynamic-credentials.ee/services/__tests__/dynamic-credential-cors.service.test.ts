@@ -1,10 +1,10 @@
 import type { Request, Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
 
-import type { CorsService } from '@/services/cors-service.js';
+import type { CorsService } from '@/services/cors-service';
 
-import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config.js';
-import { DynamicCredentialCorsService } from '../dynamic-credential-cors.service.js';
+import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config';
+import { DynamicCredentialCorsService } from '../dynamic-credential-cors.service';
 
 describe('DynamicCredentialCorsService', () => {
 	let mockCorsService: Mocked<CorsService>;

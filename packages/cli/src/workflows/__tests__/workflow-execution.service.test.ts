@@ -13,17 +13,17 @@ import {
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { IWorkflowErrorData } from '@/interfaces.js';
-import type { NodeTypes } from '@/node-types.js';
-import type { OwnershipService } from '@/services/ownership.service.js';
-import type { TestWebhooks } from '@/webhooks/test-webhooks.js';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
-import type { WorkflowRunner } from '@/workflow-runner.js';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
-import { toITaskData } from '@test/helpers.js';
+import type { IWorkflowErrorData } from '@/interfaces';
+import type { NodeTypes } from '@/node-types';
+import type { OwnershipService } from '@/services/ownership.service';
+import type { TestWebhooks } from '@/webhooks/test-webhooks';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { toITaskData } from '@test/helpers';
 
-import type { WorkflowRequest } from '../workflow.request.js';
+import type { WorkflowRequest } from '../workflow.request';
 
 const webhookNode: INode = {
 	name: 'Webhook',

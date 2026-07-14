@@ -1,9 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
-import { Telemetry } from '@/telemetry/index.js';
+import { Telemetry } from '@/telemetry';
 
-import { createValidateNodeTool } from '../tools/workflow-builder/validate-node.tool.js';
+import { createValidateNodeTool } from '../tools/workflow-builder/validate-node.tool';
 
 const mockValidateNodeConfig = vi.fn();
 

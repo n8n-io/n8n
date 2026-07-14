@@ -3,7 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
-import type { NodeTypes } from '@/node-types.js';
+import type { NodeTypes } from '@/node-types';
 
 export const logger = mock<Logger>();
 logger.scoped.mockReturnValue(logger);

@@ -3,9 +3,9 @@ import type { Settings, SettingsRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { ChatHubSettingsService } from '../chat-hub.settings.service.js';
+import { ChatHubSettingsService } from '../chat-hub.settings.service';
 
 describe('ChatHubSettingsService', () => {
 	const settingsRepository = mock<SettingsRepository>();

@@ -8,14 +8,14 @@ import {
 	type INode,
 } from 'n8n-workflow';
 
-import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service';
 
 import {
 	hasHttpHeaderAuthDecryptedData,
 	hasJwtPemKeyDecryptedData,
 	hasJwtSecretDecryptedData,
-} from '../mcp.typeguards.js';
-import type { MCPTriggersMap } from '../mcp.types.js';
+} from '../mcp.typeguards';
+import type { MCPTriggersMap } from '../mcp.types';
 
 export type WebhookEndpoints = {
 	webhook: string;

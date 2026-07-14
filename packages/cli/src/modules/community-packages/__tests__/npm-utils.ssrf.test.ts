@@ -3,7 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import { executeNpmRequest } from '../npm-utils.js';
+import { executeNpmRequest } from '../npm-utils';
 
 describe('executeNpmRequest SSRF gating', () => {
 	const request = vi.fn();

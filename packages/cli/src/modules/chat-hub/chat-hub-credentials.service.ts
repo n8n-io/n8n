@@ -8,10 +8,10 @@ import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import type { INodeCredentials } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
-import { CredentialsService } from '@/credentials/credentials.service.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @Service()
 export class ChatHubCredentialsService {

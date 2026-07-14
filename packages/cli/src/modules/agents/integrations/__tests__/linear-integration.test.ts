@@ -3,14 +3,14 @@ import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentChatIntegrationContext } from '../agent-chat-integration.js';
-import { LinearIntegration } from '../platforms/linear-integration.js';
+import type { AgentChatIntegrationContext } from '../agent-chat-integration';
+import { LinearIntegration } from '../platforms/linear-integration';
 
 vi.mock('../esm-loader', () => ({
 	loadLinearAdapter: vi.fn(),
 }));
 
-import { loadLinearAdapter } from '../esm-loader.js';
+import { loadLinearAdapter } from '../esm-loader';
 
 const mockedLoadLinearAdapter = loadLinearAdapter as MockedFunction<typeof loadLinearAdapter>;
 

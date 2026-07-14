@@ -1,7 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { CommunityPackagesConfig } from '../../../../community-packages/community-packages.config.js';
-import { UnverifiedPackagesRule } from '../unverified-packages.rule.js';
+import type { CommunityPackagesConfig } from '../../../../community-packages/community-packages.config';
+import { UnverifiedPackagesRule } from '../unverified-packages.rule';
 
 describe('UnverifiedPackagesRule', () => {
 	let rule: UnverifiedPackagesRule;
