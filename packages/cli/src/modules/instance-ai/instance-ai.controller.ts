@@ -18,7 +18,7 @@ import {
 	InstanceAiEvalRestoreThreadRequest,
 	normalizeInstanceAiThreadSource,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -368,53 +368,17 @@ export class InstanceAiController {
 		// The client may have disconnected during the awaits above.
 		if (closed) return;
 
-		if (this.durableLogEnabled) {
-			// 6. Replay missed events from the DURABLE log — survives restarts and is
-			//    valid on any main (the table is in the shared DB). The read is async,
-			//    so unlike the old synchronous memory-store replay, live events can
-			//    land mid-read: buffer them and flush with seq dedupe (the drain
-			//    persists before it emits, so a fact is never in neither place).
-			const arrivedDuringReplay: StoredEvent[] = [];
-			const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
-				arrivedDuringReplay.push(stored);
-			});
-			const missed = await this.eventLog.getEventsAfter(threadId, cursor);
-			let lastReplayedSeq = cursor;
-			for (const stored of missed) {
-				deliver(stored);
-				if (stored.id !== undefined) lastReplayedSeq = stored.id;
-			}
-			for (const stored of arrivedDuringReplay) {
-				if (stored.id === undefined || stored.id > lastReplayedSeq) deliver(stored);
-			}
-			stopBuffering();
-			this.durableLogMetrics.recordReplay(missed.length, Math.max(0, lastReplayedSeq - cursor));
-		} else {
-			// 6. Replay missed events, emit run-sync frames, and flip to live delivery
-			//    in one synchronous block. The event bus store and emitter are
-			//    synchronous, so no event can slip between the replay and the live
-			//    handler taking over. Events that arrived during the awaits above are
-			//    already in the store (the early subscription in step 1 keeps relayed
-			//    events flowing in multi-main) and are included in the replay here.
-			const missed = this.eventBus.getEventsAfter(threadId, cursor);
-			for (const stored of missed) {
-				deliver(stored);
-			}
-		}
-
-		// 6b. Bootstrap sync: emit one run-sync control frame per live message
-		//     group. Each frame uses a named SSE event type (event: run-sync) with
-		//     NO id: field so the browser's lastEventId is unaffected and the
-		//     replay cursor stays consistent.
-		for (const [groupId, group] of liveGroups) {
-			// Flag on: build the bootstrap tree from the durable log, so a live
-			// group renders fully even when the bus cache was evicted, the process
-			// restarted, or this main never buffered the thread (sibling main).
-			const runEvents = this.durableLogEnabled
-				? await this.eventLog.getEventsForRuns(threadId, group.runIds)
-				: this.eventBus.getEventsForRuns(threadId, group.runIds);
+		// 6b (used by both arms below). Emit one run-sync control frame for a live
+		//     message group. Each frame uses a named SSE event type
+		//     (event: run-sync) with NO id: field so the browser's lastEventId is
+		//     unaffected and the replay cursor stays consistent.
+		const writeRunSyncFrame = (
+			groupId: string,
+			group: { runIds: string[]; status: 'active' | 'suspended' | 'background' },
+			runEvents: InstanceAiEvent[],
+		) => {
 			const persistedSnapshot = persistedSnapshots.get(groupId);
-			if (runEvents.length === 0 && !persistedSnapshot) continue;
+			if (runEvents.length === 0 && !persistedSnapshot) return;
 
 			const eventTree = buildAgentTreeFromEvents(runEvents);
 			const agentTree = InstanceAiController.selectBootstrapTree(
@@ -431,6 +395,63 @@ export class InstanceAiController {
 					backgroundTasks: threadStatus.backgroundTasks,
 				})}\n\n`,
 			);
+		};
+
+		if (this.durableLogEnabled) {
+			// 6. Replay missed events from the DURABLE log — survives restarts and is
+			//    valid on any main (the table is in the shared DB). The reads are
+			//    async, so unlike the old synchronous memory-store replay, live
+			//    events can land mid-bootstrap: buffer them across every await (the
+			//    replay read AND the run-sync tree reads) and flush with seq dedupe
+			//    only when no await remains before live delivery takes over (the
+			//    drain persists before it emits, so a fact is never in neither
+			//    place). A flushed event may already be folded into a run-sync tree;
+			//    the shared reducer applies it idempotently, same as any live event
+			//    arriving after a frame.
+			const arrivedDuringReplay: StoredEvent[] = [];
+			const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
+				arrivedDuringReplay.push(stored);
+			});
+			try {
+				const missed = await this.eventLog.getEventsAfter(threadId, cursor);
+				let lastReplayedSeq = cursor;
+				for (const stored of missed) {
+					deliver(stored);
+					if (stored.id !== undefined) lastReplayedSeq = stored.id;
+				}
+				// Build each live group's bootstrap tree from the durable log, so the
+				// group renders fully even when the bus cache was evicted, the process
+				// restarted, or this main never buffered the thread (sibling main).
+				for (const [groupId, group] of liveGroups) {
+					writeRunSyncFrame(
+						groupId,
+						group,
+						await this.eventLog.getEventsForRuns(threadId, group.runIds),
+					);
+				}
+				for (const stored of arrivedDuringReplay) {
+					if (stored.id === undefined || stored.id > lastReplayedSeq) deliver(stored);
+				}
+				this.durableLogMetrics.recordReplay(missed.length, Math.max(0, lastReplayedSeq - cursor));
+			} finally {
+				// The buffering subscription must not outlive the bootstrap, even when
+				// a durable read throws.
+				stopBuffering();
+			}
+		} else {
+			// 6. Replay missed events, emit run-sync frames, and flip to live delivery
+			//    in one synchronous block. The event bus store and emitter are
+			//    synchronous, so no event can slip between the replay and the live
+			//    handler taking over. Events that arrived during the awaits above are
+			//    already in the store (the early subscription in step 1 keeps relayed
+			//    events flowing in multi-main) and are included in the replay here.
+			const missed = this.eventBus.getEventsAfter(threadId, cursor);
+			for (const stored of missed) {
+				deliver(stored);
+			}
+			for (const [groupId, group] of liveGroups) {
+				writeRunSyncFrame(groupId, group, this.eventBus.getEventsForRuns(threadId, group.runIds));
+			}
 		}
 		if (liveGroups.size > 0) res.flush?.();
 

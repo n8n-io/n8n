@@ -1743,4 +1743,110 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		// Replay instrumentation recorded events served + cursor age.
 		expect(durableLogMetrics.recordReplay).toHaveBeenCalledWith(2, 2);
 	});
+
+	it('delivers events that land during the run-sync tree reads', async () => {
+		memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		memoryService.getLatestRunSnapshot.mockResolvedValue(undefined);
+		instanceAiService.getThreadStatus.mockReturnValue({
+			hasActiveRun: true,
+			isSuspended: false,
+			backgroundTasks: [],
+		} as never);
+		instanceAiService.getMessageGroupId.mockReturnValue('group-1');
+		instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+
+		const handlers: Array<(stored: unknown) => void> = [];
+		eventBus.subscribe.mockImplementation((_threadId, handler) => {
+			handlers.push(handler as never);
+			return vi.fn();
+		});
+
+		eventLog.getEventsAfter.mockResolvedValue([]);
+		const treeEvent = {
+			type: 'tool-call',
+			runId: 'run-1',
+			agentId: 'a1',
+			payload: { toolCallId: 'tc', toolName: 't', args: {} },
+		};
+		eventLog.getEventsForRuns.mockImplementation(async () => {
+			// A fact lands while the bootstrap tree is being read from the DB:
+			// the buffering subscription must still be active here, or the event
+			// is lost for good (the cursor advances past it on the next event).
+			handlers.at(-1)!({
+				id: 8,
+				event: {
+					type: 'run-finish',
+					runId: 'run-1',
+					agentId: 'a1',
+					payload: { status: 'completed' },
+				},
+			});
+			return [treeEvent] as never;
+		});
+
+		const sseRes = mock<Response & { flush?: () => void }>({
+			setHeader: vi.fn(),
+			flushHeaders: vi.fn(),
+			write: vi.fn(),
+			end: vi.fn(),
+			flush: vi.fn(),
+		});
+		const sseReq = mock<AuthenticatedRequest>({
+			user: { id: USER_ID },
+			headers: {},
+			once: vi.fn(),
+		});
+
+		await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: 5 } as never);
+
+		const frames = (sseRes.write as Mock).mock.calls.map(([frame]) => String(frame));
+		const syncIndex = frames.findIndex((f) => f.startsWith('event: run-sync'));
+		const finishIndex = frames.findIndex((f) => f.includes('run-finish'));
+		expect(syncIndex).toBeGreaterThanOrEqual(0);
+		expect(finishIndex).toBeGreaterThanOrEqual(0);
+		// Delivered exactly once, after the frame whose tree may already fold it
+		// (the shared reducer applies it idempotently, like any post-frame event).
+		expect(frames.filter((f) => f.includes('run-finish'))).toHaveLength(1);
+		expect(finishIndex).toBeGreaterThan(syncIndex);
+	});
+
+	it('removes the buffering subscription when a durable read throws', async () => {
+		memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		instanceAiService.getThreadStatus.mockReturnValue({
+			hasActiveRun: false,
+			isSuspended: false,
+			backgroundTasks: [],
+		} as never);
+
+		const unsubscribers: Array<ReturnType<typeof vi.fn>> = [];
+		eventBus.subscribe.mockImplementation(() => {
+			const unsubscribe = vi.fn();
+			unsubscribers.push(unsubscribe);
+			return unsubscribe;
+		});
+		eventLog.getEventsAfter.mockRejectedValue(new Error('db down'));
+
+		const sseRes = mock<Response & { flush?: () => void }>({
+			setHeader: vi.fn(),
+			flushHeaders: vi.fn(),
+			write: vi.fn(),
+			end: vi.fn(),
+			flush: vi.fn(),
+		});
+		const sseReq = mock<AuthenticatedRequest>({
+			user: { id: USER_ID },
+			headers: {},
+			once: vi.fn(),
+		});
+
+		await expect(
+			controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: 5 } as never),
+		).rejects.toThrow('db down');
+
+		// Two subscriptions exist: the step-1 live one (cleaned up on connection
+		// close) and the temporary replay buffer, which must be removed on the
+		// error path rather than lingering on the thread emitter.
+		expect(unsubscribers).toHaveLength(2);
+		expect(unsubscribers[1]).toHaveBeenCalledTimes(1);
+	});
 });
