@@ -244,7 +244,17 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 		);
 	}
 
-	const responseData = await microsoftApiRequest.call(this, 'POST', '/messages', body, {});
+	const responseData = await microsoftApiRequest.call(
+		this,
+		'POST',
+		'/messages',
+		body,
+		{},
+		undefined,
+		undefined,
+		undefined,
+		index,
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData as IDataObject),

@@ -45,6 +45,10 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		`/messages/${messageId}/attachments/${attachmentId}`,
 		undefined,
 		{ $select: 'id,name,contentType' },
+		undefined,
+		undefined,
+		undefined,
+		index,
 	);
 
 	let mimeType: string | undefined;
@@ -62,6 +66,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		undefined,
 		{},
 		{ encoding: null, resolveWithFullResponse: true },
+		index,
 	);
 
 	const newItem: INodeExecutionData = {

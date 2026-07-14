@@ -197,6 +197,10 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		`/messages/${draftId}`,
 		body,
 		{},
+		undefined,
+		undefined,
+		undefined,
+		index,
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(

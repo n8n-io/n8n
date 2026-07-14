@@ -29,6 +29,10 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		`/calendars/${calendarId}`,
 		undefined,
 		qs,
+		undefined,
+		undefined,
+		undefined,
+		index,
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(

@@ -258,7 +258,17 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 		saveToSentItems,
 	};
 
-	await microsoftApiRequest.call(this, 'POST', '/sendMail', body, {});
+	await microsoftApiRequest.call(
+		this,
+		'POST',
+		'/sendMail',
+		body,
+		{},
+		undefined,
+		undefined,
+		undefined,
+		index,
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),
