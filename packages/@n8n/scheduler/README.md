@@ -345,6 +345,22 @@ A few things that are not obvious from the code but save a lot of confusion.
   All three default to no-ops, and a throwing hook is swallowed so a broken logger
   or exporter can never break the scheduling it was only meant to observe.
 
+- **Two warnings tell an operator their timing is off.** Both arrive through the
+  event sink at `warn` level, so they land in the host's logs:
+  - a **clock-skew warning** at start-up. Due-ness and leases are judged on the
+    clock the scheduler coordinates on (the host supplies it via `now`, e.g. the
+    database clock), but fire timers are armed on this instance's own clock. When
+    `start` samples the two and they differ by more than the threshold (default
+    `1s`, `CLOCK_SKEW_WARN_THRESHOLD_MS`), it warns: tasks may fire early or late,
+    and the instance clock should be synchronised (e.g. via NTP). The sample runs
+    detached, so it never delays the loops, and a slow read cannot trip it on its
+    own (the offset must also exceed half the round-trip). Skipped entirely when no
+    `now` is supplied.
+  - a **dispatch-lag warning** when a task fires at least
+    `DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS` (default `30s`) past its scheduled
+    time, once per late fire. This flags a genuinely late dispatch (a blocked event
+    loop, a skewed clock), not routine sub-second jitter.
+
 - **Runs are recorded ahead of time, within a window.** Because upcoming runs are
   queued in advance, a frequent schedule does not need one planning pass per fire.
   The flip side: disabling or editing a rule may take until the end of that window

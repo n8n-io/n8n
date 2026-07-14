@@ -37,6 +37,18 @@ describe('isClockSkewSignificant', () => {
 		).toBe(false);
 	});
 
+	it('is false for an offset exactly at the threshold (strict comparison)', () => {
+		expect(
+			isClockSkewSignificant({ offsetMs: CLOCK_SKEW_WARN_THRESHOLD_MS, roundTripMs: 20 }),
+		).toBe(false);
+	});
+
+	it('is false for an offset exactly at half the round-trip', () => {
+		// Round-trip 4_000 gives a 2_000 ms bound; an offset of exactly 2_000 (above the
+		// fixed threshold) must not warn, since the comparison is strict.
+		expect(isClockSkewSignificant({ offsetMs: 2_000, roundTripMs: 4_000 })).toBe(false);
+	});
+
 	it('is true for an offset beyond the threshold, in either direction', () => {
 		expect(isClockSkewSignificant({ offsetMs: 5_000, roundTripMs: 20 })).toBe(true);
 		expect(isClockSkewSignificant({ offsetMs: -5_000, roundTripMs: 20 })).toBe(true);

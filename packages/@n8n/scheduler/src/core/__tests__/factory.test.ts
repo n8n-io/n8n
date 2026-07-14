@@ -6,7 +6,7 @@ import { SCHEDULER_ATTRIBUTES, SCHEDULER_FIRE_OUTCOME } from '../../observabilit
 import type { SchedulerMetrics } from '../../observability/metrics';
 import { SpanStatus, type Span, type Tracer } from '../../observability/tracer';
 import { InvalidLifecycleOptionsError } from '../errors';
-import { createScheduler } from '../factory';
+import { createScheduler, DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS } from '../factory';
 import type { SchedulerDeps, SchedulerEvent, SchedulerTaskStore } from '../factory';
 import { PASS_TIMED_OUT } from '../lifecycle';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
@@ -606,9 +606,21 @@ describe('createScheduler late dispatch', () => {
 				expect.objectContaining({
 					level: 'warn',
 					message: 'Scheduler fired a task later than its scheduled time',
+					context: expect.objectContaining({
+						taskType: 'test-task',
+						// A 2020 runAt is years past, so the reported lag is a large whole number.
+						lagSeconds: expect.any(Number),
+					}),
 				}),
 			);
 		});
+		const warned = onEvent.mock.calls
+			.map(([event]) => event)
+			.find((event) => event.message === 'Scheduler fired a task later than its scheduled time');
+		expect(warned?.context?.lagSeconds).toBeGreaterThan(
+			DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS,
+		);
+		expect(Number.isInteger(warned?.context?.lagSeconds)).toBe(true);
 	});
 
 	it('stays silent within the configured lag threshold', async () => {
