@@ -292,20 +292,28 @@ export function useWorkflowExtraction() {
 		return targets;
 	}
 
-	function getNodesToDeleteFromParent(subGraph: INodeUi[], connections: IConnections): INodeUi[] {
-		const subGraphNames = new Set(subGraph.map((node) => node.name));
+	function getNodesToRemoveFromParent(
+		extractedNodes: INodeUi[],
+		connections: IConnections,
+	): INodeUi[] {
+		const extractedNodeNames = new Set(extractedNodes.map((node) => node.name));
 		const nonMainTargetsByNodeName = new Map(
-			subGraph.map((node) => [node.name, getNonMainConnectionTargets(node.name, connections)]),
+			extractedNodes.map((node) => [
+				node.name,
+				getNonMainConnectionTargets(node.name, connections),
+			]),
 		);
 		const subNodeNames = new Set(
 			[...nonMainTargetsByNodeName.entries()]
-				.filter(([, targets]) => targets.some((target) => subGraphNames.has(target)))
+				.filter(([, targets]) => targets.some((target) => extractedNodeNames.has(target)))
 				.map(([nodeName]) => nodeName),
 		);
 
 		const preservedNodeNames = new Set(
 			[...subNodeNames].filter((nodeName) =>
-				(nonMainTargetsByNodeName.get(nodeName) ?? []).some((target) => !subGraphNames.has(target)),
+				(nonMainTargetsByNodeName.get(nodeName) ?? []).some(
+					(target) => !extractedNodeNames.has(target),
+				),
 			),
 		);
 
@@ -326,7 +334,7 @@ export function useWorkflowExtraction() {
 			}
 		}
 
-		return subGraph.filter((node) => !preservedNodeNames.has(node.name));
+		return extractedNodes.filter((node) => !preservedNodeNames.has(node.name));
 	}
 
 	async function tryCreateWorkflow(workflowData: WorkflowDataCreate): Promise<IWorkflowDb | null> {
@@ -363,12 +371,12 @@ export function useWorkflowExtraction() {
 		}
 	}
 
-	async function replaceSelectionWithNode(
+	async function replaceParentSelectionWithSubworkflowNode(
 		executeWorkflowNodeData: AddedNode,
 		startId: string | undefined,
 		endId: string | undefined,
-		nodesToDelete: INode[],
-		selectionChildNodes: INode[],
+		nodesToRemoveFromParent: INode[],
+		rewrittenDownstreamNodes: INode[],
 	) {
 		historyStore.startRecordingUndo();
 
@@ -382,7 +390,7 @@ export function useWorkflowExtraction() {
 		)[0];
 
 		addReplacementNodeToSelectionGroup(
-			nodesToDelete.map((node) => node.id),
+			nodesToRemoveFromParent.map((node) => node.id),
 			executeWorkflowNode.id,
 		);
 
@@ -401,11 +409,11 @@ export function useWorkflowExtraction() {
 			});
 
 		canvasOperations.deleteNodes(
-			nodesToDelete.map((x) => x.id),
+			nodesToRemoveFromParent.map((x) => x.id),
 			CANVAS_HISTORY_OPTIONS,
 		);
 
-		for (const node of selectionChildNodes) {
+		for (const node of rewrittenDownstreamNodes) {
 			const currentNode = workflowDocumentStore.value.allNodes.find((x) => x.id === node.id);
 
 			if (isEqual(node, currentNode)) continue;
@@ -501,25 +509,25 @@ export function useWorkflowExtraction() {
 	}
 
 	async function doExtractNodesIntoSubworkflow(
-		selection: ExtractableSubgraphData,
-		subGraph: INodeUi[],
+		extractionBoundary: ExtractableSubgraphData,
+		extractedNodes: INodeUi[],
 		newWorkflowName: string,
 	) {
-		const { start, end } = selection;
+		const { start, end } = extractionBoundary;
 
 		const allNodeNames = workflowDocumentStore.value.allNodes.map((x) => x.name) ?? [];
 
 		let startNodeName = 'Start';
-		const subGraphNames = subGraph.map((x) => x.name);
-		const nodesToDelete = getNodesToDeleteFromParent(
-			subGraph,
+		const extractedNodeNames = extractedNodes.map((x) => x.name);
+		const nodesToRemoveFromParent = getNodesToRemoveFromParent(
+			extractedNodes,
 			workflowDocumentStore.value.connectionsBySourceNode,
 		);
-		const deletedNodeNames = nodesToDelete.map((node) => node.name);
-		while (subGraphNames.includes(startNodeName)) startNodeName += '_1';
+		const removedParentNodeNames = nodesToRemoveFromParent.map((node) => node.name);
+		while (extractedNodeNames.includes(startNodeName)) startNodeName += '_1';
 
 		let returnNodeName = 'Return';
-		while (subGraphNames.includes(returnNodeName)) returnNodeName += '_1';
+		while (extractedNodeNames.includes(returnNodeName)) returnNodeName += '_1';
 
 		const directAfterEndNodeNames = end
 			? (workflowDocumentStore.value
@@ -536,7 +544,7 @@ export function useWorkflowExtraction() {
 			: [];
 
 		const { nodes, variables } = extractReferencesInNodeExpressions(
-			subGraph,
+			extractedNodes,
 			allNodeNames,
 			startNodeName,
 			start ? [start] : undefined,
@@ -547,14 +555,14 @@ export function useWorkflowExtraction() {
 
 		const { nodes: afterNodes, variables: afterVariables } = extractReferencesInNodeExpressions(
 			allAfterEndNodes,
-			allAfterEndNodes.map((x) => x.name).concat(deletedNodeNames),
+			allAfterEndNodes.map((x) => x.name).concat(removedParentNodeNames),
 			executeWorkflowNodeName,
 			directAfterEndNodeNames,
 		);
 
 		const workflowData = makeSubworkflow(
 			newWorkflowName,
-			selection,
+			extractionBoundary,
 			nodes,
 			workflowDocumentStore.value?.connectionsBySourceNode,
 			variables,
@@ -566,7 +574,7 @@ export function useWorkflowExtraction() {
 		if (createdWorkflow === null) return false;
 
 		const executeWorkflowPosition = computeAveragePosition(
-			nodesToDelete.length > 0 ? nodesToDelete : subGraph,
+			nodesToRemoveFromParent.length > 0 ? nodesToRemoveFromParent : extractedNodes,
 		);
 		const executeWorkflowNode = makeExecuteWorkflowNode(
 			createdWorkflow.id,
@@ -574,11 +582,11 @@ export function useWorkflowExtraction() {
 			executeWorkflowPosition,
 			variables,
 		);
-		await replaceSelectionWithNode(
+		await replaceParentSelectionWithSubworkflowNode(
 			executeWorkflowNode,
-			nodesToDelete.find((x) => x.name === start)?.id,
-			nodesToDelete.find((x) => x.name === end)?.id,
-			nodesToDelete,
+			nodesToRemoveFromParent.find((x) => x.name === start)?.id,
+			nodesToRemoveFromParent.find((x) => x.name === end)?.id,
+			nodesToRemoveFromParent,
 			afterNodes,
 		);
 
@@ -605,12 +613,16 @@ export function useWorkflowExtraction() {
 	 * by @tryExtractNodesIntoSubworkflow
 	 */
 	async function extractNodesIntoSubworkflow(
-		selection: ExtractableSubgraphData,
-		subGraph: INodeUi[],
+		extractionBoundary: ExtractableSubgraphData,
+		extractedNodes: INodeUi[],
 		newWorkflowName: string,
 	) {
-		const success = await doExtractNodesIntoSubworkflow(selection, subGraph, newWorkflowName);
-		trackExtractWorkflow(subGraph.length, success);
+		const success = await doExtractNodesIntoSubworkflow(
+			extractionBoundary,
+			extractedNodes,
+			newWorkflowName,
+		);
+		trackExtractWorkflow(extractedNodes.length, success);
 	}
 
 	/**
