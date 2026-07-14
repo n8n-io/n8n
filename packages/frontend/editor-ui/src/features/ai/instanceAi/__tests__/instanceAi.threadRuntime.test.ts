@@ -395,13 +395,13 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(registry.getRuntime(threadId)?.lastEventId).toBe(43);
 	});
 
-	test('an event replayed with an already-seen id is dropped', () => {
+	test('a durable fact replayed with an already-seen id is dropped', () => {
 		const threadId = activeThreadId;
 		const event = {
-			type: 'text-delta',
+			type: 'tool-call',
 			runId: 'run-1',
 			agentId: 'agent-root',
-			payload: { text: 'hello' },
+			payload: { toolCallId: 'tc-1', toolName: 'search', args: {} },
 		};
 
 		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root'), '1'));
@@ -410,6 +410,26 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		capturedOnMessage!(makeSSEEvent(event, '2'));
 
 		expect(registry.getRuntime(threadId)?.debugEvents).toHaveLength(2);
+	});
+
+	test('an ephemeral frame echoing the previous durable id is not swallowed by the dedup', () => {
+		const threadId = activeThreadId;
+		// Under the durable log, deltas/status ship with no `id:` line, so the
+		// browser's lastEventId on those frames echoes the last durable fact.
+		const delta = (text: string) => ({
+			type: 'text-delta' as const,
+			runId: 'run-1',
+			agentId: 'agent-root',
+			payload: { text },
+		});
+
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root'), '7'));
+		capturedOnMessage!(makeSSEEvent(delta('a'), '7'));
+		capturedOnMessage!(makeSSEEvent(delta('b'), '7'));
+
+		// Both deltas render; the cursor still points at the durable fact.
+		expect(registry.getRuntime(threadId)?.debugEvents).toHaveLength(3);
+		expect(registry.getRuntime(threadId)?.lastEventId).toBe(7);
 	});
 
 	test('the reconnect cursor keeps the max seen id when producers interleave out of order', () => {

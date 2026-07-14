@@ -30,6 +30,12 @@ const listAction = z.object({
 		.string()
 		.optional()
 		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
+	n8nConnectOnly: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, return only nodes supported by n8n Connect (each carries an `aiGateway` field with minVersion/operations). Use to answer "which nodes support n8n Connect?".',
+		),
 });
 
 const searchAction = z.object({
@@ -143,6 +149,7 @@ async function handleList(
 ) {
 	const nodes = await context.nodeService.listAvailable({
 		query: input.query,
+		n8nConnectOnly: input.n8nConnectOnly,
 	});
 	return { nodes };
 }
@@ -238,10 +245,9 @@ async function handleDescribe(
 
 /**
  * Resolve TypeScript type definitions for a validated list of node requests.
- * Shared by the consolidated `nodes` tool's `type-definition` action and the
- * agent-builder's `get_node_types` tool so both stay on one implementation.
+ * Used by the consolidated `nodes` tool's `type-definition` action.
  */
-export async function resolveNodeTypeDefinitions(
+async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
 	nodeTypes: NodeTypeRequest[],
 ) {

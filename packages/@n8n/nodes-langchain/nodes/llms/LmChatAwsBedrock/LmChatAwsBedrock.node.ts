@@ -1,21 +1,13 @@
-import type {
-	BedrockRuntimeClientConfig,
-	GuardrailTrace,
-	PerformanceConfigLatency,
-} from '@aws-sdk/client-bedrock-runtime';
-import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
+import type { GuardrailTrace, PerformanceConfigLatency } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse, type ChatBedrockConverseInput } from '@langchain/aws';
 import {
-	getNodeProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { DocumentType } from '@smithy/types';
-import { assertSupportedAwsRegion, getAwsDomain } from 'n8n-nodes-base/aws-credentials';
+import { assertSupportedAwsRegion } from 'n8n-nodes-base/aws-credentials';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
-
 import {
 	jsonParse,
 	NodeConnectionTypes,
@@ -26,6 +18,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
 export class LmChatAwsBedrock implements INodeType {
@@ -319,7 +312,11 @@ export class LmChatAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const { region: credentialRegion, credentials } = await resolveAwsCredentials(this, itemIndex);
+		const {
+			region: credentialRegion,
+			credentials,
+			bedrockRuntimeEndpoint,
+		} = await resolveAwsCredentials(this, itemIndex);
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature?: number;
@@ -349,24 +346,8 @@ export class LmChatAwsBedrock implements INodeType {
 			region = arnRegion;
 		}
 
-		// We set-up client manually to pass httpAgent and httpsAgent.
-		// getAwsDomain keeps China (amazonaws.com.cn) / GovCloud endpoints correct.
-		const bedrockEndpoint = `https://bedrock-runtime.${region}.${getAwsDomain(region)}`;
-		const proxyAgent = getNodeProxyAgent(bedrockEndpoint);
-		const clientConfig: BedrockRuntimeClientConfig = {
-			region,
-			credentials,
-		};
-
-		if (proxyAgent) {
-			clientConfig.requestHandler = new NodeHttpHandler({
-				httpAgent: proxyAgent,
-				httpsAgent: proxyAgent,
-			});
-		}
-
 		// Pass the pre-configured client to avoid credential resolution proxy issues
-		const client = new BedrockRuntimeClient(clientConfig);
+		const client = createBedrockRuntimeClient({ region, credentials, bedrockRuntimeEndpoint });
 
 		// Forward only user-set options; unset ones are omitted so model defaults are preserved.
 		const modelConfig: ChatBedrockConverseInput = {

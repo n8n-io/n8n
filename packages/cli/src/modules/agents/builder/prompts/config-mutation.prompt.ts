@@ -30,7 +30,7 @@ ${getSchemaReferenceSection()}
 - Keep each feature in the schema path where it belongs.
 - Preserve unrelated existing config unless the user asked to change it.
 - Never write placeholder instructions, tool descriptions, or skill descriptions.
-- Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
+- Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\` or \`ask_credential\`.
 - Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.
 - \`providerTools\` keys must be complete provider tool IDs from the valid key list.
 

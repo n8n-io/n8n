@@ -117,6 +117,21 @@ export const instanceAiEventTypeSchema = z.enum([
 ]);
 export type InstanceAiEventType = z.infer<typeof instanceAiEventTypeSchema>;
 
+/**
+ * Live-only event types under the durable log (`N8N_INSTANCE_AI_DURABLE_LOG`):
+ * never persisted, their SSE frames carry no `id:` line, and the browser's
+ * replay cursor never points at them. Deltas are transport, not state: a
+ * completed segment replays as a coalesced block fact instead. One list,
+ * shared by the writer (what to persist) and the frontend (which frames to
+ * dedup by id), so the two sides cannot drift.
+ */
+export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType> = new Set([
+	'text-delta',
+	'reasoning-delta',
+	'status',
+	'filesystem-request',
+]);
+
 // ---------------------------------------------------------------------------
 // Run status
 // ---------------------------------------------------------------------------
@@ -141,7 +156,13 @@ export type InstanceAiConfirmationSeverity = z.infer<typeof instanceAiConfirmati
 export const instanceAiAgentStatusSchema = z.enum(['active', 'completed', 'cancelled', 'error']);
 export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 
-export const instanceAiAgentKindSchema = z.enum(['builder', 'data-table', 'planner', 'eval-setup']);
+export const instanceAiAgentKindSchema = z.enum([
+	'builder',
+	'data-table',
+	'planner',
+	'eval-setup',
+	'agent-builder',
+]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
 // ---------------------------------------------------------------------------
@@ -854,9 +875,42 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
 }) {}
 
+export const INSTANCE_AI_THREAD_SOURCES = ['website-template', 'template-view'] as const;
+export type InstanceAiThreadSource = (typeof INSTANCE_AI_THREAD_SOURCES)[number];
+
+export const INSTANCE_AI_THREAD_SOURCE_FALLBACK = 'unknown';
+export type InstanceAiThreadSourcePersisted =
+	| InstanceAiThreadSource
+	| typeof INSTANCE_AI_THREAD_SOURCE_FALLBACK;
+
+export const INSTANCE_AI_THREAD_ORIGINS = ['internal', 'external'] as const;
+export type InstanceAiThreadOrigin = (typeof INSTANCE_AI_THREAD_ORIGINS)[number];
+
+function isInstanceAiThreadSource(value: string): value is InstanceAiThreadSource {
+	return (INSTANCE_AI_THREAD_SOURCES as readonly string[]).includes(value);
+}
+
+/** Normalize an untrusted source string to a known value, falling back otherwise. */
+export function normalizeInstanceAiThreadSource(
+	value: string | undefined,
+): InstanceAiThreadSourcePersisted {
+	return value !== undefined && isInstanceAiThreadSource(value)
+		? value
+		: INSTANCE_AI_THREAD_SOURCE_FALLBACK;
+}
+
+const instanceAiSourceContextSchema = z
+	.record(z.string(), z.unknown())
+	.refine((value) => JSON.stringify(value).length <= 2048, {
+		message: 'sourceContext exceeds the maximum allowed size',
+	});
+
 export class InstanceAiEnsureThreadRequest extends Z.class({
 	threadId: z.string().uuid().optional(),
 	projectId: z.string().min(1),
+	source: z.string().max(64).optional(),
+	origin: z.enum(INSTANCE_AI_THREAD_ORIGINS).optional(),
+	sourceContext: instanceAiSourceContextSchema.optional(),
 }) {}
 
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
