@@ -146,28 +146,6 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 				completedAt: tc.completedAt,
 			});
 		}
-
-		if (
-			tc.toolName === 'agent_builder' &&
-			(tc.args as Record<string, unknown> | undefined)?.action === 'create_agent' &&
-			result.ok === true &&
-			typeof result.agentId === 'string' &&
-			!seenIds.has(result.agentId)
-		) {
-			seenIds.add(result.agentId);
-			artifacts.push({
-				type: 'agent',
-				resourceId: result.agentId,
-				name:
-					(typeof result.name === 'string' ? result.name : undefined) ??
-					(typeof (tc.args as Record<string, unknown>)?.name === 'string'
-						? ((tc.args as Record<string, unknown>).name as string)
-						: undefined) ??
-					'Untitled',
-				projectId: typeof result.projectId === 'string' ? result.projectId : undefined,
-				completedAt: tc.completedAt,
-			});
-		}
 	}
 
 	// Recurse into children

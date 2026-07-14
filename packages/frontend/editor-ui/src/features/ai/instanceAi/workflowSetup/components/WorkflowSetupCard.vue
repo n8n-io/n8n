@@ -91,8 +91,8 @@ const displayName = computed(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding-top: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius);
+	border: 2px solid var(--color--primary);
+	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 }
 

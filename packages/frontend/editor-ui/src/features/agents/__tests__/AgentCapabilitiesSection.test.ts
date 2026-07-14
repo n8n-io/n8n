@@ -80,6 +80,7 @@ function mountSection(
 	config: AgentJsonConfig | null = null,
 	taskRefs: AgentJsonTaskConfig[] = [],
 	projectAgents: AgentResource[] = [],
+	extraProps: Record<string, unknown> = {},
 ) {
 	projectAgentsListRef.value = projectAgents;
 
@@ -94,6 +95,7 @@ function mountSection(
 			agentId: 'agent-id',
 			isPublished: false,
 			taskRefs,
+			...extraProps,
 		},
 		global: {
 			stubs: {
@@ -113,6 +115,12 @@ function mountSection(
 				N8nIcon: { template: '<span />' },
 				N8nText: { template: '<span><slot /></span>' },
 				N8nTooltip: { template: '<span><slot /></span>' },
+				AgentChannelModal: {
+					name: 'AgentChannelModal',
+					props: ['simpleSetup'],
+					template:
+						'<div data-testid="agent-channel-modal-stub" :data-simple-setup="simpleSetup" />',
+				},
 			},
 		},
 	});
@@ -625,6 +633,30 @@ describe('AgentCapabilitiesSection', () => {
 
 		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(false);
+	});
+
+	describe('simpleChannelSetup', () => {
+		it('does not force simple setup on the channel modal by default', async () => {
+			const wrapper = mountSection([]);
+
+			await wrapper.find('[data-testid="agent-capabilities-add-channel"]').trigger('click');
+			await flushPromises();
+
+			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+			expect(modal.exists()).toBe(true);
+			expect(modal.attributes('data-simple-setup')).toBe('false');
+		});
+
+		it('forwards simpleChannelSetup to the channel modal as simple-setup', async () => {
+			const wrapper = mountSection([], {}, null, [], [], { simpleChannelSetup: true });
+
+			await wrapper.find('[data-testid="agent-capabilities-add-channel"]').trigger('click');
+			await flushPromises();
+
+			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+			expect(modal.exists()).toBe(true);
+			expect(modal.attributes('data-simple-setup')).toBe('true');
+		});
 	});
 
 	describe('sections allowlist', () => {

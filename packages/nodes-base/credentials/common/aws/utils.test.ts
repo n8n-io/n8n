@@ -1,6 +1,15 @@
-import { UserError } from 'n8n-workflow';
+import { UserError, type IHttpRequestOptions } from 'n8n-workflow';
+
 import type { AWSRegion } from './regions';
+import * as systemCredentialsUtils from './system-credentials-utils';
 import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType } from './types';
+import {
+	assertSupportedAwsRegion,
+	assumeRole,
+	awsGetSignInOptionsAndUpdateRequest,
+	parseAwsUrl,
+	validateBedrockEndpointOverride,
+} from './utils';
 
 // Mock the SDK provider factory. Each call returns a function identity we can
 // inspect, mirroring nodes-langchain's resolveAwsCredentials.test.ts pattern.
@@ -39,9 +48,6 @@ vi.mock('@smithy/node-http-handler', () => ({
 vi.mock('aws4', () => ({
 	sign: vi.fn(),
 }));
-
-import { assertSupportedAwsRegion, assumeRole, awsGetSignInOptionsAndUpdateRequest } from './utils';
-import * as systemCredentialsUtils from './system-credentials-utils';
 
 type FromTemporaryCredentialsCallArg = {
 	params: { RoleArn: string; RoleSessionName: string; ExternalId: string };
@@ -608,6 +614,53 @@ describe('assertSupportedAwsRegion', () => {
 	);
 });
 
+describe('parseAwsUrl', () => {
+	it('parses a PrivateLink (vpce) Bedrock host', () => {
+		const url = new URL('https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com/model');
+		expect(parseAwsUrl(url)).toEqual({ service: 'bedrock-runtime', region: 'us-east-1' });
+	});
+
+	it('parses a PrivateLink (vpce) host for a non-Bedrock service', () => {
+		const url = new URL('https://vpce-0abc123.sqs.us-west-2.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'us-west-2' });
+	});
+
+	it('parses a PrivateLink (vpce) host whose vpce-id label includes an availability-zone suffix', () => {
+		const url = new URL('https://vpce-0abc123-usw2-az1.sqs.us-west-2.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'us-west-2' });
+	});
+
+	it('extracts a vpce region label verbatim even when unsupported (validation is a call-site concern)', () => {
+		const url = new URL('https://vpce-0abc.sqs.not-a-region.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'not-a-region' });
+	});
+
+	it('parses a PrivateLink (vpce) host in a GovCloud region', () => {
+		const url = new URL('https://vpce-0abc123.sqs.us-gov-west-1.vpce.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'us-gov-west-1' });
+	});
+
+	it('parses a PrivateLink (vpce) host on the China domain', () => {
+		const url = new URL('https://vpce-0abc123.sqs.cn-north-1.vpce.amazonaws.com.cn/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'sqs', region: 'cn-north-1' });
+	});
+
+	it('parses a standard public hostname (regression)', () => {
+		const url = new URL('https://lambda.us-east-1.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'us-east-1' });
+	});
+
+	it('parses a China domain hostname (regression)', () => {
+		const url = new URL('https://lambda.cn-north-1.amazonaws.com.cn/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'lambda', region: 'cn-north-1' });
+	});
+
+	it('returns a null region for a global no-region service (regression)', () => {
+		const url = new URL('https://iam.amazonaws.com/');
+		expect(parseAwsUrl(url)).toEqual({ service: 'iam', region: null });
+	});
+});
+
 describe('awsGetSignInOptionsAndUpdateRequest', () => {
 	const baseCredentials: AwsIamCredentialsType = {
 		region: 'us-east-1',
@@ -723,5 +776,304 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 		const sentUrl = new URL(url);
 		expect(sentUrl.searchParams.get('Action')).toBe('GetCallerIdentity');
 		expect(sentUrl.searchParams.get('Version')).toBe('2011-06-15');
+	});
+
+	describe('Bedrock control-plane endpoint override', () => {
+		// The model-list loadOptions request arrives with the default control-plane
+		// host as baseURL and no explicit signing service (service is derived from
+		// the host). These exercise that exact shape.
+		const modelListRequest: IHttpRequestOptions = {
+			baseURL: 'https://bedrock.us-east-1.amazonaws.com',
+			url: '/foundation-models?byOutputModality=TEXT',
+			headers: {},
+		};
+
+		it('routes the request to the override host when set', () => {
+			const { url, signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				modelListRequest,
+				{
+					...baseCredentials,
+					bedrockEndpoint: 'https://vpce-abc.bedrock.us-east-1.vpce.amazonaws.com',
+				},
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			const sent = new URL(url);
+			expect(sent.host).toBe('vpce-abc.bedrock.us-east-1.vpce.amazonaws.com');
+			expect(sent.pathname).toBe('/foundation-models');
+			expect(sent.searchParams.get('byOutputModality')).toBe('TEXT');
+			// A custom host must never change the signing name or region.
+			expect(signOpts.service).toBe('bedrock');
+			expect(signOpts.region).toBe('us-east-1');
+			expect(signOpts.host).toBe('vpce-abc.bedrock.us-east-1.vpce.amazonaws.com');
+		});
+
+		it('substitutes the {region} placeholder in the override', () => {
+			const { url } = awsGetSignInOptionsAndUpdateRequest(
+				modelListRequest,
+				{ ...baseCredentials, bedrockEndpoint: 'https://bedrock.{region}.example.internal' },
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(new URL(url).host).toBe('bedrock.us-east-1.example.internal');
+		});
+
+		it('prepends any base path on the override endpoint', () => {
+			const { url } = awsGetSignInOptionsAndUpdateRequest(
+				modelListRequest,
+				{ ...baseCredentials, bedrockEndpoint: 'https://proxy.internal/bedrock/' },
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			const sent = new URL(url);
+			expect(sent.host).toBe('proxy.internal');
+			expect(sent.pathname).toBe('/bedrock/foundation-models');
+		});
+
+		it('hits the default control-plane host when no override is set', () => {
+			const { url, signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				modelListRequest,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(new URL(url).host).toBe('bedrock.us-east-1.amazonaws.com');
+			expect(signOpts.service).toBe('bedrock');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('rejects an override with a non-http scheme', () => {
+			expect(() =>
+				awsGetSignInOptionsAndUpdateRequest(
+					modelListRequest,
+					{ ...baseCredentials, bedrockEndpoint: 'ftp://bedrock.us-east-1.amazonaws.com' },
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				),
+			).toThrow(UserError);
+		});
+	});
+
+	describe('PrivateLink (vpce) endpoints', () => {
+		it('normalizes a vpce Bedrock host to the bedrock signing service (uri branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com/foundation-models',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('bedrock');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('normalizes a vpce Bedrock host to the bedrock signing service (baseURL/url branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com',
+					url: '/foundation-models',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('bedrock');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('signs a vpce host for a non-Bedrock service using its own service name', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.sqs.us-west-2.vpce.amazonaws.com',
+					url: '/',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-west-2',
+			);
+
+			expect(signOpts.service).toBe('sqs');
+			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('throws when the vpce host has an unsupported region label', () => {
+			expect(() =>
+				awsGetSignInOptionsAndUpdateRequest(
+					{
+						baseURL: 'https://vpce-0abc123.sqs.not-a-region.vpce.amazonaws.com',
+						url: '/',
+						headers: {},
+					} as any,
+					baseCredentials,
+					'',
+					'GET',
+					'',
+					'us-east-1',
+				),
+			).toThrow('not-a-region');
+		});
+
+		it('does not overwrite an explicitly supplied service with the URL-derived one', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.sqs.us-west-2.vpce.amazonaws.com',
+					url: '/',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'custom-service',
+				'us-west-2',
+			);
+
+			expect(signOpts.service).toBe('custom-service');
+		});
+
+		it('always populates signOpts.service for a vpce host (protects the signOptions fallback invariant)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com',
+					url: '/foundation-models',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			// signOptions falls back to splitting the raw hostname when service is
+			// nullish; asserting the resolved value proves that fallback never fires.
+			expect(signOpts.service).toBe('bedrock');
+		});
+	});
+
+	describe('custom (non-AWS) endpoint hosts', () => {
+		it('keeps the credential region when the host label is not a region (uri branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://myapi.example.com/prod/resource',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'execute-api',
+				'us-east-1',
+			);
+
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('keeps the credential region when the host label is not a region (baseURL/url branch)', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					baseURL: 'https://sqs.mycompany.dev',
+					url: '/queue',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'eu-central-1',
+			);
+
+			expect(signOpts.region).toBe('eu-central-1');
+			expect(signOpts.service).toBe('sqs');
+		});
+
+		it('adopts a recognized region label from a custom host', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{
+					uri: 'https://sqs.us-west-2.mycompany.dev/queue',
+					headers: {},
+				} as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.region).toBe('us-west-2');
+		});
+	});
+});
+
+describe('validateBedrockEndpointOverride', () => {
+	it('accepts an https URL and returns it without a trailing slash', () => {
+		expect(
+			validateBedrockEndpointOverride('https://bedrock.us-east-1.amazonaws.com', 'us-east-1'),
+		).toBe('https://bedrock.us-east-1.amazonaws.com');
+	});
+
+	it('accepts an http URL (for LocalStack / on-prem gateways)', () => {
+		expect(validateBedrockEndpointOverride('http://localhost:4566', 'us-east-1')).toBe(
+			'http://localhost:4566',
+		);
+	});
+
+	it('substitutes the {region} placeholder', () => {
+		expect(
+			validateBedrockEndpointOverride(
+				'https://bedrock-runtime.{region}.example.internal',
+				'eu-west-3',
+			),
+		).toBe('https://bedrock-runtime.eu-west-3.example.internal');
+	});
+
+	it('strips a trailing slash but preserves a meaningful base path', () => {
+		expect(validateBedrockEndpointOverride('https://proxy.internal/bedrock/', 'us-east-1')).toBe(
+			'https://proxy.internal/bedrock',
+		);
+	});
+
+	it.each(['ftp://bedrock.us-east-1.amazonaws.com', 'file:///etc/passwd', 'ws://host'])(
+		'rejects the non-http(s) scheme %s',
+		(endpoint) => {
+			expect(() => validateBedrockEndpointOverride(endpoint, 'us-east-1')).toThrow(UserError);
+		},
+	);
+
+	it('rejects a malformed URL', () => {
+		expect(() => validateBedrockEndpointOverride('not a url', 'us-east-1')).toThrow(UserError);
+	});
+
+	it('rejects an unsupported region before substitution', () => {
+		expect(() =>
+			validateBedrockEndpointOverride(
+				'https://bedrock.{region}.amazonaws.com',
+				'us-fake-1' as AWSRegion,
+			),
+		).toThrow(UserError);
 	});
 });

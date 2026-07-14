@@ -201,6 +201,7 @@ export {
 	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
+	dataTableColumnTypeSchema,
 	dataTableIdSchema,
 } from './schemas/data-table.schema';
 
@@ -282,6 +283,7 @@ export {
 	WEB_SEARCH_GRANT_KEY,
 	parseDomainAccessGrants,
 	instanceAiEventTypeSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	instanceAiRunStatusSchema,
 	instanceAiConfirmationSeveritySchema,
 	instanceAiAgentStatusSchema,
@@ -315,6 +317,8 @@ export {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	UNLIMITED_CREDITS,
 	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
+	CONFIG_EVALUATIONS_FLAG,
+	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
@@ -348,6 +352,13 @@ export {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	applyBranchReadOnlyOverrides,
+	normalizeInstanceAiThreadSource,
+} from './schemas/instance-ai.schema';
+
+export type {
+	InstanceAiThreadSource,
+	InstanceAiThreadSourcePersisted,
+	InstanceAiThreadOrigin,
 } from './schemas/instance-ai.schema';
 
 export type {

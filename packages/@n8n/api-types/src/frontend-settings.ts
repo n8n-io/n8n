@@ -288,6 +288,8 @@ export type FrontendModuleSettings = {
 		mcpAccessEnabled: boolean;
 		/** Whether MCP settings are managed via environment variables. */
 		mcpManagedByEnv: boolean;
+		/** Public URL of the instance MCP server endpoint. */
+		serverUrl?: string;
 	};
 
 	/**

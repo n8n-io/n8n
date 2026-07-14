@@ -26,13 +26,18 @@ export class McpModule implements ModuleInterface {
 	/**
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
-	 * The response shape will be `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean } }`.
+	 * The response shape will be
+	 * `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean, serverUrl: string } }`.
 	 */
 	async settings() {
 		const { McpSettingsService } = await import('./mcp.settings.service');
+		const { McpProtectedResource } = await import('./mcp-protected-resource');
 		const mcpAccessEnabled = await Container.get(McpSettingsService).getEnabled();
 		const { mcpManagedByEnv } = Container.get(InstanceSettingsLoaderConfig);
-		return { mcpAccessEnabled, mcpManagedByEnv };
+		// Canonical resource URL, so the UI shows the URL clients must actually
+		// use when a dedicated MCP base URL is configured.
+		const serverUrl = Container.get(McpProtectedResource).getResourceUrl();
+		return { mcpAccessEnabled, mcpManagedByEnv, serverUrl };
 	}
 
 	@OnShutdown()

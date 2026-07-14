@@ -1,3 +1,5 @@
+import { Container } from '@n8n/di';
+import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -266,7 +268,20 @@ export function getSecretToken(this: IHookFunctions | IWebhookFunctions) {
 	return secret_token.replace(/[^a-zA-Z0-9\_\-]+/g, '');
 }
 
-export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
+/**
+ * Derives which decision ('a' approve / 'd' decline) a Send and Wait button
+ * represents from its signed resume URL's `approved` query param, so the
+ * shared `getSendAndWaitConfig` stays untouched by the callback-button path.
+ *
+ * This is an implicit coupling to `getSendAndWaitConfig`'s URL-building
+ * convention (utils/sendAndWait/utils.ts): if its options ever gain an
+ * explicit decision field, prefer that over re-parsing the link href here.
+ */
+function decisionFromSignedUrl(url: string): 'a' | 'd' {
+	return new URL(url).searchParams.get('approved') === 'false' ? 'd' : 'a';
+}
+
+export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApproval = false) {
 	const chat_id = context.getNodeParameter('chatId', 0) as string;
 
 	const config = getSendAndWaitConfig(context);
@@ -288,6 +303,18 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 		reply_markup: {
 			inline_keyboard: [
 				config.options.map((option) => {
+					if (chatApproval) {
+						const executionId = context.getExecutionId();
+						const hmacSecret = Container.get(InstanceSettings).hmacSignatureSecret;
+						return {
+							text: option.label,
+							callback_data: buildHitlCallbackReference(
+								executionId,
+								decisionFromSignedUrl(option.url),
+								hmacSecret,
+							),
+						};
+					}
 					return {
 						text: option.label,
 						url: option.url,

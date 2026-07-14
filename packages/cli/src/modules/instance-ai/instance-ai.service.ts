@@ -12,7 +12,7 @@ import {
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
@@ -30,6 +30,7 @@ import {
 	getPromptFilesystemInstructions,
 	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
+	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
 	createInstanceAiLivenessPolicyConfig,
@@ -44,6 +45,7 @@ import {
 	getDateTimeSection,
 	isParseableAttachment,
 	enrichMessageWithBackgroundTasks,
+	isQuotaExhaustedError,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
@@ -266,7 +268,24 @@ function isSandboxEndpointNotAllowedError(error: unknown): boolean {
 	return getErrorMessage(error).toLowerCase().includes('endpoint not allowed');
 }
 
+/**
+ * Shown when the user has exhausted their AI credits/quota. Self-contained so it
+ * still reads clearly on older clients that don't render the structured
+ * `quota_exhausted` error state; kept in sync with the FE i18n copy.
+ */
+export const QUOTA_EXHAUSTED_USER_MESSAGE =
+	"You've run out of AI credits. Upgrade your plan to continue using the AI assistant.";
+
+/** Structured error code for the UI when a run failed because credits ran out. */
+function getUserFacingErrorCode(error: unknown): 'quota_exhausted' | undefined {
+	return isQuotaExhaustedError(error) ? 'quota_exhausted' : undefined;
+}
+
 export function getUserFacingErrorMessage(error: unknown): string {
+	if (isQuotaExhaustedError(error)) {
+		return QUOTA_EXHAUSTED_USER_MESSAGE;
+	}
+
 	if (error instanceof UserError) {
 		return error.message;
 	}
@@ -303,6 +322,14 @@ function getAbortReason(signal: AbortSignal): string {
 	if (reason instanceof Error) return reason.message;
 	return typeof reason === 'string' ? reason : 'user_cancelled';
 }
+
+/** Error details for the 'Builder generation errored' telemetry event. */
+type RunFinishErrorInfo = {
+	/** Raw error message — the SSE run-finish payload carries the user-facing reason instead. */
+	errorMessage?: string;
+	/** 'stream' = the run reported an error but terminated cleanly; 'exception' = the run loop threw. */
+	errorSource?: 'stream' | 'exception';
+};
 
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
@@ -481,7 +508,6 @@ export class InstanceAiService {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
-		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -1840,12 +1866,14 @@ export class InstanceAiService {
 		const { searchProxyConfig, tracingProxyConfig, tokenManager, proxyBaseUrl } =
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
+		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
 			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
+			configEvalsEnabled,
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -1962,18 +1990,14 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		// The agent-builder tools are only registered when the agents module is
-		// active (InstanceAiAdapterService.getAgentBuilderAdapter), and the
-		// build_agent flow persists configs from workspace files, so the skill
-		// needs both the agents module and the sandbox workspace. Hide it when
-		// either is unavailable.
-		const allRuntimeSkills = loadInstanceAiRuntimeSkillSource();
-		const agentsModuleActive = this.moduleRegistry.isActive('agents');
-		const withoutAgentBuilderSkill = filterRuntimeSkillSource(allRuntimeSkills, ['agent-builder']);
-		// Default assumes no workspace; the sandbox block below restores the
-		// agent-builder skill once the workspace is known to be available.
-		let availableRuntimeSkills = withoutAgentBuilderSkill;
-		let runtimeSkills = availableRuntimeSkills;
+		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
+		// preserved) so every derived skill source inherits the exclusion.
+		const flagDisabledSkillIds = disabledInstanceAiSkillIds({ configEvalsEnabled });
+		const allRuntimeSkills =
+			flagDisabledSkillIds.length > 0
+				? filterRuntimeSkillSource(loadInstanceAiRuntimeSkillSource(), flagDisabledSkillIds)
+				: loadInstanceAiRuntimeSkillSource();
+		let runtimeSkills = allRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
 
@@ -2026,9 +2050,8 @@ export class InstanceAiService {
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
 				});
-				availableRuntimeSkills = agentsModuleActive ? allRuntimeSkills : withoutAgentBuilderSkill;
 				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
-					source: availableRuntimeSkills,
+					source: allRuntimeSkills,
 					workspace: runtimeSkillWorkspace,
 					logger: this.logger,
 				});
@@ -2064,7 +2087,7 @@ export class InstanceAiService {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			runtimeSkills,
-			runtimeSkillCatalog: availableRuntimeSkills,
+			runtimeSkillCatalog: allRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
 			formBaseUrl: this.formBaseUrl,
@@ -3430,12 +3453,15 @@ export class InstanceAiService {
 			}
 			const userFacingErrorMessage =
 				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
+			const userFacingErrorCode =
+				result.status === 'errored' ? getUserFacingErrorCode(result.error) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
 					messageGroupId,
 					correlationId: messageId,
 					workSummary: result.workSummary,
 					errorMessage: userFacingErrorMessage,
+					errorCode: userFacingErrorCode,
 					suppressCompletedFallback:
 						checkpoint?.isCheckpointFollowUp === true ||
 						plannedBuild?.isPlannedBuildFollowUp === true,
@@ -3466,6 +3492,16 @@ export class InstanceAiService {
 				workSummary: result.workSummary,
 				usage: result.usage,
 				errorReason: userFacingErrorMessage,
+				...(result.status === 'errored'
+					? {
+							errorInfo: {
+								errorMessage: result.error
+									? getErrorMessage(result.error)
+									: 'Instance AI stream errored',
+								errorSource: 'stream' as const,
+							},
+						}
+					: {}),
 			});
 
 			// Bill token usage for every terminal outcome (completed / cancelled / errored),
@@ -3547,6 +3583,7 @@ export class InstanceAiService {
 
 			const errorMessage = getErrorMessage(error);
 			const userFacingErrorMessage = getUserFacingErrorMessage(error);
+			const userFacingErrorCode = getUserFacingErrorCode(error);
 
 			const errCtx: InstanceAiObservabilityContext = {
 				threadId,
@@ -3566,6 +3603,7 @@ export class InstanceAiService {
 				messageGroupId,
 				correlationId: messageId,
 				errorMessage: userFacingErrorMessage,
+				errorCode: userFacingErrorCode,
 			});
 			await this.tracing.finalizeRunTracing(runId, tracing, {
 				status: 'error',
@@ -3583,16 +3621,15 @@ export class InstanceAiService {
 				aiCreatedWorkflowIds,
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
-			this.eventBus.publish(threadId, {
-				type: 'run-finish',
+			this.publishRunFinish(
+				threadId,
 				runId,
-				agentId: orchestratorAgentId(runId),
-				payload: {
-					status: 'error',
-					reason: userFacingErrorMessage,
-					...(archivedWorkflowIds.length > 0 ? { archivedWorkflowIds } : {}),
-				},
-			});
+				'errored',
+				userFacingErrorMessage,
+				archivedWorkflowIds,
+				user.id,
+				{ errorMessage, errorSource: 'exception' },
+			);
 			if (activeSnapshotStorage) {
 				await this.saveAgentTreeSnapshot(threadId, runId, activeSnapshotStorage);
 			}
@@ -4550,11 +4587,14 @@ export class InstanceAiService {
 			}
 			const userFacingErrorMessage =
 				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
+			const userFacingErrorCode =
+				result.status === 'errored' ? getUserFacingErrorCode(result.error) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
 					messageGroupId,
 					workSummary: result.workSummary,
 					errorMessage: userFacingErrorMessage,
+					errorCode: userFacingErrorCode,
 					suppressCompletedFallback:
 						opts.checkpoint?.isCheckpointFollowUp === true ||
 						opts.plannedBuild?.isPlannedBuildFollowUp === true,
@@ -4587,6 +4627,16 @@ export class InstanceAiService {
 				workSummary: result.workSummary,
 				usage: result.usage,
 				errorReason: userFacingErrorMessage,
+				...(result.status === 'errored'
+					? {
+							errorInfo: {
+								errorMessage: result.error
+									? getErrorMessage(result.error)
+									: 'Instance AI resumed stream errored',
+								errorSource: 'stream' as const,
+							},
+						}
+					: {}),
 			});
 
 			// Bill token usage for every terminal outcome, deduped per run segment.
@@ -4660,6 +4710,7 @@ export class InstanceAiService {
 
 			const errorMessage = getErrorMessage(error);
 			const userFacingErrorMessage = getUserFacingErrorMessage(error);
+			const userFacingErrorCode = getUserFacingErrorCode(error);
 
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 			const errCtx: InstanceAiObservabilityContext = {
@@ -4678,6 +4729,7 @@ export class InstanceAiService {
 			this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
 				messageGroupId,
 				errorMessage: userFacingErrorMessage,
+				errorCode: userFacingErrorCode,
 			});
 			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: 'error',
@@ -4697,16 +4749,15 @@ export class InstanceAiService {
 				undefined,
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
-			this.eventBus.publish(opts.threadId, {
-				type: 'run-finish',
-				runId: opts.runId,
-				agentId: orchestratorAgentId(opts.runId),
-				payload: {
-					status: 'error',
-					reason: userFacingErrorMessage,
-					...(archivedWorkflowIds.length > 0 ? { archivedWorkflowIds } : {}),
-				},
-			});
+			this.publishRunFinish(
+				opts.threadId,
+				opts.runId,
+				'errored',
+				userFacingErrorMessage,
+				archivedWorkflowIds,
+				opts.user.id,
+				{ errorMessage, errorSource: 'exception' },
+			);
 			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 		} finally {
 			this.runState.clearActiveRun(opts.threadId);
@@ -5109,6 +5160,7 @@ export class InstanceAiService {
 		reason?: string,
 		archivedWorkflowIds?: string[],
 		userId?: string,
+		errorInfo?: RunFinishErrorInfo,
 	): void {
 		const effectiveStatus = status === 'errored' ? 'error' : status;
 		const hasArchived = archivedWorkflowIds && archivedWorkflowIds.length > 0;
@@ -5133,6 +5185,15 @@ export class InstanceAiService {
 			status: effectiveStatus,
 			...(userId ? { user_id: userId } : {}),
 		});
+		if (status === 'errored') {
+			this.telemetry.track('Builder generation errored', {
+				thread_id: threadId,
+				run_id: runId,
+				error_message: errorInfo?.errorMessage ?? reason ?? 'unknown',
+				...(errorInfo?.errorSource ? { error_source: errorInfo.errorSource } : {}),
+				...(userId ? { user_id: userId } : {}),
+			});
+		}
 	}
 
 	private async finalizeRun(
@@ -5147,6 +5208,7 @@ export class InstanceAiService {
 			workSummary?: WorkSummary;
 			usage?: RunTokenUsage;
 			errorReason?: string;
+			errorInfo?: RunFinishErrorInfo;
 		},
 	): Promise<void> {
 		this.publishRunFinish(
@@ -5156,6 +5218,7 @@ export class InstanceAiService {
 			options?.errorReason,
 			options?.archivedWorkflowIds,
 			options?.userId,
+			options?.errorInfo,
 		);
 		this.emitRunMetrics(threadId, status, options);
 		await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);

@@ -2,8 +2,13 @@ import { defineStore } from 'pinia';
 import { ref, computed, inject, provide, shallowReactive, type InjectionKey } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
-import { ensureThread, getInstanceAiCredits } from './instanceAi.api';
+import {
+	ensureThread,
+	getInstanceAiCredits,
+	type InstanceAiThreadLaunchInput,
+} from './instanceAi.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
@@ -21,6 +26,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
+	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
 
 	// --- Instance-level state ---
@@ -167,11 +173,28 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function syncThread(threadId: string, projectId: string): Promise<void> {
+	async function syncThread(
+		threadId: string,
+		projectId: string,
+		launch?: InstanceAiThreadLaunchInput,
+	): Promise<void> {
 		if (persistedThreadIds.has(threadId)) return;
 
-		const result = await ensureThread(rootStore.restApiContext, threadId, projectId);
+		const result = await ensureThread(rootStore.restApiContext, threadId, projectId, launch);
 		persistedThreadIds.add(result.thread.id);
+
+		if (launch) {
+			const templateId = launch.sourceContext?.templateId;
+			telemetry.track('User launched Instance AI thread', {
+				thread_id: result.thread.id,
+				instance_id: rootStore.instanceId,
+				source: launch.source,
+				origin: launch.origin,
+				...(typeof templateId === 'string' || typeof templateId === 'number'
+					? { template_id: templateId }
+					: {}),
+			});
+		}
 
 		const existingThread = threads.value.find((thread) => thread.id === threadId);
 		if (existingThread) {

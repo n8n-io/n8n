@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.30.0",
+  "version": "1.31.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -27,7 +27,7 @@
     "@n8n/config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",

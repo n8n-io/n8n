@@ -5,7 +5,7 @@ Tests whether workflows built by Instance AI actually work by executing them wit
 Five harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
-- **`eval:agents`** — user-intent / agent-building rubric loaded from the `agents` dataset tier in `data/agents/`
+- **`eval:agents`** — intent-resolution cases (plain build requests graded on enacted routing behavior) from `data/agents/`
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
@@ -136,7 +136,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--filter` | — | Filter test cases by filename substring. Comma-separated values mean OR (e.g. `contact-form,deduplication`) |
 | `--exclude` | — | Skip test cases whose filename matches any of the substrings. Same comma-separated shape as `--filter`; applied after `--filter` |
 | `--prebuilt-workflows` | — | Path to a JSON manifest mapping test-case slugs to existing workflow IDs. Skips the orchestrator build for matched test cases — see [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows) |
-| `--keep-workflows` | `false` | Don't delete built workflows after the run. Pair with the HTML report's "view in n8n" links to inspect each scenario's canvas execution |
+| `--keep-workflows` | `false` | Don't delete any build artifacts after the run — workflows, data tables, and threads (with their sandboxes) all survive. Pair with the HTML report's "view in n8n" links to inspect each scenario's canvas execution. Sandboxes have no auto-cleanup, so use with `--filter` on a few cases rather than full baselines |
 | `--delete-prebuilt-workflows` | `false` | With `--prebuilt-workflows`, delete successfully used manifest workflows after the eval run. Mutually exclusive with `--keep-workflows` |
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
@@ -169,7 +169,7 @@ Each test case declares a `datasets` array in its JSON (default `["full"]` if om
 |------|----------------|
 | `full` | Default — every case runs in this grouping. Use for nightly / full-suite runs. |
 | `pr` | Curated thin set for PR-time runs. ~6 cases, chosen for capability diversity and high baseline reliability. |
-| `agents` | User-intent / agent-building rubric cases loaded from `data/agents/`. |
+| `agents` | Intent-resolution cases graded on enacted routing behavior, loaded from `data/agents/`. |
 
 A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. Agent intent cases declare `"datasets": ["agents"]` and can be run with `pnpm eval:agents` or `pnpm eval:instance-ai --tier agents`. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
 
@@ -206,7 +206,7 @@ Every run produces:
 
 After every successful build, the eval grades the workflow JSON against the binary-check rubric in `binaryChecks/checks/`. Each named check is yes/no with a structured N/A for "no subject to evaluate in this workflow" (e.g. an agent-only check on a workflow with no agent).
 
-The 28 checks are grouped into 7 WHAT-side rubric dimensions (the 8th, `execution_outcome`, is served by the existing execution verifier):
+The 28 checks are grouped into 8 WHAT-side rubric dimensions (the 9th, `execution_outcome`, is served by the existing execution verifier):
 
 | Dimension | Checks |
 |---|---|
@@ -214,8 +214,9 @@ The 28 checks are grouped into 7 WHAT-side rubric dimensions (the 8th, `executio
 | `connection_topology` | 4 — graph reachability, branch wiring, multi-item handling |
 | `parameter_correctness` | 8 — node config, expressions, field references |
 | `intent_match` | 1 — workflow fulfills the user's request |
+| `communication` | 1 — agent narration honestly describes the changes made |
 | `ai_nodes` | 6 — agent / memory / vector-store / tool wiring |
-| `nodes_craftsmanship` | 3 — naming, no-code preference, response honesty |
+| `nodes_craftsmanship` | 2 — naming, no-code preference |
 | `security` | 2 — hardcoded credentials, inbound auth defaults |
 
 The signal surfaces in:
@@ -228,7 +229,7 @@ Operational details:
 
 - Checks run **once per built workflow**, not per scenario — every scenario row in LangSmith carries the same outcomes for its build.
 - Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
-- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
+- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_describes_changes_accurately`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
 
 ### Build expectations (per test case)
 
@@ -279,10 +280,8 @@ Because these are plain outcome expectations, scoring, the gate, the PR comment,
 
 Discovery reads the build's SSE tool-result stream (in `outcome/event-parser.ts`, alongside workflow/data-table id capture):
 
-- **agent** — the `create_agent` action (dispatched through the `agent_builder` router) returns `{ ok, agentId }`; the `agentId` is the ref.
+- **agent** — the build-agent sub-agent announces itself with an `agent-spawned` event carrying `targetResource: { type: 'agent', id }`; that `id` is the ref. (The `build-agent` tool result carries no id.)
 - **config-eval** — the `eval-config` tool's `create` action returns `{ config }`; the ref is the owning workflow id from the call args (config-evals are fetched per-workflow).
-
-(`build_agent` only persists config and returns no id, so it is not a discovery signal.)
 
 Not yet covered: an automatic "unexpected artifact" fail (a build producing an artifact the case never mentions). That's parked until the signals exist, to be added later as a binary check or per-dataset rather than as a case-schema field.
 
