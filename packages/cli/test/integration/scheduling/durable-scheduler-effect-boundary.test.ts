@@ -25,11 +25,10 @@ import {
  * `execution_entity` row.
  *
  * The cases: a redelivery still dispatches past an orphaned `new` tombstone
- * (`reclaimTombstone`); a never-dispatched last-attempt lease lapse is salvaged
- * rather than dropped; and a post-dispatch lease lapse is not recorded failed (the
- * dispatch marker lets the reaper complete it). Concurrent-handler behaviour
- * is deliberately not asserted here: at-least-once permits overlap, and
- * tightening it is deferred to the misfire-policy work.
+ * (`reclaimTombstone`); and a post-dispatch lease lapse is not recorded failed
+ * (the dispatch marker lets the reaper complete it). Concurrent-handler
+ * behaviour is deliberately not asserted here: at-least-once permits overlap,
+ * and tightening it is deferred to the misfire-policy work.
  */
 describe('durable scheduler effect boundary', () => {
 	const HOST = 'main-effect-boundary';
@@ -215,38 +214,7 @@ describe('durable scheduler effect boundary', () => {
 		expect(dispatchSpy).toHaveBeenCalledTimes(1);
 	}, 15_000);
 
-	// (b) On the shipped default (maxAttempts = 1), a task claimed but never dispatched
-	// (its owner died before the fire timer ran) has no attempts left. Rather than drop
-	// the run, the reaper salvages it with one final dispatch before resolving the row
-	// terminally, so the occurrence still happens.
-	it('salvages the workflow rather than dropping it when the lease lapses before dispatch (maxAttempts=1)', async () => {
-		makeScheduler(effectBoundaryHandler());
-
-		// Claimed and running, lease already lapsed, never dispatched: the pre-dispatch state.
-		const taskRow = await createTask({
-			status: 'running',
-			claimedBy: 'main-dead',
-			leaseExpiresAt: past(),
-			leaseEpoch: 1,
-			// `dispatchedAt` null is what the reaper reads to choose salvage over complete.
-			dispatchedAt: null,
-			attempts: 0,
-			maxAttempts: 1,
-		});
-
-		const result = await schedulers[0].reap();
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
-
-		// The occurrence's workflow was dispatched (salvaged) before the row was given up on.
-		expect(dispatchSpy).toHaveBeenCalledTimes(1);
-
-		const reaped = await taskRepo.findOneByOrFail({ id: taskRow.id });
-		// Resolved terminally; reads `failed` even though the salvage ran it (a truer
-		// status for a salvaged run is deferred to the misfire-policy work).
-		expect(reaped.status).toBe('failed');
-	});
-
-	// (c) The workflow is dispatched (the marker is stamped), then the lease lapses
+	// (b) The workflow is dispatched (the marker is stamped), then the lease lapses
 	// before the outcome write. The reaper sees the marker and completes the row rather
 	// than recording `failed` for work that was done.
 	it('does not record a task failed after its workflow was dispatched', async () => {

@@ -4,8 +4,8 @@
  * is just one way these come to exist.
  *
  * The contract is at-least-once: a crashed or lease-lapsed attempt is redelivered
- * (and, on its final attempt, salvaged by the reaper) rather than dropped, because
- * a lost run is worse than a duplicate one. So the claim is not exactly-once: an
+ * rather than dropped, because a lost run is worse than a duplicate one (an attempt
+ * that exhausts its retries is dead-lettered). So the claim is not exactly-once: an
  * owner stalled past its lease can still be inside its handler while the reaper
  * reclaims the row and another instance claims it, and a redelivery runs the
  * handler again. Duplicate *effects* are suppressed best-effort by the partial

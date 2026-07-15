@@ -94,77 +94,27 @@ describe('reap', () => {
 		expect(onDeadLetter).toHaveBeenCalledWith({ taskId: task.id, attempts: 1, maxAttempts: 1 });
 	});
 
-	it('salvages a pre-dispatch occurrence by dispatching it once before dead-lettering it', async () => {
+	it('dead-letters a never-dispatched occurrence stranded on its last attempt, without dispatching it', async () => {
 		const { store, onDeadLetter } = setup();
-		const dispatch = vi.fn().mockResolvedValue(undefined);
+		// Never dispatched, and this expired lease is its last attempt: the effect
+		// never happened, and there is no dispatch fn to hand it off to any more.
 		const task = expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: null });
 		store.findExpiredLeases.mockResolvedValue([task]);
 
-		const result = await reap(store, { batchSize: 100 }, { onDeadLetter }, dispatch);
+		const result = await reap(store, { batchSize: 100 }, { onDeadLetter });
 
-		// The occurrence's effect never happened, so it is dispatched once before giving up.
-		expect(dispatch).toHaveBeenCalledTimes(1);
-		expect(dispatch).toHaveBeenCalledWith(task);
-		expect(store.deadLetterExpired).toHaveBeenCalledOnce();
+		expect(store.deadLetterExpired).toHaveBeenCalledWith(
+			{ id: task.id, claimedEpoch: task.leaseEpoch },
+			expect.any(String),
+		);
+		expect(store.reclaimExpired).not.toHaveBeenCalled();
 		expect(store.completeExpired).not.toHaveBeenCalled();
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
-	});
-
-	it('salvages before the terminal write, so a crash cannot strand a never-dispatched effect', async () => {
-		const { store } = setup();
-		const dispatch = vi.fn().mockResolvedValue(undefined);
-		store.findExpiredLeases.mockResolvedValue([
-			expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: null }),
-		]);
-
-		await reap(store, { batchSize: 100 }, {}, dispatch);
-
-		// The effect is handed off before the row goes terminal: dead-lettering first
-		// would leave a `failed` row no reaper sweeps again if a crash hit the gap.
-		expect(dispatch).toHaveBeenCalledOnce();
-		expect(store.deadLetterExpired).toHaveBeenCalledOnce();
-		expect(dispatch.mock.invocationCallOrder[0]).toBeLessThan(
-			store.deadLetterExpired.mock.invocationCallOrder[0],
-		);
-	});
-
-	it('salvages even when the dead-letter loses its race, leaving the duplicate to the dedup index', async () => {
-		const { store } = setup();
-		const dispatch = vi.fn().mockResolvedValue(undefined);
-		store.deadLetterExpired.mockResolvedValue(0); // another actor decided the row first
-		store.findExpiredLeases.mockResolvedValue([
-			expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: null }),
-		]);
-
-		const result = await reap(store, { batchSize: 100 }, {}, dispatch);
-
-		// Salvage is ungated: concurrent reapers may both dispatch, and the unique
-		// deduplicationKey index suppresses the duplicate effect. The lost terminal
-		// race is a benign no-op: not counted, nothing to report.
-		expect(dispatch).toHaveBeenCalledTimes(1);
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
-	});
-
-	it('still dead-letters and reports the error when the final salvage dispatch throws', async () => {
-		const { store } = setup();
-		const onSalvageError = vi.fn();
-		const failure = new Error('handler down');
-		const dispatch = vi.fn().mockRejectedValue(failure);
-		const task = expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: null });
-		store.findExpiredLeases.mockResolvedValue([task]);
-
-		const result = await reap(store, { batchSize: 100 }, { onSalvageError }, dispatch);
-
-		// The occurrence exhausted its attempts and its final salvage failed: a genuine
-		// terminal failure, recorded only after the effect was attempted, and reported.
-		expect(onSalvageError).toHaveBeenCalledWith(task.id, failure);
-		expect(store.deadLetterExpired).toHaveBeenCalledOnce();
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		expect(onDeadLetter).toHaveBeenCalledWith({ taskId: task.id, attempts: 1, maxAttempts: 1 });
 	});
 
 	it('completes a post-dispatch expired lease as succeeded instead of failing it', async () => {
 		const { store, onCompletedAfterDispatch, onDeadLetter } = setup();
-		const dispatch = vi.fn().mockResolvedValue(undefined);
 		// `dispatchedAt` set: the effect already happened before the lease lapsed.
 		const task = expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: new Date() });
 		store.findExpiredLeases.mockResolvedValue([task]);
@@ -173,7 +123,6 @@ describe('reap', () => {
 			store,
 			{ batchSize: 100 },
 			{ onCompletedAfterDispatch, onDeadLetter },
-			dispatch,
 		);
 
 		expect(store.completeExpired).toHaveBeenCalledWith({
@@ -181,8 +130,6 @@ describe('reap', () => {
 			claimedEpoch: task.leaseEpoch,
 		});
 		expect(store.deadLetterExpired).not.toHaveBeenCalled();
-		// Not re-dispatched: the effect must not happen twice.
-		expect(dispatch).not.toHaveBeenCalled();
 		expect(onDeadLetter).not.toHaveBeenCalled();
 		expect(onCompletedAfterDispatch).toHaveBeenCalledWith({ taskId: task.id });
 		// A success: reported via the hook, not counted as dead-lettered.
@@ -191,21 +138,19 @@ describe('reap', () => {
 
 	it('completes a post-dispatch expired lease even with attempts left, never reclaiming it', async () => {
 		const { store, onCompletedAfterDispatch } = setup();
-		const dispatch = vi.fn().mockResolvedValue(undefined);
 		// Dispatched but not on the last attempt: the effect boundary, not the attempt
 		// count, decides, so it is completed rather than reclaimed for a re-run that
 		// would fire the effect twice.
 		const task = expiredTask({ attempts: 0, maxAttempts: 3, dispatchedAt: new Date() });
 		store.findExpiredLeases.mockResolvedValue([task]);
 
-		const result = await reap(store, { batchSize: 100 }, { onCompletedAfterDispatch }, dispatch);
+		const result = await reap(store, { batchSize: 100 }, { onCompletedAfterDispatch });
 
 		expect(store.completeExpired).toHaveBeenCalledWith({
 			id: task.id,
 			claimedEpoch: task.leaseEpoch,
 		});
 		expect(store.reclaimExpired).not.toHaveBeenCalled();
-		expect(dispatch).not.toHaveBeenCalled();
 		expect(onCompletedAfterDispatch).toHaveBeenCalledWith({ taskId: task.id });
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
 	});
@@ -335,7 +280,7 @@ describe('reap', () => {
 			return await Promise.resolve(1);
 		});
 
-		const result = await reap(store, { batchSize: 100 }, {}, undefined, controller.signal);
+		const result = await reap(store, { batchSize: 100 }, {}, controller.signal);
 
 		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
 		expect(store.reclaimExpired).toHaveBeenCalledTimes(1);
@@ -347,7 +292,7 @@ describe('reap', () => {
 		controller.abort();
 		store.findExpiredLeases.mockResolvedValue([expiredTask()]);
 
-		const result = await reap(store, { batchSize: 100 }, {}, undefined, controller.signal);
+		const result = await reap(store, { batchSize: 100 }, {}, controller.signal);
 
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
 		expect(store.reclaimExpired).not.toHaveBeenCalled();

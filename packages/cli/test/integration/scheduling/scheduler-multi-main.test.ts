@@ -165,13 +165,13 @@ describe('scheduler across two mains over one database', () => {
 		expect(done.claimedBy).toBe('main-b');
 	}, 15_000);
 
-	it('salvages a never-dispatched claim stranded on its last attempt rather than losing the run', async () => {
+	it('dead-letters a never-dispatched claim stranded on its last attempt', async () => {
 		const job = await createJob({ maxAttempts: 3 });
 		const past = new Date(Date.now() - 60_000);
 		// main-a claimed this occurrence for its final attempt, then died before
 		// dispatching it (no `dispatchedAt`). No attempts remain, so the reaper can't
-		// retry it; under at-least-once it gives the occurrence one final salvage run
-		// so it isn't silently lost, then resolves the row terminally.
+		// retry it and never dispatches it either: the run is lost, and the row is
+		// resolved terminally.
 		const doomed = await taskRepo.save(
 			taskRepo.create({
 				jobId: job.id,
@@ -190,14 +190,12 @@ describe('scheduler across two mains over one database', () => {
 
 		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 1 });
 
-		// The salvage ran the occurrence exactly once, on the reaping main.
+		// Never dispatched: the handler never ran on either main.
 		expect(executedA).toHaveLength(0);
-		expect(executedB.map((t) => t.id)).toEqual([doomed.id]);
+		expect(executedB).toHaveLength(0);
 
 		const done = await taskRepo.findOneByOrFail({ id: doomed.id });
 		expect(done.attempts).toBe(3);
-		// The row is resolved terminally. It reads `failed` even though the salvage
-		// ran it; giving a salvaged run a truer status is left to the misfire-policy work.
 		expect(done.status).toBe('failed');
 		expect(done.errorMessage).toMatch(/lease expired/i);
 
