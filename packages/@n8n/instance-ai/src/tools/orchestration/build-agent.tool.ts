@@ -37,6 +37,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import {
+	findSessionAgentByName,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	type AgentBuilderTarget,
@@ -147,8 +148,9 @@ const buildAgentInputSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Name for a NEW agent. Pass only when starting a build for a new agent (creates it and ' +
-				'makes it the active target); omit on follow-up calls for the current agent.',
+			'Agent name. A name matching an agent already built in this conversation switches back ' +
+				'to that agent; a new name creates a new agent and makes it the active target. Omit on ' +
+				'follow-up calls for the current agent.',
 		),
 	agentId: z
 		.string()
@@ -546,9 +548,10 @@ const AGENT_ID_NEEDS_PROJECT_ERROR =
  * switch to a different existing one. `agentId` wins when both are given.
  * agentId-path binds are always deferred (`bindAfterTurn: true`) — persisting
  * before the builder run settles would let a hallucinated/forbidden/missing
- * agentId permanently poison the thread (no unbind path exists). The
- * name-path binds immediately since `delegate.createAgent` already proves
- * the agent exists.
+ * agentId permanently poison the thread (no unbind path exists). A name-path
+ * switch-back to a session-registry agent is deferred for the same reason;
+ * a name-path create binds immediately since `delegate.createAgent` already
+ * proves the agent exists.
  */
 async function resolveTargetForCall(
 	domainContext: InstanceAiContext,
@@ -576,6 +579,15 @@ async function resolveTargetForCall(
 		if (boundTarget && input.name === boundTarget.name) {
 			return { ok: true, target: boundTarget, bindAfterTurn: false };
 		}
+		// A name matching an agent already built/targeted this conversation is a
+		// switch-back, not a creation — the duplicate-agent failure mode this
+		// registry exists to prevent. Deferred persist like the agentId path: the
+		// agent may have been deleted since, and a failed turn must not clobber
+		// the current binding.
+		const sessionAgent = await findSessionAgentByName(domainContext, input.name);
+		if (sessionAgent) {
+			return { ok: true, target: sessionAgent, bindAfterTurn: true };
+		}
 		const created = await delegate.createAgent(input.name);
 		const target: AgentBuilderTarget = {
 			agentId: created.agentId,
@@ -597,8 +609,9 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			'Delegate agent building to the agents-module builder, running as a sub-agent. ' +
 				'Pass `name` to start a new agent or `agentId` to edit an existing one; calls ' +
 				'without either keep editing the current agent. To build ANOTHER agent in the same ' +
-				'conversation, pass a new `name` (creates it and switches the active target) or a ' +
-				'different `agentId` (switches). When the builder needs user input (a choice, a ' +
+				'conversation, pass its `name` or `agentId` — a name matching an agent already built ' +
+				'in this conversation switches back to it; an unmatched name creates a new agent and ' +
+				'switches the active target. When the builder needs user input (a choice, a ' +
 				'credential, or a chat channel), it surfaces automatically as an interactive card in ' +
 				'this chat — do not relay those questions yourself; this tool call resumes with the ' +
 				'user’s answer and returns the builder’s reply. Returns the builder’s reply and ' +

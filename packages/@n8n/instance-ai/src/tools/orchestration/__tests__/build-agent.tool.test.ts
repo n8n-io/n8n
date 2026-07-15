@@ -15,7 +15,11 @@ import type {
 	OrchestrationContext,
 } from '../../../types';
 import type * as AgentTargetBindingModule from '../agent-target-binding';
-import { saveAgentBuilderTarget, type AgentBuilderTarget } from '../agent-target-binding';
+import {
+	findSessionAgentByName,
+	saveAgentBuilderTarget,
+	type AgentBuilderTarget,
+} from '../agent-target-binding';
 import { createBuildAgentTool } from '../build-agent.tool';
 
 vi.mock('../agent-target-binding', async () => {
@@ -26,6 +30,7 @@ vi.mock('../agent-target-binding', async () => {
 			async (ctx: InstanceAiContext) => await Promise.resolve(ctx.agentBuilderTarget),
 		),
 		saveAgentBuilderTarget: vi.fn(),
+		findSessionAgentByName: vi.fn(async () => await Promise.resolve(undefined)),
 	};
 });
 
@@ -241,6 +246,7 @@ async function runToolWithCtx(
 describe('build-agent tool', () => {
 	beforeEach(() => {
 		vi.mocked(saveAgentBuilderTarget).mockClear();
+		vi.mocked(findSessionAgentByName).mockReset().mockResolvedValue(undefined);
 	});
 
 	it('creates and binds a new agent when name is given, keying the session to the instance thread', async () => {
@@ -624,6 +630,7 @@ describe('build-agent tool', () => {
 
 			await runTool(context, { message: 'Build me another agent', name: 'Second' });
 
+			expect(findSessionAgentByName).toHaveBeenCalledWith(context.domainContext, 'Second');
 			expect(delegate.createAgent).toHaveBeenCalledWith('Second');
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, {
 				agentId: 'agent-2',
@@ -634,6 +641,77 @@ describe('build-agent tool', () => {
 				threadId: 'ia-builder:thread-1:agent-2',
 				modelConfig: context.modelId,
 			});
+		});
+
+		it('switches back to a session agent whose name matches the registry instead of creating a duplicate', async () => {
+			const { context, delegate } = makeContext();
+			const boundTarget: AgentBuilderTarget = {
+				agentId: 'agent-2',
+				projectId: 'proj-1',
+				name: 'Docs Helper',
+			};
+			context.domainContext!.agentBuilderTarget = boundTarget;
+			const sessionAgent: AgentBuilderTarget = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Platform Cycle Tracker',
+			};
+			vi.mocked(findSessionAgentByName).mockResolvedValue(sessionAgent);
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Switched back.'));
+
+			await runTool(context, {
+				message: 'Go back to the tracker agent',
+				name: 'Platform Cycle Tracker',
+			});
+
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Go back to the tracker agent', {
+				threadId: 'ia-builder:thread-1:agent-1',
+				modelConfig: context.modelId,
+			});
+			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, sessionAgent);
+		});
+
+		it('does not clobber the binding when the registry switch-back turn fails before settling', async () => {
+			const { context, delegate } = makeContext();
+			const boundTarget: AgentBuilderTarget = {
+				agentId: 'agent-2',
+				projectId: 'proj-1',
+				name: 'Docs Helper',
+			};
+			context.domainContext!.agentBuilderTarget = boundTarget;
+			const sessionAgent: AgentBuilderTarget = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Platform Cycle Tracker',
+			};
+			vi.mocked(findSessionAgentByName).mockResolvedValue(sessionAgent);
+			vi.mocked(delegate.streamBuild).mockRejectedValue(new Error('boom'));
+
+			await expect(
+				runTool(context, {
+					message: 'Go back to the tracker agent',
+					name: 'Platform Cycle Tracker',
+				}),
+			).rejects.toThrow('boom');
+
+			expect(saveAgentBuilderTarget).not.toHaveBeenCalled();
+			expect(context.domainContext!.agentBuilderTarget).toEqual(boundTarget);
+		});
+
+		it('skips the registry lookup when the name matches the bound target', async () => {
+			const { context, delegate } = makeContext();
+			const boundTarget: AgentBuilderTarget = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Helper',
+			};
+			context.domainContext!.agentBuilderTarget = boundTarget;
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Continuing.'));
+
+			await runTool(context, { message: 'Add a tool', name: 'Helper' });
+
+			expect(findSessionAgentByName).not.toHaveBeenCalled();
 		});
 
 		it("continues the bound build when the given name matches the bound target's name", async () => {

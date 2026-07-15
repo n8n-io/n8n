@@ -690,7 +690,7 @@ appears in the agents-module builder UI.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
-| `name` | string | no | Name for a NEW agent — creates it and makes it the active build target; omit on follow-up calls for the current agent |
+| `name` | string | no | Agent name — switches back to the agent with that name built earlier in this conversation, or creates a new agent and makes it the active target; omit on follow-up calls for the current agent |
 | `agentId` | string | no | Existing agent id to edit — pass to start editing that agent or to switch the active build target; omit on follow-up calls |
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
@@ -718,11 +718,13 @@ wrong one.
 **Targeting:** the first call must pass `name` (new agent) or `agentId`
 (existing agent); the active target is persisted to thread metadata so
 follow-up calls keep editing the same agent without repeating them. The
-target is rebindable: a new `name` creates another agent and switches to it
-(the same name as the active target just continues it), a different
-`agentId` switches to that agent (persisted only once the builder turn
-settles, so a bad id cannot clobber the existing binding), and `agentId`
-wins when both are given.
+target is rebindable: a `name` matching an agent already targeted this
+conversation switches back to it (tracked in a per-thread registry), while
+an unmatched name creates another agent and switches to it (the same name
+as the active target just continues it), a different `agentId` switches to
+that agent (persisted only once the builder turn settles, so a bad id
+cannot clobber the existing binding), and `agentId` wins when both are
+given.
 
 ## Other Domain Tools
 

@@ -1,6 +1,10 @@
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiContext } from '../../../types';
-import { resolveAgentBuilderTarget, saveAgentBuilderTarget } from '../agent-target-binding';
+import {
+	findSessionAgentByName,
+	resolveAgentBuilderTarget,
+	saveAgentBuilderTarget,
+} from '../agent-target-binding';
 
 /** In-memory thread store shared across "turns" (fresh contexts). */
 function createThreadMemory(initialMetadata: Record<string, unknown> = {}) {
@@ -89,5 +93,102 @@ describe('agent-builder target binding', () => {
 		const context = createContext({ threadMemory });
 
 		await expect(saveAgentBuilderTarget(context, TARGET)).rejects.toThrow('storage unavailable');
+	});
+
+	describe('session agent registry', () => {
+		it('upserts every saved target into the session registry', async () => {
+			const threadMemory = createThreadMemory();
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'First',
+			});
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-2',
+				projectId: 'p',
+				name: 'Second',
+			});
+			// Re-saving agent-1 under a new name replaces its old registry entry.
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Renamed',
+			});
+
+			const lookupContext = createContext({ threadMemory });
+			await expect(findSessionAgentByName(lookupContext, 'Second')).resolves.toEqual({
+				agentId: 'agent-2',
+				projectId: 'p',
+				name: 'Second',
+			});
+			await expect(findSessionAgentByName(lookupContext, 'Renamed')).resolves.toEqual({
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Renamed',
+			});
+			await expect(findSessionAgentByName(lookupContext, 'First')).resolves.toBeUndefined();
+		});
+
+		it('preserves the registered name when a later save for the same agent carries none', async () => {
+			const threadMemory = createThreadMemory();
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Tracker',
+			});
+			// Simulates an agentId-path switch, which carries no name.
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+			});
+
+			await expect(
+				findSessionAgentByName(createContext({ threadMemory }), 'Tracker'),
+			).resolves.toEqual({ agentId: 'agent-1', projectId: 'p', name: 'Tracker' });
+
+			await expect(resolveAgentBuilderTarget(createContext({ threadMemory }))).resolves.toEqual({
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Tracker',
+			});
+		});
+
+		it('finds the most recently targeted agent when names collide', async () => {
+			const threadMemory = createThreadMemory();
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'a1',
+				projectId: 'p',
+				name: 'Dup',
+			});
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'a2',
+				projectId: 'p',
+				name: 'Dup',
+			});
+
+			await expect(findSessionAgentByName(createContext({ threadMemory }), 'Dup')).resolves.toEqual(
+				{ agentId: 'a2', projectId: 'p', name: 'Dup' },
+			);
+		});
+
+		it('returns undefined for unknown names, missing persistence, and malformed registries', async () => {
+			const threadMemory = createThreadMemory();
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'First',
+			});
+			await expect(
+				findSessionAgentByName(createContext({ threadMemory }), 'Unknown'),
+			).resolves.toBeUndefined();
+
+			const noPersistence = createContext({ threadMemory: undefined, threadId: undefined });
+			await expect(findSessionAgentByName(noPersistence, 'First')).resolves.toBeUndefined();
+
+			const malformed = createContext({
+				threadMemory: createThreadMemory({ instanceAiAgentBuilderTargets: 'garbage' }),
+			});
+			await expect(findSessionAgentByName(malformed, 'First')).resolves.toBeUndefined();
+		});
 	});
 });

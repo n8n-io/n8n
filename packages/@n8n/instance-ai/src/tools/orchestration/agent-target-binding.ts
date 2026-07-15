@@ -6,6 +6,11 @@
  * `context.agentBuilderTarget` semantics. Persisting the target in thread
  * metadata lets follow-up turns keep editing the same agent instead of
  * creating a new one.
+ *
+ * Alongside the single active target, a session registry of every agent
+ * targeted in this conversation is also kept in thread metadata. This lets
+ * `build-agent` recognize a `name` that was already built/targeted earlier
+ * in the conversation and switch back to it instead of creating a duplicate.
  */
 import { z } from 'zod';
 
@@ -13,6 +18,7 @@ import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
 
 const METADATA_KEY = 'instanceAiAgentBuilderTarget';
+const REGISTRY_METADATA_KEY = 'instanceAiAgentBuilderTargets';
 
 const agentBuilderTargetSchema = z.object({
 	agentId: z.string(),
@@ -22,6 +28,9 @@ const agentBuilderTargetSchema = z.object({
 });
 
 export type AgentBuilderTarget = z.infer<typeof agentBuilderTargetSchema>;
+
+/** Ordered oldest-first, most recently saved last; deduped by `agentId`. */
+const agentBuilderTargetRegistrySchema = z.array(agentBuilderTargetSchema);
 
 function parseTarget(raw: unknown): AgentBuilderTarget | undefined {
 	const parsed = agentBuilderTargetSchema.safeParse(raw);
@@ -77,8 +86,54 @@ export async function saveAgentBuilderTarget(
 	// creates a new agent instead of editing the one just built.
 	await patchThread(context.threadMemory, {
 		threadId: context.threadId,
-		update: ({ metadata = {} }) => ({
-			metadata: { ...metadata, [METADATA_KEY]: target },
-		}),
+		update: ({ metadata = {} }) => {
+			const parsed = agentBuilderTargetRegistrySchema.safeParse(metadata[REGISTRY_METADATA_KEY]);
+			const existingRegistry = parsed.success ? parsed.data : [];
+			const previous = existingRegistry.find((entry) => entry.agentId === target.agentId);
+			// An agentId-path save carries no name; keep the name recorded when the
+			// agent was created so switch-back-by-name keeps working.
+			const entry: AgentBuilderTarget =
+				target.name === undefined && previous?.name !== undefined
+					? { ...target, name: previous.name }
+					: target;
+			const registry = existingRegistry.filter((e) => e.agentId !== target.agentId);
+			registry.push(entry);
+			return {
+				metadata: {
+					...metadata,
+					[METADATA_KEY]: entry,
+					[REGISTRY_METADATA_KEY]: registry,
+				},
+			};
+		},
 	});
+}
+
+/**
+ * Find an agent already targeted in this conversation by its display name
+ * (most recently targeted wins on duplicates). Lets `build-agent` switch
+ * back to a previously built agent by name instead of creating a duplicate.
+ * Best-effort: returns undefined without thread persistence or on a
+ * malformed registry.
+ */
+export async function findSessionAgentByName(
+	context: InstanceAiContext,
+	name: string,
+): Promise<AgentBuilderTarget | undefined> {
+	if (!context.threadMemory || !context.threadId) return undefined;
+
+	// Unlike `readThreadTarget`, a malformed/missing registry is not an
+	// unusual failure worth propagating — it's normal for a thread with no
+	// prior targets. Let a `getThread` rejection propagate though (AGENT-353):
+	// silently returning undefined there would cause a duplicate agent.
+	const thread = await getThread(context.threadMemory, context.threadId);
+	const parsed = agentBuilderTargetRegistrySchema.safeParse(
+		thread?.metadata?.[REGISTRY_METADATA_KEY],
+	);
+	const registry = parsed.success ? parsed.data : [];
+
+	for (let i = registry.length - 1; i >= 0; i--) {
+		if (registry[i].name === name) return registry[i];
+	}
+	return undefined;
 }
