@@ -64,6 +64,11 @@ class ProjectNotFoundError extends NotFoundError {
 	}
 }
 
+export interface ProjectCreateOverrides {
+	id?: string;
+	description?: string | null;
+}
+
 @Service()
 export class ProjectService {
 	constructor(
@@ -79,49 +84,49 @@ export class ProjectService {
 	) {}
 
 	private get workflowService() {
-		return import('@/workflows/workflow.service').then(({ WorkflowService }) =>
+		return import('@/workflows/workflow.service.js').then(({ WorkflowService }) =>
 			Container.get(WorkflowService),
 		);
 	}
 
 	private get credentialsService() {
-		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
+		return import('@/credentials/credentials.service.js').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
 		);
 	}
 
 	private get folderService() {
-		return import('@/services/folder.service').then(({ FolderService }) =>
+		return import('@/services/folder.service.js').then(({ FolderService }) =>
 			Container.get(FolderService),
 		);
 	}
 
 	private get dataTableService() {
-		return import('@/modules/data-table/data-table.service').then(({ DataTableService }) =>
+		return import('@/modules/data-table/data-table.service.js').then(({ DataTableService }) =>
 			Container.get(DataTableService),
 		);
 	}
 
 	private get secretsProvidersConnectionsService() {
-		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee').then(
+		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee.js').then(
 			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
 		);
 	}
 
 	private get agentRepository() {
-		return import('@/modules/agents/repositories/agent.repository').then(({ AgentRepository }) =>
+		return import('@/modules/agents/repositories/agent.repository.js').then(({ AgentRepository }) =>
 			Container.get(AgentRepository),
 		);
 	}
 
 	private get agentKnowledgeService() {
-		return import('@/modules/agents/agent-knowledge.service').then(({ AgentKnowledgeService }) =>
+		return import('@/modules/agents/agent-knowledge.service.js').then(({ AgentKnowledgeService }) =>
 			Container.get(AgentKnowledgeService),
 		);
 	}
 
 	private get connectionStatusProxy() {
-		return import('@/credentials/credential-connection-status-proxy').then(
+		return import('@/credentials/credential-connection-status-proxy.js').then(
 			({ CredentialConnectionStatusProxy }) => Container.get(CredentialConnectionStatusProxy),
 		);
 	}
@@ -353,6 +358,7 @@ export class ProjectService {
 		adminUser: User,
 		data: CreateProjectDto,
 		trx: EntityManager,
+		overrides: ProjectCreateOverrides = {},
 	) {
 		const limit = this.licenseState.getMaxTeamProjects();
 		if (limit !== UNLIMITED_LICENSE_QUOTA) {
@@ -364,7 +370,12 @@ export class ProjectService {
 
 		const project = await trx.save(
 			Project,
-			this.projectRepository.create({ ...data, type: 'team', creatorId: adminUser.id }),
+			this.projectRepository.create({
+				...data,
+				...overrides,
+				type: 'team',
+				creatorId: adminUser.id,
+			}),
 		);
 
 		// Link admin
@@ -373,11 +384,15 @@ export class ProjectService {
 		return project;
 	}
 
-	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
+	async createTeamProject(
+		adminUser: User,
+		data: CreateProjectDto,
+		overrides: ProjectCreateOverrides = {},
+	): Promise<Project> {
 		// This needs to be SERIALIZABLE otherwise the count would not block a
 		// concurrent transaction and we could insert multiple projects.
 		return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
-			return await this.createTeamProjectWithEntityManager(adminUser, data, trx);
+			return await this.createTeamProjectWithEntityManager(adminUser, data, trx, overrides);
 		});
 	}
 

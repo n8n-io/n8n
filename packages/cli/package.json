@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -117,7 +117,8 @@
     "ts-essentials": "^7.0.3",
     "tsconfig-paths": "^4.2.0",
     "@vitest/coverage-v8": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
+    "typescript6": "npm:@typescript/typescript6@6.0.2",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

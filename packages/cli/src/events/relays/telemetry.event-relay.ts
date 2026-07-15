@@ -1055,6 +1055,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_count: counts.workflows,
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
+			data_table_count: counts.dataTables,
 		});
 	}
 
@@ -1554,7 +1555,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private async getOtelTelemetryInfo() {
-		const { OtelConfig } = await import('@/modules/otel/otel.config');
+		const { OtelConfig } = await import('@/modules/otel/otel.config.js');
 		const otelConfig = Container.get(OtelConfig);
 
 		return {

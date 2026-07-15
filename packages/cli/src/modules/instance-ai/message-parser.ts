@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 import {
 	cleanStoredUserMessage,
-	extractEditorContextWorkflowAttachments,
+	extractEditorContextResourceAttachments,
 } from './internal-messages';
 
 type RunSnapshots = AgentTreeSnapshot[];
@@ -363,6 +363,13 @@ function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
 // ---------------------------------------------------------------------------
 
 /**
+ * Durable-log instrumentation: counts assistant messages that rendered from
+ * the message-derived fallback ladder instead of a renderable snapshot tree.
+ * Forwarded to the metrics pipeline via DurableLogMetrics.notifyParserFallbacks.
+ */
+export const messageParserStats = { fallbackActivations: 0 };
+
+/**
  * Converts persisted native agent messages into rich InstanceAiMessage objects
  * with agent trees (from snapshots or reconstructed flat trees).
  */
@@ -447,9 +454,9 @@ export function parseStoredMessages(
 			const content = cleanStoredUserMessage(text);
 			if (content === null) continue;
 
-			// Rebuild the editor hand-off's workflow attachments so the UI can
-			// re-surface them (chip + artifact) after a reload.
-			const attachments = extractEditorContextWorkflowAttachments(text);
+			// Rebuild the editor hand-off's resource attachments (workflow/agent) so
+			// the UI can re-surface them (chip + artifact) after a reload.
+			const attachments = extractEditorContextResourceAttachments(text);
 
 			messages.push({
 				id: msg.id,
@@ -510,6 +517,7 @@ export function parseStoredMessages(
 			// empty one.
 			const snapshotIsRenderable = snapshot !== undefined && isRenderableTree(snapshot.tree);
 			const agentTree = snapshotIsRenderable ? snapshot.tree : messageFlatTree;
+			if (!snapshotIsRenderable && messageFlatTree) messageParserStats.fallbackActivations++;
 
 			const assistantMessage: InstanceAiMessage = {
 				id: msg.id,

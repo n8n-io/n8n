@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { resolvedCredentialSchema } from '../tools/workflows/resolved-credential.schema';
+
 // ── Phase / status enums ────────────────────────────────────────────────────
 
 export const workflowLoopPhaseSchema = z.enum([
@@ -190,7 +192,14 @@ export const workflowVerificationReadinessSchema = z.discriminatedUnion('status'
 	}),
 	z.object({
 		status: z.literal('not_verifiable'),
-		reason: z.enum(['not-submitted', 'missing-workflow-id', 'non-mockable-trigger']),
+		// 'non-mockable-trigger' is the legacy spelling of 'no-trigger-node',
+		// kept so stored outcomes from older threads still parse.
+		reason: z.enum([
+			'not-submitted',
+			'missing-workflow-id',
+			'no-trigger-node',
+			'non-mockable-trigger',
+		]),
 		guidance: z.string(),
 	}),
 ]);
@@ -269,9 +278,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * from the saved workflow or auto-bound to the sole existing candidate).
 	 * These nodes are already connected — no credential setup is needed for them.
 	 */
-	resolvedCredentialsByNode: z
-		.record(z.array(z.object({ type: z.string(), id: z.string(), name: z.string() })))
-		.optional(),
+	resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
 	/**
 	 * @deprecated Legacy `{_mockedCredential}` marker channel. No longer
 	 * written — `nodeSimulationPlan` + `simulationFixtures` replaced it. Kept

@@ -71,7 +71,7 @@ describe('Webhook', () => {
 
 	describe('run', () => {
 		beforeEach(async () => {
-			const { ScalingService } = await import('@/scaling/scaling.service');
+			const { ScalingService } = await import('@/scaling/scaling.service.js');
 			Container.set(ScalingService, { setupQueue: vi.fn() } as unknown as InstanceType<
 				typeof ScalingService
 			>);

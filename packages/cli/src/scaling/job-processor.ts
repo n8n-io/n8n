@@ -183,6 +183,7 @@ export class JobProcessor {
 				retryOf: execution.retryOf,
 				pushRef,
 				userId: execution.data.manualData?.userId,
+				source: execution.data.manualData?.source,
 			},
 			executionId,
 		);

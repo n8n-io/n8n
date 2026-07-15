@@ -13,7 +13,8 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { In, type EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import type {
 	DataTableColumnJsType,
@@ -38,6 +39,7 @@ import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableCsvImportService } from './data-table-csv-import.service';
 import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTableSizeValidator } from './data-table-size-validator.service';
+import type { DataTable } from './data-table.entity';
 import { DataTableRepository } from './data-table.repository';
 import { columnTypeToFieldType } from './data-table.types';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
@@ -151,8 +153,16 @@ export class DataTableService {
 		return true;
 	}
 
-	async transferDataTablesByProjectId(fromProjectId: string, toProjectId: string) {
-		return await this.dataTableRepository.transferDataTableByProjectId(fromProjectId, toProjectId);
+	async transferDataTablesByProjectId(
+		fromProjectId: string,
+		toProjectId: string,
+		trx?: EntityManager,
+	) {
+		return await this.dataTableRepository.transferDataTableByProjectId(
+			fromProjectId,
+			toProjectId,
+			trx,
+		);
 	}
 
 	async deleteDataTableByProjectId(projectId: string) {
@@ -322,7 +332,7 @@ export class DataTableService {
 		return result;
 	}
 
-	async upsertRow<T extends boolean | undefined>(
+	async upsertRow(
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
@@ -423,7 +433,7 @@ export class DataTableService {
 		return { data: transformedData, filter: transformedFilter };
 	}
 
-	async updateRows<T extends boolean | undefined>(
+	async updateRows(
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
@@ -767,6 +777,34 @@ export class DataTableService {
 			quotaStatus: this.dataTableSizeValidator.sizeToState(allSizeData.totalBytes),
 			dataTables,
 		};
+	}
+
+	async findDataTablesByIdsForUser(
+		dataTableIds: string[],
+		user: User,
+		scopes: Scope[],
+	): Promise<DataTable[]> {
+		if (dataTableIds.length === 0) return [];
+
+		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			return await this.dataTableRepository.find({
+				where: { id: In(dataTableIds) },
+				relations: { columns: true, project: true },
+			});
+		}
+
+		const roles = await this.roleService.rolesWithScope('project', scopes);
+		const accessibleProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
+			user.id,
+			roles,
+		);
+
+		if (accessibleProjectIds.length === 0) return [];
+
+		return await this.dataTableRepository.find({
+			where: { id: In(dataTableIds), projectId: In(accessibleProjectIds) },
+			relations: { columns: true, project: true },
+		});
 	}
 
 	async generateDataTableCsv(

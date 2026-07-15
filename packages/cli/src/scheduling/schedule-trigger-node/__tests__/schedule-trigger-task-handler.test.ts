@@ -127,6 +127,22 @@ describe('ScheduleTriggerTaskHandler', () => {
 			});
 		});
 
+		test("resolves the 'DEFAULT' timezone sentinel to the instance timezone", async () => {
+			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({ settings: { timezone: 'DEFAULT' } }),
+			);
+
+			await handler.execute(buildTask());
+
+			const [, , data] = workflowExecutionService.runWorkflow.mock.calls[0];
+			// 'DEFAULT' is a sentinel, not a Moment zone: it must not leak into the
+			// item as a literal zone (which Moment resolves to UTC).
+			expect(data[0][0].json).toMatchObject({
+				timestamp: '2026-07-06T03:30:00.000-04:00',
+				Timezone: 'America/New_York (UTC-04:00)',
+			});
+		});
+
 		test('builds additional data for the published workflow like the activation path', async () => {
 			await handler.execute(buildTask());
 

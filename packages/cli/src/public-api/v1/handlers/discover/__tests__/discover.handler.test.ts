@@ -14,7 +14,7 @@ import * as discoverService from '../discover.service';
 let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
 
 beforeAll(async () => {
-	handler = (await import('../discover.handler')) as unknown as typeof handler;
+	handler = (await import('../discover.handler.js')) as unknown as typeof handler;
 });
 
 describe('Discover Handler', () => {

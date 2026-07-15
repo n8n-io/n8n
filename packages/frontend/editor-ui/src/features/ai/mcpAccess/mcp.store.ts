@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { MCP_STORE } from './mcp.constants';
+import { MCP_ENDPOINT, MCP_STORE } from './mcp.constants';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
@@ -45,6 +45,13 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 	const mcpManagedByEnv = computed(() => !!settingsStore.moduleSettings.mcp?.mcpManagedByEnv);
+
+	// Backend-provided canonical URL, so a configured dedicated MCP base URL is
+	// reflected; the editor-base fallback covers settings not yet loaded.
+	const serverUrl = computed(
+		() =>
+			settingsStore.moduleSettings.mcp?.serverUrl ?? `${rootStore.urlBaseEditor}${MCP_ENDPOINT}`,
+	);
 
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
@@ -216,6 +223,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	return {
 		mcpAccessEnabled,
 		mcpManagedByEnv,
+		serverUrl,
 		fetchWorkflowsAvailableForMCP,
 		setMcpAccessEnabled,
 		toggleWorkflowMcpAccess,

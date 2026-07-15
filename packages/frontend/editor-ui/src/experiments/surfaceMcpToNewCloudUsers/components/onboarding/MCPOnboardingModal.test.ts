@@ -46,6 +46,7 @@ vi.mock('@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUser
 type MockMcpStore = {
 	mcpAccessEnabled: boolean;
 	mcpManagedByEnv: boolean;
+	serverUrl: string;
 	setMcpAccessEnabled: ReturnType<typeof vi.fn>;
 };
 
@@ -94,6 +95,7 @@ describe('MCPOnboardingModal', () => {
 		mockMcpStore = reactive({
 			mcpAccessEnabled: false,
 			mcpManagedByEnv: false,
+			serverUrl: 'https://example.n8n.cloud/mcp-server/http',
 			setMcpAccessEnabled: vi.fn().mockImplementation(async () => {
 				mockMcpStore.mcpAccessEnabled = true;
 				return true;

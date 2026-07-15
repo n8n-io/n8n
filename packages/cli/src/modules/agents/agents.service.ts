@@ -116,6 +116,8 @@ export class AgentsService {
 			}
 		});
 
+		const mcpServers = (schema?.mcpServers ?? []).map((server) => ({ name: server.name }));
+
 		const skills = (schema?.skills ?? []).map((skill) => ({
 			id: skill.id,
 			name: entity.skills[skill.id]?.name ?? skill.id,
@@ -139,6 +141,7 @@ export class AgentsService {
 			model,
 			channels,
 			tools,
+			mcpServers,
 			skills,
 			tasks,
 		};
@@ -216,7 +219,7 @@ export class AgentsService {
 		this.eventService.emit('agent-deleted', { agentId, projectId });
 
 		try {
-			const { AgentTaskService } = await import('./agent-task.service');
+			const { AgentTaskService } = await import('./agent-task.service.js');
 			await Container.get(AgentTaskService).requestReconcile(agentId);
 		} catch (error) {
 			this.logger.warn('Failed to stop tasks on agent delete', {

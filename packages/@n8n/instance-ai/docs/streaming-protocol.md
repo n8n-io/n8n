@@ -412,8 +412,12 @@ simultaneously persisted to thread storage and delivered to connected SSE client
 | Single instance | In-process `EventEmitter` | Zero infrastructure |
 | Queue mode | Redis Pub/Sub | n8n already uses Redis |
 
-Event persistence uses thread storage regardless of transport — this provides
-replay capability for reconnection.
+Replay storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`. Off (default),
+replay serves from a bounded in-memory buffer per thread (500 events / 2 MB,
+FIFO-evicted; ids reset on restart). On, the durable event log
+(`instance_ai_events`) is the replay source: coalesced step-level facts are
+appended with a per-thread `seq` assigned by the writer's drain, so cursors
+stay valid across restarts and across mains sharing one database.
 
 ### Reconnection & Replay (Canonical Rule)
 
@@ -440,6 +444,20 @@ background task while the orchestrator runs elsewhere) can interleave, so a
 connection may occasionally deliver a lower id after a higher one. The
 frontend therefore tracks its reconnect cursor as the max id seen and drops
 already-seen ids on replay overlap.
+
+With the durable log enabled (`N8N_INSTANCE_AI_DURABLE_LOG`), ids are
+database-assigned sequence numbers and only DURABLE facts carry an `id:`
+line. Ephemeral frames (`text-delta`, `reasoning-delta`, `status`,
+`filesystem-request`) are live-only: their SSE frames have no `id:` line, so
+the browser's replay cursor never points at them (the same mechanism as the
+`run-sync` control frames). On replay, the deltas a client missed are covered
+by coalesced `text-block` / `reasoning-block` facts, which the shared run
+reducer applies with REPLACE semantics keyed on the segment's `responseId` —
+a client that reconnects mid-block never renders partial text twice. The
+writer persists a batch before emitting it live, so a fact is never in
+neither store, and same-connection replay does not require dedup; the
+endpoint's replay-and-subscribe handoff dedups by `seq` across its one async
+read.
 
 ## Abort Support
 

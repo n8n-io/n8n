@@ -42,6 +42,15 @@ export const FolderConflictPolicy = {
 	/** Fails the import if any package folder already exists in the target project. */
 	Fail: 'fail',
 } as const;
+
+export const MissingWorkflowDependencyPolicy = {
+	/** Fails the export when a static sub-workflow dependency is not included. */
+	Fail: 'fail',
+	/** Reserved for exporting missing static sub-workflows as requirements only. */
+	ReferenceOnly: 'reference-only',
+	/** Reserved for automatically adding missing static sub-workflows to the package. */
+	IncludeInPackage: 'include-in-package',
+} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type WorkflowConflictPolicy =
@@ -51,11 +60,15 @@ export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowId
 
 export type FolderConflictPolicy = (typeof FolderConflictPolicy)[keyof typeof FolderConflictPolicy];
 
+export type MissingWorkflowDependencyPolicy =
+	(typeof MissingWorkflowDependencyPolicy)[keyof typeof MissingWorkflowDependencyPolicy];
+
 export interface ExportPackageRequest {
 	user: User;
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
+	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
 }
 
 export type ImportPackageRequest = {
@@ -128,6 +141,7 @@ export type ExportPackageEventCounts = {
 	workflows: number;
 	folders: number;
 	credentials: number;
+	dataTables: number;
 };
 
 export interface ImportedWorkflowSummary {
@@ -147,6 +161,13 @@ export interface ImportedFolderSummary {
 	name: string;
 	parentFolderId: string | null;
 	status: 'created' | 'skipped';
+}
+
+export interface ImportedProjectSummary {
+	sourceProjectId: string;
+	localId: string;
+	name: string;
+	status: 'created' | 'updated';
 }
 
 /**
@@ -226,6 +247,7 @@ export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
 	folders: ImportedFolderSummary[];
+	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
 }
