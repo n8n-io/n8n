@@ -24,6 +24,11 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	handler: ToolCallback<InputArgs>;
 };
 
+/** Registers a tool on the per-request server if the granted scopes cover it. */
+export type RegisterToolFn = <InputArgs extends z.ZodRawShape>(
+	tool: ToolDefinition<InputArgs>,
+) => void;
+
 // Shared MCP tool types
 export const SEARCH_WORKFLOWS_SORT_BY_VALUES = [
 	'updatedAt:desc',

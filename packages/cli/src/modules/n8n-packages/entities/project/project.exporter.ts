@@ -98,7 +98,11 @@ export class ProjectExporter {
 	): Promise<FolderExportResult> {
 		const folderIds = await this.folderFinder.findFolderIdsInProject(projectId);
 		if (folderIds.length === 0) {
-			return { entries: [], workflowEntries: [], requirements: mergeRequirements() };
+			return {
+				entries: [],
+				workflowEntries: [],
+				requirements: mergeRequirements(),
+			};
 		}
 
 		return await this.folderExporter.export({
