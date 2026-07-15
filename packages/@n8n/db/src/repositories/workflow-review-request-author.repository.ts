@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 
 import { WorkflowReviewRequestAuthor } from '../entities/workflow-review-request-author.ee';
@@ -7,6 +8,24 @@ import { WorkflowReviewRequestAuthor } from '../entities/workflow-review-request
 export class WorkflowReviewRequestAuthorRepository extends Repository<WorkflowReviewRequestAuthor> {
 	constructor(dataSource: DataSource) {
 		super(WorkflowReviewRequestAuthor, dataSource.manager);
+	}
+
+	async addAuthor(
+		input: {
+			id?: string;
+			workflowReviewRequestId: string;
+			userId: string;
+		},
+		trx?: EntityManager,
+	): Promise<WorkflowReviewRequestAuthor> {
+		const manager = trx ?? this.manager;
+		const entity = this.create({
+			id: input.id,
+			workflowReviewRequestId: input.workflowReviewRequestId,
+			userId: input.userId,
+		});
+
+		return await manager.save(WorkflowReviewRequestAuthor, entity);
 	}
 
 	async findByRequestId(requestId: string): Promise<WorkflowReviewRequestAuthor[]> {
