@@ -487,7 +487,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			const workflow = await createActiveWorkflow();
 			await recordTrigger(workflow, 'n1', 'in-memory');
 
-			await repository.enqueueActiveWorkflowsRequiringLeaderPublication();
+			await repository.enqueueInMemoryActiveWorkflows();
 
 			expect(await pendingWorkflowIds()).toEqual([workflow.id]);
 		});
@@ -497,7 +497,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			await recordTrigger(workflow, 'n1', 'persisted');
 			await recordTrigger(workflow, 'n2', 'persisted');
 
-			await repository.enqueueActiveWorkflowsRequiringLeaderPublication();
+			await repository.enqueueInMemoryActiveWorkflows();
 
 			expect(await pendingWorkflowIds()).toEqual([]);
 		});
@@ -505,7 +505,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		it('enqueues a workflow that has no recorded triggers yet', async () => {
 			const workflow = await createActiveWorkflow();
 
-			await repository.enqueueActiveWorkflowsRequiringLeaderPublication();
+			await repository.enqueueInMemoryActiveWorkflows();
 
 			expect(await pendingWorkflowIds()).toEqual([workflow.id]);
 		});
@@ -515,7 +515,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			await recordTrigger(workflow, 'n1', 'persisted');
 			await recordTrigger(workflow, 'n2', 'in-memory');
 
-			await repository.enqueueActiveWorkflowsRequiringLeaderPublication();
+			await repository.enqueueInMemoryActiveWorkflows();
 
 			expect(await pendingWorkflowIds()).toEqual([workflow.id]);
 		});
@@ -524,7 +524,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			const workflow = await createActiveWorkflow();
 			await recordTrigger(workflow, 'n1', 'in-memory', 'failed');
 
-			await repository.enqueueActiveWorkflowsRequiringLeaderPublication();
+			await repository.enqueueInMemoryActiveWorkflows();
 
 			expect(await pendingWorkflowIds()).toEqual([workflow.id]);
 		});
@@ -533,7 +533,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			const workflow = await createActiveWorkflow();
 			await recordTrigger(workflow, 'n1', 'in-memory');
 
-			await repository.enqueueActiveWorkflowsRequiringLeaderPublication();
+			await repository.enqueueInMemoryActiveWorkflows();
 
 			const pending = await repository.find({ where: { status: 'pending' } });
 			expect(pending).toHaveLength(1);
@@ -548,7 +548,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			await recordTrigger(archived, 'n1', 'in-memory');
 			await Container.get(WorkflowRepository).update(archived.id, { isArchived: true });
 
-			await repository.enqueueActiveWorkflowsRequiringLeaderPublication();
+			await repository.enqueueInMemoryActiveWorkflows();
 
 			expect(await pendingWorkflowIds()).toEqual([active.id]);
 		});
@@ -557,8 +557,8 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			const workflow = await createActiveWorkflow();
 			await recordTrigger(workflow, 'n1', 'in-memory');
 
-			await repository.enqueueActiveWorkflowsRequiringLeaderPublication();
-			await repository.enqueueActiveWorkflowsRequiringLeaderPublication();
+			await repository.enqueueInMemoryActiveWorkflows();
+			await repository.enqueueInMemoryActiveWorkflows();
 
 			const pending = await repository.find({
 				where: { workflowId: workflow.id, status: 'pending' },
