@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_32ec3da1be2f93::t_3dfc11e6eade3b 34-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "16ba24f3115a52c171edf84078c2d51dc7909669",
+  "prompts": {},
+  "sessions": {
+    "s_32ec3da1be2f93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "786c6ff8-b58f-460d-857d-6b6be5e5937e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
