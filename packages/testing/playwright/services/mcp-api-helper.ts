@@ -952,15 +952,17 @@ export class McpApiHelper {
 	 *
 	 * @param apiKey - The MCP API key for authentication
 	 * @param workflowId - The workflow ID to execute
+	 * @param executionMode - Whether to execute the current or published workflow version
 	 * @param inputs - Optional inputs for the workflow
 	 * @returns Execution result
 	 */
 	async internalMcpExecuteWorkflow(
 		apiKey: string,
 		workflowId: string,
+		executionMode: 'manual' | 'production',
 		inputs?: Record<string, unknown>,
 	): Promise<ExecuteWorkflowResult> {
-		const args: Record<string, unknown> = { workflowId };
+		const args: Record<string, unknown> = { workflowId, executionMode };
 		if (inputs) {
 			args.inputs = inputs;
 		}
