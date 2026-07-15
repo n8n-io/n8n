@@ -10,7 +10,7 @@ type TargetColumns = Array<{ name: string; type: string }>;
  * accepts a target that satisfies the package schema, even when the target has
  * additional columns of its own; `fail` is the strict drift-detection choice
  * and rejects any difference, including a harmless superset. Both are
- * non-destructive — the matched table is never altered either way.
+ * non-destructive — the matched target table is never altered either way.
  */
 /* eslint-disable @typescript-eslint/naming-convention -- API data table schema conflict policy keys */
 const SCHEMA_CONFLICTS: Record<

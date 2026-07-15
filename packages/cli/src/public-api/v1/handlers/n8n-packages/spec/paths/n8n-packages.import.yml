@@ -178,12 +178,12 @@ post:
               description: >
                 How strictly a matched data table's schema is compared.
                 `keep-existing` (default) accepts a target table that has every
-                package column with the same name and type, even when the table
+                package column with the same name and type, even when the target table
                 also has additional columns of its own. `fail` is the strict
                 drift-detection choice: any difference, including such
                 target-only columns, rejects the import. A missing package
                 column or a type mismatch always rejects. Both policies are
-                non-destructive — the matched table is never altered, and
+                non-destructive — the matched target table is never altered, and
                 package columns are never added to it.
   responses:
     '200':

@@ -68,7 +68,7 @@ export const DataTableMissingMode = {
 } as const;
 
 export const DataTableSchemaConflictPolicy = {
-	/** Accepts a matched table that has every package column, ignoring additional columns the table has of its own. Never alters the table. */
+	/** Accepts a matched target able that has every package column, ignoring additional columns the target table has of its own. Never alters the target table. */
 	KeepExisting: 'keep-existing',
 	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',

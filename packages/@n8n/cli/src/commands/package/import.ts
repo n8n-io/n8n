@@ -64,7 +64,7 @@ export default class PackageImport extends BaseCommand {
 		}),
 		dataTableSchemaConflictPolicy: Flags.string({
 			description:
-				'How strictly a matched data table schema is compared: keep-existing (instance default) requires every package column but ignores additional columns the target table has of its own; fail rejects any difference. Neither policy alters the matched table',
+				'How strictly a matched target data table schema is compared: keep-existing (instance default) requires every package column but ignores additional columns the target table has of its own; fail rejects any difference. Neither policy alters the matched target table',
 			options: ['keep-existing', 'fail'],
 			aliases: ['data-table-schema-conflict-policy'],
 		}),
