@@ -103,10 +103,10 @@ export class ModuleRegistry {
 
 		for (const moduleName of modules ?? this.eligibleModules) {
 			try {
-				await import(`${modulesDir}/${moduleName}/${moduleName}.module`);
+				await import(`${modulesDir}/${moduleName}/${moduleName}.module.js`);
 			} catch (primaryError) {
 				try {
-					await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module`);
+					await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module.js`);
 				} catch (error) {
 					const loggedError =
 						primaryError instanceof Error &&

@@ -26,7 +26,12 @@ const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export';
 type ExportPackageRequest = AuthenticatedRequest<
 	{},
 	{},
-	{ workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] }
+	{
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
+		missingWorkflowDependencyPolicy?: 'fail' | 'reference-only' | 'include-in-package';
+	}
 >;
 
 type ImportPackageRequest = PackageRequest.Import & {
@@ -121,6 +126,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					workflowIds,
 					folderIds,
 					projectIds,
+					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
 				});
 
 				return await streamPackageExport(res, stream);
@@ -164,6 +170,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 
 				const result = await Container.get(N8nPackagesService).importPackage({
 					user: req.user,
+					apiKeyScopes: req.tokenGrant?.apiKeyScopes,
 					projectId,
 					folderId,
 					credentialMatchingMode: payload.data.credentialMatchingMode,
@@ -174,6 +181,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					workflowConflictPolicy: payload.data.workflowConflictPolicy,
 					workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
 					workflowIdPolicy: payload.data.workflowIdPolicy,
+					folderConflictPolicy: payload.data.folderConflictPolicy,
 					packageBuffer: packageFile.buffer,
 				});
 				return res.status(200).json(result);

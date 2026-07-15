@@ -5,17 +5,18 @@ import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
 import { createScheduler, executorLookaheadSeconds } from '@n8n/scheduler';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
+import { createSchedulerTracer } from './scheduler-tracer';
 
 /**
- * The database-backed {@link Scheduler} and its process lifecycle.
+ * The database-backed {@link Scheduler} and its process lifecycle (the run side).
  *
- * The loops run on every main: claiming makes concurrent instances safe,
- * and sharing the work across mains is the point of the durable scheduler.
+ * The loops run on every main: claiming makes concurrent instances safe, and
+ * sharing the work across mains is the point of the durable scheduler.
  */
 @Service()
 export class DurableScheduler implements Scheduler {
@@ -28,11 +29,13 @@ export class DurableScheduler implements Scheduler {
 		tasks: ScheduledTaskRepository,
 		instanceSettings: InstanceSettings,
 		globalConfig: GlobalConfig,
+		tracing: Tracing,
 		scheduleTriggerTaskHandler: ScheduleTriggerTaskHandler,
 		metrics: PrometheusSchedulerMetricsService,
 	) {
 		const config = globalConfig.scheduler;
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
+		const tracer = createSchedulerTracer(tracing);
 		this.scheduler = enabled
 			? createScheduler({
 					hostId: instanceSettings.hostId,
@@ -61,11 +64,11 @@ export class DurableScheduler implements Scheduler {
 						failedRetentionSeconds: config.failedRetentionSeconds,
 					},
 					lifecycle: {
-						materializerIntervalSeconds: config.sweepIntervalSeconds,
+						materializerIntervalSeconds: config.materializationIntervalSeconds,
 						executorIntervalSeconds: config.executorIntervalSeconds,
 						reaperIntervalSeconds: config.reaperIntervalSeconds,
 						retentionIntervalSeconds: config.retentionIntervalSeconds,
-						materializerTimeoutSeconds: config.sweepTimeoutSeconds,
+						materializerTimeoutSeconds: config.materializationTimeoutSeconds,
 						executorTimeoutSeconds: config.executorTimeoutSeconds,
 						reaperTimeoutSeconds: config.reaperTimeoutSeconds,
 						retentionTimeoutSeconds: config.retentionTimeoutSeconds,
@@ -74,7 +77,9 @@ export class DurableScheduler implements Scheduler {
 							globalConfig.database.type === 'postgresdb' ? 'concurrent' : 'sequential',
 						maxConcurrentPasses: config.maxConcurrentPasses,
 					},
+					now: async () => await tasks.readDbTime(),
 					onEvent: ({ level, message, context }) => logger[level](message, context),
+					tracer,
 				})
 			: undefined;
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);

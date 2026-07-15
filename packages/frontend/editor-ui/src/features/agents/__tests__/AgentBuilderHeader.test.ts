@@ -4,6 +4,7 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
 import type { AgentResource } from '../types';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
@@ -76,7 +77,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nActionDropdown: {
 		name: 'ActionDropdown',
 		template: '<div v-bind="$attrs" />',
-		props: ['items', 'activatorIcon'],
+		props: ['items', 'activatorIcon', 'extraPopperClass'],
 		emits: ['select'],
 	},
 }));
@@ -177,6 +178,12 @@ describe('AgentBuilderHeader', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
 		const action = wrapper.findComponent({ name: 'ActionDropdown' });
 		expect(action.props('activatorIcon')).toBe('ellipsis');
+	});
+
+	it('widens the header action menu so labels are readable from the icon trigger', () => {
+		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete agent' }] });
+		const action = wrapper.findComponent({ name: 'ActionDropdown' });
+		expect(action.props('extraPopperClass')).toBeTruthy();
 	});
 
 	it('hides the action dropdown when no header actions are available', () => {
@@ -309,14 +316,11 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
 	});
 
-	it('navigates to the new agent page from the switcher footer', async () => {
+	it('navigates to Instance AI for agent creation from the switcher footer', async () => {
 		const wrapper = mountHeader();
 
 		await wrapper.find('[data-testid="agent-header-new-agent"]').trigger('click');
 
-		expect(routerPush).toHaveBeenCalledWith({
-			name: 'NewAgentView',
-			query: { projectId: 'p1' },
-		});
+		expect(routerPush).toHaveBeenCalledWith(instanceAiCreateAgentRoute('p1'));
 	});
 });

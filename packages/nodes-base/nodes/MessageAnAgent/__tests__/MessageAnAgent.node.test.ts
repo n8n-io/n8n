@@ -15,6 +15,7 @@ describe('MessageAnAgent Node', () => {
 		agentId: 'agent-1',
 		projectId: 'project-1',
 		sessionId: 'exec-123-0',
+		threadId: 'workflow:project-project-1:exec-123-0',
 	};
 
 	const mockAgentResult: ExecuteAgentData = {
@@ -87,7 +88,7 @@ describe('MessageAnAgent Node', () => {
 			[
 				{
 					json: {
-						response: 'Hello from agent',
+						text: 'Hello from agent',
 						structuredOutput: null,
 						usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
 						toolCalls: [],
@@ -98,6 +99,26 @@ describe('MessageAnAgent Node', () => {
 				},
 			],
 		]);
+	});
+
+	it('keeps the released v1 output contract: `response`, not `text`', async () => {
+		const v1 = new MessageAnAgentV1(baseDescription);
+		executeFunctions.getNode.mockReturnValue({
+			id: 'test-node-id',
+			name: 'Message an Agent',
+			type: 'n8n-nodes-base.messageAnAgent',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		});
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		mockParams();
+		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+		const result = await v1.execute.call(executeFunctions);
+
+		expect(result[0][0].json.response).toBe('Hello from agent');
+		expect(result[0][0].json).not.toHaveProperty('text');
 	});
 
 	it('should forward a user-supplied sessionId from the Advanced collection', async () => {
@@ -118,6 +139,17 @@ describe('MessageAnAgent Node', () => {
 			'exec-123',
 			0,
 		);
+	});
+
+	it('rejects a sessionId longer than the persisted thread-key budget', async () => {
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		mockParams({ advanced: { sessionId: 'x'.repeat(75) } });
+		executeFunctions.continueOnFail.mockReturnValue(false);
+
+		await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+			'Session ID must be at most 74 characters',
+		);
+		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
 	});
 
 	it('should treat a whitespace-only sessionId as no override', async () => {
@@ -190,6 +222,110 @@ describe('MessageAnAgent Node', () => {
 		});
 	});
 
+	describe('inline agent source', () => {
+		const inlineAgent = {
+			config: {
+				name: 'Inline Agent',
+				model: 'openai/gpt-5',
+				credential: 'cred-1',
+				instructions: 'Help users',
+				tools: [
+					{
+						type: 'node',
+						name: 'HTTP Request',
+						node: {
+							nodeType: 'n8n-nodes-base.httpRequestTool',
+							nodeTypeVersion: 4.4,
+							nodeParameters: {
+								url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
+							},
+						},
+					},
+				],
+			},
+		};
+
+		it('passes the inline definition and never resolves its embedded expressions', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ agentSource: 'inline', inlineAgent });
+			executeFunctions.executeAgent.mockResolvedValue({ ...mockAgentResult, session: null });
+
+			await node.execute.call(executeFunctions);
+
+			// Embedded node-tool parameters carry `$fromAI` overrides that only the
+			// agent's tool executor may resolve — the parameter must be read raw.
+			expect(executeFunctions.getNodeParameter).toHaveBeenCalledWith(
+				'inlineAgent',
+				0,
+				{},
+				{ rawExpressions: true },
+			);
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ inlineAgent }),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
+			const [source] = executeFunctions.executeAgent.mock.calls[0];
+			expect(source).not.toHaveProperty('agentId');
+		});
+
+		it('passes a session id override through for inline agents (thread memory)', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({
+				agentSource: 'inline',
+				inlineAgent,
+				advanced: { sessionId: 'my-session' },
+			});
+			executeFunctions.executeAgent.mockResolvedValue({ ...mockAgentResult, session: null });
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ sessionId: 'my-session' }),
+				expect.any(String),
+				expect.any(String),
+				expect.any(Number),
+			);
+		});
+
+		it('parses a JSON string payload (e.g. from an expression) before executing', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ agentSource: 'inline', inlineAgent: JSON.stringify(inlineAgent) });
+			executeFunctions.executeAgent.mockResolvedValue({ ...mockAgentResult, session: null });
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ inlineAgent }),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
+		});
+
+		it('throws when the inline definition is a malformed JSON string', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ agentSource: 'inline', inlineAgent: '{not json' });
+			executeFunctions.continueOnFail.mockReturnValue(false);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'Inline agent configuration is not valid JSON',
+			);
+			expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+		});
+
+		it('throws when inline mode is selected but no agent is configured', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ agentSource: 'inline', inlineAgent: {} });
+			executeFunctions.continueOnFail.mockReturnValue(false);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'Inline agent is not configured',
+			);
+		});
+	});
+
 	it('should process multiple items with different itemIndex values', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
 		executeFunctions.getNodeParameter.mockImplementation(
@@ -241,9 +377,9 @@ describe('MessageAnAgent Node', () => {
 			1,
 		);
 		expect(result[0]).toHaveLength(2);
-		expect(result[0][0].json.response).toBe('Response 1');
+		expect(result[0][0].json.text).toBe('Response 1');
 		expect(result[0][0].pairedItem).toEqual({ item: 0 });
-		expect(result[0][1].json.response).toBe('Response 2');
+		expect(result[0][1].json.text).toBe('Response 2');
 		expect(result[0][1].pairedItem).toEqual({ item: 1 });
 	});
 

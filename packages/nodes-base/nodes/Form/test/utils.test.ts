@@ -2923,6 +2923,22 @@ describe('addFormResponseDataToReturnItem', () => {
 		expect(returnItem.json['Number Field']).toBe(42);
 	});
 
+	it('should trim text fields correctly', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Text Field', fieldType: 'text' }];
+		const bodyData: IDataObject = { 'field-0': '   some text   ' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Text Field']).toBe('some text');
+	});
+
+	it('should trim email fields correctly', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Email Field', fieldType: 'email' }];
+		const bodyData: IDataObject = { 'field-0': ' test@example.com   ' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Email Field']).toBe('test@example.com');
+	});
+
 	it('should trim text fields', () => {
 		const formFields: FormFieldsParameter = [{ fieldLabel: 'Text Field', fieldType: 'text' }];
 		const bodyData: IDataObject = { 'field-0': '   hello world   ' };

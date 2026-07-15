@@ -21,7 +21,8 @@ import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Brea
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { AGENT_PREVIEW_VIEW, NEW_AGENT_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import { AGENT_PREVIEW_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
@@ -110,7 +111,7 @@ function onSwitcherSelect(id: string) {
 }
 
 function onCreateAgent() {
-	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: props.projectId } });
+	void router.push(instanceAiCreateAgentRoute(props.projectId));
 }
 
 function onBreadcrumbSelect(item: PathItem) {
@@ -246,6 +247,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				:items="headerActions"
 				activator-icon="ellipsis"
 				activator-size="medium"
+				:extra-popper-class="$style.headerActionsMenu"
 				data-testid="agent-header-actions"
 				@select="(item: string) => emit('header-action', item)"
 			/>
@@ -338,5 +340,9 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 
 .activeButton {
 	background-color: var(--background--active);
+}
+
+.headerActionsMenu {
+	--n8n--dropdown-menu-width: var(--spacing--5xl);
 }
 </style>

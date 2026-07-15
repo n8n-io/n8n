@@ -210,29 +210,6 @@ describe('extractArtifacts', () => {
 		expect(extractArtifacts(node)[0].resourceId).toBe('dt-4');
 	});
 
-	test('returns agent artifact from agent_builder create_agent result', () => {
-		const node = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolName: 'agent_builder',
-					args: { action: 'create_agent' },
-					result: { ok: true, agentId: 'agent-2', projectId: 'proj-2', name: 'Inbox Triage' },
-					completedAt: '2026-01-01T00:00:00Z',
-				}),
-			],
-		});
-
-		expect(extractArtifacts(node)).toEqual([
-			{
-				type: 'agent',
-				resourceId: 'agent-2',
-				projectId: 'proj-2',
-				name: 'Inbox Triage',
-				completedAt: '2026-01-01T00:00:00Z',
-			},
-		]);
-	});
-
 	test('deduplicates artifacts by resourceId', () => {
 		const node = makeAgentNode({
 			targetResource: { id: 'wf-1', type: 'workflow', name: 'WF From Target' },

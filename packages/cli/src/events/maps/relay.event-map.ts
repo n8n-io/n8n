@@ -483,6 +483,11 @@ export type RelayEventMap = {
 		origin?: 'static-credential' | 'dynamic-credential';
 	};
 
+	'dynamic-credential-authorize-rejected': {
+		reason: 'unauthenticated' | 'user-mismatch';
+		credentialId?: string;
+	};
+
 	'private-credential-created': {
 		user: UserLike;
 		credentialType: string;
@@ -1034,6 +1039,12 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
+
+	// region Agents
+	'agent-deleted': {
+		agentId: string;
+		projectId: string;
+	};
 
 	// #region Instance Policies
 

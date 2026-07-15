@@ -129,7 +129,7 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 
 <style lang="scss" module>
 .root {
-	border: var(--border);
+	border: 2px solid var(--color--primary);
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 }

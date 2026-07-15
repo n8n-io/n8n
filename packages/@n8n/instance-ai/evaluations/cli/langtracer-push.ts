@@ -1,23 +1,20 @@
-// Push selected on-disk eval cases (data/workflows/*.json) UP into a curated
+// Push selected on-disk eval cases (data/workflows/*.json) UP into a
 // lang-tracer suite over the REST API, upserting: create missing, update changed,
 // leave unchanged, skip unsupported. The inverse of `--source langtracer` (which
-// pulls a suite down). Env: LANGTRACER_URL + LANGTRACER_API_KEY (see .env.eval).
+// pulls a suite down). Env: LANGTRACER_URL + LANGTRACER_API_KEY (repo-root .env.local).
 //
-//   dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
-//   dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building ai-quote-carousel ...
+//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite n8n-workflows --changed
+//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite n8n-workflows my-new-case ...
 //   ... --dry-run   # plan only, no writes
 
 import { execFileSync } from 'node:child_process';
 import { basename } from 'node:path';
 
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
-import { LangTracerClient, type LangTracerUpdateCaseBody } from '../langtracer/client';
+import { LangTracerClient } from '../langtracer/client';
 import { resolveLangTracerConfig } from '../langtracer/config';
-import { planPush } from '../langtracer/push';
-import {
-	diskCaseToLangTracerCreate,
-	type LangTracerCreateCaseBody,
-} from '../langtracer/to-exported';
+import { planPush, toUpdatePatch } from '../langtracer/push';
+import { diskCaseToLangTracerCreate } from '../langtracer/to-exported';
 
 interface CliArgs {
 	suite: string;
@@ -152,16 +149,6 @@ function gitChangedSlugs(): string[] {
 		}
 	}
 	return slugs;
-}
-
-/** Drop the create-only fields `PATCH /cases/:id` rejects, leaving the patchable set. */
-function toUpdatePatch({
-	suiteId,
-	synthetic,
-	scenarios,
-	...patch
-}: LangTracerCreateCaseBody): LangTracerUpdateCaseBody {
-	return patch;
 }
 
 async function main() {

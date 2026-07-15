@@ -218,6 +218,10 @@ import { CreateWorkflowPublicationTriggerStatusTable1784000000040 } from '../com
 import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../common/1784000000041-AddUsedPrivateCredentialsToExecutionEntity';
 import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-CreateSchedulerTables';
 import { AddPartialIndexForGlobalCredentials1784000000044 } from '../common/1784000000044-AddPartialIndexForGlobalCredentials';
+import { AddRecurringCronScheduleKind1784000000045 } from '../common/1784000000045-AddRecurringCronScheduleKind';
+import { CreateInstanceAiEventsTable1784000000046 } from '../common/1784000000046-CreateInstanceAiEventsTable';
+import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/1784000000047-BackfillPreScopingOAuthGrantScopes';
+import { AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048 } from '../common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -441,4 +445,8 @@ export const postgresMigrations: Migration[] = [
 	CreateSchedulerTables1784000000042,
 	CreateWorkflowStatisticsDeltaTable1784000000043,
 	AddPartialIndexForGlobalCredentials1784000000044,
+	AddRecurringCronScheduleKind1784000000045,
+	CreateInstanceAiEventsTable1784000000046,
+	BackfillPreScopingOAuthGrantScopes1784000000047,
+	AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048,
 ];

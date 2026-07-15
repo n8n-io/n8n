@@ -1,4 +1,7 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { Module } from 'node:module';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
@@ -202,6 +205,67 @@ describe('LoadNodesAndCredentials', () => {
 				version: '1.0.0',
 			});
 			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0.json');
+		});
+	});
+
+	describe('createOutputSchemaLookup', () => {
+		let instance: LoadNodesAndCredentials;
+		let nodesDir: string;
+
+		beforeEach(() => {
+			nodesDir = mkdtempSync(join(tmpdir(), 'n8n-lookup-'));
+			const schemaDir = join(nodesDir, 'Test', '__schema__', 'v1.0.0', 'account');
+			mkdirSync(schemaDir, { recursive: true });
+			writeFileSync(join(schemaDir, 'get.json'), JSON.stringify({ type: 'object' }));
+
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.knownNodes['n8n-nodes-base.test'] = {
+				className: 'Test',
+				sourcePath: join(nodesDir, 'Test', 'Test.node.js'),
+			};
+		});
+
+		afterEach(() => {
+			rmSync(nodesDir, { recursive: true, force: true });
+		});
+
+		it('should load the schema for a known node', () => {
+			const lookup = instance.createOutputSchemaLookup();
+			expect(
+				lookup({
+					type: 'n8n-nodes-base.test',
+					typeVersion: 1,
+					resource: 'account',
+					operation: 'get',
+				}),
+			).toEqual({ type: 'object' });
+		});
+
+		it('should fall back to an available older version', () => {
+			const lookup = instance.createOutputSchemaLookup();
+			expect(
+				lookup({
+					type: 'n8n-nodes-base.test',
+					typeVersion: 3,
+					resource: 'account',
+					operation: 'get',
+				}),
+			).toEqual({ type: 'object' });
+		});
+
+		it('should return undefined for unknown nodes or missing schemas', () => {
+			const lookup = instance.createOutputSchemaLookup();
+			expect(
+				lookup({ type: 'n8n-nodes-base.unknown', typeVersion: 1, operation: 'get' }),
+			).toBeUndefined();
+			expect(
+				lookup({
+					type: 'n8n-nodes-base.test',
+					typeVersion: 1,
+					resource: 'account',
+					operation: 'delete',
+				}),
+			).toBeUndefined();
 		});
 	});
 
@@ -520,7 +584,7 @@ describe('LoadNodesAndCredentials', () => {
 
 		beforeEach(async () => {
 			// Import the mocked functions
-			const toolGeneration = await import('@/tool-generation');
+			const toolGeneration = await import('@/tool-generation/index.js');
 			createAiTools = toolGeneration.createAiTools as Mock;
 			createHitlTools = toolGeneration.createHitlTools as Mock;
 

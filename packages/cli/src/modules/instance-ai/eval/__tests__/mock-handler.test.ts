@@ -434,6 +434,8 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should surface the rejection reason when a rejected spec is never resubmitted', async () => {
+		// One rejected submission per attempt (initial + DEFAULT_MAX_RETRIES).
+		llmSubmits({ type: 'text', contentType: 'text/xml' });
 		llmSubmits({ type: 'text', contentType: 'text/xml' });
 		llmSubmits({ type: 'text', contentType: 'text/xml' });
 		const handler = createLlmMockHandler();
@@ -483,7 +485,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should cache node config across calls for the same node name', async () => {
-		const { extractNodeConfig } = (await import('../node-config')) as unknown as {
+		const { extractNodeConfig } = (await import('../node-config.js')) as unknown as {
 			extractNodeConfig: Mock;
 		};
 		extractNodeConfig.mockReturnValue('{"resource":"message"}');
@@ -532,7 +534,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should extract config separately for different node names', async () => {
-		const { extractNodeConfig } = (await import('../node-config')) as unknown as {
+		const { extractNodeConfig } = (await import('../node-config.js')) as unknown as {
 			extractNodeConfig: Mock;
 		};
 		extractNodeConfig.mockReturnValue('{}');

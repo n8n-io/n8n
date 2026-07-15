@@ -616,10 +616,21 @@ export class SourceControlService {
 
 		const dataTableCandidates = getNonDeletedResources(statusResult, 'datatable');
 		if (dataTableCandidates.length > 0) {
-			await this.sourceControlImportService.importDataTablesFromWorkFolder(
-				dataTableCandidates,
-				user.id,
-			);
+			const dataTableImportResult =
+				await this.sourceControlImportService.importDataTablesFromWorkFolder(
+					dataTableCandidates,
+					user.id,
+				);
+
+			// Surface reconciliation failures as conflicts on the pull result, not
+			// just in the logs
+			for (const failure of dataTableImportResult?.reconciliationFailures ?? []) {
+				for (const item of statusResult) {
+					if (item.type === 'datatable' && item.id === failure.id) {
+						item.conflict = true;
+					}
+				}
+			}
 		}
 		const dataTablesToBeDeleted = getDeletedResources(statusResult, 'datatable');
 		await this.sourceControlImportService.deleteDataTablesNotInWorkFolder(dataTablesToBeDeleted);

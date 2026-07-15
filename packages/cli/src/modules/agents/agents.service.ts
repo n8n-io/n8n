@@ -20,6 +20,7 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class AgentsService {
@@ -32,6 +33,7 @@ export class AgentsService {
 		private readonly testChatService: AgentTestChatService,
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly subAgentCleanupService: SubAgentCleanupService,
+		private readonly eventService: EventService,
 	) {}
 
 	async create(projectId: string, name: string): Promise<Agent> {
@@ -114,6 +116,8 @@ export class AgentsService {
 			}
 		});
 
+		const mcpServers = (schema?.mcpServers ?? []).map((server) => ({ name: server.name }));
+
 		const skills = (schema?.skills ?? []).map((skill) => ({
 			id: skill.id,
 			name: entity.skills[skill.id]?.name ?? skill.id,
@@ -137,6 +141,7 @@ export class AgentsService {
 			model,
 			channels,
 			tools,
+			mcpServers,
 			skills,
 			tasks,
 		};
@@ -211,8 +216,10 @@ export class AgentsService {
 
 		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, projectId);
 
+		this.eventService.emit('agent-deleted', { agentId, projectId });
+
 		try {
-			const { AgentTaskService } = await import('./agent-task.service');
+			const { AgentTaskService } = await import('./agent-task.service.js');
 			await Container.get(AgentTaskService).requestReconcile(agentId);
 		} catch (error) {
 			this.logger.warn('Failed to stop tasks on agent delete', {

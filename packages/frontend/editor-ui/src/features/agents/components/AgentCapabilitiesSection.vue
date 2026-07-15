@@ -47,11 +47,19 @@ const props = withDefaults(
 		 * also suppresses the inline `AgentChannelModal`.
 		 */
 		sections?: AgentCapabilitySection[];
+		/**
+		 * Restricts the channel modal to the simple, guided per-channel setup used by
+		 * the AI-assistant channel-setup HITL card (forces a new credential, skips
+		 * the advanced list/edit UI). Set by the artifact-mode agent preview embedded
+		 * in the AI assistant; the standalone Agent Builder leaves this off.
+		 */
+		simpleChannelSetup?: boolean;
 	}>(),
 	{
 		disabled: false,
 		taskRefs: () => [],
 		sections: () => ['channels', 'tools', 'skills', 'subAgents', 'tasks'],
+		simpleChannelSetup: false,
 	},
 );
 
@@ -267,7 +275,7 @@ function toolLabel(entry: CapabilityToolEntry) {
 }
 
 function toolIcon(entry: CapabilityToolEntry): IconName {
-	if (entry.kind === 'mcpServer') return 'globe';
+	if (entry.kind === 'mcpServer') return 'mcp';
 	const { tool } = entry;
 	if (tool.type === 'workflow') return 'workflow';
 	if (tool.type === 'custom') return 'code';
@@ -702,6 +710,7 @@ function handleChannelDisconnected(channelType: string) {
 			:project-id="projectId"
 			:connected-channels="connectedTriggers"
 			:is-published="isPublished"
+			:simple-setup="simpleChannelSetup"
 			@channel-connected="handleChannelConnected"
 			@channel-disconnected="handleChannelDisconnected"
 			@agent-changed="emit('agent-changed')"

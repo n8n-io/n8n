@@ -1,5 +1,10 @@
 import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '@n8n/api-types';
 
+import {
+	IMPORTANT_SECTION,
+	INTERACTIVE_TOOLS_SECTION,
+	WORKFLOW_SECTION,
+} from '../agents-builder-prompts';
 import { getBuilderRuntimeSkills } from '../skills';
 
 describe('agents builder integrations prompt', () => {
@@ -10,6 +15,35 @@ describe('agents builder integrations prompt', () => {
 
 		expect(integrationsSkill?.instructions).not.toContain('slackOAuth2Api');
 		expect(integrationsSkill?.instructions).not.toContain('prefer the OAuth variant');
+	});
+});
+
+describe('chat-channel credential guidance', () => {
+	it('mandates configure_channel and forbids ask_credential for chat-channel credentials', () => {
+		expect(INTERACTIVE_TOOLS_SECTION).toContain(
+			'NEVER use it for a chat-channel\n  credential — use `configure_channel` instead.',
+		);
+		expect(INTERACTIVE_TOOLS_SECTION).toContain(
+			'`configure_channel`: ALWAYS use this to connect a chat platform',
+		);
+		expect(IMPORTANT_SECTION).toContain(
+			'`configure_channel` (never `ask_credential`) for chat-channel',
+		);
+
+		const integrationsSkill = getBuilderRuntimeSkills().find(
+			(skill) => skill.id === 'agent-builder-integrations',
+		);
+		expect(integrationsSkill?.instructions).toContain(
+			'ALWAYS use `configure_channel` for chat-channel\n  credentials — never `ask_credential`',
+		);
+	});
+
+	it('references ask_questions in the batching guidance', () => {
+		expect(WORKFLOW_SECTION).toContain(
+			'Use `ask_questions` for clarifying questions with discrete options, batching',
+		);
+		expect(IMPORTANT_SECTION).toContain('`ask_questions` (discrete options for a known set');
+		expect(IMPORTANT_SECTION).toContain('batch multiple questions into one call');
 	});
 });
 
@@ -40,7 +74,7 @@ describe('sub-agent skill availability', () => {
 		expect(skill).toBeDefined();
 		expect(skill?.instructions).toContain('`delegate_subagent`');
 		expect(skill?.instructions).toContain('Call `list_sub_agents`');
-		expect(skill?.instructions).toContain('`allowMultiple: true`');
+		expect(skill?.instructions).toContain('`type: "multi"`');
 		expect(skill?.instructions).toContain('subAgentId: "inline"');
 		expect(skill?.instructions).toContain('`subAgents.maxChildren`');
 		expect(skill?.instructions).toContain(

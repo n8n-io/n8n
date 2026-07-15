@@ -283,7 +283,10 @@ export function isSourceControlLicensed() {
 }
 
 export async function generateSshKeyPair(keyType: KeyPairType) {
-	const sshpk = await import('sshpk');
+	// sshpk is CommonJS (`export =`): under nodenext, a native dynamic import only
+	// hoists some named exports onto the namespace (parsePrivateKey is missed), so
+	// read the real module.exports off `.default`.
+	const { default: sshpk } = await import('sshpk');
 	const keyPair: KeyPair = {
 		publicKey: '',
 		privateKey: '',
@@ -510,6 +513,16 @@ export function isDataTableModified(
 	}
 
 	return !areDataTableColumnsEqual(localDt.columns, remoteDt.columns);
+}
+
+/**
+ * Identity of a data table column across instances for identity adoption:
+ * columns matching by `(name, type)` adopt the incoming column id.
+ */
+export function getDataTableColumnKey(
+	column: Pick<ExportableDataTableColumn, 'name' | 'type'>,
+): string {
+	return `${column.name}:${column.type}`;
 }
 
 /**
