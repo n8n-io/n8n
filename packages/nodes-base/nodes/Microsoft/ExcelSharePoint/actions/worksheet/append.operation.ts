@@ -159,8 +159,6 @@ type AppendSettings = {
 	/** Validated sheet resource-locator value; the segment of the request path after `/workbook/worksheets/`. */
 	worksheetId: string;
 	dataMode: DataMode;
-	/** Only populated (and only read) when `dataMode` is 'define'. */
-	definedFields: FieldEntry[];
 	/** Only populated (and only read) when `dataMode` is 'raw'; already validated as an array of arrays of strings. */
 	rawRows: SheetRow[];
 	/** When true, return Graph's response as-is under `dataProperty` instead of parsing rows into keyed objects. */
@@ -169,31 +167,24 @@ type AppendSettings = {
 	dataProperty: string;
 };
 
-// Validated and read up front so the request-building code below only ever deals
-// with `settings.xxx`, never raw `getNodeParameter` calls or `options.foo as bar`.
-function getSettings(this: IExecuteFunctions, itemIndex: number): AppendSettings {
+// Structural parameters (which sheet, which data mode, RAW input) aren't
+// per-item, the same as the OneDrive node: read once, up front, so the
+// request-building code below only ever deals with `settings.xxx`.
+function getSettings(this: IExecuteFunctions): AppendSettings {
 	const worksheetId = validatePathSegment(
 		this.getNode(),
 		'Sheet',
-		this.getNodeParameter('worksheet', itemIndex, '', { extractValue: true }) as string,
+		this.getNodeParameter('worksheet', 0, '', { extractValue: true }) as string,
 	);
 
-	const dataMode = this.getNodeParameter('dataMode', itemIndex) as DataMode;
-
-	const definedFields =
-		dataMode === 'define'
-			? (this.getNodeParameter('fieldsUi.values', itemIndex, []) as FieldEntry[])
-			: [];
+	const dataMode = this.getNodeParameter('dataMode', 0) as DataMode;
 
 	const rawRows =
 		dataMode === 'raw'
-			? assertRawRows(
-					this.getNode(),
-					processJsonInput(this.getNodeParameter('data', itemIndex), 'Data'),
-				)
+			? assertRawRows(this.getNode(), processJsonInput(this.getNodeParameter('data', 0), 'Data'))
 			: [];
 
-	const options = this.getNodeParameter('options', itemIndex, {}) as {
+	const options = this.getNodeParameter('options', 0, {}) as {
 		rawData?: boolean;
 		dataProperty?: string;
 	};
@@ -201,11 +192,45 @@ function getSettings(this: IExecuteFunctions, itemIndex: number): AppendSettings
 	return {
 		worksheetId,
 		dataMode,
-		definedFields,
 		rawRows,
 		rawData: options.rawData || false,
 		dataProperty: options.dataProperty || 'data',
 	};
+}
+
+type ItemRow = { itemIndex: number; row: SheetRow } | { itemIndex: number; error: Error };
+
+// autoMap/define build one row per item; a bad item (an expression failure, say)
+// is recorded and skipped under continueOnFail rather than blocking the batch —
+// the one departure from the OneDrive node, which has no such isolation. The
+// write itself still happens once for the whole batch, same as OneDrive.
+function buildItemRows(
+	items: INodeExecutionData[],
+	continueOnFail: boolean,
+	dataMode: 'autoMap' | 'define',
+	getFields: (itemIndex: number) => FieldEntry[],
+	seedColumns: (itemIndex: number) => string[],
+): { columnsRow: string[]; rows: ItemRow[] } {
+	let columnsRow: string[] | undefined;
+	const rows: ItemRow[] = [];
+
+	for (let i = 0; i < items.length; i++) {
+		try {
+			if (!columnsRow) columnsRow = seedColumns(i);
+
+			const row =
+				dataMode === 'autoMap'
+					? autoMapRow(items[i].json, columnsRow)
+					: defineRow(getFields(i), columnsRow);
+
+			rows.push({ itemIndex: i, row });
+		} catch (error) {
+			if (!continueOnFail) throw error;
+			rows.push({ itemIndex: i, error: error as Error });
+		}
+	}
+
+	return { columnsRow: columnsRow ?? [], rows };
 }
 
 export async function execute(
@@ -213,80 +238,126 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	// https://learn.microsoft.com/en-us/graph/api/worksheet-range
-	const returnData: INodeExecutionData[] = [];
+	const settings = getSettings.call(this);
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			// Validate everything local before the workbook resolution, which may
-			// cost a request in URL mode
-			const settings = getSettings.call(this, i);
+	const workbookRoot = await resolveWorkbookRoot.call(this, 0);
+	const sheetPath = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(settings.worksheetId)}`;
 
-			const workbookRoot = await resolveWorkbookRoot.call(this, i);
-			const sheetPath = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(settings.worksheetId)}`;
+	const usedRange = await (microsoftApiRequest<ExcelResponse & { address: string }>).call(
+		this,
+		'GET',
+		`${sheetPath}/usedRange`,
+	);
 
-			const usedRange = await (microsoftApiRequest<ExcelResponse & { address: string }>).call(
-				this,
-				'GET',
-				`${sheetPath}/usedRange`,
+	// An empty sheet has no header row to read; seed one from the first
+	// successfully-built item instead of throwing (the OneDrive node's
+	// behaviour for autoMap/define)
+	const isEmpty = isEmptyUsedRange(usedRange.address);
+	const existingColumns = isEmpty ? undefined : ((usedRange.values?.[0] as string[]) ?? []);
+
+	if (settings.dataMode === 'raw') {
+		const range = findAppendRange(usedRange.address, {
+			cols: settings.rawRows[0]?.length ?? 0,
+			rows: settings.rawRows.length,
+		});
+		const responseData = await (microsoftApiRequest<ExcelResponse>).call(
+			this,
+			'PATCH',
+			`${sheetPath}/range(address='${range}')`,
+			{ values: settings.rawRows },
+		);
+
+		// RAW mode never gets an auto-written header, and (like the OneDrive
+		// node) isn't a per-item concept: one blob of rows for the whole batch
+		return prepareOutput.call(this, this.getNode(), responseData, {
+			columnsRow: existingColumns,
+			dataProperty: settings.dataProperty,
+			rawData: settings.rawData,
+		});
+	}
+
+	const getFields = (itemIndex: number) =>
+		this.getNodeParameter('fieldsUi.values', itemIndex, []) as FieldEntry[];
+	const seedColumns =
+		existingColumns !== undefined
+			? () => existingColumns
+			: settings.dataMode === 'autoMap'
+				? (itemIndex: number) => columnsFromItem(items[itemIndex].json)
+				: (itemIndex: number) => columnsFromFields(getFields(itemIndex));
+
+	const { columnsRow, rows } = buildItemRows(
+		items,
+		this.continueOnFail(),
+		settings.dataMode,
+		getFields,
+		seedColumns,
+	);
+
+	const outputByIndex = new Map<number, INodeExecutionData[]>();
+
+	for (const r of rows) {
+		if ('error' in r) {
+			outputByIndex.set(
+				r.itemIndex,
+				this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: r.error.message }),
+					{ itemData: { item: r.itemIndex } },
+				),
 			);
-
-			// An empty sheet has no header row to read; seed one from this item's
-			// data instead of throwing (the OneDrive node's behaviour for autoMap/define)
-			const isEmpty = isEmptyUsedRange(usedRange.address);
-
-			const columnsRow = isEmpty
-				? settings.dataMode === 'autoMap'
-					? columnsFromItem(items[i].json)
-					: settings.dataMode === 'define'
-						? columnsFromFields(settings.definedFields)
-						: []
-				: ((usedRange.values?.[0] as string[]) ?? []);
-
-			let values: SheetRow[];
-			if (settings.dataMode === 'raw') {
-				values = settings.rawRows;
-			} else if (settings.dataMode === 'autoMap') {
-				values = [autoMapRow(items[i].json, columnsRow)];
-			} else {
-				values = [defineRow(settings.definedFields, columnsRow)];
-			}
-
-			// RAW mode never gets an auto-written header: the values it sends are
-			// whatever shape the builder supplied, headers included or not
-			const writesHeader = settings.dataMode !== 'raw' && isEmpty;
-			const rowsToWrite = writesHeader ? [columnsRow, ...values] : values;
-
-			const range = findAppendRange(usedRange.address, {
-				cols: rowsToWrite[0]?.length ?? 0,
-				rows: rowsToWrite.length,
-			});
-
-			const responseData = await (microsoftApiRequest<ExcelResponse>).call(
-				this,
-				'PATCH',
-				`${sheetPath}/range(address='${range}')`,
-				{ values: rowsToWrite },
-			);
-
-			// When we just wrote the header ourselves, Graph echoes it back as
-			// row 0 of the response — prepareOutput's default keyRow picks it up,
-			// so passing columnsRow here would double it up
-			const preparedData = prepareOutput.call(this, this.getNode(), responseData, {
-				columnsRow: writesHeader ? undefined : columnsRow,
-				dataProperty: settings.dataProperty,
-				rawData: settings.rawData,
-			});
-			returnData.push.apply(returnData, preparedData);
-		} catch (error) {
-			if (!this.continueOnFail()) throw error;
-
-			const executionErrorData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray({ error: error.message }),
-				{ itemData: { item: i } },
-			);
-			returnData.push.apply(returnData, executionErrorData);
 		}
 	}
 
+	const okRows = rows.filter((r): r is { itemIndex: number; row: SheetRow } => 'row' in r);
+
+	if (okRows.length > 0) {
+		const writesHeader = isEmpty;
+		const rowsToWrite = writesHeader
+			? [columnsRow, ...okRows.map((r) => r.row)]
+			: okRows.map((r) => r.row);
+
+		const range = findAppendRange(usedRange.address, {
+			cols: rowsToWrite[0]?.length ?? 0,
+			rows: rowsToWrite.length,
+		});
+
+		const responseData = await (microsoftApiRequest<ExcelResponse>).call(
+			this,
+			'PATCH',
+			`${sheetPath}/range(address='${range}')`,
+			{ values: rowsToWrite },
+		);
+
+		if (settings.rawData) {
+			// One RAW blob represents the whole write, not one entry per item —
+			// matches the OneDrive node's own RAW-output shape
+			outputByIndex.set(
+				okRows[0].itemIndex,
+				this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ [settings.dataProperty]: responseData }),
+					{ itemData: okRows.map((r) => ({ item: r.itemIndex })) },
+				),
+			);
+		} else {
+			// When we just wrote the header ourselves, Graph echoes it back as row 0
+			// of the response — prepareOutput's default keyRow picks it up, so
+			// passing columnsRow here would double it up
+			const preparedData = prepareOutput.call(this, this.getNode(), responseData, {
+				columnsRow: writesHeader ? undefined : columnsRow,
+				dataProperty: settings.dataProperty,
+				rawData: false,
+			});
+			preparedData.forEach((entry, index) => {
+				outputByIndex.set(okRows[index].itemIndex, [
+					{ ...entry, pairedItem: { item: okRows[index].itemIndex } },
+				]);
+			});
+		}
+	}
+
+	const returnData: INodeExecutionData[] = [];
+	for (let i = 0; i < items.length; i++) {
+		const entries = outputByIndex.get(i);
+		if (entries) returnData.push.apply(returnData, entries);
+	}
 	return returnData;
 }
