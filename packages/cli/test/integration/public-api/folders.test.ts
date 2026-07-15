@@ -214,6 +214,7 @@ describe('POST /projects/:projectId/folders', () => {
 			.send({ name: 'Folder' });
 
 		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Could not find a personal project for this user');
 	});
 });
 
