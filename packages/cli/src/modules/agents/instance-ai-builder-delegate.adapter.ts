@@ -76,6 +76,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			threadId: session.threadId,
 			instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 			modelConfig: session.modelConfig,
+			...(session.telemetry ? { telemetry: session.telemetry } : {}),
 		};
 	}
 
