@@ -1,5 +1,10 @@
+import { Agent } from '@n8n/agents';
 import type { AiInsightsPayload, AiInsightsResponse } from '@n8n/api-types';
-import { aiInsightsResponseSchema, normalizeMetricScore } from '@n8n/api-types';
+import {
+	aiInsightsPayloadSchema,
+	aiInsightsResponseSchema,
+	normalizeMetricScore,
+} from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import type { TestRun, User } from '@n8n/db';
 import { EvaluationCollectionRepository } from '@n8n/db';
@@ -10,6 +15,26 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Telemetry } from '@/telemetry';
 
+import { InsightsContextBuilder } from './insights-context-builder';
+import type { InsightsContext, InsightsContextVersion } from './insights-context-builder';
+import { InsightsModelResolver } from './insights-model-resolver';
+
+// System prompt for the insights agent. Kept terse; the per-collection facts
+// (scores, node diffs, regressed cases) arrive in the user prompt, and the
+// output shape is enforced by `structuredOutput(aiInsightsPayloadSchema)`.
+const INSIGHTS_SYSTEM_PROMPT = [
+	'You are an evaluation analyst for n8n workflow evaluations.',
+	'You compare workflow versions run against the same dataset and explain the results.',
+	'Given the JSON context, produce:',
+	'- `winner`: set `versionLabel` to the base version letter given in the context; explain why it leads.',
+	'- `regressions`: versions that scored notably worse than the winner on a specific metric',
+	'  (empty array if none). `delta` is the percentage-point difference vs the winner (negative = worse).',
+	'- `suggestedNext`: one concrete next experiment, with a testable `hypothesis`.',
+	'Ground every statement in the provided metric scores, workflow node diffs, and regressed cases —',
+	'cite metric names and the specific node changes. Scores are percentages (0–100).',
+	'Keep each headline under 120 characters and each body under 280 characters.',
+].join('\n');
+
 /**
  * Identifier reported in telemetry + the `modelUsed` field of the response
  * when generation falls through to the deterministic path. The frontend
@@ -19,11 +44,12 @@ import { Telemetry } from '@/telemetry';
 export const DETERMINISTIC_MODEL_TAG = 'deterministic';
 
 /**
- * Per-run summary used to build either the LLM prompt input or the
- * deterministic fallback. Intentionally narrow — no per-case detail at
- * this layer; that arrives in a follow-up.
+ * Per-run summary used to select the winner and seed both the LLM prompt input
+ * and the deterministic fallback. `testRunId` lets the context builder load
+ * per-case executions for the LLM path.
  */
 type RunSummary = {
+	testRunId: string;
 	versionLabel: string;
 	workflowVersionId: string | null;
 	avgScore: number | null;
@@ -34,21 +60,16 @@ type RunSummary = {
 };
 
 /**
- * Generates AI insights for an evaluation collection. The full flow per
- * spec §9 is: build compact prompt input → call LLM → validate output with
- * zod → cache. For this PR (TRUST-80 PR 2a) the LLM call is intentionally
- * deferred — we ship the **deterministic** path (spec §9.5 "fallback"
- * status) as the primary implementation so:
+ * Generates AI insights for an evaluation collection: license gate → load
+ * collection → cache short-circuit → require ≥2 scored runs → call the LLM via
+ * `invokeAgent()` → validate against `aiInsightsPayloadSchema` → cache.
  *
- *  1. The endpoint contract is concrete and the frontend (PR 2b) can build
- *     against real responses.
- *  2. Caching, telemetry, license gating, and the response envelope are
- *     all exercised by tests.
- *  3. A focused follow-up wires the actual LLM provider without re-doing
- *     plumbing.
- *
- * `invokeAgent()` is the only method to replace when wiring the real model.
- * Everything else stays.
+ * The LLM reuses the collection's eval-config judge model + credential
+ * (resolved by {@link InsightsModelResolver}) and reasons over the winner's
+ * scores, per-version node diffs, and top regressed cases (assembled by
+ * {@link InsightsContextBuilder}). When no supported judge model is configured,
+ * or the model errors / returns invalid output after a retry, the service falls
+ * back to the deterministic summary (`status: 'fallback'`).
  */
 @Service()
 export class EvalInsightsService {
@@ -57,6 +78,8 @@ export class EvalInsightsService {
 		private readonly licenseState: LicenseState,
 		private readonly telemetry: Telemetry,
 		private readonly logger: Logger,
+		private readonly modelResolver: InsightsModelResolver,
+		private readonly contextBuilder: InsightsContextBuilder,
 	) {}
 
 	async generateInsights(
@@ -119,12 +142,19 @@ export class EvalInsightsService {
 		let response: AiInsightsResponse;
 
 		try {
-			// Reserved for the LLM path. Throws today; deterministic path
-			// catches and produces the fallback envelope.
-			const payload = await this.invokeAgent(detail.collection.name, summaries);
+			const winner = this.pickWinner(summaries);
+			if (!winner) throw new Error('No scored runs to summarise');
+			const { payload, modelId } = await this.invokeAgent({
+				user,
+				workflowId,
+				collectionName: detail.collection.name,
+				evaluationConfigId: detail.collection.evaluationConfigId,
+				summaries,
+				winner,
+			});
 			response = {
 				generatedAt: new Date().toISOString(),
-				modelUsed: this.resolveModelName(),
+				modelUsed: modelId,
 				status: 'ok',
 				insights: payload,
 			};
@@ -166,7 +196,13 @@ export class EvalInsightsService {
 		// Label by index letter — A/B/C — so the FE legend chips line up. The
 		// agent (and the deterministic path) refer back to these labels.
 		const versionLabel = String.fromCharCode(0x41 + index);
-		return { versionLabel, workflowVersionId: run.workflowVersionId, avgScore, scores };
+		return {
+			testRunId: run.id,
+			versionLabel,
+			workflowVersionId: run.workflowVersionId,
+			avgScore,
+			scores,
+		};
 	}
 
 	// Per-metric scores normalized to [0, 1] by their scale (AI-judge metrics
@@ -188,23 +224,105 @@ export class EvalInsightsService {
 		return out;
 	}
 
-	/**
-	 * Deferred. Throws to signal "no LLM available"; callers handle by
-	 * producing the deterministic envelope. Replace this method body with a
-	 * real LLM call when the provider plumbing is in place — the rest of
-	 * the service is provider-agnostic.
-	 */
-	private async invokeAgent(
-		_collectionName: string,
-		_summaries: RunSummary[],
-	): Promise<AiInsightsPayload> {
-		throw new Error('LLM agent not yet wired — fallback path will produce the response');
+	/** Highest-`avgScore` run, or null when nothing scored. */
+	private pickWinner(summaries: RunSummary[]): RunSummary | null {
+		const scored = summaries.filter(
+			(summary): summary is RunSummary & { avgScore: number } => summary.avgScore !== null,
+		);
+		if (scored.length === 0) return null;
+		return scored.reduce((best, summary) => (summary.avgScore > best.avgScore ? summary : best));
 	}
 
-	private resolveModelName(): string {
-		// Placeholder. When `invokeAgent` is implemented this returns the
-		// actual model id (e.g. `claude-sonnet-4-6`).
-		return 'unknown';
+	/**
+	 * Calls the LLM to produce the insights payload. Reuses the eval-config
+	 * judge model + credential and reasons over the winner-relative context.
+	 * Throws when no supported model is configured or the output can't be
+	 * validated after a retry — the caller then falls back to deterministic.
+	 */
+	private async invokeAgent(params: {
+		user: User;
+		workflowId: string;
+		collectionName: string;
+		evaluationConfigId: string;
+		summaries: RunSummary[];
+		winner: RunSummary;
+	}): Promise<{ payload: AiInsightsPayload; modelId: string }> {
+		const { user, workflowId, collectionName, evaluationConfigId, summaries, winner } = params;
+
+		const resolved = await this.modelResolver.resolve(user, workflowId, evaluationConfigId);
+		if (!resolved) {
+			throw new Error('No supported LLM judge model configured for insights');
+		}
+
+		const context = await this.contextBuilder.build(workflowId, {
+			collectionName,
+			winnerLabel: winner.versionLabel,
+			versions: summaries.map(
+				(summary): InsightsContextVersion => ({
+					testRunId: summary.testRunId,
+					workflowVersionId: summary.workflowVersionId,
+					versionLabel: summary.versionLabel,
+					avgScore: summary.avgScore,
+					scores: summary.scores,
+				}),
+			),
+		});
+
+		const agent = new Agent('eval-insights')
+			.model(resolved.modelConfig)
+			.instructions(INSIGHTS_SYSTEM_PROMPT)
+			.structuredOutput(aiInsightsPayloadSchema);
+
+		const payload = await this.generateValidated(agent, this.buildUserPrompt(context));
+		return { payload: this.reconcile(payload, context), modelId: resolved.modelId };
+	}
+
+	// Keep the model's output consistent with the deterministically-chosen
+	// baseline it was given: force the winner to the base version and drop any
+	// regression whose label the model invented or that points at the base
+	// itself. Guards against a hallucinated winner/label contradicting the
+	// diff + cases rendered on the same card.
+	private reconcile(payload: AiInsightsPayload, context: InsightsContext): AiInsightsPayload {
+		const knownLabels = new Set(context.versions.map((version) => version.label));
+		return {
+			...payload,
+			winner: { ...payload.winner, versionLabel: context.baseVersionLabel },
+			regressions: payload.regressions.filter(
+				(regression) =>
+					regression.versionLabel !== context.baseVersionLabel &&
+					knownLabels.has(regression.versionLabel),
+			),
+		};
+	}
+
+	// Generate + validate against the payload schema, with one stricter retry —
+	// a real model's structured output can occasionally drift from the shape.
+	private async generateValidated(agent: Agent, userPrompt: string): Promise<AiInsightsPayload> {
+		const attempt = async (prompt: string) => {
+			const result = await agent.generate(prompt);
+			return aiInsightsPayloadSchema.safeParse(result.structuredOutput);
+		};
+
+		const first = await attempt(userPrompt);
+		if (first.success) return first.data;
+
+		const retry = await attempt(
+			`${userPrompt}\n\nReturn ONLY a JSON object matching the required schema exactly — no extra keys, no prose.`,
+		);
+		if (retry.success) return retry.data;
+
+		throw new Error('LLM insights output failed schema validation after retry');
+	}
+
+	private buildUserPrompt(context: InsightsContext): string {
+		return [
+			'Compare these workflow versions, all evaluated against the same dataset.',
+			`The base version "${context.baseVersionLabel}" is the winner — write the winner card about it`,
+			'and set winner.versionLabel to that letter. Scores are percentages (0–100). Ground every',
+			'statement in the metric scores, workflow node diffs, and regressed cases below.',
+			'',
+			JSON.stringify(context),
+		].join('\n');
 	}
 
 	/**

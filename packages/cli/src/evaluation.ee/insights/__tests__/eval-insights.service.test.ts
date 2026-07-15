@@ -10,6 +10,42 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Telemetry } from '@/telemetry';
 
 import { DETERMINISTIC_MODEL_TAG, EvalInsightsService } from '../eval-insights.service';
+import type { InsightsContextBuilder } from '../insights-context-builder';
+import type { InsightsModelResolver } from '../insights-model-resolver';
+
+// Stub the @n8n/agents SDK: the fluent builder is a no-op and `generate` is a
+// controllable mock so tests drive the model's (in)valid structured output.
+const { generateMock } = vi.hoisted(() => ({ generateMock: vi.fn() }));
+vi.mock('@n8n/agents', () => ({
+	Agent: class {
+		model() {
+			return this;
+		}
+		instructions() {
+			return this;
+		}
+		structuredOutput() {
+			return this;
+		}
+		async generate(...args: unknown[]) {
+			return await generateMock(...args);
+		}
+	},
+}));
+
+const validPayload = {
+	winner: { versionLabel: 'B', headline: 'B wins', body: 'B leads on correctness.' },
+	regressions: [
+		{
+			versionLabel: 'A',
+			metric: 'correctness',
+			delta: -40,
+			headline: 'A down',
+			body: 'A regressed.',
+		},
+	],
+	suggestedNext: { headline: 'Try C', body: 'Combine A and B.', hypothesis: 'C recovers the gap.' },
+};
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -49,16 +85,181 @@ describe('EvalInsightsService', () => {
 	let licenseState: Mocked<LicenseState>;
 	let telemetry: Mocked<Telemetry>;
 	let logger: Mocked<Logger>;
+	let modelResolver: Mocked<InsightsModelResolver>;
+	let contextBuilder: Mocked<InsightsContextBuilder>;
 
 	beforeEach(() => {
 		collectionRepo = mock<EvaluationCollectionRepository>();
 		licenseState = mock<LicenseState>();
 		telemetry = mock<Telemetry>();
 		logger = mock<Logger>();
+		modelResolver = mock<InsightsModelResolver>();
+		contextBuilder = mock<InsightsContextBuilder>();
 
 		licenseState.isAiAssistantLicensed.mockReturnValue(true);
+		// Default: no judge model configured → deterministic path. LLM-path tests
+		// override this.
+		modelResolver.resolve.mockResolvedValue(null);
+		contextBuilder.build.mockResolvedValue({
+			collectionName: 'My collection',
+			baseVersionLabel: 'B',
+			versions: [],
+		});
+		generateMock.mockReset();
 
-		service = new EvalInsightsService(collectionRepo, licenseState, telemetry, logger);
+		service = new EvalInsightsService(
+			collectionRepo,
+			licenseState,
+			telemetry,
+			logger,
+			modelResolver,
+			contextBuilder,
+		);
+	});
+
+	describe('LLM path', () => {
+		const resolvedModel = {
+			modelConfig: { id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-test' },
+			modelId: 'anthropic/claude-sonnet-4-5',
+		};
+
+		function seedTwoScoredRuns() {
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeRun({ id: 'tr-a', metrics: { correctness: 5 } }),
+					makeRun({ id: 'tr-b', metrics: { correctness: 2 } }),
+				],
+			});
+		}
+
+		it('returns the model payload and real model id when the agent succeeds', async () => {
+			modelResolver.resolve.mockResolvedValueOnce(resolvedModel);
+			// Context with A + B so reconcile keeps the (real, non-base) A regression.
+			contextBuilder.build.mockResolvedValueOnce({
+				collectionName: 'My collection',
+				baseVersionLabel: 'B',
+				versions: [
+					{
+						label: 'A',
+						isBase: false,
+						avgScorePercent: 40,
+						metricScores: {},
+						workflowDiff: null,
+						regressedCases: [],
+					},
+					{
+						label: 'B',
+						isBase: true,
+						avgScorePercent: 100,
+						metricScores: {},
+						workflowDiff: null,
+						regressedCases: [],
+					},
+				],
+			});
+			generateMock.mockResolvedValueOnce({ structuredOutput: validPayload });
+			seedTwoScoredRuns();
+
+			const result = await service.generateInsights(user, 'wf-1', 'col-1');
+
+			expect(result.status).toBe('ok');
+			expect(result.modelUsed).toBe('anthropic/claude-sonnet-4-5');
+			expect(result.insights).toEqual(validPayload);
+			expect(generateMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('retries once with a stricter prompt when the first output is invalid', async () => {
+			modelResolver.resolve.mockResolvedValueOnce(resolvedModel);
+			generateMock
+				.mockResolvedValueOnce({ structuredOutput: { not: 'valid' } })
+				.mockResolvedValueOnce({ structuredOutput: validPayload });
+			seedTwoScoredRuns();
+
+			const result = await service.generateInsights(user, 'wf-1', 'col-1');
+
+			expect(result.status).toBe('ok');
+			expect(generateMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('falls back to deterministic when the output is invalid after the retry', async () => {
+			modelResolver.resolve.mockResolvedValueOnce(resolvedModel);
+			generateMock.mockResolvedValue({ structuredOutput: { not: 'valid' } });
+			seedTwoScoredRuns();
+
+			const result = await service.generateInsights(user, 'wf-1', 'col-1');
+
+			expect(result.status).toBe('fallback');
+			expect(result.modelUsed).toBe(DETERMINISTIC_MODEL_TAG);
+			expect(generateMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('falls back to deterministic when the agent call throws', async () => {
+			modelResolver.resolve.mockResolvedValueOnce(resolvedModel);
+			generateMock.mockRejectedValue(new Error('network down'));
+			seedTwoScoredRuns();
+
+			const result = await service.generateInsights(user, 'wf-1', 'col-1');
+
+			expect(result.status).toBe('fallback');
+			expect(result.modelUsed).toBe(DETERMINISTIC_MODEL_TAG);
+		});
+
+		it('forces the winner to the base version and drops unknown-label regressions', async () => {
+			modelResolver.resolve.mockResolvedValueOnce(resolvedModel);
+			contextBuilder.build.mockResolvedValueOnce({
+				collectionName: 'My collection',
+				baseVersionLabel: 'B',
+				versions: [
+					{
+						label: 'A',
+						isBase: false,
+						avgScorePercent: 40,
+						metricScores: {},
+						workflowDiff: null,
+						regressedCases: [],
+					},
+					{
+						label: 'B',
+						isBase: true,
+						avgScorePercent: 100,
+						metricScores: {},
+						workflowDiff: null,
+						regressedCases: [],
+					},
+				],
+			});
+			// Model hallucinates a different winner + a regression on an unknown "D".
+			generateMock.mockResolvedValueOnce({
+				structuredOutput: {
+					winner: { versionLabel: 'A', headline: 'A wins', body: 'A leads.' },
+					regressions: [
+						{ versionLabel: 'A', metric: 'correctness', delta: -60, headline: 'A down', body: '.' },
+						{ versionLabel: 'D', metric: 'correctness', delta: -10, headline: 'D down', body: '.' },
+					],
+					suggestedNext: { headline: 'Next', body: '.', hypothesis: '.' },
+				},
+			});
+			seedTwoScoredRuns();
+
+			const result = await service.generateInsights(user, 'wf-1', 'col-1');
+
+			expect(result.status).toBe('ok');
+			expect(result.insights.winner.versionLabel).toBe('B');
+			// "A" (real, non-base) kept; "D" (unknown) dropped.
+			expect(result.insights.regressions.map((r) => r.versionLabel)).toEqual(['A']);
+		});
+
+		it('falls back to deterministic when no supported judge model is configured', async () => {
+			// resolve → null (default). The agent must never be called.
+			seedTwoScoredRuns();
+
+			const result = await service.generateInsights(user, 'wf-1', 'col-1');
+
+			expect(result.status).toBe('fallback');
+			expect(result.modelUsed).toBe(DETERMINISTIC_MODEL_TAG);
+			expect(generateMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('license gating', () => {
