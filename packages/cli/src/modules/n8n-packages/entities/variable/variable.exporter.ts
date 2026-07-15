@@ -1,9 +1,9 @@
-import type { User, Variables } from '@n8n/db';
+import type { Variables } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { pickVariableForProject } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { ProjectService } from '@/services/project.service.ee';
 
 import { VariableSerializer } from './variable.serializer';
 import type {
@@ -15,12 +15,6 @@ import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
-
-interface VariableIndex {
-	accessibleGlobalByName: Map<string, Variables>;
-	accessibleProjectByName: Map<string, Map<string, Variables>>;
-	projectNamesInAnyScope: Map<string, Set<string>>;
-}
 
 interface ResolvedName {
 	name: string;
@@ -42,7 +36,6 @@ export class VariableExporter {
 	constructor(
 		private readonly variablesService: VariablesService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly projectService: ProjectService,
 		private readonly variableSerializer: VariableSerializer,
 	) {}
 
@@ -52,26 +45,22 @@ export class VariableExporter {
 		}
 
 		const workflowIds = [...new Set(request.requirements.map((r) => r.workflowId))];
-		// `allVariables` (unfiltered) exists solely to detect names shadowed by a
-		// project variable the caller cannot list: without it, `resolve` would fall
-		// back to a same-named accessible global that runtime would never pick.
+		// The unfiltered list is what runtime resolves against; the user-filtered
+		// list defines what the caller may bundle. Resolving on the unfiltered list
+		// and then gating on accessibility keeps export in lockstep with runtime
+		// while never bundling a row the caller cannot see.
 		const [allVariables, accessibleVariables, projectIdByWorkflowId] = await Promise.all([
 			this.variablesService.getAllCached(),
 			this.variablesService.getAllForUser(request.user),
 			this.resolveWorkflowProjects(workflowIds),
 		]);
-
-		const visibleProjectIds = await this.resolveVisibleProjects(
-			request.user,
-			projectIdByWorkflowId,
-		);
-		const index = this.indexVariables(accessibleVariables, allVariables);
+		const accessibleIds = new Set(accessibleVariables.map((variable) => variable.id));
 
 		const resolvedNames = this.resolveRequirements(
 			request.requirements,
 			projectIdByWorkflowId,
-			visibleProjectIds,
-			index,
+			allVariables,
+			accessibleIds,
 		);
 
 		this.assertNoBundledVariableCollision(resolvedNames, request.projectTargetsById);
@@ -143,20 +132,21 @@ export class VariableExporter {
 	/**
 	 * Turns the flat requirement list into one entry per variable name.
 	 * Each entry records which workflows use the name and, for each of those
-	 * workflows, the actual variable its `$vars.<name>` would read at runtime.
-	 * That lookup yields `undefined` when the caller cannot see into the
-	 * workflow's project.
+	 * workflows, the variable its `$vars.<name>` would read at runtime —
+	 * project-scoped beats a same-key global, via the same precedence rule
+	 * runtime uses. A pick the caller cannot see yields `undefined`, so a
+	 * hidden project variable never falls back to the global it shadows.
 	 */
 	private resolveRequirements(
 		requirements: WorkflowVariableRequirement[],
 		projectIdByWorkflowId: Map<string, string>,
-		visibleProjectIds: Set<string>,
-		index: VariableIndex,
+		allVariables: Variables[],
+		accessibleIds: Set<string>,
 	): ResolvedName[] {
 		const resolveForWorkflow = (name: string, workflowId: string) => {
-			const projectId = projectIdByWorkflowId.get(workflowId);
-			if (projectId === undefined || !visibleProjectIds.has(projectId)) return undefined;
-			return this.resolve(name, projectId, index);
+			const workflowProjectId = projectIdByWorkflowId.get(workflowId);
+			const picked = pickVariableForProject(allVariables, name, workflowProjectId);
+			return picked && accessibleIds.has(picked.id) ? picked : undefined;
 		};
 
 		return [...this.groupByName(requirements)].map(([name, usedByWorkflows]) => ({
@@ -166,69 +156,10 @@ export class VariableExporter {
 		}));
 	}
 
-	/**
-	 * Resolves the variable a workflow's `$vars.<name>` hits at runtime: the
-	 * project-scoped row wins over a global of the same name. Returns `undefined`
-	 * when that row is a project variable the caller cannot list, so we never
-	 * export a misleading global in its place.
-	 */
-	private resolve(name: string, projectId: string, index: VariableIndex): Variables | undefined {
-		const scoped = index.accessibleProjectByName.get(projectId)?.get(name);
-		if (scoped) return scoped;
-		if (index.projectNamesInAnyScope.get(projectId)?.has(name)) return undefined;
-
-		return index.accessibleGlobalByName.get(name);
-	}
-
-	private indexVariables(accessible: Variables[], all: Variables[]): VariableIndex {
-		const accessibleGlobalByName = new Map<string, Variables>();
-		const accessibleProjectByName = new Map<string, Map<string, Variables>>();
-		for (const variable of accessible) {
-			if (variable.project) {
-				const byName =
-					accessibleProjectByName.get(variable.project.id) ?? new Map<string, Variables>();
-				byName.set(variable.key, variable);
-				accessibleProjectByName.set(variable.project.id, byName);
-			} else {
-				accessibleGlobalByName.set(variable.key, variable);
-			}
-		}
-
-		const projectNamesInAnyScope = new Map<string, Set<string>>();
-		for (const variable of all) {
-			if (!variable.project) continue;
-			const names = projectNamesInAnyScope.get(variable.project.id) ?? new Set<string>();
-			names.add(variable.key);
-			projectNamesInAnyScope.set(variable.project.id, names);
-		}
-
-		return { accessibleGlobalByName, accessibleProjectByName, projectNamesInAnyScope };
-	}
-
 	private resolveBaseDir(variable: Variables, projectTargetsById?: Map<string, string>): string {
 		if (!projectTargetsById || projectTargetsById.size === 0) return 'variables';
 		const prefix = variable.project ? projectTargetsById.get(variable.project.id) : undefined;
 		return prefix ? `${prefix}/variables` : 'variables';
-	}
-
-	private async resolveVisibleProjects(
-		user: User,
-		projectIdByWorkflowId: Map<string, string>,
-	): Promise<Set<string>> {
-		const projectIds = [...new Set(projectIdByWorkflowId.values())];
-		if (projectIds.length === 0) return new Set();
-
-		const [listableProjectIds, personalProject] = await Promise.all([
-			this.projectService.getProjectIdsWithScope(user, ['projectVariable:list'], projectIds),
-			this.projectService.getPersonalProject(user),
-		]);
-
-		const visible = new Set(listableProjectIds);
-		if (personalProject && projectIds.includes(personalProject.id)) {
-			visible.add(personalProject.id);
-		}
-
-		return visible;
 	}
 
 	private async resolveWorkflowProjects(workflowIds: string[]): Promise<Map<string, string>> {

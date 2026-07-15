@@ -3,7 +3,6 @@ import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import type { ProjectService } from '@/services/project.service.ee';
 
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { VariableExporter } from '../variable.exporter';
@@ -34,37 +33,33 @@ function req(workflowId: string, variableName: string): WorkflowVariableRequirem
 function makeExporter() {
 	const variablesService = mock<VariablesService>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	const projectService = mock<ProjectService>();
 	const exporter = new VariableExporter(
 		variablesService,
 		sharedWorkflowRepository,
-		projectService,
 		new VariableSerializer(),
 	);
-	return { exporter, variablesService, sharedWorkflowRepository, projectService };
+	return { exporter, variablesService, sharedWorkflowRepository };
 }
 
 /**
- * Wires the project lookups the exporter performs: which project each workflow
- * belongs to (via the batched owner lookup), which of those projects the caller
- * may list variables for, and the caller's personal project (always visible).
+ * Wires the lookups the exporter performs: every variable on the instance
+ * (what runtime resolves against), the subset the caller may list (what may
+ * be bundled), and which project each workflow belongs to.
  */
-function wireProjects(
-	deps: Pick<ReturnType<typeof makeExporter>, 'sharedWorkflowRepository' | 'projectService'>,
+function wireVariables(
+	deps: Pick<ReturnType<typeof makeExporter>, 'variablesService' | 'sharedWorkflowRepository'>,
 	opts: {
+		all: Variables[];
+		accessible?: Variables[];
 		workflowProjects: Array<[workflowId: string, projectId: string]>;
-		listableProjectIds?: string[];
-		personalProjectId?: string | null;
 	},
 ) {
+	deps.variablesService.getAllCached.mockResolvedValue(opts.all);
+	deps.variablesService.getAllForUser.mockResolvedValue(opts.accessible ?? opts.all);
 	deps.sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue(
 		opts.workflowProjects.map(([workflowId, projectId]) =>
 			mock<SharedWorkflow>({ workflowId, project: { id: projectId } as Project }),
 		),
-	);
-	deps.projectService.getProjectIdsWithScope.mockResolvedValue(opts.listableProjectIds ?? []);
-	deps.projectService.getPersonalProject.mockResolvedValue(
-		opts.personalProjectId ? ({ id: opts.personalProjectId } as Project) : null,
 	);
 }
 
@@ -94,11 +89,9 @@ describe('VariableExporter', () => {
 		it('bundles a resolvable global variable and emits a catalog entry plus a valued requirement', async () => {
 			const deps = makeExporter();
 			const variable = makeVariable({ id: 'var-url' });
-			deps.variablesService.getAllCached.mockResolvedValue([variable]);
-			deps.variablesService.getAllForUser.mockResolvedValue([variable]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [variable],
 				workflowProjects: [['wf-1', 'proj-personal']],
-				personalProjectId: 'proj-personal',
 			});
 			const writer = new CapturingWriter();
 
@@ -128,11 +121,9 @@ describe('VariableExporter', () => {
 		it('namespaces a project-scoped variable under its project target directory', async () => {
 			const deps = makeExporter();
 			const variable = projectVariable('proj-billing', { id: 'var-p', value: 'scoped-value' });
-			deps.variablesService.getAllCached.mockResolvedValue([variable]);
-			deps.variablesService.getAllForUser.mockResolvedValue([variable]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [variable],
 				workflowProjects: [['wf-1', 'proj-billing']],
-				listableProjectIds: ['proj-billing'],
 			});
 			const writer = new CapturingWriter();
 
@@ -159,11 +150,9 @@ describe('VariableExporter', () => {
 			const deps = makeExporter();
 			const globalVariable = makeVariable({ id: 'var-g', value: 'global-value' });
 			const scopedVariable = projectVariable('proj-x', { id: 'var-p', value: 'scoped-value' });
-			deps.variablesService.getAllCached.mockResolvedValue([globalVariable, scopedVariable]);
-			deps.variablesService.getAllForUser.mockResolvedValue([globalVariable, scopedVariable]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [globalVariable, scopedVariable],
 				workflowProjects: [['wf-1', 'proj-x']],
-				listableProjectIds: ['proj-x'],
 			});
 			const writer = new CapturingWriter();
 
@@ -181,45 +170,13 @@ describe('VariableExporter', () => {
 				{ name: 'API_URL', value: 'scoped-value', usedByWorkflows: ['wf-1'] },
 			]);
 		});
-	});
 
-	describe('conservative RBAC', () => {
-		it('skips resolution and emits a name-only requirement when the workflow project is not listable', async () => {
+		it('bundles a global referenced from a member personal-project workflow', async () => {
 			const deps = makeExporter();
-			// An accessible global of the same name exists, but must NOT be used as a
-			// fallback because the caller cannot inspect the workflow's project scope.
-			const globalVariable = makeVariable({ id: 'var-g' });
-			deps.variablesService.getAllCached.mockResolvedValue([globalVariable]);
-			deps.variablesService.getAllForUser.mockResolvedValue([globalVariable]);
-			wireProjects(deps, {
-				workflowProjects: [['wf-1', 'proj-secret']],
-				listableProjectIds: [],
-				personalProjectId: 'proj-personal',
-			});
-			const writer = new CapturingWriter();
-
-			const result = await deps.exporter.export({
-				user,
-				requirements: [req('wf-1', 'API_URL')],
-				writer,
-				includeVariableValues: true,
-			});
-
-			expect(result.entries).toEqual([]);
-			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-1'] }]);
-			expect(writer.files).toEqual([]);
-			expect(writer.directories).toEqual([]);
-		});
-
-		it('treats the caller personal project as visible even when the scope list omits it', async () => {
-			const deps = makeExporter();
-			const variable = projectVariable('proj-personal', { id: 'var-pp', value: 'personal-value' });
-			deps.variablesService.getAllCached.mockResolvedValue([variable]);
-			deps.variablesService.getAllForUser.mockResolvedValue([variable]);
-			wireProjects(deps, {
+			const globalVariable = makeVariable({ id: 'var-g', value: 'global-value' });
+			wireVariables(deps, {
+				all: [globalVariable],
 				workflowProjects: [['wf-1', 'proj-personal']],
-				listableProjectIds: [],
-				personalProjectId: 'proj-personal',
 			});
 			const writer = new CapturingWriter();
 
@@ -231,10 +188,40 @@ describe('VariableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'var-pp', name: 'API_URL', target: 'variables/apiurl' },
+				{ id: 'var-g', name: 'API_URL', target: 'variables/apiurl' },
 			]);
 			expect(result.requirements).toEqual([
-				{ name: 'API_URL', value: 'personal-value', usedByWorkflows: ['wf-1'] },
+				{ name: 'API_URL', value: 'global-value', usedByWorkflows: ['wf-1'] },
+			]);
+		});
+	});
+
+	describe('runtime parity', () => {
+		it('bundles an accessible global for a workflow whose project the caller cannot list', async () => {
+			const deps = makeExporter();
+			// The caller cannot list proj-secret's variables, but that project has no
+			// variable named API_URL — runtime would resolve the global, so export
+			// bundles it too instead of dropping a real dependency.
+			const globalVariable = makeVariable({ id: 'var-g' });
+			wireVariables(deps, {
+				all: [globalVariable],
+				accessible: [globalVariable],
+				workflowProjects: [['wf-1', 'proj-secret']],
+			});
+			const writer = new CapturingWriter();
+
+			const result = await deps.exporter.export({
+				user,
+				requirements: [req('wf-1', 'API_URL')],
+				writer,
+				includeVariableValues: true,
+			});
+
+			expect(result.entries).toEqual([
+				{ id: 'var-g', name: 'API_URL', target: 'variables/apiurl' },
+			]);
+			expect(result.requirements).toEqual([
+				{ name: 'API_URL', value: 'https://api.example.com', usedByWorkflows: ['wf-1'] },
 			]);
 		});
 	});
@@ -244,14 +231,12 @@ describe('VariableExporter', () => {
 			const deps = makeExporter();
 			const globalVariable = makeVariable({ id: 'var-g' });
 			const hiddenScoped = projectVariable('proj-x', { id: 'var-hidden' });
-			// Caller can list the project (canInspect === true) and can see the global,
-			// but the project-scoped row that runtime would actually pick is invisible
-			// to them — so we must not export the misleading global.
-			deps.variablesService.getAllForUser.mockResolvedValue([globalVariable]);
-			deps.variablesService.getAllCached.mockResolvedValue([globalVariable, hiddenScoped]);
-			wireProjects(deps, {
+			// Runtime would pick the project-scoped row, which the caller cannot
+			// see — so we must not export the misleading global in its place.
+			wireVariables(deps, {
+				all: [globalVariable, hiddenScoped],
+				accessible: [globalVariable],
 				workflowProjects: [['wf-1', 'proj-x']],
-				listableProjectIds: ['proj-x'],
 			});
 			const writer = new CapturingWriter();
 
@@ -273,14 +258,12 @@ describe('VariableExporter', () => {
 			const deps = makeExporter();
 			const variableA = projectVariable('proj-a', { id: 'var-a', value: 'A' });
 			const variableB = projectVariable('proj-b', { id: 'var-b', value: 'B' });
-			deps.variablesService.getAllCached.mockResolvedValue([variableA, variableB]);
-			deps.variablesService.getAllForUser.mockResolvedValue([variableA, variableB]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [variableA, variableB],
 				workflowProjects: [
 					['wf-a', 'proj-a'],
 					['wf-b', 'proj-b'],
 				],
-				listableProjectIds: ['proj-a', 'proj-b'],
 			});
 			const writer = new CapturingWriter();
 
@@ -317,14 +300,12 @@ describe('VariableExporter', () => {
 		it('keeps the value and bundles once when every workflow resolves to the same variable', async () => {
 			const deps = makeExporter();
 			const shared = makeVariable({ id: 'var-shared', value: 'shared-value' });
-			deps.variablesService.getAllCached.mockResolvedValue([shared]);
-			deps.variablesService.getAllForUser.mockResolvedValue([shared]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [shared],
 				workflowProjects: [
 					['wf-a', 'proj-personal'],
 					['wf-b', 'proj-personal'],
 				],
-				personalProjectId: 'proj-personal',
 			});
 			const writer = new CapturingWriter();
 
@@ -347,17 +328,16 @@ describe('VariableExporter', () => {
 		it('omits the value when one referencing workflow cannot resolve the variable', async () => {
 			const deps = makeExporter();
 			const shared = makeVariable({ id: 'var-shared', value: 'shared-value' });
-			deps.variablesService.getAllCached.mockResolvedValue([shared]);
-			deps.variablesService.getAllForUser.mockResolvedValue([shared]);
-			// wf-a is in a visible personal project; wf-b is in a project the caller
-			// cannot list, so it cannot contribute to the aggregate value.
-			wireProjects(deps, {
+			// wf-b's project holds a hidden variable that shadows the global, so
+			// wf-b resolves nothing and cannot vouch for the aggregate value.
+			const hiddenScoped = projectVariable('proj-secret', { id: 'var-hidden' });
+			wireVariables(deps, {
+				all: [shared, hiddenScoped],
+				accessible: [shared],
 				workflowProjects: [
 					['wf-a', 'proj-personal'],
 					['wf-b', 'proj-secret'],
 				],
-				listableProjectIds: [],
-				personalProjectId: 'proj-personal',
 			});
 			const writer = new CapturingWriter();
 
@@ -380,11 +360,9 @@ describe('VariableExporter', () => {
 		it('bundles a value-less stub file and emits a valueless requirement', async () => {
 			const deps = makeExporter();
 			const variable = makeVariable({ id: 'var-url' });
-			deps.variablesService.getAllCached.mockResolvedValue([variable]);
-			deps.variablesService.getAllForUser.mockResolvedValue([variable]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [variable],
 				workflowProjects: [['wf-1', 'proj-personal']],
-				personalProjectId: 'proj-personal',
 			});
 			const writer = new CapturingWriter();
 
@@ -405,16 +383,39 @@ describe('VariableExporter', () => {
 		});
 	});
 
+	describe('requirement grouping', () => {
+		it('collapses duplicate (workflow, name) requirements into a single usedByWorkflows entry', async () => {
+			const deps = makeExporter();
+			const variable = makeVariable({ id: 'var-url' });
+			wireVariables(deps, {
+				all: [variable],
+				workflowProjects: [['wf-1', 'proj-personal']],
+			});
+			const writer = new CapturingWriter();
+
+			const result = await deps.exporter.export({
+				user,
+				requirements: [req('wf-1', 'API_URL'), req('wf-1', 'API_URL')],
+				writer,
+				includeVariableValues: true,
+			});
+
+			expect(result.requirements).toEqual([
+				{ name: 'API_URL', value: 'https://api.example.com', usedByWorkflows: ['wf-1'] },
+			]);
+			expect(result.entries).toHaveLength(1);
+			expect(writer.files).toHaveLength(1);
+		});
+	});
+
 	describe('filename allocation', () => {
 		it('disambiguates targets when two distinct variable names slug to the same base', async () => {
 			const deps = makeExporter();
 			const first = makeVariable({ id: 'var-1', key: 'Region EU', value: 'a' });
 			const second = makeVariable({ id: 'var-2', key: 'Region-EU', value: 'b' });
-			deps.variablesService.getAllCached.mockResolvedValue([first, second]);
-			deps.variablesService.getAllForUser.mockResolvedValue([first, second]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [first, second],
 				workflowProjects: [['wf-1', 'proj-personal']],
-				personalProjectId: 'proj-personal',
 			});
 			const writer = new CapturingWriter();
 
@@ -439,15 +440,12 @@ describe('VariableExporter', () => {
 				key: 'API_URL',
 				value: 'scoped',
 			});
-			deps.variablesService.getAllCached.mockResolvedValue([globalVariable, scopedVariable]);
-			deps.variablesService.getAllForUser.mockResolvedValue([globalVariable, scopedVariable]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [globalVariable, scopedVariable],
 				workflowProjects: [
 					['wf-global', 'proj-personal'],
 					['wf-scoped', 'proj-x'],
 				],
-				listableProjectIds: ['proj-x'],
-				personalProjectId: 'proj-personal',
 			});
 			const writer = new CapturingWriter();
 
@@ -474,14 +472,12 @@ describe('VariableExporter', () => {
 			const deps = makeExporter();
 			const variableA = projectVariable('proj-a', { id: 'var-a', value: 'A' });
 			const variableB = projectVariable('proj-b', { id: 'var-b', value: 'B' });
-			deps.variablesService.getAllCached.mockResolvedValue([variableA, variableB]);
-			deps.variablesService.getAllForUser.mockResolvedValue([variableA, variableB]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [variableA, variableB],
 				workflowProjects: [
 					['wf-a', 'proj-a'],
 					['wf-b', 'proj-b'],
 				],
-				listableProjectIds: ['proj-a', 'proj-b'],
 			});
 			const writer = new CapturingWriter();
 
@@ -503,14 +499,12 @@ describe('VariableExporter', () => {
 			const deps = makeExporter();
 			const variableA = projectVariable('proj-a', { id: 'var-a', value: 'A' });
 			const variableB = projectVariable('proj-b', { id: 'var-b', value: 'B' });
-			deps.variablesService.getAllCached.mockResolvedValue([variableA, variableB]);
-			deps.variablesService.getAllForUser.mockResolvedValue([variableA, variableB]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [variableA, variableB],
 				workflowProjects: [
 					['wf-a', 'proj-a'],
 					['wf-b', 'proj-b'],
 				],
-				listableProjectIds: ['proj-a', 'proj-b'],
 			});
 			const writer = new CapturingWriter();
 
@@ -535,14 +529,12 @@ describe('VariableExporter', () => {
 			// shared top-level variables/ dir and would suffix-collide there.
 			const variableB = projectVariable('proj-2', { id: 'var-b', value: 'B' });
 			const variableC = projectVariable('proj-3', { id: 'var-c', value: 'C' });
-			deps.variablesService.getAllCached.mockResolvedValue([variableB, variableC]);
-			deps.variablesService.getAllForUser.mockResolvedValue([variableB, variableC]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [variableB, variableC],
 				workflowProjects: [
 					['wf-b', 'proj-2'],
 					['wf-c', 'proj-3'],
 				],
-				listableProjectIds: ['proj-2', 'proj-3'],
 			});
 			const writer = new CapturingWriter();
 
@@ -565,14 +557,12 @@ describe('VariableExporter', () => {
 			const deps = makeExporter();
 			const variableA = projectVariable('proj-a', { id: 'var-a', value: 'A' });
 			const variableB = projectVariable('proj-b', { id: 'var-b', value: 'B' });
-			deps.variablesService.getAllCached.mockResolvedValue([variableA, variableB]);
-			deps.variablesService.getAllForUser.mockResolvedValue([variableA, variableB]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [variableA, variableB],
 				workflowProjects: [
 					['wf-a', 'proj-a'],
 					['wf-b', 'proj-b'],
 				],
-				listableProjectIds: ['proj-a', 'proj-b'],
 			});
 			const writer = new CapturingWriter();
 
@@ -592,14 +582,12 @@ describe('VariableExporter', () => {
 		it('does not fail when the shared name resolves to a single variable across workflows', async () => {
 			const deps = makeExporter();
 			const shared = makeVariable({ id: 'var-shared', value: 'shared-value' });
-			deps.variablesService.getAllCached.mockResolvedValue([shared]);
-			deps.variablesService.getAllForUser.mockResolvedValue([shared]);
-			wireProjects(deps, {
+			wireVariables(deps, {
+				all: [shared],
 				workflowProjects: [
 					['wf-a', 'proj-personal'],
 					['wf-b', 'proj-personal'],
 				],
-				personalProjectId: 'proj-personal',
 			});
 			const writer = new CapturingWriter();
 
