@@ -14,7 +14,7 @@ import { FolderExporter } from './entities/folder/folder.exporter';
 import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
-import { PackageWorkflowRequirementValidator } from './entities/workflow/package-workflow-requirement.validator';
+import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import type { WorkflowWorkflowRequirement } from './entities/workflow/workflow.types';
 import { TarPackageReader } from './io/tar/tar-package-reader';
@@ -48,7 +48,6 @@ export class N8nPackagesService {
 		private readonly projectPackageImporter: ProjectPackageImporter,
 		private readonly workflowPackageImporter: WorkflowPackageImporter,
 		private readonly eventService: EventService,
-		private readonly workflowRequirementValidator: PackageWorkflowRequirementValidator,
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
@@ -116,7 +115,7 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
-		await this.workflowRequirementValidator.validateStaticSubWorkflowsIncluded(
+		assertStaticSubWorkflowsIncluded(
 			requirements.workflows,
 			new Set(allWorkflowsInPackage.map(({ id }) => id)),
 		);
