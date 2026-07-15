@@ -3683,4 +3683,24 @@ describe('TelemetryEventRelay', () => {
 			expect(typeof result.patch).toBe('number');
 		});
 	});
+
+	describe('HITL events', () => {
+		it('should track on `hitl-response-actioned` event', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.slack',
+				approved: true,
+				authorized: false,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Advanced HITL response actioned', {
+				node_type: 'n8n-nodes-base.slack',
+				is_approved: true,
+				is_authorized: false,
+			});
+		});
+	});
 });

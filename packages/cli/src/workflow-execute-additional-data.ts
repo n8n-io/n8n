@@ -806,6 +806,9 @@ export async function getBase({
 		logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => {
 			eventService.emit(eventName, payload);
 		},
+		logHitlResponse: (payload) => {
+			eventService.emit('hitl-response-actioned', payload);
+		},
 		getRunnerStatus: (taskType: string) =>
 			Container.get(TaskRequester as ServiceIdentifier<TaskRequester>).getRunnerStatus(taskType),
 	};
