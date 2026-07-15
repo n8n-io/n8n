@@ -166,6 +166,12 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 				await indexExists(context, `UQ_${prefix}workflow_review_request_workflow_request_workflow`),
 			).toBe(true);
 			expect(
+				await indexExists(
+					context,
+					`IDX_${prefix}workflow_review_request_workflow_workflow_request`,
+				),
+			).toBe(true);
+			expect(
 				await indexExists(context, `UQ_${prefix}workflow_review_request_reviewers_request_user`),
 			).toBe(true);
 			expect(
