@@ -7,7 +7,7 @@ import { computed, ref, watch } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { getClientBrand, isFullAccessGrant, scopeLabelKeySuffix } from '../../clients.utils';
+import { getClientBrand, isFullAccessGrant, scopeLabel } from '../../clients.utils';
 import OAuthClientDetailsModal from '../OAuthClientDetailsModal.vue';
 
 const i18n = useI18n();
@@ -84,21 +84,16 @@ const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
 	},
 ]);
 
-function scopeLabel(scope: string): string {
-	const key = `settings.mcp.oAuthClients.scope.${scopeLabelKeySuffix(scope)}` as BaseTextKey;
-	const label = i18n.baseText(key);
-	// baseText returns the key itself for unknown scopes; show them verbatim
-	return label === key ? scope : label;
-}
-
 function accessSummary(client: OAuthClientResponseDto): string {
 	if (client.scopes.length === 0) return i18n.baseText('settings.mcp.oAuthClients.access.none');
 	if (isFullAccessGrant(client.scopes)) {
 		return i18n.baseText('settings.mcp.oAuthClients.access.full');
 	}
-	const labels = client.scopes.map(scopeLabel);
-	const visible = labels.slice(0, 2).join(', ');
-	const remaining = labels.length - 2;
+	const visible = client.scopes
+		.slice(0, 2)
+		.map((scope) => scopeLabel(i18n, scope))
+		.join(', ');
+	const remaining = client.scopes.length - 2;
 	if (remaining <= 0) return visible;
 	return `${visible} ${i18n.baseText('settings.mcp.oAuthClients.scope.more', {
 		interpolate: { count: remaining },

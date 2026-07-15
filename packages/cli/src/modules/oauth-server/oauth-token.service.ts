@@ -303,8 +303,10 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 	/** Deletes every access and refresh token a user holds for a client. */
 	async revokeAllTokensForGrant(clientId: string, userId: string): Promise<void> {
-		await this.accessTokenRepository.delete({ clientId, userId });
-		await this.refreshTokenRepository.delete({ clientId, userId });
+		await Promise.all([
+			this.accessTokenRepository.delete({ clientId, userId }),
+			this.refreshTokenRepository.delete({ clientId, userId }),
+		]);
 	}
 
 	async revokeAccessToken(token: string, clientId: string): Promise<boolean> {

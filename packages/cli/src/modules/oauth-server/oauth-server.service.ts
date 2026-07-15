@@ -472,9 +472,13 @@ export class OAuthServerService implements OAuthServerProvider {
 
 		this.logger.info('Revoking OAuth client access for user', { clientId, userId });
 
-		await this.tokenService.revokeAllTokensForGrant(clientId, userId);
-		await this.authorizationCodeService.deleteForGrant(clientId, userId);
-		await this.userConsentRepository.delete({ clientId, userId });
+		// Independent deletes across separate tables; the GC step below only needs
+		// the consent gone, so run them together rather than serially.
+		await Promise.all([
+			this.tokenService.revokeAllTokensForGrant(clientId, userId),
+			this.authorizationCodeService.deleteForGrant(clientId, userId),
+			this.userConsentRepository.delete({ clientId, userId }),
+		]);
 
 		// Garbage-collect the client only when no consents remain. One conditional
 		// delete keeps it atomic: a concurrent authorization for the same client

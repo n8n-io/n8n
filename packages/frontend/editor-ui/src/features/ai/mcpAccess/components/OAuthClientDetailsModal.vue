@@ -17,7 +17,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { classifyScope } from '@/app/components/scopes/scopes.utils';
-import { getClientBrand, isFullAccessGrant, scopeLabelKeySuffix } from '../clients.utils';
+import { getClientBrand, isFullAccessGrant, scopeLabel } from '../clients.utils';
 
 const props = defineProps<{
 	client: OAuthClientResponseDto | null;
@@ -42,13 +42,6 @@ const subtitle = computed(() => {
 		},
 	});
 });
-
-function scopeLabel(scope: string): string {
-	const key = `settings.mcp.oAuthClients.scope.${scopeLabelKeySuffix(scope)}` as BaseTextKey;
-	const label = i18n.baseText(key);
-	// baseText returns the key itself for unknown scopes; show them verbatim
-	return label === key ? scope : label;
-}
 
 // A grant covering every instance scope (e.g. a pre-scoping consent backfilled
 // to the full launch set) shows as a single "Full access" line.
@@ -104,7 +97,7 @@ function onRevoke() {
 								{{ i18n.baseText('settings.mcp.oAuthClients.details.readOnly') }}
 							</N8nText>
 							<N8nText v-for="scope in readScopes" :key="scope" color="text-dark" size="small">
-								{{ scopeLabel(scope) }}
+								{{ scopeLabel(i18n, scope) }}
 							</N8nText>
 						</div>
 						<div v-if="writeScopes.length" :class="$style['access-group']">
@@ -112,7 +105,7 @@ function onRevoke() {
 								{{ i18n.baseText('settings.mcp.oAuthClients.details.write') }}
 							</N8nText>
 							<N8nText v-for="scope in writeScopes" :key="scope" color="text-dark" size="small">
-								{{ scopeLabel(scope) }}
+								{{ scopeLabel(i18n, scope) }}
 							</N8nText>
 						</div>
 					</template>

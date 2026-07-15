@@ -1,6 +1,7 @@
 import type { Component } from 'vue';
 
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+import type { BaseTextKey } from '@n8n/i18n';
 
 import ClaudeIcon from './assets/client-icons/claude.svg?component';
 import CursorIcon from './assets/client-icons/cursor.svg?component';
@@ -28,13 +29,21 @@ const BRAND_MATCHERS: Array<{ pattern: RegExp; brand: McpClientBrand }> = [
 	{ pattern: /chatgpt|openai/i, brand: { icon: OpenAiIcon, type: 'assistant' } },
 ];
 
+// Client names are bounded (a user's own registered clients), so memoizing the
+// regex scan by name is safe; the map would need eviction only if that set ever
+// became unbounded.
+const brandCache = new Map<string, McpClientBrand>();
+
 export function getClientBrand(clientName: string): McpClientBrand {
-	return (
-		BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.brand ?? {
+	let brand = brandCache.get(clientName);
+	if (!brand) {
+		brand = BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.brand ?? {
 			icon: null,
 			type: null,
-		}
-	);
+		};
+		brandCache.set(clientName, brand);
+	}
+	return brand;
 }
 
 /**
@@ -43,6 +52,19 @@ export function getClientBrand(clientName: string): McpClientBrand {
  */
 export function scopeLabelKeySuffix(scope: string): string {
 	return scope.replace(':', '.');
+}
+
+/**
+ * Human label for a granted scope. Unknown scopes have no i18n entry and render
+ * verbatim.
+ */
+export function scopeLabel(
+	i18n: { baseText: (key: BaseTextKey) => string },
+	scope: string,
+): string {
+	const key = `settings.mcp.oAuthClients.scope.${scopeLabelKeySuffix(scope)}` as BaseTextKey;
+	const label = i18n.baseText(key);
+	return label === key ? scope : label;
 }
 
 /**
