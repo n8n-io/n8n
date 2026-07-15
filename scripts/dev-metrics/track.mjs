@@ -38,10 +38,11 @@ import { dirname, join, parse, relative } from 'node:path';
 // Telemetry goes to the `n8n-dev` RudderStack workspace via its HTTP tracking
 // API. Defaults are that workspace's data plane + HTTP source write key — like
 // n8n's product keys these are client-side and safe to ship; override via env.
+// Source resourceId: 3GX55bj9H9f9KpUG8AgMJlfymnf
 const RUDDERSTACK_URL =
-	process.env.N8N_DEV_METRICS_RUDDERSTACK_URL ?? 'https://nndevpkqyi.dataplane.rudderstack.com';
+	process.env.N8N_DEV_METRICS_RUDDERSTACK_URL ?? 'https://nnrry.dataplane.rudderstack.com';
 const RUDDERSTACK_KEY =
-	process.env.N8N_DEV_METRICS_RUDDERSTACK_KEY ?? '3G8092ezCyr6CR7xqyCETovbMM8';
+	process.env.N8N_DEV_METRICS_RUDDERSTACK_KEY ?? '3GX55Y0O8vJnXnesPItW1BWffbN';
 const EVENT_NAME = 'dev:cli_command';
 const SCHEMA_VERSION = 1;
 const POST_TIMEOUT_MS = 2000;
