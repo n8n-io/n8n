@@ -43,8 +43,9 @@ export interface InterruptedRunResumeHost {
  *    the RFC re-drives runs with a `running` step checkpoint from that
  *    checkpoint instead; until then every swept run is marked interrupted.)
  *
- * Runs whose checkpoint is HITL-`suspended` are skipped: the pending
- * confirmation orphan path (SuspendedRunRestorer) owns their recovery.
+ * Runs whose own checkpoint (matched by `hostRunId`) is HITL-`suspended` are
+ * skipped: the pending confirmation orphan path (SuspendedRunRestorer) owns
+ * their recovery.
  *
  * Multi-main safety, without a dedicated lease table: durable activity is the
  * heartbeat. Step checkpoints upsert per step and log facts append per step,
@@ -108,13 +109,18 @@ export class InterruptedRunSweeper {
 
 		const checkpoints = await this.checkpointRepo.findActiveByThreadId(threadId);
 		const subAgentPrefix = createSubAgentResourceIdPrefix(threadId);
-		const orchestratorCheckpoints = checkpoints.filter(
-			(row) => !row.resourceId?.startsWith(subAgentPrefix),
+		// Exact hostRunId match only: every flag-on run post-dates the column
+		// (production never runs a hybrid pre/post-log state), and sub-agent or
+		// legacy rows carry null, so they never match another run's sweep.
+		const runCheckpoints = checkpoints.filter(
+			(row) => !row.resourceId?.startsWith(subAgentPrefix) && row.hostRunId === runId,
 		);
 
-		// HITL-suspended runs are recoverable through the pending-confirmation
-		// orphan path; marking them interrupted would destroy that recovery.
-		if (orchestratorCheckpoints.some((row) => row.state?.status === 'suspended')) return;
+		// A run suspended at HITL is recoverable through the pending-confirmation
+		// orphan path; marking it interrupted would destroy that recovery. Only
+		// this run's own checkpoint counts — another run suspended on the same
+		// thread must not shield a crashed run from being swept.
+		if (runCheckpoints.some((row) => row.state?.status === 'suspended')) return;
 
 		// Multi-main: durable activity is the liveness heartbeat — a sibling
 		// main driving this run appends facts and upserts its checkpoint every
@@ -122,7 +128,7 @@ export class InterruptedRunSweeper {
 		if (this.instanceSettings.isMultiMain) {
 			const cutoff = Date.now() - InterruptedRunSweeper.LIVENESS_GRACE_MS;
 			const lastFact = await this.eventLogRepo.lastFactAt(threadId, runId);
-			const newestCheckpointAt = orchestratorCheckpoints
+			const newestCheckpointAt = runCheckpoints
 				.map((row) => row.updatedAt?.getTime() ?? 0)
 				.reduce((a, b) => Math.max(a, b), 0);
 			const lastActivity = Math.max(lastFact?.getTime() ?? 0, newestCheckpointAt);

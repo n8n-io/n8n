@@ -202,6 +202,28 @@ describe('InterruptedRunSweeper', () => {
 		expect(published).toHaveLength(0);
 	});
 
+	it('sweeps a crashed run even when a different run in the thread is HITL-suspended', async () => {
+		const { sweeper, published } = buildSweeper({
+			events: [runStart()],
+			checkpoints: [
+				runningCheckpoint({
+					key: 'agent:other',
+					hostRunId: 'run-other',
+					state: {
+						persistence: { threadId: THREAD, resourceId: 'user-1', hostRunId: 'run-other' },
+						status: 'suspended',
+						messageList: { messages: [] },
+						pendingToolCalls: { 'tc-p': { suspended: true } },
+					} as never,
+				}),
+			],
+		});
+
+		await sweeper.sweep();
+
+		expect(published.at(-1)?.type).toBe('run-finish');
+	});
+
 	it('marks a run with a running step checkpoint interrupted (crash-resume is a later phase)', async () => {
 		const { sweeper, published, metrics } = buildSweeper({
 			events: [runStart()],
