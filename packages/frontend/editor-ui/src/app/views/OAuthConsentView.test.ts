@@ -255,7 +255,8 @@ describe('OAuthConsentView', () => {
 
 			// workflows group tools are deduplicated across its scopes
 			expect(getByTestId('scope-group-tools-workflows')).toHaveTextContent('3 tools');
-			expect(getByTestId('scope-group-tools-executions')).toHaveTextContent('1 tools');
+			// a single tool uses the singular form (not "1 tools")
+			expect(getByTestId('scope-group-tools-executions')).toHaveTextContent(/1 tool\b/);
 		});
 
 		it('should not render tool pills when scope tools are absent', async () => {

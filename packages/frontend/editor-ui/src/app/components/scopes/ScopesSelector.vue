@@ -112,9 +112,14 @@ const filteredGroups = computed<Array<{ group: ScopeGroup<S>; visibleScopes: S[]
 		.filter((entry) => entry.visibleScopes.length > 0);
 });
 
-function baseText(suffix: string, interpolate?: Record<string, string | number>): string {
+function baseText(
+	suffix: string,
+	interpolate?: Record<string, string | number>,
+	adjustToNumber?: number,
+): string {
 	return i18n.baseText(`${props.i18nKeyPrefix}.${suffix}` as BaseTextKey, {
 		interpolate,
+		adjustToNumber,
 	});
 }
 
@@ -352,7 +357,13 @@ function toggleScope(scope: S, checked: boolean) {
 									:data-test-id="`scope-group-tools-${group.key}`"
 								>
 									<N8nIcon icon="wrench" size="xsmall" />
-									{{ baseText('tools.count', { count: groupTools(group).length }) }}
+									{{
+										baseText(
+											'tools.count',
+											{ count: groupTools(group).length },
+											groupTools(group).length,
+										)
+									}}
 								</span>
 							</N8nTooltip>
 						</div>
