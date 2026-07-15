@@ -278,6 +278,38 @@ describe('NodeToolSettingsContent', () => {
 		});
 	});
 
+	it('falls back to the personal project when the provided project id is empty', async () => {
+		// useAgentScopeProjectId resolves to '' before project state has loaded on
+		// first open; the empty string must not suppress the credential fetch.
+		renderComponent({
+			props: { initialNode: createMockNode(), projectId: '' },
+		});
+
+		await waitFor(() => {
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				projectId: 'personal-project',
+			});
+		});
+	});
+
+	it('loads the personal project when the id is empty and it is not yet available', async () => {
+		projectsStore.personalProject = null as never;
+		projectsStore.getPersonalProject = vi.fn().mockImplementation(() => {
+			projectsStore.personalProject = { id: 'personal-project', name: 'Personal' } as never;
+		});
+
+		renderComponent({
+			props: { initialNode: createMockNode(), projectId: '' },
+		});
+
+		await waitFor(() => {
+			expect(projectsStore.getPersonalProject).toHaveBeenCalled();
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				projectId: 'personal-project',
+			});
+		});
+	});
+
 	it('reloads personal project credentials when the shared store is already populated', async () => {
 		credentialsStore.allCredentials = [
 			{
@@ -296,11 +328,13 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
 			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
+		// The refetch REPLACES the store on resolve; clearing it up front would
+		// blank every credential-driven control still visible behind the modal.
+		expect(credentialsStore.setCredentials).not.toHaveBeenCalledWith([]);
 	});
 
 	it('fetches workflow-scoped credentials for the provided project even when the shared store is already populated', async () => {
@@ -321,11 +355,11 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
 			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
 				projectId: 'team-project',
 			});
 		});
+		expect(credentialsStore.setCredentials).not.toHaveBeenCalledWith([]);
 	});
 
 	describe('makeUniqueName', () => {

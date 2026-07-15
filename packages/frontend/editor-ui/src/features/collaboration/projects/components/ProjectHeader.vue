@@ -20,7 +20,7 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import { NEW_AGENT_VIEW } from '@/features/agents/constants';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
@@ -383,7 +383,7 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	},
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
 		agentTelemetry.trackClickedNewAgent(source);
-		void router.push({ name: NEW_AGENT_VIEW, query: { projectId } });
+		void router.push(instanceAiCreateAgentRoute(projectId));
 	},
 } as const;
 

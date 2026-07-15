@@ -37,14 +37,13 @@ const props = defineProps<{
 	deletingAgentFileId?: string | null;
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
-	isBuildChatStreaming: boolean;
 	canEditAgent: boolean;
 	executionsDescription: string;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
 }>();
 
-const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
+const childrenDisabled = computed(() => !props.canEditAgent);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];

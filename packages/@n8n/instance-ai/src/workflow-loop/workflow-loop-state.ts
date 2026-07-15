@@ -192,7 +192,14 @@ export const workflowVerificationReadinessSchema = z.discriminatedUnion('status'
 	}),
 	z.object({
 		status: z.literal('not_verifiable'),
-		reason: z.enum(['not-submitted', 'missing-workflow-id', 'non-mockable-trigger']),
+		// 'non-mockable-trigger' is the legacy spelling of 'no-trigger-node',
+		// kept so stored outcomes from older threads still parse.
+		reason: z.enum([
+			'not-submitted',
+			'missing-workflow-id',
+			'no-trigger-node',
+			'non-mockable-trigger',
+		]),
 		guidance: z.string(),
 	}),
 ]);

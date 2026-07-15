@@ -8,6 +8,7 @@ import {
 	normalizeStreamSource,
 	type TraceStatus,
 } from '../runtime/resumable-stream-executor';
+import type { RunTokenUsage } from '../stream/usage-accumulator';
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
@@ -136,6 +137,7 @@ export type ConsumeStreamCascadingResult =
 			agentRunId: string;
 			text: Promise<string>;
 			workSummary: WorkSummary;
+			usage?: RunTokenUsage;
 	  }
 	| {
 			status: 'suspended';
@@ -144,6 +146,7 @@ export type ConsumeStreamCascadingResult =
 			confirmationEvent?: ConfirmationRequestEvent;
 			text?: Promise<string>;
 			workSummary: WorkSummary;
+			usage?: RunTokenUsage;
 	  };
 
 /**
@@ -187,6 +190,7 @@ export async function consumeStreamCascading(
 			...(result.confirmationEvent ? { confirmationEvent: result.confirmationEvent } : {}),
 			...(result.text ? { text: result.text } : {}),
 			workSummary: result.workSummary,
+			...(result.usage ? { usage: result.usage } : {}),
 		};
 	}
 
@@ -195,5 +199,6 @@ export async function consumeStreamCascading(
 		agentRunId: result.agentRunId,
 		text: result.text ?? stream.text ?? Promise.resolve(''),
 		workSummary: result.workSummary,
+		...(result.usage ? { usage: result.usage } : {}),
 	};
 }

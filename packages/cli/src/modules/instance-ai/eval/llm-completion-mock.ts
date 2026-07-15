@@ -26,6 +26,7 @@ Rules:
 - kind="final": set content to a short final answer string. Two structured-output cases override this:
   - If a structured-output / "format final response" style tool is available, NEVER finalize with plain content — call that tool with schema-valid arguments instead.
   - Only when NO such tool exists but the conversation carries structured-output format instructions (a JSON schema the reply must match, often demanding a \`\`\`json code block and/or an "output" wrapper key): content MUST be exactly that JSON — every required field present, exact key names and wrapper, correct types (a numeric field gets a number like 42, never a descriptive string like "about 42" or "below the 42 threshold"). Keep-it-minimal applies to field VALUES only — never drop fields, the wrapper, or the code block.
+- content is ONLY the assistant's answer (plain text, or the structured JSON). NEVER wrap it in a provider API envelope — no chat.completion/response object, no "choices"/"output"/"id"/"object" keys. The harness adds the wire envelope.
 - Call exactly ONE tool per step. Never fabricate a whole multi-step result in a single turn.
 - If the scenario, node hint, or data context states a specific value, reproduce it; otherwise keep values minimal.`;
 
@@ -70,6 +71,10 @@ const submitStepSchema = z.object({
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isUnknownArray(value: unknown): value is unknown[] {
+	return Array.isArray(value);
 }
 
 function asString(value: unknown): string | undefined {
@@ -177,6 +182,49 @@ function buildUserPrompt(
 	return sections.join('\n');
 }
 
+/**
+ * The mock model occasionally emits a full provider wire envelope
+ * (chat.completions / Responses API) as its "answer" instead of the bare
+ * assistant message. The wire server would then wrap that envelope AGAIN, so the
+ * workflow node receives a stringified envelope as its text and its parser fails
+ * ("empty response"). Unwrap a recognised envelope back to the inner assistant
+ * message. Gated on the `object` marker so a legitimate structured-output answer
+ * that merely happens to carry an `output`/`choices` field is never mis-unwrapped.
+ */
+export function unwrapProviderEnvelope(text: string): string {
+	const trimmed = text.trim();
+	if (!trimmed.startsWith('{')) return text;
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(trimmed);
+	} catch {
+		return text;
+	}
+	if (!isRecord(parsed)) return text;
+
+	// OpenAI chat.completions: choices[0].message.content
+	if (parsed.object === 'chat.completion' && isUnknownArray(parsed.choices)) {
+		const first = parsed.choices[0];
+		if (isRecord(first) && isRecord(first.message) && typeof first.message.content === 'string') {
+			return first.message.content;
+		}
+	}
+
+	// OpenAI Responses API: output_text, or output[].content[].text
+	if (parsed.object === 'response') {
+		if (typeof parsed.output_text === 'string') return parsed.output_text;
+		if (isUnknownArray(parsed.output)) {
+			for (const item of parsed.output) {
+				if (!isRecord(item) || !isUnknownArray(item.content)) continue;
+				const firstPart = item.content[0];
+				if (isRecord(firstPart) && typeof firstPart.text === 'string') return firstPart.text;
+			}
+		}
+	}
+
+	return text;
+}
+
 function jsonResponse(body: Record<string, unknown>): EvalMockHttpResponse {
 	return { body, headers: { 'content-type': 'application/json' }, statusCode: 200 };
 }
@@ -231,14 +279,16 @@ export function createLlmCompletionMockHandler(
 				tool_calls: [{ name: capture.toolName, arguments: capture.toolArguments ?? {} }],
 			};
 		} else if (capture.kind === 'final') {
-			responseBody = { content: capture.content ?? '' };
+			responseBody = { content: unwrapProviderEnvelope(capture.content ?? '') };
 		} else {
 			// Agent never submitted — fall back to its raw text so the turn isn't empty.
 			const fallback = extractText(result).trim();
 			Container.get(Logger).warn(
 				`[EvalMock] llm-completion-mock produced no submit_agent_step for "${node.name}"; using raw text fallback`,
 			);
-			responseBody = { content: fallback || '[eval completion-mock: empty response]' };
+			responseBody = {
+				content: unwrapProviderEnvelope(fallback) || '[eval completion-mock: empty response]',
+			};
 		}
 
 		return jsonResponse(responseBody);
