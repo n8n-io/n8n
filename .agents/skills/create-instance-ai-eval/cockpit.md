@@ -72,16 +72,21 @@ that, add another `--base-url` rather than pushing one instance harder.
 4. This is the trust-critical gate: the driver confirms every meaning-flipping
    verdict; the agent never silently commits one.
 
-## Prerequisite: a dev-mode instance (framing)
+## Prerequisite: an instance that allows framing
 
-**Run the cockpit against an instance started in development (`pnpm dev`).** In
-development mode n8n does not send `X-Frame-Options`, so the builder can be
-embedded in the cockpit's iframe with a fully authenticated session — which is
-exactly what the live builder needs.
+The builder is embedded in the cockpit's iframe, so the instance must **not**
+send `X-Frame-Options`. n8n omits that header in three cases (server.ts): running
+in **development** (`pnpm dev`), **`E2E_TESTS=true`**, or preview mode. The first
+two keep a fully authenticated session, which is what the live builder needs.
+
+The simplest path is the **same boot you already use for evals** — it sets
+`E2E_TESTS=true` (for the `/rest/e2e/reset` owner seed), which *also* disables
+`X-Frame-Options`, so a built-dist `pnpm start` instance frames fine; you don't
+need a full `pnpm dev`. See [`running-evals.md`](running-evals.md) for that boot.
 
 **Do not use `N8N_PREVIEW_MODE=true` to make framing work.** Preview mode skips
 the authenticated frontend bootstrap (no current user is loaded), so the embedded
-builder renders broken. A production-mode instance sends
-`X-Frame-Options: sameorigin` and has no clean override, so the cockpit is a
-dev-instance tool. If the iframe comes up blank, the instance isn't in dev mode —
-the cockpit will say so rather than show an empty pane.
+builder renders broken. A plain production instance (no `E2E_TESTS`, no dev)
+sends `X-Frame-Options: sameorigin` and has no clean override. If the iframe
+comes up blank, the instance is sending the header — the hint in the pane says so
+rather than showing an empty frame.
