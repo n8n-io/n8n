@@ -74,9 +74,7 @@ export class VariableExporter {
 			index,
 		);
 
-		if (request.includeVariableValues) {
-			this.assertNoBundledVariableCollision(resolvedNames, request.projectTargetsById);
-		}
+		this.assertNoBundledVariableCollision(resolvedNames, request.projectTargetsById);
 
 		// One allocator per base directory: `variables/` and each
 		// `projects/<slug>/variables/` suffix collisions independently.
@@ -240,10 +238,12 @@ export class VariableExporter {
 
 	/**
 	 * A name that resolves to two different variables in the same package
-	 * directory cannot be bundled: the second copy would be renamed `<name>-2`
-	 * and the import could not tell which one satisfies the requirement.
-	 * Collisions are checked per directory, so project exports — where each
-	 * project's variables live in their own namespace — stay unaffected.
+	 * directory cannot be bundled: only one of them could ever land in the
+	 * single target project at import, so the package cannot be satisfied no
+	 * matter which copy is picked. This holds even for value-less stubs, so the
+	 * check does not depend on `includeVariableValues`. Collisions are checked
+	 * per directory, so project exports — where each project's variables live
+	 * in their own namespace — stay unaffected.
 	 */
 	private assertNoBundledVariableCollision(
 		resolvedNames: ResolvedName[],
@@ -263,7 +263,7 @@ export class VariableExporter {
 			{
 				description: `Conflicting variable name(s): ${displayedNames.join(', ')}${
 					omittedCount > 0 ? `, and ${omittedCount} more` : ''
-				}. Export the projects as a project package, or export without variable values.`,
+				}. Export the projects as a project package instead.`,
 			},
 		);
 	}

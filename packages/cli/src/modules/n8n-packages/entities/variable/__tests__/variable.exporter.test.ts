@@ -561,7 +561,7 @@ describe('VariableExporter', () => {
 			expect(writer.directories).toEqual([]);
 		});
 
-		it('allows the collision in a workflow/folder export when values are excluded', async () => {
+		it('fails the workflow/folder export even when values are excluded', async () => {
 			const deps = makeExporter();
 			const variableA = projectVariable('proj-a', { id: 'var-a', value: 'A' });
 			const variableB = projectVariable('proj-b', { id: 'var-b', value: 'B' });
@@ -576,22 +576,17 @@ describe('VariableExporter', () => {
 			});
 			const writer = new CapturingWriter();
 
-			const result = await deps.exporter.export({
-				user,
-				requirements: [req('wf-a', 'API_URL'), req('wf-b', 'API_URL')],
-				writer,
-				includeVariableValues: false,
-			});
+			await expect(
+				deps.exporter.export({
+					user,
+					requirements: [req('wf-a', 'API_URL'), req('wf-b', 'API_URL')],
+					writer,
+					includeVariableValues: false,
+				}),
+			).rejects.toThrow(/would collide in the package/);
 
-			expect(result.entries).toEqual([
-				{ id: 'var-a', name: 'API_URL', target: 'variables/apiurl' },
-				{ id: 'var-b', name: 'API_URL', target: 'variables/apiurl-2' },
-			]);
-			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-a', 'wf-b'] }]);
-			expect(writer.files.map((f) => jsonParse(f.content))).toEqual([
-				{ name: 'API_URL', type: 'string' },
-				{ name: 'API_URL', type: 'string' },
-			]);
+			expect(writer.files).toEqual([]);
+			expect(writer.directories).toEqual([]);
 		});
 
 		it('does not fail when the shared name resolves to a single variable across workflows', async () => {
