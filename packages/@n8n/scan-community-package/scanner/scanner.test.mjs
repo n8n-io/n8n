@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { analyzePackage, buildScanConfig } from './scanner.mjs';
+import { analyzePackage, buildScanConfig, collectLintFiles } from './scanner.mjs';
 
 /**
  * Build a temporary package directory on disk so we can hand it to
@@ -92,7 +92,7 @@ describe('analyzePackage', () => {
 				peerDependencies: { 'n8n-workflow': '*' },
 				overrides: { 'change-case': '4.1.2' },
 			},
-			'index.js': "module.exports = {};\n",
+			'index.js': 'module.exports = {};\n',
 		});
 
 		const result = await analyzePackage(fixtureDir);
@@ -113,7 +113,7 @@ describe('analyzePackage', () => {
 				peerDependencies: { 'n8n-workflow': '*' },
 				n8n: { n8nNodesApiVersion: 1, nodes: ['dist/nodes/Foo/Foo.node.js'] },
 			},
-			'index.js': "module.exports = {};\n",
+			'index.js': 'module.exports = {};\n',
 		});
 
 		const result = await analyzePackage(fixtureDir);
@@ -130,7 +130,7 @@ describe('analyzePackage', () => {
 				peerDependencies: { 'n8n-workflow': '*' },
 				scripts: { postinstall: 'node ./malicious.js' },
 			},
-			'index.js': "module.exports = {};\n",
+			'index.js': 'module.exports = {};\n',
 		});
 
 		const result = await analyzePackage(fixtureDir);
@@ -139,10 +139,52 @@ describe('analyzePackage', () => {
 		expect(result.details).toContain('no-forbidden-lifecycle-scripts');
 	});
 
-	// A well-formed node package's compiled sources must not trip the external
-	// node rules — those rules can't see enough in `.d.ts`/`.js` output to fire,
-	// so scanning must not produce false positives on legitimate packages.
-	it('does not false-positive on a well-formed node package layout (CE-1606)', async () => {
+	// CE-1713: the gate lints the package SOURCE (cloned from the provenance-
+	// attested git commit), not compiled `dist/` output. `collectLintFiles`
+	// selects authored `.ts` + `.json` and excludes `dist/`, `.git/`, `node_modules/`
+	// and lockfiles — mirroring `n8n-node lint`'s `globalIgnores(['dist'])`. `.js`
+	// is excluded too (compiled output + build scripts like gulpfile.js trip rules
+	// that are meaningless there). Asserted at the glob level because the external
+	// `n8n-nodes-base` AST-walking rules no-op under vitest (see `buildScanConfig`);
+	// full TS rule execution is verified by the end-to-end `node` scan on a real
+	// package (CE-1713 reproduction).
+	describe('collectLintFiles', () => {
+		it('selects authored .ts and .json, excludes dist/, .git/, .js and lockfiles', () => {
+			fixtureDir = makeFixturePackage({
+				'package.json': {
+					name: 'n8n-nodes-fixture',
+					version: '1.0.0',
+					description: 'A fixture community node package',
+					license: 'MIT',
+					author: { name: 'Test Author', email: 'test@example.com' },
+					keywords: ['n8n-community-node-package'],
+					peerDependencies: { 'n8n-workflow': '*' },
+					n8n: { n8nNodesApiVersion: 1, nodes: ['dist/nodes/Foo/Foo.node.js'] },
+				},
+				'nodes/Foo/Foo.node.ts': 'export class Foo {}\n',
+				'credentials/FooApi.credentials.ts': 'export class FooApi {}\n',
+				'gulpfile.js': "require('gulp');\n",
+				'package-lock.json': '{}',
+				'dist/nodes/Foo/Foo.node.js': '"use strict";\n',
+				'dist/nodes/Foo/Foo.node.d.ts': 'export declare class Foo {}\n',
+				'.git/config': '[core]\n',
+			});
+
+			const selected = collectLintFiles(fixtureDir)
+				.map((p) => path.relative(fixtureDir, p))
+				.sort();
+
+			expect(selected).toEqual(
+				['credentials/FooApi.credentials.ts', 'nodes/Foo/Foo.node.ts', 'package.json'].sort(),
+			);
+		});
+	});
+
+	// `dist/` build output in the cloned source repo must be ignored end-to-end:
+	// a file in `dist/` that would produce a parse error if linted must not be
+	// reached. This is robust under vitest (JSON parsing works regardless of the
+	// external plugin's parser instance).
+	it('ignores committed dist/ build output in the source tree', async () => {
 		fixtureDir = makeFixturePackage({
 			'package.json': {
 				name: 'n8n-nodes-fixture',
@@ -154,20 +196,8 @@ describe('analyzePackage', () => {
 				peerDependencies: { 'n8n-workflow': '*' },
 				n8n: { n8nNodesApiVersion: 1, nodes: ['dist/nodes/Foo/Foo.node.js'] },
 			},
-			'dist/nodes/Foo/Foo.node.d.ts': `export declare class Foo {
-    description: {
-        displayName: string;
-        name: string;
-        properties: {
-            displayName: string;
-            name: string;
-            type: string;
-            default: string;
-        }[];
-    };
-}
-`,
-			'dist/nodes/Foo/Foo.node.js': "\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.Foo = void 0;\nclass Foo {}\nexports.Foo = Foo;\n",
+			// Malformed JSON that would parse-error if `dist/` were not ignored.
+			'dist/broken.json': '{ this is not valid json }',
 		});
 
 		const result = await analyzePackage(fixtureDir);

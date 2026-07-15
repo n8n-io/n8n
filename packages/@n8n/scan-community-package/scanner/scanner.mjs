@@ -11,7 +11,7 @@ import glob from 'fast-glob';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'eslint/config';
 
-import { checkPackageProvenance } from './provenance.mjs';
+import { checkPackageProvenance, getSourceLocation } from './provenance.mjs';
 
 const { stdout } = process;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -77,44 +77,33 @@ export const resolvePackage = (packageSpec) => {
 	return { packageName: parts[0], version: parts[1] || null };
 };
 
-const downloadAndExtractPackage = async (packageName, version) => {
-	try {
-		// Download the tarball using safe arguments
-		const npmResult = spawnSync('npm', ['-q', 'pack', `${packageName}@${version}`], {
-			cwd: TEMP_DIR,
-			stdio: 'pipe',
-			shell: process.platform === 'win32',
-		});
-		if (npmResult.status !== 0) {
-			throw new Error(`npm pack failed: ${npmResult.stderr?.toString()}`);
-		}
-		const tarballName = fs.readdirSync(TEMP_DIR).find((file) => file.endsWith('.tgz'));
-		if (!tarballName) {
-			throw new Error('Tarball not found');
-		}
-
-		// Unpack the tarball
-		const packageDir = safeJoinPath(TEMP_DIR, `${packageName}-${version}`);
-		fs.mkdirSync(packageDir, { recursive: true });
-		const tarResult = spawnSync(
-			'tar',
-			['-xzf', tarballName, '-C', packageDir, '--strip-components=1'],
-			{
-				cwd: TEMP_DIR,
-				stdio: 'pipe',
-				shell: process.platform === 'win32',
-			},
-		);
-		if (tarResult.status !== 0) {
-			throw new Error(`tar extraction failed: ${tarResult.stderr?.toString()}`);
-		}
-		fs.unlinkSync(safeJoinPath(TEMP_DIR, tarballName));
-
-		return packageDir;
-	} catch (error) {
-		console.error(`\nFailed to download package: ${error.message}`);
-		throw error;
+const cloneSourcePackage = (repoUrl, commitSha) => {
+	if (!/^https?:\/\//.test(repoUrl)) {
+		throw new Error(`Refusing to clone non-http(s) source URL: ${repoUrl}`);
 	}
+	if (!/^[0-9a-f]{7,40}$/.test(commitSha)) {
+		throw new Error(`Invalid commit SHA from provenance: ${commitSha}`);
+	}
+
+	const repoDir = safeJoinPath(TEMP_DIR, commitSha);
+	fs.rmSync(repoDir, { recursive: true, force: true });
+	const cloneResult = spawnSync('git', ['clone', '--quiet', repoUrl, repoDir], {
+		stdio: 'pipe',
+		shell: process.platform === 'win32',
+	});
+	if (cloneResult.status !== 0) {
+		throw new Error(`git clone failed: ${cloneResult.stderr?.toString()}`);
+	}
+	// Checkout the exact attested commit so the scan covers what was built,
+	// not whatever the default branch points at by scan time.
+	const checkoutResult = spawnSync('git', ['-C', repoDir, 'checkout', '--quiet', commitSha], {
+		stdio: 'pipe',
+		shell: process.platform === 'win32',
+	});
+	if (checkoutResult.status !== 0) {
+		throw new Error(`git checkout ${commitSha} failed: ${checkoutResult.stderr?.toString()}`);
+	}
+	return repoDir;
 };
 
 /**
@@ -137,18 +126,13 @@ export const buildScanConfig = async () => {
 		// Register the full `eslint-plugin-n8n-nodes-base` plugin and apply its
 		// three rulesets so the scan gate enforces the same rules as
 		// `n8n-node lint` (see node-cli/src/configs/eslint.ts). The off-overrides
-		// below are kept identical. Scoping differs on purpose: `n8n-node lint`
-		// runs at dev-time on `nodes/**` / `credentials/**` `.ts` sources, but
-		// published tarballs ship compiled output under `dist/` (e.g.
-		// `dist/nodes/Foo/Foo.node.js` + `.d.ts`). We match `nodes`/`credentials`
-		// dirs at any depth and target `.ts`/`.d.ts` only — the AST-walking rules
-		// resolve against the type-preserving `.d.ts`. Compiled `.js` is
-		// deliberately excluded: the description AST is buried in a constructor
-		// there so the rules no-op, and file-shape rules like
-		// node-filename-against-convention would false-positive on the `.js`
-		// extension (that check is meaningful only against `.ts` sources at
-		// dev-time). Without the `dist/`-aware glob these rules never run at the
-		// gate at all.
+		// below are kept identical. The gate lints the **source** of the package
+		// (cloned from the provenance-attested git commit), not the compiled
+		// `dist/` output the tarball ships — the official template sets
+		// `files: ["dist"]`, so source is not in the tarball, and the AST-walking
+		// rules no-op on compiled `.d.ts`/`.js` (the description AST is a type
+		// annotation there, not a literal). `analyzePackage` ignores `dist/` and
+		// `.git/`, matching `n8n-node lint`'s `globalIgnores(['dist'])`.
 		{ plugins: { 'n8n-nodes-base': n8nNodesPlugin } },
 		{
 			files: ['package.json'],
@@ -185,13 +169,27 @@ export const buildScanConfig = async () => {
 			languageOptions: { parser },
 		},
 		// The external `nodes`/`credentials` rulesets walk a TSESTree AST, so
-		// TS sources (when present in the tarball) need the TS parser too.
+		// the cloned `.ts` sources need the TS parser.
 		{
 			files: ['**/*.ts'],
 			languageOptions: { parser },
 		},
 	);
 };
+
+/**
+ * Selects the files the gate lints inside a (cloned) source tree: authored
+ * `.ts` + `.json`, excluding build output (`dist/`), VCS metadata (`.git/`),
+ * deps (`node_modules/`), and lockfiles. Exported so the source-vs-compiled
+ * selection can be unit-tested without running ESLint (the external
+ * `n8n-nodes-base` parser instance no-ops under vitest — see `buildScanConfig`).
+ */
+export const collectLintFiles = (packageDir) =>
+	glob.sync(['**/*.ts', '**/*.json'], {
+		cwd: packageDir,
+		absolute: true,
+		ignore: ['node_modules/**', 'dist/**', '.git/**', '**/package-lock.json'],
+	});
 
 export const analyzePackage = async (packageDir) => {
 	const eslint = new ESLint({
@@ -202,15 +200,13 @@ export const analyzePackage = async (packageDir) => {
 	});
 
 	try {
-		// Lint both JS and JSON files. JSON inclusion is required because rules
-		// such as `no-overrides-field`, `valid-peer-dependencies`, and
-		// `package-name-convention` only run against `package.json`. Without
-		// it the scanner silently skips every package.json-based rule.
-		const filesToLint = glob.sync(['**/*.js', '**/*.ts', '**/*.json'], {
-			cwd: packageDir,
-			absolute: true,
-			ignore: ['node_modules/**', '**/package-lock.json'],
-		});
+		// `n8n-node lint` lints `**/*.ts` + `package.json`. The gate lints the
+		// cloned SOURCE, so ignore committed build output + VCS metadata (mirrors
+		// `n8n-node lint`'s `globalIgnores(['dist'])`). `.js` is deliberately
+		// excluded: published packages ship only `dist/` (the official template
+		// sets `files: ["dist"]`), and linting authored `.js` (e.g. gulpfile.js)
+		// trips rules like `no-restricted-imports` that are meaningless there.
+		const filesToLint = collectLintFiles(packageDir);
 
 		if (filesToLint.length === 0) {
 			return { passed: true, message: 'No files found to analyze' };
@@ -287,13 +283,35 @@ export const analyzePackageByName = async (packageName, version) => {
 
 		stdout.write(`✅ Provenance check passed for ${label} \n`);
 
-		stdout.write(`Downloading ${label}...`);
-		const packageDir = await downloadAndExtractPackage(packageName, exactVersion);
+		stdout.write(`Locating source for ${label}...`);
+		const sourceLocation = await getSourceLocation(packageMetadata, exactVersion);
 		if (stdout.TTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
-		stdout.write(`✅ Downloaded ${label} \n`);
+		if (!sourceLocation) {
+			stdout.write(
+				`❌ Could not determine source repository from provenance attestation for ${label} \n`,
+			);
+			return {
+				packageName,
+				version: exactVersion,
+				passed: false,
+				message:
+					'Could not determine source repository and commit from the npm provenance attestation',
+			};
+		}
+		stdout.write(
+			`✅ Source located: ${sourceLocation.repoUrl}@${sourceLocation.commitSha.slice(0, 7)} \n`,
+		);
+
+		stdout.write(`Cloning source for ${label}...`);
+		const packageDir = cloneSourcePackage(sourceLocation.repoUrl, sourceLocation.commitSha);
+		if (stdout.TTY) {
+			stdout.clearLine(0);
+			stdout.cursorTo(0);
+		}
+		stdout.write(`✅ Cloned ${label} \n`);
 
 		stdout.write(`Analyzing ${label}...`);
 		const analysisResult = await analyzePackage(packageDir);
