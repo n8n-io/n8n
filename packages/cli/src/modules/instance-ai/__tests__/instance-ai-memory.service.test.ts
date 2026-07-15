@@ -607,6 +607,126 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(result.messages[0].role).toBe('user');
 	});
 
+	it('anchors a group at its parent run so late background completions do not shift pairing', async () => {
+		// Turn 1's group has a background run that finishes AFTER turn 2. A
+		// stored snapshot's createdAt is stamped at parent-run end and never
+		// moves; the fold entry must anchor the same way, or the parser's
+		// next-message guard rejects it for turn 1 and the tree becomes a
+		// trailing orphan card.
+		// Assistant message createdAt is stamped when the response starts, so it
+		// precedes the run's final rows; the entry's anchor must land between it
+		// and the next user message.
+		const t = (seconds: number) => new Date(2026, 0, 1, 0, 0, seconds);
+		mockListMessages.mockResolvedValue({
+			messages: [
+				{ id: 'msg-u1', role: 'user', content: 'first', createdAt: t(0) },
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'answer one' }],
+					createdAt: t(8),
+				},
+				{ id: 'msg-u2', role: 'user', content: 'second', createdAt: t(20) },
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'answer two' }],
+					createdAt: t(26),
+				},
+			],
+		});
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			// Turn 1: parent run answers at ~t10, spawns a background sibling.
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_parent',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				t(5),
+			),
+			eventRow(
+				{
+					type: 'text-block',
+					runId: 'run_parent',
+					agentId: 'agent-001',
+					payload: { text: 'answer one' },
+				},
+				t(9),
+			),
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_bg',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				t(9),
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_parent',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				t(10),
+			),
+			// Turn 2 completes while the background run is still going.
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_2',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-2' },
+				},
+				t(25),
+			),
+			...toolCallRows('run_2', 1).map((row) => ({ ...row, createdAt: t(26) })),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_2',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				t(29),
+			),
+			// The background sibling finishes LAST, after turn 2.
+			eventRow(
+				{
+					type: 'tool-call',
+					runId: 'run_bg',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-bg', toolName: 'bg-tool', args: {} },
+				},
+				t(40),
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_bg',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				t(41),
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		// Four messages, no trailing orphan card.
+		expect(result.messages).toHaveLength(4);
+		// Turn 1 pairs with its group's tree (parent text + background tool call).
+		const turn1 = result.messages[1];
+		expect(turn1.agentTree?.textContent).toBe('answer one');
+		expect(turn1.agentTree?.toolCalls.map((tc) => tc.toolName)).toContain('bg-tool');
+		// Turn 2 pairs with its own run.
+		expect(result.messages[3].agentTree?.toolCalls.map((tc) => tc.toolName)).toEqual(['tool-1']);
+	});
+
 	it('keeps interleaved runs of one group in thread order', async () => {
 		// Background runs execute concurrently with their parent, so a group's
 		// facts interleave in the log. The fold must feed the reducer in seq

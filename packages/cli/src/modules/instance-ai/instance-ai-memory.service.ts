@@ -96,11 +96,11 @@ function mergeMessagesById(stored: AgentDbMessage[], extras: AgentDbMessage[]): 
  *  group can interleave (background tasks run concurrently with their parent)
  *  and the reducer must see facts in the order they happened, exactly as the
  *  run-sync bootstrap and the snapshot writer feed it. The parser pairs
- *  entries to assistant messages positionally, so the entry's createdAt is
- *  the group's last fact time (≈ the write-at-run-end timestamp a stored
- *  snapshot would carry). `skippedInFlight` reports whether run/group
- *  exclusion dropped any rows, so the caller can tell an exclusion-emptied
- *  fold apart from a thread with nothing renderable. */
+ *  entries to assistant messages positionally by createdAt, so the entry is
+ *  anchored at the FIRST run's last fact time (≈ parent-run end, the moment
+ *  a stored snapshot row would have been created). `skippedInFlight` reports
+ *  whether run/group exclusion dropped any rows, so the caller can tell an
+ *  exclusion-emptied fold apart from a thread with nothing renderable. */
 function buildLogDerivedSnapshots(
 	rows: Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>,
 	skipRunIds: Set<string>,
@@ -132,6 +132,11 @@ function buildLogDerivedSnapshots(
 		runIds: string[];
 		events: InstanceAiEvent[];
 		messageGroupId?: string;
+		/** Last fact time of the group's FIRST run — the parent-run-end moment a
+		 *  stored snapshot's createdAt would carry. Background runs can finish
+		 *  after LATER turns, so anchoring on the group's last fact would push
+		 *  the entry past the next message and break positional pairing. */
+		anchorAt: Date;
 		lastAt: Date;
 	};
 	const groups = new Map<string, Group>();
@@ -146,11 +151,20 @@ function buildLogDerivedSnapshots(
 		}
 		let group = groups.get(key);
 		if (!group) {
-			group = { runIds: [], events: [], messageGroupId, lastAt: row.createdAt };
+			group = {
+				runIds: [],
+				events: [],
+				messageGroupId,
+				anchorAt: row.createdAt,
+				lastAt: row.createdAt,
+			};
 			groups.set(key, group);
 		}
 		if (!group.runIds.includes(row.runId)) group.runIds.push(row.runId);
 		group.events.push(row.event);
+		if (row.runId === group.runIds[0] && row.createdAt > group.anchorAt) {
+			group.anchorAt = row.createdAt;
+		}
 		if (row.createdAt > group.lastAt) group.lastAt = row.createdAt;
 	}
 
@@ -165,7 +179,9 @@ function buildLogDerivedSnapshots(
 			runId: group.runIds[group.runIds.length - 1],
 			messageGroupId: group.messageGroupId,
 			runIds: group.runIds,
-			createdAt: group.lastAt,
+			// Mirror the stored-snapshot row: created at parent-run end (save),
+			// only updatedAt advances as later group runs complete (updateLast).
+			createdAt: group.anchorAt,
 			updatedAt: group.lastAt,
 		});
 	}
