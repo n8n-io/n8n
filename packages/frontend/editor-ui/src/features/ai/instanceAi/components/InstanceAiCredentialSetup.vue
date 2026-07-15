@@ -170,14 +170,20 @@ watch(
 );
 
 // Auto-continue when all credentials have been selected, unless the agent
-// asked to keep the card open for an explicit user choice.
-watch(allSelected, async (nowComplete, wasComplete) => {
-	if (props.requireUserSelection) return;
-	if (nowComplete && !wasComplete) {
-		await nextTick();
-		await handleContinue();
-	}
-});
+// asked to keep the card open for an explicit user choice. Runs immediately
+// so a single existing credential auto-selected on init resolves the card
+// without user input, as the setup tool describes.
+watch(
+	allSelected,
+	async (nowComplete, wasComplete) => {
+		if (props.requireUserSelection) return;
+		if (nowComplete && !wasComplete) {
+			await nextTick();
+			await handleContinue();
+		}
+	},
+	{ immediate: true },
+);
 
 onMounted(async () => {
 	if (isBrowserCredentialSetupEnabled.value) {
