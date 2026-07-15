@@ -48,6 +48,8 @@ export type ContextMenuAction =
 	| 'collapse_all_groups'
 	| 'expand_selected_groups'
 	| 'collapse_selected_groups'
+	| 'show_all_descriptions'
+	| 'hide_all_descriptions'
 	| 'focus_ai_on_selected';
 
 /**
@@ -176,6 +178,44 @@ export function useContextMenuItems(
 		// A group target gets the multi-selection menu over its member nodes,
 		// worded for the group as a whole, plus the group's own actions on top.
 		const isGroupTarget = targetGroupId?.value !== undefined;
+
+		// Pinning descriptions is a view preference, so these stay enabled in
+		// read-only mode. Without a canvas-provided group view the pin state is
+		// unknown, so the items are dropped. Offer show when any group's
+		// description is unpinned, hide when any is pinned.
+		const descriptionActions: Item[] = (() => {
+			if (!isGroupTarget || groupView === undefined) return [];
+
+			const groupsWithDescription = (workflowDocumentStore?.value?.allGroups ?? []).filter(
+				(group) => !!group.description?.trim(),
+			);
+			if (groupsWithDescription.length === 0) return [];
+
+			const anyDisplayed = groupsWithDescription.some((group) =>
+				groupView.isDescriptionVisible(group.id),
+			);
+			const anyHidden = groupsWithDescription.some(
+				(group) => !groupView.isDescriptionVisible(group.id),
+			);
+
+			const items: Item[] = [];
+			if (anyHidden) {
+				items.push({
+					id: 'show_all_descriptions',
+					divided: true,
+					label: i18n.baseText('contextMenu.showAllDescriptions'),
+				});
+			}
+			if (anyDisplayed) {
+				items.push({
+					id: 'hide_all_descriptions',
+					divided: !anyHidden,
+					label: i18n.baseText('contextMenu.hideAllDescriptions'),
+				});
+			}
+			return items;
+		})();
+
 		const groupActions: Item[] = isGroupTarget
 			? [
 					{
@@ -189,6 +229,7 @@ export function useContextMenuItems(
 						shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
 						disabled: isReadOnly.value,
 					},
+					...descriptionActions,
 				]
 			: [];
 

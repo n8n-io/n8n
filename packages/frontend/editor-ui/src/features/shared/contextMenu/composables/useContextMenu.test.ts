@@ -38,17 +38,32 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 // unavailable in this non-component harness — stub it with a mutable holder.
 // undefined mirrors a host without a canvas (items stay enabled).
 const groupViewState = vi.hoisted(() => ({
-	current: undefined as { isGroupCollapsed: (groupId: string) => boolean } | undefined,
+	current: undefined as
+		| {
+				isGroupCollapsed: (groupId: string) => boolean;
+				isDescriptionVisible: (groupId: string) => boolean;
+		  }
+		| undefined,
 }));
 vi.mock('./contextMenuGroupView', async (importOriginal) => ({
 	...(await importOriginal<typeof import('./contextMenuGroupView')>()),
 	injectContextMenuGroupView: () => groupViewState.current,
 }));
 
-/** Fakes the canvas group view: the given group ids are collapsed, the rest expanded. */
-function fakeGroupView(collapsedGroupIds: string[] = []) {
+/**
+ * Fakes the canvas group view: the given group ids are collapsed, the rest
+ * expanded; `visibleDescriptionGroupIds` have their description pinned.
+ */
+function fakeGroupView(
+	collapsedGroupIds: string[] = [],
+	visibleDescriptionGroupIds: string[] = [],
+) {
 	const collapsed = new Set(collapsedGroupIds);
-	groupViewState.current = { isGroupCollapsed: (groupId) => collapsed.has(groupId) };
+	const visibleDescriptions = new Set(visibleDescriptionGroupIds);
+	groupViewState.current = {
+		isGroupCollapsed: (groupId) => collapsed.has(groupId),
+		isDescriptionVisible: (groupId) => visibleDescriptions.has(groupId),
+	};
 }
 
 // useContextMenuItems resolves per-editor host overrides via inject, which is

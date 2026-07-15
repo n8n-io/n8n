@@ -60,6 +60,25 @@ export function useCanvasNodeGroupDescriptionVisibility(
 		setVisible(id, !isVisible(id));
 	}
 
+	// Bulk set for the "show/hide all descriptions" action — a single state
+	// update and persist for the whole batch instead of one per id.
+	function setVisibleForGroups(ids: string[], value: boolean) {
+		const next = new Set(visibleIds.value);
+		let changed = false;
+		for (const id of ids) {
+			if (value ? next.has(id) : !next.has(id)) continue;
+			if (value) {
+				next.add(id);
+			} else {
+				next.delete(id);
+			}
+			changed = true;
+		}
+		if (!changed) return;
+		visibleIds.value = next;
+		persist();
+	}
+
 	function removeDeleted(id: string) {
 		setVisible(id, false);
 	}
@@ -96,6 +115,7 @@ export function useCanvasNodeGroupDescriptionVisibility(
 		isVisible,
 		setVisible,
 		toggleVisible,
+		setVisibleForGroups,
 		removeDeleted,
 		restore,
 		reinitialize,
