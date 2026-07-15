@@ -513,6 +513,66 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(result.messages[1].agentTree?.toolCalls).toHaveLength(1);
 	});
 
+	it('keeps interleaved runs of one group in thread order', async () => {
+		// Background runs execute concurrently with their parent, so a group's
+		// facts interleave in the log. The fold must feed the reducer in seq
+		// order — the order the run-sync bootstrap and snapshot writer use —
+		// not run-by-run concatenation.
+		const block = (runId: string, text: string, responseId: string) =>
+			eventRow(
+				{ type: 'text-block', runId, agentId: 'agent-001', responseId, payload: { text } },
+				at,
+			);
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_a',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_b',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				at,
+			),
+			block('run_a', 'one', 'r-1'),
+			block('run_b', 'two', 'r-2'),
+			block('run_a', 'three', 'r-3'),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_b',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_a',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				at,
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		const timeline = result.messages[1].agentTree?.timeline ?? [];
+		const texts = timeline.map((entry) => ('content' in entry ? entry.content : ''));
+		expect(texts).toEqual(['one', 'two', 'three']);
+	});
+
 	it('keeps the stored snapshot tree for pre-log threads (no log rows)', async () => {
 		const tree = makeTree();
 		mockDbSnapshotStorage.getAll.mockResolvedValue([

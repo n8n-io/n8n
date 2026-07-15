@@ -90,48 +90,28 @@ function mergeMessagesById(stored: AgentDbMessage[], extras: AgentDbMessage[]): 
 	return [...byId.values()].sort((a, b) => messageCreatedAtMs(a) - messageCreatedAtMs(b));
 }
 
-type LogRun = { events: InstanceAiEvent[]; messageGroupId?: string; lastAt: Date };
-
-/** Group a thread's log rows (already in seq order) by run: the run's events,
- *  its message group (from run-start), and its last-write time (mimics the
- *  snapshot row's write-at-run-end timestamp, which the parser aligns
- *  messages by). */
-function indexLogRuns(
-	rows: Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>,
-): Map<string, LogRun> {
-	const runs = new Map<string, LogRun>();
-	for (const row of rows) {
-		if (!row.runId) continue;
-		let run = runs.get(row.runId);
-		if (!run) {
-			run = { events: [], lastAt: row.createdAt };
-			runs.set(row.runId, run);
-		}
-		run.events.push(row.event);
-		run.lastAt = row.createdAt;
-		if (row.event.type === 'run-start') {
-			const groupId = row.event.payload.messageGroupId;
-			if (typeof groupId === 'string' && groupId) run.messageGroupId = groupId;
-		}
-	}
-	return runs;
-}
-
 /** Snapshot-shaped entries derived from the log, grouped the way the snapshot
  *  writer groups its rows: by run-start messageGroupId, else one entry per
- *  run. The parser pairs these to assistant messages positionally, so the
- *  entry's createdAt is the run's last fact time (≈ the write-at-run-end
- *  timestamp a stored snapshot would carry). */
+ *  run. Events keep their thread (seq) order within each group — runs of one
+ *  group can interleave (background tasks run concurrently with their parent)
+ *  and the reducer must see facts in the order they happened, exactly as the
+ *  run-sync bootstrap and the snapshot writer feed it. The parser pairs
+ *  entries to assistant messages positionally, so the entry's createdAt is
+ *  the group's last fact time (≈ the write-at-run-end timestamp a stored
+ *  snapshot would carry). */
 function buildLogDerivedSnapshots(
-	runs: Map<string, LogRun>,
+	rows: Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>,
 	skipRunIds: Set<string>,
 ): AgentTreeSnapshot[] {
-	type Group = {
-		runIds: string[];
-		events: InstanceAiEvent[];
-		messageGroupId?: string;
-		lastAt: Date;
-	};
+	// A run's run-start is its first fact, so the run-to-group mapping is
+	// complete before any grouping decision needs it.
+	const groupKeyByRun = new Map<string, string>();
+	for (const row of rows) {
+		if (row.event.type === 'run-start') {
+			const groupId = row.event.payload.messageGroupId;
+			if (typeof groupId === 'string' && groupId) groupKeyByRun.set(row.runId, groupId);
+		}
+	}
 	// An excluded run poisons its whole message group: deriving a partial tree
 	// from the group's completed runs would pair it against a turn whose
 	// assistant message does not exist yet — the misalignment excludeRunIds
@@ -139,21 +119,30 @@ function buildLogDerivedSnapshots(
 	// history.
 	const skipGroupKeys = new Set<string>();
 	for (const runId of skipRunIds) {
-		const groupId = runs.get(runId)?.messageGroupId;
+		const groupId = groupKeyByRun.get(runId);
 		if (groupId) skipGroupKeys.add(groupId);
 	}
+
+	type Group = {
+		runIds: string[];
+		events: InstanceAiEvent[];
+		messageGroupId?: string;
+		lastAt: Date;
+	};
 	const groups = new Map<string, Group>();
-	for (const [runId, run] of runs) {
-		const key = run.messageGroupId ?? runId;
-		if (skipRunIds.has(runId) || skipGroupKeys.has(key)) continue;
+	for (const row of rows) {
+		if (!row.runId) continue;
+		const messageGroupId = groupKeyByRun.get(row.runId);
+		const key = messageGroupId ?? row.runId;
+		if (skipRunIds.has(row.runId) || skipGroupKeys.has(key)) continue;
 		let group = groups.get(key);
 		if (!group) {
-			group = { runIds: [], events: [], messageGroupId: run.messageGroupId, lastAt: run.lastAt };
+			group = { runIds: [], events: [], messageGroupId, lastAt: row.createdAt };
 			groups.set(key, group);
 		}
-		group.runIds.push(runId);
-		group.events.push(...run.events);
-		if (run.lastAt > group.lastAt) group.lastAt = run.lastAt;
+		if (!group.runIds.includes(row.runId)) group.runIds.push(row.runId);
+		group.events.push(row.event);
+		if (row.createdAt > group.lastAt) group.lastAt = row.createdAt;
 	}
 
 	const entries: AgentTreeSnapshot[] = [];
@@ -381,7 +370,7 @@ export class InstanceAiMemoryService {
 		// (INS-851), so this branch is a dev-instance safety, not a design.
 		if (rows.length === 0) return storedSnapshots;
 
-		const entries = buildLogDerivedSnapshots(indexLogRuns(rows), new Set(excludeRunIds ?? []));
+		const entries = buildLogDerivedSnapshots(rows, new Set(excludeRunIds ?? []));
 		if (entries.length === 0) return storedSnapshots;
 		entries.sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
 
