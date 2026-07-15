@@ -248,12 +248,8 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 		this,
 		'POST',
 		`/messages/${messageId}/${action}`,
-		body,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
 		index,
+		body,
 	);
 
 	if (additionalFields.attachments) {
@@ -288,28 +284,15 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 				this,
 				'POST',
 				`/messages/${responseData.id}/attachments`,
+				index,
 				attachment,
 				{},
-				undefined,
-				undefined,
-				undefined,
-				index,
 			);
 		}
 	}
 
 	if (!saveAsDraft) {
-		await microsoftApiRequest.call(
-			this,
-			'POST',
-			`/messages/${responseData.id}/send`,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			index,
-		);
+		await microsoftApiRequest.call(this, 'POST', `/messages/${responseData.id}/send`, index);
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(

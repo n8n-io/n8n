@@ -56,17 +56,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 
 	const body: IDataObject = { message };
 
-	await microsoftApiRequest.call(
-		this,
-		'POST',
-		'/sendMail',
-		body,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		index,
-	);
+	await microsoftApiRequest.call(this, 'POST', '/sendMail', index, body);
 
 	return items;
 }

@@ -20,12 +20,10 @@ async function search(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
-			undefined,
-			undefined,
-			0,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -38,17 +36,7 @@ async function search(
 			qs.$filter = `contains(${nameProperty}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(
-			this,
-			'GET',
-			resource,
-			undefined,
-			qs,
-			undefined,
-			undefined,
-			undefined,
-			0,
-		);
+		response = await microsoftApiRequest.call(this, 'GET', resource, 0, undefined, qs);
 	}
 
 	return {
@@ -90,12 +78,10 @@ export async function searchDrafts(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
-			undefined,
-			undefined,
-			0,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -109,17 +95,7 @@ export async function searchDrafts(
 			qs.$filter += ` AND contains(${'subject'}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(
-			this,
-			'GET',
-			'/messages',
-			undefined,
-			qs,
-			undefined,
-			undefined,
-			undefined,
-			0,
-		);
+		response = await microsoftApiRequest.call(this, 'GET', '/messages', 0, undefined, qs);
 	}
 
 	return {
@@ -146,12 +122,10 @@ export async function searchMessages(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
-			undefined,
-			undefined,
-			0,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -164,17 +138,7 @@ export async function searchMessages(
 			qs.$filter = `contains(${'subject'}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(
-			this,
-			'GET',
-			'/messages',
-			undefined,
-			qs,
-			undefined,
-			undefined,
-			undefined,
-			0,
-		);
+		response = await microsoftApiRequest.call(this, 'GET', '/messages', 0, undefined, qs);
 	}
 
 	return {
@@ -205,12 +169,10 @@ export async function searchEvents(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
-			undefined,
-			undefined,
-			0,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -227,12 +189,9 @@ export async function searchEvents(
 			this,
 			'GET',
 			`/calendars/${calendarId}/events`,
+			0,
 			undefined,
 			qs,
-			undefined,
-			undefined,
-			undefined,
-			0,
 		);
 	}
 
@@ -260,32 +219,20 @@ export async function searchFolders(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
-			undefined,
-			undefined,
-			0,
 		);
 	} else {
 		const qs: IDataObject = {
 			$top: 100,
 		};
 
-		response = await microsoftApiRequest.call(
-			this,
-			'GET',
-			'/mailFolders',
-			undefined,
-			qs,
-			undefined,
-			undefined,
-			undefined,
-			0,
-		);
+		response = await microsoftApiRequest.call(this, 'GET', '/mailFolders', 0, undefined, qs);
 	}
 
-	let folders = await getSubfolders.call(this, response.value as IDataObject[], true, 0);
+	let folders = await getSubfolders.call(this, response.value as IDataObject[], 0, true);
 
 	if (filter) {
 		filter = filter.toLowerCase();
@@ -321,12 +268,10 @@ export async function searchAttachments(
 			this,
 			'GET',
 			'',
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
-			undefined,
-			undefined,
-			0,
 		);
 	} else {
 		const qs: IDataObject = {
@@ -338,12 +283,9 @@ export async function searchAttachments(
 			this,
 			'GET',
 			`/messages/${messageId}/attachments`,
+			0,
 			undefined,
 			qs,
-			undefined,
-			undefined,
-			undefined,
-			0,
 		);
 	}
 

@@ -111,12 +111,9 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		this,
 		'GET',
 		`/messages/${draftId}`,
+		index,
 		undefined,
 		qs,
-		undefined,
-		undefined,
-		undefined,
-		index,
 	);
 
 	if (output === 'simple') {

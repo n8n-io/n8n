@@ -48,7 +48,7 @@ export function getOutlookCredentialType(
 export function resolveMailbox(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	credentialType: OutlookCredentialType,
-	itemIndex = 0,
+	itemIndex: number,
 ): string | undefined {
 	if (credentialType !== 'microsoftEntraServicePrincipalApi') return undefined;
 	// loadOptions'/poll's getNodeParameter has no itemIndex arg (only execute does), so
@@ -65,19 +65,20 @@ export function resolveMailbox(
 	return mailbox;
 }
 
-// `itemIndex` is REQUIRED so the compiler enforces the per-item contract: execute
-// call sites pass the loop index; non-execute call sites (poll/loadOptions) pass a
-// literal 0, where `getNodeParameter`'s 2nd arg is a fallback, not an index.
+// `itemIndex` is REQUIRED (and placed before the defaulted params so call sites
+// need no positional padding): execute call sites pass the loop index; non-execute
+// call sites (poll/loadOptions) pass a literal 0, where `getNodeParameter`'s 2nd
+// arg is a fallback, not an index.
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
+	itemIndex: number,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri: string | undefined,
+	uri?: string,
 	headers: IDataObject = {},
 	option: IDataObject = { json: true },
-	itemIndex: number,
 ) {
 	const credentialType = getOutlookCredentialType.call(this);
 	const credentials = await this.getCredentials(credentialType);
@@ -151,10 +152,10 @@ export async function microsoftApiRequestAllItems(
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
+	itemIndex: number,
 	body: IDataObject = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
-	itemIndex: number,
 ) {
 	const returnData: IDataObject[] = [];
 
@@ -167,12 +168,11 @@ export async function microsoftApiRequestAllItems(
 			this,
 			method,
 			endpoint,
+			itemIndex,
 			body,
 			nextLink ? undefined : query, // Do not add query parameters as nextLink already contains them
 			nextLink,
 			headers,
-			undefined,
-			itemIndex,
 		);
 		nextLink = responseData['@odata.nextLink'];
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
@@ -202,22 +202,20 @@ export async function downloadAttachments(
 				'value',
 				'GET',
 				`/messages/${message.id}/attachments`,
-				{},
-				undefined,
-				undefined,
 				itemIndex,
+				{},
 			);
 			for (const [index, attachment] of attachments.entries()) {
 				const response = await microsoftApiRequest.call(
 					this,
 					'GET',
 					`/messages/${message.id}/attachments/${attachment.id}/$value`,
+					itemIndex,
 					undefined,
 					{},
 					undefined,
 					{},
 					{ encoding: null, resolveWithFullResponse: true },
-					itemIndex,
 				);
 
 				const data = Buffer.from(response.body as string, 'utf8');
@@ -247,12 +245,12 @@ export async function getMimeContent(
 		this,
 		'GET',
 		`/messages/${messageId}/$value`,
+		itemIndex,
 		undefined,
 		{},
 		undefined,
 		{},
 		{ encoding: null, resolveWithFullResponse: true },
-		itemIndex,
 	);
 
 	let mimeType: string | undefined;
@@ -275,8 +273,8 @@ export async function getMimeContent(
 export async function getSubfolders(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	folders: IDataObject[],
-	addPathToDisplayName = false,
 	itemIndex: number,
+	addPathToDisplayName = false,
 ) {
 	const returnData: IDataObject[] = [...folders];
 	for (const folder of folders) {
@@ -286,9 +284,6 @@ export async function getSubfolders(
 				'value',
 				'GET',
 				`/mailFolders/${folder.id}/childFolders`,
-				undefined,
-				undefined,
-				undefined,
 				itemIndex,
 			);
 
@@ -305,8 +300,8 @@ export async function getSubfolders(
 				...(await getSubfolders.call(
 					this,
 					subfolders as IDataObject[],
-					addPathToDisplayName,
 					itemIndex,
+					addPathToDisplayName,
 				)),
 			);
 		}

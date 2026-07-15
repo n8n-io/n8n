@@ -91,12 +91,8 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 			this,
 			'POST',
 			`/messages/${messageId}/attachments/createUploadSession`,
-			body,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
 			index,
+			body,
 		);
 		const uploadUrl = responseData.uploadUrl;
 
@@ -134,12 +130,9 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 			this,
 			'POST',
 			`/messages/${messageId}/attachments`,
+			index,
 			body,
 			{},
-			undefined,
-			undefined,
-			undefined,
-			index,
 		);
 	}
 

@@ -27,12 +27,9 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		this,
 		'GET',
 		`/calendars/${calendarId}`,
+		index,
 		undefined,
 		qs,
-		undefined,
-		undefined,
-		undefined,
-		index,
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(

@@ -142,12 +142,9 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		this,
 		'GET',
 		`/messages/${messageId}`,
+		index,
 		undefined,
 		qs,
-		undefined,
-		undefined,
-		undefined,
-		index,
 	);
 
 	if (output === 'simple') {

@@ -64,27 +64,18 @@ describe('Test MicrosoftOutlookV2, message => sendAndWait', () => {
 		expect(transport.microsoftApiRequest).toHaveBeenCalledTimes(1);
 		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
 
-		expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
-			'POST',
-			'/sendMail',
-			{
-				message: {
-					body: {
-						content: expect.stringContaining(
-							'href="http://localhost/waiting-webhook/nodeID?approved=true&signature=abc"',
-						),
-						contentType: 'html',
-					},
-					subject: 'my subject',
-					toRecipients: [{ emailAddress: { address: 'my@outlook.com' } }],
+		expect(transport.microsoftApiRequest).toHaveBeenCalledWith('POST', '/sendMail', 0, {
+			message: {
+				body: {
+					content: expect.stringContaining(
+						'href="http://localhost/waiting-webhook/nodeID?approved=true&signature=abc"',
+					),
+					contentType: 'html',
 				},
+				subject: 'my subject',
+				toRecipients: [{ emailAddress: { address: 'my@outlook.com' } }],
 			},
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			0,
-		);
+		});
 	});
 
 	it('should route API errors to error output when continueOnFail is true', async () => {

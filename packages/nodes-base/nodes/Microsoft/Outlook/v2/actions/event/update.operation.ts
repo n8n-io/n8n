@@ -280,17 +280,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 
 	const endpoint = `/calendar/events/${eventId}`;
 
-	const responseData = await microsoftApiRequest.call(
-		this,
-		'PATCH',
-		endpoint,
-		body,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		index,
-	);
+	const responseData = await microsoftApiRequest.call(this, 'PATCH', endpoint, index, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData as IDataObject),

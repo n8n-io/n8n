@@ -190,6 +190,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages',
+				0,
 				expect.objectContaining({
 					subject: 'Test Draft with Attachment',
 					body: expect.objectContaining({
@@ -204,10 +205,6 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 					],
 				}),
 				{},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 
 			expect(result).toEqual([
@@ -254,6 +251,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages',
+				2,
 				expect.objectContaining({
 					attachments: [
 						{
@@ -264,10 +262,6 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 					],
 				}),
 				{},
-				undefined,
-				undefined,
-				undefined,
-				2,
 			);
 		});
 
@@ -306,6 +300,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages',
+				0,
 				expect.objectContaining({
 					attachments: expect.arrayContaining([
 						expect.objectContaining({
@@ -319,10 +314,6 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 					]),
 				}),
 				{},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 		});
 	});

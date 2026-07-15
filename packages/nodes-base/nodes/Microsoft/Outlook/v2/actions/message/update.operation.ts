@@ -194,12 +194,8 @@ export async function execute(this: IExecuteFunctions, index: number) {
 			this,
 			'POST',
 			`/messages/${messageId}/move`,
-			body,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
 			index,
+			body,
 		);
 
 		delete updateFields.folderId;
@@ -224,12 +220,9 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		this,
 		'PATCH',
 		`/messages/${messageId}`,
+		index,
 		body,
 		{},
-		undefined,
-		undefined,
-		undefined,
-		index,
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(

@@ -56,17 +56,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		endpoint = '/mailFolders';
 	}
 
-	const responseData = await microsoftApiRequest.call(
-		this,
-		'POST',
-		endpoint,
-		body,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		index,
-	);
+	const responseData = await microsoftApiRequest.call(this, 'POST', endpoint, index, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData as IDataObject[]),

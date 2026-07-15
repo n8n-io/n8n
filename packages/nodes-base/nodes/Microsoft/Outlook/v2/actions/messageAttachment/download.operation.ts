@@ -43,12 +43,9 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		this,
 		'GET',
 		`/messages/${messageId}/attachments/${attachmentId}`,
+		index,
 		undefined,
 		{ $select: 'id,name,contentType' },
-		undefined,
-		undefined,
-		undefined,
-		index,
 	);
 
 	let mimeType: string | undefined;
@@ -61,12 +58,12 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		this,
 		'GET',
 		`/messages/${messageId}/attachments/${attachmentId}/$value`,
+		index,
 		undefined,
 		{},
 		undefined,
 		{},
 		{ encoding: null, resolveWithFullResponse: true },
-		index,
 	);
 
 	const newItem: INodeExecutionData = {

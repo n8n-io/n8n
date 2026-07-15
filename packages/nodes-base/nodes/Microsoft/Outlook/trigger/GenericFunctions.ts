@@ -58,16 +58,9 @@ export async function getPollResponse(
 				endpoints.map(
 					async (endpoint) =>
 						// Poll context: 0 is the transport's fallback read, not an item index.
-						await microsoftApiRequestAllItems.call(
-							this,
-							'value',
-							'GET',
-							endpoint,
-							undefined,
-							{ ...qs },
-							undefined,
-							0,
-						),
+						await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, 0, undefined, {
+							...qs,
+						}),
 				),
 			);
 			responseData = results.flat();
@@ -80,17 +73,7 @@ export async function getPollResponse(
 				endpoints.map(
 					async (endpoint) =>
 						// Poll context: 0 is the transport's fallback read, not an item index.
-						await microsoftApiRequest.call(
-							this,
-							'GET',
-							endpoint,
-							undefined,
-							{ ...qs },
-							undefined,
-							undefined,
-							undefined,
-							0,
-						),
+						await microsoftApiRequest.call(this, 'GET', endpoint, 0, undefined, { ...qs }),
 				),
 			);
 			responseData = results.flatMap((result) => (result.value as IDataObject[]) ?? []).slice(0, 1);

@@ -49,15 +49,12 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/contacts',
+				0,
 				undefined,
 				{
 					$select: 'id,displayName',
 					$top: 100,
 				},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -80,16 +77,13 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/contacts',
+				0,
 				undefined,
 				{
 					$select: 'id,displayName',
 					$top: 100,
 					$filter: "contains(displayName, 'John')",
 				},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 			expect(result).toEqual({
 				results: [{ name: 'John Doe', value: 'contact1' }],
@@ -110,12 +104,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'',
+				0,
 				undefined,
 				undefined,
 				paginationToken,
-				undefined,
-				undefined,
-				0,
 			);
 		});
 	});
@@ -136,15 +128,12 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/calendars',
+				0,
 				undefined,
 				{
 					$select: 'id,name',
 					$top: 100,
 				},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -176,16 +165,13 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/messages',
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview,webLink',
 					$top: 100,
 					$filter: 'isDraft eq true',
 				},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -218,16 +204,13 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/messages',
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview,webLink',
 					$top: 100,
 					$filter: "isDraft eq true AND contains(subject, 'Important')",
 				},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 		});
 
@@ -271,15 +254,12 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/messages',
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview,webLink',
 					$top: 100,
 				},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -312,16 +292,13 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/messages',
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview,webLink',
 					$top: 100,
 					$filter: "contains(subject, 'Meeting')",
 				},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 		});
 	});
@@ -358,15 +335,12 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				`/calendars/${calendarId}/events`,
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview',
 					$top: 100,
 				},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -400,16 +374,13 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				`/calendars/${calendarId}/events`,
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview',
 					$top: 100,
 					$filter: "contains(subject, 'Project')",
 				},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 		});
 	});
@@ -440,16 +411,13 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/mailFolders',
+				0,
 				undefined,
 				{
 					$top: 100,
 				},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
-			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse.value, true, 0);
+			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse.value, 0, true);
 			expect(result).toEqual({
 				results: [
 					{
@@ -549,15 +517,12 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				`/messages/${messageId}/attachments`,
+				0,
 				undefined,
 				{
 					$select: 'id,name',
 					$top: 100,
 				},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 			expect(result).toEqual({
 				results: [
@@ -584,12 +549,10 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'',
+				0,
 				undefined,
 				undefined,
 				paginationToken,
-				undefined,
-				undefined,
-				0,
 			);
 		});
 	});

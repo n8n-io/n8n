@@ -14,9 +14,6 @@ export async function getCategoriesNames(
 		'value',
 		'GET',
 		'/outlook/masterCategories',
-		undefined,
-		undefined,
-		undefined,
 		0,
 	);
 	for (const category of categories) {
@@ -35,12 +32,10 @@ export async function getFolders(this: ILoadOptionsFunctions): Promise<INodeProp
 		'value',
 		'GET',
 		'/mailFolders',
-		{},
-		undefined,
-		undefined,
 		0,
+		{},
 	);
-	const folders = await getSubfolders.call(this, response, true, 0);
+	const folders = await getSubfolders.call(this, response, 0, true);
 	for (const folder of folders) {
 		returnData.push({
 			name: folder.displayName as string,
@@ -59,10 +54,8 @@ export async function getCalendarGroups(
 		'value',
 		'GET',
 		'/calendarGroups',
-		{},
-		undefined,
-		undefined,
 		0,
+		{},
 	);
 	for (const calendar of calendars) {
 		returnData.push({

@@ -195,12 +195,9 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		this,
 		'PATCH',
 		`/messages/${draftId}`,
+		index,
 		body,
 		{},
-		undefined,
-		undefined,
-		undefined,
-		index,
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(

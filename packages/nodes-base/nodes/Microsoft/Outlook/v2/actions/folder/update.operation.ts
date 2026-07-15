@@ -39,14 +39,8 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		this,
 		'PATCH',
 		`/mailFolders/${folderId}`,
-		{
-			displayName,
-		},
-		undefined,
-		undefined,
-		undefined,
-		undefined,
 		index,
+		{ displayName },
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(

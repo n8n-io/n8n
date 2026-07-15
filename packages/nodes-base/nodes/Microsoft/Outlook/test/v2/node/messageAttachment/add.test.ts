@@ -90,16 +90,13 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages/AAMkAGI2TG93AAA=/attachments',
+				0,
 				{
 					'@odata.type': '#microsoft.graph.fileAttachment',
 					name: 'test-file.txt',
 					contentBytes: 'SGVsbG8gV29ybGQ=',
 				},
 				{},
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 
 			expect(result).toEqual([
@@ -143,16 +140,13 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages/AAMkAGI2TG93AAA=/attachments',
+				2,
 				{
 					'@odata.type': '#microsoft.graph.fileAttachment',
 					name: 'custom-name.pdf',
 					contentBytes: 'JVBERi0xLjQK',
 				},
 				{},
-				undefined,
-				undefined,
-				undefined,
-				2,
 			);
 		});
 
@@ -232,6 +226,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages/AAMkAGI2TG93BBB=/attachments/createUploadSession',
+				0,
 				{
 					AttachmentItem: {
 						attachmentType: 'file',
@@ -239,11 +234,6 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 						size: 4 * 1024 * 1024,
 					},
 				},
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				0,
 			);
 
 			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledWith(
