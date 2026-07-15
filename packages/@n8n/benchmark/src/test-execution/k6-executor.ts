@@ -6,7 +6,8 @@ import { $, which, tmpfile } from 'zx';
 import { AppMetricsPoller } from '@/test-execution/app-metrics-poller';
 import { buildTestReport, type K6Tag } from '@/test-execution/test-report';
 import type { Scenario } from '@/types/scenario';
-import { K6EndOfTestSummary } from './k6-summary';
+
+import type { K6EndOfTestSummary } from './k6-summary';
 export type { K6Tag };
 
 export type K6ExecutorOpts = {
