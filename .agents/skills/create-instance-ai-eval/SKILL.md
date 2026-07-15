@@ -1,28 +1,30 @@
 ---
 name: n8n:create-instance-ai-eval
 description: >-
-  Authors a new Instance AI workflow eval case in
-  packages/@n8n/instance-ai/evaluations/data/workflows — build cases,
-  behaviour/process cases, credential cases, and seeded (mid-conversation)
-  cases — with intent-driven expectations calibrated against a real build. Use
-  when adding or changing an Instance AI workflow eval, or debugging why one is
-  flaky.
+  Authors a new Instance AI workflow eval case — written locally as JSON,
+  calibrated against a real build, then pushed to the LangTracer suite CI runs
+  — build cases, behaviour/process cases, credential cases, and seeded
+  (mid-conversation) cases — with intent-driven expectations. Use when adding
+  or changing an Instance AI workflow eval, or debugging why one is flaky.
 ---
 
 # Create an Instance AI workflow eval
 
-Each eval is **one JSON file** in
-`packages/@n8n/instance-ai/evaluations/data/workflows/`. The loader
-auto-discovers `*.json` and validates against
-[`schema.ts`](../../../packages/@n8n/instance-ai/evaluations/data/workflows/schema.ts)
-(`.strict()` — unknown keys fail at load). No registration step. The eval
+Each eval is **one JSON case** — authored locally as a file in
+`packages/@n8n/instance-ai/evaluations/data/workflows/` (the disk loader
+auto-discovers `*.json`, no registration step), with a LangTracer suite as its
+durable home. Cases validate against
+[`harness/schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/schema.ts)
+(`.strict()` — unknown keys fail at load). The eval
 [README](../../../packages/@n8n/instance-ai/evaluations/README.md) is the
 exhaustive field reference; this skill is the opinionated *how*.
 
 > **Committing new case JSONs into the repo is no longer the recommended
 > approach.** Author the file locally (uncommitted), calibrate it against a real
-> build, then **push it to a curated lang-tracer suite** with
-> `eval:langtracer-push` (see [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)).
+> build, then **push it to a lang-tracer suite** with `eval:langtracer-push`
+> (see [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)) —
+> `--suite n8n-workflows` for the corpus n8n CI runs, or a capability suite
+> like `workflow-building` that runs on LangTracer's own automation.
 > The suite is the home for the case; the eval CLI reads it back via
 > `--source langtracer`. You still write the JSON file — it's just the input to
 > the push, not a committed artifact.
@@ -294,8 +296,8 @@ What each piece is doing:
   never spoken. Here it withholds values until asked and rejects a plan that
   misses the label filter. Keep the whole script in one turn and encode ordering
   inside it (don't fabricate assistant "done" turns to sequence steps — see
-  [`case-shapes.md`](case-shapes.md)). `applies-each-change-when-asked` is a good
-  real example.
+  [`case-shapes.md`](case-shapes.md)). `applies-each-change-when-asked` (in the
+  `n8n-workflows` LangTracer suite) is a good real example.
 - **`dataSetup` describes only what external services return.** That's the layer
   the harness controls (below).
 
