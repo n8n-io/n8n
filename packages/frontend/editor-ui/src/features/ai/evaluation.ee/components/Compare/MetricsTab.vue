@@ -5,10 +5,13 @@ import { useI18n } from '@n8n/i18n';
 import type { CompareMetricGroup, CompareVersion } from '../../composables/useCompareData';
 import { formatMetricPercent } from '../../evaluation.utils';
 import { versionColorVar } from '../shared/versionPalette';
+import MetricCriteria from './MetricCriteria.vue';
 
 defineProps<{
 	versions: CompareVersion[];
 	metricGroups: CompareMetricGroup[];
+	// metric name → its custom LLM-judge prompt, when configured.
+	metricPrompts?: Record<string, string>;
 }>();
 
 const i18n = useI18n();
@@ -30,7 +33,12 @@ const i18n = useI18n();
 			</thead>
 			<tbody>
 				<tr v-for="group in metricGroups" :key="group.key" data-test-id="compare-metrics-row">
-					<td>{{ group.label }}</td>
+					<td>
+						<div :class="$style.metric">
+							<N8nText size="xsmall">{{ group.label }}</N8nText>
+							<MetricCriteria :metric-key="group.key" :prompt="metricPrompts?.[group.key]" />
+						</div>
+					</td>
 					<td
 						v-for="(value, versionIndex) in group.values"
 						:key="versionIndex"
@@ -70,6 +78,14 @@ const i18n = useI18n();
 
 .value {
 	text-align: center;
+	vertical-align: top;
+}
+
+.metric {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	max-width: 320px;
 }
 
 .head {

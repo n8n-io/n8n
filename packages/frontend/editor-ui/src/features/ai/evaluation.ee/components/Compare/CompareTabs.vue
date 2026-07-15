@@ -19,6 +19,8 @@ const props = defineProps<{
 	casesLoading: boolean;
 	casesError?: boolean;
 	workflowId: string;
+	// metric name → its custom LLM-judge prompt, when configured.
+	metricPrompts?: Record<string, string>;
 }>();
 
 const i18n = useI18n();
@@ -99,6 +101,7 @@ function onDrilldown(caseIndex: number) {
 				v-else-if="activeTab === 'metrics'"
 				:versions="versions"
 				:metric-groups="metricGroups"
+				:metric-prompts="metricPrompts"
 			/>
 
 			<WorkflowDiffTab v-else :versions="versions" :workflow-id="workflowId" />

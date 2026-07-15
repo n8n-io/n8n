@@ -4,6 +4,7 @@ import {
 	ONE_TO_FIVE_METRIC_KEYS,
 	RESERVED_METRIC_KEYS,
 } from '@n8n/api-types';
+import type { BaseTextKey } from '@n8n/i18n';
 import type { JsonValue } from 'n8n-workflow';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
@@ -269,6 +270,23 @@ export function getMetricCategory(metric: string | undefined): MetricCategory {
 		default:
 			return 'custom';
 	}
+}
+
+// Short "what this measures" copy for the built-in metrics, mirrored from the
+// Evaluation node's metric options. Custom/unknown metrics have no canned
+// description (the UI just shows the name).
+const METRIC_DESCRIPTION_KEYS: Partial<Record<string, BaseTextKey>> = {
+	correctness: 'evaluation.metric.description.correctness',
+	helpfulness: 'evaluation.metric.description.helpfulness',
+	stringSimilarity: 'evaluation.metric.description.stringSimilarity',
+	categorization: 'evaluation.metric.description.categorization',
+	toolsUsed: 'evaluation.metric.description.toolsUsed',
+};
+
+// i18n key for a metric's description, or null for custom/unknown metrics.
+export function getMetricDescriptionKey(metric: string | undefined): BaseTextKey | null {
+	if (metric === undefined) return null;
+	return METRIC_DESCRIPTION_KEYS[metric] ?? null;
 }
 
 function formatScoreNumerator(value: number): string {

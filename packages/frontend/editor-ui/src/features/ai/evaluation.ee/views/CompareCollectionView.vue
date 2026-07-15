@@ -18,6 +18,7 @@ import { useCompareData } from '../composables/useCompareData';
 import { useCompareCases } from '../composables/useCompareCases';
 import { useEvalCollectionsFlag } from '../composables/useEvalCollectionsFlag';
 import { useEvalCollectionsStore } from '../evalCollections.store';
+import { useEvaluationStore } from '../evaluation.store';
 
 const props = defineProps<{
 	workflowId: string;
@@ -29,10 +30,31 @@ const router = useRouter();
 const toast = useToast();
 const telemetry = useTelemetry();
 const store = useEvalCollectionsStore();
+const evaluationStore = useEvaluationStore();
 const postHog = usePostHog();
 const isEvalCollectionsEnabled = useEvalCollectionsFlag();
 
 const detail = computed(() => store.getDetail(props.collectionId));
+
+// metric name → its custom LLM-judge prompt (the specific criteria the user
+// configured), sourced from the collection's evaluation config. Run metrics are
+// keyed by the metric's `name` (see the workflow compiler), so the map keys line
+// up with the compare view's metric keys. Empty until the config resolves.
+const metricPrompts = computed<Record<string, string>>(() => {
+	const configId = detail.value?.evaluationConfigId;
+	if (!configId) return {};
+	const config = (evaluationStore.evaluationConfigsByWorkflowId[props.workflowId] ?? []).find(
+		(candidate) => candidate.id === configId,
+	);
+	if (!config) return {};
+	const prompts: Record<string, string> = {};
+	for (const metric of config.metrics) {
+		if (metric.type === 'llm_judge' && metric.config.prompt) {
+			prompts[metric.name] = metric.config.prompt;
+		}
+	}
+	return prompts;
+});
 const { compareData } = useCompareData(detail);
 const workflowIdRef = computed(() => props.workflowId);
 const {
@@ -88,6 +110,9 @@ async function load(workflowId: string, collectionId: string) {
 	notFound.value = false;
 	try {
 		await store.fetchCollectionDetail(workflowId, collectionId);
+		// Best-effort: metric criteria come from the eval config. A failure here
+		// just means the compare view shows metric names without their criteria.
+		await evaluationStore.fetchEvaluationConfigs(workflowId).catch(() => null);
 		// If we left or switched collections mid-fetch, `fetchCollectionDetail`
 		// may have just (re)armed polling for a collection we're no longer
 		// showing — stop it so the timer doesn't outlive the view.
@@ -177,7 +202,11 @@ onBeforeUnmount(() => {
 				:versions="compareData.versions"
 				:best-version-index="compareData.bestVersionIndex"
 			/>
-			<ScoreChart :metric-groups="compareData.metricGroups" :versions="compareData.versions" />
+			<ScoreChart
+				:metric-groups="compareData.metricGroups"
+				:versions="compareData.versions"
+				:metric-prompts="metricPrompts"
+			/>
 			<!-- Key by collection so navigating between compare views remounts the
 			     card and re-runs its fetch-on-mount, rather than relying on the
 			     surrounding v-if to cycle through null. -->
@@ -189,6 +218,7 @@ onBeforeUnmount(() => {
 				:cases-loading="casesLoading"
 				:cases-error="casesError"
 				:workflow-id="workflowId"
+				:metric-prompts="metricPrompts"
 			/>
 		</template>
 	</div>
