@@ -213,6 +213,31 @@ describe('ai-tools', () => {
 			});
 		});
 
+		it('should preserve codex alias so tool variants stay searchable by alias', () => {
+			fullNodeWrapper.description.codex = {
+				categories: ['Existing'],
+				subcategories: {
+					Existing: ['Category'],
+				},
+				alias: ['scrape', 'crawl'],
+			};
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).toEqual({
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Other Tools'],
+				},
+				resources: {},
+				alias: ['scrape', 'crawl'],
+			});
+		});
+
+		it('should not add an alias key when the source node has none', () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).not.toHaveProperty('alias');
+		});
+
 		it('should handle nodes with very long names', () => {
 			fullNodeWrapper.description.name = 'veryLongNodeNameThatExceedsNormalLimits'.repeat(10);
 			fullNodeWrapper.description.displayName =

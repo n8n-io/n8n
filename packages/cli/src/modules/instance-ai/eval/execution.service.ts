@@ -40,6 +40,7 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -90,6 +91,7 @@ export class EvalExecutionService {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {}
 
 	async executeWithLlmMock(
@@ -290,6 +292,7 @@ export class EvalExecutionService {
 							globalContext || scenarioHints
 								? { dataDescription: globalContext, testScenario: scenarioHints }
 								: undefined,
+						outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
 					}),
 			);
 

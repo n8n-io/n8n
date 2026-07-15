@@ -75,7 +75,12 @@ import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runn
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
-export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
+/**
+ * `inline` runs an agent defined in a workflow node's parameters: no entity
+ * row exists, so anything keyed on a real agent id (checkpoints, knowledge
+ * files) and top-level extras (integrations, delegation) must stay off.
+ */
+export type AgentRuntimeProfile = 'top-level' | 'sub-agent' | 'inline';
 
 export interface SubAgentDelegationConfig {
 	sourcesById: Record<string, SubAgentSource>;
@@ -514,6 +519,7 @@ export class AgentRuntimeReconstructionService {
 		agent.tool(createGetEnvironmentTool());
 
 		if (
+			runtimeProfile !== 'inline' &&
 			isAgentKnowledgeBaseEnabled(this.agentsConfig) &&
 			(await this.agentFileRepository.hasFilesForAgent(agentId))
 		) {
@@ -600,7 +606,9 @@ export class AgentRuntimeReconstructionService {
 			this.attachWriteTodosTool(agent, agentId);
 		}
 
-		if (!agent.hasCheckpointStorage()) {
+		// Inline agents get no checkpoint storage: `agent_checkpoints.agentId`
+		// is an FK to `agents`, and a synthetic inline id has no entity row.
+		if (runtimeProfile !== 'inline' && !agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 		}
 	}
