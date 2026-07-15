@@ -184,9 +184,7 @@ async function dismissContext(key: string) {
 	const pending = pendingComposerContext?.value;
 	if (pendingComposerContext && pending && handoffContextKey(pending) === key) {
 		pendingComposerContext.value = null;
-		return;
 	}
-
 	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
 	dismissedKeys.add(key);
 	await store.updateThreadMetadata(thread.id, {
