@@ -64,7 +64,9 @@ import {
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
 	orchestratorAgentId,
+	resolveAgentPreviewSession,
 	saveAgentBuilderTarget,
+	saveAgentPreviewSession,
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type ManagedBackgroundTask,
@@ -2221,6 +2223,37 @@ export class InstanceAiService {
 		}
 	}
 
+	/**
+	 * Hydrate the thread-persisted preview-session reference (if any) and wire
+	 * the on-demand transcript resolver. Must run before createInstanceAgent so
+	 * createOrchestrationTools can register get-session on follow-up turns.
+	 */
+	private async bindAgentPreviewSession(
+		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
+	): Promise<void> {
+		await resolveAgentPreviewSession(context);
+		const projectId = context.projectId;
+		if (!context.agentPreviewSession || !projectId) return;
+
+		context.resolvePreviewSession = async (ref) => {
+			const service = this.getAgentExecutionService();
+			if (!service) return null;
+			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId);
+			if (!detail) return null;
+			const transcript = formatPreviewSessionContext(
+				detail.thread,
+				detail.executions,
+				ref.executionId,
+			);
+			if (transcript === null) return null;
+			return {
+				title: detail.thread.title?.trim() || `Session #${detail.thread.sessionNumber}`,
+				sessionNumber: detail.thread.sessionNumber,
+				transcript,
+			};
+		};
+	}
+
 	private async dispatchPlannedTask(
 		task: PlannedTaskRecord,
 		context: OrchestrationContext,
@@ -3216,23 +3249,8 @@ export class InstanceAiService {
 					threadId: handoffContext.threadId,
 					...(handoffContext.executionId ? { executionId: handoffContext.executionId } : {}),
 				};
-				context.resolvePreviewSession = async (ref) => {
-					const service = this.getAgentExecutionService();
-					if (!service) return null;
-					const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId);
-					if (!detail) return null;
-					const transcript = formatPreviewSessionContext(
-						detail.thread,
-						detail.executions,
-						ref.executionId,
-					);
-					if (transcript === null) return null;
-					return {
-						title: detail.thread.title?.trim() || `Session #${detail.thread.sessionNumber}`,
-						sessionNumber: detail.thread.sessionNumber,
-						transcript,
-					};
-				};
+				// Persist so follow-up turns (no handoffContext) can still register get-session.
+				await saveAgentPreviewSession(context, context.agentPreviewSession);
 			} else {
 				handoffContextBlock = buildHandoffContextBlock(handoffContext);
 			}
@@ -4140,6 +4158,7 @@ export class InstanceAiService {
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
+		await this.bindAgentPreviewSession(environment.context);
 		const mcpServers = await this.buildMcpServers(
 			user,
 			threadId,

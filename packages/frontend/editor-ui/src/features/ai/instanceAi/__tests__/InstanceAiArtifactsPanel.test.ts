@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent } from '@testing-library/vue';
-import { defineComponent, h, nextTick, reactive } from 'vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
+import { IconBodyLoaderKey } from '@n8n/design-system';
+import { defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { TaskList } from '@n8n/api-types';
 import type { ResourceEntry } from '../useResourceRegistry';
@@ -17,6 +18,7 @@ const storeState = reactive({
 const metadataState = reactive({
 	value: undefined as Record<string, unknown> | undefined,
 });
+const metadataState = ref<Record<string, unknown> | undefined>(undefined);
 const updateThreadMetadataMock = vi.fn(
 	async (_threadId: string, metadata: Record<string, unknown>) => {
 		metadataState.value = { ...metadataState.value, ...metadata };
@@ -34,6 +36,10 @@ vi.mock('../instanceAi.store', () => ({
 const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
 	pinia: createTestingPinia(),
 	global: {
+		provide: {
+			// Lucide-only icons (outside the curated set) need the async body loader.
+			[IconBodyLoaderKey as symbol]: async () => '<path d="M1 1"/>',
+		},
 		stubs: {
 			ConnectionsCard: defineComponent({
 				props: {
@@ -149,7 +155,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(getAllByTestId('instance-ai-context-row')).toHaveLength(1);
 	});
 
-	it('renders agent preview handoff context as agent name + session title when carried', () => {
+	it('renders agent preview handoff context as agent name + session title when carried', async () => {
 		storeState.messages = [
 			{
 				role: 'user',
@@ -168,7 +174,9 @@ describe('InstanceAiArtifactsPanel', () => {
 		const { getByText, container } = renderComponent();
 
 		expect(getByText('SEO Auditor — Help with tone')).toBeInTheDocument();
-		expect(container.querySelector('[data-icon="megaphone"]')).toBeInTheDocument();
+		await waitFor(() => {
+			expect(container.querySelector('[data-icon="megaphone"]')).toBeInTheDocument();
+		});
 	});
 
 	it('renders agent preview handoff context as the session title when only it is carried', () => {
@@ -204,6 +212,103 @@ describe('InstanceAiArtifactsPanel', () => {
 		];
 
 		const { getByText } = renderComponent();
+
+		expect(getByText('Context')).toBeInTheDocument();
+		expect(getByText('Gmail OAuth2 API')).toBeInTheDocument();
+		expect(getByText('Credential setup')).toBeInTheDocument();
+	});
+
+	it('renders pending handoff context from the composer before any message is sent', () => {
+		const pendingComposerContext = ref({
+			source: 'agent-preview' as const,
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			agentName: 'SEO Auditor',
+		});
+
+		const { getByText, getAllByTestId } = renderComponent({
+			global: {
+				provide: {
+					pendingComposerContext,
+				},
+			},
+		});
+
+		expect(getByText('Context')).toBeInTheDocument();
+		expect(getByText('SEO Auditor session')).toBeInTheDocument();
+		expect(getByText('Preview session')).toBeInTheDocument();
+		expect(getAllByTestId('instance-ai-context-row')).toHaveLength(1);
+	});
+
+	it('does not duplicate pending handoff context after it is also on a user message', () => {
+		const pendingComposerContext = ref({
+			source: 'agent-preview' as const,
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			agentName: 'SEO Auditor',
+		});
+		storeState.messages = [
+			{
+				role: 'user',
+				context: {
+					source: 'agent-preview',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
+					agentName: 'SEO Auditor',
+				},
+			},
+		];
+
+		const { getAllByTestId } = renderComponent({
+			global: {
+				provide: {
+					pendingComposerContext,
+				},
+			},
+		});
+
+		expect(getAllByTestId('instance-ai-context-row')).toHaveLength(1);
+	});
+
+	it('clears pending handoff context on dismiss without writing thread metadata', async () => {
+		const pendingComposerContext = ref({
+			source: 'agent-preview' as const,
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			agentName: 'SEO Auditor',
+		});
+
+		const { getByTestId, queryByText } = renderComponent({
+			global: {
+				provide: {
+					pendingComposerContext,
+				},
+			},
+		});
+
+		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
+
+		expect(pendingComposerContext.value).toBeNull();
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
+		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
+	});
+
+	it('renders pending credential handoff context before any message is sent', () => {
+		const pendingComposerContext = ref({
+			source: 'credential-modal' as const,
+			credential: {
+				credentialType: 'gmailOAuth2Api',
+				displayName: 'Gmail OAuth2 API',
+			},
+		});
+
+		const { getByText } = renderComponent({
+			global: {
+				provide: {
+					pendingComposerContext,
+				},
+			},
+		});
 
 		expect(getByText('Context')).toBeInTheDocument();
 		expect(getByText('Gmail OAuth2 API')).toBeInTheDocument();
