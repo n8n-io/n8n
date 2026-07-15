@@ -1,0 +1,30 @@
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_3357ed373ba332::t_652ec78403d6eb 668
+packages/@n8n/agents/src/runtime/memory/title-generation.ts
+  s_3357ed373ba332::t_d8e7021ad98245 244
+  s_3357ed373ba332::t_d2d31a828a940d 167-171
+  s_3357ed373ba332::t_d0ffb141dfb6b1 190
+  s_3357ed373ba332::t_d07f2b2c229270 264
+packages/@n8n/agents/src/runtime/__tests__/title-generation.test.ts
+  s_3357ed373ba332::t_85af8fd3f008ba 7
+  s_3357ed373ba332::t_367424d0712e82 266-270
+  s_3357ed373ba332::t_641d391e14e6dc 235-265,271-317,319-333
+  s_3357ed373ba332::t_1f26880c89518b 4-5
+  s_3357ed373ba332::t_beeb5630890272 318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "dc36fac2907e08679a06ad30701cacdcb38e2f2c",
+  "prompts": {},
+  "sessions": {
+    "s_3357ed373ba332": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a22ac6a9-b18e-4cf1-ad38-274946e634a8",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
