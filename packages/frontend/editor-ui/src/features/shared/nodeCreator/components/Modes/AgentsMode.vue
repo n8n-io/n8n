@@ -107,6 +107,12 @@ const showEmptyState = computed(
 	() => !isLoadingResources.value && !loadError.value && agentElements.value.length === 0,
 );
 
+// Only skeleton when there is nothing to show yet; while a search refresh is
+// in flight the previous results stay rendered so the list doesn't blink.
+const showLoadingSkeleton = computed(
+	() => isLoadingResources.value && agentElements.value.length === 0,
+);
+
 // Load-more sentinel; the viewport root still respects clipping by the
 // panel's scrollable ancestor, so intersection fires when the sentinel
 // scrolls into the visible list area.
@@ -210,7 +216,7 @@ onMounted(() => {
 		<ItemsRenderer :elements="staticElements" @selected="onSelected" />
 
 		<N8nLoading
-			v-if="isLoadingResources"
+			v-if="showLoadingSkeleton"
 			:class="$style.state"
 			:loading="true"
 			:rows="3"
@@ -242,7 +248,7 @@ onMounted(() => {
 		<template v-else>
 			<ItemsRenderer :elements="agentElements" @selected="onSelected" />
 			<div
-				v-if="hasMoreAgentsToLoad"
+				v-if="hasMoreAgentsToLoad && !isLoadingResources"
 				ref="loadMoreSentinel"
 				:class="$style.sentinel"
 				data-test-id="agents-panel-load-more"

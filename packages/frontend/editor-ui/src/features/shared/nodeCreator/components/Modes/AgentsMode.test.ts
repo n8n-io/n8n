@@ -227,6 +227,29 @@ describe('AgentsMode', () => {
 		}
 	});
 
+	it('keeps the previous results visible instead of a skeleton while a search refresh is in flight', async () => {
+		locatorState.agentsResources.value = [
+			{ name: 'Support Triage', value: 'agent-1', personalisation: null },
+		];
+		locatorState.isLoadingResources.value = true;
+		pushAgentsViewStack();
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.getByText('Support Triage')).toBeInTheDocument();
+		expect(document.querySelector('.el-skeleton')).not.toBeInTheDocument();
+	});
+
+	it('shows a skeleton while loading with no results to show yet', async () => {
+		locatorState.isLoadingResources.value = true;
+		pushAgentsViewStack();
+		render({ pinia });
+		await nextTick();
+
+		expect(document.querySelector('.el-skeleton')).toBeInTheDocument();
+		expect(screen.queryByTestId('agents-panel-empty')).not.toBeInTheDocument();
+	});
+
 	it('shows the empty state when the project has no agents', async () => {
 		pushAgentsViewStack();
 		render({ pinia });
