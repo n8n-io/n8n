@@ -8,11 +8,14 @@ import {
 
 @Service()
 export class VariableSerializer {
-	serialize(variable: Variables): SerializedVariable {
+	serialize(
+		variable: Variables,
+		{ includeValue = true }: { includeValue?: boolean } = {},
+	): SerializedVariable {
 		return serializedVariableSchema.parse({
 			name: variable.key,
 			type: variable.type,
-			value: variable.value,
+			...(includeValue ? { value: variable.value } : {}),
 		});
 	}
 }

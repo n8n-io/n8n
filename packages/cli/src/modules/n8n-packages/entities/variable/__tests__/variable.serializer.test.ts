@@ -39,4 +39,11 @@ describe('VariableSerializer', () => {
 
 		expect(serialized.value).toBe('');
 	});
+
+	it('omits the value entirely when includeValue is false', () => {
+		const serialized = serializer.serialize(makeVariable(), { includeValue: false });
+
+		expect(serialized).toEqual({ name: 'API_URL', type: 'string' });
+		expect(Object.keys(serialized)).not.toContain('value');
+	});
 });

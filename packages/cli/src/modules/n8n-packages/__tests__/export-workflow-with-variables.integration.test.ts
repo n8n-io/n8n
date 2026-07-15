@@ -95,10 +95,10 @@ describe('workflow package export — with variables', () => {
 		expect(Object.keys(parsed).sort()).toEqual(['name', 'type', 'value']);
 	});
 
-	it('with includeVariableValues=false lists the same names but writes no files and no values', async () => {
+	it('with includeVariableValues=false bundles value-less stub files and lists no values', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Project A', owner);
-		await createVariable('API_URL', 'https://api.example.com');
+		const variable = await createVariable('API_URL', 'https://api.example.com');
 		const workflow = await buildWorkflowReferencingVariables({
 			name: 'Workflow with vars',
 			project,
@@ -112,13 +112,23 @@ describe('workflow package export — with variables', () => {
 		});
 		const { manifest, entries } = await readExport(stream);
 
-		// Nothing is bundled, so there is no manifest catalog either.
-		expect(manifest).not.toHaveProperty('variables');
+		// The variable itself still travels, just without its value.
+		expect(manifest.variables).toEqual([
+			{
+				id: variable.id,
+				name: 'API_URL',
+				target: expect.stringMatching(/^variables\//) as string,
+			},
+		]);
 		expect(manifest.requirements).toEqual({
 			variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
 		});
 		expect(manifest.requirements!.variables![0]).not.toHaveProperty('value');
-		expect(variableFiles(entries)).toEqual([]);
+
+		const files = variableFiles(entries);
+		expect(files).toHaveLength(1);
+		const parsed = jsonParse<Record<string, unknown>>(files[0].content.toString());
+		expect(parsed).toEqual({ name: 'API_URL', type: 'string' });
 	});
 
 	it('bundles global variables referenced from a member personal-project workflow', async () => {
@@ -481,7 +491,7 @@ describe('workflow package export — with variables', () => {
 			expect(manifest.requirements).toBeUndefined();
 		});
 
-		it('allows a name-only export of referenced variables when values are excluded', async () => {
+		it('allows a value-less export of referenced variables when values are excluded', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
 			await createVariable('API_URL', 'https://api.example.com');
@@ -502,7 +512,11 @@ describe('workflow package export — with variables', () => {
 			expect(manifest.requirements).toEqual({
 				variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
 			});
-			expect(variableFiles(entries)).toEqual([]);
+			// Stubs still travel (name/type only) — the scope gate is value-only.
+			const files = variableFiles(entries);
+			expect(files).toHaveLength(1);
+			const parsed = jsonParse<Record<string, unknown>>(files[0].content.toString());
+			expect(parsed).toEqual({ name: 'API_URL', type: 'string' });
 		});
 	});
 

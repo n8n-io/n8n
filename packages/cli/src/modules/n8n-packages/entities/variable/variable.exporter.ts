@@ -109,7 +109,7 @@ export class VariableExporter {
 					everyWorkflowResolvedToSameValue = false;
 				}
 
-				if (!request.includeVariableValues || bundledVariableIds.has(variable.id)) continue;
+				if (bundledVariableIds.has(variable.id)) continue;
 				bundledVariableIds.add(variable.id);
 
 				const baseDir = this.resolveBaseDir(variable, request.projectTargetsById);
@@ -117,7 +117,13 @@ export class VariableExporter {
 				request.writer.writeDirectory(target);
 				request.writer.writeFile(
 					`${target}/variable.json`,
-					JSON.stringify(this.variableSerializer.serialize(variable), null, '\t'),
+					JSON.stringify(
+						this.variableSerializer.serialize(variable, {
+							includeValue: request.includeVariableValues,
+						}),
+						null,
+						'\t',
+					),
 				);
 				entries.push({ id: variable.id, name: variable.key, target });
 			}

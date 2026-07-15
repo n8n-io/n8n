@@ -377,7 +377,7 @@ describe('VariableExporter', () => {
 	});
 
 	describe('includeVariableValues = false', () => {
-		it('lists names only and bundles nothing even when values are resolvable', async () => {
+		it('bundles a value-less stub file and emits a valueless requirement', async () => {
 			const deps = makeExporter();
 			const variable = makeVariable({ id: 'var-url' });
 			deps.variablesService.getAllCached.mockResolvedValue([variable]);
@@ -395,10 +395,13 @@ describe('VariableExporter', () => {
 				includeVariableValues: false,
 			});
 
-			expect(result.entries).toEqual([]);
+			expect(result.entries).toEqual([
+				{ id: 'var-url', name: 'API_URL', target: 'variables/apiurl' },
+			]);
 			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-1'] }]);
-			expect(writer.files).toEqual([]);
-			expect(writer.directories).toEqual([]);
+			expect(writer.files).toHaveLength(1);
+			expect(writer.files[0].path).toBe('variables/apiurl/variable.json');
+			expect(jsonParse(writer.files[0].content)).toEqual({ name: 'API_URL', type: 'string' });
 		});
 	});
 
@@ -580,9 +583,15 @@ describe('VariableExporter', () => {
 				includeVariableValues: false,
 			});
 
-			expect(result.entries).toEqual([]);
+			expect(result.entries).toEqual([
+				{ id: 'var-a', name: 'API_URL', target: 'variables/apiurl' },
+				{ id: 'var-b', name: 'API_URL', target: 'variables/apiurl-2' },
+			]);
 			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-a', 'wf-b'] }]);
-			expect(writer.files).toEqual([]);
+			expect(writer.files.map((f) => jsonParse(f.content))).toEqual([
+				{ name: 'API_URL', type: 'string' },
+				{ name: 'API_URL', type: 'string' },
+			]);
 		});
 
 		it('does not fail when the shared name resolves to a single variable across workflows', async () => {

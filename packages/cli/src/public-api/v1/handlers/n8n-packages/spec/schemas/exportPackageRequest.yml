@@ -38,5 +38,6 @@ properties:
     default: true
     description: >-
       Whether values of variables referenced by the exported workflows are
-      bundled into the package. When `false`, variables are only listed by name
-      in the package requirements and no values travel with the package.
+      bundled into the package. When `false`, variables still travel as
+      name/type files and are listed in the package requirements, but no
+      values travel with the package.

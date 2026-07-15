@@ -44,7 +44,7 @@ export default class PackageExport extends BaseCommand {
 		// String enum instead of Flags.boolean so `--include-variable-values=false` works (oclif booleans only support --no-*).
 		includeVariableValues: Flags.string({
 			description:
-				'Whether values of referenced variables are bundled into the package (names are always listed)',
+				'Whether values of referenced variables are bundled into the package (the variables themselves always travel, value-less when false)',
 			options: ['true', 'false'],
 			default: 'true',
 			aliases: ['include-variable-values'],
