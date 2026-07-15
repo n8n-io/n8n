@@ -11,11 +11,6 @@ const storeState = reactive({
 	id: 'thread-1',
 	currentTasks: undefined as TaskList | undefined,
 	producedArtifacts: new Map<string, ResourceEntry>(),
-	projectId: 'proj-1',
-	messages: [] as Array<{ role: 'user' | 'assistant'; context?: unknown }>,
-});
-const metadataState = reactive({
-	value: undefined as Record<string, unknown> | undefined,
 });
 const updateThreadMetadataMock = vi.fn(
 	async (_threadId: string, metadata: Record<string, unknown>) => {
