@@ -362,179 +362,193 @@ export class SourceControlService {
 
 		const { targetBranch, isNewBranch, defaultBranch } = await this.prepareBranchForPush(options);
 
-		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
-			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
-				this.gitFolder,
-				file.file,
-			);
+		try {
+			let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
+				const normalizedPath = normalizeAndValidateSourceControlledFilePath(
+					this.gitFolder,
+					file.file,
+				);
 
-			return {
-				...file,
-				file: normalizedPath,
-			};
-		});
-
-		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
-			direction: 'push',
-			verbose: false,
-			preferLocalVersion: true,
-		});
-
-		// Fallback to all allowed resources if no fileNames are provided
-		if (!filesToPush.length) {
-			filesToPush = allowedResources;
-		}
-
-		// If fileNames are provided, we need to check if they are allowed
-		if (
-			filesToPush !== allowedResources &&
-			filesToPush.some(
-				(file) =>
-					!allowedResources.some((allowed) => {
-						return allowed.id === file.id && allowed.type === file.type;
-					}),
-			)
-		) {
-			throw new ForbiddenError('You are not allowed to push these changes');
-		}
-
-		let statusResult: SourceControlledFile[] = filesToPush;
-
-		if (!options.force) {
-			const possibleConflicts = filesToPush?.filter((file) => file.conflict);
-			if (possibleConflicts?.length > 0) {
 				return {
-					statusCode: 409,
-					pushResult: undefined,
-					statusResult: filesToPush,
+					...file,
+					file: normalizedPath,
 				};
-			}
-		}
-
-		try {
-			const filesToBePushed = new Set<string>();
-			const filesToBeDeleted = new Set<string>();
-
-			/*
-			Exclude tags, variables and folders JSON file from being deleted as
-			we keep track of them in a single file unlike workflows and credentials
-		*/
-			filesToPush
-				.filter((f) => ['workflow', 'credential', 'project', 'datatable'].includes(f.type))
-				.forEach((e) => {
-					if (e.status !== 'deleted') {
-						filesToBePushed.add(e.file);
-					} else {
-						filesToBeDeleted.add(e.file);
-					}
-				});
-
-			await this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
-
-			const workflowsToBeExported = getNonDeletedResources(filesToPush, 'workflow');
-			await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
-
-			const credentialsToBeExported = getNonDeletedResources(filesToPush, 'credential');
-			const credentialExportResult =
-				await this.sourceControlExportService.exportCredentialsToWorkFolder(
-					credentialsToBeExported,
-				);
-			if (credentialExportResult.missingIds && credentialExportResult.missingIds.length > 0) {
-				credentialExportResult.missingIds.forEach((id) => {
-					filesToBePushed.delete(this.sourceControlExportService.getCredentialsPath(id));
-					statusResult = statusResult.filter(
-						(e) => e.file !== this.sourceControlExportService.getCredentialsPath(id),
-					);
-				});
-			}
-
-			const projectsToBeExported = getNonDeletedResources(filesToPush, 'project');
-			await this.sourceControlExportService.exportTeamProjectsToWorkFolder(projectsToBeExported);
-
-			// The tags file is always re-generated and exported to make sure the workflow-tag mappings are up to date
-			filesToBePushed.add(getTagsPath(this.gitFolder));
-			await this.sourceControlExportService.exportTagsToWorkFolder(context);
-
-			const folderChanges = filterByType(filesToPush, 'folders')[0];
-			if (folderChanges) {
-				filesToBePushed.add(folderChanges.file);
-				await this.sourceControlExportService.exportFoldersToWorkFolder(context);
-			}
-
-			const variablesChanges = filterByType(filesToPush, 'variables')[0];
-			if (variablesChanges) {
-				filesToBePushed.add(variablesChanges.file);
-				await this.sourceControlExportService.exportGlobalVariablesToWorkFolder();
-			}
-
-			const dataTableCandidates = filterByType(filesToPush, 'datatable');
-			if (dataTableCandidates.length > 0) {
-				await this.sourceControlExportService.exportDataTablesToWorkFolder(
-					dataTableCandidates,
-					context,
-				);
-			}
-
-			await this.gitService.stage(filesToBePushed, filesToBeDeleted);
-
-			// Set the author within the locked section so a concurrent push can't change the
-			// repo-wide git config between staging and this commit. Fall back to defaults when the
-			// user has no full profile, matching repo initialization, so the commit can't fail on an
-			// empty git identity.
-			await this.gitService.setGitUserDetails(
-				user.firstName && user.lastName
-					? `${user.firstName} ${user.lastName}`
-					: SOURCE_CONTROL_DEFAULT_NAME,
-				user.email || SOURCE_CONTROL_DEFAULT_EMAIL,
-			);
-
-			await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
-		} catch (error) {
-			this.logger.error('Failed to export or commit changes', { error });
-			try {
-				await this.gitService.resetBranch({ hard: true, target: 'HEAD' });
-			} catch (resetError) {
-				this.logger.error('Failed to reset branch after export/commit error', {
-					error: resetError,
-				});
-			}
-			throw error;
-		}
-
-		let pushResult: PushResult | undefined;
-		try {
-			pushResult = await this.gitService.push({
-				branch: targetBranch,
-				force: options.force ?? false,
-				setUpstream: isNewBranch,
 			});
 
-			// Only mark files as pushed after successful push
-			statusResult.forEach((result) => (result.pushed = true));
-		} catch (error) {
-			this.logger.error('Failed to push changes', { error });
-			try {
-				// A brand-new branch has no origin ref yet; fall back to the default.
-				const resetTarget = isNewBranch ? `origin/${defaultBranch}` : `origin/${targetBranch}`;
-				await this.gitService.resetBranch({ hard: true, target: resetTarget });
-			} catch (resetError) {
-				this.logger.error('Failed to reset branch after push error', { error: resetError });
+			const allowedResources = await this.sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: true,
+			});
+
+			// Fallback to all allowed resources if no fileNames are provided
+			if (!filesToPush.length) {
+				filesToPush = allowedResources;
 			}
-			throw error;
+
+			// If fileNames are provided, we need to check if they are allowed
+			if (
+				filesToPush !== allowedResources &&
+				filesToPush.some(
+					(file) =>
+						!allowedResources.some((allowed) => {
+							return allowed.id === file.id && allowed.type === file.type;
+						}),
+				)
+			) {
+				throw new ForbiddenError('You are not allowed to push these changes');
+			}
+
+			let statusResult: SourceControlledFile[] = filesToPush;
+
+			if (!options.force) {
+				const possibleConflicts = filesToPush?.filter((file) => file.conflict);
+				if (possibleConflicts?.length > 0) {
+					return {
+						statusCode: 409,
+						pushResult: undefined,
+						statusResult: filesToPush,
+					};
+				}
+			}
+
+			try {
+				const filesToBePushed = new Set<string>();
+				const filesToBeDeleted = new Set<string>();
+
+				/*
+				Exclude tags, variables and folders JSON file from being deleted as
+				we keep track of them in a single file unlike workflows and credentials
+			*/
+				filesToPush
+					.filter((f) => ['workflow', 'credential', 'project', 'datatable'].includes(f.type))
+					.forEach((e) => {
+						if (e.status !== 'deleted') {
+							filesToBePushed.add(e.file);
+						} else {
+							filesToBeDeleted.add(e.file);
+						}
+					});
+
+				await this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
+
+				const workflowsToBeExported = getNonDeletedResources(filesToPush, 'workflow');
+				await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
+
+				const credentialsToBeExported = getNonDeletedResources(filesToPush, 'credential');
+				const credentialExportResult =
+					await this.sourceControlExportService.exportCredentialsToWorkFolder(
+						credentialsToBeExported,
+					);
+				if (credentialExportResult.missingIds && credentialExportResult.missingIds.length > 0) {
+					credentialExportResult.missingIds.forEach((id) => {
+						filesToBePushed.delete(this.sourceControlExportService.getCredentialsPath(id));
+						statusResult = statusResult.filter(
+							(e) => e.file !== this.sourceControlExportService.getCredentialsPath(id),
+						);
+					});
+				}
+
+				const projectsToBeExported = getNonDeletedResources(filesToPush, 'project');
+				await this.sourceControlExportService.exportTeamProjectsToWorkFolder(projectsToBeExported);
+
+				// The tags file is always re-generated and exported to make sure the workflow-tag mappings are up to date
+				filesToBePushed.add(getTagsPath(this.gitFolder));
+				await this.sourceControlExportService.exportTagsToWorkFolder(context);
+
+				const folderChanges = filterByType(filesToPush, 'folders')[0];
+				if (folderChanges) {
+					filesToBePushed.add(folderChanges.file);
+					await this.sourceControlExportService.exportFoldersToWorkFolder(context);
+				}
+
+				const variablesChanges = filterByType(filesToPush, 'variables')[0];
+				if (variablesChanges) {
+					filesToBePushed.add(variablesChanges.file);
+					await this.sourceControlExportService.exportGlobalVariablesToWorkFolder();
+				}
+
+				const dataTableCandidates = filterByType(filesToPush, 'datatable');
+				if (dataTableCandidates.length > 0) {
+					await this.sourceControlExportService.exportDataTablesToWorkFolder(
+						dataTableCandidates,
+						context,
+					);
+				}
+
+				await this.gitService.stage(filesToBePushed, filesToBeDeleted);
+
+				// Set the author within the locked section so a concurrent push can't change the
+				// repo-wide git config between staging and this commit. Fall back to defaults when the
+				// user has no full profile, matching repo initialization, so the commit can't fail on an
+				// empty git identity.
+				await this.gitService.setGitUserDetails(
+					user.firstName && user.lastName
+						? `${user.firstName} ${user.lastName}`
+						: SOURCE_CONTROL_DEFAULT_NAME,
+					user.email || SOURCE_CONTROL_DEFAULT_EMAIL,
+				);
+
+				await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
+			} catch (error) {
+				this.logger.error('Failed to export or commit changes', { error });
+				try {
+					await this.gitService.resetBranch({ hard: true, target: 'HEAD' });
+				} catch (resetError) {
+					this.logger.error('Failed to reset branch after export/commit error', {
+						error: resetError,
+					});
+				}
+				throw error;
+			}
+
+			let pushResult: PushResult | undefined;
+			try {
+				pushResult = await this.gitService.push({
+					branch: targetBranch,
+					force: options.force ?? false,
+					setUpstream: isNewBranch,
+				});
+
+				// Only mark files as pushed after successful push
+				statusResult.forEach((result) => (result.pushed = true));
+			} catch (error) {
+				this.logger.error('Failed to push changes', { error });
+				try {
+					// A brand-new branch has no origin ref yet; fall back to the default.
+					const resetTarget = isNewBranch ? `origin/${defaultBranch}` : `origin/${targetBranch}`;
+					await this.gitService.resetBranch({ hard: true, target: resetTarget });
+				} catch (resetError) {
+					this.logger.error('Failed to reset branch after push error', { error: resetError });
+				}
+				throw error;
+			}
+
+			// #region Tracking Information
+			this.eventService.emit(
+				'source-control-user-finished-push-ui',
+				getTrackingInformationFromPostPushResult(user.id, statusResult),
+			);
+			// #endregion
+
+			return {
+				statusCode: 200,
+				pushResult,
+				statusResult,
+			};
+		} finally {
+			// Restore the working clone to the default branch. Pull and the next push
+			// assume HEAD stays on the default branch between operations.
+			if (targetBranch !== defaultBranch) {
+				try {
+					await this.gitService.checkoutExistingBranch(defaultBranch);
+				} catch (restoreError) {
+					this.logger.error('Failed to restore default branch after push', {
+						error: restoreError,
+					});
+				}
+			}
 		}
-
-		// #region Tracking Information
-		this.eventService.emit(
-			'source-control-user-finished-push-ui',
-			getTrackingInformationFromPostPushResult(user.id, statusResult),
-		);
-		// #endregion
-
-		return {
-			statusCode: 200,
-			pushResult,
-			statusResult,
-		};
 	}
 
 	async pullWorkfolder(

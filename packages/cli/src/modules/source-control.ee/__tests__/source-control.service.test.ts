@@ -545,6 +545,10 @@ describe('SourceControlService', () => {
 			expect(gitService.push).toHaveBeenCalledWith(
 				expect.objectContaining({ branch: 'feat/x', setUpstream: true }),
 			);
+			// The remote must be fetched before branching off it.
+			expect(gitService.fetch.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.createBranchFrom.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('checks out an existing branch before committing', async () => {
@@ -558,12 +562,32 @@ describe('SourceControlService', () => {
 			expect(gitService.push).toHaveBeenCalledWith(
 				expect.objectContaining({ branch: 'develop', setUpstream: false }),
 			);
+			// The remote must be fetched before checking out the target branch.
+			expect(gitService.fetch.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.checkoutExistingBranch.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('restores the default branch after pushing to a non-default branch', async () => {
+			await sourceControlService.pushWorkfolder(user, {
+				fileNames: [],
+				branch: 'develop',
+				commitMessage: 'msg',
+			});
+
+			// The working clone is checked out onto 'develop' to push, then restored
+			// to the default branch so pull and the next push find HEAD on default.
+			expect(gitService.checkoutExistingBranch).toHaveBeenCalledWith('main');
+			expect(gitService.push.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.checkoutExistingBranch.mock.invocationCallOrder[1],
+			);
 		});
 
 		it('falls back to the default branch when none given', async () => {
 			await sourceControlService.pushWorkfolder(user, { fileNames: [], commitMessage: 'msg' });
 
 			expect(gitService.createBranchFrom).not.toHaveBeenCalled();
+			// A plain default-branch push neither switches branches nor restores one afterwards.
 			expect(gitService.checkoutExistingBranch).not.toHaveBeenCalled();
 			expect(gitService.fetch).not.toHaveBeenCalled();
 			expect(gitService.push).toHaveBeenCalledWith(expect.objectContaining({ branch: 'main' }));
