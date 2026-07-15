@@ -37,6 +37,7 @@ const makeTracer = () => {
 /** Compose a scheduler over mocks, with non-default retention windows. */
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
 	const taskStore = mock<SchedulerTaskStore>();
+	taskStore.markDispatched.mockResolvedValue(1);
 	const onEvent = vi.fn<(event: SchedulerEvent) => void>();
 	const materializerTransaction: RunInTransaction = vi.fn();
 	const scheduler = createScheduler({

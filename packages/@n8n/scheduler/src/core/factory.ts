@@ -13,6 +13,7 @@ import {
 	Executor,
 	PrecisionTimer,
 	TaskHandlerRegistry,
+	createDispatchReporter,
 } from './executor';
 import type { ExecutorOptions, ExecutorTaskStore } from './executor';
 import { DEFAULT_LIFECYCLE_OPTIONS, Loop, PASS_TIMED_OUT } from './lifecycle';
