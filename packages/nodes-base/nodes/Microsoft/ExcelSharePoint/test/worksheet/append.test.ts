@@ -211,6 +211,38 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 		expect(result[0].map((item) => item.json)).toEqual([{ city: 'Berlin', name: 'Sara' }]);
 	});
 
+	it('writes one header for a multi-item batch appended to an empty sheet', async () => {
+		ctx.getInputData.mockReturnValue([
+			{ json: { name: 'bob', age: 25 } },
+			{ json: { name: 'carl', age: 40 } },
+		]);
+		setParams({ ...byIdParams, dataMode: 'autoMap' });
+		apiRequest
+			.mockResolvedValueOnce({ address: 'Sheet1!A1', values: [['']] })
+			.mockResolvedValueOnce({
+				values: [
+					['name', 'age'],
+					['bob', 25],
+					['carl', 40],
+				],
+			});
+
+		const result = await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PATCH', `${SHEET_PATH}/range(address='A1:B3')`, {
+			values: [
+				['name', 'age'],
+				['bob', 25],
+				['carl', 40],
+			],
+		});
+		expect(result[0].map((item) => item.json)).toEqual([
+			{ name: 'bob', age: 25 },
+			{ name: 'carl', age: 40 },
+		]);
+	});
+
 	it('rejects an empty Sheet', async () => {
 		ctx.getInputData.mockReturnValue([{ json: {} }]);
 		setParams({ ...byIdParams, dataMode: 'autoMap', worksheet: '' });
