@@ -275,6 +275,36 @@ export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: st
 	return false;
 }
 
+/**
+ * Whether the AI is actively working on agent `agentId` somewhere in this
+ * agent tree — used to lock the agent artifact editor while a build is in
+ * flight so user edits can't race builder config writes (the post-build
+ * refetch would clobber them). Either signal is enough:
+ *   1. The active agent tree has already created/mutated this agent — covers
+ *      short gaps between tool calls while the run is still ongoing.
+ *   2. An active agent-builder sub-agent targeting the agent — covers the
+ *      whole build window from spawn to completion.
+ */
+export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string): boolean {
+	if (node.status === 'active' && getLatestAgentArtifactResult(node)?.agentId === agentId) {
+		return true;
+	}
+
+	if (
+		node.kind === 'agent-builder' &&
+		node.status === 'active' &&
+		node.targetResource?.type === 'agent' &&
+		node.targetResource.id === agentId
+	) {
+		return true;
+	}
+
+	for (const child of node.children) {
+		if (isAgentEditingAgent(child, agentId)) return true;
+	}
+	return false;
+}
+
 const DATA_TABLE_PREVIEW_ACTIONS = new Set([
 	'schema',
 	'query',
@@ -424,8 +454,8 @@ function walkAgentArtifact(
 		const result = tc.result as Record<string, unknown>;
 		const args = tc.args as Record<string, unknown> | undefined;
 
-		if (tc.toolName === 'build-agent' && result.ok === true && callTarget) {
-			if (typeof args?.name === 'string') {
+		if (tc.toolName === 'build-agent' && callTarget) {
+			if (result.ok === true && typeof args?.name === 'string') {
 				return {
 					result: { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' },
 					target: callTarget,

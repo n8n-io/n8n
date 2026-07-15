@@ -1,7 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, computed } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type {
@@ -148,13 +148,6 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 	}),
 }));
 
-vi.mock('../composables/useAgentBuilderStatus', () => ({
-	useAgentBuilderStatus: () => ({
-		isBuilderConfigured: ref(true),
-		fetchStatus: vi.fn().mockResolvedValue(undefined),
-	}),
-}));
-
 vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => agentPermissionsMock,
 }));
@@ -273,13 +266,18 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 	}),
 }));
 
+const instanceAiAvailableRef = ref(true);
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
+	useInstanceAiAvailable: () => computed(() => instanceAiAvailableRef.value),
+}));
+
+const startInstanceAiThread = vi.fn();
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
+	useInstanceAiHandoff: () => ({ startThread: startInstanceAiThread }),
+}));
+
 const baseTextFn = (key: string) => {
 	const map: Record<string, string> = {
-		'agents.builder.chatMode.build': 'Build',
-		'agents.builder.chatMode.test': 'Test',
-		'agents.builder.chatMode.ariaLabel': 'Switch chat mode',
-		'agents.builder.chat.hide.ariaLabel': 'Hide builder',
-		'agents.builder.chat.show.ariaLabel': 'Show builder',
 		'agents.builder.preview.button': 'Preview',
 		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
@@ -344,17 +342,15 @@ const commonStubs = {
 	AgentChatPanel: {
 		name: 'AgentChatPanel',
 		template: `
-			<div data-testid="chat-panel-stub" :data-endpoint="endpoint">
+			<div data-testid="chat-panel-stub">
 				<div data-testid="stub-above-input"><slot name="above-input" /></div>
 				<div data-testid="stub-footer-start"><slot name="footer-start" /></div>
 			</div>
 		`,
 		props: [
-			'endpoint',
 			'projectId',
 			'agentId',
 			'mode',
-			'initialMessage',
 			'agentConfig',
 			'agentStatus',
 			'connectedTriggers',
@@ -372,9 +368,7 @@ const commonStubs = {
 			'localConfig',
 			'connectedTriggers',
 			'effectiveSessionId',
-			'initialPrompt',
 		],
-		emits: ['config-updated', 'continue-loaded', 'open-build'],
 	},
 	AgentConfigTree: {
 		name: 'AgentConfigTree',
@@ -387,20 +381,6 @@ const commonStubs = {
 		template: '<div data-testid="stub-agent-section-editor" />',
 		props: ['config'],
 		emits: ['update:config'],
-	},
-	AgentChatQuickActions: {
-		name: 'AgentChatQuickActions',
-		template: '<div data-testid="stub-agent-chat-quick-actions" />',
-		props: [
-			'tools',
-			'mcpServers',
-			'projectId',
-			'agentId',
-			'connectedTriggers',
-			'isPublished',
-			'disabled',
-		],
-		emits: ['update:tools', 'update:connected-triggers', 'trigger-added'],
 	},
 	AgentBuilderHeader: {
 		name: 'AgentBuilderHeader',
@@ -481,14 +461,15 @@ const commonStubs = {
 		template: '<div data-testid="stub-agent-sessions-list-view" />',
 		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab'],
 	},
-	AgentBuilderUnconfiguredEmptyState: {
-		name: 'AgentBuilderUnconfiguredEmptyState',
-		template: '<div data-testid="stub-agent-builder-unconfigured-empty-state" />',
-	},
 	N8nButton: {
 		template:
 			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot /><slot name="icon" /></button>',
 		emits: ['click'],
+	},
+	N8nAssistantIcon: { template: '<i data-testid="stub-assistant-icon" />', props: ['size'] },
+	N8nTooltip: {
+		template: '<span data-testid="stub-tooltip"><slot /></span>',
+		props: ['placement', 'content'],
 	},
 	N8nIcon: {
 		template: '<i v-bind="$attrs" :data-icon="icon"></i>',
@@ -550,19 +531,16 @@ describe('AgentBuilderView — preview routing', () => {
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
+		instanceAiAvailableRef.value = true;
+		startInstanceAiThread.mockReset();
 	});
 
-	it('renders the build chat in the editing experience without the old mode toggle', async () => {
+	it('renders the manual editor without an agents-page build chat', async () => {
 		const wrapper = await renderView();
 
-		await wrapper.find('[data-testid="agent-build-chat-show-button"]').trigger('click');
-		await nextTick();
-
-		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
-			true,
-		);
+		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
 	});
 
@@ -731,15 +709,16 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
-	it('keeps unbuilt agents hidden on load until the builder chat is opened', async () => {
+	it('shows the manual editor for unbuilt agents', async () => {
 		intendedConfig = { name: 'Agent One', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
 
 		const wrapper = await renderView();
 
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
 	});
 
 	it('opens the preview route from the header preview action', async () => {
@@ -810,30 +789,17 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
 	});
 
-	it('navigates directly to build chat on startChat for an unbuilt agent', async () => {
-		intendedConfig = { name: 'Agent One', instructions: '' };
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
+	it('clears stale prompt query params without opening a build chat', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
 
 		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as {
-			startChat: (msg: string) => void;
-			isBuilt: boolean;
-		};
 
-		// Agent has no instructions — isBuilt should be false.
-		expect(vm.isBuilt).toBe(false);
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: { prompt: undefined, expandBuildChat: undefined },
+		});
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
-
-		vm.startChat('Build me a Slack triage agent');
-		await nextTick();
-
-		// No progress screen rendered
-		expect(wrapper.find('[data-testid="progress-stub"]').exists()).toBe(false);
-
-		// Build chat panel should be visible
-		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
-		expect(buildPanel.exists()).toBe(true);
 	});
 
 	it('refreshes runnable state from the backend after saving manual config edits', async () => {
@@ -915,145 +881,27 @@ describe('AgentBuilderView — three-column shell', () => {
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
+		instanceAiAvailableRef.value = true;
+		startInstanceAiThread.mockReset();
 	});
 
-	it('hides the build chat by default while keeping the editor visible', async () => {
+	it('renders only the manual editor without build chat controls', async () => {
 		const wrapper = await renderView();
 
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(true);
-	});
-
-	it('restores and hides the build chat from the floating controls', async () => {
-		const wrapper = await renderView();
-
-		await wrapper.find('[data-testid="agent-build-chat-show-button"]').trigger('click');
-		await nextTick();
-
-		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
-
-		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
-		chatColumn.vm.$emit('hide');
-		await nextTick();
-
-		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(true);
 	});
 
-	it('renders a floating hide control in build chat mode', async () => {
-		const wrapper = await renderView();
-
-		await wrapper.find('[data-testid="agent-build-chat-show-button"]').trigger('click');
-		await nextTick();
-
-		expect(wrapper.find('[data-testid="agent-build-chat-hide-toggle"]').exists()).toBe(true);
-	});
-
-	it('renders seeded initial builds from the URL as full-width once initialization settles', async () => {
+	it('clears stale prompt query params from old deep links', async () => {
 		routeQuery.prompt = 'Build a recruiting agent';
 		routeQuery.expandBuildChat = 'true';
 
-		const wrapper = await renderView();
+		await renderView();
 
-		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
-		expect(chatColumn.props('isFullWidth')).toBe(true);
-		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
-	});
-
-	it('auto-expands seeded initial builds from the URL and clears the query flag', async () => {
-		routeQuery.prompt = 'Build a recruiting agent';
-		routeQuery.expandBuildChat = 'true';
-
-		const wrapper = await renderView();
-
-		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
-		expect(chatColumn.props('isFullWidth')).toBe(true);
-		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
 		expect(routerReplace).toHaveBeenCalledWith({
 			query: { prompt: undefined, expandBuildChat: undefined },
 		});
-	});
-
-	it('keeps an auto-expanded initial build open on config updates before build completion', async () => {
-		routeQuery.prompt = 'Build a recruiting agent';
-		routeQuery.expandBuildChat = 'true';
-		const wrapper = await renderView();
-
-		wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).vm.$emit('config-updated');
-		await flushPromises();
-
-		expect(wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isFullWidth')).toBe(
-			true,
-		);
-		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
-	});
-
-	it('collapses an auto-expanded initial build when the build finishes with written config', async () => {
-		routeQuery.prompt = 'Build a recruiting agent';
-		routeQuery.expandBuildChat = 'true';
-		const wrapper = await renderView();
-
-		wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).vm.$emit('build-done');
-		await flushPromises();
-
-		expect(wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isFullWidth')).toBe(
-			false,
-		);
-		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
-	});
-
-	it('mounts the editor enabled when the initial build completion collapses the chat', async () => {
-		routeQuery.prompt = 'Build a recruiting agent';
-		routeQuery.expandBuildChat = 'true';
-		const wrapper = await renderView();
-		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
-
-		chatColumn.vm.$emit('update:streaming', true);
-		chatColumn.vm.$emit('build-done');
-		await flushPromises();
-
-		expect(
-			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('isBuildChatStreaming'),
-		).toBe(false);
-	});
-
-	it('passes build streaming state to the chat column', async () => {
-		const wrapper = await renderView();
-
-		await wrapper.find('[data-testid="agent-build-chat-show-button"]').trigger('click');
-		await nextTick();
-
-		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
-
-		chatColumn.vm.$emit('update:streaming', true);
-		await nextTick();
-
-		expect(
-			wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isBuildChatStreaming'),
-		).toBe(true);
-	});
-
-	it('does not render the old Build/Test toggle inside the chat input footer', async () => {
-		const wrapper = await renderView();
-
-		await wrapper.find('[data-testid="agent-build-chat-show-button"]').trigger('click');
-		await nextTick();
-
-		const chatPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
-		expect(
-			chatPanel
-				.find('[data-testid="stub-footer-start"] [data-testid="agent-chat-mode-toggle"]')
-				.exists(),
-		).toBe(false);
-		expect(
-			chatPanel
-				.find('[data-testid="stub-above-input"] [data-testid="agent-chat-mode-toggle"]')
-				.exists(),
-		).toBe(false);
 	});
 
 	it('does not render the old home content or settings sidebar', async () => {
@@ -1066,6 +914,45 @@ describe('AgentBuilderView — three-column shell', () => {
 	it('renders the new top header above the three columns', async () => {
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="stub-agent-builder-header"]').exists()).toBe(true);
+	});
+
+	it('renders the floating Instance AI button in builder mode', async () => {
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
+	});
+
+	it('hides the floating Instance AI button in artifact mode', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+	});
+
+	it('hides the floating Instance AI button when Instance AI is unavailable', async () => {
+		instanceAiAvailableRef.value = false;
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+	});
+
+	it('starts an Instance AI thread with the agent attached on click', async () => {
+		const wrapper = await renderView();
+		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+		await flushPromises();
+
+		expect(startInstanceAiThread).toHaveBeenCalledWith('p1', '', [
+			{
+				type: 'agent',
+				id: 'a1',
+				name: 'Agent One',
+				projectId: 'p1',
+			},
+		]);
 	});
 
 	it('renders artifact mode with the editor and without the build chat', async () => {
@@ -1715,8 +1602,7 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		// Spinner gone, content rendered.
 		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
 	});
 
 	it('clears the loading spinner and shows an error when initialize() throws (finally path)', async () => {

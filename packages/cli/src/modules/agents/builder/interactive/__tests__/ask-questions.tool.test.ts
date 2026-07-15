@@ -18,24 +18,10 @@ function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 describe('ask_questions tool', () => {
 	const tool = buildAskQuestionsTool();
 
-	it('auto-resolves a single single-select question with exactly one option', async () => {
-		const ctx = makeCtx();
-		const result = await tool.handler!(
-			{ questions: [{ question: 'Pick one', type: 'single', options: ['slack'] }] },
-			ctx as unknown as InterruptibleToolContext,
-		);
-
-		expect(ctx.suspend).not.toHaveBeenCalled();
-		expect(result).toEqual({
-			answered: true,
-			answers: [{ questionId: 'q1', selectedOptions: ['slack'], question: 'Pick one' }],
-		});
-	});
-
-	it('suspends a multi-select question with one option', async () => {
+	it('suspends a single single-select question with exactly one option', async () => {
 		const ctx = makeCtx();
 		await tool.handler!(
-			{ questions: [{ question: 'Pick subagents', type: 'multi', options: ['agent-research'] }] },
+			{ questions: [{ question: 'Pick one', type: 'single', options: ['slack'] }] },
 			ctx as unknown as InterruptibleToolContext,
 		);
 
