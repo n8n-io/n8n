@@ -108,7 +108,11 @@ const nodeGroupView = useCanvasNodeGroupView({
 	getGroupExpansionMode: () => props.groupExpansionMode,
 });
 
-const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility();
+const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility({
+	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
+	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
+	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
+});
 
 // Keep the group view in sync with the currently displayed document
 watch(
@@ -116,9 +120,7 @@ watch(
 	() => {
 		nodeGroupView.reinitialize();
 		applyGroupExpansion();
-		nodeGroupDescriptionVisibility.restore(
-			new Set(workflowDocumentStore.value.allGroups.map((group) => group.id)),
-		);
+		nodeGroupDescriptionVisibility.reinitialize();
 	},
 );
 

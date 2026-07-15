@@ -55,6 +55,7 @@ function makeData(overrides: Partial<CanvasGroupNodeData> = {}): CanvasGroupNode
 describe('CanvasNodeGroupTitleBar', () => {
 	beforeEach(() => {
 		viewportRef.value = { x: 0, y: 0, zoom: 1 };
+		localStorage.clear();
 	});
 
 	function render(
@@ -249,7 +250,11 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('shows the pinned description panel with the description text', () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility();
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroupIds: () => ['g1'],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
 			visibility.setVisible('g1', true);
 
 			const wrapper = render({ data: withDescription('Pinned copy') }, visibility);
@@ -263,7 +268,11 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('unpins the description when the pin button is clicked', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility();
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroupIds: () => ['g1'],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
 			visibility.setVisible('g1', true);
 
 			const wrapper = render({ data: withDescription('Pinned copy') }, visibility);
@@ -273,7 +282,11 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('starts editing when the edit icon is clicked', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility();
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroupIds: () => ['g1'],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
 			visibility.setVisible('g1', true);
 
 			const wrapper = render({ data: withDescription('Before') }, visibility);
@@ -283,7 +296,11 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('emits update:description when editing from the pinned panel', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility();
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroupIds: () => ['g1'],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
 			visibility.setVisible('g1', true);
 
 			const wrapper = render({ data: withDescription('Before') }, visibility);
@@ -324,7 +341,11 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('discards edits when cancel is clicked', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility();
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroupIds: () => ['g1'],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
 			visibility.setVisible('g1', true);
 
 			const wrapper = render({ data: withDescription('Before') }, visibility);
