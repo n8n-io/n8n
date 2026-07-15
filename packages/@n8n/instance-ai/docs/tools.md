@@ -690,8 +690,8 @@ appears in the agents-module builder UI.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
-| `name` | string | no | Name for a NEW agent (first call only) |
-| `agentId` | string | no | Existing agent id to edit (first call only) |
+| `name` | string | no | Name for a NEW agent — creates it and makes it the active build target; omit on follow-up calls for the current agent |
+| `agentId` | string | no | Existing agent id to edit — pass to start editing that agent or to switch the active build target; omit on follow-up calls |
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
 **Returns**: `{ ok: true, builderReply, configUpdated }` on success, or
@@ -707,15 +707,22 @@ whose suspend payload has no checkpoint ref to carry).
 tools (batched questions, a credential picker, or channel setup), this tool
 cascades the suspension through its own suspend/resume so it renders as a
 chat card directly in the assistant conversation — no manual relaying, and the
-suspension survives a process restart. On resume, the tool re-derives the
-target agent and the builder's open suspension from persistence and verifies
-they match the suspension it originally cascaded before routing the answer
-back; a stale or superseded suspension fails the call instead of silently
-resuming the wrong one.
+suspension survives a process restart. On resume, the tool takes the target
+agent from the checkpoint ref carried in the suspend payload (falling back
+to the persisted active binding for older checkpoints), re-derives the
+builder's open suspension from persistence, and verifies they match the
+suspension it originally cascaded before routing the answer back; a stale
+or superseded suspension fails the call instead of silently resuming the
+wrong one.
 
 **Targeting:** the first call must pass `name` (new agent) or `agentId`
-(existing agent); the binding is then persisted to thread metadata so
-follow-up calls keep editing the same agent without repeating `name`/`agentId`.
+(existing agent); the active target is persisted to thread metadata so
+follow-up calls keep editing the same agent without repeating them. The
+target is rebindable: a new `name` creates another agent and switches to it
+(the same name as the active target just continues it), a different
+`agentId` switches to that agent (persisted only once the builder turn
+settles, so a bad id cannot clobber the existing binding), and `agentId`
+wins when both are given.
 
 ## Other Domain Tools
 

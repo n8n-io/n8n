@@ -15,7 +15,7 @@ import type {
 	OrchestrationContext,
 } from '../../../types';
 import type * as AgentTargetBindingModule from '../agent-target-binding';
-import { saveAgentBuilderTarget } from '../agent-target-binding';
+import { saveAgentBuilderTarget, type AgentBuilderTarget } from '../agent-target-binding';
 import { createBuildAgentTool } from '../build-agent.tool';
 
 vi.mock('../agent-target-binding', async () => {
@@ -604,6 +604,104 @@ describe('build-agent tool', () => {
 		});
 	});
 
+	describe('multi-agent target switching', () => {
+		it('creates and rebinds to a second agent when a different name is given while a target is bound', async () => {
+			const { context, delegate } = makeContext();
+			// The domain-context field's declared type omits `name`; assign via a
+			// separately-typed variable to keep the excess-property check (which
+			// applies to fresh object literals) from firing.
+			const boundTarget: AgentBuilderTarget = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'First',
+			};
+			context.domainContext!.agentBuilderTarget = boundTarget;
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-2',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+			await runTool(context, { message: 'Build me another agent', name: 'Second' });
+
+			expect(delegate.createAgent).toHaveBeenCalledWith('Second');
+			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, {
+				agentId: 'agent-2',
+				projectId: 'proj-1',
+				name: 'Second',
+			});
+			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-2', 'Build me another agent', {
+				threadId: 'ia-builder:thread-1:agent-2',
+				modelConfig: context.modelId,
+			});
+		});
+
+		it("continues the bound build when the given name matches the bound target's name", async () => {
+			const { context, delegate } = makeContext();
+			const boundTarget: AgentBuilderTarget = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Helper',
+			};
+			context.domainContext!.agentBuilderTarget = boundTarget;
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Continuing.'));
+
+			await runTool(context, { message: 'Add a tool', name: 'Helper' });
+
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Add a tool', {
+				threadId: 'ia-builder:thread-1:agent-1',
+				modelConfig: context.modelId,
+			});
+		});
+
+		it('switches to a different existing agentId with deferred persistence', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			await runTool(context, { message: 'Now edit this one', agentId: 'agent-2' });
+
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-2', 'Now edit this one', {
+				threadId: 'ia-builder:thread-1:agent-2',
+				modelConfig: context.modelId,
+			});
+			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, {
+				agentId: 'agent-2',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('does not clobber the existing binding when the switched agentId turn fails before settling', async () => {
+			const { context, delegate } = makeContext();
+			const originalTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			context.domainContext!.agentBuilderTarget = originalTarget;
+			vi.mocked(delegate.streamBuild).mockRejectedValue(new Error('boom'));
+
+			await expect(
+				runTool(context, { message: 'Now edit this one', agentId: 'agent-2' }),
+			).rejects.toThrow('boom');
+
+			expect(saveAgentBuilderTarget).not.toHaveBeenCalled();
+			expect(context.domainContext!.agentBuilderTarget).toEqual(originalTarget);
+		});
+
+		it('continues without re-persisting when the given agentId matches the bound target', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Continuing.'));
+
+			await runTool(context, { message: 'Add a tool', agentId: 'agent-1' });
+
+			expect(saveAgentBuilderTarget).not.toHaveBeenCalled();
+			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Add a tool', {
+				threadId: 'ia-builder:thread-1:agent-1',
+				modelConfig: context.modelId,
+			});
+		});
+	});
+
 	describe('interactive suspension cascade', () => {
 		it.each([
 			['ask_questions', askQuestionsSuspendPayload],
@@ -633,6 +731,7 @@ describe('build-agent tool', () => {
 						runId: 'builder-run-1',
 						toolCallId: 'builder-call-1',
 						configUpdated: false,
+						target: { agentId: 'agent-1', projectId: 'proj-1', name: 'New Agent' },
 					},
 				});
 				expect(typeof payload.requestId).toBe('string');
@@ -744,12 +843,55 @@ describe('build-agent tool', () => {
 				{ resumeData, suspendPayload: suspendPayloadWithCheckpoint() },
 			);
 
+			// Legacy fallback: the checkpoint ref carries no `target`, so the active
+			// binding decides which agent this resumes against.
+			expect(delegate.findOpenSuspensions).toHaveBeenCalledWith('agent-1', {
+				threadId: 'ia-builder:thread-1:agent-1',
+				modelConfig: context.modelId,
+			});
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData },
 				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
 			);
 			expect(result).toEqual({ ok: true, builderReply: 'Using Slack.', configUpdated: false });
+		});
+
+		it('resumes against the target carried in the builderCheckpoint ref even when the active binding points elsewhere', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-2', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Using Slack.'));
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData: { approved: true },
+					suspendPayload: {
+						...askQuestionsSuspendPayload(),
+						requestId: 'orch-req-1',
+						builderCheckpoint: {
+							runId: 'builder-run-1',
+							toolCallId: 'builder-call-1',
+							configUpdated: false,
+							target: { agentId: 'agent-1', projectId: 'proj-1' },
+						},
+					},
+				},
+			);
+
+			expect(delegate.findOpenSuspensions).toHaveBeenCalledWith('agent-1', {
+				threadId: 'ia-builder:thread-1:agent-1',
+				modelConfig: context.modelId,
+			});
+			expect(delegate.resumeBuild).toHaveBeenCalledWith(
+				'agent-1',
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData: { approved: true } },
+				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+			);
 		});
 
 		it('resumes when the persisted ref matches one of several open suspensions', async () => {

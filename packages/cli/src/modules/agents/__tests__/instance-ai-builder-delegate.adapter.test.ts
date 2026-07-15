@@ -5,6 +5,7 @@ import type {
 	StreamChunk,
 } from '@n8n/agents';
 import type { User } from '@n8n/db';
+import { Like } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -13,26 +14,39 @@ import * as checkAccess from '@/permissions.ee/check-access';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { Agent } from '../entities/agent.entity';
+import type { AgentThreadEntity } from '../entities/agent-thread.entity';
 import {
 	INSTANCE_AI_BUILDER_ADDENDUM,
 	InstanceAiBuilderDelegateAdapterService,
 } from '../instance-ai-builder-delegate.adapter';
+import type { N8nMemory, N8nMemoryImpl } from '../integrations/n8n-memory';
+import type { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 function setup() {
 	const agentsService = mock<AgentsService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
+	const n8nMemory = mock<N8nMemory>();
+	const agentThreadRepository = mock<AgentThreadRepository>();
 
-	const service = new InstanceAiBuilderDelegateAdapterService(agentsService, agentsBuilderService);
+	const service = new InstanceAiBuilderDelegateAdapterService(
+		agentsService,
+		agentsBuilderService,
+		n8nMemory,
+		agentThreadRepository,
+	);
 
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
 	const delegate = service.createDelegate(user, 'project-1', credentialProvider);
 
 	return {
+		service,
 		delegate,
 		user,
 		agentsService,
 		agentsBuilderService,
+		n8nMemory,
+		agentThreadRepository,
 		credentialProvider,
 	};
 }
@@ -300,6 +314,40 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			await expect(delegate.createAgent('New agent')).rejects.toThrow(ForbiddenError);
 			expect(agentsService.create).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deleteBuilderSessions', () => {
+		it('deletes messages and thread state for every builder session of the instance thread, scoped per target agent', async () => {
+			const { service, n8nMemory, agentThreadRepository } = setup();
+			agentThreadRepository.find.mockResolvedValue([
+				{ id: 'ia-builder:t1:agent-1' },
+				{ id: 'ia-builder:t1:agent-2' },
+			] as AgentThreadEntity[]);
+			const impls = [mock<N8nMemoryImpl>(), mock<N8nMemoryImpl>()];
+			n8nMemory.getImplementation.mockReturnValueOnce(impls[0]).mockReturnValueOnce(impls[1]);
+
+			await service.deleteBuilderSessions('t1');
+
+			expect(agentThreadRepository.find).toHaveBeenCalledWith({
+				select: { id: true },
+				where: { id: Like('ia-builder:t1:%') },
+			});
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-2');
+			expect(impls[0].deleteMessagesByThread).toHaveBeenCalledWith('ia-builder:t1:agent-1');
+			expect(impls[0].deleteThread).toHaveBeenCalledWith('ia-builder:t1:agent-1');
+			expect(impls[1].deleteMessagesByThread).toHaveBeenCalledWith('ia-builder:t1:agent-2');
+			expect(impls[1].deleteThread).toHaveBeenCalledWith('ia-builder:t1:agent-2');
+		});
+
+		it('is a no-op when the instance thread has no builder sessions', async () => {
+			const { service, n8nMemory, agentThreadRepository } = setup();
+			agentThreadRepository.find.mockResolvedValue([]);
+
+			await service.deleteBuilderSessions('t1');
+
+			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 		});
 	});
 });

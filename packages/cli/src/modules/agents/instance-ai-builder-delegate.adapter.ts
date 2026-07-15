@@ -1,12 +1,14 @@
 import type { CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { instanceAiBuilderThreadPrefix } from '@n8n/instance-ai';
 import type {
 	BuilderDelegateSession,
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
 } from '@n8n/instance-ai';
 import { type Scope } from '@n8n/permissions';
+import { Like } from '@n8n/typeorm';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -14,6 +16,8 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import type { BuilderSessionOptions } from './builder/agents-builder.service';
+import { N8nMemory } from './integrations/n8n-memory';
+import { AgentThreadRepository } from './repositories/agent-thread.repository';
 
 /** Prompt addendum for sub-agent runs; exported for tests. */
 export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
@@ -68,6 +72,8 @@ export class InstanceAiBuilderDelegateAdapterService {
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly agentsBuilderService: AgentsBuilderService,
+		private readonly n8nMemory: N8nMemory,
+		private readonly agentThreadRepository: AgentThreadRepository,
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
@@ -149,5 +155,27 @@ export class InstanceAiBuilderDelegateAdapterService {
 				await this.agentsBuilderService.cancelCheckpoint(agentId, runId);
 			},
 		};
+	}
+
+	/**
+	 * Delete every builder sub-agent session spawned by one instance-AI thread:
+	 * the `ia-builder:<threadId>:<agentId>` rows in the agents-module memory
+	 * tables (thread, messages, observations, orphaned episodic entries).
+	 * Called by the instance-AI host when the thread is deleted or TTL-pruned;
+	 * access control happened there. Instance-AI thread ids are UUIDs, so the
+	 * prefix carries no LIKE metacharacters.
+	 */
+	async deleteBuilderSessions(instanceAiThreadId: string): Promise<void> {
+		const prefix = instanceAiBuilderThreadPrefix(instanceAiThreadId);
+		const threads = await this.agentThreadRepository.find({
+			select: { id: true },
+			where: { id: Like(`${prefix}%`) },
+		});
+		for (const { id } of threads) {
+			// The target agent id is the suffix; memory impls are agent-scoped.
+			const memory = this.n8nMemory.getImplementation(id.slice(prefix.length));
+			await memory.deleteMessagesByThread(id);
+			await memory.deleteThread(id);
+		}
 	}
 }

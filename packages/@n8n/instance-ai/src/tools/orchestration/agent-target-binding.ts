@@ -1,9 +1,11 @@
 /**
  * Thread-persisted agent-builder target binding. Mirrors the workflow source
- * file bindings, but as a single thread-level record: one agent is being
- * built/edited per thread, matching `context.agentBuilderTarget` semantics.
- * Persisting the target in thread metadata lets follow-up turns keep editing
- * the same agent instead of creating a new one.
+ * file bindings, but as a single thread-level record: one ACTIVE agent
+ * target per thread (the most recently created or explicitly targeted agent
+ * — `build-agent` calls with `name`/`agentId` rebind it), matching
+ * `context.agentBuilderTarget` semantics. Persisting the target in thread
+ * metadata lets follow-up turns keep editing the same agent instead of
+ * creating a new one.
  */
 import { z } from 'zod';
 
