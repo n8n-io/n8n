@@ -1,0 +1,42 @@
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_bf4b406192500a::t_51b312e6113aa4 44
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_bf4b406192500a::t_824d9923e437bb 294-301
+  s_bf4b406192500a::t_bb308185ba3f3a 66-70
+  s_bf4b406192500a::t_9d7a587bea11fa 56-59
+  s_bf4b406192500a::t_65514c557bceeb 115
+  s_bf4b406192500a::t_f7346e8cae215e 205-207
+  s_bf4b406192500a::t_e908d5c063512b 121-129,132
+  s_bf4b406192500a::t_fbf9f2213f876f 11-14
+  s_bf4b406192500a::t_be46c19ca9ec7a 331-339
+  s_bf4b406192500a::t_55d52b3c0da30d 355
+  s_bf4b406192500a::t_39581df29f9eb7 71-74
+  s_bf4b406192500a::t_770fd21d552adf 146-150,153-156
+  s_bf4b406192500a::t_99d1e015d33ddf 169-171,175-184
+  s_bf4b406192500a::t_dd7bc5b24721dd 185
+packages/@n8n/instance-ai/evaluations/data/agents/ctx-inline-agent-recurring-task.json
+  s_bf4b406192500a::t_e726aa10007a9b 1-25
+packages/@n8n/instance-ai/evaluations/data/agents/agent-ondemand-progress-report.json
+  s_bf4b406192500a::t_0160e8a3e2177d 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2f529eb56c53895f5f2124a94bd7b03203478db0",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bf4b406192500a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b35a3739-ecb8-4de9-8065-9092bb1e514b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
