@@ -25,7 +25,9 @@
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "janitor": "pnpm build && ./bin/janitor.mjs",
+    "janitor:fix": "pnpm janitor -- --fix --write"
   },
   "keywords": [
     "playwright",

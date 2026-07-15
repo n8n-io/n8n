@@ -45,8 +45,8 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "janitor": "tsx ../janitor/src/cli.ts",
-    "janitor:fix": "tsx ../janitor/src/cli.ts --fix --write"
+    "janitor": "cd ../janitor && pnpm janitor",
+    "janitor:fix": "cd ../janitor && pnpm janitor:fix"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "0.91.1",
