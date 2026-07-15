@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/n8n-benchmark",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T08:32:42.617Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            995,
+            942,
+            782
+          ],
+          "min": 782,
+          "median": 942,
+          "mean": 906
+        },
+        "build": {
+          "runsMs": [
+            1013,
+            948,
+            913
+          ],
+          "min": 913,
+          "median": 948,
+          "mean": 958
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T08:37:20.138Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            479,
+            476,
+            507
+          ],
+          "min": 476,
+          "median": 479,
+          "mean": 487
+        },
+        "build": {
+          "runsMs": [
+            926,
+            578,
+            577
+          ],
+          "min": 577,
+          "median": 578,
+          "mean": 694
+        }
+      }
+    }
+  }
+}

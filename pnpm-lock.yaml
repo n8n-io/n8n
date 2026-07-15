@@ -1573,8 +1573,8 @@ importers:
         specifier: ^0.52.0
         version: 0.52.0
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
 
   packages/@n8n/chat-hub:
     dependencies:
