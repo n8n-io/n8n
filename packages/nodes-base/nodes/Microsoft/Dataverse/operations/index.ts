@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 /**
  * Single registry of every record-level operation the node supports. Adding a
  * new operation = create a module under this folder and append it here.

@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 import type * as n8nWorkflow from 'n8n-workflow';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeApiError, sleep } from 'n8n-workflow';

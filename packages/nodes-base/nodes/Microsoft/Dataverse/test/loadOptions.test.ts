@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 // Fixtures and expected values below mirror Dataverse API responses (lowercase
 // logical names, `{ name, value }` option shapes) — not node display-name params.
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */

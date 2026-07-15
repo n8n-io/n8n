@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 import type { IDisplayOptions, INodeProperties } from 'n8n-workflow';
 
 /**

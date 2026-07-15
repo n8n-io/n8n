@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 

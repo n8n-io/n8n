@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 import type { IDataObject } from 'n8n-workflow';
 import type { OperationDefinition } from './types';
 import { assertNonEmptyBody, executeRequest, normalizeEntitySet, parseItemInput } from './shared';

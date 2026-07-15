@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 import type { INodeProperties } from 'n8n-workflow';
 
 import { MicrosoftDataverseOAuth2Api } from '../MicrosoftDataverseOAuth2Api.credentials';

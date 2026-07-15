@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 // `{ name, value }` objects below are field-input fixtures, not node params.
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 
