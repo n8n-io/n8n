@@ -19,6 +19,20 @@ export class WorkflowSettingsModal extends BasePage {
 		return this.container;
 	}
 
+	/**
+	 * Whether the settings content is taller than the modal's visible area,
+	 * i.e. part of it is cut off and only reachable by scrolling.
+	 *
+	 * The settings render inside the Modal's scrollable `.modal-content`
+	 * region, which is the direct parent of the settings container. When the
+	 * content's `scrollHeight` exceeds the region's `clientHeight`, content is
+	 * clipped and the user has to scroll to see it.
+	 */
+	async isContentCutOff(): Promise<boolean> {
+		const scrollRegion = this.container.locator('..');
+		return await scrollRegion.evaluate((el) => el.scrollHeight > el.clientHeight);
+	}
+
 	getErrorWorkflowField(): Locator {
 		return this.container.getByTestId('workflow-settings-error-workflow');
 	}
