@@ -89,6 +89,7 @@ import {
 import * as NodeViewUtils from '@/app/utils/nodeViewUtils';
 import {
 	GRID_SIZE,
+	AGENT_NODE_SIZE,
 	CONFIGURABLE_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
@@ -98,6 +99,7 @@ import {
 	PUSH_NODES_OFFSET,
 	doRectsOverlap,
 } from '@/app/utils/nodeViewUtils';
+import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import type { Connection } from '@vue-flow/core';
 import type {
 	IConnection,
@@ -1596,6 +1598,12 @@ export function useCanvasOperations() {
 					) {
 						// If the node has scoped inputs, push it down a bit more
 						pushOffset += 140;
+					}
+					if (isAgentNodeV2(lastInteractedWithNodeObject)) {
+						// The agent card is much wider than the default node width baked
+						// into PUSH_NODES_OFFSET — advance by the extra width so the new
+						// node clears the card instead of landing on top of it.
+						pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
 					}
 
 					// If a node is active then add the new node directly after the current one
