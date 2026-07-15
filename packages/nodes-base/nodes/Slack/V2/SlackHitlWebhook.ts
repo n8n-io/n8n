@@ -178,10 +178,9 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 	const approvers = this.getNodeParameter('approvers', []) as string[];
 	if (approvers.length > 0 && !approvers.includes(payload.user?.id ?? '')) {
 		this.logHitlResponse({ approved, authorized: false });
-		await notifyNotAuthorized(this, payload);
-		// Acknowledge the interaction so Slack doesn't time out and retry the same click
-		// (which would re-run this handler and repeat the notice). The execution stays waiting.
+		// Acknowledge the interaction before the best-effort notification so Slack does not time out and retry the click.
 		this.getResponseObject().status(200).send('');
+		await notifyNotAuthorized(this, payload);
 		return { noWebhookResponse: true };
 	}
 
