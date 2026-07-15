@@ -13,6 +13,7 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	RunnableInlineAgentConfigSchema,
 	sanitizeAgentJsonConfig,
+	sanitizeAgentSkillBodies,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -1006,7 +1007,9 @@ export class AgentExecutionOrchestratorService {
 	): Promise<{ config: AgentJsonConfig; skills: Record<string, AgentSkill> }> {
 		const parsed = RunnableInlineAgentConfigSchema.safeParse({
 			config: sanitizeAgentJsonConfig(payload.config),
-			...(payload.skills !== undefined ? { skills: payload.skills } : {}),
+			// Sanitized like the config, so persisted bodies degrade gracefully
+			// as the skill schema evolves instead of hard-failing at execution.
+			...(payload.skills !== undefined ? { skills: sanitizeAgentSkillBodies(payload.skills) } : {}),
 		});
 		if (!parsed.success) {
 			const details = formatZodErrors(parsed.error)

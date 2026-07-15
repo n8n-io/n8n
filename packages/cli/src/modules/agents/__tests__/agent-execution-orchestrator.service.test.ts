@@ -839,6 +839,38 @@ describe('AgentExecutionOrchestratorService', () => {
 			);
 		});
 
+		it('strips unknown skill-body fields instead of failing the execution', async () => {
+			const { service, reconstructionService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+			const triage = {
+				name: 'Triage',
+				description: 'Triage incoming requests',
+				instructions: 'Categorize the request and route it.',
+			};
+
+			await service.executeInlineForWorkflow(
+				{
+					config: {
+						...inlinePayload.config,
+						skills: [{ type: 'skill', id: 'skill_triage' }],
+					},
+					// A body persisted by a schema version whose extra field has
+					// since been retired must still run, like config keys do.
+					skills: { skill_triage: { ...triage, retiredField: 'from an older schema' } },
+				},
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+			);
+
+			expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ skills: { skill_triage: triage } }),
+			);
+		});
+
 		it('rejects a skill ref without a body, with a pathed error', async () => {
 			const { service, reconstructionService } = makeService();
 
