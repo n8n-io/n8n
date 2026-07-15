@@ -44,3 +44,27 @@ export async function microsoftApiRequest<T extends IDataObject = IDataObject>(
 		throw mapError.call(this, error);
 	}
 }
+
+/**
+ * Accumulates every page of a Graph collection for "Return All". Only the first
+ * request carries `qs`; every following page is fetched from `@odata.nextLink`
+ * verbatim, exactly as Graph returned it, never rebuilt with extra params.
+ */
+export async function microsoftApiRequestAllItems(
+	this: AuthContext,
+	endpoint: string,
+	qs: IDataObject = {},
+): Promise<IDataObject[]> {
+	const returnData: IDataObject[] = [];
+	let uri: string | undefined;
+
+	do {
+		const response: IDataObject = uri
+			? await microsoftApiRequest.call(this, 'GET', '', {}, {}, uri)
+			: await microsoftApiRequest.call(this, 'GET', endpoint, {}, { ...qs, $top: 100 });
+		returnData.push(...((response.value as IDataObject[]) ?? []));
+		uri = response['@odata.nextLink'] as string | undefined;
+	} while (uri !== undefined);
+
+	return returnData;
+}

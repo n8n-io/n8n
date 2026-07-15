@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-// The searchable dropdowns arrive in later tickets, on these same fields.
+// The Workbook/Site/Library searchable dropdowns arrive with the site/library
+// ticket, on these same fields. The Sheet and Table dropdowns are below.
 
 export const workbookRLC: INodeProperties = {
 	displayName: 'Workbook',
@@ -111,14 +112,49 @@ export const worksheetRLC: INodeProperties = {
 	name: 'worksheet',
 	type: 'resourceLocator',
 	required: true,
-	default: { mode: 'id', value: '' },
+	default: { mode: 'list', value: '' },
 	description: 'The sheet to operate on',
 	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getSheets',
+				searchable: true,
+			},
+		},
 		{
 			displayName: 'By Name or ID',
 			name: 'id',
 			type: 'string',
 			placeholder: 'e.g. Sheet1',
+		},
+	],
+};
+
+export const tableRLC: INodeProperties = {
+	displayName: 'Table',
+	name: 'table',
+	type: 'resourceLocator',
+	required: true,
+	default: { mode: 'list', value: '' },
+	description: 'The table to operate on',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getTables',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By Name or ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. Table1',
 		},
 	],
 };
