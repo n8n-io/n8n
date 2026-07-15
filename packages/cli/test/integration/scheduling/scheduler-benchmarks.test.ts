@@ -54,6 +54,14 @@ const runBenchmarks = process.env.N8N_SCHEDULER_BENCHMARK === '1';
 const isPostgres = process.env.DB_TYPE === 'postgresdb';
 const dialect = isPostgres ? 'postgres' : 'sqlite';
 
+// Postgres runs N independent instances; SQLite funnels N concurrent callers
+// through one shared writer (multi-main needs Postgres). Label the report so raw
+// output isn't misread as "SQLite instances beat Postgres instances".
+const instancesLabel = isPostgres ? 'instances' : 'workers (1 shared writer)';
+const recoveringLabel = isPostgres
+	? 'recovering instances'
+	: 'recovering workers (1 shared writer)';
+
 const envInt = (name: string, fallback: number): number => {
 	const raw = process.env[name];
 	const parsed = raw !== undefined ? Number(raw) : NaN;
@@ -81,11 +89,28 @@ const RECOVERY_WORKERS = envInt('N8N_SCHEDULER_BENCHMARK_RECOVERY_WORKERS', 8);
 const RECOVERY_STRANDED = envInt('N8N_SCHEDULER_BENCHMARK_RECOVERY_STRANDED', 20_000);
 const RECOVERY_MAX_SECONDS = envInt('N8N_SCHEDULER_BENCHMARK_RECOVERY_MAX_SECONDS', 120);
 
-// KPI 4 — Health: the table stays bounded under sustained high-frequency churn.
+// KPI 4 — Health: the table stays bounded under sustained high-frequency churn,
+// with retention pruning *concurrently* with live churn (not a serial post-batch
+// sweep). Total fires = CHURN_CYCLES × CHURN_BATCH.
 const CHURN_WORKERS = envInt('N8N_SCHEDULER_BENCHMARK_CHURN_WORKERS', 8);
 const CHURN_CYCLES = envInt('N8N_SCHEDULER_BENCHMARK_CHURN_CYCLES', 20);
 const CHURN_BATCH = envInt('N8N_SCHEDULER_BENCHMARK_CHURN_BATCH', 5_000);
 const CHURN_MIN_FPS = envInt('N8N_SCHEDULER_BENCHMARK_CHURN_MIN_FPS', 50);
+// Retention runs as its own loop: prune a bounded batch on a fixed cadence,
+// racing live inserts/claims/fires — the shape the shipped retention job has.
+const CHURN_RETENTION_LIMIT = envInt('N8N_SCHEDULER_BENCHMARK_CHURN_RETENTION_LIMIT', 1_000);
+const CHURN_RETENTION_INTERVAL_MS = envInt(
+	'N8N_SCHEDULER_BENCHMARK_CHURN_RETENTION_INTERVAL_MS',
+	100,
+);
+const CHURN_SAMPLE_INTERVAL_MS = envInt('N8N_SCHEDULER_BENCHMARK_CHURN_SAMPLE_INTERVAL_MS', 50);
+// Peak finished-but-unpruned rows allowed. If retention keeps pace this stays
+// small (a sweep or two behind); crossing it means pruning fell behind and the
+// table is bloating — the real failure this KPI guards against.
+const CHURN_MAX_FINISHED_ROWS = envInt(
+	'N8N_SCHEDULER_BENCHMARK_CHURN_MAX_FINISHED_ROWS',
+	CHURN_BATCH,
+);
 
 const LEASE_MS = 60_000;
 const BACKOFF_MS = 60_000;
@@ -103,8 +128,12 @@ const commas = (n: number) => Math.round(n).toLocaleString('en-US');
 const percentiles = (samples: number[]) => {
 	if (samples.length === 0) return { p50: 0, p95: 0, p99: 0 };
 	const sorted = [...samples].sort((a, b) => a - b);
-	const at = (p: number) =>
-		sorted[Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length))];
+	// Nearest-rank: the p-th percentile is the ceil(p/100 · n)-th sample (1-based),
+	// clamped into range. (Plain floor(p/100 · n) would return the max for round n.)
+	const at = (p: number) => {
+		const rank = Math.ceil((p / 100) * sorted.length);
+		return sorted[Math.min(sorted.length - 1, Math.max(0, rank - 1))];
+	};
 	return { p50: at(50), p95: at(95), p99: at(99) };
 };
 
@@ -307,6 +336,7 @@ describe.runIf(runBenchmarks)('durable scheduler benchmarks', () => {
 			const workers = await createWorkers(CAPACITY_WORKERS);
 			let fired = 0;
 			const start = Date.now();
+			let end = start;
 			try {
 				await drainByClaiming(workers.repos, {
 					target: CAPACITY_BACKLOG,
@@ -319,17 +349,20 @@ describe.runIf(runBenchmarks)('durable scheduler benchmarks', () => {
 						}
 					},
 				});
+				// Stop the clock before teardown: closing the Postgres DataSources in the
+				// finally is real work, but not part of firing throughput.
+				end = Date.now();
 			} finally {
 				await workers.destroy();
 			}
 
-			const elapsedS = (Date.now() - start) / 1000;
+			const elapsedS = (end - start) / 1000;
 			const firesPerSec = Math.round(CAPACITY_BACKLOG / elapsedS);
 			const keepsUp = firesPerSec >= CAPACITY_MIN_FPS;
 
 			report('KPI 1 · CAPACITY — schedule fires per second (one node)', {
 				question: 'How many schedules can one node fire per second?',
-				instances: CAPACITY_WORKERS,
+				[instancesLabel]: CAPACITY_WORKERS,
 				'schedules processed': commas(CAPACITY_BACKLOG),
 				'time (s)': elapsedS.toFixed(2),
 				'sustained fires/sec': commas(firesPerSec),
@@ -385,7 +418,7 @@ describe.runIf(runBenchmarks)('durable scheduler benchmarks', () => {
 
 			report('KPI 2 · PUNCTUALITY — how late fires are under a burst', {
 				question: 'Will my jobs fire on time when many come due at once?',
-				instances: PUNCTUALITY_WORKERS,
+				[instancesLabel]: PUNCTUALITY_WORKERS,
 				'schedules due at once': commas(PUNCTUALITY_BURST),
 				'fired late by — p50': `${secs(p50)}s`,
 				'fired late by — p95': `${secs(p95)}s`,
@@ -439,6 +472,7 @@ describe.runIf(runBenchmarks)('durable scheduler benchmarks', () => {
 			let recovered = 0;
 			let sweeps = 0;
 			const start = Date.now();
+			let end = start;
 			try {
 				await Promise.all(
 					workers.repos.map(async (repo) => {
@@ -466,16 +500,19 @@ describe.runIf(runBenchmarks)('durable scheduler benchmarks', () => {
 						}
 					}),
 				);
+				// Stop the clock before teardown (see CAPACITY): connection close isn't
+				// part of recovery time.
+				end = Date.now();
 			} finally {
 				await workers.destroy();
 			}
 
-			const elapsedS = (Date.now() - start) / 1000;
+			const elapsedS = (end - start) / 1000;
 			const withinBudget = elapsedS <= RECOVERY_MAX_SECONDS;
 
 			report('KPI 3 · RECOVERY — time to resume a crashed node’s work', {
 				question: 'If a node dies mid-run, how fast does its work resume?',
-				'recovering instances': RECOVERY_WORKERS,
+				[recoveringLabel]: RECOVERY_WORKERS,
 				'stranded schedules': commas(RECOVERY_STRANDED),
 				'recovery time (s)': elapsedS.toFixed(2),
 				'recovered/sec': commas(Math.round(recovered / elapsedS)),
@@ -498,78 +535,151 @@ describe.runIf(runBenchmarks)('durable scheduler benchmarks', () => {
 
 	// ── KPI 4 · HEALTH ────────────────────────────────────────────────────────
 	// "Does the scheduler's table stay bounded, or will it bloat the DB?"
-	// A high-frequency schedule drives the full lifecycle over and over: fire a
-	// batch (insert → claim → mark started → complete), then let retention prune
-	// the finished rows. The table must stay bounded — holding only the in-flight
-	// batch, never accumulating history across cycles. This is the insert+update+
-	// delete pattern that bloats Postgres with dead tuples and grows the SQLite
-	// file; retention keeping up is what prevents it.
+	// Four loops run concurrently for the whole test — the way production actually
+	// looks, with retention racing live churn rather than sweeping between batches:
+	//
+	//   • producer  — seeds due tasks, paced to hold the pending backlog near one
+	//                 batch, so peak rows reflect steady state, not a producer that
+	//                 outran the consumers;
+	//   • consumers — claim + fire (insert → claim → mark started → complete);
+	//   • retention — prunes a bounded batch of finished rows on a fixed cadence;
+	//   • sampler   — records the high-water mark of live rows and, crucially, of
+	//                 finished-but-unpruned rows (the actual bloat signal: dead
+	//                 tuples on Postgres, file growth on SQLite).
+	//
+	// The KPI is whether retention *keeps pace* with concurrent churn: finished
+	// rows must stay bounded (never accumulate toward the total fired). Serially
+	// draining the table to zero after each batch would prove nothing about that.
 	it(
-		'HEALTH — keeps the table bounded under sustained churn',
+		'HEALTH — keeps the table bounded under sustained concurrent churn',
 		async () => {
 			const job = await createJob();
 			const workers = await createWorkers(CHURN_WORKERS);
+			const totalFires = CHURN_CYCLES * CHURN_BATCH;
+
 			let fired = 0;
+			let seeded = 0;
 			let peakLiveRows = 0;
+			let peakFinishedRows = 0;
+			let churnDone = false;
 
 			const start = Date.now();
+			let end = start;
 			try {
-				for (let cycle = 0; cycle < CHURN_CYCLES; cycle++) {
-					await seedDuePending(job.id, CHURN_BATCH, cycle * CHURN_BATCH);
+				// Producer: seed continuously, but throttle on the pending backlog so
+				// inflow tracks the fire rate. Distinct slot windows (seedChunk offset)
+				// keep the (jobId, scheduledFor) unique index from colliding.
+				const producer = (async () => {
+					let seedChunk = 0;
+					while (seeded < totalFires && Date.now() - start < TEST_TIMEOUT_MS) {
+						const pending = await taskRepository.countBy({ status: 'pending' });
+						if (pending >= CHURN_BATCH) {
+							await sleep(5);
+							continue;
+						}
+						const size = Math.min(CHURN_BATCH, totalFires - seeded);
+						await seedDuePending(job.id, size, seedChunk * CHURN_BATCH);
+						seeded += size;
+						seedChunk += 1;
+					}
+				})();
 
-					await drainByClaiming(workers.repos, {
-						target: CHURN_BATCH,
-						onClaimed: async (rows, _worker, repo) => {
-							for (const row of rows) {
-								// Resolve before incrementing: `fired += await …` would read `fired`
-								// before the await and write it back after, losing concurrent updates.
-								const done = await fireTask(repo, row);
-								fired += done;
-							}
-						},
-					});
+				// Consumers: claim + fire until the whole workload has fired.
+				const consumers = workers.repos.map(async (repo, index) => {
+					const host = `bench-churn-${index}`;
+					while (fired < totalFires && Date.now() - start < TEST_TIMEOUT_MS) {
+						const rows = await repo.claimDueTasks({
+							host,
+							taskTypes: [TASK_TYPE],
+							lookaheadMs: 0,
+							leaseMs: LEASE_MS,
+							batchSize: CLAIM_BATCH,
+						});
+						if (rows.length === 0) {
+							await sleep(1);
+							continue;
+						}
+						for (const row of rows) {
+							// Resolve before incrementing: `fired += await …` would read `fired`
+							// before the await and write it back after, losing concurrent updates.
+							const done = await fireTask(repo, row);
+							fired += done;
+						}
+					}
+				});
 
-					// High-water mark BEFORE pruning: with retention keeping up, prior
-					// cycles are already gone, so the table holds only this cycle's rows.
-					peakLiveRows = Math.max(peakLiveRows, await taskRepository.count());
-
-					for (;;) {
-						const deleted = await taskRepository.deleteFinishedOlderThan({
+				// Retention: prune a bounded batch of finished rows on a fixed cadence,
+				// racing the live churn above — the shipped retention job's shape.
+				const retention = (async () => {
+					while (!churnDone && Date.now() - start < TEST_TIMEOUT_MS) {
+						await taskRepository.deleteFinishedOlderThan({
 							statuses: ['succeeded'],
 							olderThanMs: 0,
-							limit: 1000,
+							limit: CHURN_RETENTION_LIMIT,
 						});
-						if (deleted === 0) break;
+						await sleep(CHURN_RETENTION_INTERVAL_MS);
 					}
+				})();
+
+				// Sampler: high-water marks while churn is in flight. `peakFinishedRows`
+				// is the bloat signal — succeeded rows retention hasn't pruned yet.
+				const sampler = (async () => {
+					while (!churnDone && Date.now() - start < TEST_TIMEOUT_MS) {
+						peakLiveRows = Math.max(peakLiveRows, await taskRepository.count());
+						peakFinishedRows = Math.max(
+							peakFinishedRows,
+							await taskRepository.countBy({ status: 'succeeded' }),
+						);
+						await sleep(CHURN_SAMPLE_INTERVAL_MS);
+					}
+				})();
+
+				await Promise.all([producer, ...consumers]);
+				end = Date.now();
+				// Churn has stopped; let retention and the sampler wind down.
+				churnDone = true;
+				await Promise.all([retention, sampler]);
+
+				// Drain the tail retention hadn't reached when churn stopped, so the
+				// end-state assertion reflects "nothing left behind", not timing.
+				for (;;) {
+					const deleted = await taskRepository.deleteFinishedOlderThan({
+						statuses: ['succeeded'],
+						olderThanMs: 0,
+						limit: 1000,
+					});
+					if (deleted === 0) break;
 				}
 			} finally {
 				await workers.destroy();
 			}
 
-			const elapsedS = (Date.now() - start) / 1000;
-			const totalFires = CHURN_CYCLES * CHURN_BATCH;
+			const elapsedS = (end - start) / 1000;
 			const firesPerSec = Math.round(totalFires / elapsedS);
 			const finalRows = await taskRepository.count();
-			const bounded = peakLiveRows <= CHURN_BATCH && finalRows === 0;
+			const keptPace = peakFinishedRows <= CHURN_MAX_FINISHED_ROWS;
+			const bounded = keptPace && finalRows === 0;
 
-			report('KPI 4 · HEALTH — table stays bounded under churn', {
+			report('KPI 4 · HEALTH — table stays bounded under concurrent churn', {
 				question: 'Does the scheduler table stay bounded (no DB bloat)?',
-				instances: CHURN_WORKERS,
+				[instancesLabel]: CHURN_WORKERS,
 				'total fires': commas(totalFires),
 				'sustained fires/sec': commas(firesPerSec),
 				'peak live rows': commas(peakLiveRows),
+				'peak finished-but-unpruned': commas(peakFinishedRows),
 				'if retention had lagged': `would have grown to ${commas(totalFires)}`,
 				'rows left at end': finalRows,
 				VERDICT: bounded
-					? `bounded at ~${commas(peakLiveRows)} rows (one batch), not ${commas(totalFires)}`
-					: 'UNBOUNDED (retention is not keeping up)',
+					? `retention kept pace: finished rows peaked at ~${commas(peakFinishedRows)}, not ${commas(totalFires)}`
+					: `UNBOUNDED (finished rows peaked at ${commas(peakFinishedRows)} > ${commas(CHURN_MAX_FINISHED_ROWS)} ceiling)`,
 			});
 
-			// Correctness: every fire ran; the table never exceeded one batch and was
-			// fully drained at the end (the lower bound guards against a vacuous check).
+			// Correctness: every fire ran exactly once; retention held finished rows
+			// bounded under concurrent churn (lower bound guards a vacuous check); the
+			// tail fully drained at the end.
 			expect(fired).toBe(totalFires);
-			expect(peakLiveRows).toBeGreaterThan(0);
-			expect(peakLiveRows).toBeLessThanOrEqual(CHURN_BATCH);
+			expect(peakFinishedRows).toBeGreaterThan(0);
+			expect(peakFinishedRows).toBeLessThanOrEqual(CHURN_MAX_FINISHED_ROWS);
 			expect(finalRows).toBe(0);
 			expect(firesPerSec).toBeGreaterThanOrEqual(CHURN_MIN_FPS);
 		},

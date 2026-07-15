@@ -17,7 +17,7 @@ purpose (see below).
 | **1 · Capacity** | How many schedule fires per second can one node handle? | sustained fires/sec end-to-end (claim → mark started → complete), translated to "N schedules every X s" | every fire ran once; ≥ floor |
 | **2 · Punctuality** | Will my jobs fire on time when many come due at once? | how late each fire was vs its due time, p50/p95/p99, under a due-at-once burst | whole burst fired; p99 under the 30 s late-dispatch warning |
 | **3 · Recovery** | If a node dies mid-run, how fast does its work resume? | wall-clock to recover a stranded (crashed-node) backlog | all recovered exactly once; within the time budget |
-| **4 · Health** | Does the scheduler's table stay bounded (no DB bloat)? | peak live rows under sustained churn vs total fired | table stays ≤ one batch; fully drained; retention keeps up |
+| **4 · Health** | Does the scheduler's table stay bounded (no DB bloat)? | peak finished-but-unpruned rows while retention prunes *concurrently* with live churn, vs total fired | finished rows stay bounded (retention keeps pace); fully drained at the end |
 
 ### How concurrency is modelled per dialect
 
@@ -67,9 +67,13 @@ At the default workload a full run is ~50s on SQLite and ~110s on Postgres
 | `N8N_SCHEDULER_BENCHMARK_RECOVERY_STRANDED` | 20000 | crashed-node backlog (KPI 3) |
 | `N8N_SCHEDULER_BENCHMARK_RECOVERY_MAX_SECONDS` | 120 | recovery-time budget |
 | `N8N_SCHEDULER_BENCHMARK_CHURN_WORKERS` | 8 | instances (KPI 4) |
-| `N8N_SCHEDULER_BENCHMARK_CHURN_CYCLES` | 20 | churn cycles (KPI 4) |
-| `N8N_SCHEDULER_BENCHMARK_CHURN_BATCH` | 5000 | fires per cycle (KPI 4) |
+| `N8N_SCHEDULER_BENCHMARK_CHURN_CYCLES` | 20 | × batch = total fires (KPI 4) |
+| `N8N_SCHEDULER_BENCHMARK_CHURN_BATCH` | 5000 | fires per cycle; also the pending-backlog watermark |
 | `N8N_SCHEDULER_BENCHMARK_CHURN_MIN_FPS` | 50 | churn floor (fires/sec) |
+| `N8N_SCHEDULER_BENCHMARK_CHURN_RETENTION_LIMIT` | 1000 | rows pruned per retention sweep (KPI 4) |
+| `N8N_SCHEDULER_BENCHMARK_CHURN_RETENTION_INTERVAL_MS` | 100 | delay between retention sweeps (KPI 4) |
+| `N8N_SCHEDULER_BENCHMARK_CHURN_SAMPLE_INTERVAL_MS` | 50 | how often live/finished rows are sampled (KPI 4) |
+| `N8N_SCHEDULER_BENCHMARK_CHURN_MAX_FINISHED_ROWS` | 5000 | ceiling on finished-but-unpruned rows (KPI 4) |
 
 ## Reading the results for the min-interval decision
 
@@ -87,8 +91,10 @@ At the default workload a full run is ~50s on SQLite and ~110s on Postgres
   an instance dies. The "wasted-sweep factor" (near the instance count) shows the
   reaper sweep takes no row lock, so many concurrent recoverers mostly duplicate
   work — argues for a modest reaper count rather than many aggressive ones.
-- **Health** staying bounded is what lets retention briefly fall behind without
-  the DB bloating (Postgres dead tuples / SQLite file growth).
+- **Health** runs retention concurrently with live churn and watches the peak
+  finished-but-unpruned rows — the actual bloat signal (Postgres dead tuples /
+  SQLite file growth). Staying bounded well below the total fired is what proves
+  retention keeps pace, so it can briefly fall behind without the DB bloating.
 
 ## Observed numbers (local, laptop-class, default workload)
 
@@ -96,10 +102,10 @@ Indicative only — hardware-dependent. Captured for orientation, not as thresho
 
 | KPI | SQLite | Postgres |
 |-----|--------|----------|
-| Capacity (fires/sec, one node) | ~5,300 | ~2,400 |
-| Punctuality p99 under a 20k burst | ~3.5s | ~7.1s |
-| Recovery of 20k stranded schedules | ~11s | ~28s |
-| Health peak rows (of 100k fired) | 5,000 | 5,000 |
+| Capacity (fires/sec, one node) | ~5,100 | ~2,500 |
+| Punctuality p99 under a 20k burst | ~3.5s | ~7.8s |
+| Recovery of 20k stranded schedules | ~11s | ~35s |
+| Health peak finished-but-unpruned (of 100k fired) | ~700 | ~600 |
 
 Postgres capacity is lower here because each fire is three sequential write
 round-trips (claim, mark started, complete) to a container over the loopback;
