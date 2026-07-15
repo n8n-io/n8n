@@ -184,6 +184,9 @@
 		"GET /settings/sso/saml": {
 			"status": "gap"
 		},
+		"POST /settings/sso/saml/toggle": {
+			"status": "gap"
+		},
 		"POST /variables": {
 			"status": "gap"
 		},

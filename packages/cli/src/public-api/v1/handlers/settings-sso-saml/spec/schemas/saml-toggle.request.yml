@@ -1,0 +1,9 @@
+type: object
+additionalProperties: false
+required:
+  - loginEnabled
+properties:
+  loginEnabled:
+    type: boolean
+    description: Whether SAML login should be enabled for the instance.
+    example: true

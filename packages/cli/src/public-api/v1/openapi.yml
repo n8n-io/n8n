@@ -67,6 +67,8 @@ paths:
     $ref: './handlers/security-policy/spec/paths/security-policy.yml'
   /settings/sso/saml:
     $ref: './handlers/sso-saml/spec/paths/settings.sso.saml.yml'
+  /settings/sso/saml/toggle:
+    $ref: './handlers/settings-sso-saml/spec/paths/settings.sso.saml.toggle.yml'
   /credentials:
     $ref: './handlers/credentials/spec/paths/credentials.yml'
   /credentials/{id}:

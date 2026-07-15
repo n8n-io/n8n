@@ -1,0 +1,9 @@
+type: object
+additionalProperties: false
+required:
+  - loginEnabled
+properties:
+  loginEnabled:
+    type: boolean
+    description: The SAML login state after the toggle operation.
+    example: true

@@ -3,6 +3,7 @@ import type {
 	AddDataTableRowsDto,
 	PublicApiCreateDataTableDto,
 	PublicTestRunStatus,
+	SamlToggleDto,
 	UpdateDataTableDto,
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
@@ -397,4 +398,8 @@ export declare namespace SecurityPolicyRequest {
 
 export declare namespace SsoSamlRequest {
 	type Get = AuthenticatedRequest;
+}
+
+export declare namespace SettingsSsoSamlRequest {
+	type Toggle = AuthenticatedRequest<{}, {}, SamlToggleDto>;
 }

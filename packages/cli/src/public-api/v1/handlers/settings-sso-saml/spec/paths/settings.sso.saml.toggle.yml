@@ -1,0 +1,34 @@
+post:
+  x-eov-operation-id: toggleSamlLogin
+  x-required-scope: saml:manage
+  x-eov-operation-handler: v1/handlers/settings-sso-saml/settings-sso-saml.handler
+  tags:
+    - SettingsSsoSaml
+  summary: Enable or disable SAML login
+  description: >
+    Enable or disable SAML login for the instance. The change takes effect exactly as it would
+    from the UI, using the same validation. Requires the `saml:manage` scope and the SAML feature
+    to be licensed. When SSO configuration is managed via environment variables, the write is
+    rejected with 409 and no changes are made.
+  requestBody:
+    description: The desired SAML login state.
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/saml-toggle.request.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/saml-toggle.response.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'
