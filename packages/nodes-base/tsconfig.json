@@ -4,8 +4,7 @@
 		"paths": {
 			"@credentials/*": ["./credentials/*"],
 			"@test/*": ["./test/*"],
-			"@utils/*": ["./utils/*"],
-			"@nodes-testing/*": ["../core/nodes-testing/*"]
+			"@utils/*": ["./utils/*"]
 		},
 
 		"types": ["node", "vitest/globals"],
@@ -36,8 +35,7 @@
 		"test/**/*.ts",
 		"types/**/*.ts",
 		"utils/**/*.ts",
-		"types/**/*.ts",
-		"../core/nodes-testing/**/*.ts"
+		"types/**/*.ts"
 	],
 	"exclude": [],
 	"references": [

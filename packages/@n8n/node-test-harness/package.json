@@ -1,0 +1,45 @@
+{
+  "name": "@n8n/node-test-harness",
+  "version": "1.31.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "node -e \"process.exit(0)\"",
+    "test:dev": "echo \"WARNING: no test specified\" && exit 0"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "src/**/*"
+  ],
+  "dependencies": {
+    "@n8n/decorators": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "callsites": "catalog:",
+    "fast-glob": "catalog:",
+    "lodash": "catalog:",
+    "n8n-core": "workspace:*",
+    "n8n-workflow": "workspace:*",
+    "nock": "catalog:",
+    "reflect-metadata": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@types/lodash": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:typescript"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

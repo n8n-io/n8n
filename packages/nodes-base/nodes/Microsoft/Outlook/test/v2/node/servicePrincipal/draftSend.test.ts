@@ -1,4 +1,4 @@
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 import nock from 'nock';
 
 // draft:send issues a PATCH then a POST, both under /users/{encoded-mailbox}.

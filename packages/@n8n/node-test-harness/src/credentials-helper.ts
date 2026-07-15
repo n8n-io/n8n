@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { Credentials } from 'n8n-core';
 import { ICredentialsHelper } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -9,7 +10,6 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
-import { Credentials } from '../dist/credentials';
 import { CredentialTypes } from './credential-types';
 
 @Service()

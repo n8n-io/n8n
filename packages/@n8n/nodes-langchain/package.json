@@ -211,6 +211,7 @@
   },
   "devDependencies": {
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
+    "@n8n/node-test-harness": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@typescript-eslint/typescript-estree": "^8.35.0",
     "@types/basic-auth": "catalog:",

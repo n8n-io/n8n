@@ -1,4 +1,4 @@
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 import mysql2 from 'mysql2/promise';
 import type { Connection, QueryResult } from 'mysql2/promise';
 import { mock } from 'vitest-mock-extended';

@@ -1,4 +1,9 @@
 import { Service } from '@n8n/di';
+import {
+	LazyPackageDirectoryLoader,
+	UnrecognizedCredentialTypeError,
+	UnrecognizedNodeTypeError,
+} from 'n8n-core';
 import type {
 	ICredentialType,
 	INodeType,
@@ -9,8 +14,6 @@ import type {
 } from 'n8n-workflow';
 import path from 'node:path';
 
-import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from '../dist/errors';
-import { LazyPackageDirectoryLoader } from '../dist/nodes-loader/lazy-package-directory-loader';
 import { TestDataNode } from './test-data-node';
 
 @Service()

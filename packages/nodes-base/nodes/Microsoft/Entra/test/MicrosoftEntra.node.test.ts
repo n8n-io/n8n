@@ -1,5 +1,5 @@
-import { CredentialsHelper } from '@nodes-testing/credentials-helper';
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { CredentialsHelper } from '@n8n/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 import { convertN8nRequestToAxios } from '@n8n/backend-network/testing';
 import type {
 	IExecuteSingleFunctions,
