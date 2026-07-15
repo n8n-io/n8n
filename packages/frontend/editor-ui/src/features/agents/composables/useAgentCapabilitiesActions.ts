@@ -351,10 +351,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	/**
 	 * Authoring-time mirror of the backend's `assertSkillNameIsUnique` for
-	 * local-skill hosts, which have no REST call to reject duplicates — without
-	 * it the collision only surfaces as a runtime compile failure. The modal
-	 * validates against `existingSkillNames` before closing; this confirm-time
-	 * check is the backstop for names that became duplicates while it was open.
+	 * local-skill hosts. The modal validates against `existingSkillNames` before closing
 	 */
 	function hasDuplicateSkillName(name: string, excludeId?: string): boolean {
 		const normalized = name.trim().toLowerCase();
@@ -417,6 +414,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							showDuplicateSkillNameError(sanitizedSkill.name);
 							return;
 						}
+
 						// The host mints the skill id and writes body + ref together.
 						localSkills.createSkill(sanitizedSkill);
 						showMessage({

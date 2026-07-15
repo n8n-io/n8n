@@ -22,8 +22,7 @@ export type AgentSkillModalData = {
 	availableTools?: AgentSkillAllowedToolOption[];
 	/**
 	 * Names of the agent's other skills, so a duplicate name blocks save while
-	 * the modal is still open — skill names must be unique per agent (compared
-	 * case-insensitively on the trimmed name).
+	 * the modal is still open — skill names must be unique per agent.
 	 */
 	existingSkillNames?: string[];
 	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
