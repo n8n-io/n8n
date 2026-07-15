@@ -80,13 +80,13 @@ export class ImportOrchestrator {
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
-		const blockingIssues = this.collectBlockingIssues(
+		const blockingIssues = this.collectBlockingIssues({
 			workflowPlan,
 			credentialPlan,
 			credentialRequest,
 			folderPlan,
 			dataTablePlan,
-		);
+		});
 
 		if (blockingIssues.length > 0) {
 			throw toImportBlockedError(blockingIssues);
@@ -125,13 +125,19 @@ export class ImportOrchestrator {
 		};
 	}
 
-	private collectBlockingIssues(
-		workflowPlan: WorkflowImportPlan,
-		credentialResolution: CredentialResolution,
-		credentialRequest: CredentialBindingRequest,
-		folderPlan: FolderImportPlan,
-		dataTablePlan: DataTableImportPlan,
-	): BlockingIssue[] {
+	private collectBlockingIssues({
+		workflowPlan,
+		credentialPlan,
+		credentialRequest,
+		folderPlan,
+		dataTablePlan,
+	}: {
+		workflowPlan: WorkflowImportPlan;
+		credentialPlan: CredentialResolution;
+		credentialRequest: CredentialBindingRequest;
+		folderPlan: FolderImportPlan;
+		dataTablePlan: DataTableImportPlan;
+	}): BlockingIssue[] {
 		return [
 			...workflowPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'workflow-conflict', ...conflict }),
@@ -149,7 +155,7 @@ export class ImportOrchestrator {
 				(failure): BlockingIssue => ({ type: 'data-table-unresolved', ...failure }),
 			),
 			...this.credentialImporter
-				.blockingFailures(credentialRequest, credentialResolution)
+				.blockingFailures(credentialRequest, credentialPlan)
 				.map(toCredentialBlockingIssue),
 		];
 	}
