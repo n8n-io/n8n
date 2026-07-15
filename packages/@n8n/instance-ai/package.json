@@ -82,7 +82,7 @@
     "source-map-support": "catalog:",
     "turndown": "catalog:",
     "undici": "catalog:undici-v7",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
+    "@e965/xlsx": "catalog:",
     "zod": "catalog:",
     "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5"
   },
