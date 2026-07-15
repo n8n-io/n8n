@@ -50,6 +50,8 @@ const targetOutputSchema = z.object({
 	reasoning: z.string().default(''),
 	workflowId: z.string().optional(),
 	scenarioWorkflowId: z.string().optional(),
+	/** Set when the scenario ran against a built first-class Agent instead of a workflow. */
+	agentId: z.string().optional(),
 	failureCategory: z.string().optional(),
 	rootCause: z.string().optional(),
 	/** Verifier returned no verdict — run is excluded from scoring but stays visible. */
@@ -246,6 +248,7 @@ export function reshapeLangSmithRuns(
 					success: output.passed,
 					evalResult: output.evalResult,
 					workflowId: output.scenarioWorkflowId ?? output.workflowId,
+					...(output.agentId ? { agentId: output.agentId } : {}),
 					score: output.score,
 					reasoning: output.reasoning,
 					failureCategory: output.failureCategory,

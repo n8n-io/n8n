@@ -395,7 +395,7 @@ export async function runWorkflowTestCase(
 	// (the documented build-agent pattern), a dependency rather than the
 	// deliverable — same demotion logic multi-workflow routing applies to
 	// Execute Workflow sub-workflows.
-	const agentScenarioRef = (build.artifactRefs ?? []).find((ref) => ref.type === 'agent');
+	const agentScenarioRef = findAgentArtifactRef(build.artifactRefs);
 	const agentScenarios = testCase.executionScenarios ?? [];
 	if (agentScenarioRef && agentScenarios.length > 0 && build.transcript !== undefined) {
 		logger.info(
@@ -404,17 +404,7 @@ export async function runWorkflowTestCase(
 		result.workflowBuildSuccess = true;
 		result.buildTrace = build.buildTrace;
 
-		// The agent's config + skills are the stable context for every scenario
-		// of this build — the agent-artifact analog of the workflow JSON block.
-		let agentContext = '(agent configuration could not be fetched)';
-		try {
-			const agentArtifact = await agentHandler.fetch(agentScenarioRef, client);
-			agentContext = agentHandler.renderArtifact(agentArtifact);
-		} catch (error: unknown) {
-			logger.warn(
-				`  Agent config fetch failed — verifying scenarios without it: ${error instanceof Error ? error.message : String(error)}`,
-			);
-		}
+		const agentContext = await fetchAgentScenarioContext(client, agentScenarioRef, logger);
 
 		const agentCaseName = deriveTestCaseArtifactName(testCase);
 		const scenarioStart = Date.now();
@@ -1349,12 +1339,43 @@ async function runScenario(
 	};
 }
 
+/** The shared scenario-routing rule for both eval paths (direct loop and the
+ *  LangSmith evaluate() target): an agent ref marks the case agent-anchored,
+ *  and the agent — not any helper workflow built as its tool — is the target. */
+export function findAgentArtifactRef(
+	artifactRefs: ArtifactRef[] | undefined,
+): ArtifactRef | undefined {
+	return (artifactRefs ?? []).find((ref) => ref.type === 'agent');
+}
+
+/**
+ * Fetch + render the agent's config and skills — the stable verification
+ * context every scenario of the build shares (the agent-artifact analog of
+ * the workflow JSON block). Falls back to a marker string so a fetch failure
+ * degrades verification instead of failing the scenario.
+ */
+export async function fetchAgentScenarioContext(
+	client: N8nClient,
+	ref: ArtifactRef,
+	logger: EvalLogger,
+): Promise<string> {
+	try {
+		const agentArtifact = await agentHandler.fetch(ref, client);
+		return agentHandler.renderArtifact(agentArtifact);
+	} catch (error: unknown) {
+		logger.warn(
+			`  Agent config fetch failed — verifying scenarios without it: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return '(agent configuration could not be fetched)';
+	}
+}
+
 /**
  * Execute one scenario against a built first-class Agent and verify the
  * result — the agent-artifact counterpart of runScenario. The agent reasons
  * with its real model; its tools' outbound HTTP is served by the mock layer.
  */
-async function executeAgentScenario(
+export async function executeAgentScenario(
 	client: N8nClient,
 	agentId: string,
 	scenario: ExecutionScenario,
