@@ -238,19 +238,31 @@ Calibration exists to right-size assertions, **not** to make a case pass. When a
 run turns a scenario or expectation red, classify the red first — then keep it.
 
 **First rule out the environment.** Before reading any red as a signal about a
-case, check the shape of the failures across the run. If **every scenario fails
-with the *same* execution error** while the builds succeed and `outcomeExpectations`
-pass, that is almost never the cases — it's a broken environment, most often a
-**stale `packages/core` / `packages/cli` dist** after a branch or worktree switch
-(a refactor moved a runtime export and the built dist still calls the old one;
-e.g. `(0 , n8n_workflow_1.createDeferredPromise) is not a function` after
-`createDeferredPromise` moved to `@n8n/utils`). Fix it, don't calibrate around it:
-run a full ordered `pnpm build` (a targeted `--filter` build can fail on unrelated
-stale-dep type errors), then **restart the instance** — the running node process
-holds the old dist in memory, so rebuilding on disk changes nothing until restart
-(and `kill` by env-var pattern misses it — kill the actual `lsof -t -iTCP:<port>`
-PID). Re-probe one case, confirm executions run, then re-run the batch. Only once
-uniform environment failures are excluded do the three categories below apply:
+case, check the shape of the failures across the run. If **every case fails the
+same way** — every scenario with the *same* execution error while builds succeed,
+*or* every **build** erroring identically before it starts (an `Agent error:
+Something went wrong…` with **zero tool calls**) — that is almost never the cases;
+it's a broken environment, most often a **stale dist** after a branch or worktree
+switch. Two shapes to know:
+
+- **Stale `packages/core` / `packages/cli` dist** — a refactor moved a runtime
+  export and the built dist still calls the old one, so *builds succeed but every
+  execution fails the same way* (e.g. `(0 , n8n_workflow_1.createDeferredPromise)
+  is not a function` after `createDeferredPromise` moved to `@n8n/utils`).
+- **Stale/half-built `@n8n/instance-ai` dist** — every run errors *before building*
+  (`Agent error…`, zero tool calls) and the instance log shows `Cannot find module
+  '@/utils/...'` from `dist/skills/*.js`: the build's `tsc-alias` step (which
+  rewrites `@/` path aliases to relative requires) didn't complete, so the dist is
+  internally inconsistent.
+
+Fix it, don't calibrate around it: run a full ordered `pnpm build` (a targeted
+`--filter` build can fail on unrelated stale-dep type errors; for the instance-ai
+shape, `cd packages/@n8n/instance-ai && pnpm build` runs `tsc && tsc-alias`), then
+**restart the instance** — the running node process holds the old dist in memory,
+so rebuilding on disk changes nothing until restart (and `kill` by env-var pattern
+misses it — kill the actual `lsof -t -iTCP:<port>` PID). Re-probe one case, confirm
+it builds and executes, then re-run the batch. Only once uniform environment
+failures are excluded do the three categories below apply:
 
 - **Real build / capability gap** — the agent's workflow is wrong or missing
   something the user asked for (a miswired branch, a missing retry, wrong field
@@ -611,10 +623,10 @@ drifted, leaves the rest unchanged, and never prunes. It's the inverse of
 
 ```bash
 cd packages/@n8n/instance-ai
-# preview first — no writes:
-dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --dry-run --changed
+# preview first — no writes (use `npx dotenvx`; the bare `dotenvx` binary is usually not on PATH):
+npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --dry-run --changed
 # then push (drop --dry-run):
-dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
+npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
 ```
 
 - **Selectors** (at least one required — no accidental push-all): positional
@@ -625,10 +637,10 @@ dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building 
   eval:langtracer-push … slugA slugB` forwards the slugs as one joined argument
   (`"slugA slugB"`), so no case file matches and nothing is pushed. Either use a
   no-positional selector through pnpm (`--changed`), or run the script directly so
-  each slug is its own argv: `dotenvx run -f .env.eval -- npx tsx
+  each slug is its own argv: `npx dotenvx run -f .env.eval -- npx tsx
   evaluations/cli/langtracer-push.ts --suite <slug> <slug1> <slug2> …`.
 - **Env:** `LANGTRACER_URL` + `LANGTRACER_API_KEY` (an `lt_` bearer; one key works
-  for MCP + REST) — put them in `.env.eval` and run under `dotenvx`.
+  for MCP + REST) — put them in `.env.eval` and run under `npx dotenvx`.
 - **Options:** `--set-kind regression|capability_gap` (default `regression`, must
   match the suite's kind), `--contains-user-data` (default is `synthetic`). A case
   whose **build is correct** (outcome expectations green) but that carries a
