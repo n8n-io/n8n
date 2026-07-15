@@ -1,6 +1,6 @@
 # TypeScript 6 → 7 migration benchmarks
 
-Generated 2026-07-15T08:37:27.424Z from `scripts/typescript-migration/results/`.
+Generated 2026-07-15T08:42:55.357Z from `scripts/typescript-migration/results/`.
 
 | Package | typecheck Δ | build Δ |
 | --- | --- | --- |
@@ -12,6 +12,8 @@ Generated 2026-07-15T08:37:27.424Z from `scripts/typescript-migration/results/`.
 | `@n8n/backend-common` | -57.0% | -54.5% |
 | `@n8n/backend-network` | -57.0% | -54.9% |
 | `@n8n/backend-test-utils` | -51.4% | -53.1% |
+| `@n8n/chat-hub` | -50.4% | -50.5% |
+| `@n8n/cli` | -45.7% | -45.7% |
 | `@n8n/codemirror-lang` | -36.3% | -31.4% |
 | `@n8n/codemirror-lang-html` | — | -17.0% |
 | `@n8n/codemirror-lang-sql` | -42.7% | -39.2% |
@@ -113,6 +115,30 @@ typecheck:
 build:
   before               1.60s
   after                751ms  -850ms (-53.1%)
+```
+
+```
+=== @n8n/chat-hub — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.14s
+  after                564ms  -574ms (-50.4%)
+
+build:
+  before               1.07s
+  after                529ms  -540ms (-50.5%)
+```
+
+```
+=== @n8n/cli — median times (Δ vs "before") ===
+
+typecheck:
+  before               943ms
+  after                512ms  -431ms (-45.7%)
+
+build:
+  before               982ms
+  after                533ms  -449ms (-45.7%)
 ```
 
 ```
