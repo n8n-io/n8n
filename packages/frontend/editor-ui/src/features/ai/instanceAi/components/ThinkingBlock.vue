@@ -135,10 +135,10 @@ onUnmounted(() => {
 
 /** Subline text: the running tool call's label, or a plain "Thinking" while
  *  the model reasons between calls — the block always carries a live signal. */
-const sublineLabel = computed<{ key: string; text: string }>(() => {
+const sublineLabel = computed<string>(() => {
 	const tc = tailToolCall.value;
-	if (tc) return { key: tc.toolCallId, text: getToolLabel(tc.toolName, tc.args) };
-	return { key: 'thinking', text: i18n.baseText('instanceAi.thinking.active') };
+	if (tc) return getToolLabel(tc.toolName, tc.args);
+	return i18n.baseText('instanceAi.thinking.active');
 });
 
 /** Live elapsed label — on the subline while collapsed, in the header while
@@ -245,11 +245,9 @@ const title = computed<{ key: string; text: string }>(() => {
 			:class="$style.subline"
 			data-test-id="thinking-block-subline"
 		>
-			<Transition name="thinking-title" mode="out-in">
-				<span :key="sublineLabel.key" :class="$style.sublineLabel">
-					{{ sublineLabel.text }}
-				</span>
-			</Transition>
+			<!-- No fade on label swaps — a fade blanks the line for a frame,
+			     which reads as flicker on quick tool handoffs. -->
+			<span :class="$style.sublineLabel">{{ sublineLabel }}</span>
 			<span v-if="elapsedLabel" :class="$style.sublineElapsed"> &middot; {{ elapsedLabel }} </span>
 		</div>
 		<N8nAnimatedCollapsibleContent>
@@ -342,15 +340,6 @@ const title = computed<{ key: string; text: string }>(() => {
 }
 
 .subline {
-	--animation--shimmer--duration: 1.5s;
-	--animation--shimmer--background: color-mix(
-		in srgb,
-		var(--text-color--subtler) 30%,
-		var(--background--subtle) 70%
-	);
-	--animation--shimmer--foreground: var(--text-color--subtler);
-	@include motion.shimmer;
-
 	display: flex;
 	align-items: baseline;
 	gap: var(--spacing--4xs);
@@ -360,7 +349,18 @@ const title = computed<{ key: string; text: string }>(() => {
 	color: var(--text-color--subtler);
 }
 
+/* Shimmer covers the label only — the timer stays static, matching the
+ * pre-trace status bar. */
 .sublineLabel {
+	--animation--shimmer--duration: 1.5s;
+	--animation--shimmer--background: color-mix(
+		in srgb,
+		var(--text-color--subtler) 30%,
+		var(--background--subtle) 70%
+	);
+	--animation--shimmer--foreground: var(--text-color--subtler);
+	@include motion.shimmer;
+
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
