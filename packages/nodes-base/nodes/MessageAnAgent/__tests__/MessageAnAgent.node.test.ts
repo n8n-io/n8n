@@ -270,6 +270,36 @@ describe('MessageAnAgent Node', () => {
 			expect(source).not.toHaveProperty('agentId');
 		});
 
+		it('passes an inline definition with embedded skills through wholesale', async () => {
+			const inlineAgentWithSkills = {
+				config: {
+					...inlineAgent.config,
+					skills: [{ type: 'skill', id: 'skill_triage' }],
+				},
+				skills: {
+					skill_triage: {
+						name: 'Triage',
+						description: 'Triage incoming requests',
+						instructions: 'Categorize the request and route it.',
+					},
+				},
+			};
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ agentSource: 'inline', inlineAgent: inlineAgentWithSkills });
+			executeFunctions.executeAgent.mockResolvedValue({ ...mockAgentResult, session: null });
+
+			await node.execute.call(executeFunctions);
+
+			// The sibling skills record (bodies) rides along with the config refs —
+			// validation and ref/body joining happen in the execution layer.
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ inlineAgent: inlineAgentWithSkills }),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
+		});
+
 		it('passes a session id override through for inline agents (thread memory)', async () => {
 			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 			mockParams({

@@ -584,7 +584,7 @@ describe('LoadNodesAndCredentials', () => {
 
 		beforeEach(async () => {
 			// Import the mocked functions
-			const toolGeneration = await import('@/tool-generation');
+			const toolGeneration = await import('@/tool-generation/index.js');
 			createAiTools = toolGeneration.createAiTools as Mock;
 			createHitlTools = toolGeneration.createHitlTools as Mock;
 

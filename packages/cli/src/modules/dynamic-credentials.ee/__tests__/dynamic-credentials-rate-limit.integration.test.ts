@@ -77,7 +77,7 @@ beforeAll(async () => {
 	mockInstance(EnterpriseCredentialsService);
 
 	const { CredentialResolverWorkflowService } = await import(
-		'../services/credential-resolver-workflow.service'
+		'../services/credential-resolver-workflow.service.js'
 	);
 	workflowService = Container.get(CredentialResolverWorkflowService);
 });

@@ -14,7 +14,7 @@ export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
-export type {
+export {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
 } from './ai/ai-gateway-config-response.dto';
