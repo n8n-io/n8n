@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/imap",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T10:54:07.631Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1044,
+            862,
+            1055
+          ],
+          "min": 862,
+          "median": 1044,
+          "mean": 987
+        },
+        "build": {
+          "runsMs": [
+            854,
+            780,
+            741
+          ],
+          "min": 741,
+          "median": 780,
+          "mean": 792
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T10:55:31.419Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            534,
+            597,
+            537
+          ],
+          "min": 534,
+          "median": 537,
+          "mean": 556
+        },
+        "build": {
+          "runsMs": [
+            596,
+            494,
+            492
+          ],
+          "min": 492,
+          "median": 494,
+          "mean": 527
+        }
+      }
+    }
+  }
+}
