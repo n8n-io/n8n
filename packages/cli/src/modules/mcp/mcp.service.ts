@@ -30,6 +30,8 @@ import {
 	createSearchDataTablesTool,
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
+import { createGetDependenciesTool } from './tools/get-dependencies.tool';
+import { createGetDependencyCountsTool } from './tools/get-dependency-counts.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -78,6 +80,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
@@ -144,6 +147,7 @@ export class McpService {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
 	) {}
 
 	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
@@ -390,6 +394,28 @@ export class McpService {
 
 		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
 		registerIfAllowed(addDataTableRowsTool);
+
+		const getDependencyCountsTool = createGetDependencyCountsTool(
+			user,
+			this.workflowDependencyQueryService,
+			this.telemetry,
+		);
+		server.registerTool(
+			getDependencyCountsTool.name,
+			getDependencyCountsTool.config,
+			getDependencyCountsTool.handler,
+		);
+
+		const getDependenciesTool = createGetDependenciesTool(
+			user,
+			this.workflowDependencyQueryService,
+			this.telemetry,
+		);
+		server.registerTool(
+			getDependenciesTool.name,
+			getDependenciesTool.config,
+			getDependenciesTool.handler,
+		);
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
