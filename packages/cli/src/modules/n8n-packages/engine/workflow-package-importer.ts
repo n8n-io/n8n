@@ -96,6 +96,7 @@ export class WorkflowPackageImporter {
 			dataTableRequest,
 			variableRequest,
 			options: request,
+			subWorkflowRequirements: manifest.requirements?.workflows,
 		});
 
 		emitPackageImportedEvent(this.eventService, {

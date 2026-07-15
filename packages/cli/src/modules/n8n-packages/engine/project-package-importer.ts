@@ -8,9 +8,11 @@ import type { CredentialBindingRequest } from '../entities/credential/credential
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
+import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
 import type { PackageReader } from '../io/package-reader';
 import type {
 	BlockingIssue,
+	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
 	ImportPackageRequest,
@@ -83,6 +85,12 @@ export class ProjectPackageImporter {
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan);
 
+		// Resolve every project's workflow ids up front so a sub-workflow reference
+		// that points into another project resolves when its parent is applied.
+		const packageWorkflowBindings: ImportBindingMap = new Map(
+			planned.flatMap(({ plan }) => [...collectPlannedWorkflowBindings(plan.workflowPlan.items)]),
+		);
+
 		const workflows: ImportedWorkflowSummary[] = [];
 		const folders: ImportedFolderSummary[] = [];
 		const scopedBindings: PackageImportBindings[] = [];
@@ -93,7 +101,7 @@ export class ProjectPackageImporter {
 		const scopes: PackageImportScope[] = [];
 
 		for (const { project, plan } of planned) {
-			const imported = await this.importOrchestrator.apply(plan);
+			const imported = await this.importOrchestrator.apply(plan, packageWorkflowBindings);
 			workflows.push(...toImportedWorkflowSummaries(imported.workflowOutcomes, project.id));
 			folders.push(...imported.folderSummaries);
 			scopedBindings.push(imported.bindings);
@@ -173,6 +181,7 @@ export class ProjectPackageImporter {
 			variableRequest,
 			options: request,
 			projectPendingCreation,
+			subWorkflowRequirements: manifest.requirements?.workflows,
 		};
 	}
 

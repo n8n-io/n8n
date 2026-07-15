@@ -1,6 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
 import { testDb, testModules } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
 import {
 	FolderRepository,
 	ProjectRelationRepository,
@@ -9,7 +8,9 @@ import {
 	VariablesRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { isResourceLocatorValue } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -29,7 +30,20 @@ import {
 	serializedProject,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	serializedWorkflowWithSubWorkflow,
+	workflowRequirementsFromWorkflows,
 } from './fixtures/package-fixtures';
+
+/** Returns the id the workflow's Execute Sub-workflow node points at. */
+function subWorkflowRefOf(workflow: WorkflowEntity): string | undefined {
+	for (const node of workflow.nodes) {
+		const workflowId = node.parameters.workflowId;
+		if (isResourceLocatorValue(workflowId) && typeof workflowId.value === 'string') {
+			return workflowId.value;
+		}
+	}
+	return undefined;
+}
 
 async function importProjects(
 	user: User,
@@ -549,5 +563,43 @@ describe('project shell import', () => {
 		} finally {
 			emitSpy.mockRestore();
 		}
+	});
+
+	it('rewrites a sub-workflow reference that points into another project under the `new` policy', async () => {
+		// Project brie's workflow calls a sub-workflow that lives in project stilton.
+		const parent = serializedWorkflowWithSubWorkflow({
+			id: 'CHEDDAR',
+			name: 'Parent',
+			subWorkflowId: 'BRIE',
+		});
+		const subWorkflow = serializedWorkflow({ id: 'BRIE', name: 'Sub-workflow' });
+
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{ target: 'projects/brie/workflows/parent', workflow: parent },
+				{ target: 'projects/stilton/workflows/sub', workflow: subWorkflow },
+			],
+			manifestExtras: {
+				requirements: { workflows: workflowRequirementsFromWorkflows([parent, subWorkflow]) },
+			},
+		});
+
+		const result = await importProjects(owner, packageBuffer);
+
+		const importedParent = result.workflows.find((w) => w.sourceWorkflowId === 'CHEDDAR')!;
+		const importedSub = result.workflows.find((w) => w.sourceWorkflowId === 'BRIE')!;
+
+		// Each workflow landed in its own project with a freshly-minted id...
+		expect(importedParent.projectId).toBe('P1');
+		expect(importedSub.projectId).toBe('P2');
+		expect(importedSub.localId).not.toBe('BRIE');
+		// ...and the cross-project reference resolves to the sub-workflow's imported id.
+		expect(subWorkflowRefOf((await findWorkflow(importedParent.localId))!)).toBe(
+			importedSub.localId,
+		);
 	});
 });

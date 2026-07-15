@@ -35,12 +35,14 @@ import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import { createBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
+	ImportBindingMap,
 	ImportContext,
 	ImportedFolderSummary,
 	ImportFolderProperties,
 	ImportWorkflowProperties,
 	PackageImportBindings,
 } from '../n8n-packages.types';
+import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -52,6 +54,8 @@ export interface ImportOrchestrationInput {
 	options: ImportWorkflowProperties & ImportFolderProperties;
 	/** The target project does not exist yet and will be created by this import (project packages). */
 	projectPendingCreation?: boolean;
+	/** Sub-workflow dependency graph from the manifest, used to order the import. */
+	subWorkflowRequirements?: PackageWorkflowRequirement[];
 }
 
 export interface ImportOrchestrationResult {
@@ -106,6 +110,7 @@ export class ImportOrchestrator {
 			dataTableRequest,
 			variableRequest,
 			options,
+			subWorkflowRequirements,
 		} = input;
 
 		await this.workflowPublisher.assertCanPublish(
@@ -118,7 +123,12 @@ export class ImportOrchestrator {
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
 		const variablePlan = await this.variableImporter.plan(context, variableRequest);
-		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
+		const workflowPlan = await this.workflowImporter.plan(
+			context,
+			workflows,
+			options,
+			subWorkflowRequirements,
+		);
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
@@ -142,7 +152,10 @@ export class ImportOrchestrator {
 		};
 	}
 
-	async apply(plan: ImportPlan): Promise<ImportOrchestrationResult> {
+	async apply(
+		plan: ImportPlan,
+		seedWorkflowBindings?: ImportBindingMap,
+	): Promise<ImportOrchestrationResult> {
 		const {
 			input,
 			folderContext,
@@ -175,7 +188,12 @@ export class ImportOrchestrator {
 				publishBlockedSourceWorkflowIds,
 			},
 			workflowPlan,
-			createBindings({ credentials: credentialResult.bindings }),
+			createBindings({
+				credentials: credentialResult.bindings,
+				// Seeds cross-scope workflow ids so a project package can resolve
+				// sub-workflow references that point into another project.
+				...(seedWorkflowBindings ? { workflows: seedWorkflowBindings } : {}),
+			}),
 		);
 
 		return {
