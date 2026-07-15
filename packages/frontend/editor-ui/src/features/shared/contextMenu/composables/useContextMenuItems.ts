@@ -181,6 +181,7 @@ export function useContextMenuItems(
 					{
 						id: 'rename_group',
 						label: i18n.baseText('contextMenu.renameGroup'),
+						shortcut: { keys: ['Space'] },
 						disabled: isReadOnly.value,
 					},
 					{

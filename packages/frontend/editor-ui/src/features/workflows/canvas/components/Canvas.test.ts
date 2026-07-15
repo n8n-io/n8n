@@ -1180,6 +1180,8 @@ describe('Canvas', () => {
 				expect(getByTestId('context-menu-item-rename_group')).toBeInTheDocument(),
 			);
 			expect(getByTestId('context-menu-item-rename_group')).not.toHaveAttribute('aria-disabled');
+			// Space renames the selected group; the menu advertises the shortcut.
+			expect(getByTestId('context-menu-item-rename_group')).toHaveTextContent('Space');
 			expect(getByTestId('context-menu-item-ungroup_nodes')).toBeInTheDocument();
 			expect(getByTestId('context-menu-item-ungroup_nodes')).not.toHaveAttribute('aria-disabled');
 			expect(getByTestId('context-menu-item-copy')).toHaveTextContent('Copy group');
