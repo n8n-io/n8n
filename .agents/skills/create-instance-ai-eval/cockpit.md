@@ -13,7 +13,7 @@ built in the cockpit is graded exactly as it would be in a normal run.
 
 ```bash
 cd packages/@n8n/instance-ai
-dotenvx run -f .env.eval -- pnpm eval:cockpit --filter <substring> --base-url http://localhost:5678
+dotenvx run -f .env.eval -- pnpm eval:cockpit --run-all --filter <substring> --base-url http://localhost:5678
 ```
 
 Then open the printed `http://localhost:<port>` (default 5679).
@@ -22,8 +22,24 @@ Then open the printed `http://localhost:<port>` (default 5679).
   normal run; `--filter` matches many slugs by filename substring).
 - `--base-url` — one or **many** dev instances, comma/space-separated. This is
   the concurrency dial (below).
+- `--run-all` — dispatch every loaded case **once at startup**, so the cockpit is
+  already building when you open it (equivalent to clicking **Run all**). Omit it
+  to open idle and run cases by hand. Server-side and one-shot: refreshing the
+  page does **not** re-trigger it.
+- `--port <n>` — override the default `5679`.
 - Everything else (login, model, sandbox) comes from the same env the eval CLI
   reads — see [`running-evals.md`](running-evals.md).
+
+**Auto-login.** The cockpit logs into the primary instance server-side at startup
+and primes that session onto your browser (an `n8n-auth` cookie set on its own
+`/` response), so the embedded builder iframe loads **already authenticated** —
+no manual sign-in. Browser cookies aren't port-scoped, so the localhost cookie
+reaches the instance's iframe on its own port; this covers the common
+single-instance run. With **several** `--base-url` instances only the first is
+primed (each signs its own JWT, and localhost cookies can't be distinguished by
+port), so sign in manually in the other iframes. If login fails at startup it's
+non-fatal — the iframe shows the instance's normal sign-in and you log in by
+hand.
 
 ## The layout
 

@@ -18,12 +18,18 @@ import { EvalTestCaseSchema } from '../harness/schema';
 import { effectiveTimeoutMs, runWithConcurrency, runWorkflowTestCase } from '../harness/runner';
 import type { WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 import type { WorkflowTestCaseWithFile } from '../utils/load-eval-cases';
-import { appendCalibrationNote, RunRegistry, type CalibrationCategory } from './lib';
+import {
+	appendCalibrationNote,
+	browserAuthCookie,
+	extractCockpitFlags,
+	instanceAiThreadUrl,
+	RunRegistry,
+	type CalibrationCategory,
+} from './lib';
 
 /** Per-instance build cap — mirrors MAX_CONCURRENT_BUILDS in cli/index.ts.
  *  Not imported from there because importing cli/index.ts runs its main(). */
 const DEFAULT_BUILD_CONCURRENCY = 4;
-const DEFAULT_PORT = 5679;
 
 const DATA_DIR = join(__dirname, '..', 'data', 'workflows');
 const INDEX_HTML = join(__dirname, 'index.html');
@@ -42,25 +48,6 @@ interface CalibrationVerdictBody {
 
 function caseFilePath(slug: string): string {
 	return join(DATA_DIR, `${slug}.json`);
-}
-
-/** Pull `--port <n>` out of argv (parseCliArgs rejects unknown flags) and return
- *  the port plus the remaining argv for parseCliArgs. */
-function extractPort(argv: string[]): { port: number; rest: string[] } {
-	const rest: string[] = [];
-	let port = DEFAULT_PORT;
-	for (let i = 0; i < argv.length; i++) {
-		if (argv[i] === '--port') {
-			const parsed = Number.parseInt(argv[i + 1] ?? '', 10);
-			if (Number.isFinite(parsed) && parsed > 0) {
-				port = parsed;
-			}
-			i++; // skip the value
-			continue;
-		}
-		rest.push(argv[i]);
-	}
-	return { port, rest };
 }
 
 function isVerdictBody(value: unknown): value is CalibrationVerdictBody {
@@ -111,7 +98,7 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
 }
 
 async function main(): Promise<void> {
-	const { port, rest } = extractPort(process.argv.slice(2));
+	const { port, runAll, rest } = extractCockpitFlags(process.argv.slice(2));
 	const args = parseCliArgs(rest);
 	const logger: EvalLogger = createLogger(args.verbose);
 
@@ -139,6 +126,12 @@ async function main(): Promise<void> {
 
 	const registry = new RunRegistry(casesWithFiles.map((c) => c.fileSlug));
 	const results = new Map<string, WorkflowTestCaseResult>();
+
+	// Auth session primed onto the browser so the embedded builder iframe is
+	// already logged in (see browserAuthCookie). Captured from the primary lane;
+	// cookies aren't port-scoped, so this authenticates a single-instance run.
+	// Multi-instance runs can only prime one instance (each signs its own JWT).
+	let browserCookie: string | undefined;
 
 	async function ensureLoggedIn(lane: Lane): Promise<void> {
 		if (!lane.ready) {
@@ -195,11 +188,18 @@ async function main(): Promise<void> {
 	}
 
 	function casesPayload() {
-		return registry.snapshot().map((entry) => ({
-			...entry,
-			laneBaseUrl: laneBySlug.get(entry.slug)?.baseUrl,
-			threadId: results.get(entry.slug)?.threadId,
-		}));
+		return registry.snapshot().map((entry) => {
+			const baseUrl = laneBySlug.get(entry.slug)?.baseUrl;
+			const threadId = results.get(entry.slug)?.threadId;
+			return {
+				...entry,
+				laneBaseUrl: baseUrl,
+				threadId,
+				// The iframe deep-links to the built thread once there is one, else the
+				// empty builder — so selecting a case shows the conversation it ran in.
+				frameUrl: baseUrl ? instanceAiThreadUrl(baseUrl, threadId) : undefined,
+			};
+		});
 	}
 
 	const server = createServer((req, res) => {
@@ -213,7 +213,10 @@ async function main(): Promise<void> {
 		const slug = url.searchParams.get('slug') ?? '';
 
 		if (req.method === 'GET' && url.pathname === '/') {
-			res.writeHead(200, { 'content-type': 'text/html' });
+			const headers: Record<string, string> = { 'content-type': 'text/html' };
+			// Prime the browser with the instance session so the iframe is logged in.
+			if (browserCookie) headers['set-cookie'] = browserCookie;
+			res.writeHead(200, headers);
 			res.end(readFileSync(INDEX_HTML, 'utf8'));
 			return;
 		}
@@ -329,6 +332,27 @@ async function main(): Promise<void> {
 		logger.success(
 			`Cockpit on http://localhost:${port} — ${casesWithFiles.length} case(s), ${lanes.length} lane(s).`,
 		);
+
+		// Best-effort: log the primary lane in so the '/' response can prime the
+		// browser with an authenticated session (the iframe then loads logged in).
+		// Failure is non-fatal — the user can still sign in manually in the iframe.
+		void ensureLoggedIn(lanes[0])
+			.then(() => {
+				browserCookie = browserAuthCookie(lanes[0].client.cookie);
+				logger.info('Primed browser auth — the builder iframe will load logged in.');
+			})
+			.catch((error: unknown) => {
+				logger.warn(
+					`Could not prime browser auth (sign in manually in the iframe): ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				);
+			});
+
+		if (runAll) {
+			const started = dispatch([...caseBySlug.keys()]);
+			logger.info(`Auto-running all cases: ${started.length} dispatched.`);
+		}
 	});
 }
 

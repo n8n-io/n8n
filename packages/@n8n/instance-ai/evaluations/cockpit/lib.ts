@@ -4,6 +4,61 @@
 
 import type { WorkflowTestCaseResult } from '../types';
 
+/** Default port the cockpit HTTP server listens on. */
+export const DEFAULT_COCKPIT_PORT = 5679;
+
+/**
+ * Build the `Set-Cookie` value that primes the browser with the instance's auth
+ * session so the embedded builder iframe is already logged in. Browser cookies
+ * are NOT port-scoped (RFC 6265), so a host-only cookie the cockpit sets on
+ * localhost is sent to the instance's iframe on a different localhost port.
+ * Takes the bare `n8n-auth=<jwt>` the N8nClient captured at login and keeps only
+ * the `name=value` pair, appending browser-scoped attributes.
+ */
+export function browserAuthCookie(sessionCookie: string): string {
+	const nameValue = sessionCookie.split(';')[0].trim();
+	return `${nameValue}; Path=/; SameSite=Lax`;
+}
+
+/**
+ * The Instance AI URL the builder iframe should load for a case: its built
+ * thread (`/assistant/:threadId`) once a build has produced one, else the empty
+ * builder (`/assistant`). Deep-linking to the thread means selecting a case shows
+ * the conversation that case actually ran, not a blank builder.
+ */
+export function instanceAiThreadUrl(baseUrl: string, threadId?: string): string {
+	const base = `${baseUrl.replace(/\/$/, '')}/assistant`;
+	return threadId ? `${base}/${encodeURIComponent(threadId)}` : base;
+}
+
+/** Cockpit-only flags extracted before handing the rest to parseCliArgs (which
+ *  rejects unknown flags): `--port <n>` and the boolean `--run-all`. */
+export function extractCockpitFlags(argv: string[]): {
+	port: number;
+	runAll: boolean;
+	rest: string[];
+} {
+	const rest: string[] = [];
+	let port = DEFAULT_COCKPIT_PORT;
+	let runAll = false;
+	for (let i = 0; i < argv.length; i++) {
+		if (argv[i] === '--port') {
+			const parsed = Number.parseInt(argv[i + 1] ?? '', 10);
+			if (Number.isFinite(parsed) && parsed > 0) {
+				port = parsed;
+			}
+			i++; // skip the value
+			continue;
+		}
+		if (argv[i] === '--run-all') {
+			runAll = true;
+			continue;
+		}
+		rest.push(argv[i]);
+	}
+	return { port, runAll, rest };
+}
+
 /** Calibration categories that get a scannable prefix in the case description
  *  (mirrors the "A red is signal" convention in the skill's SKILL.md). */
 export type CalibrationCategory = 'harness' | 'capability-gap';

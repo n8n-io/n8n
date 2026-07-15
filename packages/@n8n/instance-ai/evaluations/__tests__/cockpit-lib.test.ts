@@ -1,4 +1,78 @@
-import { appendCalibrationNote, RunRegistry } from '../cockpit/lib';
+import {
+	appendCalibrationNote,
+	browserAuthCookie,
+	extractCockpitFlags,
+	instanceAiThreadUrl,
+	RunRegistry,
+} from '../cockpit/lib';
+
+describe('instanceAiThreadUrl', () => {
+	it('deep-links to the built thread when a threadId is known', () => {
+		expect(instanceAiThreadUrl('http://localhost:5678', 'abc-123')).toBe(
+			'http://localhost:5678/assistant/abc-123',
+		);
+	});
+
+	it('opens the empty builder when there is no thread yet', () => {
+		expect(instanceAiThreadUrl('http://localhost:5678', undefined)).toBe(
+			'http://localhost:5678/assistant',
+		);
+	});
+
+	it('normalises a trailing slash on the base url', () => {
+		expect(instanceAiThreadUrl('http://localhost:5678/', 'abc-123')).toBe(
+			'http://localhost:5678/assistant/abc-123',
+		);
+	});
+
+	it('encodes a threadId with url-unsafe characters', () => {
+		expect(instanceAiThreadUrl('http://localhost:5678', 'a b/c')).toBe(
+			'http://localhost:5678/assistant/a%20b%2Fc',
+		);
+	});
+});
+
+describe('browserAuthCookie', () => {
+	it('appends browser-scoped attributes to a bare n8n-auth cookie', () => {
+		// Cookies are not port-scoped (RFC 6265), so a host-only cookie set by the
+		// cockpit on localhost is sent to the instance iframe on another localhost port.
+		expect(browserAuthCookie('n8n-auth=abc.def.ghi')).toBe(
+			'n8n-auth=abc.def.ghi; Path=/; SameSite=Lax',
+		);
+	});
+
+	it('keeps only the name=value pair when the input carries attributes', () => {
+		expect(browserAuthCookie('n8n-auth=abc; HttpOnly; Secure')).toBe(
+			'n8n-auth=abc; Path=/; SameSite=Lax',
+		);
+	});
+});
+
+describe('extractCockpitFlags', () => {
+	it('pulls --port and leaves the rest for parseCliArgs', () => {
+		expect(extractCockpitFlags(['--port', '6000', '--base-url', 'x'])).toEqual({
+			port: 6000,
+			runAll: false,
+			rest: ['--base-url', 'x'],
+		});
+	});
+
+	it('defaults the port and recognises --run-all', () => {
+		expect(extractCockpitFlags(['--run-all', '--filter', 'foo'])).toEqual({
+			port: 5679,
+			runAll: true,
+			rest: ['--filter', 'foo'],
+		});
+	});
+
+	it('ignores a non-numeric --port value and keeps the default', () => {
+		expect(extractCockpitFlags(['--port', 'nope'])).toEqual({
+			port: 5679,
+			runAll: false,
+			rest: [],
+		});
+	});
+});
 
 describe('appendCalibrationNote', () => {
 	it('creates a harness-note description when there is none yet', () => {

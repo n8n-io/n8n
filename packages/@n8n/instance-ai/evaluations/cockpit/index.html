@@ -142,6 +142,7 @@
 					const data = await api('GET', '/cases');
 					casesState = data.cases;
 					renderList();
+					if (selected) syncFrame();
 				} catch (e) {
 					/* transient — keep last state */
 				}
@@ -166,10 +167,22 @@
 				const data = await api('GET', '/case?slug=' + encodeURIComponent(slug));
 				document.getElementById('caseJson').value = data.json || '';
 				document.getElementById('caseMsg').textContent = '';
-				const c = casesState.find((x) => x.slug === slug);
-				const frame = document.getElementById('frame');
-				frame.src = c && c.laneBaseUrl ? c.laneBaseUrl : 'about:blank';
+				syncFrame();
 				renderExpectations();
+			}
+
+			// Point the iframe at the selected case's built thread (falls back to the
+			// empty builder until a build produces one). Tracks the intended URL in a
+			// data attribute so polling only reloads the frame when it actually changes
+			// — e.g. once a build finishes and the case gains a threadId.
+			function syncFrame() {
+				const frame = document.getElementById('frame');
+				const c = casesState.find((x) => x.slug === selected);
+				const url = (c && c.frameUrl) || 'about:blank';
+				if (frame.getAttribute('data-src') !== url) {
+					frame.setAttribute('data-src', url);
+					frame.src = url;
+				}
 			}
 
 			function currentCaseObject() {
