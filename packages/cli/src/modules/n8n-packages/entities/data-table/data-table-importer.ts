@@ -2,6 +2,7 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -101,12 +102,24 @@ export class DataTableImporter {
 	 * need no action: ids are preserved, so node references already resolve.
 	 */
 	async apply(context: ImportContext, plan: DataTableImportPlan): Promise<void> {
+		if (plan.creations.length === 0) return;
+
+		// Defense in depth: the plan phase already reports a missing scope as a
+		// blocking issue, but apply re-checks before writing anything.
+		if (
+			!(await userHasScopes(context.user, ['dataTable:create'], false, {
+				projectId: context.projectId,
+			}))
+		) {
+			throw new ForbiddenError('User is missing a scope required to create a data table');
+		}
+
 		for (const table of plan.creations) {
-			await this.dataTableService.createDataTableFromImport(context.user, context.projectId, {
-				id: table.id,
-				name: table.name,
-				columns: table.columns,
-			});
+			await this.dataTableService.createDataTable(
+				context.projectId,
+				{ name: table.name, columns: table.columns },
+				table.id,
+			);
 		}
 	}
 
