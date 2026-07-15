@@ -1,14 +1,19 @@
 <script lang="ts" setup>
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { TaskItem } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system';
+import type { IconName, NodeIconName } from '@n8n/design-system/components/N8nIcon';
 import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, ref } from 'vue';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
-import { getDismissedContextKeys, handoffContextKey } from '../instanceAi.handoffContext';
+import {
+	agentPreviewContextIcon,
+	formatAgentPreviewContextLabel,
+	getDismissedContextKeys,
+	handoffContextKey,
+} from '../instanceAi.handoffContext';
 import ConnectionsCard from './ConnectionsCard.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -46,7 +51,7 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 
 interface ContextEntry {
 	key: string;
-	icon: IconName;
+	icon: IconName | NodeIconName;
 	name: string;
 	subtitle: string;
 }
@@ -121,17 +126,6 @@ function openArtifactLabel(name: string) {
 	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
 }
 
-function agentPreviewContextName(agentId: string): string {
-	const matchingArtifact = thread.producedArtifacts.get(agentId);
-	if (matchingArtifact?.type === 'agent') {
-		return i18n.baseText('instanceAi.artifactsPanel.context.agentPreviewNamed', {
-			interpolate: { name: matchingArtifact.name },
-		});
-	}
-
-	return i18n.baseText('instanceAi.artifactsPanel.context.agentPreview');
-}
-
 const contextEntries = computed<ContextEntry[]>(() => {
 	const entries: ContextEntry[] = [];
 	const seen = new Set<string>();
@@ -147,8 +141,12 @@ const contextEntries = computed<ContextEntry[]>(() => {
 		if (message.context.source === 'agent-preview') {
 			entries.push({
 				key,
-				icon: 'robot',
-				name: agentPreviewContextName(message.context.agentId),
+				icon: agentPreviewContextIcon(message.context.agentIcon),
+				name: formatAgentPreviewContextLabel(
+					message.context,
+					(textKey, options) => i18n.baseText(textKey, options),
+					thread.producedArtifacts.get(message.context.agentId)?.name,
+				),
 				subtitle: i18n.baseText('instanceAi.artifactsPanel.context.addedToContext'),
 			});
 			continue;

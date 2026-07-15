@@ -46,6 +46,25 @@ describe('useInstanceAiHandoff', () => {
 		});
 	});
 
+	it('forwards agentName, agentIcon and sessionTitle when provided', () => {
+		expect(
+			buildInstanceAiAgentPreviewHandoffContext({
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				agentName: 'SEO Auditor',
+				agentIcon: 'search',
+				sessionTitle: 'Help with tone',
+			}),
+		).toEqual({
+			source: 'agent-preview',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			agentName: 'SEO Auditor',
+			agentIcon: 'search',
+			sessionTitle: 'Help with tone',
+		});
+	});
+
 	it('stashes and consumes a pending handoff context once', () => {
 		const context = buildInstanceAiAgentPreviewHandoffContext({
 			agentId: 'agent-1',

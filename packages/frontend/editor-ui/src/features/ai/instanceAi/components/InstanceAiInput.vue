@@ -41,7 +41,7 @@ type SuggestionPreviewPayload = BaseTextKey | { prompt: string } | null;
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
-type ContextChip = { label: string; testId?: string } | null;
+type ContextChip = { label: string; icon?: string; testId?: string } | null;
 
 const props = withDefaults(
 	defineProps<{
@@ -491,7 +491,7 @@ const resizable = computed(() => {
 					<N8nTag :text="props.contextChip.label" :clickable="false" size="lg">
 						<template #tag>
 							<span :class="$style.contextChipContent">
-								<N8nIcon icon="robot" size="small" />
+								<N8nIcon :icon="props.contextChip.icon ?? 'robot'" size="small" />
 								<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
 								<button
 									type="button"

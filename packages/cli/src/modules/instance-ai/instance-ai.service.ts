@@ -179,6 +179,7 @@ import {
 } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 import { AgentExecutionService } from '../agents/agent-execution.service';
+import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -3209,6 +3210,29 @@ export class InstanceAiService {
 
 				context.agentBuilderTarget = resolved.target;
 				await saveAgentBuilderTarget(context, resolved.target);
+
+				context.agentPreviewSession = {
+					agentId: handoffContext.agentId,
+					threadId: handoffContext.threadId,
+					...(handoffContext.executionId ? { executionId: handoffContext.executionId } : {}),
+				};
+				context.resolvePreviewSession = async (ref) => {
+					const service = this.getAgentExecutionService();
+					if (!service) return null;
+					const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId);
+					if (!detail) return null;
+					const transcript = formatPreviewSessionContext(
+						detail.thread,
+						detail.executions,
+						ref.executionId,
+					);
+					if (transcript === null) return null;
+					return {
+						title: detail.thread.title?.trim() || `Session #${detail.thread.sessionNumber}`,
+						sessionNumber: detail.thread.sessionNumber,
+						transcript,
+					};
+				};
 			} else {
 				handoffContextBlock = buildHandoffContextBlock(handoffContext);
 			}
