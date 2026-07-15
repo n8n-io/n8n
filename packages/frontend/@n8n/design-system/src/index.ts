@@ -31,4 +31,6 @@ export type * from './components/N8nSwitch/Switch.types';
 export { createPasswordRules } from './components/N8nFormInput/validators';
 export { default as N8nMarkdownEditor } from './components/N8nMarkdownEditor/MarkdownEditor.vue';
 export type * from './components/N8nMarkdownEditor/MarkdownEditor.types';
+export { default as N8nCodeBlock } from './components/N8nCodeBlock';
+export type * from './components/N8nCodeBlock';
 export { locale };
