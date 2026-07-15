@@ -332,6 +332,72 @@ describe('useContextMenu', () => {
 		});
 	});
 
+	describe('show/hide all descriptions', () => {
+		// Aggregate visibility is computed across every group that has a
+		// description, not just the target group.
+		function openGroupMenuActionIds(groupId: string, nodeIds: string[]): string[] {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId, nodeIds });
+			return actions.value.map((action) => action.id);
+		}
+
+		it('offers only "show all" when every description is hidden', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'G', {
+				description: 'Docs',
+			});
+			fakeGroupView([], []); // nothing pinned
+
+			const ids = openGroupMenuActionIds(group.id, group.nodeIds);
+
+			expect(ids).toContain('show_all_descriptions');
+			expect(ids).not.toContain('hide_all_descriptions');
+		});
+
+		it('offers only "hide all" when every description is displayed', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'G', {
+				description: 'Docs',
+			});
+			fakeGroupView([], [group.id]); // pinned
+
+			const ids = openGroupMenuActionIds(group.id, group.nodeIds);
+
+			expect(ids).toContain('hide_all_descriptions');
+			expect(ids).not.toContain('show_all_descriptions');
+		});
+
+		it('offers both when descriptions are mixed across groups', () => {
+			const groupA = workflowDocumentStore.createGroup([nodes[0].id], 'A', { description: 'Da' });
+			// Second described group stays hidden → aggregate is mixed.
+			workflowDocumentStore.createGroup([nodes[1].id], 'B', { description: 'Db' });
+			fakeGroupView([], [groupA.id]); // A displayed, B hidden
+
+			const ids = openGroupMenuActionIds(groupA.id, groupA.nodeIds);
+
+			expect(ids).toContain('show_all_descriptions');
+			expect(ids).toContain('hide_all_descriptions');
+		});
+
+		it('offers neither when no group has a description', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id, nodes[1].id], 'G');
+			fakeGroupView([], []);
+
+			const ids = openGroupMenuActionIds(group.id, group.nodeIds);
+
+			expect(ids).not.toContain('show_all_descriptions');
+			expect(ids).not.toContain('hide_all_descriptions');
+		});
+
+		it('offers neither without a canvas group view', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id], 'G', { description: 'Docs' });
+			// groupViewState.current stays undefined (host without a canvas)
+
+			const ids = openGroupMenuActionIds(group.id, group.nodeIds);
+
+			expect(ids).not.toContain('show_all_descriptions');
+			expect(ids).not.toContain('hide_all_descriptions');
+		});
+	});
+
 	describe('target-level read-only', () => {
 		// The instance-wide flags stay editable in these tests (see beforeEach):
 		// only the opening canvas marks its target read-only, like an embedded
