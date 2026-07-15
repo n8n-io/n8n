@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import moment from 'moment-timezone';
-import { type CronExpression, type INode, NodeOperationError } from 'n8n-workflow';
+import { type CronExpression, type CronSource, type INode, NodeOperationError } from 'n8n-workflow';
 
 import type { IRecurrenceRule, ScheduleInterval } from './SchedulerInterface';
 
@@ -145,6 +145,31 @@ export const toCronExpression = (interval: ScheduleInterval, nodeKey: string): C
 	// `*/${months}` only spaces evenly when months divides 12; otherwise fire every month
 	// and let recurrenceCheck enforce the gap (mirrors the hours handling above).
 	return `${second} ${minute} ${hour} ${dayOfMonth} * *`;
+};
+
+/**
+ * Records which Schedule Trigger field the rule came from, plus its interval
+ * size. The cron string alone can't tell "every 30 seconds" apart from a raw
+ * cron of the same shape, so downstream code keeps this to recover which one
+ * the user actually picked.
+ */
+export const toCronSource = (interval: ScheduleInterval): CronSource => {
+	switch (interval.field) {
+		case 'seconds':
+			return { field: 'seconds', size: interval.secondsInterval };
+		case 'minutes':
+			return { field: 'minutes', size: interval.minutesInterval };
+		case 'hours':
+			return { field: 'hours', size: interval.hoursInterval };
+		case 'days':
+			return { field: 'days', size: interval.daysInterval };
+		case 'weeks':
+			return { field: 'weeks', size: interval.weeksInterval };
+		case 'months':
+			return { field: 'months', size: interval.monthsInterval };
+		case 'cronExpression':
+			return { field: 'cronExpression' };
+	}
 };
 
 export function intervalToRecurrence(interval: ScheduleInterval, index: number) {

@@ -48,7 +48,11 @@ Mode is chosen automatically from `conversation`:
   data source, delivery channel, or one-vs-two-workflow split), author it
   **multi-turn** with a `[bracketed]` director note in turn 1 that pre-answers
   those questions so the agent proceeds to build. A single-prompt build case
-  only works when the prompt leaves nothing the agent must ask about.
+  only works when the prompt leaves nothing the agent must ask about. Real sourced
+  prompts are frequently terse ("i want to create a webhook", "convert a topic
+  into a YouTube script") and almost always trigger a clarifying question —
+  **default a terse sourced prompt to multi-turn** with a director note that
+  pre-answers the setup/topology it omits.
 - **Multi-turn:** anything else. A **user-proxy LLM** plays the user — answers
   questions, audits the agent's plan against your script, and sends follow-ups
   (capped by `messageBudget`).

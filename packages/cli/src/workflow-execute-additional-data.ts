@@ -14,6 +14,7 @@ import type {
 	AiEvent,
 	EnvProviderState,
 	ExecuteAgentData,
+	ExecuteAgentSource,
 	ExecuteAgentWorkflowContext,
 	ExecuteWorkflowData,
 	ExecuteWorkflowOptions,
@@ -341,10 +342,11 @@ export async function executeWorkflow(
 }
 
 /**
- * Executes an agent with the given ID and message.
+ * Executes an agent — a saved one by ID, or an inline definition embedded in
+ * the calling node's parameters.
  */
 export async function executeAgent(
-	agentId: string,
+	source: ExecuteAgentSource,
 	message: string,
 	executionId: string,
 	threadId: string,
@@ -378,19 +380,48 @@ export async function executeAgent(
 	);
 	const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
 
+	if (!additionalData.workflowId) {
+		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
+	}
+
+	// Scope session threads by workflow
+	const scopedThreadId = `wf:${additionalData.workflowId}:${threadId}`;
+
+	if (source.inlineAgent) {
+		return await agentExecutionOrchestratorService.executeInlineForWorkflow(
+			source.inlineAgent,
+			message,
+			executionId,
+			scopedThreadId,
+			projectId,
+			telemetryUserId,
+			isManualOrChatExecution(executionMode) ? 'test' : 'production',
+			outputSchema,
+			workflowContext,
+		);
+	}
+
 	const useDraftVersion = isManualOrChatExecution(executionMode);
 
-	return await agentExecutionOrchestratorService.executeForWorkflow(
-		agentId,
+	const result = await agentExecutionOrchestratorService.executeForWorkflow(
+		source.agentId,
 		message,
 		executionId,
-		threadId,
+		scopedThreadId,
 		projectId,
 		telemetryUserId,
 		useDraftVersion,
 		outputSchema,
 		workflowContext,
 	);
+
+	// Callers see the session id they supplied (or the derived per-call id), so
+	// feeding the output back into the node's Session ID continues the same
+	// conversation instead of re-prefixing. The scoped thread key stays
+	// internal, surfaced only as `session.threadId` for session deep links.
+	return result.session
+		? { ...result, session: { ...result.session, sessionId: threadId } }
+		: result;
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {

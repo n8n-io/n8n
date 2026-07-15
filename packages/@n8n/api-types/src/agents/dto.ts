@@ -205,7 +205,7 @@ export class AgentChatMessageDto extends Z.class({
 	sessionId: z.string().min(1).optional(),
 }) {}
 
-export class AgentBuildResumeDto extends Z.class({
+export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),
 	// Deliberately untyped at this boundary: the possible resume shapes overlap
@@ -213,13 +213,7 @@ export class AgentBuildResumeDto extends Z.class({
 	// and a non-discriminated union would parse against whichever member
 	// matches first, silently stripping fields the "wrong" schema doesn't
 	// know about). Each interactive tool validates its own resume payload via
-	// `.resume(schema)`, same as AgentChatResumeDto below.
-	resumeData: z.unknown(),
-}) {}
-
-export class AgentChatResumeDto extends Z.class({
-	runId: z.string().min(1),
-	toolCallId: z.string().min(1),
+	// `.resume(schema)`.
 	resumeData: z.unknown(),
 }) {}
 

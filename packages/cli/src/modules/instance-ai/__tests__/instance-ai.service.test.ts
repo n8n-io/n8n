@@ -3,6 +3,11 @@ vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
 	return {
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
+		isQuotaExhaustedError: (error: unknown) =>
+			typeof error === 'object' &&
+			error !== null &&
+			'errorCode' in error &&
+			error.errorCode === 'quota_exhausted',
 		McpClientManager: class {
 			getRegularTools = vi.fn().mockResolvedValue({});
 			disconnect = vi.fn();
@@ -32,6 +37,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			},
 			loadSkill: vi.fn(),
 		})),
+		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
@@ -171,11 +177,13 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
+	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
 	type SpawnBackgroundTaskOptions,
 	type SpawnBackgroundTaskResult,
 	type SpawnManagedBackgroundTaskOptions,
+	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
@@ -549,6 +557,7 @@ type ShutdownServiceInternals = {
 	browserSessionService: { shutdown: MockedFunction<() => Promise<void>> };
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: MockedFunction<() => void> };
+	eventLog: { flushAll: MockedFunction<() => Promise<void>> };
 	_mcpClientManager?: { disconnect: MockedFunction<() => Promise<void>> };
 	inFlightExecutions: Set<Promise<unknown>>;
 	logger: { debug: Mock; warn: Mock };
@@ -637,6 +646,8 @@ type SnapshotServiceInternals = {
 		getEventsForRun: Mock;
 		getEventsForRuns: Mock;
 	};
+	eventLog: { flush: Mock; getEventsForRuns: Mock };
+	instanceAiConfig: { durableLog: boolean };
 	tracing: { getTraceContext: Mock };
 	logger: { warn: Mock };
 };
@@ -693,6 +704,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.preserveHitlOnShutdown = new Set();
 
 	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
+		durableLog: false,
 		eventBus: service.eventBus,
 		dbSnapshotStorage: {},
 		agentMemory: {},
@@ -730,6 +742,8 @@ function createSnapshotService(): SnapshotServiceInternals {
 		getEventsForRun: vi.fn(() => []),
 		getEventsForRuns: vi.fn(() => []),
 	};
+	service.eventLog = { flush: vi.fn(async () => {}), getEventsForRuns: vi.fn(async () => []) };
+	service.instanceAiConfig = { durableLog: false };
 	service.tracing = { getTraceContext: vi.fn(() => undefined) };
 	service.logger = { warn: vi.fn() };
 	return service;
@@ -785,6 +799,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
 						loadSkill: (skillId: string) => Promise<unknown>;
 					};
+					claimSubAgentUsage?: (
+						dedupeId: string,
+						usage: BuilderUsageItem[],
+						status: TraceStatus,
+					) => void;
 				};
 			}>;
 			settingsService: {
@@ -798,6 +817,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			adapterService: {
 				createContext: Mock;
 				getNodeDefinitionDirs: Mock;
+				isConfigEvalsEnabled: Mock;
 			};
 			sourceControlPreferencesService: { getPreferences: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
@@ -826,6 +846,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
+			creditService: { claimRunUsage: Mock };
 		};
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -843,6 +864,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.adapterService = {
 			createContext: vi.fn(() => ({})),
 			getNodeDefinitionDirs: vi.fn(() => []),
+			isConfigEvalsEnabled: vi.fn().mockResolvedValue(true),
 		};
 		service.sourceControlPreferencesService = {
 			getPreferences: vi.fn(() => ({ branchReadOnly: false })),
@@ -893,6 +915,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		service.creditService = { claimRunUsage: vi.fn() };
 		(createAllTools as Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -920,6 +943,26 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
+
+		// The credit-metering hook is wired to the instance-AI thread/user in
+		// scope here, not whatever thread the sub-agent stream itself is keyed to.
+		const usageItem: BuilderUsageItem = {
+			type: 'llmTokens',
+			model: 'anthropic/claude-sonnet',
+			uncachedInput: 80,
+			cacheRead: 20,
+			cacheWrite: 0,
+			output: 20,
+		};
+		environment.orchestrationContext.claimSubAgentUsage?.('dedupe-1', [usageItem], 'completed');
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-1',
+			'dedupe-1',
+			[usageItem],
+			'completed',
+		);
+
 		expect(createSandbox).not.toHaveBeenCalled();
 		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as Mock).mock.calls[0]?.[0]
 			.workspace as { ensureWorkspace: () => Promise<unknown> };
@@ -1016,6 +1059,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: vi.fn() };
+		service.eventLog = { flushAll: vi.fn(async () => {}) };
 		service._mcpClientManager = { disconnect: vi.fn(async () => {}) };
 		service.inFlightExecutions = new Set();
 		service.logger = { debug: vi.fn(), warn: vi.fn() };
@@ -1027,6 +1071,13 @@ describe('InstanceAiService — shutdown', () => {
 		// are left intact (via the delegated sandboxService) so a restarted
 		// process can reconnect to them.
 		expect(service.sandboxService.stopSandboxExpiryTimers).toHaveBeenCalledTimes(1);
+
+		// The durable-log flush must precede eventBus.clear(): clear() invalidates
+		// drain lifecycles, so the reverse order would drop unflushed segment tails.
+		expect(service.eventLog.flushAll).toHaveBeenCalledTimes(1);
+		expect(service.eventLog.flushAll.mock.invocationCallOrder[0]).toBeLessThan(
+			service.eventBus.clear.mock.invocationCallOrder[0],
+		);
 	});
 });
 
@@ -2442,6 +2493,40 @@ describe('InstanceAiService — agent tree snapshots', () => {
 			}),
 		);
 	});
+
+	it('reads snapshot input from the durable log instead of the bus when the flag is on', async () => {
+		const service = createSnapshotService();
+		service.instanceAiConfig.durableLog = true;
+		const logEvent: InstanceAiEvent = {
+			type: 'text-delta',
+			runId: 'run-1',
+			agentId: 'agent-001',
+			payload: { text: 'from the log' },
+		};
+		service.eventLog.getEventsForRuns.mockResolvedValue([logEvent]);
+		const snapshotStorage = {
+			getLatest: vi.fn(async () => undefined),
+			save: vi.fn(async () => {}),
+			updateLast: vi.fn(async () => {}),
+		};
+
+		await service.saveAgentTreeSnapshot('thread-a', 'run-1', snapshotStorage);
+
+		expect(service.eventLog.getEventsForRuns).toHaveBeenCalledWith('thread-a', ['run-1']);
+		expect(service.eventBus.getEventsForRun).not.toHaveBeenCalled();
+		// Read-own-writes barrier: the drain settles before the snapshot input is
+		// read, so a just-published terminal fact can't be missing from the tree.
+		expect(service.eventLog.flush).toHaveBeenCalledWith('thread-a');
+		expect(service.eventLog.flush.mock.invocationCallOrder[0]).toBeLessThan(
+			service.eventLog.getEventsForRuns.mock.invocationCallOrder[0],
+		);
+		expect(snapshotStorage.save).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({ textContent: 'from the log' }),
+			'run-1',
+			expect.any(Object),
+		);
+	});
 });
 
 describe('InstanceAiService — terminal response guard wiring', () => {
@@ -2568,7 +2653,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('claims credits for the consumed segment when a resumed run suspends again', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
 		const abortController = new AbortController();
 		const usageItem = {
 			type: 'llmTokens' as const,
@@ -2622,7 +2707,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('bills each segment once under disjoint keys across suspend -> resume -> continue', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
 		const abortController = new AbortController();
 		const segmentOneUsage = {
 			type: 'llmTokens' as const,
@@ -2708,7 +2793,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('bills each segment once under disjoint keys across suspend -> resume -> abort', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
 		const abortController = new AbortController();
 		const segmentOneUsage = {
 			type: 'llmTokens' as const,
