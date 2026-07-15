@@ -81,7 +81,7 @@ describe('useActions', () => {
 			});
 		});
 
-		test('should insert a ManualTrigger node when an AI Agent is added on an empty canvas', () => {
+		test('should insert a ChatTrigger node when an AI Agent is added on an empty canvas', () => {
 			mockDocumentStoreState.workflowTriggerNodes = [];
 			mockDocumentStoreState.allNodes = [];
 
@@ -99,7 +99,7 @@ describe('useActions', () => {
 					},
 				],
 				nodes: [
-					{ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true },
+					{ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true },
 					{ type: AGENT_NODE_TYPE, openDetail: true },
 				],
 			});

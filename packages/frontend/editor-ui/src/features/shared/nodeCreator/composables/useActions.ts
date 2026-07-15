@@ -269,6 +269,7 @@ export const useActions = () => {
 	function shouldPrependChatTrigger(addedNodes: AddedNode[]): boolean {
 		const COMPATIBLE_CHAT_NODES = [
 			QA_CHAIN_NODE_TYPE,
+			AGENT_NODE_TYPE,
 			BASIC_CHAIN_NODE_TYPE,
 			OPEN_AI_ASSISTANT_NODE_TYPE,
 			OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
@@ -276,8 +277,16 @@ export const useActions = () => {
 
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 		if (!isCompatibleNode) return false;
-
 		const allNodes = workflowDocumentStore.value.allNodes;
+
+		const COMPATIBLE_WITH_MANUAL_NODES = [AGENT_NODE_TYPE];
+		const canConnectWithManual = addedNodes.some((node) =>
+			COMPATIBLE_WITH_MANUAL_NODES.includes(node.type),
+		);
+		const hasManualTrigger = allNodes.some((node) => node.type === MANUAL_TRIGGER_NODE_TYPE);
+
+		if (canConnectWithManual && hasManualTrigger) return false;
+
 		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
 
@@ -295,7 +304,6 @@ export const useActions = () => {
 	}
 
 	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
-		debugger;
 		if (addedNodes.length === 0) {
 			return { nodes: [], connections: [] };
 		}
