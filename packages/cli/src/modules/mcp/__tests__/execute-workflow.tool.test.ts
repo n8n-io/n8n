@@ -66,6 +66,7 @@ describe('execute-workflow MCP tool', () => {
 				'Execute a workflow by ID. Returns the execution ID immediately without waiting for completion. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
 			);
 			expect(tool.config.inputSchema).toBeDefined();
+			expect(tool.config.inputSchema?.executionMode.safeParse(undefined).success).toBe(false);
 			expect(tool.config.outputSchema).toBeDefined();
 			expect(typeof tool.handler).toBe('function');
 		});
@@ -86,6 +87,7 @@ describe('execute-workflow MCP tool', () => {
 						workflowPublishedDataService,
 						'any-workflow',
 						undefined,
+						'production',
 					),
 				).rejects.toThrow(WorkflowAccessError);
 			});
@@ -296,6 +298,7 @@ describe('execute-workflow MCP tool', () => {
 						workflowPublishedDataService,
 						'unsupported-trigger',
 						undefined,
+						'production',
 					),
 				).rejects.toThrow(WorkflowAccessError);
 
@@ -309,6 +312,7 @@ describe('execute-workflow MCP tool', () => {
 						workflowPublishedDataService,
 						'unsupported-trigger',
 						undefined,
+						'production',
 					),
 				).rejects.toThrow(/Only workflows with the following trigger nodes can be executed/);
 			});
@@ -340,6 +344,7 @@ describe('execute-workflow MCP tool', () => {
 						workflowPublishedDataService,
 						'unsupported-trigger',
 						undefined,
+						'production',
 					),
 				).rejects.toMatchObject({
 					reason: 'unsupported_trigger',
@@ -373,6 +378,7 @@ describe('execute-workflow MCP tool', () => {
 						workflowPublishedDataService,
 						'disabled-trigger',
 						undefined,
+						'production',
 					),
 				).rejects.toThrow(WorkflowAccessError);
 			});
@@ -414,6 +420,7 @@ describe('execute-workflow MCP tool', () => {
 							body: { message: 'test' },
 						},
 					},
+					'production',
 				);
 
 				expect(result).toMatchObject({
@@ -471,6 +478,7 @@ describe('execute-workflow MCP tool', () => {
 							query: { id: '123' },
 						},
 					},
+					'production',
 				);
 
 				const runCall = (workflowRunner.run as Mock).mock
@@ -520,6 +528,7 @@ describe('execute-workflow MCP tool', () => {
 						type: 'chat',
 						chatInput: 'Hello, how can I help?',
 					},
+					'production',
 				);
 
 				expect(result).toMatchObject({
@@ -579,6 +588,7 @@ describe('execute-workflow MCP tool', () => {
 							age: 30,
 						},
 					},
+					'production',
 				);
 
 				expect(result).toMatchObject({
@@ -633,6 +643,7 @@ describe('execute-workflow MCP tool', () => {
 					workflowPublishedDataService,
 					'success-workflow',
 					undefined,
+					'production',
 				);
 
 				expect(result).toMatchObject({
@@ -671,6 +682,7 @@ describe('execute-workflow MCP tool', () => {
 					workflowPublishedDataService,
 					'no-inputs-workflow',
 					undefined,
+					'production',
 				);
 
 				const runCall = (workflowRunner.run as Mock).mock
@@ -874,6 +886,7 @@ describe('execute-workflow MCP tool', () => {
 					workflowPublishedDataService,
 					'multi-trigger-workflow',
 					undefined,
+					'production',
 				);
 
 				const runCall = (workflowRunner.run as Mock).mock
@@ -921,6 +934,7 @@ describe('execute-workflow MCP tool', () => {
 					workflowPublishedDataService,
 					'mcp-meta-workflow',
 					undefined,
+					'production',
 				);
 
 				const runCall = (workflowRunner.run as Mock).mock
@@ -958,6 +972,7 @@ describe('execute-workflow MCP tool', () => {
 					workflowPublishedDataService,
 					'regular-workflow',
 					undefined,
+					'production',
 				);
 
 				const runCall = (workflowRunner.run as Mock).mock

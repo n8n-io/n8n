@@ -363,7 +363,7 @@ export async function executeAgent(
 	// `webhooks/*`, `scaling/job-processor`). Resolve it from the workflow's
 	// owning project so the agent runs under the correct project scope.
 	if (!projectId && additionalData.workflowId) {
-		const { OwnershipService } = await import('@/services/ownership.service');
+		const { OwnershipService } = await import('@/services/ownership.service.js');
 		const ownershipService = Container.get(OwnershipService);
 		const project = await ownershipService.getWorkflowProjectCached(additionalData.workflowId);
 		projectId = project.id;
@@ -376,7 +376,7 @@ export async function executeAgent(
 	}
 
 	const { AgentExecutionOrchestratorService } = await import(
-		'@/modules/agents/agent-execution-orchestrator.service'
+		'@/modules/agents/agent-execution-orchestrator.service.js'
 	);
 	const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
 
@@ -425,7 +425,7 @@ export async function executeAgent(
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
-	const { AgentsService } = await import('@/modules/agents/agents.service');
+	const { AgentsService } = await import('@/modules/agents/agents.service.js');
 	const agentsService = Container.get(AgentsService);
 	// Only published agents are runnable from a published workflow.
 	// But unpublished agents may be called from manual workflow executions (e.g. during development), so they are included in the list as well.

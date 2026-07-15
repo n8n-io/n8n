@@ -40,6 +40,10 @@ vi.mock('../orchestration/build-agent.tool', () => ({
 	createBuildAgentTool: vi.fn(() => ({ id: 'build-agent' })),
 }));
 
+vi.mock('../agents.tool', () => ({
+	createAgentsTool: vi.fn(() => ({ id: 'agents' })),
+}));
+
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
 }));
@@ -232,6 +236,22 @@ describe('domain tool construction', () => {
 		);
 		expect(Object.fromEntries(withDelegate)).toMatchObject({
 			'build-agent': { id: 'build-agent' },
+		});
+	});
+
+	it('registers agents only when a builder delegate is present on the domain context', () => {
+		const withoutDelegate = createOrchestrationTools(
+			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
+		);
+		expect(withoutDelegate.has('agents')).toBe(false);
+
+		const withDelegate = createOrchestrationTools(
+			makeContext({
+				domainContext: { builderDelegate: {} },
+			} as Partial<InstanceAiContext>) as never,
+		);
+		expect(Object.fromEntries(withDelegate)).toMatchObject({
+			agents: { id: 'agents' },
 		});
 	});
 });
