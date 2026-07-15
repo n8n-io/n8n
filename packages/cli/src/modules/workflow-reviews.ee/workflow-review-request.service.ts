@@ -11,15 +11,13 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-
-import { WorkflowReviewInvalidVersionError } from './errors/workflow-review-invalid-version.error';
-import { WorkflowReviewRequestConflictError } from './errors/workflow-review-request-conflict.error';
-import { WorkflowReviewWorkflowArchivedError } from './errors/workflow-review-workflow-archived.error';
-import { WorkflowReviewWorkflowNotFoundError } from './errors/workflow-review-workflow-not-found.error';
-import { WorkflowReviewsDisabledError } from './errors/workflow-reviews-disabled.error';
 
 @Service()
 export class WorkflowReviewRequestService {
@@ -43,7 +41,7 @@ export class WorkflowReviewRequestService {
 		 */
 		const policy = await this.workflowReviewPolicyService.get();
 		if (!policy.enabled) {
-			throw new WorkflowReviewsDisabledError();
+			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
 		}
 
 		/**
@@ -55,12 +53,14 @@ export class WorkflowReviewRequestService {
 			'workflow:publish',
 		]);
 		if (!workflow) {
-			throw new WorkflowReviewWorkflowNotFoundError(workflowId);
+			throw new NotFoundError('Could not find workflow');
 		}
 
 		/** 3. Archived workflows cannot be submitted for review. */
 		if (workflow.isArchived) {
-			throw new WorkflowReviewWorkflowArchivedError(workflowId);
+			throw new BadRequestError(
+				`The workflow '${workflowId}' is archived and cannot be submitted for review`,
+			);
 		}
 
 		/**
@@ -69,13 +69,15 @@ export class WorkflowReviewRequestService {
 		 */
 		const version = await this.workflowHistoryService.findVersion(workflowId, workflowVersionId);
 		if (!version) {
-			throw new WorkflowReviewInvalidVersionError(workflowId, workflowVersionId);
+			throw new BadRequestError(
+				`Version '${workflowVersionId}' does not exist for workflow '${workflowId}'`,
+			);
 		}
 
 		/** 5. Resolve the owning project — the review request belongs to it. */
 		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
 		if (!project) {
-			throw new WorkflowReviewWorkflowNotFoundError(workflowId);
+			throw new NotFoundError('Could not find workflow');
 		}
 
 		/**
@@ -89,7 +91,11 @@ export class WorkflowReviewRequestService {
 				tx,
 			);
 			if (existing) {
-				throw new WorkflowReviewRequestConflictError(existing.id);
+				throw new ConflictError(
+					'An open review request already exists for this workflow',
+					'Sync the existing review request instead of creating a new one',
+					{ workflowReviewRequestId: existing.id },
+				);
 			}
 
 			const request = await this.workflowReviewRequestRepository.createRequest(

@@ -14,15 +14,14 @@ import { DbLock } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import { WorkflowReviewInvalidVersionError } from '../errors/workflow-review-invalid-version.error';
-import { WorkflowReviewRequestConflictError } from '../errors/workflow-review-request-conflict.error';
-import { WorkflowReviewsDisabledError } from '../errors/workflow-reviews-disabled.error';
-import { WorkflowReviewWorkflowArchivedError } from '../errors/workflow-review-workflow-archived.error';
-import { WorkflowReviewWorkflowNotFoundError } from '../errors/workflow-review-workflow-not-found.error';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
 const user = mock<User>({ id: 'user-1' });
@@ -67,7 +66,7 @@ describe('WorkflowReviewRequestService', () => {
 		it('throws when the instance policy is disabled, before any lookup or lock', async () => {
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
 
-			await expect(service.create(user, dto)).rejects.toThrow(WorkflowReviewsDisabledError);
+			await expect(service.create(user, dto)).rejects.toThrow(ForbiddenError);
 
 			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
 			expect(dbLockService.withLock).not.toHaveBeenCalled();
@@ -112,10 +111,10 @@ describe('WorkflowReviewRequestService', () => {
 			);
 		});
 
-		it('throws NotFound and never takes the lock when the finder returns null', async () => {
+		it('throws NotFoundError and never takes the lock when the finder returns null', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
-			await expect(service.create(user, dto)).rejects.toThrow(WorkflowReviewWorkflowNotFoundError);
+			await expect(service.create(user, dto)).rejects.toThrow(NotFoundError);
 
 			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
 				'workflow:publish',
@@ -123,37 +122,37 @@ describe('WorkflowReviewRequestService', () => {
 			expect(dbLockService.withLock).not.toHaveBeenCalled();
 		});
 
-		it('throws Archived and never takes the lock for an archived workflow', async () => {
+		it('throws BadRequestError and never takes the lock for an archived workflow', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				mock<WorkflowEntity>({ isArchived: true }),
 			);
 
-			await expect(service.create(user, dto)).rejects.toThrow(WorkflowReviewWorkflowArchivedError);
+			await expect(service.create(user, dto)).rejects.toThrow(BadRequestError);
 			expect(dbLockService.withLock).not.toHaveBeenCalled();
 		});
 
-		it('throws InvalidVersion and never takes the lock when the version does not exist', async () => {
+		it('throws BadRequestError and never takes the lock when the version does not exist', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				mock<WorkflowEntity>({ isArchived: false }),
 			);
 			workflowHistoryService.findVersion.mockResolvedValue(null);
 
-			await expect(service.create(user, dto)).rejects.toThrow(WorkflowReviewInvalidVersionError);
+			await expect(service.create(user, dto)).rejects.toThrow(BadRequestError);
 			expect(dbLockService.withLock).not.toHaveBeenCalled();
 		});
 
-		it('throws NotFound when the workflow has no owning project', async () => {
+		it('throws NotFoundError when the workflow has no owning project', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				mock<WorkflowEntity>({ isArchived: false }),
 			);
 			workflowHistoryService.findVersion.mockResolvedValue(mock());
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 
-			await expect(service.create(user, dto)).rejects.toThrow(WorkflowReviewWorkflowNotFoundError);
+			await expect(service.create(user, dto)).rejects.toThrow(NotFoundError);
 			expect(dbLockService.withLock).not.toHaveBeenCalled();
 		});
 
-		it('throws Conflict carrying the existing id and writes nothing when an open review exists', async () => {
+		it('throws ConflictError carrying the existing id and writes nothing when an open review exists', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				mock<WorkflowEntity>({ isArchived: false }),
 			);
@@ -166,8 +165,8 @@ describe('WorkflowReviewRequestService', () => {
 			);
 
 			const error = await service.create(user, dto).catch((e: unknown) => e);
-			expect(error).toBeInstanceOf(WorkflowReviewRequestConflictError);
-			expect((error as WorkflowReviewRequestConflictError).conflictingRequestId).toBe('existing-1');
+			expect(error).toBeInstanceOf(ConflictError);
+			expect((error as ConflictError).meta).toEqual({ workflowReviewRequestId: 'existing-1' });
 
 			expect(requestRepository.createRequest).not.toHaveBeenCalled();
 			expect(workflowRepository.createWorkflowRow).not.toHaveBeenCalled();
