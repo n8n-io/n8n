@@ -81,7 +81,7 @@ describe('useActions', () => {
 			});
 		});
 
-		test('should insert a ChatTrigger node when an AI Agent is added on an empty canvas', () => {
+		test('should insert a ManualTrigger node when an AI Agent is added on an empty canvas', () => {
 			mockDocumentStoreState.workflowTriggerNodes = [];
 			mockDocumentStoreState.allNodes = [];
 
@@ -99,33 +99,21 @@ describe('useActions', () => {
 					},
 				],
 				nodes: [
-					{ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true },
+					{ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true },
 					{ type: AGENT_NODE_TYPE, openDetail: true },
 				],
 			});
 		});
 
-		test('should insert a ChatTrigger node when an AI Agent is added with only a Manual Trigger present', () => {
+		test('should NOT insert a ChatTrigger node when an AI Agent is added with only a Manual Trigger present', () => {
 			mockDocumentStoreState.workflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
 			mockDocumentStoreState.allNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as INodeUi];
 
 			const { getAddedNodesAndConnections } = useActions();
 
 			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
-				connections: [
-					{
-						from: {
-							nodeIndex: 0,
-						},
-						to: {
-							nodeIndex: 1,
-						},
-					},
-				],
-				nodes: [
-					{ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true },
-					{ type: AGENT_NODE_TYPE, openDetail: true },
-				],
+				connections: [],
+				nodes: [{ type: AGENT_NODE_TYPE, openDetail: true }],
 			});
 		});
 
