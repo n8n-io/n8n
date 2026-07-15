@@ -9,7 +9,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { fireEvent, waitFor } from '@testing-library/vue';
 
 import AgentToolsModal from '../components/AgentToolsModal.vue';
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { IWorkflowDb } from '@/Interface';
 
 const showErrorMock = vi.fn();
@@ -642,6 +642,37 @@ describe('AgentToolsModal', () => {
 		expect(tools[0]).toStrictEqual(configuredRef);
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 		expect(showMessageMock).toHaveBeenCalledWith({ title: 'Tool added', type: 'success' });
+	});
+
+	it('commits an added MCP server to the host onConfirm once its config modal saves', async () => {
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [MCP_TOOL.name],
+		};
+		const onConfirm = vi.fn();
+		const { getByTestId } = renderComponent({
+			props: {
+				modalName: MODAL_NAME,
+				data: { tools: [], mcpServers: [], onConfirm },
+			},
+		});
+
+		// Connect on an available MCP entry opens the MCP config modal first.
+		const mcpList = getByTestId('agent-tools-available-mcp-list');
+		await fireEvent.click(mcpList.querySelector('button')!);
+
+		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+		expect(payload.data.kind).toBe('mcpServer');
+
+		const savedServer: AgentJsonMcpServerConfig = {
+			name: 'github',
+			url: 'https://mcp.example.com',
+			transport: 'streamableHttp',
+			authentication: 'none',
+		};
+		payload.data.onConfirm(savedServer);
+
+		// Saving commits immediately — the server must reach the host payload.
+		expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [savedServer] });
 	});
 
 	it('shows the available tools count in the section heading', () => {

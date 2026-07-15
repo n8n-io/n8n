@@ -390,3 +390,11 @@ export declare namespace SecurityPolicyRequest {
 	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateSecurityPolicyDto>;
 }
+
+// ----------------------------------
+//        /settings/sso/saml
+// ----------------------------------
+
+export declare namespace SsoSamlRequest {
+	type Get = AuthenticatedRequest;
+}
