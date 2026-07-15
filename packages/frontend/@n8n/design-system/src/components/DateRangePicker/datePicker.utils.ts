@@ -2,6 +2,7 @@ import {
 	CalendarDate,
 	CalendarDateTime,
 	getLocalTimeZone,
+	isSameDay,
 	parseDate,
 	today,
 	type DateValue,
@@ -387,6 +388,19 @@ export function mergeDatePreservingTime(selected: DateValue, existing?: DateValu
 		minute: existing.minute,
 		second: existing.second,
 	});
+}
+
+/**
+ * Resolves a draft value when `showTime` is enabled.
+ * Calendar day changes keep the previous time; same-day values that already
+ * include a time (e.g. time field edits) are kept as-is.
+ */
+export function resolveShowTimeDraftValue(selected: DateValue, existing?: DateValue): DateValue {
+	if (existing && isSameDay(selected, existing) && hasTimeComponent(selected)) {
+		return selected.copy();
+	}
+
+	return mergeDatePreservingTime(selected, existing);
 }
 
 /** Whether the date text input should also display a time segment. */

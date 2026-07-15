@@ -490,6 +490,40 @@ describe('N8nDateRangePicker', () => {
 		});
 	});
 
+	describe('active field targeting', () => {
+		it('updates the end date when the end input is focused before picking a day', async () => {
+			const todayDate = today(getLocalTimeZone());
+			const initialStart = todayDate.subtract({ days: 7 });
+			const initialEnd = todayDate.copy();
+			const nextEnd = todayDate.subtract({ days: 2 });
+
+			const { container, emitted, getByLabelText, getByRole } = render(DateRangePicker, {
+				props: {
+					modelValue: {
+						start: initialStart.copy(),
+						end: initialEnd.copy(),
+					},
+				},
+			});
+			const popover = await openCalendarPopover(container);
+
+			await userEvent.click(getByLabelText('End date'));
+			await clickCalendarDay(popover, nextEnd);
+			await nextTick();
+
+			// After setting end, the start field should become active again
+			expect(getByLabelText('Start date').closest('[class*="DateFieldGroup"]')?.className).toMatch(
+				/Active/,
+			);
+
+			await applySelection(getByRole);
+
+			const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
+			expect(lastUpdate?.start?.compare(initialStart)).toBe(0);
+			expect(lastUpdate?.end?.compare(nextEnd)).toBe(0);
+		});
+	});
+
 	describe('single prop', () => {
 		it('should render a single date input when single is true', async () => {
 			const { container, queryByLabelText, getByLabelText } = render(DateRangePicker, {

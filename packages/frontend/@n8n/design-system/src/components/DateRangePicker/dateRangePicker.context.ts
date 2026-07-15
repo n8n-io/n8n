@@ -2,10 +2,15 @@ import { inject, type InjectionKey, type Ref } from 'vue';
 
 import type { DatePickerHourCycle } from './datePicker.utils';
 
+export type DateRangePickerActiveField = 'start' | 'end';
+
 export type DateRangePickerContext = {
 	single: Ref<boolean>;
 	showTime: Ref<boolean>;
 	hourCycle: Ref<DatePickerHourCycle>;
+	activeField: Ref<DateRangePickerActiveField>;
+	setActiveField: (field: DateRangePickerActiveField) => void;
+	clearActiveFieldFocus: () => void;
 };
 
 export const N8N_DATE_RANGE_PICKER_CONTEXT: InjectionKey<DateRangePickerContext> = Symbol(

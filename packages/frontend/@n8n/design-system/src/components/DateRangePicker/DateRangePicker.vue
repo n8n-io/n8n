@@ -20,14 +20,17 @@ import {
 	type DateRange,
 	type DateValue,
 } from 'reka-ui';
-import { nextTick, provide, ref, shallowRef, toRef, useSlots, watch } from 'vue';
+import { nextTick, provide, ref, shallowRef, toRef, useSlots, watch, computed } from 'vue';
 
 import N8nButton from '../N8nButton';
 import IconButton from '../N8nIconButton';
 import { useI18n } from '../../composables/useI18n';
 import DateRangePickerDateTimeField from './DateRangePickerDateTimeField.vue';
 import DateRangePickerPresets from './DateRangePickerPresets.vue';
-import { N8N_DATE_RANGE_PICKER_CONTEXT } from './dateRangePicker.context';
+import {
+	N8N_DATE_RANGE_PICKER_CONTEXT,
+	type DateRangePickerActiveField,
+} from './dateRangePicker.context';
 import {
 	createTodayRange,
 	formatMonthYearHeading,
@@ -35,6 +38,7 @@ import {
 	isDateSelectable,
 	isEmptyDateRange,
 	mergeDatePreservingTime,
+	resolveShowTimeDraftValue,
 } from './datePicker.utils';
 import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
 
@@ -170,10 +174,10 @@ function onDraftUpdate(value: DateRange) {
 
 	if (props.showTime) {
 		if (start) {
-			start = mergeDatePreservingTime(start, previous.start ?? previous.end);
+			start = resolveShowTimeDraftValue(start, previous.start ?? previous.end);
 		}
 		if (end) {
-			end = mergeDatePreservingTime(end, previous.end ?? previous.start ?? start);
+			end = resolveShowTimeDraftValue(end, previous.end ?? previous.start ?? start);
 		}
 	}
 
@@ -182,6 +186,7 @@ function onDraftUpdate(value: DateRange) {
 		// Complete immediately when the calendar already gave us a same-day range.
 		if (end && nextStart.compare(end) === 0) {
 			draftRange.value = { start: nextStart, end: nextStart.copy() };
+			releaseFieldSelectionLock();
 			return;
 		}
 
@@ -193,11 +198,13 @@ function onDraftUpdate(value: DateRange) {
 		draftRange.value = { start: nextStart, end: undefined };
 		void nextTick(() => {
 			draftRange.value = { start: nextStart.copy(), end: nextStart.copy() };
+			releaseFieldSelectionLock();
 		});
 		return;
 	}
 
 	draftRange.value = { start, end };
+	releaseFieldSelectionLock();
 }
 
 function onOpenUpdate(value: boolean) {
@@ -236,12 +243,82 @@ function getEffectiveGranularity() {
 	return props.granularity;
 }
 
+const activeField = ref<DateRangePickerActiveField>('start');
+const inputFieldFocused = ref(false);
+/**
+ * When set by focusing a date field, calendar clicks update that field
+ * (`fixedDate`). Kept across input blur so a following day click still
+ * targets the same slot (blur+commit must not clear it).
+ */
+const fieldSelectionLocked = ref(false);
+let ignoreNextDraftSync = false;
+
+function getSelectionActiveField(): DateRangePickerActiveField {
+	if (props.single) return 'start';
+	const { start, end } = draftRange.value;
+	return start && !end ? 'end' : 'start';
+}
+
+function syncActiveFieldFromSelection() {
+	activeField.value = getSelectionActiveField();
+}
+
+function setActiveField(field: DateRangePickerActiveField) {
+	inputFieldFocused.value = true;
+	activeField.value = field;
+	fieldSelectionLocked.value = true;
+
+	// Incomplete range + focusing start: promote to a same-day range so
+	// `fixedDate` can retarget the next calendar click to the start slot.
+	if (!props.single && field === 'start' && draftRange.value.start && !draftRange.value.end) {
+		ignoreNextDraftSync = true;
+		draftRange.value = {
+			start: draftRange.value.start.copy(),
+			end: draftRange.value.start.copy(),
+		};
+	}
+}
+
+function clearActiveFieldFocus() {
+	inputFieldFocused.value = false;
+}
+
+function releaseFieldSelectionLock() {
+	if (!fieldSelectionLocked.value || inputFieldFocused.value) return;
+
+	fieldSelectionLocked.value = false;
+	syncActiveFieldFromSelection();
+}
+
+/** Pin the opposite end so calendar clicks update the locked/focused field. */
+const fixedDate = computed(() => {
+	if (props.single) return undefined;
+	if (!draftRange.value.start || !draftRange.value.end) return undefined;
+	if (!fieldSelectionLocked.value) return undefined;
+	return activeField.value === 'start' ? 'end' : 'start';
+});
+
 provide(N8N_DATE_RANGE_PICKER_CONTEXT, {
 	single: toRef(props, 'single'),
 	showTime: toRef(props, 'showTime'),
 	hourCycle: toRef(props, 'hourCycle'),
+	activeField,
+	setActiveField,
+	clearActiveFieldFocus,
 });
 
+watch(draftRange, () => {
+	if (ignoreNextDraftSync) {
+		ignoreNextDraftSync = false;
+		return;
+	}
+
+	// Do not clear `fieldSelectionLocked` here — input blur commits the
+	// current value and would unlock before the calendar click runs.
+	if (!fieldSelectionLocked.value && !inputFieldFocused.value) {
+		syncActiveFieldFromSelection();
+	}
+});
 watch(
 	() => props.modelValue,
 	(value) => {
@@ -263,6 +340,10 @@ watch(isOpen, (open, wasOpen) => {
 	if (!open) {
 		if (wasOpen !== true) return;
 
+		inputFieldFocused.value = false;
+		fieldSelectionLocked.value = false;
+		activeField.value = 'start';
+
 		if (applyOnClose.value) {
 			const applied = copyRange(draftRange.value);
 			if (props.modelValue === undefined) {
@@ -279,6 +360,7 @@ watch(isOpen, (open, wasOpen) => {
 
 	applyOnClose.value = false;
 	draftRange.value = getCommittedRange();
+	syncActiveFieldFromSelection();
 
 	if (!isEmptyDateRange(draftRange.value)) {
 		const start = draftRange.value.start;
@@ -303,6 +385,7 @@ watch(isOpen, (open, wasOpen) => {
 		end: todayRange.end.copy(),
 	};
 	calendarPlaceholder.value = todayRange.start.copy();
+	syncActiveFieldFromSelection();
 });
 </script>
 
@@ -313,6 +396,7 @@ watch(isOpen, (open, wasOpen) => {
 		:placeholder="calendarPlaceholder"
 		:model-value="draftRange"
 		:granularity="getEffectiveGranularity()"
+		:fixed-date="fixedDate"
 		prevent-deselect
 		@update:model-value="onDraftUpdate"
 		@update:open="onOpenUpdate"

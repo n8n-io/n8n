@@ -12,6 +12,7 @@ import {
 	parseDateValue,
 	parseTimeValue,
 	resolveFieldValueCommit,
+	resolveShowTimeDraftValue,
 	shouldIncludeTimeInDateFormat,
 	toDateTimeValue,
 } from './datePicker.utils';
@@ -212,6 +213,22 @@ describe('datePicker.utils', () => {
 			expect(mergeDatePreservingTime(selected, new CalendarDate(2025, 6, 15)).toString()).toBe(
 				'2025-06-20T09:00:00',
 			);
+		});
+	});
+
+	describe('resolveShowTimeDraftValue', () => {
+		it('keeps an explicit same-day time edit', () => {
+			const existing = new CalendarDateTime(2025, 6, 15, 9, 0, 0);
+			const edited = new CalendarDateTime(2025, 6, 15, 2, 0, 0);
+
+			expect(resolveShowTimeDraftValue(edited, existing).toString()).toBe('2025-06-15T02:00:00');
+		});
+
+		it('preserves time when the calendar day changes', () => {
+			const existing = new CalendarDateTime(2025, 6, 15, 9, 30, 0);
+			const selected = new CalendarDate(2025, 6, 20);
+
+			expect(resolveShowTimeDraftValue(selected, existing).toString()).toBe('2025-06-20T09:30:00');
 		});
 	});
 
