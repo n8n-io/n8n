@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-agent-build-config-eval-placeholder.json
+  s_bf49e7b11d2294::t_47fe5af3d57980 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1497d24fa0f0aba03bd03963e5725fc3aeaec9d0",
+  "prompts": {},
+  "sessions": {
+    "s_bf49e7b11d2294": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ca5f3ac-dbf9-403a-b83d-185f52a6787b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
