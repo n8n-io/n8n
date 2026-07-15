@@ -2,7 +2,11 @@
 // Shared types for the instance-ai workflow test case evaluator
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '@n8n/api-types';
+import type {
+	InstanceAiEvalAgentExecutionResult,
+	InstanceAiEvalExecutionResult,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
@@ -253,6 +257,10 @@ export interface ExecutionScenarioResult {
 	scenario: ExecutionScenario;
 	success: boolean;
 	evalResult?: InstanceAiEvalExecutionResult;
+	/** Set when the scenario ran against a first-class Agent instead of a workflow. */
+	agentEvalResult?: InstanceAiEvalAgentExecutionResult;
+	/** Agent the scenario executed, for agent-artifact cases. */
+	agentId?: string;
 	/** Workflow actually executed for this scenario, after multi-workflow routing. */
 	workflowId?: string;
 	score: number;

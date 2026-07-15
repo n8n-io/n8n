@@ -9,6 +9,7 @@
 import type {
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
+	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
@@ -755,6 +756,40 @@ export class N8nClient {
 			timeoutMs,
 		})) as { data: InstanceAiEvalExecutionResult };
 		return result.data;
+	}
+
+	/**
+	 * Run one scenario turn against a built first-class Agent: the agent's own
+	 * model call is real, its tools' HTTP is served by the mock layer. Runs for
+	 * minutes, like the workflow variant.
+	 */
+	async executeAgentWithLlmMock(
+		agentId: string,
+		projectId: string,
+		scenarioHints?: string,
+		timeoutMs: number = 120_000,
+	): Promise<InstanceAiEvalAgentExecutionResult> {
+		const body: { projectId: string; scenarioHints?: string; timeoutMs?: number } = { projectId };
+		if (scenarioHints) body.scenarioHints = scenarioHints;
+		// Also forward the budget server-side (schema-clamped) so the run is
+		// aborted rather than orphaned when the client gives up.
+		if (timeoutMs >= 30_000) body.timeoutMs = Math.min(timeoutMs, 900_000);
+
+		const result = (await this.fetch(
+			`/rest/instance-ai/eval/execute-agent-with-llm-mock/${agentId}`,
+			{
+				method: 'POST',
+				body,
+				timeoutMs,
+			},
+		)) as { data: InstanceAiEvalAgentExecutionResult };
+		return result.data;
+	}
+
+	async deleteAgent(projectId: string, agentId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/agents/v2/${agentId}`, {
+			method: 'DELETE',
+		});
 	}
 
 	// -- SSE helpers ---------------------------------------------------------
