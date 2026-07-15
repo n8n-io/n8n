@@ -34,6 +34,8 @@ tags:
     description: Operations about folders
   - name: Insights
     description: Operations about insights
+  - name: LogStreaming
+    description: Operations about log streaming destinations
   - name: N8nPackage
     description: Beta — breaking changes may still occur without major version bump.
   - name: Projects
@@ -162,6 +164,14 @@ paths:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
   /n8n-packages/import:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import.yml'
+  /settings/log-streaming/event-types:
+    $ref: './handlers/log-streaming/spec/paths/event-types.yml'
+  /settings/log-streaming/destinations:
+    $ref: './handlers/log-streaming/spec/paths/destinations.yml'
+  /settings/log-streaming/destinations/{id}/test:
+    $ref: './handlers/log-streaming/spec/paths/destinations.id.test.yml'
+  /settings/log-streaming/destinations/{id}:
+    $ref: './handlers/log-streaming/spec/paths/destinations.id.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'
