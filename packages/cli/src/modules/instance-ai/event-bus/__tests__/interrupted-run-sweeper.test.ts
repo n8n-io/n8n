@@ -82,12 +82,15 @@ function buildSweeper(setup: Setup) {
 	const log: InstanceAiEvent[] = [...(setup.events ?? [])];
 
 	const eventLogRepo = mock<InstanceAiEventLogRepository>();
-	eventLogRepo.findUnfinishedRuns.mockImplementation(async () =>
-		log
-			.filter((e) => e.type === 'run-start')
-			.filter((s) => !log.some((f) => f.type === 'run-finish' && f.runId === s.runId))
-			.map((s) => ({ threadId: THREAD, runId: s.runId })),
-	);
+	// Mirrors the repository contract: DISTINCT (threadId, runId) pairs.
+	eventLogRepo.findUnfinishedRuns.mockImplementation(async () => [
+		...new Map(
+			log
+				.filter((e) => e.type === 'run-start')
+				.filter((s) => !log.some((f) => f.type === 'run-finish' && f.runId === s.runId))
+				.map((s) => [s.runId, { threadId: THREAD, runId: s.runId }]),
+		).values(),
+	]);
 	eventLogRepo.getForRuns.mockImplementation(async (_threadId, runIds) =>
 		log.filter((e) => runIds.includes(e.runId)),
 	);
@@ -106,7 +109,7 @@ function buildSweeper(setup: Setup) {
 
 	const metrics = new DurableLogMetrics(mock<EventService>());
 	const host: InterruptedRunResumeHost = {
-		hasActiveRun: setup.host?.hasActiveRun ?? (() => false),
+		isRunLive: setup.host?.isRunLive ?? (() => false),
 	};
 
 	const sweeper = new InterruptedRunSweeper(
@@ -174,12 +177,23 @@ describe('InterruptedRunSweeper', () => {
 	it('skips a run that is live in this process', async () => {
 		const { sweeper, published } = buildSweeper({
 			events: [runStart()],
-			host: { hasActiveRun: () => true },
+			host: { isRunLive: (_threadId, runId) => runId === RUN },
 		});
 
 		await sweeper.sweep();
 
 		expect(published).toHaveLength(0);
+	});
+
+	it('sweeps an older crashed run while a different run is live on the thread', async () => {
+		const { sweeper, published } = buildSweeper({
+			events: [runStart()],
+			host: { isRunLive: (_threadId, runId) => runId === 'run-other' },
+		});
+
+		await sweeper.sweep();
+
+		expect(published.at(-1)?.type).toBe('run-finish');
 	});
 
 	it('skips HITL-suspended runs entirely (the confirmation orphan path owns them)', async () => {

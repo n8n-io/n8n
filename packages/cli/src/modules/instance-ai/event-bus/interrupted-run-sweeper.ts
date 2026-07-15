@@ -26,7 +26,8 @@ interface InFlightToolCall {
  * (module wiring) instead of DI to avoid a service-level dependency cycle.
  */
 export interface InterruptedRunResumeHost {
-	hasActiveRun(threadId: string): boolean;
+	/** Whether this specific run is live (active or suspended) in this process. */
+	isRunLive(threadId: string, runId: string): boolean;
 }
 
 /**
@@ -52,7 +53,10 @@ export interface InterruptedRunResumeHost {
  * so a run whose newest fact or checkpoint write is younger than the grace
  * window is treated as live on a sibling main and skipped. Single-main skips
  * the grace window (no siblings; an unfinished run with no local live run is
- * dead), which keeps immediate post-crash sweeps instant.
+ * dead), which keeps immediate post-crash sweeps instant. Two mains booting
+ * together may still both mark one dead run — accepted: the duplicate
+ * terminal facts are benign (the fold is last-writer-wins per run), and a
+ * per-run claim would need the lease table this design deliberately avoids.
  */
 @Service()
 export class InterruptedRunSweeper {
@@ -104,8 +108,10 @@ export class InterruptedRunSweeper {
 	private async sweepRun(threadId: string, runId: string): Promise<void> {
 		this.metrics.recordSweepRunExamined();
 
-		// Live in this process (e.g. sweep re-ran after startup) — not a zombie.
-		if (this.resumeHost?.hasActiveRun(threadId)) return;
+		// This specific run is live in this process (e.g. a sweep re-run raced an
+		// in-flight run) — not a zombie. A different run started on the same
+		// thread while the sweep was running must not shield it.
+		if (this.resumeHost?.isRunLive(threadId, runId)) return;
 
 		const checkpoints = await this.checkpointRepo.findActiveByThreadId(threadId);
 		const subAgentPrefix = createSubAgentResourceIdPrefix(threadId);

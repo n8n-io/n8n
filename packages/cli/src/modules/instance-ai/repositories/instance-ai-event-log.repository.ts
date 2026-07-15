@@ -110,13 +110,14 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 
 	/**
 	 * Interrupted-run sweep source: runs whose log has a `run-start` but no
-	 * `run-finish`. Pure log query — liveness (is a main still driving it?) is
-	 * the caller's concern.
+	 * `run-finish`, as distinct (threadId, runId) pairs. Pure log query —
+	 * liveness (is a main still driving it?) is the caller's concern.
 	 */
 	async findUnfinishedRuns(): Promise<UnfinishedRun[]> {
 		const rows = await this.createQueryBuilder('e')
 			.select('e.threadId', 'threadId')
 			.addSelect('e.runId', 'runId')
+			.distinct(true)
 			.where("e.type = 'run-start'")
 			.andWhere(
 				(qb) =>
