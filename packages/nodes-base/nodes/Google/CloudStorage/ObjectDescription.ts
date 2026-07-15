@@ -362,9 +362,13 @@ export const objectOperations: INodeProperties[] = [
 									// Without this, names containing '/', spaces, or '#' produce a 404.
 									requestOptions.url = `/b/${bucketName}/o/${encodeURIComponent(objectName)}`;
 									requestOptions.qs = projection ? { projection } : {};
-									requestOptions.headers = this.getNodeParameter(
+									const encryptionHeaders = this.getNodeParameter(
 										'encryptionHeaders',
 									) as IDataObject;
+									requestOptions.headers = {
+										...requestOptions.headers,
+										...encryptionHeaders,
+									};
 									delete requestOptions.body;
 
 									return requestOptions;

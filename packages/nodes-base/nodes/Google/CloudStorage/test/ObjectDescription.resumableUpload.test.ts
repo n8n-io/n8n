@@ -326,6 +326,27 @@ describe('Google Cloud Storage - Create object resumable upload (preSend)', () =
 			expect(result.method).toBe('GET');
 			expect(result.url).toBe('/b/my-bucket/o/my-object');
 		});
+
+		it('preserves authorization on the final metadata request', async () => {
+			const fileSize = 100;
+			setupParamsServiceAccount();
+			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'application/json' });
+			getBinaryMetadata.mockResolvedValue({ mimeType: 'application/json', fileSize });
+			getBinaryStream.mockResolvedValue(Readable.from([Buffer.alloc(fileSize, 'a')]));
+			httpRequest
+				.mockResolvedValueOnce({
+					headers: { location: 'https://storage.googleapis.com/upload/session-sa' },
+					body: {},
+				})
+				.mockResolvedValue({ statusCode: 200 });
+
+			const result = await bodySend.call(ctx, {
+				...baseOptions,
+				headers: { Authorization: 'Bearer sa-token' },
+			});
+
+			expect(result.headers).toEqual(expect.objectContaining({ Authorization: 'Bearer sa-token' }));
+		});
 	});
 
 	describe('final GET request', () => {
