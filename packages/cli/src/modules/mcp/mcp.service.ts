@@ -36,6 +36,7 @@ import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
+import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
@@ -60,6 +61,7 @@ import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validat
 
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -147,6 +149,7 @@ export class McpService {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
 
 	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
@@ -225,6 +228,9 @@ export class McpService {
 		>(async () => await import('@modelcontextprotocol/sdk/server/mcp.js'));
 
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
+		const n8nConnectAvailable = builderEnabled
+			? (await this.aiGatewayService.isAvailable()).available
+			: false;
 		const allowedToolNames = getAllowedToolNames(grantedScopes);
 		// The builder walkthrough is only useful when the grant can actually
 		// create workflows; a read-only grant gets the plain intro instead of
@@ -238,7 +244,7 @@ export class McpService {
 				version: builderEnabled ? '1.1.0' : '1.0.0',
 			},
 			{
-				instructions: getMcpInstructions(builderInstructionsEnabled),
+				instructions: getMcpInstructions(builderInstructionsEnabled, n8nConnectAvailable),
 			},
 		);
 
@@ -357,8 +363,16 @@ export class McpService {
 			user,
 			this.credentialsService,
 			this.telemetry,
+			this.aiGatewayService,
+		);
+
+		const listN8nConnectServicesTool = createListN8nConnectServicesTool(
+			user,
+			this.aiGatewayService,
+			this.telemetry,
 		);
 		registerIfAllowed(listCredentialsTool);
+		registerIfAllowed(listN8nConnectServicesTool);
 
 		if (!this.globalConfig.tags.disabled) {
 			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
@@ -428,6 +442,7 @@ export class McpService {
 			user,
 			this.nodeCatalogService,
 			this.telemetry,
+			this.aiGatewayService,
 		);
 		registerIfAllowed(searchNodesTool);
 
@@ -435,6 +450,7 @@ export class McpService {
 			user,
 			this.nodeCatalogService,
 			this.telemetry,
+			this.aiGatewayService,
 		);
 		registerIfAllowed(getNodeTypesTool);
 
@@ -464,6 +480,7 @@ export class McpService {
 			this.credentialsService,
 			this.projectRepository,
 			dataTableOps,
+			this.aiGatewayService,
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
@@ -539,6 +556,7 @@ export class McpService {
 			this.globalConfig,
 			this.subworkflowPolicyChecker,
 			this.workflowPublishedDataService,
+			this.aiGatewayService,
 		);
 		registerIfAllowed(updateTool);
 
