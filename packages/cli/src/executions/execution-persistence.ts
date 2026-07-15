@@ -170,7 +170,13 @@ export class ExecutionPersistence {
 		});
 		if (!tombstone) return null;
 
-		await tx.delete(ExecutionEntity, { id: tombstone.id });
+		// Scope the delete to `new`: the `findOne` above takes no lock, so a worker may
+		// start the row (moving it out of `new`) between the read and here. Deleting only
+		// while still `new` leaves a started execution in place; the redelivery's insert
+		// then collides and is handled as an existing handoff. Return null when nothing
+		// was deleted, so no blob cleanup runs for a row we kept.
+		const { affected } = await tx.delete(ExecutionEntity, { id: tombstone.id, status: 'new' });
+		if (!affected) return null;
 		return {
 			workflowId: tombstone.workflowId,
 			executionId: tombstone.id,

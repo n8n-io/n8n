@@ -67,6 +67,7 @@ describe('ExecutionPersistence', () => {
 			raw: {},
 		});
 		mockTx.update.mockResolvedValue({ affected: 1, generatedMaps: [], raw: {} });
+		mockTx.delete.mockResolvedValue({ affected: 1, raw: {} });
 		return mockTx;
 	};
 
@@ -407,8 +408,11 @@ describe('ExecutionPersistence', () => {
 				const executionId = await fsPersistence.create(payloadWithKey);
 
 				expect(executionId).toBe('exec-1');
-				// The tombstone DB row is deleted inside the transaction...
-				expect(mockTx.delete).toHaveBeenCalledWith(ExecutionEntity, { id: 'exec-old' });
+				// The tombstone DB row is deleted inside the transaction, scoped to `new`...
+				expect(mockTx.delete).toHaveBeenCalledWith(ExecutionEntity, {
+					id: 'exec-old',
+					status: 'new',
+				});
 				// ...and its out-of-band blob is cleared after commit, keyed by the old (tombstone) id.
 				expect(jsonStore.delete).toHaveBeenCalledWith([
 					{ workflowId: 'workflow-123', executionId: 'exec-old', storedAt: 'fs' },
@@ -424,7 +428,25 @@ describe('ExecutionPersistence', () => {
 				await dbPersistence.create(payloadWithKey);
 
 				// db-stored data cascaded with the row delete; nothing to clear out of band.
-				expect(mockTx.delete).toHaveBeenCalledWith(ExecutionEntity, { id: 'exec-old' });
+				expect(mockTx.delete).toHaveBeenCalledWith(ExecutionEntity, {
+					id: 'exec-old',
+					status: 'new',
+				});
+				expect(jsonStore.delete).not.toHaveBeenCalled();
+			});
+
+			it('does not clear the blob when the tombstone advanced out of `new` before the delete', async () => {
+				const fsPersistence = createPersistenceService('fs');
+				const mockTx = createMockTransaction();
+				// The tombstone was `new` at read, but a worker started it before the delete,
+				// so the `status: 'new'`-scoped delete affects no row.
+				mockTx.findOne.mockResolvedValue(mockTombstone('fs'));
+				mockTx.delete.mockResolvedValue({ affected: 0, raw: {} });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await fsPersistence.create(payloadWithKey);
+
+				// No row was removed, so the in-flight execution's blob is left in place.
 				expect(jsonStore.delete).not.toHaveBeenCalled();
 			});
 
