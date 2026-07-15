@@ -6278,6 +6278,9 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../core
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
@@ -6710,6 +6713,9 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
