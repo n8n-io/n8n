@@ -1,4 +1,9 @@
-import type { CredentialProvider, SerializableAgentState, StreamChunk } from '@n8n/agents';
+import type {
+	BuiltTelemetry,
+	CredentialProvider,
+	SerializableAgentState,
+	StreamChunk,
+} from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -68,10 +73,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			const { delegate, agentsBuilderService, user, credentialProvider } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
+			const sentinel = { functionId: 'host' } as unknown as BuiltTelemetry;
 
 			await delegate.streamBuild('agent-1', 'hi', {
 				threadId: 'ia-builder:t:agent-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				telemetry: sentinel,
 			});
 
 			expect(agentsBuilderService.buildAgent).toHaveBeenCalledWith(
@@ -84,8 +91,20 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					threadId: 'ia-builder:t:agent-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
+					telemetry: sentinel,
 				},
 			);
+		});
+
+		it('omits telemetry from the sub-agent session when the delegate session has none', async () => {
+			const { delegate, agentsBuilderService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
+
+			await delegate.streamBuild('agent-1', 'hi', { threadId: 'ia-builder:t:agent-1' });
+
+			const [, , , , , sessionArg] = agentsBuilderService.buildAgent.mock.calls[0];
+			expect(sessionArg).not.toHaveProperty('telemetry');
 		});
 
 		it('rejects when the user lacks agent:update scope', async () => {
