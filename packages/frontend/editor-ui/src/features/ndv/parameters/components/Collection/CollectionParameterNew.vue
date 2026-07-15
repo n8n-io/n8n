@@ -312,6 +312,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				<N8nDropdownMenu
 					ref="addDropdownRef"
 					:items="dropdownOptions"
+					max-width="var(--spacing--5xl)"
 					:class="$style.addDropdown"
 					data-test-id="collection-parameter-add-dropdown"
 					@select="optionSelected"
@@ -381,6 +382,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				<N8nDropdownMenu
 					ref="addDropdownRef"
 					:items="dropdownOptions"
+					max-width="var(--spacing--5xl)"
 					:class="$style.addDropdown"
 					data-test-id="collection-parameter-add-dropdown"
 					@select="optionSelected"
