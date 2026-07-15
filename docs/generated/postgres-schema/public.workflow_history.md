@@ -90,6 +90,7 @@ erDiagram
   text errorMessage
   varchar_36_ nodeId
   varchar_20_ status
+  varchar_20_ triggerKind
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId FK
   varchar_36_ workflowId FK
