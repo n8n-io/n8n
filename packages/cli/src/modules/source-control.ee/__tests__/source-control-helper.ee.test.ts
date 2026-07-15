@@ -21,6 +21,7 @@ import {
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPullResult,
 	hasOwnerChanged,
+	isNoUpstreamBranchError,
 	isWorkflowModified,
 	mapInBatches,
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
@@ -243,6 +244,27 @@ describe('Source Control Helper', () => {
 			expect(getRepoType('git@github.com:n8ntest/n8n_testrepo.git')).toBe('github');
 			expect(getRepoType('git@gitlab.com:n8ntest/n8n_testrepo.git')).toBe('gitlab');
 			expect(getRepoType('git@mygitea.io:n8ntest/n8n_testrepo.git')).toBe('other');
+		});
+	});
+
+	describe('isNoUpstreamBranchError', () => {
+		it('should detect a missing-tracking-branch git error', () => {
+			expect(
+				isNoUpstreamBranchError(
+					new Error(
+						'There is no tracking information for the current branch.\nPlease specify which branch you want to merge with.',
+					),
+				),
+			).toBe(true);
+		});
+
+		it('should be case-insensitive', () => {
+			expect(isNoUpstreamBranchError(new Error('NO TRACKING INFORMATION found'))).toBe(true);
+		});
+
+		it('should return false for unrelated errors', () => {
+			expect(isNoUpstreamBranchError(new Error('network unreachable'))).toBe(false);
+			expect(isNoUpstreamBranchError('network unreachable')).toBe(false);
 		});
 	});
 

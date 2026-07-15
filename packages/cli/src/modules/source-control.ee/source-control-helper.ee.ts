@@ -282,6 +282,11 @@ export function isSourceControlLicensed() {
 	return license.isSourceControlLicensed();
 }
 
+export function isNoUpstreamBranchError(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.toLowerCase().includes('no tracking information');
+}
+
 export async function generateSshKeyPair(keyType: KeyPairType) {
 	const sshpk = await import('sshpk');
 	const keyPair: KeyPair = {
