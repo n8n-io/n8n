@@ -7,6 +7,7 @@ import type { RunningMode, SyncStatus } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
 import { Constructable, Container } from '@n8n/di';
+import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -45,14 +46,12 @@ import {
 	validateLdapConfigurationSchema,
 	getUserByLdapId,
 } from './helpers.ee';
-import { lazyImport } from '@n8n/utils/dist/lazy-import';
 
 @AuthHandler()
 export class LdapService implements IPasswordAuthHandler<User> {
 	readonly metadata = { name: 'ldap', type: 'password' as const };
 	private client: Client | undefined;
 
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	private ldapts: typeof import('ldapts');
 
 	private syncTimer: NodeJS.Timeout | undefined = undefined;

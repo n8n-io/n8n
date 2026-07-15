@@ -5,7 +5,7 @@ import type {
 	TraceWriter as TraceWriterType,
 	TraceEvent,
 } from '@n8n/instance-ai';
-import { lazyImport } from '@n8n/utils/dist/lazy-import';
+import { lazyImport } from '@n8n/utils/lazy-import';
 
 const TOOL_TRACE_EVENT_KINDS = new Set(['tool-call', 'tool-suspend', 'tool-resume']);
 
