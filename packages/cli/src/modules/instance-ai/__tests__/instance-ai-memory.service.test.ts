@@ -516,6 +516,57 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(result.messages[1].agentTree?.toolCalls).toHaveLength(1);
 	});
 
+	it('renders nothing for a fold emptied by exclusion instead of falling back to stored snapshots', async () => {
+		// The in-flight group is the thread's ONLY log content. Its completed
+		// sibling run_a has a stored snapshot that would survive the loader's
+		// exact-runId filter (only run_b is excluded) — falling back would
+		// resurrect exactly the in-flight group state the exclusion keeps out
+		// of history.
+		mockListMessages.mockResolvedValue({ messages: [userMessage] });
+		mockDbSnapshotStorage.getAll.mockResolvedValue([
+			{ tree: makeTree(), runId: 'run_a', createdAt: at, updatedAt: at },
+		]);
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_a',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				at,
+			),
+			...toolCallRows('run_a', 1),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_a',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_b',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				at,
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1', {
+			excludeRunIds: ['run_b'],
+		});
+
+		expect(mockDbSnapshotStorage.getAll).not.toHaveBeenCalled();
+		expect(result.messages).toHaveLength(1);
+		expect(result.messages[0].role).toBe('user');
+	});
+
 	it('keeps interleaved runs of one group in thread order', async () => {
 		// Background runs execute concurrently with their parent, so a group's
 		// facts interleave in the log. The fold must feed the reducer in seq

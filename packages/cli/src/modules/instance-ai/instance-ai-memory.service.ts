@@ -98,11 +98,13 @@ function mergeMessagesById(stored: AgentDbMessage[], extras: AgentDbMessage[]): 
  *  run-sync bootstrap and the snapshot writer feed it. The parser pairs
  *  entries to assistant messages positionally, so the entry's createdAt is
  *  the group's last fact time (≈ the write-at-run-end timestamp a stored
- *  snapshot would carry). */
+ *  snapshot would carry). `skippedInFlight` reports whether run/group
+ *  exclusion dropped any rows, so the caller can tell an exclusion-emptied
+ *  fold apart from a thread with nothing renderable. */
 function buildLogDerivedSnapshots(
 	rows: Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>,
 	skipRunIds: Set<string>,
-): AgentTreeSnapshot[] {
+): { entries: AgentTreeSnapshot[]; skippedInFlight: boolean } {
 	// A run's run-start is its first fact, so the run-to-group mapping is
 	// complete before any grouping decision needs it.
 	const groupKeyByRun = new Map<string, string>();
@@ -130,11 +132,15 @@ function buildLogDerivedSnapshots(
 		lastAt: Date;
 	};
 	const groups = new Map<string, Group>();
+	let skippedInFlight = false;
 	for (const row of rows) {
 		if (!row.runId) continue;
 		const messageGroupId = groupKeyByRun.get(row.runId);
 		const key = messageGroupId ?? row.runId;
-		if (skipRunIds.has(row.runId) || skipGroupKeys.has(key)) continue;
+		if (skipRunIds.has(row.runId) || skipGroupKeys.has(key)) {
+			skippedInFlight = true;
+			continue;
+		}
 		let group = groups.get(key);
 		if (!group) {
 			group = { runIds: [], events: [], messageGroupId, lastAt: row.createdAt };
@@ -160,7 +166,7 @@ function buildLogDerivedSnapshots(
 			updatedAt: group.lastAt,
 		});
 	}
-	return entries;
+	return { entries, skippedInFlight };
 }
 
 @Service()
@@ -373,8 +379,19 @@ export class InstanceAiMemoryService {
 		// (INS-851), so this branch is a dev-instance safety, not a design.
 		if (rows.length === 0) return await loadStoredSnapshots();
 
-		const entries = buildLogDerivedSnapshots(rows, new Set(excludeRunIds ?? []));
-		if (entries.length === 0) return await loadStoredSnapshots();
+		const { entries, skippedInFlight } = buildLogDerivedSnapshots(
+			rows,
+			new Set(excludeRunIds ?? []),
+		);
+		if (entries.length === 0) {
+			// Emptied by exclusion: the thread's only renderable content is the
+			// in-flight group. Render nothing rather than fall back — the loader
+			// filters stored snapshots by exact runId only, so a completed
+			// sibling's snapshot would resurrect exactly the in-flight group
+			// state the exclusion keeps out of history.
+			if (skippedInFlight) return [];
+			return await loadStoredSnapshots();
+		}
 		entries.sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
 
 		this.durableLogMetrics.recordFoldRead(Date.now() - start, entries.length);
