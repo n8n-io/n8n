@@ -4,7 +4,7 @@ import type { IRunDataDisplayMode } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { computed, watch } from 'vue';
 
-import { N8nIcon, N8nRadioButtons } from '@n8n/design-system';
+import { N8nIcon, N8nSegmentControl } from '@n8n/design-system';
 const { compact, value, hasBinaryData, paneType, nodeGeneratesHtml, hasRenderableData } =
 	defineProps<{
 		compact: boolean;
@@ -53,11 +53,11 @@ watch(
 </script>
 
 <template>
-	<N8nRadioButtons
+	<N8nSegmentControl
 		:model-value="value"
 		:options="options"
 		data-test-id="ndv-run-data-display-mode"
-		:size="compact ? 'small-medium' : 'medium'"
+		:size="compact ? 'small' : 'medium'"
 		:square-buttons="compact"
 		@update:model-value="(selected) => emit('change', selected)"
 	>
@@ -70,5 +70,5 @@ watch(
 			<N8nIcon v-else-if="option.value === 'ai'" icon="text" size="small" />
 			<span v-else>{{ option.label }}</span>
 		</template>
-	</N8nRadioButtons>
+	</N8nSegmentControl>
 </template>

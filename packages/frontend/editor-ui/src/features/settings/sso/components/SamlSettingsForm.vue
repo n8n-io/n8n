@@ -4,7 +4,7 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { N8nButton, N8nInput, N8nOption, N8nRadioButtons, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nOption, N8nSegmentControl, N8nSelect } from '@n8n/design-system';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
@@ -398,7 +398,7 @@ onMounted(async () => {
 						<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nRadioButtons
+						<N8nSegmentControl
 							v-model="ipsType"
 							:disabled="isSsoManagedByEnv"
 							:options="ipsOptions"

@@ -160,7 +160,7 @@ function renderModal({
 					props: ['value'],
 					template: '<pre data-test-id="agent-tool-raw-json">{{ JSON.stringify(value) }}</pre>',
 				},
-				N8nRadioButtons: {
+				N8nSegmentControl: {
 					props: ['modelValue', 'options'],
 					emits: ['update:modelValue'],
 					template:

@@ -5,7 +5,7 @@
 import { computed, ref, watch } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nButton, N8nIcon, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nSegmentControl } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
 
@@ -348,7 +348,7 @@ function handleNodeUpdate(node: INode) {
 					v-model="approvalRequired"
 				/>
 				<template v-else>
-					<N8nRadioButtons
+					<N8nSegmentControl
 						:model-value="activeView"
 						:options="viewOptions"
 						:class="$style.viewToggle"

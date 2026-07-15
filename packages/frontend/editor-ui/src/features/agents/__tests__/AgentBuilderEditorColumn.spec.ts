@@ -36,7 +36,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['disabled', 'ariaLabel'],
 	},
 	N8nLoading: { template: '<div />', props: ['rows', 'variant'] },
-	N8nRadioButtons: { template: '<div />', props: ['modelValue', 'options'] },
+	N8nSegmentControl: { template: '<div />', props: ['modelValue', 'options'] },
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
 	N8nSwitch: { template: '<button data-test-id="agent-memory-toggle"></button>' },
 	N8nSwitch2: { template: '<button />', props: ['modelValue', 'disabled'] },

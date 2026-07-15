@@ -10,7 +10,7 @@ import {
 } from '@/features/execution/logs/logs.utils';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { getScrollbarWidth } from '@/app/utils/htmlUtils';
-import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nSegmentControl, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -153,8 +153,8 @@ function handleSwitchView(value: 'overview' | 'details') {
 					@open-ndv="emit('openNdv', $event)"
 					@select="emit('select', $event)"
 				/>
-				<N8nRadioButtons
-					size="small-medium"
+				<N8nSegmentControl
+					size="small"
 					:class="$style.switchViewButtons"
 					:model-value="selected ? 'details' : 'overview'"
 					:options="switchViewOptions"
