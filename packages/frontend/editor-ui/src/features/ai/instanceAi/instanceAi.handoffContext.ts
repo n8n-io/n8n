@@ -1,9 +1,4 @@
 import type { InstanceAiHandoffContext } from '@n8n/api-types';
-import {
-	isSupportedIconName,
-	type IconName,
-	type NodeIconName,
-} from '@n8n/design-system/components/N8nIcon';
 import type { BaseTextKey } from '@n8n/i18n';
 
 type AgentPreviewContext = Extract<InstanceAiHandoffContext, { source: 'agent-preview' }>;
@@ -24,9 +19,14 @@ export function getDismissedContextKeys(metadata: Record<string, unknown> | unde
 		: [];
 }
 
-/** Prefer the agent's personalisation icon; fall back when missing or unsupported. */
-export function agentPreviewContextIcon(icon?: string): IconName | NodeIconName {
-	return isSupportedIconName(icon) ? icon : 'robot';
+/**
+ * Prefer the agent's personalisation icon. Do not gate on `isSupportedIconName` —
+ * the agent icon picker allows any Lucide name, and `N8nIcon` already falls back
+ * for names outside the curated set.
+ */
+export function agentPreviewContextIcon(icon?: string): string {
+	const trimmed = icon?.trim();
+	return trimmed ? trimmed : 'robot';
 }
 
 export function formatAgentPreviewContextLabel(

@@ -140,7 +140,7 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(getByText('Context')).toBeInTheDocument();
 		expect(getByText('SEO Auditor session')).toBeInTheDocument();
-		expect(getByText('Added to context')).toBeInTheDocument();
+		expect(getByText('Preview session')).toBeInTheDocument();
 		expect(getAllByTestId('instance-ai-context-row')).toHaveLength(1);
 	});
 
@@ -153,7 +153,8 @@ describe('InstanceAiArtifactsPanel', () => {
 					agentId: 'agent-1',
 					threadId: 'preview-thread-1',
 					agentName: 'SEO Auditor',
-					agentIcon: 'search',
+					// Lucide-only name outside the curated N8nIcon set — must still render.
+					agentIcon: 'megaphone',
 					sessionTitle: 'Help with tone',
 				},
 			},
@@ -162,7 +163,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		const { getByText, container } = renderComponent();
 
 		expect(getByText('SEO Auditor — Help with tone')).toBeInTheDocument();
-		expect(container.querySelector('[data-icon="search"]')).toBeInTheDocument();
+		expect(container.querySelector('[data-icon="megaphone"]')).toBeInTheDocument();
 	});
 
 	it('renders agent preview handoff context as the session title when only it is carried', () => {

@@ -491,7 +491,11 @@ const resizable = computed(() => {
 					<N8nTag :text="props.contextChip.label" :clickable="false" size="lg">
 						<template #tag>
 							<span :class="$style.contextChipContent">
-								<N8nIcon :icon="props.contextChip.icon ?? 'robot'" size="small" />
+								<N8nIcon
+									:icon="props.contextChip.icon ?? 'robot'"
+									size="small"
+									data-test-id="instance-ai-handoff-context-chip-icon"
+								/>
 								<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
 								<button
 									type="button"
