@@ -1,3 +1,14 @@
+## [2.31.1](https://github.com/n8n-io/n8n/compare/n8n@2.31.0...n8n@2.31.1) (2026-07-15)
+
+
+### Bug Fixes
+
+* **core:** Bind dynamic credential tokens to a user ID ([#34134](https://github.com/n8n-io/n8n/issues/34134)) ([ab2acc8](https://github.com/n8n-io/n8n/commit/ab2acc81b3ee53bf8ec34fb3d72560cb71d7166b))
+* **core:** Count AI assistant workflow test runs as manual executions in statistics ([#34152](https://github.com/n8n-io/n8n/issues/34152)) ([ea14067](https://github.com/n8n-io/n8n/commit/ea140677bbd40db9b2449b428c19274c3df2adbf))
+* **core:** Preserve node aliases when generating AI tool variants ([#34194](https://github.com/n8n-io/n8n/issues/34194)) ([b01032c](https://github.com/n8n-io/n8n/commit/b01032cfe92f28d6afa7609cfee81ea58e25ce37))
+* **editor:** Make AI assistant quota-exhausted error states explicit ([#34137](https://github.com/n8n-io/n8n/issues/34137)) ([e81d108](https://github.com/n8n-io/n8n/commit/e81d108eb6d4d0ac03e9919df965200b09812be3))
+
+
 # [2.31.0](https://github.com/n8n-io/n8n/compare/n8n@2.30.0...n8n@2.31.0) (2026-07-14)
 
 
