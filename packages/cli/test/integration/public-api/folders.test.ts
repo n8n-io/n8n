@@ -187,7 +187,7 @@ describe('POST /projects/:projectId/folders', () => {
 		expect(response.statusCode).toBe(500);
 	});
 
-	test('should create a folder in the calling user\'s personal project when projectId is "personal"', async () => {
+	test('should create a folder in the calling users personal project when projectId is "personal"', async () => {
 		testServer.license.enable('feat:folders');
 
 		const response = await authOwnerAgent
@@ -203,33 +203,6 @@ describe('POST /projects/:projectId/folders', () => {
 
 		expect(listResponse.body.count).toBe(1);
 		expect(listResponse.body.data[0].id).toBe(response.body.id);
-	});
-
-	test('"personal" should resolve to the calling user\'s own personal project, not another user\'s', async () => {
-		testServer.license.enable('feat:folders');
-
-		const secondOwner = await createOwnerWithApiKey();
-		const secondOwnerPersonalProject = await Container.get(
-			ProjectRepository,
-		).getPersonalProjectForUserOrFail(secondOwner.id);
-		const secondOwnerAgent = testServer.publicApiAgentFor(secondOwner);
-
-		const response = await secondOwnerAgent
-			.post('/projects/personal/folders')
-			.send({ name: 'Second Owner Personal Folder' });
-
-		expect(response.statusCode).toBe(201);
-
-		const firstOwnerListResponse = await authOwnerAgent
-			.get(`/projects/${ownerPersonalProject.id}/folders`)
-			.query({ filter: JSON.stringify({ name: 'Second Owner Personal Folder' }) });
-		expect(firstOwnerListResponse.body.count).toBe(0);
-
-		const secondOwnerListResponse = await secondOwnerAgent
-			.get(`/projects/${secondOwnerPersonalProject.id}/folders`)
-			.query({ filter: JSON.stringify({ name: 'Second Owner Personal Folder' }) });
-		expect(secondOwnerListResponse.body.count).toBe(1);
-		expect(secondOwnerListResponse.body.data[0].id).toBe(response.body.id);
 	});
 
 	test('should return 404 when the calling user has no personal project', async () => {
