@@ -137,12 +137,12 @@ export class N8nPackagesService {
 			projectTargetsById: projectExportResult?.projectTargetsById,
 		});
 
-		const manifestRequirements = this.buildManifestRequirements(
-			credentialExportResult.requirements,
-			dataTableExportResult.requirements,
-			requirements.workflows,
+		const manifestRequirements = this.buildManifestRequirements({
+			credentials: credentialExportResult.requirements,
+			dataTables: dataTableExportResult.requirements,
+			workflows: requirements.workflows,
 			allWorkflowsInPackage,
-		);
+		});
 
 		const manifest = packageManifestSchema.parse({
 			packageFormatVersion: FORMAT_VERSION,
@@ -198,12 +198,14 @@ export class N8nPackagesService {
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
 	}
 
-	private buildManifestRequirements(
-		credentials: PackageRequirements['credentials'],
-		dataTables: PackageRequirements['dataTables'],
-		workflows: WorkflowWorkflowRequirement[],
-		allWorkflowsInPackage: ManifestEntry[],
-	): PackageRequirements | undefined {
+	private buildManifestRequirements(input: {
+		credentials: PackageRequirements['credentials'];
+		dataTables: PackageRequirements['dataTables'];
+		workflows: WorkflowWorkflowRequirement[];
+		allWorkflowsInPackage: ManifestEntry[];
+	}): PackageRequirements | undefined {
+		const { credentials, dataTables, workflows, allWorkflowsInPackage } = input;
+
 		const workflowRequirements = this.buildManifestWorkflowRequirements(
 			workflows,
 			allWorkflowsInPackage,
