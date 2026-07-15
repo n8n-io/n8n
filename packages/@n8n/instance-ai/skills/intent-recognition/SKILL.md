@@ -69,9 +69,9 @@ Two orthogonal decisions per request, or per part for compound requests:
   tracker, wiki, or CRM) is not out-of-scope — classify it, and when
   answering requires judgment-driven navigation of those systems it is
   agent-anchored (see Signals). Requests to operate on existing resources
-  (debugging a failed execution, listing or managing workflows, querying
-  data) are not classified by this skill at all — route them through their
-  normal paths.
+  (debugging a failed execution, listing or managing workflows or agents,
+  querying data) are not classified by this skill at all — route them
+  through their normal paths.
 
 **2. Embeds other** — whether the other primitive appears inside the anchor:
 

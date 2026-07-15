@@ -154,6 +154,17 @@ export class InstanceAiBuilderDelegateAdapterService {
 				await assertProjectScope('agent:update');
 				await this.agentsBuilderService.cancelCheckpoint(agentId, runId);
 			},
+
+			listAgents: async () => {
+				await assertProjectScope('agent:read');
+				const agents = await this.agentsService.findByProjectId(projectId);
+				return agents.map((agent) => ({
+					agentId: agent.id,
+					name: agent.name,
+					published: agent.activeVersionId !== null,
+					updatedAt: agent.updatedAt.toISOString(),
+				}));
+			},
 		};
 	}
 

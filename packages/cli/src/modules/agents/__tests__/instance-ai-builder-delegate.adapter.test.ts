@@ -317,6 +317,56 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		});
 	});
 
+	describe('listAgents', () => {
+		it('maps agent entities to listing rows, most recently updated first', async () => {
+			const { delegate, agentsService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findByProjectId.mockResolvedValue([
+				mock<Agent>({
+					id: 'agent-1',
+					name: 'Published Agent',
+					activeVersionId: 'v1',
+					updatedAt: new Date('2026-07-14T00:00:00.000Z'),
+				}),
+				mock<Agent>({
+					id: 'agent-2',
+					name: 'Draft Agent',
+					activeVersionId: null,
+					updatedAt: new Date('2026-07-10T00:00:00.000Z'),
+				}),
+			]);
+
+			const result = await delegate.listAgents();
+
+			expect(agentsService.findByProjectId).toHaveBeenCalledWith('project-1');
+			expect(result).toEqual([
+				{
+					agentId: 'agent-1',
+					name: 'Published Agent',
+					published: true,
+					updatedAt: '2026-07-14T00:00:00.000Z',
+				},
+				{
+					agentId: 'agent-2',
+					name: 'Draft Agent',
+					published: false,
+					updatedAt: '2026-07-10T00:00:00.000Z',
+				},
+			]);
+		});
+
+		it('rejects when the user lacks agent:read scope', async () => {
+			const { delegate, agentsService, user } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			await expect(delegate.listAgents()).rejects.toThrow(ForbiddenError);
+			expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+				projectId: 'project-1',
+			});
+		});
+	});
+
 	describe('deleteBuilderSessions', () => {
 		it('deletes messages and thread state for every builder session of the instance thread, scoped per target agent', async () => {
 			const { service, n8nMemory, agentThreadRepository } = setup();

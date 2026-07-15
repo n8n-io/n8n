@@ -730,6 +730,16 @@ cannot clobber the existing binding), and `agentId` wins when both are
 given. Prefer switching by the `agentId` returned from earlier calls; the
 name lookup is the fallback when the id is unknown.
 
+### `agents` *(domain tool — requires the `agents` backend module)*
+
+Read-only listing of the project's n8n Agent artifacts. One action, `list`:
+returns `{ count, agents: [{ agentId, name, published, updatedAt }] }`, most
+recently updated first. Registered alongside `build-agent` (agents module
+active + project-bound conversation, `agent:read` scope enforced in the
+adapter). Use it to answer questions about existing agents and to find the
+`agentId` for `build-agent` when editing an agent not built in this
+conversation. Creation and editing stay on `build-agent`.
+
 ## Other Domain Tools
 
 | Tool | Description |
