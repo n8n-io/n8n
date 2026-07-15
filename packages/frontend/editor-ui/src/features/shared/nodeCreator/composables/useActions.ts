@@ -269,7 +269,6 @@ export const useActions = () => {
 	function shouldPrependChatTrigger(addedNodes: AddedNode[]): boolean {
 		const COMPATIBLE_CHAT_NODES = [
 			QA_CHAIN_NODE_TYPE,
-			AGENT_NODE_TYPE,
 			BASIC_CHAIN_NODE_TYPE,
 			OPEN_AI_ASSISTANT_NODE_TYPE,
 			OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
@@ -296,6 +295,7 @@ export const useActions = () => {
 	}
 
 	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
+		debugger;
 		if (addedNodes.length === 0) {
 			return { nodes: [], connections: [] };
 		}
