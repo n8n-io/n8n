@@ -171,6 +171,19 @@ describe('agent-builder target binding', () => {
 			);
 		});
 
+		it('matches names ignoring case and surrounding whitespace', async () => {
+			const threadMemory = createThreadMemory();
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Platform Cycle Tracker',
+			});
+
+			await expect(
+				findSessionAgentByName(createContext({ threadMemory }), '  platform cycle tracker '),
+			).resolves.toEqual({ agentId: 'agent-1', projectId: 'p', name: 'Platform Cycle Tracker' });
+		});
+
 		it('returns undefined for unknown names, missing persistence, and malformed registries', async () => {
 			const threadMemory = createThreadMemory();
 			await saveAgentBuilderTarget(createContext({ threadMemory }), {

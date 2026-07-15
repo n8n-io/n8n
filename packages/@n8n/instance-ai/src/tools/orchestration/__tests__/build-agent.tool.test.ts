@@ -762,6 +762,22 @@ describe('build-agent tool', () => {
 			});
 		});
 
+		it('continues the bound build when the given name matches case- and whitespace-insensitively', async () => {
+			const { context, delegate } = makeContext();
+			const boundTarget: AgentBuilderTarget = {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Helper',
+			};
+			context.domainContext!.agentBuilderTarget = boundTarget;
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Continuing.'));
+
+			await runTool(context, { message: 'Add a tool', name: 'helper' });
+
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(findSessionAgentByName).not.toHaveBeenCalled();
+		});
+
 		it('switches to a different existing agentId with deferred persistence', async () => {
 			const { context, delegate } = makeContext();
 			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };

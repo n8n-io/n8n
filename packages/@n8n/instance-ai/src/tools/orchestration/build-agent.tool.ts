@@ -37,6 +37,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import {
+	agentNamesMatch,
 	findSessionAgentByName,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
@@ -602,7 +603,7 @@ async function resolveTargetForCall(
 	if (input.name) {
 		// Guards against the orchestrator redundantly repeating `name` on a
 		// follow-up call for the agent already being built.
-		if (boundTarget && input.name === boundTarget.name) {
+		if (boundTarget && agentNamesMatch(input.name, boundTarget.name)) {
 			return { ok: true, target: boundTarget, bindAfterTurn: false };
 		}
 		// A name matching an agent already built/targeted this conversation is a

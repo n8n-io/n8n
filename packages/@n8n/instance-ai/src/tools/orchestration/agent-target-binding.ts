@@ -109,6 +109,13 @@ export async function saveAgentBuilderTarget(
 	});
 }
 
+/** Trimmed, case-insensitive comparison — the orchestrator LLM may paraphrase
+ *  an agent name's casing/whitespace, and that must not create a duplicate. */
+export function agentNamesMatch(a: string | undefined, b: string | undefined): boolean {
+	if (a === undefined || b === undefined) return false;
+	return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
 /**
  * Find an agent already targeted in this conversation by its display name
  * (most recently targeted wins on duplicates). Lets `build-agent` switch
@@ -133,7 +140,7 @@ export async function findSessionAgentByName(
 	const registry = parsed.success ? parsed.data : [];
 
 	for (let i = registry.length - 1; i >= 0; i--) {
-		if (registry[i].name === name) return registry[i];
+		if (agentNamesMatch(registry[i].name, name)) return registry[i];
 	}
 	return undefined;
 }
