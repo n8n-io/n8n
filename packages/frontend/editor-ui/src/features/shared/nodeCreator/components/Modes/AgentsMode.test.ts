@@ -259,8 +259,7 @@ describe('AgentsMode', () => {
 		expect(screen.getByText('No agents in this project yet')).toBeInTheDocument();
 	});
 
-	it('shows the no-matches state when a search yields nothing', async () => {
-		locatorState.searchFilter.value = 'nope';
+	it('shows the no-matches state as soon as a search is typed, before the debounced query lands', async () => {
 		pushAgentsViewStack();
 		useViewStacks().updateCurrentViewStack({ search: 'nope' });
 		render({ pinia });
@@ -276,6 +275,24 @@ describe('AgentsMode', () => {
 		await nextTick();
 
 		expect(screen.getByTestId('agents-panel-load-error')).toBeInTheDocument();
+
+		locatorState.setAgentsResources.mockClear();
+		await userEvent.click(screen.getByText('Retry'));
+		expect(locatorState.setAgentsResources).toHaveBeenCalled();
+	});
+
+	it('keeps the loaded list visible with an inline retry when load-more fails', async () => {
+		locatorState.agentsResources.value = [
+			{ name: 'Support Triage', value: 'agent-1', personalisation: null },
+		];
+		locatorState.loadError.value = new Error('boom');
+		pushAgentsViewStack();
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.getByText('Support Triage')).toBeInTheDocument();
+		expect(screen.queryByTestId('agents-panel-load-error')).not.toBeInTheDocument();
+		expect(screen.getByTestId('agents-panel-load-more-error')).toBeInTheDocument();
 
 		locatorState.setAgentsResources.mockClear();
 		await userEvent.click(screen.getByText('Retry'));

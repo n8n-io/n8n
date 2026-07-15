@@ -50,7 +50,6 @@ const {
 	isLoadingResources,
 	loadError,
 	hasMoreAgentsToLoad,
-	searchFilter,
 	onSearchFilter,
 	loadMore,
 	setAgentsResources,
@@ -223,7 +222,11 @@ onMounted(() => {
 			variant="p"
 		/>
 
-		<div v-else-if="loadError" :class="$style.state" data-test-id="agents-panel-load-error">
+		<div
+			v-else-if="loadError && agentElements.length === 0"
+			:class="$style.state"
+			data-test-id="agents-panel-load-error"
+		>
 			<N8nText size="small" color="text-base">
 				{{ i18n.baseText('nodeCreator.agentsPanel.loadError') }}
 			</N8nText>
@@ -235,7 +238,7 @@ onMounted(() => {
 		<div v-else-if="showEmptyState" :class="$style.state" data-test-id="agents-panel-empty">
 			<N8nText size="small" color="text-base">
 				{{
-					searchFilter
+					search
 						? i18n.baseText('nodeCreator.agentsPanel.noMatchingAgents')
 						: i18n.baseText('nodeCreator.agentsPanel.empty')
 				}}
@@ -247,8 +250,20 @@ onMounted(() => {
 
 		<template v-else>
 			<ItemsRenderer :elements="agentElements" @selected="onSelected" />
+			<!-- A load-more (or search-refresh) failure keeps the loaded list on
+			screen; only the sentinel area swaps to an inline retry. Retrying does a
+			full reload because a failed search reset leaves the locator's claimed
+			page number unusable for a plain load-more. -->
+			<div v-if="loadError" :class="$style.state" data-test-id="agents-panel-load-more-error">
+				<N8nText size="small" color="text-base">
+					{{ i18n.baseText('nodeCreator.agentsPanel.loadError') }}
+				</N8nText>
+				<N8nLink size="small" @click="setAgentsResources">
+					{{ i18n.baseText('generic.retry') }}
+				</N8nLink>
+			</div>
 			<div
-				v-if="hasMoreAgentsToLoad && !isLoadingResources"
+				v-else-if="hasMoreAgentsToLoad && !isLoadingResources"
 				ref="loadMoreSentinel"
 				:class="$style.sentinel"
 				data-test-id="agents-panel-load-more"
