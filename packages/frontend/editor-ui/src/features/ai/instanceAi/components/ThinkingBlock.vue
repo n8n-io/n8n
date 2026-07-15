@@ -13,7 +13,6 @@ import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { firstSentence, isStreamingTimelineEntry } from '../agentTimeline.utils';
-import { isThinkingDotEnabled } from '../constants';
 import { useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ReasoningBlock from './ReasoningBlock.vue';
@@ -46,9 +45,6 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const { getToolLabel } = useToolLabel();
-
-/** Pulsing-dot variant of the live indicator, for design comparison. */
-const showActivityDot = isThinkingDotEnabled();
 
 /** Manual toggle override; null = follow the default (collapsed). */
 const userToggled = ref<boolean | null>(null);
@@ -232,7 +228,6 @@ const title = computed<{ key: string; text: string }>(() => {
 				:aria-expanded="expanded"
 				data-test-id="thinking-block-header"
 			>
-				<span v-if="showActivityDot && expanded && isCounting" :class="$style.dot" />
 				<Transition name="thinking-title" mode="out-in">
 					<span :key="title.key" :class="$style.title">
 						{{ title.text }}
@@ -249,7 +244,6 @@ const title = computed<{ key: string; text: string }>(() => {
 			:class="$style.subline"
 			data-test-id="thinking-block-subline"
 		>
-			<span v-if="showActivityDot" :class="$style.dot" />
 			<Transition name="thinking-title" mode="out-in">
 				<span :key="sublineLabel.key" :class="$style.sublineLabel">
 					{{ sublineLabel.text }}
@@ -375,20 +369,6 @@ const title = computed<{ key: string; text: string }>(() => {
 .sublineElapsed {
 	flex-shrink: 0;
 	font-variant-numeric: tabular-nums;
-}
-
-.dot {
-	--animation--opacity-pulse--duration: 1.5s;
-	--animation--opacity-pulse--opacity-end: 0.3;
-
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: var(--color--primary);
-	flex-shrink: 0;
-	align-self: center;
-	margin-right: var(--spacing--4xs);
-	@include motion.opacity-pulse;
 }
 
 /* Indented rail, like sub-agent sections */

@@ -5,14 +5,10 @@ import type { InstanceAiMessage } from '@n8n/api-types';
 import { useThread } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 import { collectActiveBuilderAgents, isActiveBuilderAgent } from '../builderAgents';
-import { isThinkingDotEnabled } from '../constants';
 
 const thread = useThread();
 const i18n = useI18n();
 const { getToolLabel } = useToolLabel();
-
-/** Pulsing-dot variant of the live indicator, for design comparison. */
-const showActivityDot = isThinkingDotEnabled();
 
 const elapsed = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -126,7 +122,6 @@ onUnmounted(() => {
 <template>
 	<Transition name="status-bar">
 		<div v-if="isVisible && activity" :class="$style.bar" data-test-id="instance-ai-status-bar">
-			<span v-if="showActivityDot" :class="$style.dot" />
 			<span :class="$style.label">{{ activity.label }}</span>
 			<span v-if="activity.detail">&middot;</span>
 			<span v-if="activity.detail">{{ activity.detail }}</span>
@@ -165,20 +160,6 @@ onUnmounted(() => {
 
 .elapsed {
 	font-variant-numeric: tabular-nums;
-}
-
-.dot {
-	--animation--opacity-pulse--duration: 1.5s;
-	--animation--opacity-pulse--opacity-end: 0.3;
-
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: var(--color--primary);
-	flex-shrink: 0;
-	align-self: center;
-	margin-right: var(--spacing--4xs);
-	@include motion.opacity-pulse;
 }
 </style>
 
