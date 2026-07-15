@@ -10,7 +10,7 @@ vi.mock('n8n-core', () => ({
 }));
 
 import { Container } from '@n8n/di';
-import { type Response } from 'express';
+import type { Response } from 'express';
 import { type MockProxy, mock } from 'vitest-mock-extended';
 import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import { type INode, type IUser, type IWebhookFunctions } from 'n8n-workflow';

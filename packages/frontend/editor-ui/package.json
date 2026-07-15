@@ -105,6 +105,7 @@
     "stream-browserify": "^3.0.0",
     "stylelint": "catalog:",
     "timeago.js": "^4.0.2",
+    "type-fest": "^4.41.0",
     "typescript": "catalog:",
     "uuid": "catalog:",
     "v-code-diff": "^1.13.1",

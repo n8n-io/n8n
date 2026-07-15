@@ -1,4 +1,4 @@
-import { type Response } from 'express';
+import type { Response } from 'express';
 import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import {
 	type NodeTypeAndVersion,

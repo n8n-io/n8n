@@ -1,4 +1,4 @@
-import { type Response } from 'express';
+import type { Response } from 'express';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import {
