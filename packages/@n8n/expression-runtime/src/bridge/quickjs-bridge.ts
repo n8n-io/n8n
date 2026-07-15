@@ -178,18 +178,18 @@ async function readRuntimeBundle(): Promise<string> {
 /**
  * Convert a host JavaScript value to a JSON string suitable for round-tripping
  * into QuickJS via evalCode. Handles undefined (not valid JSON) by returning
- * the string "undefined", and NaN by returning "NaN" (JSON.stringify turns NaN
- * into "null" which is incorrect).
+ * the string "undefined".
+ *
+ * Only objects/arrays reach this — primitives (including top-level NaN via
+ * newNumber) and Date are handled directly by the caller. Nested NaN numbers
+ * marshal as null (standard JSON.stringify behaviour); the only shapes that
+ * cross here (lazy-proxy key/length metadata, Intl outputs) never contain one.
  */
 function hostValueToJson(value: unknown): string {
 	if (value === undefined) return 'undefined';
 	if (value === null) return 'null';
-	if (typeof value === 'number' && isNaN(value)) return 'NaN';
 	try {
-		return JSON.stringify(value, (_key, v) => {
-			if (typeof v === 'number' && isNaN(v)) return '__NaN__';
-			return v;
-		}).replace(/"__NaN__"/g, 'NaN');
+		return JSON.stringify(value);
 	} catch {
 		return 'undefined';
 	}
