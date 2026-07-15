@@ -1,6 +1,6 @@
 import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
-import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
-import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth';
+import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
+import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { UserRepository, withTransaction } from '@n8n/db';
@@ -10,19 +10,19 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { AccessToken } from './database/entities/oauth-access-token.entity';
-import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
-import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
-import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
-
 import { JwtService } from '@/services/jwt.service';
 import type {
 	OAuthTokenVerifier,
 	UserWithContext,
 } from '@/services/oauth-token-verifier-proxy.service';
+import type { ProtectedResource } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+
+import { AccessToken } from './database/entities/oauth-access-token.entity';
+import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
+import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
+import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 
 /**
  * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.

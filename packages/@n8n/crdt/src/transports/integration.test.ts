@@ -11,7 +11,7 @@ import { WebSocketTransport } from './websocket';
  */
 describe('onUpdate behavior verification', () => {
 	it('should fire onUpdate for local changes', async () => {
-		const { createCRDTProvider, CRDTEngine } = await import('../index');
+		const { createCRDTProvider, CRDTEngine } = await import('../index.js');
 		const provider = createCRDTProvider({ engine: CRDTEngine.yjs });
 
 		const doc = provider.createDoc('doc1');
@@ -28,7 +28,7 @@ describe('onUpdate behavior verification', () => {
 	});
 
 	it('should fire onUpdate when applyUpdate is called', async () => {
-		const { createCRDTProvider, CRDTEngine } = await import('../index');
+		const { createCRDTProvider, CRDTEngine } = await import('../index.js');
 		const provider = createCRDTProvider({ engine: CRDTEngine.yjs });
 
 		const doc1 = provider.createDoc('doc1');
@@ -55,9 +55,9 @@ describe('onUpdate behavior verification', () => {
 	});
 
 	it('should forward updates via onUpdate to another transport', async () => {
-		const { createCRDTProvider, CRDTEngine } = await import('../index');
-		const { MockTransport } = await import('../transports');
-		const { createSyncProvider } = await import('../sync/base-sync-provider');
+		const { createCRDTProvider, CRDTEngine } = await import('../index.js');
+		const { MockTransport } = await import('../transports/index.js');
+		const { createSyncProvider } = await import('../sync/base-sync-provider.js');
 
 		const provider = createCRDTProvider({ engine: CRDTEngine.yjs });
 
