@@ -245,7 +245,7 @@ describe('domain tool construction', () => {
 			makeContext({
 				domainContext: {
 					agentPreviewSession: { agentId: 'agent-1', threadId: 'preview-1' },
-					resolvePreviewSession: async () => null,
+					resolvePreviewSession: async () => await Promise.resolve(null),
 				},
 			} as Partial<InstanceAiContext>) as never,
 		);
