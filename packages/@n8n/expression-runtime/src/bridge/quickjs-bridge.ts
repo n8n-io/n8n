@@ -224,12 +224,11 @@ function getValueAtPath(data: Record<string, unknown>, pathArr: string[]): unkno
 		}
 	}
 
+	// Functions are not reachable via the lazy-proxy data path — return
+	// undefined unconditionally, matching IsolatedVmBridge (see the invariant
+	// documented in __tests__/host-fn-shadowing.test.ts).
 	if (typeof value === 'function') {
-		const fnString = value.toString();
-		if (fnString.includes('[native code]')) {
-			return undefined;
-		}
-		return { __isFunction: true, __name: pathArr[pathArr.length - 1] };
+		return undefined;
 	}
 
 	if (Array.isArray(value)) {
