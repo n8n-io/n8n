@@ -60,12 +60,17 @@ export type NodeExecuteBefore = {
 		executionId: string;
 		nodeName: string;
 		/**
-		 * Monotonic counter shared across all `nodeExecuteBefore` and
-		 * `nodeExecuteAfter` events of a single execution, assigned in engine order
-		 * by the instance running the workflow. Lets the UI order node events that
-		 * arrive late or out of order (e.g. after a suspended background tab
-		 * resumes) and render only the latest node as executing. Unique per event;
-		 * starts at 0.
+		 * Monotonic counter over this execution *segment*'s `nodeExecuteBefore` and
+		 * `nodeExecuteAfter` events, assigned in engine order by the instance
+		 * running the workflow. Lets the UI order node events that arrive late or
+		 * out of order (e.g. after a suspended background tab resumes) and render
+		 * only the latest node as executing.
+		 *
+		 * Scoped to a segment, not the whole execution: the counter restarts at 0
+		 * for each run, including when a waiting execution (Wait/Form node) resumes
+		 * — resuming rebuilds the push hooks with a fresh counter. Only compare
+		 * sequence numbers within a segment; ordering does not carry across a resume
+		 * boundary. Unique per event within a segment; starts at 0.
 		 */
 		sequenceNumber: number;
 		data: ITaskStartedData;
@@ -81,7 +86,7 @@ export type NodeExecuteAfter = {
 	data: {
 		executionId: string;
 		nodeName: string;
-		/** Per-execution monotonic counter — see {@link NodeExecuteBefore}. */
+		/** Per-segment monotonic counter — see {@link NodeExecuteBefore}. */
 		sequenceNumber: number;
 		/**
 		 * The data field for task data in `NodeExecuteAfter` is always trimmed (undefined).

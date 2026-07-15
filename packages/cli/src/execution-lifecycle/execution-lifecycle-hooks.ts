@@ -280,11 +280,13 @@ function hookFunctionsPush(
 		return resolvedUser;
 	}
 
-	// Monotonic counter shared by this execution's node-event pushes so the UI can
-	// order events that arrive late or out of order (e.g. after a suspended
+	// Monotonic counter over this execution segment's node-event pushes so the UI
+	// can order events that arrive late or out of order (e.g. after a suspended
 	// background tab resumes) and render only the latest node as executing
 	// (CAT-2895). Assigned in engine order here on the instance running the
-	// workflow; it rides the worker→main pubsub relay unchanged.
+	// workflow; it rides the worker→main pubsub relay unchanged. Scoped to a
+	// segment: this closure is per run, so a waiting-execution (Wait/Form node)
+	// resume rebuilds the hooks and restarts the counter at 0.
 	let nodeEventSequence = 0;
 
 	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
