@@ -1,3 +1,4 @@
+type: object
 oneOf:
   - $ref: './destination.webhook.yml'
   - $ref: './destination.syslog.yml'
