@@ -313,6 +313,14 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		});
 	});
 
+	it('should enumerate keys that collide with internal marker strings', () => {
+		const data = { $json: { __NaN__: 'a', other: 'b' } };
+
+		expect(evaluator.evaluate('{{ Object.keys($json).sort().join(",") }}', data, caller)).toBe(
+			'__NaN__,other',
+		);
+	});
+
 	it('should throw on invalid timezone', async () => {
 		const data = { $json: { x: 1 } };
 
