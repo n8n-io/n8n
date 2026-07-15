@@ -1,3 +1,11 @@
+## [1.123.66](https://github.com/n8n-io/n8n/compare/n8n@1.123.65...n8n@1.123.66) (2026-07-15)
+
+
+### Bug Fixes
+
+* **Code Node:** External modules not working even when allowed in n8n version 1.x ([#34093](https://github.com/n8n-io/n8n/issues/34093)) ([beb673e](https://github.com/n8n-io/n8n/commit/beb673e21995029b833fac3a76ae31277272c664))
+
+
 ## [1.123.65](https://github.com/n8n-io/n8n/compare/n8n@1.123.64...n8n@1.123.65) (2026-07-13)
 
 
