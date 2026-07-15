@@ -13,7 +13,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { type IFormInput } from '@n8n/design-system';
-import { type JSONSchema7 } from 'json-schema';
+import type { JSONSchema7 } from 'json-schema';
 import { AI_MCP_TOOL_NODE_TYPE } from '../constants';
 import { TOOL_NODE_TYPES_NEED_INPUT } from '../utils/nodes/nodeTransforms';
 
