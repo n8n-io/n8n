@@ -84,7 +84,7 @@ describe('McpController', () => {
 		Container.set(ApiKeyRepository, mock<ApiKeyRepository>());
 
 		// Imported here (not statically) so the Container.set above runs first.
-		({ McpController } = await import('../mcp.controller'));
+		({ McpController } = await import('../mcp.controller.js'));
 		controller = Container.get(McpController);
 	});
 
