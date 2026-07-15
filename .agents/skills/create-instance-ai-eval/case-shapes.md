@@ -7,12 +7,13 @@ eval [README](../../../packages/@n8n/instance-ai/evaluations/README.md); this is
 the opinionated *how* and the traps.
 
 Example cases in the corpus get renamed and churned, so this file names as few
-files as possible — prefer `grep`-ing the corpus by tag/field. The one stable
-pointer worth naming: **`applies-each-change-when-asked`** for a well-built
-director conversation.
+cases as possible — search the LangTracer suite by tag/field instead (the
+`search_test_cases` MCP tool, or export the suite and grep). The one stable
+pointer worth naming: **`applies-each-change-when-asked`** (in the
+`n8n-workflows` suite) for a well-built director conversation.
 
 The schema
-([`schema.ts`](../../../packages/@n8n/instance-ai/evaluations/data/workflows/schema.ts))
+([`harness/schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/schema.ts))
 enforces the rules you must respect:
 
 - `seedFile`, `priorConversation`, `seedThread` are **mutually exclusive** — pick
@@ -32,7 +33,7 @@ These test *how the agent converses*, not just what it builds: does it ask the
 right clarifying question, avoid re-asking, honour a mid-build correction,
 respect plan approval, batch bundled changes? They're graded by
 `processExpectations` and are often **build-only** (no `executionScenarios`).
-Tag them `behaviour` and grep that tag for patterns.
+Tag them `behaviour` and search the suite for that tag for patterns.
 
 ### How multi-turn works
 
