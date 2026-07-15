@@ -24,3 +24,8 @@ export const REQUIRED_PERMISSIONS: Record<string, { delegated: string; applicati
 // single one out
 export const NOT_FOUND_MESSAGE =
 	'The requested resource was not found. Check the Site, Library, Workbook, and Sheet values.';
+
+// Graph's real not-found code is 'ItemNotFound' (verified against a live tenant); 'NotFound'
+// is kept as a defensive fallback for other Graph surfaces that may use the generic OData code.
+// Match on code alone, not the message text, which Microsoft doesn't treat as a stable contract.
+export const NOT_FOUND_CODES = ['ItemNotFound', 'NotFound'];
