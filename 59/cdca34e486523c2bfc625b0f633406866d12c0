@@ -1,0 +1,69 @@
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.env-gate.integration.test.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-44
+packages/cli/src/modules/workflow-reviews.ee/errors/workflow-review-workflow-archived.error.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-10
+packages/cli/src/modules/workflow-reviews.ee/errors/workflow-reviews-disabled.error.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-11
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 36
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-426
+packages/cli/src/modules/workflow-reviews.ee/errors/workflow-review-invalid-version.error.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-10
+packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
+  s_64c8e8b6d24f82::t_fb7d56ec028577 29-30
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 2,13-28
+packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-19
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-49,51-122
+  h_9c8f56e3400786 50
+packages/cli/test/integration/shared/types.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 55,70-71
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-177
+packages/@n8n/db/src/repositories/workflow-review-request-workflow.repository.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 2,13-22,29-30
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_64c8e8b6d24f82::t_50eb2b779a8248 76
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 2,5,18-31,44-45,51-75
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 345-348
+packages/@n8n/api-types/src/dto/index.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 283-284
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-62
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 16
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 64
+packages/@n8n/api-types/src/dto/workflow-reviews/create-workflow-review-request.dto.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-20
+packages/cli/src/modules/workflow-reviews.ee/errors/workflow-review-workflow-not-found.error.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-12
+packages/cli/src/modules/workflow-reviews.ee/errors/workflow-review-request-conflict.error.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-12
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request-author.repository.test.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "59cdca34e486523c2bfc625b0f633406866d12c0",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_64c8e8b6d24f82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1345f18b-170b-4cd3-b34e-f41cef04df99",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
