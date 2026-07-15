@@ -1,9 +1,10 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { resolveWorkbookRoot, validatePathSegment } from '../../helpers/utils';
+import { resolveSiteId, resolveWorkbookRoot, validatePathSegment } from '../../helpers/utils';
 import * as transport from '../../transport';
 import type * as _importType0 from '../../transport';
 
@@ -118,6 +119,27 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 					"The 'Workbook' value is not valid",
 				);
 			});
+
+			it('resolves a pasted Site address before building the root path', async () => {
+				setParams(ctx, {
+					workbook: { mode: 'id', value: 'ITEM123' },
+					site: { mode: 'url', value: 'https://contoso.sharepoint.com/sites/mysite' },
+					library: { mode: 'id', value: 'b!drive1' },
+				});
+				apiRequest.mockResolvedValue({ id: 'contoso.sharepoint.com,g1,g2' });
+
+				const root = await resolveWorkbookRoot.call(ctx, 0);
+
+				expect(apiRequest).toHaveBeenCalledWith(
+					'GET',
+					'/v1.0/sites/contoso.sharepoint.com:/sites/mysite',
+					{},
+					{ $select: 'id' },
+				);
+				expect(root).toBe(
+					'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123',
+				);
+			});
 		});
 
 		describe('by URL', () => {
@@ -209,6 +231,157 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 					'The workbook address could not be resolved',
 				);
 			});
+		});
+	});
+
+	describe('resolveSiteId', () => {
+		let ctx: DeepMockProxy<IExecuteFunctions>;
+		const apiRequest = transport.microsoftApiRequest as Mock;
+
+		const setParams = (
+			ctxToSet: DeepMockProxy<IExecuteFunctions> | DeepMockProxy<ILoadOptionsFunctions>,
+			params: Record<string, unknown>,
+		) => {
+			ctxToSet.getNodeParameter.mockImplementation(
+				(name: string, _itemIndex?: number, fallback?: unknown) =>
+					(name in params ? params[name] : fallback) as never,
+			);
+		};
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			ctx = mockDeep<IExecuteFunctions>();
+			ctx.getNode.mockReturnValue(mock<INode>());
+		});
+
+		it('returns an ID as given, from the "By ID" mode', async () => {
+			setParams(ctx, { site: { mode: 'id', value: 'contoso.sharepoint.com,g1,g2' } });
+
+			await expect(resolveSiteId.call(ctx, 0)).resolves.toBe('contoso.sharepoint.com,g1,g2');
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it('returns an ID as given, from a "From List" pick', async () => {
+			setParams(ctx, { site: { mode: 'list', value: 'contoso.sharepoint.com,g1,g2' } });
+
+			await expect(resolveSiteId.call(ctx, 0)).resolves.toBe('contoso.sharepoint.com,g1,g2');
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it('rejects an empty Site ID', async () => {
+			setParams(ctx, { site: { mode: 'id', value: '' } });
+
+			await expect(resolveSiteId.call(ctx, 0)).rejects.toThrow("The 'Site' parameter is empty");
+		});
+
+		it('rejects a dots-only Site ID', async () => {
+			setParams(ctx, { site: { mode: 'id', value: '..' } });
+
+			await expect(resolveSiteId.call(ctx, 0)).rejects.toThrow("The 'Site' value is not valid");
+		});
+
+		it('rejects an empty pasted address', async () => {
+			setParams(ctx, { site: { mode: 'url', value: '' } });
+
+			await expect(resolveSiteId.call(ctx, 0)).rejects.toThrow("The 'Site' parameter is empty");
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it('rejects an address that is not a valid URL', async () => {
+			setParams(ctx, { site: { mode: 'url', value: 'not a url' } });
+
+			await expect(resolveSiteId.call(ctx, 0)).rejects.toThrow('The site address is not valid');
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it("resolves a pasted address via Graph's hostname:path site addressing", async () => {
+			setParams(ctx, {
+				site: { mode: 'url', value: 'https://contoso.sharepoint.com/sites/mysite' },
+			});
+			apiRequest.mockResolvedValue({ id: 'contoso.sharepoint.com,g1,g2' });
+
+			const siteId = await resolveSiteId.call(ctx, 0);
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/v1.0/sites/contoso.sharepoint.com:/sites/mysite',
+				{},
+				{ $select: 'id' },
+			);
+			expect(siteId).toBe('contoso.sharepoint.com,g1,g2');
+		});
+
+		it('resolves the root site when the address has no path', async () => {
+			setParams(ctx, { site: { mode: 'url', value: 'https://contoso.sharepoint.com' } });
+			apiRequest.mockResolvedValue({ id: 'contoso.sharepoint.com,root' });
+
+			await resolveSiteId.call(ctx, 0);
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/v1.0/sites/contoso.sharepoint.com',
+				{},
+				{ $select: 'id' },
+			);
+		});
+
+		it('caches the resolution per execution, across items', async () => {
+			setParams(ctx, {
+				site: { mode: 'url', value: 'https://contoso.sharepoint.com/sites/mysite' },
+			});
+			apiRequest.mockResolvedValue({ id: 'contoso.sharepoint.com,g1,g2' });
+
+			await resolveSiteId.call(ctx, 0);
+			await resolveSiteId.call(ctx, 1);
+
+			expect(apiRequest).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not share the cache across different executions', async () => {
+			const site = { mode: 'url', value: 'https://contoso.sharepoint.com/sites/mysite' };
+			setParams(ctx, { site });
+			apiRequest.mockResolvedValue({ id: 'contoso.sharepoint.com,g1,g2' });
+
+			const otherCtx = mockDeep<IExecuteFunctions>();
+			otherCtx.getNode.mockReturnValue(mock<INode>());
+			setParams(otherCtx, { site });
+
+			await resolveSiteId.call(ctx, 0);
+			await resolveSiteId.call(otherCtx, 0);
+
+			expect(apiRequest).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports a not-found address as a Site problem, not the generic message', async () => {
+			setParams(ctx, {
+				site: { mode: 'url', value: 'https://contoso.sharepoint.com/sites/ghost' },
+			});
+			apiRequest.mockRejectedValue(
+				new NodeApiError(mock<INode>(), { message: 'x' }, { httpCode: '404' }),
+			);
+
+			await expect(resolveSiteId.call(ctx, 0)).rejects.toThrow('Site not found');
+		});
+
+		it('lets other errors bubble up unchanged', async () => {
+			setParams(ctx, {
+				site: { mode: 'url', value: 'https://contoso.sharepoint.com/sites/mysite' },
+			});
+			apiRequest.mockRejectedValue(
+				new NodeApiError(mock<INode>(), { message: 'x' }, { httpCode: '500' }),
+			);
+
+			await expect(resolveSiteId.call(ctx, 0)).rejects.toThrow(NodeApiError);
+		});
+
+		it('works from a load-options context, for the library dropdown', async () => {
+			const loadOptionsCtx = mockDeep<ILoadOptionsFunctions>();
+			loadOptionsCtx.getNode.mockReturnValue(mock<INode>());
+			setParams(loadOptionsCtx, { site: { mode: 'id', value: 'contoso.sharepoint.com,g1,g2' } });
+
+			await expect(resolveSiteId.call(loadOptionsCtx, 0)).resolves.toBe(
+				'contoso.sharepoint.com,g1,g2',
+			);
 		});
 	});
 });
