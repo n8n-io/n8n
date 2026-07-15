@@ -721,6 +721,20 @@ describe('SourceControlService', () => {
 			const dataTableEntry = result.statusResult.find((f) => f.id === 'dtNew');
 			expect(dataTableEntry?.conflict).toBe(true);
 		});
+
+		it('checks out the default branch first', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+			vi.spyOn(preferencesService, 'getBranchName').mockReturnValue('main');
+
+			// ACT
+			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
+
+			// ASSERT
+			expect(gitService.checkoutExistingBranch).toHaveBeenCalledWith('main');
+		});
 	});
 
 	describe('getStatus', () => {

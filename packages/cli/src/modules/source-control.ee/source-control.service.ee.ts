@@ -566,6 +566,11 @@ export class SourceControlService {
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
+		// Pull always targets the default branch; a prior feature-branch commit
+		// may have left HEAD elsewhere, so switch back first.
+		const defaultBranch = this.sourceControlPreferencesService.getBranchName();
+		await this.gitService.checkoutExistingBranch(defaultBranch);
+
 		const statusResult = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'pull',
 			verbose: false,
