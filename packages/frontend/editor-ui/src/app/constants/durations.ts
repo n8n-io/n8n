@@ -26,10 +26,62 @@ export const SIX_MONTHS_IN_MILLIS = 6 * 30 * TIME.DAY;
 
 export const LOADING_ANIMATION_MIN_DURATION = 1000;
 
+/** Centralized debounce timing constants. Use with getDebounceTime(). */
+export const DEBOUNCE_TIME = {
+	/** UI responsiveness - very fast feedback */
+	UI: {
+		/** Window/element resize events */
+		RESIZE: 50,
+		/** Quick UI state changes */
+		QUICK: 10,
+	},
+
+	/** Input validation and real-time feedback */
+	INPUT: {
+		/** Fast validation feedback (100ms) */
+		VALIDATION: 100,
+		/** Text input changes (200ms) */
+		TEXT_CHANGE: 200,
+		/** Search input in UI (250-300ms) */
+		SEARCH: 300,
+	},
+
+	/** API and resource operations */
+	API: {
+		/** Resource dropdown search (500ms) */
+		RESOURCE_SEARCH: 500,
+		/** Heavy operations like pagination (1000ms) */
+		HEAVY_OPERATION: 1000,
+		/** Workflow autosave debounce (1500ms) */
+		AUTOSAVE: 1500,
+		/** Workflow autosave max wait - forces save (5000ms) */
+		AUTOSAVE_MAX_WAIT: 5000,
+	},
+
+	/** Telemetry and analytics */
+	TELEMETRY: {
+		/** Analytics event batching (2000ms) */
+		BATCH: 2000,
+		/** Tracking filter changes (1000ms) */
+		TRACK: 1000,
+	},
+
+	/** Collaboration features */
+	COLLABORATION: {
+		/** Activity recording (100ms) */
+		ACTIVITY: 100,
+	},
+
+	/** Connection management */
+	CONNECTION: {
+		/** WebSocket disconnect debounce (500ms) */
+		WEBSOCKET_DISCONNECT: 500,
+	},
+} as const;
+
 /**
- * The debounce unit (`getDebounceTime` + `DEBOUNCE_TIME`) now lives in
- * `@n8n/composables`, colocated with `useDebounce`. Re-exported here so existing
- * `@/app/constants` call sites keep working. The general timing constants above
- * stay in editor-ui for the Wave 0.3 constants split (CAT-3686).
+ * `getDebounceTime` lives in `@n8n/composables`, colocated with `useDebounce`
+ * (its only consumer). Re-exported here so existing `@/app/constants/durations`
+ * and `@/app/constants` call sites keep working unchanged.
  */
-export { DEBOUNCE_TIME, getDebounceTime } from '@n8n/composables/durations';
+export { getDebounceTime } from '@n8n/composables/useDebounce';

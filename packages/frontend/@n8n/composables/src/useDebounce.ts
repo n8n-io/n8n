@@ -1,7 +1,15 @@
 import lodashDebounce from 'lodash/debounce';
 import { ref } from 'vue';
 
-import { getDebounceTime } from './durations';
+/**
+ * Get debounce time with optional multiplier from sessionStorage.
+ * Reads 'N8N_DEBOUNCE_MULTIPLIER' - defaults to 1 if not set.
+ */
+export function getDebounceTime(time: number): number {
+	const stored = sessionStorage.getItem('N8N_DEBOUNCE_MULTIPLIER');
+	const multiplier = stored !== null ? parseFloat(stored) : 1;
+	return Math.round(time * (Number.isNaN(multiplier) ? 1 : multiplier));
+}
 
 export interface DebounceOptions {
 	debounceTime: number;
