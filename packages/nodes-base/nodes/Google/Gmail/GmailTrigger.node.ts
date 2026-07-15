@@ -34,7 +34,9 @@ export class GmailTrigger implements INodeType {
 		name: 'gmailTrigger',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
-		version: 1.4,
+		// Older versions are aliases of 1.4: all run the same implementation so that
+		// stored workflows keep loading, but legacy per-version behavior is gone
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description:
 			'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
 		subtitle: '={{"Gmail Trigger"}}',
