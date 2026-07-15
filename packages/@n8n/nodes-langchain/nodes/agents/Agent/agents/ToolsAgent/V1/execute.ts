@@ -5,6 +5,8 @@ import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
+import { loadMemory, saveToMemory } from '@utils/agent-execution';
+import type { ToolCallData } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -53,7 +55,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				promptTypeKey: 'promptType',
 			});
 			if (input === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The “text” parameter is empty.');
+				throw new NodeOperationError(this.getNode(), 'The "text" parameter is empty.');
 			}
 
 			const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -90,9 +92,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			]);
 			const executor = AgentExecutor.fromAgentAndTools({
 				agent: runnableAgent,
-				memory,
+				// Don't pass memory here — we save it ourselves to keep tool call messages
 				tools,
-				returnIntermediateSteps: options.returnIntermediateSteps === true,
+				returnIntermediateSteps: true,
 				maxIterations: options.maxIterations ?? 10,
 			});
 			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
@@ -103,16 +105,28 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				getTracingConfig(this, { additionalMetadata }),
 			);
 
+			const chatHistory = memory ? await loadMemory(memory) : undefined;
+
 			// Invoke the executor with the given input and system message.
 			const response = await executorWithTracing.invoke(
 				{
 					input,
+					chat_history: chatHistory ?? undefined,
 					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
 					formatting_instructions:
 						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 				},
 				{ signal: this.getExecutionCancelSignal() },
 			);
+
+			const steps = (response.intermediateSteps ?? []) as ToolCallData[];
+			if (memory && input !== undefined && response.output != null) {
+				await saveToMemory(input, response.output as string, memory, steps);
+			}
+
+			if (!options.returnIntermediateSteps) {
+				delete response.intermediateSteps;
+			}
 
 			// If memory and outputParser are connected, parse the output.
 			if (memory && outputParser) {
