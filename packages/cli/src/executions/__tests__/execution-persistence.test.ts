@@ -1756,6 +1756,75 @@ describe('ExecutionPersistence', () => {
 		});
 	});
 
+	describe('hardDeleteByWorkflowId', () => {
+		const executionPersistence = createPersistenceService('db');
+
+		const executionRow = (id: string, storedAt: 'db' | 'fs' = 'db') =>
+			Object.assign(new ExecutionEntity(), { id, workflowId: 'wf-1', storedAt });
+
+		it('should delete executions in batches until none remain, including soft-deleted ones', async () => {
+			executionRepository.find
+				.mockResolvedValueOnce([executionRow('exec-1'), executionRow('exec-2', 'fs')])
+				.mockResolvedValueOnce([executionRow('exec-3')])
+				.mockResolvedValueOnce([]);
+
+			await executionPersistence.hardDeleteByWorkflowId('wf-1');
+
+			expect(executionRepository.find).toHaveBeenCalledTimes(3);
+			expect(executionRepository.find).toHaveBeenCalledWith({
+				select: ['id', 'workflowId', 'storedAt'],
+				where: { workflowId: 'wf-1' },
+				take: 500,
+				withDeleted: true,
+			});
+			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(1, ['exec-1', 'exec-2']);
+			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(2, ['exec-3']);
+			expect(binaryDataService.deleteMany).toHaveBeenCalledTimes(2);
+			expect(jsonStore.delete).toHaveBeenNthCalledWith(1, [
+				{ executionId: 'exec-2', workflowId: 'wf-1', storedAt: 'fs' },
+			]);
+		});
+
+		it('should delete nothing when the workflow has no executions', async () => {
+			executionRepository.find.mockResolvedValueOnce([]);
+
+			await executionPersistence.hardDeleteByWorkflowId('wf-1');
+
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+			expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
+			expect(jsonStore.delete).not.toHaveBeenCalled();
+		});
+
+		it('should propagate a batch failure without deleting further batches', async () => {
+			executionRepository.find
+				.mockResolvedValueOnce([executionRow('exec-1')])
+				.mockResolvedValueOnce([executionRow('exec-2')]);
+			executionRepository.deleteByIds
+				.mockResolvedValueOnce(mock())
+				.mockRejectedValueOnce(new Error('connection lost'));
+
+			await expect(executionPersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
+				'connection lost',
+			);
+
+			// first batch was deleted before the failure; retrying resumes from the rest
+			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(1, ['exec-1']);
+			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(2, ['exec-2']);
+			expect(executionRepository.find).toHaveBeenCalledTimes(2);
+		});
+
+		it('should throw instead of looping on when executions keep being added', async () => {
+			executionRepository.find.mockResolvedValue([executionRow('exec-1')]);
+
+			await expect(executionPersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
+				'executions keep being added',
+			);
+
+			expect(executionRepository.find).toHaveBeenCalledTimes(20_000); // per-run batch cap
+			executionRepository.find.mockReset();
+		});
+	});
+
 	describe('deleteUnsaved', () => {
 		const target = { workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' as const };
 

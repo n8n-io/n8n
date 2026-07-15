@@ -61,6 +61,16 @@ type UpdatableEntityColumns = Omit<
  */
 @Service()
 export class ExecutionPersistence {
+	/** Batch size for bulk deletion: stays below SQLite's expression-tree depth limit (~1000). */
+	private static readonly bulkDeletionBatchSize = 500;
+
+	/**
+	 * Runaway safeguard: caps one bulk-deletion run at 10M executions. Deletion
+	 * resumes on retry, so a larger history still converges across runs — only a
+	 * workflow that keeps producing executions hits this cap repeatedly.
+	 */
+	private static readonly maxBulkDeletionBatchesPerRun = 20_000;
+
 	constructor(
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -522,6 +532,41 @@ export class ExecutionPersistence {
 		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
 
 		await this.jsonStore.delete(this.toBlobRefs(refs));
+	}
+
+	/**
+	 * Hard-delete all executions of a workflow, in batches small enough that no
+	 * single statement can exceed a DB statement timeout, no matter how large
+	 * the execution history is. Each batch commits independently, so an
+	 * interrupted deletion picks up where it left off when retried.
+	 *
+	 * Callers must deactivate the workflow first — if something keeps producing
+	 * executions for it, this throws once the per-run batch cap is exhausted,
+	 * instead of looping forever.
+	 */
+	async hardDeleteByWorkflowId(workflowId: string) {
+		for (let batch = 0; batch < ExecutionPersistence.maxBulkDeletionBatchesPerRun; batch++) {
+			const executions = await this.executionRepository.find({
+				select: ['id', 'workflowId', 'storedAt'],
+				where: { workflowId },
+				take: ExecutionPersistence.bulkDeletionBatchSize,
+				withDeleted: true, // sweep soft-deleted executions too, or they'd be left to the FK cascade
+			});
+
+			if (executions.length === 0) return;
+
+			await this.hardDelete(
+				executions.map((execution) => ({
+					executionId: execution.id,
+					workflowId: execution.workflowId,
+					storedAt: execution.storedAt,
+				})),
+			);
+		}
+
+		throw new UnexpectedError(
+			`Failed to delete all executions of workflow ${workflowId}: executions keep being added while deleting them - is the workflow still active?`,
+		);
 	}
 
 	/** Narrow deletion targets to those whose data lives in a blob store, i.e. all but `db`. */
