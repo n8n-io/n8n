@@ -27,6 +27,7 @@ export class OAuthAuthorizationCodeService {
 		codeChallenge: string,
 		state: string | null,
 		resource?: string,
+		scopes: string[] = [],
 	): Promise<string> {
 		const code = randomBytes(32).toString('hex');
 
@@ -39,6 +40,7 @@ export class OAuthAuthorizationCodeService {
 			codeChallengeMethod: 'S256',
 			state,
 			resource: resource ?? null,
+			scope: scopes,
 			expiresAt: Date.now() + this.AUTHORIZATION_CODE_EXPIRY_MS,
 			used: false,
 		});

@@ -8,7 +8,10 @@
  * tool; here it is only linked by id.
  */
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	instanceAiConfirmationSeveritySchema,
+	LLM_JUDGE_PROVIDER_NODE_TYPES,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -27,8 +30,18 @@ const metricInputSchema = z.object({
 		.describe(
 			'Judged metric preset. "correctness" compares the answer to an expected answer (requires expectedAnswer); "helpfulness" judges the answer against the user query (requires userQuery).',
 		),
-	provider: z.string().min(1).describe('LLM judge provider, e.g. "openai" or "anthropic"'),
-	credentialId: z.string().min(1).describe('Credential id for the LLM judge model'),
+	provider: z
+		.enum(LLM_JUDGE_PROVIDER_NODE_TYPES)
+		.optional()
+		.describe(
+			'Optional. The LLM judge chat-model node type (e.g. "@n8n/n8n-nodes-langchain.lmChatOpenAi"). ' +
+				'Usually omit this — it is derived from credentialId (each credential type maps to one provider). ' +
+				'Only set it if you know the exact node type.',
+		),
+	credentialId: z
+		.string()
+		.min(1)
+		.describe('Credential id for the LLM judge model; this also determines the provider'),
 	model: z.string().min(1).describe('LLM judge model name, e.g. "gpt-4o"'),
 	outputType: z
 		.enum(['numeric', 'boolean'])

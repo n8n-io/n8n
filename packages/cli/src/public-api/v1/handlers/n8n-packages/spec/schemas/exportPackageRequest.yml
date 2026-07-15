@@ -33,3 +33,15 @@ properties:
       minLength: 1
     example:
       - Ox8O54VQrmBrb4qL
+  missingWorkflowDependencyPolicy:
+    type: string
+    enum:
+      - fail
+      - reference-only
+      - include-in-package
+    description: >-
+      Policy for missing static sub-workflow dependencies. Currently only
+      `fail` is supported; `reference-only` and `include-in-package` are
+      reserved for upcoming export modes.
+    example: fail
+    default: fail
