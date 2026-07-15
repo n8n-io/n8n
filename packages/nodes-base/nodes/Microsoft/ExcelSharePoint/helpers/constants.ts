@@ -10,6 +10,14 @@ export const REQUIRED_PERMISSIONS: Record<string, { delegated: string; applicati
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},
+	'worksheet:clear': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+	},
+	'worksheet:deleteWorksheet': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+	},
 };
 
 // A 404 can come from any of the location segments, so the message must not
