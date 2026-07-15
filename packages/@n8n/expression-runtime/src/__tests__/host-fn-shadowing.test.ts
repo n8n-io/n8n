@@ -155,4 +155,13 @@ describe('Host-fn shadowing: data.extend / data.extendOptional must not be invok
 		expect(result).toBe(1);
 		expect(hostJmespathCalls).toBe(0);
 	});
+
+	it('resolves function-typed data properties as undefined (no marker object)', () => {
+		const data: Record<string, unknown> = {
+			$json: { weirdFn: (x: number) => x + 1, value: 42 },
+		};
+
+		expect(evaluator.evaluate('{{ typeof $json.weirdFn }}', data, caller)).toBe('undefined');
+		expect(evaluator.evaluate('{{ $json.value }}', data, caller)).toBe(42);
+	});
 });
