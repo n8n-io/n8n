@@ -418,4 +418,5 @@ export declare namespace LogStreamingRequest {
 
 export declare namespace SsoSamlRequest {
 	type Get = AuthenticatedRequest;
+	type Set = AuthenticatedRequest<{}, {}, Record<string, unknown>>;
 }

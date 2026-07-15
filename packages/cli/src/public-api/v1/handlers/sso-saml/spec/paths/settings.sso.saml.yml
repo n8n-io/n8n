@@ -21,3 +21,39 @@ get:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '403':
       $ref: '../../../../shared/spec/responses/forbidden.yml'
+post:
+  x-eov-operation-id: setSamlConfiguration
+  x-required-scope: saml:manage
+  x-eov-operation-handler: v1/handlers/sso-saml/sso-saml.handler
+  tags:
+    - SettingsSsoSaml
+  summary: Set the SAML SSO configuration
+  description: >
+    Set the SAML SSO configuration. Only the provided fields are changed and the update
+    takes effect exactly as it would from the UI, using the same validation. Requires the
+    `saml:manage` scope and the SAML feature to be licensed. Signing private keys, signing
+    certificates, and identity provider metadata are redacted in the response. When the
+    configuration is managed via environment variables, the write is rejected with 409 and no
+    changes are made.
+  requestBody:
+    description: The SAML SSO configuration fields to update.
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/saml-configuration.update.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/saml-configuration.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'
