@@ -143,9 +143,20 @@ export class VariableExporter {
 		allVariables: Variables[],
 		accessibleIds: Set<string>,
 	): ResolvedName[] {
+		const variablesByKey = new Map<string, Variables[]>();
+		for (const variable of allVariables) {
+			const bucket = variablesByKey.get(variable.key);
+			if (bucket) bucket.push(variable);
+			else variablesByKey.set(variable.key, [variable]);
+		}
+
 		const resolveForWorkflow = (name: string, workflowId: string) => {
 			const workflowProjectId = projectIdByWorkflowId.get(workflowId);
-			const picked = pickVariableForProject(allVariables, name, workflowProjectId);
+			const picked = pickVariableForProject(
+				variablesByKey.get(name) ?? [],
+				name,
+				workflowProjectId,
+			);
 			return picked && accessibleIds.has(picked.id) ? picked : undefined;
 		};
 
