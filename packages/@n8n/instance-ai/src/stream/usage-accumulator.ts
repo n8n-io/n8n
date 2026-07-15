@@ -1,3 +1,4 @@
+import type { TokenUsage } from '@n8n/agents';
 import { z } from 'zod';
 
 // ── Schema (source of truth) ────────────────────────────────────────────────
@@ -131,4 +132,19 @@ export class UsageAccumulator {
 			usage,
 		};
 	}
+}
+
+/**
+ * Map a single LLM call's token usage to billable items by replaying it
+ * through the accumulator, so one-off claims (observational-memory
+ * observer/reflector calls) use the exact same billing semantics as
+ * finish-chunk stream usage.
+ */
+export function tokenUsageToBuilderUsageItems(
+	model: string,
+	usage: TokenUsage,
+): BuilderUsageItem[] {
+	const accumulator = new UsageAccumulator();
+	accumulator.observe({ type: 'finish', model, usage });
+	return accumulator.toUsage().usage ?? [];
 }

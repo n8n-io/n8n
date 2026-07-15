@@ -127,6 +127,8 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 	});
 	return {
 		threadId: `${instanceAiBuilderThreadPrefix(context.threadId)}${agentId}`,
+		hostThreadId: context.threadId,
+		runId: context.runId,
 		modelConfig: context.modelId,
 		...(telemetry ? { telemetry } : {}),
 	};

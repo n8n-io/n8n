@@ -4,6 +4,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	MemoryTaskUsageReport,
 	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
@@ -850,12 +851,16 @@ export interface SessionWorkflowRef {
 export interface BuilderDelegateSession {
 	/** Builder persistence thread id, e.g. `ia-builder:<instanceThreadId>:<agentId>`. */
 	threadId: string;
+	/** The visible Instance AI thread this build turn belongs to — used to bill builder OM usage against the conversation the user sees, not the private `ia-builder:` session. */
+	hostThreadId: string;
+	/** The Instance AI run id this build turn belongs to — used for OM billing dedupe. */
+	runId: string;
 	/**
 	 * Host-resolved model for the builder run — overrides the agents-module
 	 * builder's own model settings so the sub-agent inherits the instance-AI
-	 * model.
+	 * model. Always set: Instance AI is the only streaming caller.
 	 */
-	modelConfig?: ModelConfig;
+	modelConfig: ModelConfig;
 	/**
 	 * Host telemetry for the builder run — produced from the parent instance-AI
 	 * trace context so the builder's LLM/tool spans join the parent trace.
@@ -1245,6 +1250,8 @@ export interface InstanceAiMemoryConfig {
 	observationalMemory?: {
 		observerThresholdTokens: number;
 		reflectorThresholdTokens: number;
+		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
+		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};
 }
 

@@ -261,6 +261,8 @@ describe('build-agent tool', () => {
 		expect(delegate.createAgent).toHaveBeenCalledWith('Support Agent');
 		expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Build me a support agent', {
 			threadId: 'ia-builder:thread-1:agent-1',
+			hostThreadId: 'thread-1',
+			runId: 'run-1',
 			modelConfig: context.modelId,
 		});
 	});
@@ -436,6 +438,8 @@ describe('build-agent tool', () => {
 		expect(delegate.createAgent).not.toHaveBeenCalled();
 		expect(delegate.streamBuild).toHaveBeenCalledWith('agent-existing', 'Add a tool', {
 			threadId: 'ia-builder:thread-1:agent-existing',
+			hostThreadId: 'thread-1',
+			runId: 'run-1',
 			modelConfig: context.modelId,
 		});
 	});
@@ -649,6 +653,8 @@ describe('build-agent tool', () => {
 			});
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-2', 'Build me another agent', {
 				threadId: 'ia-builder:thread-1:agent-2',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 		});
@@ -696,6 +702,8 @@ describe('build-agent tool', () => {
 			expect(delegate.createAgent).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Go back to the tracker agent', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, sessionAgent);
@@ -758,6 +766,8 @@ describe('build-agent tool', () => {
 			expect(delegate.createAgent).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Add a tool', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 		});
@@ -788,6 +798,8 @@ describe('build-agent tool', () => {
 			expect(delegate.createAgent).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-2', 'Now edit this one', {
 				threadId: 'ia-builder:thread-1:agent-2',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, {
@@ -820,6 +832,8 @@ describe('build-agent tool', () => {
 			expect(saveAgentBuilderTarget).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Add a tool', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 		});
@@ -970,12 +984,19 @@ describe('build-agent tool', () => {
 			// binding decides which agent this resumes against.
 			expect(delegate.findOpenSuspensions).toHaveBeenCalledWith('agent-1', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData },
-				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+				{
+					threadId: 'ia-builder:thread-1:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: context.modelId,
+				},
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -1013,12 +1034,19 @@ describe('build-agent tool', () => {
 
 			expect(delegate.findOpenSuspensions).toHaveBeenCalledWith('agent-1', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData: { approved: true } },
-				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+				{
+					threadId: 'ia-builder:thread-1:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: context.modelId,
+				},
 			);
 		});
 
@@ -1046,7 +1074,12 @@ describe('build-agent tool', () => {
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData: { approved: true } },
-				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+				{
+					threadId: 'ia-builder:thread-1:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: context.modelId,
+				},
 			);
 		});
 

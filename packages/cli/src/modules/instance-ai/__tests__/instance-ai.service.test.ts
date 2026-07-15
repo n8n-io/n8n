@@ -56,6 +56,20 @@ vi.mock('@n8n/instance-ai', async () => {
 			}),
 		),
 		createInstanceAgent: vi.fn(),
+		tokenUsageToBuilderUsageItems: (
+			model: string,
+			usage: {
+				completionTokens?: number;
+				inputTokenDetails?: { noCache?: number; cacheRead?: number; cacheWrite?: number };
+			},
+		) => {
+			const uncachedInput = usage.inputTokenDetails?.noCache ?? 0;
+			const cacheRead = usage.inputTokenDetails?.cacheRead ?? 0;
+			const cacheWrite = usage.inputTokenDetails?.cacheWrite ?? 0;
+			const output = usage.completionTokens ?? 0;
+			if (uncachedInput + cacheRead + cacheWrite + output === 0) return [];
+			return [{ type: 'llmTokens', model, uncachedInput, cacheRead, cacheWrite, output }];
+		},
 		createAllTools: vi.fn(),
 		createOrchestratorRunControl: vi.fn(function () {
 			return {
@@ -164,6 +178,7 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
+import type { MemoryTaskUsageReport } from '@n8n/agents';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
@@ -3817,5 +3832,72 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 			'Failed to clean up agent-builder sessions for thread',
 			expect.objectContaining({ threadId: 'thread-a' }),
 		);
+	});
+});
+
+describe('createAgentMemoryOptions', () => {
+	type MemoryOptionsInternals = {
+		createAgentMemoryOptions: (
+			user: User,
+			threadId: string,
+			runId: string,
+		) => { observationalMemory: { onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void> } };
+		instanceAiConfig: Pick<
+			InstanceAiConfig,
+			'observerMessageTokens' | 'reflectorObservationTokens'
+		>;
+		creditService: { claimRunUsage: Mock };
+		logger: { warn: Mock };
+	};
+
+	function buildService(): MemoryOptionsInternals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as MemoryOptionsInternals;
+		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
+		service.creditService = { claimRunUsage: vi.fn(async () => {}) };
+		service.logger = { warn: vi.fn() };
+		return service;
+	}
+
+	it('claims converted usage under the orchestrator dedupe key, and skips claiming when usage is zero', async () => {
+		const service = buildService();
+		const user = { id: 'user-1' } as User;
+		const { onTaskUsage } = service.createAgentMemoryOptions(
+			user,
+			'thread-1',
+			'run-1',
+		).observationalMemory;
+
+		await onTaskUsage({
+			task: 'observer',
+			model: 'anthropic/claude-sonnet-4-5',
+			usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+			reportId: 'report-1',
+		});
+
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
+			user,
+			'thread-1',
+			'run-1:memory:observer:report-1',
+			[
+				{
+					type: 'llmTokens',
+					model: 'anthropic/claude-sonnet-4-5',
+					uncachedInput: 0,
+					cacheRead: 0,
+					cacheWrite: 0,
+					output: 20,
+				},
+			],
+			'completed',
+		);
+
+		await onTaskUsage({
+			task: 'reflector',
+			model: 'anthropic/claude-sonnet-4-5',
+			usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+			reportId: 'report-2',
+		});
+
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
 });

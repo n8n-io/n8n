@@ -15,7 +15,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
-import type { BuilderSessionOptions } from './builder/agents-builder.service';
+import type { InstanceAiBuilderSessionOptions } from './builder/agents-builder.service';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentThreadRepository } from './repositories/agent-thread.repository';
 
@@ -77,9 +77,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
-	private buildSubAgentSession(session: BuilderDelegateSession): BuilderSessionOptions {
+	private buildSubAgentSession(session: BuilderDelegateSession): InstanceAiBuilderSessionOptions {
 		return {
 			threadId: session.threadId,
+			hostThreadId: session.hostThreadId,
+			runId: session.runId,
 			instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 			modelConfig: session.modelConfig,
 			...(session.telemetry ? { telemetry: session.telemetry } : {}),
