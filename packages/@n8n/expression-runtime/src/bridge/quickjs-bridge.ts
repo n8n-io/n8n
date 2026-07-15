@@ -387,9 +387,6 @@ export class QuickJsBridge implements RuntimeBridge {
 	// Long-lived host-callback handles (Intl polyfills) — disposed on dispose()
 	private intlHandles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
 
-	// Per-execute callback handles — disposed on the next execute() and on dispose()
-	private callbackHandles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
-
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
 			...DEFAULT_BRIDGE_CONFIG,
@@ -838,27 +835,21 @@ export class QuickJsBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Register per-execute callback handles and create adapter shims that
-	 * make them look like ivm.Reference objects (with `.applySync`).
+	 * Create per-execute callback function handles, closure-scoped to `data`.
 	 *
-	 * `buildContext` (from the runtime bundle) accepts these references
-	 * and uses `.applySync(thisArg, [args], opts)` to invoke them. Since
-	 * QuickJS host functions are just plain functions, we wrap each in
-	 * a JS object with a `.applySync` method that delegates to the
-	 * underlying impl.
+	 * The handles are passed as arguments into the per-call wrapper function
+	 * (see execute()) instead of being set as VM globals: `execute()` can
+	 * re-enter synchronously (e.g. `$evaluateExpression`), and globals would
+	 * let the nested call's callbacks clobber the in-flight outer call's data
+	 * bindings. This mirrors IsolatedVmBridge's closure-scoped `$0`/`$1`/`$2`
+	 * evalClosureSync references.
 	 *
-	 * Callbacks are scoped to a single execute() call: existing callback
-	 * handles are disposed before new ones are registered, so concurrent
-	 * evaluations get fresh closures.
+	 * Callers must dispose the returned handles when the call completes.
 	 */
-	private registerCallbacks(data: WorkflowData): void {
+	private createCallbackHandles(
+		data: WorkflowData,
+	): Array<import('quickjs-emscripten').QuickJSHandle> {
 		if (!this.vm) throw new Error('Context not initialized');
-
-		// Dispose previous callback handles
-		for (const handle of this.callbackHandles) {
-			handle.dispose();
-		}
-		this.callbackHandles = [];
 
 		const vm = this.vm;
 
@@ -871,8 +862,6 @@ export class QuickJsBridge implements RuntimeBridge {
 				return this.hostValueToQuickJSHandle(serializeError(err));
 			}
 		});
-		vm.setProp(vm.global, '__getValueAtPathImpl', getValueFn);
-		this.callbackHandles.push(getValueFn);
 
 		const getArrayFn = vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
 			const pathArr = vm.dump(pathHandle) as string[];
@@ -884,8 +873,6 @@ export class QuickJsBridge implements RuntimeBridge {
 				return this.hostValueToQuickJSHandle(serializeError(err));
 			}
 		});
-		vm.setProp(vm.global, '__getArrayElementImpl', getArrayFn);
-		this.callbackHandles.push(getArrayFn);
 
 		const callHostFn = vm.newFunction('__callHostImpl', (msgHandle) => {
 			const rawMsg = vm.dump(msgHandle);
@@ -896,35 +883,8 @@ export class QuickJsBridge implements RuntimeBridge {
 				return this.hostValueToQuickJSHandle(serializeError(err));
 			}
 		});
-		vm.setProp(vm.global, '__callHostImpl', callHostFn);
-		this.callbackHandles.push(callHostFn);
 
-		// Create adapter shims that wrap the host fns to look like ivm.Reference.
-		// buildContext receives these and calls .applySync(thisArg, [args], opts).
-		const shimCode = `
-			globalThis.__getValueAtPathRef = {
-				applySync: function(thisArg, args, opts) {
-					return __getValueAtPathImpl(args[0]);
-				}
-			};
-			globalThis.__getArrayElementRef = {
-				applySync: function(thisArg, args, opts) {
-					return __getArrayElementImpl(args[0], args[1]);
-				}
-			};
-			globalThis.__callHostRef = {
-				applySync: function(thisArg, args, opts) {
-					return __callHostImpl(args[0]);
-				}
-			};
-		`;
-		const result = this.vm.evalCode(shimCode);
-		if (result.error) {
-			const errorStr = this.vm.dump(result.error);
-			result.error.dispose();
-			throw new Error(`Failed to register callbacks: ${String(errorStr)}`);
-		}
-		result.value.dispose();
+		return [getValueFn, getArrayFn, callHostFn];
 	}
 
 	/**
@@ -983,28 +943,26 @@ export class QuickJsBridge implements RuntimeBridge {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
 
+		const callbackHandles = this.createCallbackHandles(data);
+		let wrapperFn: import('quickjs-emscripten').QuickJSHandle | undefined;
 		try {
-			this.registerCallbacks(data);
-
 			const timezone = options?.timezone ? JSON.stringify(options.timezone) : 'undefined';
 
 			// Set up timeout via interrupt handler
 			const deadline = Date.now() + this.config.timeout;
 			this.runtime.setInterruptHandler(() => Date.now() > deadline);
 
+			// The callback impls arrive as function arguments (closure-scoped to
+			// this call), never as globals — see createCallbackHandles(). The
+			// adapter shims make them look like ivm.Reference objects, since
+			// buildContext calls .applySync(thisArg, [args], opts).
 			const wrappedCode = `
-(function() {
-  var __ctx;
-  try {
-    __ctx = buildContext({
-      getValueAtPath: __getValueAtPathRef,
-      getArrayElement: __getArrayElementRef,
-      callHost: __callHostRef,
-    }, ${timezone});
-  } catch (e) {
-    if (e && e.message) throw e;
-    throw e;
-  }
+(function(__getValueAtPathImpl, __getArrayElementImpl, __callHostImpl) {
+  var __ctx = buildContext({
+    getValueAtPath: { applySync: function(thisArg, args, opts) { return __getValueAtPathImpl(args[0]); } },
+    getArrayElement: { applySync: function(thisArg, args, opts) { return __getArrayElementImpl(args[0], args[1]); } },
+    callHost: { applySync: function(thisArg, args, opts) { return __callHostImpl(args[0]); } },
+  }, ${timezone});
   try {
     var __result = (function() {
       ${code}
@@ -1025,9 +983,17 @@ export class QuickJsBridge implements RuntimeBridge {
       extra: extra
     };
   }
-})()`;
+})`;
 
-			const execResult = this.vm.evalCode(wrappedCode);
+			const wrapperResult = this.vm.evalCode(wrappedCode);
+			if (wrapperResult.error) {
+				const errDump = this.vm.dump(wrapperResult.error);
+				wrapperResult.error.dispose();
+				throw new Error(`Expression compilation failed: ${String(errDump)}`);
+			}
+			wrapperFn = wrapperResult.value;
+
+			const execResult = this.vm.callFunction(wrapperFn, this.vm.undefined, ...callbackHandles);
 
 			if (execResult.error) {
 				const errDump = this.vm.dump(execResult.error);
@@ -1084,6 +1050,11 @@ export class QuickJsBridge implements RuntimeBridge {
 				);
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
+		} finally {
+			wrapperFn?.dispose();
+			for (const handle of callbackHandles) {
+				handle.dispose();
+			}
 		}
 	}
 
@@ -1115,11 +1086,6 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	async dispose(): Promise<void> {
 		if (this.disposed) return;
-
-		for (const handle of this.callbackHandles) {
-			handle.dispose();
-		}
-		this.callbackHandles = [];
 
 		for (const handle of this.intlHandles) {
 			handle.dispose();
