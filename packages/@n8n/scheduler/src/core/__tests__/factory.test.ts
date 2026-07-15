@@ -603,7 +603,7 @@ describe('createScheduler late dispatch', () => {
 		taskStore.claimDueTasks.mockResolvedValue([
 			claimedTask({ runAt: new Date('2020-01-01T00:00:00.000Z') }),
 		]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.markDispatched.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -636,7 +636,7 @@ describe('createScheduler late dispatch', () => {
 		taskStore.claimDueTasks.mockResolvedValue([
 			claimedTask({ runAt: new Date('2020-01-01T00:00:00.000Z') }),
 		]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.markDispatched.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();
