@@ -1279,6 +1279,9 @@ importers:
       madge:
         specifier: ^8.0.0
         version: 8.0.0(typescript@7.0.2)
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../core
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -8836,7 +8839,6 @@ packages:
   '@langchain/community@1.1.27':
     resolution: {integrity: sha512-s2U3w7QV7QpkFtY1eZMni4poz+nKLFclpDi3a7hUbZ67ttsGaU9WkZ2BiLuzLIs+IFaUvON/KcGkE8EqAl9aPA==}
     engines: {node: '>=20'}
-    deprecated: This package has been deprecated. See https://github.com/langchain-ai/langchainjs-community/issues/61 for more info
     peerDependencies:
       '@arcjet/redact': ^v1.2.0
       '@aws-crypto/sha256-js': ^5.0.0

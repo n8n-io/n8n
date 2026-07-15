@@ -334,6 +334,13 @@ function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
 // ---------------------------------------------------------------------------
 
 /**
+ * Durable-log instrumentation: counts assistant messages that rendered from
+ * the message-derived fallback ladder instead of a renderable snapshot tree.
+ * Forwarded to the metrics pipeline via DurableLogMetrics.notifyParserFallbacks.
+ */
+export const messageParserStats = { fallbackActivations: 0 };
+
+/**
  * Converts persisted native agent messages into rich InstanceAiMessage objects
  * with agent trees (from snapshots or reconstructed flat trees).
  */
@@ -462,6 +469,7 @@ export function parseStoredMessages(
 			// empty one.
 			const snapshotIsRenderable = snapshot !== undefined && isRenderableTree(snapshot.tree);
 			const agentTree = snapshotIsRenderable ? snapshot.tree : messageFlatTree;
+			if (!snapshotIsRenderable && messageFlatTree) messageParserStats.fallbackActivations++;
 
 			const assistantMessage: InstanceAiMessage = {
 				id: msg.id,
