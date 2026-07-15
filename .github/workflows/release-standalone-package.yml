@@ -48,7 +48,7 @@ jobs:
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: 'pnpm turbo build --filter "...${{ github.event.inputs.package }}"'
+          build-command: 'pnpm turbo build --filter=...${{ github.event.inputs.package }}'
 
       - name: Pre publishing changes
         run: |
