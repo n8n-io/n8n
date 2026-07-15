@@ -62,9 +62,9 @@ const showEpisodicMemoryCallout = computed(
 						:class="$style.episodicMemoryCallout"
 						data-testid="agent-preview-episodic-memory-callout"
 					>
-						<N8nText step="sm" bold :class="$style.episodicMemoryCalloutTitle"
-							>Episodic memory</N8nText
-						>
+						<N8nText step="sm" bold :class="$style.episodicMemoryCalloutTitle">
+							{{ i18n.baseText('agents.builder.memory.episodicMemory.label') }}
+						</N8nText>
 						<N8nText step="sm" color="text-light">{{
 							i18n.baseText('agents.preview.episodicMemoryCallout.text' as BaseTextKey)
 						}}</N8nText>
@@ -79,7 +79,7 @@ const showEpisodicMemoryCallout = computed(
 								>
 									{{ i18n.baseText('agents.preview.episodicMemoryCallout.action' as BaseTextKey) }}
 								</N8nButton>
-								<N8nTooltip content="Dismiss">
+								<N8nTooltip :content="i18n.baseText('generic.dismiss')">
 									<N8nIconButton
 										icon="x"
 										icon-size="medium"
@@ -121,7 +121,7 @@ const showEpisodicMemoryCallout = computed(
 .episodicMemoryCallout {
 	@include motion.fade-in-up;
 
-	box-shadow: var(--shadow--sm);
+	box-shadow: var(--shadow--xs);
 	border-radius: var(--radius--lg);
 }
 .episodicMemoryCalloutTitle {

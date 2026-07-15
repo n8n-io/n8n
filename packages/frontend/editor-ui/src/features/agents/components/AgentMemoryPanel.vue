@@ -247,6 +247,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 					icon-size="medium"
 					icon="cog"
 					:aria-label="i18n.baseText('generic.settings')"
+					:disabled="props.disabled"
 					data-testid="agent-memory-settings-button"
 					@click="settingsDialogOpen = true"
 				/>
