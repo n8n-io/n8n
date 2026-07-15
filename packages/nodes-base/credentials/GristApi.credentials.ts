@@ -25,7 +25,7 @@ export class GristApi implements ICredentialType {
 			default: 'https://api.getgrist.com',
 			required: true,
 			description:
-				'Defaults to hosted Grist. Use https://YOUR_TEAM.getgrist.com for a single team, or your own URL if self-managed.',
+				'Defaults to hosted Grist. Use https://YOUR_TEAM.getgrist.com for a single team, or your own URL if self-managed. Do not include /api.',
 		},
 	];
 }
