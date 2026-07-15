@@ -132,10 +132,20 @@ function buildLogDerivedSnapshots(
 		messageGroupId?: string;
 		lastAt: Date;
 	};
+	// An excluded run poisons its whole message group: deriving a partial tree
+	// from the group's completed runs would pair it against a turn whose
+	// assistant message does not exist yet — the misalignment excludeRunIds
+	// exists to prevent. The in-flight turn renders via the SSE bootstrap, not
+	// history.
+	const skipGroupKeys = new Set<string>();
+	for (const runId of skipRunIds) {
+		const groupId = runs.get(runId)?.messageGroupId;
+		if (groupId) skipGroupKeys.add(groupId);
+	}
 	const groups = new Map<string, Group>();
 	for (const [runId, run] of runs) {
-		if (skipRunIds.has(runId)) continue;
 		const key = run.messageGroupId ?? runId;
+		if (skipRunIds.has(runId) || skipGroupKeys.has(key)) continue;
 		let group = groups.get(key);
 		if (!group) {
 			group = { runIds: [], events: [], messageGroupId: run.messageGroupId, lastAt: run.lastAt };

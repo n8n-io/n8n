@@ -440,6 +440,79 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
 	});
 
+	it('excludes the whole message group while any of its runs is active', async () => {
+		// Group 'mg-2' has a completed run and an in-flight one (excluded by the
+		// controller). Deriving a partial group tree from the completed run
+		// would pair against a turn with no assistant message yet, so the whole
+		// group stays out of history until the turn completes.
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_done',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1' },
+				},
+				at,
+			),
+			...toolCallRows('run_done', 1),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_done',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_a',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-2', messageGroupId: 'mg-2' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'text-block',
+					runId: 'run_a',
+					agentId: 'agent-001',
+					payload: { text: 'first segment of the in-flight turn' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_a',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_b',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-2', messageGroupId: 'mg-2' },
+				},
+				at,
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1', {
+			excludeRunIds: ['run_b'],
+		});
+
+		// Only run_done's entry is derived; no partial 'mg-2' entry exists.
+		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
+		expect(result.messages[1].agentTree?.toolCalls).toHaveLength(1);
+	});
+
 	it('keeps the stored snapshot tree for pre-log threads (no log rows)', async () => {
 		const tree = makeTree();
 		mockDbSnapshotStorage.getAll.mockResolvedValue([
