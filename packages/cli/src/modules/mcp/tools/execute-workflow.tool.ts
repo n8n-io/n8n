@@ -21,13 +21,14 @@ import {
 	SUPPORTED_PRODUCTION_MCP_TRIGGERS,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from '../mcp.constants';
-import { WorkflowAccessError } from '../mcp.errors';
+import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type {
 	ExecuteWorkflowsInputMeta,
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import { findMcpSupportedTrigger } from '../mcp.utils';
+import { createExecutionProgressReporter } from './execution-utils';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
 import type { McpService } from '@/modules/mcp/mcp.service';
@@ -79,17 +80,39 @@ const inputSchema = z.object({
 		])
 		.optional()
 		.describe('Inputs to provide to the workflow.'),
+	waitForCompletion: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, wait for the execution to finish (up to 5 minutes) and return its final status instead of returning immediately after starting. If the wait times out the execution keeps running and status "running" is returned. Progress is streamed to clients that support progress notifications.',
+		),
 });
+
+const EXECUTION_STATUS_VALUES = [
+	'started',
+	'success',
+	'error',
+	'running',
+	'waiting',
+	'canceled',
+	'crashed',
+	'new',
+	'unknown',
+] as const;
 
 type ExecuteWorkflowOutput = {
 	executionId: string | null;
-	status: 'started' | 'error';
+	status: (typeof EXECUTION_STATUS_VALUES)[number];
 	error?: string;
 };
 
 const outputSchema = {
 	executionId: z.string().nullable(),
-	status: z.enum(['started', 'error']).describe('The status of the execution'),
+	status: z
+		.enum(EXECUTION_STATUS_VALUES)
+		.describe(
+			'The status of the execution. "started" means the execution was launched without waiting for completion. With waitForCompletion, "running" means the wait timed out while the execution was still in progress (use get_execution to check its result); other values are final statuses.',
+		),
 	error: z.string().optional().describe('Error message if the execution failed'),
 } satisfies z.ZodRawShape;
 
@@ -105,7 +128,7 @@ export const createExecuteWorkflowTool = (
 	name: 'execute_workflow',
 	config: {
 		description:
-			'Execute a workflow by ID. Returns the execution ID immediately without waiting for completion. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
+			'Execute a workflow by ID. By default returns the execution ID immediately without waiting for completion; pass waitForCompletion to wait for the final result. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -116,7 +139,10 @@ export const createExecuteWorkflowTool = (
 			openWorldHint: true, // Can access external systems via workflows
 		},
 	},
-	handler: async ({ workflowId, executionMode, inputs }: z.infer<typeof inputSchema>) => {
+	handler: async (
+		{ workflowId, executionMode, inputs, waitForCompletion }: z.infer<typeof inputSchema>,
+		extra,
+	) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'execute_workflow',
@@ -135,8 +161,35 @@ export const createExecuteWorkflowTool = (
 				executionMode,
 			);
 
+			if (waitForCompletion && output.executionId) {
+				const progress = createExecutionProgressReporter(
+					extra,
+					`Execution ${output.executionId} of workflow ${workflowId}`,
+				);
+				progress.start();
+				try {
+					const data = await mcpService.waitForExecutionResult(output.executionId);
+					const hasError = data.status === 'error' || data.data.resultData?.error;
+					output.status = hasError ? 'error' : data.status;
+					if (hasError) {
+						output.error =
+							data.data.resultData?.error?.message ?? 'Execution completed with errors';
+					}
+				} catch (waitError) {
+					if (waitError instanceof McpExecutionTimeoutError) {
+						// The execution keeps running — only the wait timed out.
+						output.status = 'running';
+					} else {
+						output.status = 'error';
+						output.error = ensureError(waitError).message;
+					}
+				} finally {
+					progress.stop();
+				}
+			}
+
 			telemetryPayload.results = {
-				success: true,
+				success: output.status !== 'error',
 				data: {
 					executionId: output.executionId,
 					status: output.status,

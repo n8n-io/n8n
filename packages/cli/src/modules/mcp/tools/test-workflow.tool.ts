@@ -23,7 +23,11 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { waitForExecutionResult, WORKFLOW_EXECUTION_TIMEOUT_MS } from './execution-utils';
+import {
+	createExecutionProgressReporter,
+	waitForExecutionResult,
+	WORKFLOW_EXECUTION_TIMEOUT_MS,
+} from './execution-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
@@ -78,7 +82,7 @@ export const createTestWorkflowTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ workflowId, pinData, triggerNodeName }: z.infer<typeof inputSchema>) => {
+	handler: async ({ workflowId, pinData, triggerNodeName }: z.infer<typeof inputSchema>, extra) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'test_workflow',
@@ -88,6 +92,9 @@ export const createTestWorkflowTool = (
 				hasTriggerNodeName: !!triggerNodeName,
 			},
 		};
+
+		const progress = createExecutionProgressReporter(extra, `Test of workflow ${workflowId}`);
+		progress.start();
 
 		try {
 			const output = await testWorkflow(
@@ -100,6 +107,7 @@ export const createTestWorkflowTool = (
 				workflowId,
 				pinData as IPinData,
 				triggerNodeName,
+				(executionId) => progress.update(`Execution ${executionId} running`),
 			);
 
 			telemetryPayload.results = {
@@ -139,6 +147,8 @@ export const createTestWorkflowTool = (
 				content: [{ type: 'text', text: jsonStringify(output) }],
 				structuredContent: output,
 			};
+		} finally {
+			progress.stop();
 		}
 	},
 });
@@ -157,6 +167,7 @@ export async function testWorkflow(
 	workflowId: string,
 	pinData: IPinData,
 	triggerNodeName?: string,
+	onExecutionStarted?: (executionId: string) => void,
 ): Promise<TestWorkflowOutput> {
 	const workflow = await getMcpWorkflow(
 		workflowId,
@@ -234,6 +245,7 @@ export async function testWorkflow(
 	};
 
 	const executionId = await workflowRunner.run(runData);
+	onExecutionStarted?.(executionId);
 	const data = await waitForExecutionResult(executionId, activeExecutions, mcpService);
 	const hasError = data.status === 'error' || data.data.resultData?.error;
 

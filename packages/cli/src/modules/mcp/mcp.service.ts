@@ -77,6 +77,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
+import { waitForExecutionResult } from './tools/execution-utils';
 import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
 import {
 	createAddDataTableColumnTool,
@@ -425,6 +426,17 @@ export class McpService {
 		}
 
 		return server;
+	}
+
+	/**
+	 * Wait for a workflow execution started by an MCP tool to complete.
+	 * A timed-out wait leaves the execution running — the wait is a
+	 * convenience and must not cancel a (possibly production) run.
+	 */
+	async waitForExecutionResult(executionId: string): Promise<IRun> {
+		return await waitForExecutionResult(executionId, this.activeExecutions, this, {
+			cancelOnTimeout: false,
+		});
 	}
 
 	private async registerBuilderTools(

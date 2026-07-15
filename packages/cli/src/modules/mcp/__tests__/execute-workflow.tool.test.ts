@@ -15,7 +15,7 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
-import { WorkflowAccessError } from '../mcp.errors';
+import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool';
 
 import { McpService } from '@/modules/mcp/mcp.service';
@@ -63,7 +63,7 @@ describe('execute-workflow MCP tool', () => {
 			expect(tool.config).toBeDefined();
 			expect(typeof tool.config.description).toBe('string');
 			expect(tool.config.description).toBe(
-				'Execute a workflow by ID. Returns the execution ID immediately without waiting for completion. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
+				'Execute a workflow by ID. By default returns the execution ID immediately without waiting for completion; pass waitForCompletion to wait for the final result. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
 			);
 			expect(tool.config.inputSchema).toBeDefined();
 			expect(tool.config.inputSchema?.executionMode.safeParse(undefined).success).toBe(false);
@@ -701,6 +701,134 @@ describe('execute-workflow MCP tool', () => {
 			});
 		});
 
+		describe('waitForCompletion', () => {
+			const createTool = () =>
+				createExecuteWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					telemetry,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+				);
+
+			const setupExecutableWorkflow = () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'WebhookNode',
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as Mock).mockResolvedValue('exec-wait');
+			};
+
+			const callHandler = async (waitForCompletion: boolean | undefined, extra: unknown = {}) => {
+				const tool = createTool();
+				return await tool.handler(
+					{
+						workflowId: 'wait-workflow',
+						executionMode: 'production',
+						inputs: undefined,
+						waitForCompletion,
+					},
+					extra as Parameters<typeof tool.handler>[1],
+				);
+			};
+
+			test('does not wait when waitForCompletion is not set', async () => {
+				setupExecutableWorkflow();
+
+				const result = await callHandler(undefined);
+
+				expect(mcpService.waitForExecutionResult).not.toHaveBeenCalled();
+				expect(result.structuredContent).toEqual({ executionId: 'exec-wait', status: 'started' });
+			});
+
+			test('returns the final status when the execution completes', async () => {
+				setupExecutableWorkflow();
+				(mcpService.waitForExecutionResult as Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: {} },
+				});
+
+				const result = await callHandler(true);
+
+				expect(mcpService.waitForExecutionResult).toHaveBeenCalledWith('exec-wait');
+				expect(result.structuredContent).toEqual({ executionId: 'exec-wait', status: 'success' });
+			});
+
+			test('returns error status and message when the execution fails', async () => {
+				setupExecutableWorkflow();
+				(mcpService.waitForExecutionResult as Mock).mockResolvedValue({
+					status: 'error',
+					data: { resultData: { error: { message: 'node exploded' } } },
+				});
+
+				const result = await callHandler(true);
+
+				expect(result.structuredContent).toEqual({
+					executionId: 'exec-wait',
+					status: 'error',
+					error: 'node exploded',
+				});
+			});
+
+			test('returns running status when the wait times out', async () => {
+				setupExecutableWorkflow();
+				(mcpService.waitForExecutionResult as Mock).mockRejectedValue(
+					new McpExecutionTimeoutError('exec-wait', 300_000),
+				);
+
+				const result = await callHandler(true);
+
+				expect(result.structuredContent).toEqual({ executionId: 'exec-wait', status: 'running' });
+			});
+
+			test('sends progress notifications when the client provides a progress token', async () => {
+				setupExecutableWorkflow();
+				(mcpService.waitForExecutionResult as Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: {} },
+				});
+				const sendNotification = vi.fn().mockResolvedValue(undefined);
+
+				await callHandler(true, { _meta: { progressToken: 'token-1' }, sendNotification });
+
+				expect(sendNotification).toHaveBeenCalledWith(
+					expect.objectContaining({
+						method: 'notifications/progress',
+						params: expect.objectContaining({
+							progressToken: 'token-1',
+							message: expect.stringContaining('started'),
+						}),
+					}),
+				);
+			});
+
+			test('sends no notifications when the client provides no progress token', async () => {
+				setupExecutableWorkflow();
+				(mcpService.waitForExecutionResult as Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: {} },
+				});
+				const sendNotification = vi.fn();
+
+				await callHandler(true, { sendNotification });
+
+				expect(sendNotification).not.toHaveBeenCalled();
+			});
+		});
+
 		describe('telemetry tracking', () => {
 			test('tracks successful execution with tool handler', async () => {
 				const workflow = createWorkflow({
@@ -736,6 +864,7 @@ describe('execute-workflow MCP tool', () => {
 						workflowId: 'telemetry-workflow',
 						executionMode: 'production',
 						inputs: { type: 'chat', chatInput: 'test' },
+						waitForCompletion: undefined,
 					},
 					{} as any,
 				);
@@ -775,7 +904,12 @@ describe('execute-workflow MCP tool', () => {
 				);
 
 				await tool.handler(
-					{ workflowId: 'non-existent', executionMode: 'production', inputs: undefined },
+					{
+						workflowId: 'non-existent',
+						executionMode: 'production',
+						inputs: undefined,
+						waitForCompletion: undefined,
+					},
 					{} as any,
 				);
 
@@ -814,7 +948,12 @@ describe('execute-workflow MCP tool', () => {
 				);
 
 				await tool.handler(
-					{ workflowId: 'no-permission-workflow', executionMode: 'production', inputs: undefined },
+					{
+						workflowId: 'no-permission-workflow',
+						executionMode: 'production',
+						inputs: undefined,
+						waitForCompletion: undefined,
+					},
 					{} as any,
 				);
 
