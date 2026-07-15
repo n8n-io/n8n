@@ -409,57 +409,6 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
 
-		it('keeps a single pre-selected credential awaiting Continue when requireUserSelection is set', async () => {
-			const requests = makeCredentialRequestsWithSingleExisting(1);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
-
-			const { getByTestId } = renderComponent({
-				props: {
-					requestId: 'req-1',
-					credentialRequests: requests,
-					message: 'Set up credentials',
-					requireUserSelection: true,
-				},
-			});
-
-			// Pre-selected but not submitted — the card waits for an explicit choice.
-			await nextTick();
-			await nextTick();
-			expect(confirmSpy).not.toHaveBeenCalled();
-
-			// Explicit continue submits the pre-selected credential.
-			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
-				kind: 'credentialSelection',
-				credentials: { type1: 'existing-1' },
-			});
-		});
-
-		it('does not auto-continue when requireUserSelection is set', async () => {
-			const requests = makeCredentialRequestsWithExisting(1);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
-
-			const { getByTestId } = renderComponent({
-				props: {
-					requestId: 'req-1',
-					credentialRequests: requests,
-					message: 'Set up credentials',
-					requireUserSelection: true,
-				},
-			});
-
-			// Select credential — the card must stay open awaiting an explicit choice
-			await userEvent.click(getByTestId('credential-picker'));
-			expect(confirmSpy).not.toHaveBeenCalled();
-
-			// Explicit continue still submits
-			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
-				kind: 'credentialSelection',
-				credentials: { type1: 'cred-123' },
-			});
-		});
-
 		it('shows deferred state after skip', async () => {
 			const requests = makeCredentialRequests(1);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);

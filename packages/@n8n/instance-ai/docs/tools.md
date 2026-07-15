@@ -476,7 +476,6 @@ The LLM never sees secrets — the user interacts with the n8n frontend directly
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `credentialType` | string | yes | Credential type to set up |
-| `requireUserSelection` | boolean | no | Keep the card open for an explicit user choice instead of auto-selecting a single existing credential |
 
 **Returns**: `{ credentialId, credentialType, needsBrowserSetup? }`
 

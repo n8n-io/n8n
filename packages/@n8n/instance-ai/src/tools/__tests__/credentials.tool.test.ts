@@ -889,48 +889,6 @@ describe('credentials tool', () => {
 			});
 		});
 
-		it('should pass requireUserSelection through to the suspend payload', async () => {
-			const context = createMockContext();
-			(context.credentialService.list as Mock).mockResolvedValue([
-				{ id: 'c1', name: 'Existing Slack', type: 'slackApi' },
-			]);
-
-			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
-			await executeTool(
-				tool,
-				{
-					action: 'setup' as const,
-					credentials: [{ credentialType: 'slackApi' }],
-					requireUserSelection: true,
-				},
-				suspendCtx(suspendFn),
-			);
-
-			expect(suspendFn).toHaveBeenCalledTimes(1);
-			expect(suspendFn.mock.calls[0][0]).toEqual(
-				expect.objectContaining({ requireUserSelection: true }),
-			);
-		});
-
-		it('should omit requireUserSelection from the suspend payload when not set', async () => {
-			const context = createMockContext();
-			(context.credentialService.list as Mock).mockResolvedValue([]);
-
-			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
-			await executeTool(
-				tool,
-				{
-					action: 'setup' as const,
-					credentials: [{ credentialType: 'slackApi' }],
-				},
-				suspendCtx(suspendFn),
-			);
-
-			expect(suspendFn.mock.calls[0][0]).not.toHaveProperty('requireUserSelection');
-		});
-
 		it('should return deferred when user does not approve (skips)', async () => {
 			const context = createMockContext();
 

@@ -117,12 +117,6 @@ const setupAction = z.object({
 			}),
 		)
 		.describe('List of credentials to set up'),
-	requireUserSelection: z
-		.boolean()
-		.optional()
-		.describe(
-			'By default, when a single matching credential already exists it is auto-selected and setup resolves without user input. Set true to keep the card open and wait for an explicit user choice — use when the user asks to see the setup card, pick a different credential, or create a new one despite an existing match.',
-		),
 	credentialFlow: z
 		.object({
 			stage: z.enum(['generic', 'finalize']),
@@ -257,7 +251,6 @@ const suspendSchema = z.object({
 		.optional(),
 	projectId: z.string().optional(),
 	credentialFlow: z.object({ stage: z.enum(['generic', 'finalize']) }).optional(),
-	requireUserSelection: z.boolean().optional(),
 });
 
 const resumeSchema = z.object({
@@ -457,7 +450,6 @@ async function handleSetup(
 			credentialRequests,
 			...(context.projectId ? { projectId: context.projectId } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
-			...(input.requireUserSelection ? { requireUserSelection: true } : {}),
 		});
 	}
 

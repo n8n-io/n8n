@@ -459,12 +459,6 @@ export const confirmationRequestPayloadSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
 	credentialRequests: z.array(credentialRequestSchema).optional(),
-	requireUserSelection: z
-		.boolean()
-		.optional()
-		.describe(
-			'When true, the credential setup card must wait for an explicit user choice instead of auto-selecting a single existing credential',
-		),
 	projectId: z
 		.string()
 		.optional()
@@ -988,7 +982,6 @@ export interface InstanceAiConfirmation {
 	severity: InstanceAiConfirmationSeverity;
 	message: string;
 	credentialRequests?: InstanceAiCredentialRequest[];
-	requireUserSelection?: boolean;
 	projectId?: string;
 	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
 	domainAccess?: DomainAccessMeta;
