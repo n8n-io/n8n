@@ -293,6 +293,7 @@ describe('SourceControlService', () => {
 			expect(gitService.push).toHaveBeenCalledWith({
 				branch: 'main', // default branch
 				force: false,
+				setUpstream: false,
 			});
 
 			// The result should include the status and push result
@@ -374,6 +375,7 @@ describe('SourceControlService', () => {
 			expect(gitService.push).toHaveBeenCalledWith({
 				branch: 'main', // default branch
 				force: false,
+				setUpstream: false,
 			});
 			expect(result).toHaveProperty('statusCode', 200);
 		});
@@ -510,6 +512,61 @@ describe('SourceControlService', () => {
 
 			// Verify resetBranch was called with HEAD (no commit to undo)
 			expect(gitService.resetBranch).toHaveBeenCalledWith({ hard: true, target: 'HEAD' });
+		});
+	});
+
+	describe('pushWorkfolder branch selection', () => {
+		const user = mock<User>();
+
+		beforeEach(() => {
+			// A plain push resolves: empty status, credentials export returns a valid
+			// result, and the push itself succeeds. getBranchName() is the default branch.
+			mockStatusService.getStatus.mockResolvedValue([]);
+			(isContainedWithin as Mock).mockReturnValue(true);
+			gitService.push.mockResolvedValue(mock<PushResult>());
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValue({
+				count: 0,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+			vi.spyOn(preferencesService, 'getBranchName').mockReturnValue('main');
+		});
+
+		it('creates a new branch off the default before committing', async () => {
+			await sourceControlService.pushWorkfolder(user, {
+				fileNames: [],
+				branch: 'feat/x',
+				createBranch: true,
+				commitMessage: 'msg',
+			});
+
+			expect(gitService.createBranchFrom).toHaveBeenCalledWith('feat/x', 'main');
+			expect(gitService.push).toHaveBeenCalledWith(
+				expect.objectContaining({ branch: 'feat/x', setUpstream: true }),
+			);
+		});
+
+		it('checks out an existing branch before committing', async () => {
+			await sourceControlService.pushWorkfolder(user, {
+				fileNames: [],
+				branch: 'develop',
+				commitMessage: 'msg',
+			});
+
+			expect(gitService.checkoutExistingBranch).toHaveBeenCalledWith('develop');
+			expect(gitService.push).toHaveBeenCalledWith(
+				expect.objectContaining({ branch: 'develop', setUpstream: false }),
+			);
+		});
+
+		it('falls back to the default branch when none given', async () => {
+			await sourceControlService.pushWorkfolder(user, { fileNames: [], commitMessage: 'msg' });
+
+			expect(gitService.createBranchFrom).not.toHaveBeenCalled();
+			expect(gitService.checkoutExistingBranch).not.toHaveBeenCalled();
+			expect(gitService.fetch).not.toHaveBeenCalled();
+			expect(gitService.push).toHaveBeenCalledWith(expect.objectContaining({ branch: 'main' }));
 		});
 	});
 

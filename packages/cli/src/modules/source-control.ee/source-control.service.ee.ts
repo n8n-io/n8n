@@ -283,6 +283,32 @@ export class SourceControlService {
 		return await this.gitService.setBranch(branch);
 	}
 
+	/**
+	 * Resolves the branch a push targets and switches the working clone onto it.
+	 * Called before export/commit so the commit lands on the right branch.
+	 * Returns the target branch and whether it was newly created (needs upstream).
+	 */
+	private async prepareBranchForPush(
+		options: PushWorkFolderRequestDto,
+	): Promise<{ targetBranch: string; isNewBranch: boolean; defaultBranch: string }> {
+		const defaultBranch = this.sourceControlPreferencesService.getBranchName();
+		const requested = options.branch?.trim();
+
+		if (!requested || requested === defaultBranch) {
+			return { targetBranch: defaultBranch, isNewBranch: false, defaultBranch };
+		}
+
+		await this.gitService.fetch();
+
+		if (options.createBranch) {
+			await this.gitService.createBranchFrom(requested, defaultBranch);
+			return { targetBranch: requested, isNewBranch: true, defaultBranch };
+		}
+
+		await this.gitService.checkoutExistingBranch(requested);
+		return { targetBranch: requested, isNewBranch: false, defaultBranch };
+	}
+
 	// will reset the branch to the remote branch and pull
 	// this will discard all local changes
 	async resetWorkfolder(): Promise<ImportResult | undefined> {
@@ -333,6 +359,8 @@ export class SourceControlService {
 		}
 
 		const context = await this.sourceControlContextFactory.createContext(user);
+
+		const { targetBranch, isNewBranch, defaultBranch } = await this.prepareBranchForPush(options);
 
 		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
@@ -473,12 +501,12 @@ export class SourceControlService {
 			throw error;
 		}
 
-		const branchName = this.sourceControlPreferencesService.getBranchName();
 		let pushResult: PushResult | undefined;
 		try {
 			pushResult = await this.gitService.push({
-				branch: branchName,
+				branch: targetBranch,
 				force: options.force ?? false,
+				setUpstream: isNewBranch,
 			});
 
 			// Only mark files as pushed after successful push
@@ -486,7 +514,9 @@ export class SourceControlService {
 		} catch (error) {
 			this.logger.error('Failed to push changes', { error });
 			try {
-				await this.gitService.resetBranch({ hard: true, target: `origin/${branchName}` });
+				// A brand-new branch has no origin ref yet; fall back to the default.
+				const resetTarget = isNewBranch ? `origin/${defaultBranch}` : `origin/${targetBranch}`;
+				await this.gitService.resetBranch({ hard: true, target: resetTarget });
 			} catch (resetError) {
 				this.logger.error('Failed to reset branch after push error', { error: resetError });
 			}
