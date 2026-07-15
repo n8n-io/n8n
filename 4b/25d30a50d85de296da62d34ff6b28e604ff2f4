@@ -1,0 +1,52 @@
+packages/@n8n/instance-ai/evaluations/harness/artifacts/workflow-handler.ts
+  s_842425d35fc733::t_b7ee59a56ac77f 18-19
+packages/@n8n/instance-ai/evaluations/outcome/event-parser.ts
+  s_842425d35fc733::t_11d9542bc96f5a 219,221-224,233-234
+  s_842425d35fc733::t_4bda9e9609e32b 211,218,220,225-232
+  s_842425d35fc733::t_2b665d538c7428 10-11
+  s_842425d35fc733::t_d091fcd153bdd4 153-157
+  s_842425d35fc733::t_b9b4bd36c18915 40
+packages/@n8n/instance-ai/evaluations/__tests__/event-parser.test.ts
+  s_842425d35fc733::t_10a5062b3447c8 20
+  s_842425d35fc733::t_b361bb6764f89e 340-380
+packages/@n8n/instance-ai/evaluations/harness/artifacts/types.ts
+  s_842425d35fc733::t_5c0b0dcd8d1581 24,26,29-31,34-35
+packages/@n8n/instance-ai/evaluations/harness/artifacts/artifact-context.ts
+  s_842425d35fc733::t_aa37f844bfb0c7 15,29,33,41
+packages/@n8n/instance-ai/evaluations/__tests__/artifact-context.test.ts
+  s_842425d35fc733::t_ccbe353cd71d1c 4,12,28,36-40,48-49,60,70,73,105,116,124
+packages/@n8n/instance-ai/evaluations/harness/runner.ts
+  s_842425d35fc733::t_cd2d9a34133974 517-519
+  s_842425d35fc733::t_70dd06fcf29a72 60
+  s_842425d35fc733::t_161f7f4da12d3e 794
+  s_842425d35fc733::t_bab7900f2fe27d 828
+  s_842425d35fc733::t_19354a40ca6c88 322-326,328-338
+packages/@n8n/instance-ai/evaluations/harness/artifacts/config-eval-handler.ts
+  s_842425d35fc733::t_c2f83c27931d87 15-19
+packages/@n8n/instance-ai/evaluations/harness/artifacts/agent-handler.ts
+  s_842425d35fc733::t_0eb0c7b25e0e4b 16-19
+packages/@n8n/instance-ai/evaluations/__tests__/artifact-agent-handler.test.ts
+  s_842425d35fc733::t_7146e105181ded 1,6,14-18,21,23-26
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_842425d35fc733::t_7f81632edca499 148-150
+  s_842425d35fc733::t_da4b2ae0b2c3ee 170-177
+packages/@n8n/instance-ai/evaluations/__tests__/artifact-config-eval-handler.test.ts
+  s_842425d35fc733::t_66f9473a82c52c 45-48,51,53
+  s_842425d35fc733::t_4910a425845c54 1,4,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4b25d30a50d85de296da62d34ff6b28e604ff2f4",
+  "prompts": {},
+  "sessions": {
+    "s_842425d35fc733": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a760909-ed85-4b6f-894c-5d7b2d1c8180",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
