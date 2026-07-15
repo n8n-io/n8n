@@ -10,7 +10,7 @@ import type { ClaimedTask } from '../types';
  * actually handed off (e.g. the workflow execution was created and started).
  * The executor records that as the task's dispatch marker, which the reaper uses
  * to avoid recording an occurrence that did run as failed. Call it once, exactly
- * when the effect becomes real — not before, and not when a redelivery finds the
+ * when the effect becomes real: not before, and not when a redelivery finds the
  * effect already exists. Handlers that never dispatch simply never call it.
  */
 export interface TaskHandler {

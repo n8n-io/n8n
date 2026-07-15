@@ -94,7 +94,7 @@ describe('reap', () => {
 		expect(onDeadLetter).toHaveBeenCalledWith({ taskId: task.id, attempts: 1, maxAttempts: 1 });
 	});
 
-	it('salvages a pre-dispatch occurrence it dead-letters, dispatching it once', async () => {
+	it('salvages a pre-dispatch occurrence by dispatching it once before dead-lettering it', async () => {
 		const { store, onDeadLetter } = setup();
 		const dispatch = vi.fn().mockResolvedValue(undefined);
 		const task = expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: null });
@@ -165,7 +165,7 @@ describe('reap', () => {
 	it('completes a post-dispatch expired lease as succeeded instead of failing it', async () => {
 		const { store, onCompletedAfterDispatch, onDeadLetter } = setup();
 		const dispatch = vi.fn().mockResolvedValue(undefined);
-		// dispatchedAt set: the effect already happened before the lease lapsed.
+		// `dispatchedAt` set: the effect already happened before the lease lapsed.
 		const task = expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: new Date() });
 		store.findExpiredLeases.mockResolvedValue([task]);
 
@@ -185,16 +185,16 @@ describe('reap', () => {
 		expect(dispatch).not.toHaveBeenCalled();
 		expect(onDeadLetter).not.toHaveBeenCalled();
 		expect(onCompletedAfterDispatch).toHaveBeenCalledWith({ taskId: task.id });
-		// A success, not a failure: reported via the hook, not counted as dead-lettered.
+		// A success: reported via the hook, not counted as dead-lettered.
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
 	});
 
 	it('completes a post-dispatch expired lease even with attempts left, never reclaiming it', async () => {
 		const { store, onCompletedAfterDispatch } = setup();
 		const dispatch = vi.fn().mockResolvedValue(undefined);
-		// Dispatched (the effect happened) but not on its last attempt: the effect
-		// boundary, not the attempt count, decides. It is completed, not reclaimed for a
-		// re-run that would fire the effect a second time.
+		// Dispatched but not on the last attempt: the effect boundary, not the attempt
+		// count, decides, so it is completed rather than reclaimed for a re-run that
+		// would fire the effect twice.
 		const task = expiredTask({ attempts: 0, maxAttempts: 3, dispatchedAt: new Date() });
 		store.findExpiredLeases.mockResolvedValue([task]);
 

@@ -339,7 +339,7 @@ describe('Executor.fire', () => {
 		store.completeTask.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
 
-		// Last attempt (the shipped default): the effect already happened, so the task
+		// Last attempt (the default): the effect already happened, so the task
 		// must not be recorded failed for work that was done.
 		const result = await executor.fire(HOST, claimedTask({ attempts: 0, maxAttempts: 1 }));
 

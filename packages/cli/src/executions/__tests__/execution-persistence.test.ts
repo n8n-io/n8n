@@ -379,7 +379,7 @@ describe('ExecutionPersistence', () => {
 		});
 
 		describe('tombstone reclaim', () => {
-			// A sibling test leaves jsonStore.write rejecting, and vi.clearAllMocks() does not
+			// A sibling test leaves `jsonStore.write` rejecting, and `vi.clearAllMocks()` does not
 			// reset implementations; restore a resolving write so the fs create path succeeds.
 			beforeEach(() => {
 				jsonStore.write.mockResolvedValue(123);
@@ -409,7 +409,7 @@ describe('ExecutionPersistence', () => {
 				expect(executionId).toBe('exec-1');
 				// The tombstone DB row is deleted inside the transaction...
 				expect(mockTx.delete).toHaveBeenCalledWith(ExecutionEntity, { id: 'exec-old' });
-				// ...and its out-of-band blob is cleared after commit, keyed by the OLD id.
+				// ...and its out-of-band blob is cleared after commit, keyed by the old (tombstone) id.
 				expect(jsonStore.delete).toHaveBeenCalledWith([
 					{ workflowId: 'workflow-123', executionId: 'exec-old', storedAt: 'fs' },
 				]);

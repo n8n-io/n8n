@@ -26,12 +26,12 @@ const claimedTask = (id: string): ClaimedTask => ({
 /**
  * The claim/dispatch exactly-once invariant, fuzzed over randomised batches:
  * every claimed task dispatches to its handler at most once, and a task whose
- * `beginDispatch` mutex wins no row (already reclaimed or deleted) is never
+ * `beginDispatch` claims no row (already reclaimed or deleted) is never
  * dispatched. Store, registry and timer are all mocked, and each fire callback is
  * invoked by hand, so the detached-fire path stays deterministic.
  */
 describe('Executor claim/dispatch (fast-check)', () => {
-	it('dispatches each claimed task at most once, and never dispatches one whose beginDispatch won no row', async () => {
+	it('dispatches each claimed task at most once, and never dispatches one whose beginDispatch claims no row', async () => {
 		await fc.assert(
 			fc.asyncProperty(
 				fc.uniqueArray(
