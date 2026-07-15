@@ -17,7 +17,10 @@ import {
 } from '../memory/observation-log-reflector';
 
 type GenerateTextCall = Record<string, unknown>;
-type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
+type GenerateTextResult = {
+	text: string;
+	usage?: { totalTokens?: number; inputTokens?: number; outputTokens?: number };
+};
 
 const { mockGenerateText } = vi.hoisted(() => ({
 	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
@@ -139,6 +142,31 @@ describe('observation-log reflector defaults', () => {
 		});
 		expect(mockGenerateText.mock.calls[1][0].experimental_telemetry).toBeUndefined();
 		expect(mockGenerateText.mock.calls[2][0].experimental_telemetry).toBeUndefined();
+	});
+
+	it('reports usage with task="reflector" and the configured model through onUsage', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '{"drop":[],"merge":[]}',
+			usage: { inputTokens: 50, outputTokens: 5, totalTokens: 55 },
+		});
+		const onUsage = vi.fn();
+
+		await createObservationLogReflectFn('anthropic/claude-haiku-4-5-20251001', { onUsage })({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			activeObservationLog: [],
+			renderedObservationLog: '',
+			tokenCount: 10,
+			tokenBudget: 12_000,
+		});
+
+		expect(onUsage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				task: 'reflector',
+				model: 'anthropic/claude-haiku-4-5-20251001',
+				reportId: expect.any(String),
+			}),
+		);
 	});
 });
 

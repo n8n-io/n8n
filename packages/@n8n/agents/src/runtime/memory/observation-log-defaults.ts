@@ -7,9 +7,12 @@ import type {
 	ObservationLogReflectorInput,
 } from './observation-log-reflector';
 import type { ModelConfig } from '../../types/sdk/agent';
+import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
+import { getModelIdString } from '../loop/runtime-context';
 import { loadAi } from '../model/lazy-ai';
 import { createModel } from '../model/model-factory';
+import { toTokenUsage } from '../streaming/stream';
 import { buildExperimentalTelemetry } from '../telemetry/telemetry-options';
 
 // The observer's fixed prompt is a few thousand tokens, so firing per tiny delta
@@ -287,6 +290,8 @@ Output the new observations only. Do not repeat the existing log. Do not add pre
 
 export interface CreateObservationLogObserveFnOptions {
 	observerPrompt?: string;
+	/** Called with normalized token usage after each observer LLM call. */
+	onUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 }
 
 export function buildObservationLogObserverPrompt(input: ObservationLogObserverInput): string {
@@ -309,13 +314,25 @@ export function createObservationLogObserveFn(
 	options: CreateObservationLogObserveFnOptions = {},
 ): ObservationLogObserveFn {
 	return async (input) => {
-		const { text, usage } = await loadAi().generateText({
+		const { text, usage, providerMetadata } = await loadAi().generateText({
 			model: createModel(model),
 			system: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
 			...buildExperimentalTelemetry(input.telemetry, { functionSuffix: 'memory-observer' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
+
+		if (options.onUsage) {
+			const tokenUsage = toTokenUsage(usage, providerMetadata);
+			if (tokenUsage) {
+				await options.onUsage({
+					task: 'observer',
+					model: getModelIdString(model),
+					usage: tokenUsage,
+					reportId: crypto.randomUUID(),
+				});
+			}
+		}
 
 		return text.trim();
 	};
@@ -529,6 +546,8 @@ If the log is already under budget AND no clear duplicates exist, return {"drop"
 
 export interface CreateObservationLogReflectFnOptions {
 	reflectorPrompt?: string;
+	/** Called with normalized token usage after each reflector LLM call. */
+	onUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 }
 
 export function buildObservationLogReflectorPrompt(input: ObservationLogReflectorInput): string {
@@ -548,13 +567,25 @@ export function createObservationLogReflectFn(
 	options: CreateObservationLogReflectFnOptions = {},
 ): ObservationLogReflectFn {
 	return async (input) => {
-		const { text, usage } = await loadAi().generateText({
+		const { text, usage, providerMetadata } = await loadAi().generateText({
 			model: createModel(model),
 			system: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt(input),
 			...buildExperimentalTelemetry(input.telemetry, { functionSuffix: 'memory-reflector' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
+
+		if (options.onUsage) {
+			const tokenUsage = toTokenUsage(usage, providerMetadata);
+			if (tokenUsage) {
+				await options.onUsage({
+					task: 'reflector',
+					model: getModelIdString(model),
+					usage: tokenUsage,
+					reportId: crypto.randomUUID(),
+				});
+			}
+		}
 
 		return text.trim();
 	};
