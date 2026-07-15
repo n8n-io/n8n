@@ -430,8 +430,45 @@ export class InstanceAiController {
 					if (closed) return;
 					writeRunSyncFrame(groupId, group, runEvents);
 				}
+				// A still-streaming segment exists only in the log's coalesce buffer
+				// (deltas are never persisted), so a mid-stream refresh would render
+				// only the post-refresh tail. Serve each open segment as one ephemeral
+				// delta frame (no `id:` line — the cursor stays on durable facts), after
+				// the run-sync frames so live deltas keep appending to it and the
+				// segment's eventual block replaces it. Everything from this read to
+				// `bootstrapping = false` is synchronous, so a buffered delta of a
+				// served segment is exactly text inside the snapshot: skipping it loses
+				// nothing and delivering it would duplicate.
+				const openSegments = this.eventLog.getOpenSegments(threadId);
+				const segmentKey = (
+					kind: 'text' | 'reasoning',
+					event: { runId: string; agentId: string; responseId?: string },
+				) => `${kind}:${event.runId}:${event.agentId}:${event.responseId ?? ''}`;
+				const served = new Set(openSegments.map((segment) => segmentKey(segment.kind, segment)));
 				for (const stored of arrivedDuringReplay) {
-					if (stored.id === undefined || stored.id > lastReplayedSeq) deliver(stored);
+					if (stored.id !== undefined) {
+						if (stored.id > lastReplayedSeq) deliver(stored);
+						continue;
+					}
+					const { event } = stored;
+					if (
+						(event.type === 'text-delta' || event.type === 'reasoning-delta') &&
+						served.has(segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event))
+					) {
+						continue;
+					}
+					deliver(stored);
+				}
+				for (const segment of openSegments) {
+					deliver({
+						event: {
+							type: segment.kind === 'text' ? 'text-delta' : 'reasoning-delta',
+							runId: segment.runId,
+							agentId: segment.agentId,
+							...(segment.responseId ? { responseId: segment.responseId } : {}),
+							payload: { text: segment.text },
+						},
+					});
 				}
 				this.durableLogMetrics.recordReplay(missed.length, Math.max(0, lastReplayedSeq - cursor));
 			} finally {

@@ -1670,6 +1670,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
+		eventLog.getOpenSegments.mockReturnValue([]);
 	});
 
 	it('replays from the durable log and dedups events that land during the async read', async () => {
@@ -1808,6 +1809,101 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		// (the shared reducer applies it idempotently, like any post-frame event).
 		expect(frames.filter((f) => f.includes('run-finish'))).toHaveLength(1);
 		expect(finishIndex).toBeGreaterThan(syncIndex);
+	});
+
+	it('serves the open streamed segment as one ephemeral delta frame and skips its buffered deltas', async () => {
+		memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		memoryService.getLatestRunSnapshot.mockResolvedValue(undefined);
+		instanceAiService.getThreadStatus.mockReturnValue({
+			hasActiveRun: true,
+			isSuspended: false,
+			backgroundTasks: [],
+		} as never);
+		instanceAiService.getMessageGroupId.mockReturnValue('group-1');
+		instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+
+		const handlers: Array<(stored: unknown) => void> = [];
+		eventBus.subscribe.mockImplementation((_threadId, handler) => {
+			handlers.push(handler as never);
+			return vi.fn();
+		});
+
+		eventLog.getEventsAfter.mockImplementation(async () => {
+			// While the replay read is in flight, the still-streaming segment emits
+			// a live delta (id-less, text already inside the coalesce buffer) and a
+			// different segment emits one too (must pass through untouched).
+			const buffering = handlers.at(-1)!;
+			buffering({
+				event: {
+					type: 'text-delta',
+					runId: 'run-1',
+					agentId: 'a1',
+					responseId: 'msg-open',
+					payload: { text: ' 4 5' },
+				},
+			});
+			buffering({
+				event: {
+					type: 'text-delta',
+					runId: 'run-1',
+					agentId: 'a1',
+					responseId: 'msg-other',
+					payload: { text: 'unrelated' },
+				},
+			});
+			return [];
+		});
+		eventLog.getEventsForRuns.mockResolvedValue([
+			{
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'a1',
+				payload: { toolCallId: 'tc', toolName: 't', args: {} },
+			},
+		] as never);
+		eventLog.getOpenSegments.mockReturnValue([
+			{ runId: 'run-1', agentId: 'a1', kind: 'text', responseId: 'msg-open', text: '1 2 3 4 5' },
+		]);
+
+		const sseRes = mock<Response & { flush?: () => void }>({
+			setHeader: vi.fn(),
+			flushHeaders: vi.fn(),
+			write: vi.fn(),
+			end: vi.fn(),
+			flush: vi.fn(),
+		});
+		const sseReq = mock<AuthenticatedRequest>({
+			user: { id: USER_ID },
+			headers: {},
+			once: vi.fn(),
+		});
+
+		await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: 5 } as never);
+
+		const frames = (sseRes.write as Mock).mock.calls.map(([frame]) => String(frame));
+		const deltaPayloads = frames
+			.filter((f) => f.startsWith('data: ') && f.includes('text-delta'))
+			.map(
+				(f) =>
+					JSON.parse(f.slice('data: '.length)) as {
+						responseId?: string;
+						payload: { text: string };
+					},
+			);
+		// The served segment's buffered delta is skipped (its text is inside the
+		// snapshot); the unrelated delta passes through; the segment itself is
+		// served exactly once with the full streamed-so-far text.
+		expect(deltaPayloads.map((p) => [p.responseId, p.payload.text])).toEqual([
+			['msg-other', 'unrelated'],
+			['msg-open', '1 2 3 4 5'],
+		]);
+		// Ephemeral: no `id:` line, so the browser's replay cursor is unaffected,
+		// and written after the run-sync frame so live deltas keep appending to it.
+		const segmentIndex = frames.findIndex((f) => f.includes('1 2 3 4 5'));
+		const syncIndex = frames.findIndex((f) => f.startsWith('event: run-sync'));
+		expect(frames[segmentIndex].startsWith('data: ')).toBe(true);
+		expect(syncIndex).toBeGreaterThanOrEqual(0);
+		expect(segmentIndex).toBeGreaterThan(syncIndex);
 	});
 
 	it('removes the buffering subscription when a durable read throws', async () => {
