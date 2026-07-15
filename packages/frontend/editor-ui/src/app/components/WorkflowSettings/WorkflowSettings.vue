@@ -996,7 +996,7 @@ onBeforeUnmount(() => {
 	<Modal
 		:name="WORKFLOW_SETTINGS_MODAL_KEY"
 		width="65%"
-		max-height="80%"
+		max-height="90%"
 		:title="
 			i18n.baseText('workflowSettings.settingsFor', {
 				interpolate: { workflowName, workflowId },
