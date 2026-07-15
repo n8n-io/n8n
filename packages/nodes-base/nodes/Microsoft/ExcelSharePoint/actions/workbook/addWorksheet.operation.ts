@@ -5,6 +5,14 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+// https://learn.microsoft.com/en-us/graph/api/resources/workbookworksheet
+type AddWorksheetResponse = {
+	id: string;
+	name: string;
+	position: number;
+	visibility: string;
+};
+
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { libraryRLC, siteRLC, workbookRLC } from '../../descriptions/common.descriptions';
@@ -76,11 +84,11 @@ export async function execute(
 			const workbookRoot = await resolveWorkbookRoot.call(this, i);
 			// Typed here instead of cast at the call site below. Parens are required:
 			// a generic instantiation can't be followed directly by a property access.
-			const responseData = await (withWorkbookSession<IDataObject>).call(
+			const responseData = await (withWorkbookSession<AddWorksheetResponse>).call(
 				this,
 				workbookRoot,
 				async (headers) =>
-					await (microsoftApiRequest<IDataObject>).call(
+					await (microsoftApiRequest<AddWorksheetResponse>).call(
 						this,
 						'POST',
 						`${workbookRoot}/workbook/worksheets/add`,
