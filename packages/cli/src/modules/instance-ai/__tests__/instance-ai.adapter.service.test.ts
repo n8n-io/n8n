@@ -3708,4 +3708,20 @@ describe('createContext — builder delegate telemetry', () => {
 			expect.anything(),
 		);
 	});
+
+	it('passes listAgents through to the underlying delegate unchanged', async () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		const agents = [
+			{ agentId: 'agent-1', name: 'Agent', published: true, updatedAt: '2026-07-14T00:00:00.000Z' },
+		];
+		delegate.listAgents.mockResolvedValue(agents);
+		mockBuilderModuleActive(delegate);
+
+		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+		const result = await context.builderDelegate?.listAgents();
+
+		expect(result).toEqual(agents);
+		expect(delegate.listAgents).toHaveBeenCalledTimes(1);
+	});
 });

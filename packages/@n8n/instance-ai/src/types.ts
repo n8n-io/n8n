@@ -901,6 +901,10 @@ export interface InstanceAiBuilderDelegate {
 	): Promise<BuilderOpenSuspension[]>;
 	/** Expire the builder checkpoint for `runId` so a failed cascade leaves no orphaned open suspension. */
 	cancelOpenSuspension(agentId: string, runId: string): Promise<void>;
+	/** Agents in the bound project, most recently updated first. */
+	listAgents(): Promise<
+		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
+	>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────
