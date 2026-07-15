@@ -803,6 +803,36 @@ describe('parseAwsUrl', () => {
 		expect(parseAwsUrl(url)).toEqual({ service: 's3-accelerate', region: null });
 	});
 
+	it('treats a region-shaped bucket label in front of s3 as a bucket, not the region', () => {
+		const url = new URL('https://my-bucket-1.s3.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: null });
+	});
+
+	it('treats a bucket named exactly like a region on the legacy global S3 endpoint as a bucket', () => {
+		const url = new URL('https://us-east-2.s3.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: null });
+	});
+
+	it('treats a region-shaped bucket label in front of s3-accelerate as a bucket', () => {
+		const url = new URL('https://my-bucket-1.s3-accelerate.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3-accelerate', region: null });
+	});
+
+	it('parses a legacy dash-region virtual-hosted S3 hostname', () => {
+		const url = new URL('https://mybucket.s3-us-west-2.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-west-2' });
+	});
+
+	it('parses a legacy dash-region path-style S3 hostname', () => {
+		const url = new URL('https://s3-eu-west-1.amazonaws.com/bucket/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'eu-west-1' });
+	});
+
+	it('prefers the dash-region label over a region-shaped bucket label', () => {
+		const url = new URL('https://my-logs-1.s3-us-west-2.amazonaws.com/key');
+		expect(parseAwsUrl(url)).toEqual({ service: 's3', region: 'us-west-2' });
+	});
+
 	it('returns a null region for a custom host without region-shaped labels', () => {
 		const url = new URL('https://myapi.example.com/x');
 		expect(parseAwsUrl(url)).toEqual({ service: 'myapi', region: null });
@@ -1360,10 +1390,38 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 	});
 
 	describe('region labels that cannot be adopted on AWS endpoint hosts', () => {
-		it('throws for a region-shaped bucket label on the legacy global S3 endpoint', () => {
+		it('signs a region-shaped bucket on the legacy global S3 endpoint with the credential region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://test-logs-3.s3.amazonaws.com/key', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+			expect(signOpts.region).toBe('us-east-1');
+		});
+
+		it('signs a legacy dash-region S3 host with the embedded region', () => {
+			const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+				{ uri: 'https://mybucket.s3-us-west-2.amazonaws.com/key', headers: {} } as any,
+				baseCredentials,
+				'',
+				'GET',
+				'',
+				'us-east-1',
+			);
+
+			expect(signOpts.service).toBe('s3');
+			expect(signOpts.region).toBe('us-west-2');
+		});
+
+		it('throws for a mistyped region embedded in a legacy dash-region S3 label', () => {
 			const call = () =>
 				awsGetSignInOptionsAndUpdateRequest(
-					{ uri: 'https://test-logs-3.s3.amazonaws.com/key', headers: {} } as any,
+					{ uri: 'https://s3-us-esat-1.amazonaws.com/bucket/key', headers: {} } as any,
 					baseCredentials,
 					'',
 					'GET',
@@ -1372,7 +1430,7 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 				);
 
 			expect(call).toThrow(UserError);
-			expect(call).toThrow('test-logs-3');
+			expect(call).toThrow('us-esat-1');
 		});
 
 		it('throws for a mistyped region label', () => {

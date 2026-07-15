@@ -258,6 +258,17 @@ export function validateBedrockEndpointOverride(override: string, region: AWSReg
 export const AWS_REGION_SHAPE_PATTERN = /^[a-z]{2,4}(-[a-z]+)+-\d+$/;
 
 /**
+ * Legacy dash-region S3 endpoints (`[<bucket>.]s3-<region>.amazonaws.com`)
+ * encode the region inside the s3 label. Returns that region, or null when
+ * the label doesn't carry one (`s3-accelerate`, `s3-external-1`).
+ */
+function parseLegacyS3DashRegion(label: string): string | null {
+	if (!label.startsWith('s3-')) return null;
+	const rest = label.slice(3);
+	return AWS_REGION_SHAPE_PATTERN.test(rest) ? rest : null;
+}
+
+/**
  * Parses an AWS service URL to extract the service name and region.
  * Some AWS services are global and don't have a region. PrivateLink
  * endpoints (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`) return their
@@ -271,10 +282,13 @@ export const AWS_REGION_SHAPE_PATTERN = /^[a-z]{2,4}(-[a-z]+)+-\d+$/;
  * otherwise the label left of the region (skipping a `dualstack` qualifier)
  * when qualifier labels such as a bucket name or API id precede it;
  * otherwise a trailing legacy region-less S3 service label (`<bucket>.s3`,
- * `<bucket>.s3-accelerate[.dualstack]`); otherwise the first label. The
- * region is not validated against the supported region list; callers must
- * check it (e.g. with {@link assertSupportedAwsRegion}) before using it for
- * signing.
+ * `<bucket>.s3-accelerate[.dualstack]`); otherwise the first label. Legacy
+ * S3 shapes are special-cased: a region-shaped first label in front of
+ * `s3`/`s3-accelerate` is a bucket name (null region), and dash-region
+ * labels (`[<bucket>.]s3-<region>`) yield service `s3` with the embedded
+ * region. The region is not validated against the supported region list;
+ * callers must check it (e.g. with {@link assertSupportedAwsRegion}) before
+ * using it for signing.
  *
  * @param url - The AWS service URL to parse
  * @returns Object containing the service name and region (null for global services)
@@ -309,13 +323,25 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
 		isAwsEndpointHostname(hostname) &&
 		labels[regionIdx + 1] !== 'vpce'
 	) {
+		const next = labels[regionIdx + 1];
+		if (regionIdx === 0) {
+			// S3 never had a region-first shape, so a shaped first label in front of
+			// an S3 service label is a bucket name, not the region.
+			if (next === 's3' || next === 's3-accelerate') {
+				return { service: next, region: null };
+			}
+			const dashRegion = parseLegacyS3DashRegion(next);
+			if (dashRegion) {
+				return { service: 's3', region: dashRegion };
+			}
+		}
 		// On AWS hosts the region is otherwise always the last label before the domain
 		// suffix, so a second-to-last region marks the region-middle and region-first
 		// shapes (`<domain>.<region>.es.amazonaws.com`, `<region>.queue.amazonaws.com`),
 		// which put the service right of the region. Bucket-qualified S3 interface
 		// endpoints (`<bucket>.vpce-<id>.s3.<region>.vpce.amazonaws.com`) also carry a
 		// second-to-last region but their trailing `vpce` label is not a service.
-		service = labels[regionIdx + 1];
+		service = next;
 	} else if (regionIdx >= 2) {
 		// AWS hostnames place the service label immediately left of the region
 		// (qualifiers like bucket/API-id/access-point names sit further left);
@@ -323,15 +349,20 @@ export function parseAwsUrl(url: URL): { region: string | null; service: string 
 		let serviceIdx = regionIdx - 1;
 		if (labels[serviceIdx] === 'dualstack') serviceIdx--;
 		service = labels[serviceIdx];
-	} else if (regionIdx === -1 && labels.length > 1) {
+	} else if (regionIdx === -1) {
 		// Legacy region-less S3 hosts (`<bucket>.s3.amazonaws.com`,
 		// `<bucket>.s3-accelerate[.dualstack].amazonaws.com`) put the service last.
 		// The family is closed, so only adopt a trailing label that belongs to it —
 		// a host with a typo'd (non-region-shaped) region keeps its first-label service.
 		let serviceIdx = labels.length - 1;
 		if (labels[serviceIdx] === 'dualstack' && serviceIdx > 0) serviceIdx--;
-		if (labels[serviceIdx] === 's3' || labels[serviceIdx] === 's3-accelerate') {
-			service = labels[serviceIdx];
+		const candidate = labels[serviceIdx];
+		const dashRegion = parseLegacyS3DashRegion(candidate);
+		if (dashRegion) {
+			return { service: 's3', region: dashRegion };
+		}
+		if (serviceIdx > 0 && (candidate === 's3' || candidate === 's3-accelerate')) {
+			service = candidate;
 		}
 	}
 	return { service, region };
