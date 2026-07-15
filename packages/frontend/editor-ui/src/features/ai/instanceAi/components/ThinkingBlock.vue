@@ -27,8 +27,9 @@ import ToolResultRenderer from './ToolResultRenderer.vue';
  *
  * Collapsed by default. While streaming, the header shows a live status
  * line — the first sentence of the latest trace segment, replaced (with a
- * fade) whenever a new segment starts — and the latest tool call on an
- * indented subline until further trace content streams. Once settled the
+ * fade) whenever a new segment starts — and a subline with the current
+ * activity (running tool call or "Thinking") plus a block-level elapsed
+ * counter. Expanding moves the counter into the header. Once settled the
  * header reads "Thought for Xs".
  */
 const props = withDefaults(
@@ -72,10 +73,10 @@ function toolCallFor(entry: InstanceAiTimelineEntry): InstanceAiToolCallState | 
 }
 
 /**
- * The block's latest tool call while it is still the tail entry — shown on an
- * indented subline under the status line. It naturally clears when further
- * trace content streams (no longer the tail), swaps when another tool call
- * starts, and hides when the run settles or pauses for input.
+ * The block's latest tool call while it is still the tail entry — it labels
+ * the subline, naturally handing back to "Thinking" when further trace
+ * content streams (no longer the tail) and swapping when another tool call
+ * starts. Cleared when the run settles or pauses for input.
  */
 const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
 	if (!props.active || props.awaitingInput) return undefined;
