@@ -152,7 +152,6 @@ describe('VariableExporter', () => {
 				name: 'API_URL',
 				type: 'string',
 				value: 'scoped-value',
-				projectId: 'proj-billing',
 			});
 		});
 
@@ -306,14 +305,12 @@ describe('VariableExporter', () => {
 				name: 'API_URL',
 				type: 'string',
 				value: 'A',
-				projectId: 'proj-a',
 			});
 			expect(writer.files[1].path).toBe('projects/b/variables/apiurl/variable.json');
 			expect(jsonParse(writer.files[1].content)).toEqual({
 				name: 'API_URL',
 				type: 'string',
 				value: 'B',
-				projectId: 'proj-b',
 			});
 		});
 
@@ -402,31 +399,6 @@ describe('VariableExporter', () => {
 			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-1'] }]);
 			expect(writer.files).toEqual([]);
 			expect(writer.directories).toEqual([]);
-		});
-	});
-
-	describe('non-string types', () => {
-		it('skips a resolved non-string variable: no bundle, no value, name-only requirement', async () => {
-			const deps = makeExporter();
-			const secret = makeVariable({ id: 'var-secret', type: 'secret', value: 'must-not-leak' });
-			deps.variablesService.getAllCached.mockResolvedValue([secret]);
-			deps.variablesService.getAllForUser.mockResolvedValue([secret]);
-			wireProjects(deps, {
-				workflowProjects: [['wf-1', 'proj-personal']],
-				personalProjectId: 'proj-personal',
-			});
-			const writer = new CapturingWriter();
-
-			const result = await deps.exporter.export({
-				user,
-				requirements: [req('wf-1', 'API_URL')],
-				writer,
-				includeVariableValues: true,
-			});
-
-			expect(result.entries).toEqual([]);
-			expect(result.requirements).toEqual([{ name: 'API_URL', usedByWorkflows: ['wf-1'] }]);
-			expect(writer.files).toEqual([]);
 		});
 	});
 

@@ -229,7 +229,6 @@ describe('workflow package export — with variables', () => {
 			name: 'API_URL',
 			type: 'string',
 			value: 'https://project.example.com',
-			projectId: project.id,
 		});
 	});
 
@@ -440,39 +439,6 @@ describe('workflow package export — with variables', () => {
 			variables: [{ name: 'PRIVATE_VAR', usedByWorkflows: [workflow.id] }],
 		});
 		expect(variableFiles(entries)).toEqual([]);
-	});
-
-	it('never exports the value of a non-string variable, regardless of flag', async () => {
-		const owner = await createOwner();
-		const project = await createTeamProject('Project A', owner);
-		await Container.get(VariablesRepository).save({
-			id: generateNanoId(),
-			key: 'FUTURE_SECRET',
-			value: 'must-not-leak',
-			type: 'secret',
-		});
-		await Container.get(VariablesService).updateCache();
-		const workflow = await buildWorkflowReferencingVariables({
-			name: 'Workflow with secret var',
-			project,
-			variableNames: ['FUTURE_SECRET'],
-		});
-
-		for (const includeVariableValues of [true, false]) {
-			const stream = await service.exportPackage({
-				user: owner,
-				workflowIds: [workflow.id],
-				includeVariableValues,
-			});
-			const { manifest, entries } = await readExport(stream);
-
-			expect(manifest).not.toHaveProperty('variables');
-			expect(manifest.requirements).toEqual({
-				variables: [{ name: 'FUTURE_SECRET', usedByWorkflows: [workflow.id] }],
-			});
-			expect(variableFiles(entries)).toEqual([]);
-			expect(JSON.stringify(manifest)).not.toContain('must-not-leak');
-		}
 	});
 
 	describe('telemetry event', () => {

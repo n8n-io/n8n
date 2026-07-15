@@ -29,13 +29,12 @@ interface ResolvedName {
 }
 
 /**
- * A variable is bundled (and so counts towards a name collision) only when it
- * carries an exportable value. Today that means string variables; other types
- * (e.g. secrets) are never written. Extend this predicate to bundle more types
- * and both the bundling loop and the collision guard follow automatically.
+ * A variable is bundled (and so counts towards a name collision) only when the
+ * caller could resolve it; an unresolved name still travels as a name-only
+ * requirement.
  */
 function isBundleableVariable(variable: Variables | undefined): variable is Variables {
-	return variable?.type === 'string';
+	return variable !== undefined;
 }
 
 @Service()
@@ -53,6 +52,9 @@ export class VariableExporter {
 		}
 
 		const workflowIds = [...new Set(request.requirements.map((r) => r.workflowId))];
+		// `allVariables` (unfiltered) exists solely to detect names shadowed by a
+		// project variable the caller cannot list: without it, `resolve` would fall
+		// back to a same-named accessible global that runtime would never pick.
 		const [allVariables, accessibleVariables, projectIdByWorkflowId] = await Promise.all([
 			this.variablesService.getAllCached(),
 			this.variablesService.getAllForUser(request.user),
