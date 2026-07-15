@@ -1,3 +1,17 @@
+## [2.30.5](https://github.com/n8n-io/n8n/compare/n8n@2.30.4...n8n@2.30.5) (2026-07-15)
+
+
+### Bug Fixes
+
+* **core:** Count AI assistant workflow test runs as manual executions in statistics ([#34153](https://github.com/n8n-io/n8n/issues/34153)) ([e832024](https://github.com/n8n-io/n8n/commit/e8320245f3d21799af5d5fa9d5e6d408785cff8e))
+* **core:** Preserve node aliases when generating AI tool variants ([#34195](https://github.com/n8n-io/n8n/issues/34195)) ([1c73884](https://github.com/n8n-io/n8n/commit/1c73884e195f539aaf021bcbb46496ecd4c0fb88))
+
+
+### Features
+
+* **editor:** Add n8n Credits credential selection experiment ([#34074](https://github.com/n8n-io/n8n/issues/34074)) ([1cb3d75](https://github.com/n8n-io/n8n/commit/1cb3d75481c989b63b71859cbbba2f9530de041d))
+
+
 ## [2.30.4](https://github.com/n8n-io/n8n/compare/n8n@2.30.3...n8n@2.30.4) (2026-07-13)
 
 
