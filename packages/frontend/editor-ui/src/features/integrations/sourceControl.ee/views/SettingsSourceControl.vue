@@ -24,7 +24,6 @@ import {
 	N8nFormInput,
 	N8nHeading,
 	N8nNotice,
-	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 const locale = useI18n();
@@ -474,7 +473,10 @@ watch(connectionType, () => {
 					<N8nHeading size="xlarge" tag="h2" class="mb-s">{{
 						locale.baseText('settings.sourceControl.instanceSettings')
 					}}</N8nHeading>
-					<label>{{ locale.baseText('settings.sourceControl.branches') }}</label>
+					<label>
+						{{ locale.baseText('settings.sourceControl.branches') }}
+						<small>({{ locale.baseText('settings.sourceControl.branches.caption') }})</small>
+					</label>
 					<div :class="$style.branchSelection">
 						<N8nFormInput
 							id="branchName"
@@ -508,9 +510,6 @@ watch(connectionType, () => {
 							/>
 						</N8nTooltip>
 					</div>
-					<N8nText size="small" color="text-light" class="mb-s">
-						{{ locale.baseText('settings.sourceControl.branches.caption') }}
-					</N8nText>
 					<N8nCheckbox
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
