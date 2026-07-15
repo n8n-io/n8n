@@ -6744,6 +6744,8 @@
 	"agents.chat.clearHistory.error": "Could not clear chat history",
 	"agents.chat.clearHistory": "Clear chat history",
 	"agents.chat.input.placeholder": "Type a message...",
+	"agents.preview.episodicMemoryCallout.text": "Access memories from previous conversations.",
+	"agents.preview.episodicMemoryCallout.action": "Enable",
 	"agents.chat.answerQuestionPlaceholder": "Answer the question above to continue",
 	"agents.chat.misconfigured.title": "This agent isn't ready to run yet",
 	"agents.chat.misconfigured.missingPrefix": "Missing:",
