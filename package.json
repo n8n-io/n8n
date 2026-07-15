@@ -27,6 +27,7 @@
     "dev:fe": "run-p start \"dev:fe:editor --filter=@n8n/design-system\"",
     "dev:fe:editor": "turbo run dev --parallel --env-mode=loose --filter=n8n-editor-ui",
     "dev:e2e": "pnpm --filter=n8n-playwright dev --ui",
+    "dev-metrics:opt-in": "node scripts/dev-metrics/setup.mjs --enable",
     "dev-metrics:status": "node scripts/dev-metrics/setup.mjs --status",
     "dev-metrics:reset": "node scripts/dev-metrics/setup.mjs --reset",
     "clean": "turbo run clean",

@@ -14,7 +14,10 @@ SRV=$!
 trap 'kill $SRV 2>/dev/null' EXIT
 sleep 0.4
 
-UF=$(mktemp -d); BIN=$(mktemp -d)
+# Apostrophes in both paths exercise shell escaping of the rendered shim: an
+# unescaped value would make the shim a syntax error and fail the assertions below.
+T=$(mktemp -d); UF="$T/uf-o'brien"; BIN="$T/bin-o'brien"
+mkdir -p "$UF" "$BIN"
 printf '#!/bin/sh\ncase "$1" in --version) echo 9.9.9; exit 0;; esac\necho "REAL $*"\nexit 7\n' > "$BIN/pnpm"
 chmod +x "$BIN/pnpm"
 export N8N_USER_FOLDER="$UF" N8N_DEV_METRICS_RUDDERSTACK_URL="http://localhost:$PORT" PATH="$BIN:$PATH"
@@ -60,5 +63,19 @@ grep -q "REAL" "$BIN/pnpm" || fail "original not restored"
 grep -q "n8n-shadow-shim-version" "$BIN/pnpm" && fail "shim left after reset"
 [ -e "$BIN/pnpm.n8n-real" ] && fail ".n8n-real left after reset"
 
-rm -rf "$UF" "$BIN" "$EV"
+# Regression: a package-manager upgrade (a fresh binary dropped over the shim,
+# with the previous .n8n-real left behind) must re-shim the NEW binary — not
+# silently run the stale sibling and downgrade the developer.
+(
+	B2="$T/bin2-o'brien"; mkdir -p "$B2"
+	printf '#!/bin/sh\necho "OLD $*"\n' > "$B2/pnpm"; chmod +x "$B2/pnpm"
+	export N8N_USER_FOLDER="$T/uf2" N8N_DEV_TELEMETRY=0 PATH="$B2:$PATH"
+	node "$SRC/setup.mjs" --enable >/dev/null
+	printf '#!/bin/sh\necho "NEW $*"\n' > "$B2/pnpm"; chmod +x "$B2/pnpm"  # simulate upgrade
+	node "$SRC/setup.mjs" --enable >/dev/null
+	out=$(pnpm probe 2>&1) || true
+	echo "$out" | grep -q "NEW probe" || fail "upgrade downgraded via stale .n8n-real"
+)
+
+rm -rf "$T" "$EV"
 echo "ALL PASS"

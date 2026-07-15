@@ -173,13 +173,19 @@ function resolveRealBinary(bin) {
 
 const shimVersion = (file) => readVersion(file, 'n8n-shadow-shim-version');
 
-/** Render shadow-shim.sh for `bin` and write it (+chmod) to `file`. */
+// Escape a value for a POSIX single-quoted shell string: end the quote, emit a
+// literal quote via double quotes, reopen — so a path with an apostrophe (e.g.
+// /Users/o'brien) can't break out of the assignment in the rendered shim.
+const shq = (s) => s.replaceAll("'", `'"'"'`);
+
+/** Render shadow-shim.sh for `bin` and write it (+chmod) to `file`. The template
+ * wraps each placeholder in single quotes, so every value is escaped for that. */
 function renderShim(file, realExec, bin) {
 	const rendered = readFileSync(SHADOW_SHIM_SRC, 'utf8')
-		.replaceAll('__N8N_BIN__', bin)
-		.replaceAll('__N8N_REAL__', realExec)
-		.replaceAll('__N8N_BINDIR__', dirname(file))
-		.replaceAll('__N8N_TRACKER__', trackerDest());
+		.replaceAll('__N8N_BIN__', shq(bin))
+		.replaceAll('__N8N_REAL__', shq(realExec))
+		.replaceAll('__N8N_BINDIR__', shq(dirname(file)))
+		.replaceAll('__N8N_TRACKER__', shq(trackerDest()));
 	writeFileSync(file, rendered);
 	chmodSync(file, 0o755);
 }
@@ -211,11 +217,15 @@ function installOne(bin) {
 	// Fresh in-place install. Build the shim beside the real binary first, then
 	// swap — so a crash never leaves the binary's path empty. If the final swap
 	// fails after the original was moved aside, roll it back so pnpm keeps working.
+	// `real` is genuine here (not our shim), so any existing saved sibling is stale
+	// — e.g. a corepack/pnpm upgrade dropped a fresh binary over the old shim. Move
+	// the current binary aside unconditionally (overwriting the stale copy) so the
+	// shim runs today's binary, never a leftover older one.
 	const saved = real + SAVED_SUFFIX;
 	const tmp = `${real}.n8n-shim`;
 	try {
 		renderShim(tmp, saved, bin); // real is still runnable here
-		if (!existsSync(saved)) renameSync(real, saved);
+		renameSync(real, saved);
 		renameSync(tmp, real);
 	} catch {
 		rmSync(tmp, { force: true });

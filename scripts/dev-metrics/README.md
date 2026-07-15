@@ -122,11 +122,11 @@ command by the backgrounded tracker (`<bin> --version`), so it's always current.
 ## Managing it
 
 ```bash
-node scripts/dev-metrics/setup.mjs --status    # show consent + per-binary shim status
-node scripts/dev-metrics/setup.mjs --enable    # opt in + replace binaries with shims
-node scripts/dev-metrics/setup.mjs --disable   # opt out (records denied) + restore binaries
-node scripts/dev-metrics/setup.mjs --reset     # restore binaries + wipe state -> first-run
-export N8N_DEV_TELEMETRY=0                      # runtime kill switch (no sending)
+pnpm dev-metrics:opt-in                         # opt in + replace binaries with shims
+pnpm dev-metrics:status                         # show consent + per-binary shim status
+pnpm dev-metrics:reset                          # restore binaries + wipe state -> first-run
+node scripts/dev-metrics/setup.mjs --disable    # opt out (records denied) + restore binaries
+export N8N_DEV_TELEMETRY=0                       # runtime kill switch (no sending)
 ```
 
 Defaults point at the `n8n-dev` RudderStack workspace (its data plane + HTTP
