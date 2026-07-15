@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.ts
+  s_27bf8a929ab032::t_5bd824596cd195 4,6-12,14-17,22-23,25-32,34,38-41,48
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.test.ts
+  s_27bf8a929ab032::t_04ebf7b28c85e5 9-11,13,16-19,21-23,25-26,28-31,33-44,47-85,88-103,106-110
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/nodeExecuteBefore.ts
+  s_27bf8a929ab032::t_9b6b1512c45fd1 23
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/nodeExecuteAfter.test.ts
+  s_27bf8a929ab032::t_b2e5bebbfb0567 64,106,132,170,195,229
+  s_27bf8a929ab032::t_d514e3134ee01e 263,287
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/nodeExecuteBefore.test.ts
+  s_27bf8a929ab032::t_2fc5085d73a2a0 43-44,48
+  s_27bf8a929ab032::t_c2593270e6bd0b 17,23
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.test.ts
+  s_27bf8a929ab032::t_39cb74a1a10739 1366
+  s_27bf8a929ab032::t_dc93370b21791b 1433
+  s_27bf8a929ab032::t_d5b8046b53a41d 1443,1449-1483
+  s_27bf8a929ab032::t_d15cb0fcd525dc 1484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8151fcd6475715ccf1fd40a66be603ce978cdffe",
+  "prompts": {},
+  "sessions": {
+    "s_27bf8a929ab032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57771f1a-68b5-48e6-a727-09b13409333e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}
