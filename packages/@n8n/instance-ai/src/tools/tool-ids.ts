@@ -13,6 +13,7 @@ export const DOMAIN_TOOL_IDS = {
 	BUILD_WORKFLOW: 'build-workflow',
 	PARSE_FILE: 'parse-file',
 	TEMPLATES: 'templates',
+	AGENTS: 'agents',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -58,6 +59,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	DOMAIN_TOOL_IDS.TEMPLATES,
+	DOMAIN_TOOL_IDS.AGENTS,
 	'web-search',
 	'fetch-url',
 ]);

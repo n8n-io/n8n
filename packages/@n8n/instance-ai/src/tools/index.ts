@@ -33,6 +33,7 @@ const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
+const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
 const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
@@ -200,6 +201,7 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 			loadBuildAgentTool().createBuildAgentTool(context),
 		]);
+		tools.push([DOMAIN_TOOL_IDS.AGENTS, loadAgentsTool().createAgentsTool(context)]);
 	}
 
 	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {

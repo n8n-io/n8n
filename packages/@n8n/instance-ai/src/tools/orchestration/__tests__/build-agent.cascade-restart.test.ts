@@ -272,6 +272,8 @@ function createBuilderDelegate(
 		cancelOpenSuspension: async (_agentId, runId) => {
 			await store.delete(runId);
 		},
+
+		listAgents: async () => await Promise.resolve([]),
 	};
 }
 
@@ -331,6 +333,8 @@ function createOrchestrationContext(params: {
 	context.eventBus = createEventBusStub();
 	context.logger = createLoggerStub();
 	context.modelId = 'anthropic/test-model';
+	// Tracing-off is the default; tracing tests set their own stub.
+	context.tracing = undefined;
 
 	return context;
 }
