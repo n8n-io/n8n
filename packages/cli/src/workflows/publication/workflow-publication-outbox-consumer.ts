@@ -36,6 +36,8 @@ export class WorkflowPublicationOutboxConsumer {
 
 	private activeDrain: Promise<number> | null = null;
 
+	private drainRequested = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowsConfig: WorkflowsConfig,
@@ -128,24 +130,36 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	/**
-	 * Claim and process every currently pending record in a single pass, returning
-	 * the number processed. Used both by the scheduled poll cycle and at leader
-	 * startup for an immediate drain. The loop stops if the instance steps down or
-	 * shuts down mid-drain; claiming is atomic, so an extra concurrent drain never
-	 * double-processes a record. Concurrent callers coalesce onto the same in-flight
-	 * pass rather than running an overlapping drain, which also lets shutdown wait
-	 * for the active pass to settle.
+	 * Claim and process every currently pending record, returning the number
+	 * processed. Used both by the scheduled poll cycle and at leader startup for
+	 * an immediate drain. The loop stops if the instance steps down or shuts down
+	 * mid-drain; claiming is atomic, so an extra concurrent drain never
+	 * double-processes a record. Concurrent callers coalesce onto the same
+	 * in-flight pass rather than running an overlapping drain, which also lets
+	 * shutdown wait for the active pass to settle. Because an in-flight pass may
+	 * already be past claiming, a coalesced call additionally requests a
+	 * follow-up pass, so records enqueued around the tail of a pass are still
+	 * drained promptly instead of waiting for the poll fallback.
 	 */
 	async drainPending(): Promise<number> {
-		if (this.activeDrain) return await this.activeDrain;
-
-		const drain = this.runDrain();
-		this.activeDrain = drain;
-		try {
-			return await drain;
-		} finally {
-			this.activeDrain = null;
+		if (this.activeDrain) {
+			this.drainRequested = true;
+			return await this.activeDrain;
 		}
+
+		let processed = 0;
+		do {
+			this.drainRequested = false;
+			const drain = this.runDrain();
+			this.activeDrain = drain;
+			try {
+				processed += await drain;
+			} finally {
+				this.activeDrain = null;
+			}
+		} while (this.drainRequested && this.shouldKeepPolling());
+
+		return processed;
 	}
 
 	private async runDrain(): Promise<number> {
