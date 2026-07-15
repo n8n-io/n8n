@@ -1,6 +1,6 @@
 # TypeScript 6 → 7 migration benchmarks
 
-Generated 2026-07-15T08:42:55.357Z from `scripts/typescript-migration/results/`.
+Generated 2026-07-15T09:07:07.705Z from `scripts/typescript-migration/results/`.
 
 | Package | typecheck Δ | build Δ |
 | --- | --- | --- |
@@ -14,9 +14,14 @@ Generated 2026-07-15T08:42:55.357Z from `scripts/typescript-migration/results/`.
 | `@n8n/backend-test-utils` | -51.4% | -53.1% |
 | `@n8n/chat-hub` | -50.4% | -50.5% |
 | `@n8n/cli` | -45.7% | -45.7% |
+| `@n8n/client-oauth2` | -45.6% | -39.7% |
 | `@n8n/codemirror-lang` | -36.3% | -31.4% |
 | `@n8n/codemirror-lang-html` | — | -17.0% |
 | `@n8n/codemirror-lang-sql` | -42.7% | -39.2% |
+| `@n8n/computer-use` | -52.8% | -53.4% |
+| `@n8n/config` | -48.2% | -37.9% |
+| `@n8n/constants` | -35.8% | -36.6% |
+| `@n8n/crdt` | -40.8% | -41.0% |
 | `@n8n/instance-ai` | -70.0% | -40.3% |
 | `@n8n/n8n-benchmark` | -49.2% | -39.0% |
 | `@n8n/typeorm` | -37.9% | -68.7% |
@@ -142,6 +147,18 @@ build:
 ```
 
 ```
+=== @n8n/client-oauth2 — median times (Δ vs "before") ===
+
+typecheck:
+  before               872ms
+  after                474ms  -398ms (-45.6%)
+
+build:
+  before               763ms
+  after                460ms  -303ms (-39.7%)
+```
+
+```
 === @n8n/codemirror-lang — median times (Δ vs "before") ===
 
 typecheck:
@@ -171,6 +188,54 @@ typecheck:
 build:
   before               720ms
   after                438ms  -282ms (-39.2%)
+```
+
+```
+=== @n8n/computer-use — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.27s
+  after                599ms  -670ms (-52.8%)
+
+build:
+  before               1.15s
+  after                535ms  -614ms (-53.4%)
+```
+
+```
+=== @n8n/config — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.02s
+  after                529ms  -493ms (-48.2%)
+
+build:
+  before               952ms
+  after                591ms  -361ms (-37.9%)
+```
+
+```
+=== @n8n/constants — median times (Δ vs "before") ===
+
+typecheck:
+  before               670ms
+  after                430ms  -240ms (-35.8%)
+
+build:
+  before               691ms
+  after                438ms  -253ms (-36.6%)
+```
+
+```
+=== @n8n/crdt — median times (Δ vs "before") ===
+
+typecheck:
+  before               921ms
+  after                545ms  -376ms (-40.8%)
+
+build:
+  before               808ms
+  after                477ms  -331ms (-41.0%)
 ```
 
 ```
