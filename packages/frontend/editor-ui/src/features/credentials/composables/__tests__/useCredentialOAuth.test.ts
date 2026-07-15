@@ -436,6 +436,8 @@ describe('useCredentialOAuth', () => {
 
 			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
+
+			mockedStore(useCredentialsStore).getCredentialData.mockResolvedValue(undefined);
 		});
 
 		afterEach(() => {
@@ -652,6 +654,61 @@ describe('useCredentialOAuth', () => {
 			controller.abort();
 			await promise;
 		});
+
+		it('should resolve true via backend verification when the popup reads as closed (COOP)', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			// Provider COOP severs the opener relationship: popup.closed reads true
+			// from the first poll tick while the user is still authorizing.
+			mockPopup.closed = true;
+			MockBroadcastChannel.noopEventListener = true;
+			credentialsStore.getCredentialData
+				.mockResolvedValueOnce(undefined) // pre-flow snapshot: no token yet
+				.mockResolvedValue({
+					data: { oauthTokenData: '__n8n_BLANK_VALUE' },
+				} as unknown as ICredentialsResponse);
+
+			vi.useFakeTimers();
+			try {
+				const { authorize } = useCredentialOAuth();
+				const promise = authorize(mockCredential);
+
+				await vi.advanceTimersByTimeAsync(1000);
+
+				await expect(promise).resolves.toBe(true);
+				expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should not treat a pre-existing token as success when reconnecting', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			mockPopup.closed = true;
+			MockBroadcastChannel.noopEventListener = true;
+			// Reconnect: old token data is present before the flow starts.
+			credentialsStore.getCredentialData.mockResolvedValue({
+				data: { oauthTokenData: '__n8n_BLANK_VALUE' },
+			} as unknown as ICredentialsResponse);
+
+			vi.useFakeTimers();
+			try {
+				const controller = new AbortController();
+				const { authorize } = useCredentialOAuth();
+				const promise = authorize(mockCredential, controller.signal);
+				let resolved = false;
+				void promise.then(() => (resolved = true));
+
+				await vi.advanceTimersByTimeAsync(5000);
+				expect(resolved).toBe(false);
+
+				controller.abort();
+				await expect(promise).resolves.toBe(false);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	describe('createAndAuthorize', () => {
@@ -670,9 +727,15 @@ describe('useCredentialOAuth', () => {
 		class MockBroadcastChannel {
 			static failOauth = false;
 
+			static silent = false;
+
 			close = vi.fn();
 
 			addEventListener = (event: string, handler: (e: MessageEvent) => void) => {
+				if (MockBroadcastChannel.silent) {
+					return;
+				}
+
 				if (MockBroadcastChannel.failOauth) {
 					if (event === 'message') {
 						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
@@ -692,6 +755,7 @@ describe('useCredentialOAuth', () => {
 		beforeEach(() => {
 			mockTrack.mockClear();
 			mockPopup = { closed: false, close: vi.fn() };
+			MockBroadcastChannel.silent = false;
 			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
 		});
@@ -704,6 +768,7 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.createNewCredential.mockResolvedValue(createdCredential);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			credentialsStore.getCredentialData.mockResolvedValue(undefined);
 
 			MockBroadcastChannel.failOauth = false;
 			return credentialsStore;
@@ -713,6 +778,7 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.createNewCredential.mockResolvedValue(createdCredential);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+			credentialsStore.getCredentialData.mockResolvedValue(undefined);
 
 			MockBroadcastChannel.failOauth = true;
 
@@ -825,6 +891,34 @@ describe('useCredentialOAuth', () => {
 
 			const savedCall = mockTrack.mock.calls.find((call) => call[0] === 'User saved credentials');
 			expect(savedCall?.[1]).not.toHaveProperty('node_type');
+		});
+
+		it('should keep the credential when OAuth succeeds via backend verification (COOP)', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			// No callback message reaches the editor; the popup reads as closed
+			// because the provider's COOP policy severed the opener relationship.
+			MockBroadcastChannel.silent = true;
+			mockPopup.closed = true;
+			credentialsStore.getCredentialData
+				.mockResolvedValueOnce(undefined) // pre-flow snapshot: no token yet
+				.mockResolvedValue({
+					data: { oauthTokenData: '__n8n_BLANK_VALUE' },
+				} as unknown as ICredentialsResponse);
+
+			vi.useFakeTimers();
+			try {
+				const { createAndAuthorize } = useCredentialOAuth();
+				const promise = createAndAuthorize('slackOAuth2Api');
+
+				await vi.advanceTimersByTimeAsync(1000);
+
+				const credential = await promise;
+				expect(credential).toEqual(createdCredential);
+				expect(credentialsStore.deleteCredential).not.toHaveBeenCalled();
+				expect(credentialsStore.upsertCredential).toHaveBeenCalledWith(createdCredential);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('should track "User saved credentials" after OAuth completes, not before', async () => {

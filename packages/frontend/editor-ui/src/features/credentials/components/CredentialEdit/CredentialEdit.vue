@@ -26,7 +26,12 @@ import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
-import { getTrustedOAuthOrigins, parseOAuthCallbackMessage } from '../../composables/oauthCallback';
+import {
+	getTrustedOAuthOrigins,
+	hasOAuthTokenData,
+	isOAuthTokenDataSet,
+	waitForOAuthCallback,
+} from '../../composables/oauthCallback';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -1050,38 +1055,16 @@ async function oAuthCredentialAuthorize() {
 		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
 	const oauthPopup = window.open(url, 'OAuth Authorization', params);
 
+	// Token presence can only confirm the flow when there was no token yet; a
+	// reconnect's old token would read as an immediate false success.
+	const hadTokenData = isOAuthTokenDataSet(credentialData.value);
+
 	credentialData.value = {
 		...credentialData.value,
 		oauthTokenData: null as unknown as CredentialInformation,
 	};
 
-	const oauthChannel = new BroadcastChannel('oauth-callback');
-	const trustedOrigins = getTrustedOAuthOrigins(rootStore.urlBaseEditor);
-	let oauthResultHandled = false;
-
-	// Fallback: if the popup is closed (or blocked) without ever delivering a
-	// callback message, no handler fires and the listeners below would leak —
-	// and stack up across attempts, so a later callback triggers duplicate side
-	// effects. Poll for the closed popup so the result is handled and cleaned up.
-	const popupClosedPoll = setInterval(() => {
-		if (!oauthPopup || oauthPopup.closed) {
-			handleOAuthResult(false);
-		}
-	}, 500);
-
-	const cleanupOAuthListeners = () => {
-		oauthChannel.removeEventListener('message', onChannelMessage);
-		window.removeEventListener('message', onWindowMessage);
-		oauthChannel.close();
-		clearInterval(popupClosedPoll);
-	};
-
 	const handleOAuthResult = (successfullyConnected: boolean) => {
-		if (oauthResultHandled) return;
-
-		oauthResultHandled = true;
-		cleanupOAuthListeners();
-
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
 			workflow_id: workflowDocumentStore.value.workflowId || null,
@@ -1124,19 +1107,21 @@ async function oAuthCredentialAuthorize() {
 		}
 	};
 
-	function onChannelMessage(event: MessageEvent) {
-		handleOAuthResult(event.data === 'success');
+	if (!oauthPopup) {
+		handleOAuthResult(false);
+		return;
 	}
 
-	// Cross-origin embed fallback: the callback page also posts to the opener.
-	function onWindowMessage(event: MessageEvent) {
-		const result = parseOAuthCallbackMessage(event, trustedOrigins);
-		if (result === null) return;
-		handleOAuthResult(result === 'success');
-	}
+	const outcome = await waitForOAuthCallback({
+		popup: oauthPopup,
+		trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
+		verifyConnected: hadTokenData
+			? undefined
+			: async () =>
+					hasOAuthTokenData(await credentialsStore.getCredentialData({ id: credential.id })),
+	});
 
-	oauthChannel.addEventListener('message', onChannelMessage);
-	window.addEventListener('message', onWindowMessage);
+	handleOAuthResult(outcome === 'success');
 }
 
 async function onDisconnectMyConnection(): Promise<void> {
