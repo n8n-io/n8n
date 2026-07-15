@@ -1147,7 +1147,7 @@ describe('parseStoredMessages', () => {
 			const result = parseStoredMessages(messages);
 
 			const toolCalls = result[1].agentTree?.toolCalls ?? [];
-			expect(toolCalls[0].renderHint).toBe('delegate');
+			expect(toolCalls[0].renderHint).toBe('default');
 			expect(toolCalls[1].renderHint).toBe('builder');
 			expect(toolCalls[2].renderHint).toBe('planner');
 		});

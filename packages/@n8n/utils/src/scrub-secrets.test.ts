@@ -123,6 +123,20 @@ describe('scrubSecretsInText', () => {
 		expect(scrubSecretsInText(ownOutput)).toBe(ownOutput);
 	});
 
+	it('matches a quoted value with many escapes in linear time', () => {
+		// A quoted secret value made of many backslashes with no closing quote.
+		// The value body must have a single, unambiguous parse so matching stays
+		// fast regardless of the input shape.
+		const input = '{"password": "' + '\\'.repeat(200);
+		const start = performance.now();
+		const out = scrubSecretsInText(input);
+		const elapsedMs = performance.now() - start;
+		expect(elapsedMs).toBeLessThan(50);
+		// No closing quote, so the JSON-shaped pattern can't match; the value is
+		// left as-is and matching returns promptly.
+		expect(out).toContain('password');
+	});
+
 	it('leaves typed redaction markers untouched instead of nesting them', () => {
 		expect(scrubSecretsInText('[REDACTED:secret:1]')).toBe('[REDACTED:secret:1]');
 		expect(scrubSecretsInText('[REDACTED:password:2]')).toBe('[REDACTED:password:2]');

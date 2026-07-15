@@ -14,6 +14,7 @@ import type {
 	AiEvent,
 	EnvProviderState,
 	ExecuteAgentData,
+	ExecuteAgentSource,
 	ExecuteAgentWorkflowContext,
 	ExecuteWorkflowData,
 	ExecuteWorkflowOptions,
@@ -42,6 +43,8 @@ import {
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
+	attachDynamicCredentialsUsage,
+	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -339,10 +342,11 @@ export async function executeWorkflow(
 }
 
 /**
- * Executes an agent with the given ID and message.
+ * Executes an agent — a saved one by ID, or an inline definition embedded in
+ * the calling node's parameters.
  */
 export async function executeAgent(
-	agentId: string,
+	source: ExecuteAgentSource,
 	message: string,
 	executionId: string,
 	threadId: string,
@@ -376,19 +380,48 @@ export async function executeAgent(
 	);
 	const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
 
+	if (!additionalData.workflowId) {
+		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
+	}
+
+	// Scope session threads by workflow
+	const scopedThreadId = `wf:${additionalData.workflowId}:${threadId}`;
+
+	if (source.inlineAgent) {
+		return await agentExecutionOrchestratorService.executeInlineForWorkflow(
+			source.inlineAgent,
+			message,
+			executionId,
+			scopedThreadId,
+			projectId,
+			telemetryUserId,
+			isManualOrChatExecution(executionMode) ? 'test' : 'production',
+			outputSchema,
+			workflowContext,
+		);
+	}
+
 	const useDraftVersion = isManualOrChatExecution(executionMode);
 
-	return await agentExecutionOrchestratorService.executeForWorkflow(
-		agentId,
+	const result = await agentExecutionOrchestratorService.executeForWorkflow(
+		source.agentId,
 		message,
 		executionId,
-		threadId,
+		scopedThreadId,
 		projectId,
 		telemetryUserId,
 		useDraftVersion,
 		outputSchema,
 		workflowContext,
 	);
+
+	// Callers see the session id they supplied (or the derived per-call id), so
+	// feeding the output back into the node's Session ID continues the same
+	// conversation instead of re-prefixing. The scoped thread key stays
+	// internal, surfaced only as `session.threadId` for session deep links.
+	return result.session
+		? { ...result, session: { ...result.session, sessionId: threadId } }
+		: result;
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
@@ -576,15 +609,21 @@ async function startExecution(
 			executionId,
 			fullExecutionData,
 		);
-		throw objectToError(
-			{
-				...executionError,
-				executionId,
-				workflowId: workflowData.id,
-				stack: executionError?.stack,
-				message: executionError?.message,
-			},
-			workflow,
+		// The engine mutates `runData.executionData` in place, so a mid-run crash may leave
+		// credential flags on already-executed tasks — ride them on the error like the
+		// regular failure path below.
+		throw attachDynamicCredentialsUsage(
+			objectToError(
+				{
+					...executionError,
+					executionId,
+					workflowId: workflowData.id,
+					stack: executionError?.stack,
+					message: executionError?.message,
+				},
+				workflow,
+			),
+			summarizeDynamicCredentialsUsage(runData.executionData),
 		);
 	}
 
@@ -598,6 +637,8 @@ async function startExecution(
 			executionId,
 			data: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
+			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
+			...summarizeDynamicCredentialsUsage(data.data),
 		};
 	}
 	activeExecutions.finalizeExecution(executionId, data);
@@ -605,14 +646,20 @@ async function startExecution(
 	// Workflow did fail
 	const { error } = data.data.resultData;
 
-	throw objectToError(
-		{
-			...error,
-			executionId,
-			workflowId: workflowData.id,
-			stack: error?.stack,
-		},
-		workflow,
+	// A failed child may still have attempted or resolved private credentials before failing;
+	// ride the usage on the error so a continue-on-fail caller still flags its task
+	// (see `BaseExecuteContext.executeWorkflow`).
+	throw attachDynamicCredentialsUsage(
+		objectToError(
+			{
+				...error,
+				executionId,
+				workflowId: workflowData.id,
+				stack: error?.stack,
+			},
+			workflow,
+		),
+		summarizeDynamicCredentialsUsage(data.data),
 	);
 }
 

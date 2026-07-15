@@ -28,6 +28,8 @@ import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
+import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -62,6 +64,7 @@ export class TriggerExecutionContextFactory {
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly storageConfig: StorageConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -81,6 +84,10 @@ export class TriggerExecutionContextFactory {
 		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 		onTriggerFailure: TriggerFailureHandler,
+		// This activation attempt's rule-collection session. Owned by the caller
+		// so the commit/discard that follows registration consumes the rules this
+		// attempt collected, never a concurrent attempt's.
+		scheduleCollectionSession: ScheduleTriggerCollectionSession,
 	): IGetExecuteTriggerFunctions {
 		return (workflow: Workflow, node: INode) => {
 			const emit = (
@@ -172,6 +179,10 @@ export class TriggerExecutionContextFactory {
 					});
 			};
 
+			const schedulingFunctions = this.scheduleTriggerJobRegistrar.interceptsNode(node)
+				? scheduleCollectionSession.createCollector(workflow, node)
+				: undefined;
+
 			return new TriggerContext(
 				workflow,
 				node,
@@ -181,6 +192,7 @@ export class TriggerExecutionContextFactory {
 				emit,
 				emitError,
 				saveFailedExecution,
+				schedulingFunctions,
 			);
 		};
 	}

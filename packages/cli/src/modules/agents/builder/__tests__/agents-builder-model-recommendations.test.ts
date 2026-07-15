@@ -146,7 +146,6 @@ describe('builder model recommendations', () => {
 		expect(prompt).toContain('`agent-builder-sub-agents`');
 		expect(prompt).not.toContain('`delegate_subagent`');
 		expect(prompt).not.toContain('Use `list_sub_agents` to discover published same-project agents');
-		expect(prompt).not.toContain('call `ask_question` with `allowMultiple: true`');
 	});
 
 	it('tells the builder to preserve fallback web search on model switches', () => {

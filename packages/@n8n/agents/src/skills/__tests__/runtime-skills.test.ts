@@ -8,6 +8,7 @@ import {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	filterRuntimeSkillSource,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillSourceFromDirectory,
 	parseRuntimeSkillMarkdown,
@@ -316,6 +317,76 @@ Use the workflow SDK.`,
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
+	});
+
+	it('excludes filesystem-backed skills from the registry and file loader', async () => {
+		const root = mkdtempSync(join(tmpdir(), 'runtime-skills-'));
+		try {
+			const intentSkillDir = join(root, 'intent-recognition').replace(/\\/g, '/');
+			const workflowSkillDir = join(root, 'workflow-builder').replace(/\\/g, '/');
+			mkdirSync(join(intentSkillDir, 'references'), { recursive: true });
+			mkdirSync(workflowSkillDir, { recursive: true });
+			writeFileSync(
+				join(intentSkillDir, 'SKILL.md'),
+				`---
+name: intent-recognition
+description: Classify intent.
+---
+
+Classify automation intent.`,
+			);
+			writeFileSync(join(intentSkillDir, 'references', 'taxonomy.md'), 'Taxonomy text');
+			writeFileSync(
+				join(workflowSkillDir, 'SKILL.md'),
+				`---
+name: workflow-builder
+description: Build workflows.
+---
+
+Use the workflow SDK.`,
+			);
+
+			const source = loadRuntimeSkillSourceFromDirectory(root, {
+				exclude: ['intent-recognition'],
+			});
+
+			expect(source.registry.skills.map((skill) => skill.id)).toEqual(['workflow-builder']);
+			await expect(source.loadSkill('intent-recognition')).resolves.toBeNull();
+			await expect(
+				source.loadFile?.('intent-recognition', 'references/taxonomy.md'),
+			).resolves.toBeNull();
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it('filters a source so hidden skills are unlisted, unloadable, and excluded from the hash', async () => {
+		const skills = [
+			{ id: 'hidden_skill', name: 'Hidden skill', description: 'Hide me.', instructions: 'Body.' },
+			{ id: 'kept_skill', name: 'Kept skill', description: 'Keep me.', instructions: 'Body.' },
+		];
+		const source = {
+			...createRuntimeSkillSource(skills),
+			loadFile: async (skillId: string, filePath: string) =>
+				await Promise.resolve({ skillId, filePath, content: 'file body' }),
+		};
+
+		const filtered = filterRuntimeSkillSource(source, ['hidden_skill']);
+
+		expect(filtered.registry.skills.map((skill) => skill.id)).toEqual(['kept_skill']);
+		// The hash must describe the filtered catalog, not the original one, so
+		// workspace manifests keyed on it can't match a differently-filtered set.
+		expect(filtered.registry.skillsHash).not.toBe(source.registry.skillsHash);
+		expect(filtered.registry.skillsHash).toBe(
+			createRuntimeSkillRegistry(skills.filter((skill) => skill.id !== 'hidden_skill')).skillsHash,
+		);
+
+		await expect(filtered.loadSkill('hidden_skill')).resolves.toBeNull();
+		await expect(filtered.loadSkill('kept_skill')).resolves.toMatchObject({ id: 'kept_skill' });
+		await expect(filtered.loadFile?.('hidden_skill', 'references/a.md')).resolves.toBeNull();
+		await expect(filtered.loadFile?.('kept_skill', 'references/a.md')).resolves.toMatchObject({
+			content: 'file body',
+		});
 	});
 
 	it('renders a compact skill catalog without skill bodies', () => {

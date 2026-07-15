@@ -11,6 +11,7 @@ import ViewItem from '../ItemTypes/ViewItem.vue';
 import LinkItem from '../ItemTypes/LinkItem.vue';
 import CommunityNodeItem from '../ItemTypes/CommunityNodeItem.vue';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
+import SectionHeaderCreditsTag from '../SectionHeaderCreditsTag.vue';
 
 import { useViewStacks } from '../../composables/useViewStacks';
 import OpenTemplateItem from '../ItemTypes/OpenTemplateItem.vue';
@@ -160,6 +161,9 @@ watch(
 					:hideHeader="item.hideHeader"
 					@selected="(child: INodeCreateElement) => wrappedEmit('selected', child)"
 				>
+					<template v-if="item.trailing === 'creditsBalance'" #trailing>
+						<SectionHeaderCreditsTag />
+					</template>
 				</CategorizedItemsRenderer>
 
 				<div

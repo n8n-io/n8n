@@ -63,6 +63,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.installed_nodes](public.installed_nodes.md) | 4 |  | BASE TABLE |
 | [public.installed_packages](public.installed_packages.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) | 8 |  | BASE TABLE |
+| [public.instance_ai_events](public.instance_ai_events.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_messages](public.instance_ai_messages.md) | 8 |  | BASE TABLE |
@@ -83,7 +84,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.oauth_authorization_codes](public.oauth_authorization_codes.md) | 13 |  | BASE TABLE |
 | [public.oauth_clients](public.oauth_clients.md) | 9 |  | BASE TABLE |
 | [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) | 7 |  | BASE TABLE |
-| [public.oauth_user_consents](public.oauth_user_consents.md) | 4 |  | BASE TABLE |
+| [public.oauth_user_consents](public.oauth_user_consents.md) | 5 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
 | [public.project](public.project.md) | 9 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
@@ -92,7 +93,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
-| [public.scheduled_job](public.scheduled_job.md) | 17 |  | BASE TABLE |
+| [public.scheduled_job](public.scheduled_job.md) | 19 |  | BASE TABLE |
 | [public.scheduled_task](public.scheduled_task.md) | 16 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
@@ -115,7 +116,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
 | [public.workflow_history](public.workflow_history.md) | 11 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 7 |  | BASE TABLE |
-| [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 7 |  | BASE TABLE |
+| [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 8 |  | BASE TABLE |
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
@@ -227,6 +228,7 @@ erDiagram
 "public.insights_raw" }o--|| "public.insights_metadata" : "FOREIGN KEY (#quot;metaId#quot;) REFERENCES insights_metadata(#quot;metaId#quot;) ON DELETE CASCADE"
 "public.installed_nodes" }o--|| "public.installed_packages" : "FOREIGN KEY (package) REFERENCES installed_packages(#quot;packageName#quot;) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.instance_ai_checkpoints" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.instance_ai_events" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_iteration_logs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
@@ -824,6 +826,15 @@ erDiagram
   uuid threadId FK
   timestamp_3__with_time_zone updatedAt
 }
+"public.instance_ai_events" {
+  timestamp_3__with_time_zone createdAt
+  text payload
+  varchar_64_ runId
+  integer seq
+  uuid threadId FK
+  varchar_64_ type
+  timestamp_3__with_time_zone updatedAt
+}
 "public.instance_ai_iteration_logs" {
   timestamp_3__with_time_zone createdAt
   text entry
@@ -1035,6 +1046,7 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   integer id
+  json scope
   uuid userId FK
 }
 "public.processed_data" {
@@ -1109,6 +1121,8 @@ erDiagram
   timestamp_3__with_time_zone nextRunAt
   varchar_36_ nodeId
   json payload
+  integer recurrenceSize
+  varchar_16_ recurrenceUnit
   varchar_128_ taskType
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
@@ -1346,6 +1360,7 @@ erDiagram
   text errorMessage
   varchar_36_ nodeId
   varchar_20_ status
+  varchar_20_ triggerKind
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId FK
   varchar_36_ workflowId FK

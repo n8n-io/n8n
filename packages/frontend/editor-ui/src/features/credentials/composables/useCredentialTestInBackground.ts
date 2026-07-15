@@ -41,30 +41,43 @@ export function useCredentialTestInBackground() {
 			return;
 		}
 
+		let credentialData: ICredentialDataDecryptedObject | string | undefined;
 		try {
-			const credentialResponse = await credentialsStore.getCredentialData({ id: credentialId });
-			if (!credentialResponse?.data || typeof credentialResponse.data === 'string') {
-				return;
-			}
+			credentialData = (await credentialsStore.getCredentialData({ id: credentialId }))?.data;
+		} catch {
+			credentialData = undefined;
+		}
 
-			// Re-check after the async fetch — another caller (e.g. CredentialEdit) may have
-			// started or completed a test while we were fetching credential data.
-			if (
-				credentialsStore.isCredentialTestedOk(credentialId) ||
-				credentialsStore.isCredentialTestPending(credentialId)
-			) {
-				return;
-			}
+		// Re-check after the async fetch — another caller (e.g. CredentialEdit) may have
+		// started or completed a test while we were fetching credential data.
+		if (
+			credentialsStore.isCredentialTestedOk(credentialId) ||
+			credentialsStore.isCredentialTestPending(credentialId)
+		) {
+			return;
+		}
 
-			const { ownedBy, sharedWithProjects, oauthTokenData, ...data } = credentialResponse.data;
-
-			// OAuth credentials can't be tested via the API — the presence of token data
-			// means the OAuth flow completed successfully, which is the equivalent of a passing test.
-			if (oauthTokenData) {
+		if (!credentialData || typeof credentialData === 'string') {
+			// Without readable data there is nothing to test (e.g. a shared credential
+			// the user can't read, or the fetch failed). Record a pass so consumers
+			// gating on a result don't stay blocked on a usable credential — unless a
+			// real test already failed it.
+			if (!credentialsStore.credentialTestResults.has(credentialId)) {
 				credentialsStore.credentialTestResults.set(credentialId, 'success');
-				return;
 			}
+			return;
+		}
 
+		const { ownedBy, sharedWithProjects, oauthTokenData, ...data } = credentialData;
+
+		// OAuth credentials can't be tested via the API — the presence of token data
+		// means the OAuth flow completed successfully, which is the equivalent of a passing test.
+		if (oauthTokenData) {
+			credentialsStore.credentialTestResults.set(credentialId, 'success');
+			return;
+		}
+
+		try {
 			await credentialsStore.testCredential({
 				id: credentialId,
 				name: credentialName,
@@ -72,7 +85,7 @@ export function useCredentialTestInBackground() {
 				data: data as ICredentialDataDecryptedObject,
 			});
 		} catch {
-			// Test failure is tracked in the store as a side effect
+			// The store records the failed result as a side effect
 		}
 	}
 

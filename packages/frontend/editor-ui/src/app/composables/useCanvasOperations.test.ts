@@ -2640,33 +2640,6 @@ describe('useCanvasOperations', () => {
 			).toBe(false);
 		});
 
-		it('should skip node group validation when the grouping feature flag is disabled', () => {
-			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
-			const toast = useToast();
-			const nodeA = createGroupedNode('a', 'A');
-			const nodeB = createGroupedNode('b', 'B');
-			const nodeC = createGroupedNode('c', 'C');
-			const nodeD = createGroupedNode('d', 'D');
-			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], name: 'Group 1' };
-			const { workflowDocumentStore } = setupGroupedCanvas({
-				nodes: [nodeA, nodeB, nodeC, nodeD],
-				connections: createConnectionsBySource(
-					workflowConnection(nodeA, nodeB),
-					workflowConnection(nodeB, nodeC),
-					workflowConnection(nodeC, nodeD),
-				),
-				groups: [group],
-			});
-			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
-
-			const { createConnection } = useCanvasOperations();
-			createConnection(canvasConnection(nodeA, nodeC));
-
-			expect(addNodesToGroupSpy).not.toHaveBeenCalled();
-			expectConnectionAdded(nodeA, nodeC);
-			expect(toast.showToast).not.toHaveBeenCalled();
-		});
-
 		it('allows a main connection across the group boundary when the group stays valid', () => {
 			const toast = useToast();
 			const nodeA = createGroupedNode('a', 'A');

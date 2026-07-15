@@ -266,6 +266,202 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
 		});
 
+		describe('sub-workflow dynamic credential reporting', () => {
+			const getMockRunWithCredentialFlags = (task: Partial<ITaskData>, executedByUserId?: string) =>
+				mock<IRun>({
+					data: {
+						resultData: {
+							runData: {
+								[LAST_NODE_EXECUTED]: [
+									{ startTime: 100, data: { main: [[{ json: { test: 1 } }]] }, ...task },
+								],
+							},
+							lastNodeExecuted: LAST_NODE_EXECUTED,
+						},
+						executionData: { runtimeData: { executedByUserId } },
+					},
+					finished: true,
+					mode: 'manual',
+					startedAt: new Date(),
+					status: 'new',
+					waitTill: undefined,
+				});
+
+			it('reports usedDynamicCredentials and the resolved user when the sub-workflow resolved a private credential', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithCredentialFlags({ usedDynamicCredentials: true }, 'resolved-user'),
+					),
+				);
+
+				const response = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				);
+
+				expect(response.usedDynamicCredentials).toBe(true);
+				expect(response.dynamicCredentialsResolvedUserId).toBe('resolved-user');
+			});
+
+			it('reports the attempted flag for telemetry', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithCredentialFlags({ attemptedDynamicCredentials: true }),
+					),
+				);
+
+				const response = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				);
+
+				expect(response.attemptedDynamicCredentials).toBe(true);
+			});
+
+			it('reports nothing when the sub-workflow used no private credentials', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(getMockRunWithCredentialFlags({})),
+				);
+
+				const response = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				);
+
+				expect(response.usedDynamicCredentials).toBeUndefined();
+				expect(response.attemptedDynamicCredentials).toBeUndefined();
+				expect(response.dynamicCredentialsResolvedUserId).toBeUndefined();
+			});
+
+			it('reports the used flag without a user when the resolver maps to no n8n user', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(getMockRunWithCredentialFlags({ usedDynamicCredentials: true })),
+				);
+
+				const response = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				);
+
+				expect(response.usedDynamicCredentials).toBe(true);
+				expect(response.dynamicCredentialsResolvedUserId).toBeUndefined();
+			});
+
+			it('reports nothing for detached sub-workflows (no embedded output)', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithCredentialFlags({ usedDynamicCredentials: true }, 'resolved-user'),
+					),
+				);
+
+				const response = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: true }),
+				);
+
+				expect(response.data).toEqual([null]);
+				expect(response.usedDynamicCredentials).toBeUndefined();
+				expect(response.dynamicCredentialsResolvedUserId).toBeUndefined();
+			});
+
+			describe('failed sub-workflow', () => {
+				const getMockFailedRunWithCredentialFlags = (
+					task: Partial<ITaskData>,
+					executedByUserId?: string,
+				) =>
+					mock<IRun>({
+						data: {
+							resultData: {
+								runData: {
+									[LAST_NODE_EXECUTED]: [{ startTime: 100, ...task }],
+								},
+								lastNodeExecuted: LAST_NODE_EXECUTED,
+								error: { message: 'child failed', name: 'NodeOperationError' },
+							},
+							executionData: { runtimeData: { executedByUserId } },
+						},
+						finished: false,
+						mode: 'manual',
+						startedAt: new Date(),
+						status: 'error',
+						waitTill: undefined,
+					});
+
+				it('attaches the attempted flag to the thrown error', async () => {
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(
+							getMockFailedRunWithCredentialFlags({ attemptedDynamicCredentials: true }),
+						),
+					);
+
+					await expect(
+						executeWorkflow(
+							mock<IExecuteWorkflowInfo>(),
+							mock<IWorkflowExecuteAdditionalData>(),
+							mock<ExecuteWorkflowOptions>({
+								loadedWorkflowData: undefined,
+								doNotWaitToFinish: false,
+							}),
+						),
+					).rejects.toMatchObject({
+						message: 'child failed',
+						dynamicCredentialsUsage: { attemptedDynamicCredentials: true },
+					});
+				});
+
+				it('attaches usage and the resolved user when a credential resolved before the failure', async () => {
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(
+							getMockFailedRunWithCredentialFlags(
+								{ usedDynamicCredentials: true, attemptedDynamicCredentials: true },
+								'resolved-user',
+							),
+						),
+					);
+
+					await expect(
+						executeWorkflow(
+							mock<IExecuteWorkflowInfo>(),
+							mock<IWorkflowExecuteAdditionalData>(),
+							mock<ExecuteWorkflowOptions>({
+								loadedWorkflowData: undefined,
+								doNotWaitToFinish: false,
+							}),
+						),
+					).rejects.toMatchObject({
+						message: 'child failed',
+						dynamicCredentialsUsage: {
+							usedDynamicCredentials: true,
+							attemptedDynamicCredentials: true,
+							dynamicCredentialsResolvedUserId: 'resolved-user',
+						},
+					});
+				});
+
+				it('attaches nothing when the failed sub-workflow used no private credentials', async () => {
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(getMockFailedRunWithCredentialFlags({})),
+					);
+
+					const promise = executeWorkflow(
+						mock<IExecuteWorkflowInfo>(),
+						mock<IWorkflowExecuteAdditionalData>(),
+						mock<ExecuteWorkflowOptions>({
+							loadedWorkflowData: undefined,
+							doNotWaitToFinish: false,
+						}),
+					);
+					await expect(promise).rejects.toThrow('child failed');
+					await expect(promise).rejects.not.toHaveProperty('dynamicCredentialsUsage');
+				});
+			});
+		});
+
 		/**
 		 * Tests for workflow version selection based on execution mode.
 		 *
@@ -1050,6 +1246,57 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 		});
 
+		it('routes inline sources to executeInlineForWorkflow with a mode-derived run type', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+			const inlineAgent = {
+				config: { name: 'Inline', model: 'openai/gpt-5', credential: 'c1', instructions: '' },
+			};
+
+			await executeAgent({ inlineAgent }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'trigger');
+
+			expect(agentExecutionOrchestratorService.executeForWorkflow).not.toHaveBeenCalled();
+			expect(agentExecutionOrchestratorService.executeInlineForWorkflow).toHaveBeenCalledWith(
+				inlineAgent,
+				MESSAGE,
+				EXEC_ID,
+				`wf:workflow-1:${THREAD_ID}`,
+				'project-1',
+				'user-1',
+				'production',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('marks inline manual executions as test runs', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+			const inlineAgent = {
+				config: { name: 'Inline', model: 'openai/gpt-5', credential: 'c1', instructions: '' },
+			};
+
+			await executeAgent({ inlineAgent }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual');
+
+			expect(agentExecutionOrchestratorService.executeInlineForWorkflow).toHaveBeenCalledWith(
+				inlineAgent,
+				MESSAGE,
+				EXEC_ID,
+				`wf:workflow-1:${THREAD_ID}`,
+				'project-1',
+				'user-1',
+				'test',
+				undefined,
+				undefined,
+			);
+		});
+
 		it('uses projectId from additionalData when present', async () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				userId: 'user-1',
@@ -1057,14 +1304,21 @@ describe('WorkflowExecuteAdditionalData', () => {
 				workflowId: 'workflow-1',
 			});
 
-			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual');
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'manual',
+			);
 
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				THREAD_ID,
+				`wf:workflow-1:${THREAD_ID}`,
 				'project-1',
 				'user-1',
 				true,
@@ -1086,7 +1340,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			};
 
 			await executeAgent(
-				AGENT_ID,
+				{ agentId: AGENT_ID },
 				MESSAGE,
 				EXEC_ID,
 				THREAD_ID,
@@ -1099,7 +1353,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				THREAD_ID,
+				`wf:workflow-1:${THREAD_ID}`,
 				'project-1',
 				'user-1',
 				true,
@@ -1123,7 +1377,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			};
 
 			await executeAgent(
-				AGENT_ID,
+				{ agentId: AGENT_ID },
 				MESSAGE,
 				EXEC_ID,
 				THREAD_ID,
@@ -1137,7 +1391,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				THREAD_ID,
+				`wf:workflow-1:${THREAD_ID}`,
 				'project-1',
 				'user-1',
 				true,
@@ -1156,14 +1410,21 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<Project>({ id: 'project-1' }),
 			);
 
-			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual');
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'manual',
+			);
 
 			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
 			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				THREAD_ID,
+				`wf:workflow-1:${THREAD_ID}`,
 				'project-1',
 				'user-1',
 				true,
@@ -1180,11 +1441,24 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			await expect(
-				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
+				executeAgent({ agentId: AGENT_ID }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
 			).rejects.toThrow(
 				'Cannot execute agent without a projectId or workflowId in additional data',
 			);
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+			expect(agentExecutionOrchestratorService.executeForWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('throws when workflowId is missing even if projectId is present', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: undefined,
+			});
+
+			await expect(
+				executeAgent({ agentId: AGENT_ID }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
+			).rejects.toThrow('Cannot execute agent without a workflowId in additional data');
 			expect(agentExecutionOrchestratorService.executeForWorkflow).not.toHaveBeenCalled();
 		});
 
@@ -1198,14 +1472,21 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<Project>({ id: 'project-1' }),
 			);
 
-			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'trigger');
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'trigger',
+			);
 
 			expect(ownershipService.getPersonalProjectOwnerCached).not.toHaveBeenCalled();
 			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				THREAD_ID,
+				`wf:workflow-1:${THREAD_ID}`,
 				'project-1',
 				undefined,
 				false,
@@ -1223,14 +1504,21 @@ describe('WorkflowExecuteAdditionalData', () => {
 					workflowId: 'workflow-1',
 				});
 
-				await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
+				await executeAgent(
+					{ agentId: AGENT_ID },
+					MESSAGE,
+					EXEC_ID,
+					THREAD_ID,
+					additionalData,
+					mode,
+				);
 
 				// AgentExecutionOrchestratorService.executeForWorkflow should use draft mode.
 				expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 					AGENT_ID,
 					MESSAGE,
 					EXEC_ID,
-					THREAD_ID,
+					`wf:workflow-1:${THREAD_ID}`,
 					'project-1',
 					'user-1',
 					true,
@@ -1257,14 +1545,14 @@ describe('WorkflowExecuteAdditionalData', () => {
 				workflowId: 'workflow-1',
 			});
 
-			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
+			await executeAgent({ agentId: AGENT_ID }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
 
 			// AgentExecutionOrchestratorService.executeForWorkflow should use draft mode.
 			expect(agentExecutionOrchestratorService.executeForWorkflow).toHaveBeenCalledWith(
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				THREAD_ID,
+				`wf:workflow-1:${THREAD_ID}`,
 				'project-1',
 				'user-1',
 				false,

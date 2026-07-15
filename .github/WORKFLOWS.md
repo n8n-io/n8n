@@ -196,7 +196,10 @@ on every push made cost untenable; firing on every review approval cascaded
 through the dismiss-stale-on-push → re-approve loop, which also blew up.
 The current trigger fires once per `opened` / `reopened` / `ready_for_review`
 on a non-fork PR touching the eval surface, and runs the `pr` test-case dataset
-(~6 high-reliability, capability-diverse cases) instead of the full ~14. To
+(a small set of high-reliability, capability-diverse cases) instead of the full
+suite. Test cases are pulled at run time from the LangTracer suite
+`n8n-workflows` — the source of truth; CI has no disk fallback (local runs
+keep `--source disk` for authoring). To
 re-run after pushing a fix, dispatch `ci-instance-ai-evals.yml` with the PR
 number (optionally `tier: full` for broader coverage) — results post back to
 the PR. The lighter `test-evals-discovery.yml` still runs on every push as part
@@ -206,8 +209,8 @@ of `ci-pull-requests.yml`.
 the lab bench.** The gate deliberately exposes only PR re-runs. Anything that
 isn't PR gating — baselines, model experiments, arbitrary branch runs — goes
 through `test-evals-instance-ai.yml`'s own dispatch form ("Instance AI
-Evals: Experiments"): full knob set (branch, filter, tier, iterations, experiment-name,
-model), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
+Evals: Experiments"): full knob set (branch, filter, tier, suite,
+iterations, experiment-name, model), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
 model-comparison arms), and SHA-keyed docker cache hits on master. Evals never
 run on fork PRs: the event trigger gates on `head.repo.fork`, and the `pr`
 re-run path refuses fork PRs in `resolve` (dispatched runs carry secrets).
@@ -410,9 +413,25 @@ Push to master/1.x
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
+| Daily 06:00               | `util-sync-master-to-3x.yml`      | Sync master → 3.x (v3)   |
+| Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
+
+---
+
+## v3 development (master + 3.x)
+
+During the v3 release window, `master` carries normal feature work (behind opt-in
+flags) and the long-lived `3.x` branch carries breaking changes. `master` is
+synced into `3.x` daily by `util-sync-master-to-3x.yml` (conflicts open a draft PR
+labeled `automation:v3-sync`, request the breaking-commit authors as reviewers via
+`sync-conflict-owners.mjs`, post to `#alerts-v3-sync`, and pause further syncs).
+`build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
+by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`.
+
+See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
 
 ---
 
@@ -455,7 +474,7 @@ Workflows with `workflow_call` trigger:
 | `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
-| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled` | Docker build          |
+| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag` | Docker build |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |

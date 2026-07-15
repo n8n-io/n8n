@@ -8,9 +8,13 @@ import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 
+import { PackageEntityAccessDeniedError } from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { readExport } from './utils/tar-support';
-import { buildWorkflowReferencingCredential } from './utils/test-builders';
+import {
+	buildWorkflowCallingSubWorkflow,
+	buildWorkflowReferencingCredential,
+} from './utils/test-builders';
 
 type ExportEntries = Awaited<ReturnType<typeof readExport>>['entries'];
 
@@ -125,6 +129,56 @@ describe('folder package export', () => {
 		for (const entry of manifest.folders!) {
 			expect(entry.target).toMatch(/^folders\/[^/]+$/);
 		}
+	});
+
+	it('blocks folder exports when a static sub-workflow is outside the package', async () => {
+		const owner = await createOwner();
+		const projectA = await createTeamProject('Project A', owner);
+		const projectB = await createTeamProject('Project B', owner);
+		const folder = await createFolder(projectA, { name: 'Folder A' });
+		const externalChild = await createWorkflow(
+			{ name: 'External Child', nodes: [], connections: {} },
+			projectB,
+		);
+		await buildWorkflowCallingSubWorkflow({
+			name: 'Parent',
+			project: projectA,
+			parentFolder: folder,
+			subWorkflowId: externalChild.id,
+		});
+
+		await expect(service.exportPackage({ user: owner, folderIds: [folder.id] })).rejects.toThrow(
+			'sub-workflow dependency not included in the package',
+		);
+	});
+
+	it('allows folder exports when an external static sub-workflow is selected as a top-level workflow', async () => {
+		const owner = await createOwner();
+		const projectA = await createTeamProject('Project A', owner);
+		const projectB = await createTeamProject('Project B', owner);
+		const folder = await createFolder(projectA, { name: 'Folder A' });
+		const externalChild = await createWorkflow(
+			{ name: 'External Child', nodes: [], connections: {} },
+			projectB,
+		);
+		await buildWorkflowCallingSubWorkflow({
+			name: 'Parent',
+			project: projectA,
+			parentFolder: folder,
+			subWorkflowId: externalChild.id,
+		});
+
+		const stream = await service.exportPackage({
+			user: owner,
+			folderIds: [folder.id],
+			workflowIds: [externalChild.id],
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		const childEntry = manifest.workflows!.find(({ id }) => id === externalChild.id);
+		expect(childEntry?.target).toBe('workflows/external-child');
+		expect(entries.find((e) => e.name === `${childEntry!.target}/workflow.json`)).toBeDefined();
+		expect(manifest.requirements).toBeUndefined();
 	});
 
 	it('preserves nesting through multiple levels when exporting a folder subtree', async () => {
@@ -330,9 +384,13 @@ describe('folder package export — with contained workflows', () => {
 		// workflow:export the workflow. The per-workflow export gate must abort.
 		await createWorkflow({ name: 'secret', parentFolder: folder }, ownerProject);
 
-		await expect(
-			service.exportPackage({ user: member, workflowIds: [], folderIds: [folder.id] }),
-		).rejects.toThrow(/workflow\(s\) not found or not accessible/);
+		const exportPromise = service.exportPackage({
+			user: member,
+			workflowIds: [],
+			folderIds: [folder.id],
+		});
+		await expect(exportPromise).rejects.toThrow(/workflow\(s\) not found or not accessible/);
+		await expect(exportPromise).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
 	// Edge: a workflow in both folderIds and workflowIds is placed in the folder, once.

@@ -6,15 +6,23 @@ import type {
 	CredentialProvider,
 	StreamChunk,
 } from '@n8n/agents';
-import type { AgentPersistedMessageDto } from '@n8n/api-types';
-import { AGENT_WORKFLOW_TRIGGER_TYPE, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentPersistedMessageDto } from '@n8n/api-types';
+import {
+	AGENT_WORKFLOW_TRIGGER_TYPE,
+	formatZodErrors,
+	N8N_CHAT_INTEGRATION_TYPE,
+	RunnableInlineAgentConfigSchema,
+	sanitizeAgentJsonConfig,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import {
 	OperationalError,
 	type ExecuteAgentData,
 	type ExecuteAgentWorkflowContext,
+	type InlineAgentPayload,
 	UserError,
 } from 'n8n-workflow';
 
@@ -22,12 +30,15 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
-import { buildAgentConfigurationTelemetry } from './agent-telemetry';
+import {
+	buildAgentConfigurationTelemetry,
+	buildAgentConfigurationTelemetryFromConfig,
+} from './agent-telemetry';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
-import { ExecutionRecorder } from './execution-recorder';
+import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentRepository } from './repositories/agent.repository';
@@ -36,6 +47,7 @@ import { createInputDataTool } from './tools/input-data-tool';
 import { createWorkflowContextTool } from './tools/workflow-context-tool';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { streamAgentChunks } from './utils/agent-stream';
+import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { describeStructuredOutputError } from './utils/structured-output-error';
@@ -49,8 +61,13 @@ export interface ExecuteForChatConfig {
 	agentId: string;
 	projectId: string;
 	message: string;
-	/** n8n user ID — used for RBAC / credential resolution. */
-	userId: string;
+	/**
+	 * The calling n8n user — used to gate node/workflow tools by their access,
+	 * and for RBAC / credential resolution and telemetry attribution. Always
+	 * present: the in-app test chat only runs behind an authenticated session
+	 * (`AgentChatController.chat` always has `req.user`).
+	 */
+	user: User;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
 }
@@ -62,6 +79,13 @@ export interface ExecuteForChatPublishedConfig {
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
 	integrationType?: string;
+	// No `user` field here: a published chat integration (Slack, Telegram, …)
+	// run is triggered by an inbound platform event, not an interactive n8n
+	// session — there is no n8n `User` to attach. This path keeps the
+	// project-scoped trust boundary that existed before per-user tool
+	// gating; the admin who published the agent is the one who approved its
+	// tools, and Layer A's node denylist (`EphemeralNodeExecutor`) still
+	// applies regardless.
 }
 
 export interface ResumeForChatConfig {
@@ -70,8 +94,12 @@ export interface ResumeForChatConfig {
 	runId: string;
 	toolCallId: string;
 	resumeData: unknown;
-	/** n8n user ID for in-app preview chat resumes. */
-	userId?: string;
+	/**
+	 * The calling n8n user for in-app preview chat resumes — used to gate
+	 * node/workflow tools by their access. Absent for published/integration
+	 * resumes, which keep today's project-scoped behavior.
+	 */
+	user?: User;
 	/** Defaults to true for external integrations; preview chat passes false. */
 	usePublishedVersion?: boolean;
 	/**
@@ -93,13 +121,23 @@ export interface ExecuteForTaskPublishedConfig {
 	taskId: string;
 	/** Published agent_history version that supplied the scheduled task snapshot. */
 	taskVersionId: string;
+	// No `user` field here: this run is fired by `ScheduledTaskManager` on a
+	// cron tick — there is no human in the loop at all, let alone an n8n
+	// session, so there's nothing to gate tools against. Same project-scoped
+	// trust boundary as `ExecuteForChatPublishedConfig`.
 }
 
 export interface ExecuteForTaskNowConfig {
 	agentId: string;
 	projectId: string;
-	/** n8n user ID — used for RBAC / credential resolution and recorded on the session. */
-	userId: string;
+	/**
+	 * The calling n8n user — used to gate node/workflow tools by their
+	 * access, and for RBAC / credential resolution and recorded on the
+	 * session. Always present: manual "Run now" is triggered by an authenticated
+	 * `AgentTasksController.runTaskNow` request, threaded down via
+	 * `AgentTaskService.runNow(agentId, taskId, user)`.
+	 */
+	user: User;
 	message: string;
 	/** Memory scope — resourceId isolates per-run memory. */
 	memory: AgentMemoryScope;
@@ -222,7 +260,7 @@ export class AgentExecutionOrchestratorService {
 			toolCallId,
 			resumeData,
 			integrationType,
-			userId,
+			user,
 			usePublishedVersion = true,
 		} = config;
 
@@ -247,6 +285,14 @@ export class AgentExecutionOrchestratorService {
 			projectId,
 			usePublishedVersion,
 			integrationType,
+			// `usePublishedVersion` defaults to true and is what platform
+			// integrations (Slack/Telegram HITL resume) use — those have no
+			// interactive n8n user, so `user` is force-undefined to keep the
+			// existing project-scoped runtime. Only the in-app draft/test-chat
+			// resume passes `usePublishedVersion: false` (see
+			// `AgentChatController.chatResume`), and only then does the caller's
+			// `user` actually reach the cache/reconstruction layer.
+			user: usePublishedVersion ? undefined : user,
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
@@ -257,7 +303,7 @@ export class AgentExecutionOrchestratorService {
 			const resultStream = await agentInstance.resume('stream', resumeData, {
 				runId,
 				toolCallId,
-				executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
+				executionCounter: this.createAgentExecutionCounter({ agentId, userId: user?.id }),
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -301,19 +347,22 @@ export class AgentExecutionOrchestratorService {
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, userId, memory } = config;
+		const { agentId, projectId, message, user, memory } = config;
 
+		// `user` is always set (see ExecuteForChatConfig) — this builds/reuses a
+		// runtime scoped to this specific user's tool access.
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			user,
 		});
 
 		await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
 			integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
 			platform: N8N_CHAT_INTEGRATION_TYPE,
-			target: { type: 'dm', userId, threadId: memory.threadId },
-			interactingUserId: userId,
+			target: { type: 'dm', userId: user.id, threadId: memory.threadId },
+			interactingUserId: user.id,
 			updatedAt: new Date().toISOString(),
 		});
 
@@ -321,7 +370,7 @@ export class AgentExecutionOrchestratorService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
-			userId,
+			userId: user.id,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -342,6 +391,10 @@ export class AgentExecutionOrchestratorService {
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory, integrationType } = config;
 
+		// No `user` (see ExecuteForChatPublishedConfig): this is the shared,
+		// project-scoped runtime — every caller of this published agent through
+		// this integration reuses the same cache entry regardless of who
+		// triggered the platform event.
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
@@ -373,6 +426,8 @@ export class AgentExecutionOrchestratorService {
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
 
+		// No `user` (see ExecuteForTaskPublishedConfig): cron-fired, no human to
+		// attach — same shared, project-scoped runtime for every tick.
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
@@ -402,18 +457,22 @@ export class AgentExecutionOrchestratorService {
 	 * requesting user.
 	 */
 	async *executeForTaskNow(config: ExecuteForTaskNowConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, userId, message, memory, taskId } = config;
+		const { agentId, projectId, user, message, memory, taskId } = config;
 
+		// `user` is always set (see ExecuteForTaskNowConfig) — manual "Run now"
+		// runs get a runtime scoped to the requesting user's tool access, same
+		// as the in-app test chat.
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
+			user,
 		});
 
 		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
-			userId,
+			userId: user.id,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -503,6 +562,41 @@ export class AgentExecutionOrchestratorService {
 	}
 
 	/**
+	 * Apply per-call add-ons to a reconstructed runtime: a structured-output
+	 * schema and extra tools (e.g. the workflow-data tools for MessageAnAgent
+	 * invocations). An extra-tool name already declared on the agent would
+	 * otherwise be silently dropped (losing workflow data access) or trigger a
+	 * "Static tool name collision" error from the SDK at stream time — surface
+	 * it instead so the agent author can rename their tool.
+	 */
+	private applyPerCallAgentExtras(
+		reconstructed: RuntimeAgent,
+		outputSchema?: JSONSchema7,
+		extraTools?: BuiltTool[],
+	): { ok: boolean; agent?: BuiltAgent; error?: string } {
+		if (outputSchema) {
+			reconstructed.structuredOutput(outputSchema);
+		}
+		if (extraTools?.length) {
+			const declared = new Set(reconstructed.declaredTools.map((t) => t.name));
+			const collisions = extraTools.filter((t) => declared.has(t.name)).map((t) => t.name);
+			if (collisions.length) {
+				const names = collisions.map((n) => `"${n}"`).join(', ');
+				const plural = collisions.length > 1;
+				return {
+					ok: false,
+					error:
+						`Agent declares ${plural ? 'tools' : 'a tool'} named ${names}, ` +
+						`which ${plural ? 'are' : 'is'} reserved by n8n for workflow data access. ` +
+						`Rename the agent ${plural ? 'tools' : 'tool'} to avoid the collision.`,
+				};
+			}
+			reconstructed.tool(extraTools);
+		}
+		return { ok: true, agent: reconstructed as BuiltAgent };
+	}
+
+	/**
 	 * Compile an agent in isolation without writing to the shared runtime cache.
 	 * Used by executeForWorkflow so that concurrent Slack / chat executions
 	 * are not affected.
@@ -518,37 +612,19 @@ export class AgentExecutionOrchestratorService {
 		}
 
 		try {
+			// No `user`: this path runs an agent invoked from inside a workflow
+			// execution (AI Agent node, or a "Message an Agent" tool call from
+			// another workflow) — there is no interactive n8n user, only a bare
+			// telemetry id (see `executeForWorkflow`'s `telemetryUserId`), and for
+			// webhook/trigger-fired executions even that can be absent. This
+			// runtime also isn't cached (see the docstring above), so there's no
+			// cache-key concern here either — just no per-user tool filtering.
 			const { agent: reconstructed } =
 				await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 					agentEntity,
 					credentialProvider,
 				);
-			// Apply a per-call structured-output schema before casting to runtime.
-			if (outputSchema) {
-				reconstructed.structuredOutput(outputSchema);
-			}
-			// Inject per-call extra tools (e.g. the workflow-data tools for
-			// MessageAnAgent invocations). A name already declared on the agent would
-			// otherwise be silently dropped (losing workflow data access) or trigger a
-			// "Static tool name collision" error from the SDK at stream time — surface
-			// it instead so the agent author can rename their tool.
-			if (extraTools?.length) {
-				const declared = new Set(reconstructed.declaredTools.map((t) => t.name));
-				const collisions = extraTools.filter((t) => declared.has(t.name)).map((t) => t.name);
-				if (collisions.length) {
-					const names = collisions.map((n) => `"${n}"`).join(', ');
-					const plural = collisions.length > 1;
-					return {
-						ok: false,
-						error:
-							`Agent declares ${plural ? 'tools' : 'a tool'} named ${names}, ` +
-							`which ${plural ? 'are' : 'is'} reserved by n8n for workflow data access. ` +
-							`Rename the agent ${plural ? 'tools' : 'tool'} to avoid the collision.`,
-					};
-				}
-				reconstructed.tool(extraTools);
-			}
-			return { ok: true, agent: reconstructed as BuiltAgent };
+			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
 		} catch (e) {
 			return {
 				ok: false,
@@ -557,49 +633,67 @@ export class AgentExecutionOrchestratorService {
 		}
 	}
 
-	async executeForWorkflow(
-		agentId: string,
-		message: string,
-		executionId: string,
-		threadId: string,
+	/**
+	 * Compile an inline (node-embedded) agent definition in isolation. Mirrors
+	 * `compileIsolated`, but reconstructs from a raw config instead of an
+	 * entity: inline agents have no skill/custom-tool bodies and run under the
+	 * 'inline' runtime profile (no checkpoints, knowledge, integrations, or
+	 * sub-agent delegation).
+	 */
+	private async compileIsolatedFromSource(
+		config: AgentJsonConfig,
+		syntheticAgentId: string,
 		projectId: string,
-		telemetryUserId?: string,
-		useDraftVersion?: boolean,
+		credentialProvider: CredentialProvider,
 		outputSchema?: JSONSchema7,
+		extraTools?: BuiltTool[],
+	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
+		try {
+			const { agent: reconstructed } =
+				await this.agentRuntimeReconstructionService.reconstructFromResolvedSource({
+					config,
+					memoryOwnerAgentId: syntheticAgentId,
+					projectId,
+					credentialProvider,
+					toolDescriptors: {},
+					toolCodeByName: {},
+					skills: {},
+					runtimeProfile: 'inline',
+				});
+			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
+		} catch (e) {
+			return {
+				ok: false,
+				error: e instanceof Error ? e.message : 'Unknown compilation error',
+			};
+		}
+	}
+
+	/** Per-call workflow-data tools exposed to a workflow-invoked agent. */
+	private buildWorkflowExtraTools(
 		workflowContext?: ExecuteAgentWorkflowContext,
-	): Promise<ExecuteAgentData> {
-		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agentEntity) {
-			throw new OperationalError('Agent not found or not accessible.');
+	): BuiltTool[] | undefined {
+		if (!workflowContext) return undefined;
+
+		const extraTools: BuiltTool[] = [createInputDataTool(workflowContext)];
+		if (workflowContext.exposeWorkflowData) {
+			extraTools.push(createWorkflowContextTool(workflowContext));
 		}
+		return extraTools;
+	}
 
-		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+	/** Stream one workflow-invoked agent run and collect its outcome. */
+	private async streamWorkflowAgent(params: {
+		agentInstance: BuiltAgent;
+		message: string;
+		threadId: string;
+		telemetryAgentId: string;
+		telemetryUserId?: string;
+		outputSchema?: JSONSchema7;
+	}): Promise<WorkflowAgentRunOutcome> {
+		const { agentInstance, message, threadId, telemetryAgentId, telemetryUserId, outputSchema } =
+			params;
 
-		let agentData: Agent = agentEntity;
-
-		if (!useDraftVersion) {
-			agentData = getPublishedAgentSnapshot(agentEntity);
-		}
-		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
-
-		const extraTools: BuiltTool[] = [];
-		if (workflowContext) {
-			extraTools.push(createInputDataTool(workflowContext));
-			if (workflowContext.exposeWorkflowData) {
-				extraTools.push(createWorkflowContextTool(workflowContext));
-			}
-		}
-		const compiled = await this.compileIsolated(
-			agentData,
-			credentialProvider,
-			outputSchema,
-			extraTools.length ? extraTools : undefined,
-		);
-		if (!compiled.ok || !compiled.agent) {
-			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
-		}
-
-		const agentInstance = compiled.agent;
 		const recorder = new ExecutionRecorder();
 
 		let structuredOutput: unknown = null;
@@ -609,8 +703,18 @@ export class AgentExecutionOrchestratorService {
 
 		try {
 			const resultStream = await agentInstance.stream(message, {
-				persistence: { resourceId: executionId, threadId },
-				executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
+				// The memory store scopes message reads by `resourceId` (the
+				// "per-user scope"; chat integrations pass the chat user id there).
+				// Workflow runs have no user, so key the scope by the thread
+				// itself: it is stable across executions, which is what lets a
+				// caller-supplied session id actually continue the conversation.
+				// The previous key — the execution id — changed every run and hid
+				// all prior messages of the thread from the model.
+				persistence: { resourceId: threadId, threadId },
+				executionCounter: this.createAgentExecutionCounter({
+					agentId: telemetryAgentId,
+					userId: telemetryUserId,
+				}),
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -637,29 +741,26 @@ export class AgentExecutionOrchestratorService {
 			streamError = normalizedError;
 		}
 
-		const messageRecord = recorder.getMessageRecord();
+		return {
+			recorder,
+			messageRecord: recorder.getMessageRecord(),
+			structuredOutput,
+			toolCalls,
+			streamError,
+		};
+	}
 
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: message,
-				record: messageRecord,
-				source: AGENT_WORKFLOW_TRIGGER_TYPE,
-				telemetry: {
-					runType: useDraftVersion ? 'test' : 'production',
-					configuration: telemetryConfiguration,
-				},
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record agent execution from workflow', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			});
+	/**
+	 * Turn a collected workflow-invoked run into the caller-facing result,
+	 * translating failure states into thrown errors.
+	 */
+	private buildWorkflowResult(params: {
+		run: WorkflowAgentRunOutcome;
+		session: ExecuteAgentData['session'];
+		outputSchema?: JSONSchema7;
+	}): ExecuteAgentData {
+		const { run, session, outputSchema } = params;
+		const { recorder, messageRecord, structuredOutput, toolCalls, streamError } = run;
 
 		if (streamError !== undefined) {
 			throw streamError;
@@ -703,11 +804,230 @@ export class AgentExecutionOrchestratorService {
 				: null,
 			toolCalls,
 			finishReason: messageRecord.finishReason,
-			session: {
-				agentId,
-				projectId,
-				sessionId: threadId,
-			},
+			session,
 		};
 	}
+
+	async executeForWorkflow(
+		agentId: string,
+		message: string,
+		// Kept for positional compatibility; memory persistence is keyed by
+		// threadId (stable across executions), not by the execution.
+		_executionId: string,
+		threadId: string,
+		projectId: string,
+		telemetryUserId?: string,
+		useDraftVersion?: boolean,
+		outputSchema?: JSONSchema7,
+		workflowContext?: ExecuteAgentWorkflowContext,
+	): Promise<ExecuteAgentData> {
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) {
+			throw new OperationalError('Agent not found or not accessible.');
+		}
+
+		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+
+		let agentData: Agent = agentEntity;
+
+		if (!useDraftVersion) {
+			agentData = getPublishedAgentSnapshot(agentEntity);
+		}
+		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
+
+		const extraTools = this.buildWorkflowExtraTools(workflowContext);
+		const compiled = await this.compileIsolated(
+			agentData,
+			credentialProvider,
+			outputSchema,
+			extraTools?.length ? extraTools : undefined,
+		);
+		if (!compiled.ok || !compiled.agent) {
+			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
+		}
+
+		const agentInstance = compiled.agent;
+		const run = await this.streamWorkflowAgent({
+			agentInstance,
+			message,
+			threadId,
+			telemetryAgentId: agentId,
+			telemetryUserId,
+			outputSchema,
+		});
+
+		void this.agentExecutionService
+			.recordMessage({
+				threadId,
+				agentId,
+				agentName: agentInstance.name,
+				projectId,
+				userMessage: message,
+				record: run.messageRecord,
+				source: AGENT_WORKFLOW_TRIGGER_TYPE,
+				telemetry: {
+					runType: useDraftVersion ? 'test' : 'production',
+					configuration: telemetryConfiguration,
+				},
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to record agent execution from workflow', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
+
+		return this.buildWorkflowResult({
+			run,
+			// sessionId here is still the scoped thread key — executeAgent remaps it
+			// to the caller-facing id; this method never sees the unscoped one.
+			session: { agentId, projectId, sessionId: threadId, threadId },
+			outputSchema,
+		});
+	}
+
+	/**
+	 * Execute an inline agent embedded in a workflow node's parameters. There is
+	 * no entity, so published/draft gating does not apply — the embedded config
+	 * is always what runs. When the caller supplies a session id, conversation-
+	 * thread memory persists (the thread tables carry no agent FK) so that id
+	 * continues the conversation across executions; but no session is *recorded*
+	 * for the sessions UI (`agent_execution_threads.agentId` is an FK to
+	 * `agents`), so the result carries `session: null`.
+	 */
+	async executeInlineForWorkflow(
+		inlineAgent: InlineAgentPayload,
+		message: string,
+		// Kept for positional compatibility; memory persistence is keyed by
+		// threadId (stable across executions), not by the execution.
+		_executionId: string,
+		threadId: string,
+		projectId: string,
+		telemetryUserId?: string,
+		runType: AgentRunTelemetryType = 'production',
+		outputSchema?: JSONSchema7,
+		workflowContext?: ExecuteAgentWorkflowContext,
+	): Promise<ExecuteAgentData> {
+		const config = await this.validateInlineAgentConfig(inlineAgent);
+
+		// Session memory: when the caller supplied a session id, inline agents run
+		// with plain conversation-thread memory so that id continues the same
+		// conversation across executions. Injected server-side, never part of the node's
+		// config: long-term memory (observational/episodic) stays off because it
+		// accumulates under the agent id, and inline agents only have a synthetic,
+		// node-rename-sensitive one. Without a session id the thread is per-call
+		// and can never be continued, so nothing is persisted — inline runs record
+		// no session, which would otherwise grow unreachable thread/message rows.
+		const persistMemory = workflowContext?.hasCallerSessionId === true;
+		const runtimeConfig: AgentJsonConfig = persistMemory
+			? {
+					...config,
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: { enabled: false },
+						episodicMemory: { enabled: false },
+					},
+				}
+			: config;
+
+		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+
+		// For telemetry/logging and memory-owner keying — never persisted, and
+		// stable enough to aggregate runs of the same node across executions.
+		const syntheticAgentId = `inline:${workflowContext?.workflowId ?? 'unknown'}:${
+			workflowContext?.callingNodeName ?? 'unknown'
+		}`;
+
+		const extraTools = this.buildWorkflowExtraTools(workflowContext);
+		const compiled = await this.compileIsolatedFromSource(
+			runtimeConfig,
+			syntheticAgentId,
+			projectId,
+			credentialProvider,
+			outputSchema,
+			extraTools?.length ? extraTools : undefined,
+		);
+		if (!compiled.ok || !compiled.agent) {
+			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
+		}
+
+		const run = await this.streamWorkflowAgent({
+			agentInstance: compiled.agent,
+			message,
+			threadId,
+			telemetryAgentId: syntheticAgentId,
+			telemetryUserId,
+			outputSchema,
+		});
+
+		// No `recordMessage` here: inline runs have no agent entity to attach a
+		// session to. Emit the turn-finished telemetry directly instead.
+		try {
+			this.telemetry.trackAgentTurnFinished({
+				agent_id: syntheticAgentId,
+				thread_id: threadId,
+				run_type: runType,
+				agent_type: 'inline',
+				turn_status:
+					run.messageRecord.error !== null || run.messageRecord.finishReason === 'error'
+						? 'failed'
+						: 'succeeded',
+				configuration: buildAgentConfigurationTelemetryFromConfig(runtimeConfig),
+				latency_ms: run.messageRecord.duration,
+				cost: run.messageRecord.totalCost ?? 0,
+				tool_call_count: run.messageRecord.timeline.filter((t) => t.type === 'tool-call').length,
+			});
+		} catch (error) {
+			this.logger.warn('Failed to track inline agent execution telemetry', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		return this.buildWorkflowResult({ run, session: null, outputSchema });
+	}
+
+	/**
+	 * Validate the node-supplied inline definition into a runnable config.
+	 * The strict schema rejects capabilities inline agents don't support
+	 * (skills, memory, sub-agents, custom tools, the options block), so
+	 * saved-agent-only features can't sneak in through raw JSON. See
+	 * `InlineAgentJsonConfigSchema` for the authoritative allowlist.
+	 */
+	private async validateInlineAgentConfig(payload: InlineAgentPayload): Promise<AgentJsonConfig> {
+		const parsed = RunnableInlineAgentConfigSchema.safeParse({
+			config: sanitizeAgentJsonConfig(payload.config),
+		});
+		if (!parsed.success) {
+			const details = formatZodErrors(parsed.error)
+				.map((issue) => `${issue.path}: ${issue.message}`)
+				.join('; ');
+			throw new UserError(`Invalid inline agent configuration: ${details}`);
+		}
+		const config = parsed.data.config;
+
+		try {
+			validateNodeToolExpressions(config.tools);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			throw new UserError(`Invalid $fromAI expression in node tool config: ${message}`);
+		}
+
+		const nodeError = await validateNodeToolConfigs(config.tools);
+		if (nodeError) {
+			throw new UserError(`Invalid inline agent configuration: ${nodeError}`);
+		}
+
+		return config;
+	}
+}
+
+interface WorkflowAgentRunOutcome {
+	recorder: ExecutionRecorder;
+	messageRecord: MessageRecord;
+	structuredOutput: unknown;
+	toolCalls: ExecuteAgentData['toolCalls'];
+	streamError?: Error;
 }

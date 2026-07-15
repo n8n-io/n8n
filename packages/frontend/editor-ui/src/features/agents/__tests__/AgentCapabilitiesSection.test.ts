@@ -80,6 +80,7 @@ function mountSection(
 	config: AgentJsonConfig | null = null,
 	taskRefs: AgentJsonTaskConfig[] = [],
 	projectAgents: AgentResource[] = [],
+	extraProps: Record<string, unknown> = {},
 ) {
 	projectAgentsListRef.value = projectAgents;
 
@@ -94,6 +95,7 @@ function mountSection(
 			agentId: 'agent-id',
 			isPublished: false,
 			taskRefs,
+			...extraProps,
 		},
 		global: {
 			stubs: {
@@ -113,6 +115,12 @@ function mountSection(
 				N8nIcon: { template: '<span />' },
 				N8nText: { template: '<span><slot /></span>' },
 				N8nTooltip: { template: '<span><slot /></span>' },
+				AgentChannelModal: {
+					name: 'AgentChannelModal',
+					props: ['simpleSetup'],
+					template:
+						'<div data-testid="agent-channel-modal-stub" :data-simple-setup="simpleSetup" />',
+				},
 			},
 		},
 	});
@@ -614,5 +622,98 @@ describe('AgentCapabilitiesSection', () => {
 
 		expect(wrapper.emitted('toggle-task')).toEqual([[{ id: 'task-1', enabled: false }]]);
 		expect(wrapper.emitted('tasks-changed')).toEqual([[]]);
+	});
+
+	it('hides the add-tool and add-skill buttons when disabled (read-only host)', async () => {
+		const wrapper = mountSection([]);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
+
+		await wrapper.setProps({ disabled: true });
+
+		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(false);
+	});
+
+	describe('simpleChannelSetup', () => {
+		it('does not force simple setup on the channel modal by default', async () => {
+			const wrapper = mountSection([]);
+
+			await wrapper.find('[data-testid="agent-capabilities-add-channel"]').trigger('click');
+			await flushPromises();
+
+			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+			expect(modal.exists()).toBe(true);
+			expect(modal.attributes('data-simple-setup')).toBe('false');
+		});
+
+		it('forwards simpleChannelSetup to the channel modal as simple-setup', async () => {
+			const wrapper = mountSection([], {}, null, [], [], { simpleChannelSetup: true });
+
+			await wrapper.find('[data-testid="agent-capabilities-add-channel"]').trigger('click');
+			await flushPromises();
+
+			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+			expect(modal.exists()).toBe(true);
+			expect(modal.attributes('data-simple-setup')).toBe('true');
+		});
+	});
+
+	describe('sections allowlist', () => {
+		it('renders every section by default', () => {
+			const wrapper = mountSection([]);
+
+			expect(wrapper.find('[data-testid="agent-capabilities-add-channel"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-capabilities-add-task"]').exists()).toBe(true);
+		});
+
+		it('renders only the allowlisted sections and skips channels + sub-agents', async () => {
+			const wrapper = mount(AgentCapabilitiesSection, {
+				props: {
+					config: null,
+					tools: [],
+					customTools: {},
+					skills: [],
+					connectedTriggers: [],
+					projectId: 'project-id',
+					agentId: 'agent-id',
+					isPublished: false,
+					taskRefs: [],
+					sections: ['tools', 'tasks', 'skills'],
+				},
+				global: {
+					stubs: {
+						NodeIcon: { template: '<span />' },
+						N8nButton: {
+							props: ['disabled'],
+							template:
+								'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
+						},
+						N8nIcon: { template: '<span />' },
+						N8nText: { template: '<span><slot /></span>' },
+						N8nTooltip: { template: '<span><slot /></span>' },
+						AgentChannelModal: { template: '<div data-testid="agent-channel-modal" />' },
+					},
+				},
+			});
+			await flushPromises();
+
+			// Allowlisted rows present.
+			expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-capabilities-add-task"]').exists()).toBe(true);
+
+			// Suppressed rows absent.
+			expect(wrapper.find('[data-testid="agent-capabilities-add-channel"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-capabilities-channel-row"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-channel-modal"]').exists()).toBe(false);
+
+			// The project-agents list (only needed for sub-agents) is not fetched.
+			expect(ensureProjectAgentsLoadedSpy).not.toHaveBeenCalled();
+		});
 	});
 });

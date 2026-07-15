@@ -85,12 +85,12 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		});
 	};
 
-	// Build orchestration tools (plan, delegate) — orchestrator-only.
+	// Build orchestration tools — orchestrator-only.
 	const orchestrationTools = orchestrationContext
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Keep MCP tools from shadowing domain or orchestration tools during object composition.
+	// Keep MCP tools from shadowing domain or orchestration tools.
 	const reservedToolNames = new Set([...domainTools.keys(), ...orchestrationTools.keys()]);
 
 	// Store all MCP tools on orchestrationContext for sub-agents.

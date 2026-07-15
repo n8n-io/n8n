@@ -17,6 +17,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getCustomCredentialHeader } from '@utils/helpers';
+
 import { searchModels } from './methods/searchModels';
 
 const ANTHROPIC_MODEL_BUILDER_HINT = {
@@ -583,14 +585,10 @@ export class LmChatAnthropic implements INodeType {
 			},
 		};
 
-		if (
-			credentials.header &&
-			typeof credentials.headerName === 'string' &&
-			credentials.headerName &&
-			typeof credentials.headerValue === 'string'
-		) {
+		const customHeader = getCustomCredentialHeader(credentials);
+		if (customHeader) {
 			clientOptions.defaultHeaders = {
-				[credentials.headerName]: credentials.headerValue,
+				[customHeader.name]: customHeader.value,
 			};
 		}
 
@@ -637,7 +635,12 @@ export class LmChatAnthropic implements INodeType {
 			model: modelName,
 			anthropicApiUrl: baseURL,
 			maxTokens: options.maxTokensToSample,
-			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
+			callbacks: [
+				new N8nLlmTracing(this, {
+					tokensUsageParser,
+					redactedHeaders: customHeader ? [customHeader.name] : [],
+				}),
+			],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, failedAttemptHandler),
 			invocationKwargs,
 			clientOptions,

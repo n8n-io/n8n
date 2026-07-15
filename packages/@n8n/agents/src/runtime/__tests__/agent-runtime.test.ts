@@ -420,6 +420,42 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledTimes(2);
 	});
 
+	it('exposes the checkpointed suspend payload to a resumed tool handler via ctx.suspendPayload', async () => {
+		const suspendPayload = { question: 'approve?', marker: 'xyz' };
+		let observedCtx: InterruptibleToolContext | undefined;
+		const suspendTool: BuiltTool = {
+			name: 'approve',
+			description: 'Requires approval',
+			inputSchema: z.object({ question: z.string() }),
+			suspendSchema: z.object({ question: z.string(), marker: z.string() }),
+			resumeSchema: z.object({ approved: z.boolean() }),
+			handler: async (_input: unknown, ctx: unknown) => {
+				const interruptibleCtx = ctx as InterruptibleToolContext;
+				if (!interruptibleCtx.resumeData) {
+					return await interruptibleCtx.suspend(suspendPayload);
+				}
+				observedCtx = interruptibleCtx;
+				return { approved: true };
+			},
+		};
+
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+
+		const first = await runtime.generate('needs approval');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(observedCtx?.suspendPayload).toEqual(suspendPayload);
+	});
+
 	it('keeps delegate_subagent output usage per tool call without adding it to generate result usage', async () => {
 		const delegateTool: BuiltTool = {
 			name: DELEGATE_SUB_AGENT_TOOL_NAME,
@@ -2374,6 +2410,51 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		for (const entry of result.toolCalls ?? []) {
 			expect(JSON.stringify(entry.output)).toContain('"status":"completed"');
 		}
+	});
+
+	it('batches a renamed delegate tool by maxChildren via metadata, not by tool name', async () => {
+		let activeDelegations = 0;
+		let peakDelegations = 0;
+
+		const runSubAgent: DelegateSubAgentRunner = async (request) => {
+			activeDelegations++;
+			peakDelegations = Math.max(peakDelegations, activeDelegations);
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			activeDelegations--;
+			return {
+				status: 'completed',
+				taskPath: request.taskPath,
+				answer: `done:${request.taskName}`,
+			};
+		};
+
+		const delegateTool = createDelegateSubAgentTool({
+			name: 'agent',
+			policy: { maxChildren: 2 },
+			runSubAgent,
+		});
+		const { runtime } = createRuntimeWithTools([delegateTool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls(
+					Array.from({ length: 4 }, (_, index) => ({
+						toolCallId: `tc-${index + 1}`,
+						toolName: 'agent',
+						args: {
+							subAgentId: 'inline',
+							taskName: `ping_${index + 1}`,
+							goal: 'Reply with ping.',
+						},
+					})),
+				),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const result = await runtime.generate('spawn 4 sub agents');
+
+		expect(result.finishReason).toBe('stop');
+		expect(peakDelegations).toBe(2);
 	});
 
 	it('fails fast when delegate metadata has an invalid maxChildren batch size', async () => {

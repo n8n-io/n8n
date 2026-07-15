@@ -1,24 +1,35 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
-vi.mock('@n8n/instance-ai', () => ({
-	wrapUntrustedData(content: string, source: string, label?: string): string {
-		const esc = (s: string) =>
-			s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-		const safeLabel = label ? ` label="${esc(label)}"` : '';
-		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
-		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
-	},
-	builderTemplatesOptionsFromEnv: () => ({}),
-	BuilderTemplatesService: class {
-		async getBundle() {
-			return { files: [], indexTxt: '', version: null };
-		}
-		getVersion() {
-			return null;
-		}
-	},
-}));
+vi.mock('@n8n/instance-ai', async () => {
+	const { WorkflowSaveConflictError } = await import(
+		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error'
+	);
+	return {
+		WorkflowSaveConflictError,
+		wrapUntrustedData(content: string, source: string, label?: string): string {
+			const esc = (s: string) =>
+				s
+					.replace(/&/g, '&amp;')
+					.replace(/"/g, '&quot;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;');
+			const safeLabel = label ? ` label="${esc(label)}"` : '';
+			const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
+			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
+		},
+		builderTemplatesOptionsFromEnv: () => ({}),
+		deriveCredentialHosts: vi.fn().mockReturnValue([]),
+		BuilderTemplatesService: class {
+			async getBundle() {
+				return { files: [], indexTxt: '', version: null };
+			}
+			getVersion() {
+				return null;
+			}
+		},
+	};
+});
 
-import type { Mock, Mocked } from 'vitest';
+import type { Mock, Mocked, MockInstance } from 'vitest';
 
 vi.mock('@n8n/ai-utilities', () => ({
 	braveSearch: vi.fn(),
@@ -27,6 +38,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+import { Expression } from 'n8n-workflow';
 import type {
 	ExecutionError,
 	IConnections,
@@ -36,11 +48,16 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 } from 'n8n-workflow';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	CONFIG_EVALUATIONS_FLAG,
+	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+} from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { NodeCatalogService } from '@/node-catalog';
 import type { NodeTypes } from '@/node-types';
+import type { PostHogClient } from '@/posthog';
 
 import {
 	extractExecutionResult,
@@ -77,7 +94,7 @@ function makeExecution(
 		runData?: Record<string, ITaskData[]>;
 		pinData?: IPinData;
 		error?: Partial<ExecutionError>;
-		workflowNodes?: Array<{ name: string; type: string }>;
+		workflowNodes?: Array<{ name: string; type: string; onError?: string }>;
 	} = {},
 ) {
 	const runData = overrides.runData ?? {};
@@ -104,6 +121,7 @@ function makeTaskData(
 	outputItems: Array<Record<string, unknown>>,
 	opts?: {
 		error?: Error | Partial<ExecutionError>;
+		executionStatus?: ITaskData['executionStatus'];
 		startTime?: number;
 		executionTime?: number;
 	},
@@ -117,6 +135,7 @@ function makeTaskData(
 			main: [outputItems.map((json) => ({ json }))],
 		},
 		...(opts?.error ? { error: opts.error } : {}),
+		...(opts?.executionStatus ? { executionStatus: opts.executionStatus } : {}),
 	} as unknown as ITaskData;
 }
 
@@ -289,6 +308,87 @@ describe('extractExecutionResult', () => {
 		const result = await extractExecutionResult('exec-1', true);
 
 		expect(result.data).toBeUndefined();
+	});
+
+	it('includes node-level errors even when the execution completed successfully', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: {
+					geocode_city: [
+						makeTaskData([], {
+							executionStatus: 'error',
+							error: {
+								name: 'UnexpectedError',
+								message: 'The node has a supplyData method but no execute method.',
+							},
+						}),
+					],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult('exec-1', false);
+
+		expect(result.status).toBe('success');
+		expect(result.error).toBeUndefined();
+		expect(result.nodeErrors).toEqual([
+			{
+				nodeName: 'geocode_city',
+				message: 'The node has a supplyData method but no execute method.',
+			},
+		]);
+	});
+
+	it('omits errors on nodes configured to continue on error', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				workflowNodes: [
+					{
+						name: 'Fallback Lookup',
+						type: 'n8n-nodes-base.httpRequest',
+						onError: 'continueErrorOutput',
+					},
+				],
+				runData: {
+					'Fallback Lookup': [
+						makeTaskData([], {
+							executionStatus: 'error',
+							error: { name: 'NodeApiError', message: 'Not found' },
+						}),
+					],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult('exec-1', false);
+
+		expect(result.nodeErrors).toBeUndefined();
+	});
+
+	it('reports a single entry for a node that errored on multiple runs', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: {
+					geocode_city: [
+						makeTaskData([], {
+							executionStatus: 'error',
+							error: { name: 'UnexpectedError', message: 'boom 1' },
+						}),
+						makeTaskData([], {
+							executionStatus: 'error',
+							error: { name: 'UnexpectedError', message: 'boom 2' },
+						}),
+					],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult('exec-1', false);
+
+		expect(result.nodeErrors).toEqual([{ nodeName: 'geocode_city', message: 'boom 1' }]);
 	});
 });
 
@@ -1123,7 +1223,9 @@ import type { DataTableRepository } from '@/modules/data-table/data-table.reposi
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
 
@@ -1199,6 +1301,7 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 		nodeCatalogService,
 	);
 
@@ -1345,6 +1448,52 @@ describe('createNodeAdapter', () => {
 			).nodesCache,
 		).toBeNull();
 	});
+
+	describe('getResolvedNodeInputs expression isolate lifecycle', () => {
+		// Dynamic `inputs` are resolved via workflow.expression, which under
+		// N8N_EXPRESSION_ENGINE=vm needs a V8 isolate acquired for the transient
+		// workflow first. Without it the VM bridge throws "No bridge acquired" and
+		// getNodeInputs silently returns []. These spies pin the acquire/release.
+		let acquireSpy: MockInstance;
+		let releaseSpy: MockInstance;
+
+		beforeEach(() => {
+			acquireSpy = vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			releaseSpy = vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+		});
+
+		it('acquires and releases the isolate around dynamic input resolution', async () => {
+			const { service, nodeService } = createNodeAdapterServiceForTests([]);
+			(service as unknown as { nodeTypes: Pick<NodeTypes, 'getByNameAndVersion'> }).nodeTypes = {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue({ description: { inputs: ['main'], properties: [] } }),
+			} as unknown as NodeTypes;
+
+			const workflowJson = {
+				nodes: [
+					{
+						id: 'agent',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			} as unknown as WorkflowJSON;
+
+			const inputs = await nodeService.getResolvedNodeInputs!(workflowJson, 'Agent');
+
+			expect(inputs).toEqual(['main']);
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+			expect(acquireSpy.mock.invocationCallOrder[0]).toBeLessThan(
+				releaseSpy.mock.invocationCallOrder[0],
+			);
+		});
+	});
 });
 
 function createDataTableAdapterForTests(overrides?: {
@@ -1425,6 +1574,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -1750,6 +1900,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
 	const boundProjectId =
@@ -2215,6 +2366,42 @@ describe('createWorkflowAdapter', () => {
 		expect(updateData.nodes[0].credentials).toBeUndefined();
 	});
 
+	it('forwards expectedChecksum to workflowService.update', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON, {
+			expectedChecksum: 'expected-checksum',
+		});
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			'wf-new',
+			expect.objectContaining({ expectedChecksum: 'expected-checksum', source: 'n8n-ai' }),
+		);
+	});
+
+	it('throws WorkflowSaveConflictError when expectedChecksum mismatches', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.update.mockRejectedValueOnce(new ConflictError('conflict'));
+
+		await expect(
+			adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON, {
+				expectedChecksum: 'stale-checksum',
+			}),
+		).rejects.toBeInstanceOf(WorkflowSaveConflictError);
+	});
+
+	it('returns a checksum on create and update saves', async () => {
+		const { adapter } = createWorkflowAdapterForTests();
+
+		const created = await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+		const updated = await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+
+		expect(created.checksum).toEqual(expect.any(String));
+		expect(updated.checksum).toEqual(expect.any(String));
+	});
+
 	it('clears the AI-builder temporary marker when promoting the main workflow', async () => {
 		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowRepository } =
 			createWorkflowAdapterForTests();
@@ -2467,6 +2654,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -2485,42 +2673,27 @@ describe('createExecutionAdapter', () => {
 		vi.clearAllMocks();
 	});
 
-	it('passes user and sharingOptions to execution query when sharing is enabled', async () => {
-		const { adapter, mockExecutionRepository, mockUser } = createExecutionAdapterForTests({
-			sharingEnabled: true,
-		});
+	it.each([true, false])(
+		'passes scope-based sharingOptions to execution query (sharing licensed: %s)',
+		async (sharingEnabled) => {
+			const { adapter, mockExecutionRepository, mockUser } = createExecutionAdapterForTests({
+				sharingEnabled,
+			});
 
-		await adapter.list();
+			await adapter.list();
 
-		expect(mockExecutionRepository.findManyByRangeQuery).toHaveBeenCalledWith(
-			expect.objectContaining({
-				user: mockUser,
-				sharingOptions: {
-					scopes: ['workflow:read'],
-					projectRoles: ['project:editor'],
-					workflowRoles: ['workflow:owner', 'workflow:editor'],
-				},
-			}),
-		);
-	});
-
-	it('passes user and owner-only sharingOptions when sharing is disabled', async () => {
-		const { adapter, mockExecutionRepository, mockUser } = createExecutionAdapterForTests({
-			sharingEnabled: false,
-		});
-
-		await adapter.list();
-
-		expect(mockExecutionRepository.findManyByRangeQuery).toHaveBeenCalledWith(
-			expect.objectContaining({
-				user: mockUser,
-				sharingOptions: {
-					workflowRoles: ['workflow:owner'],
-					projectRoles: ['project:personalOwner'],
-				},
-			}),
-		);
-	});
+			expect(mockExecutionRepository.findManyByRangeQuery).toHaveBeenCalledWith(
+				expect.objectContaining({
+					user: mockUser,
+					sharingOptions: {
+						scopes: ['workflow:read'],
+						projectRoles: ['project:editor'],
+						workflowRoles: ['workflow:owner', 'workflow:editor'],
+					},
+				}),
+			);
+		},
+	);
 
 	it('does not pass accessibleWorkflowIds to execution query', async () => {
 		const { adapter, mockExecutionRepository } = createExecutionAdapterForTests({
@@ -2743,6 +2916,7 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -3051,5 +3225,325 @@ describe('createExecutionAdapter run()', () => {
 			if (original === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 			else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = original;
 		}
+	});
+});
+
+function createAdapterWithGatewayMock(
+	getGatewayConfig: Mock,
+	overrides?: {
+		credentialsService?: unknown;
+		telemetry?: unknown;
+		licensed?: boolean;
+	},
+): InstanceAiAdapterService {
+	const aiGatewayService = { getGatewayConfig };
+	const args = Array.from(
+		{ length: 35 },
+		() => ({}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[number],
+	);
+	args[0] = {
+		error: vi.fn(),
+		warn: vi.fn(),
+		scoped: vi.fn().mockReturnThis(),
+	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
+	args[1] = { ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+		typeof InstanceAiAdapterService
+	>[1];
+	if (overrides?.credentialsService) {
+		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[8];
+	}
+	args[12] = {} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12];
+	args[14] = { staticCacheDir: '/tmp', n8nFolder: '/tmp' } as unknown as ConstructorParameters<
+		typeof InstanceAiAdapterService
+	>[14];
+	args[21] = {
+		getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
+	args[25] = {
+		// Gateway exposure is gated on the AI Gateway license; default these
+		// gateway-focused fixtures to licensed so they exercise the enabled path.
+		isLicensed: vi.fn().mockReturnValue(overrides?.licensed ?? true),
+	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25];
+	args[29] = (overrides?.telemetry ?? {
+		track: vi.fn(),
+	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29];
+	args[32] = mock<OutboundHttp>() as unknown as ConstructorParameters<
+		typeof InstanceAiAdapterService
+	>[32];
+	args[33] = aiGatewayService as unknown as ConstructorParameters<
+		typeof InstanceAiAdapterService
+	>[33];
+	return new InstanceAiAdapterService(
+		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
+	);
+}
+
+describe('getGatewayConfigOrNull', () => {
+	async function callGet(adapter: InstanceAiAdapterService) {
+		return await (
+			adapter as unknown as {
+				getGatewayConfigOrNull: () => Promise<unknown>;
+			}
+		).getGatewayConfigOrNull();
+	}
+
+	it('returns the config when the gateway service resolves', async () => {
+		const config = {
+			nodes: ['openAi', 'anthropic'],
+			credentialTypes: ['openAiApi', 'anthropicApi'],
+			providerConfig: {},
+		};
+		const adapter = createAdapterWithGatewayMock(vi.fn().mockResolvedValue(config));
+
+		await expect(callGet(adapter)).resolves.toEqual(config);
+	});
+
+	it('returns null when the gateway service throws (unlicensed / 404 / network)', async () => {
+		const adapter = createAdapterWithGatewayMock(
+			vi.fn().mockRejectedValue(new Error('AI Gateway is not licensed')),
+		);
+
+		await expect(callGet(adapter)).resolves.toBeNull();
+	});
+
+	it('returns null without calling the service when the AI Gateway license is absent', async () => {
+		const getGatewayConfig = vi.fn().mockResolvedValue({
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+		});
+		const adapter = createAdapterWithGatewayMock(getGatewayConfig, { licensed: false });
+
+		await expect(callGet(adapter)).resolves.toBeNull();
+		expect(getGatewayConfig).not.toHaveBeenCalled();
+	});
+});
+
+describe('trackGatewayAvailability', () => {
+	async function callTrack(adapter: InstanceAiAdapterService) {
+		await (
+			adapter as unknown as {
+				trackGatewayAvailability: () => Promise<void>;
+			}
+		).trackGatewayAvailability();
+	}
+
+	it('emits instance_ai_gateway_available with node and credential-type counts on success', async () => {
+		const track = vi.fn();
+		const adapter = createAdapterWithGatewayMock(
+			vi.fn().mockResolvedValue({
+				nodes: ['openAi', 'anthropic'],
+				credentialTypes: ['openAiApi', 'anthropicApi'],
+				providerConfig: {},
+			}),
+			{ telemetry: { track } },
+		);
+
+		await callTrack(adapter);
+
+		expect(track).toHaveBeenCalledWith('instance_ai_gateway_available', {
+			nodeCount: 2,
+			credentialTypeCount: 2,
+		});
+	});
+
+	it('does not emit gateway_available when the fetch fails', async () => {
+		const track = vi.fn();
+		const adapter = createAdapterWithGatewayMock(
+			vi.fn().mockRejectedValue(new Error('unlicensed')),
+			{ telemetry: { track } },
+		);
+
+		await callTrack(adapter);
+
+		expect(track).not.toHaveBeenCalled();
+	});
+});
+
+describe('createNodeAdapter — n8n Connect annotations', () => {
+	type GatewayConfigLike = {
+		nodes: string[];
+		credentialTypes: string[];
+		providerConfig: Record<string, unknown>;
+		supportedActions?: Record<string, Record<string, string[]>>;
+		minNodeTypeVersion?: Record<string, number>;
+		hiddenNodeProperties?: Record<string, string[]>;
+	};
+
+	function createNodeServiceWithGateway(
+		nodes: Array<Record<string, unknown>>,
+		gatewayConfig: GatewayConfigLike | null,
+	) {
+		const getGatewayConfig = vi.fn(async () => {
+			if (gatewayConfig === null) throw new Error('AI Gateway is not licensed');
+			return gatewayConfig;
+		});
+
+		const adapter = createAdapterWithGatewayMock(getGatewayConfig);
+
+		(
+			adapter as unknown as {
+				nodesCache: {
+					promise: Promise<Array<Record<string, unknown>>>;
+					expiresAt: number;
+				};
+			}
+		).nodesCache = {
+			promise: Promise.resolve(nodes),
+			expiresAt: Date.now() + 60_000,
+		};
+
+		const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+		return {
+			adapter,
+			getGatewayConfig,
+			makeContext: () => adapter.createContext(mockUser),
+		};
+	}
+
+	const openAiNode = {
+		name: 'openAi',
+		displayName: 'OpenAI',
+		description: 'Chat with OpenAI models',
+		version: [1, 2],
+		properties: [],
+		inputs: ['main'],
+		outputs: ['main'],
+	} satisfies Record<string, unknown>;
+
+	const cohereNode = {
+		name: 'cohere',
+		displayName: 'Cohere',
+		description: 'Chat with Cohere',
+		version: 1,
+		properties: [],
+		inputs: ['main'],
+		outputs: ['main'],
+	} satisfies Record<string, unknown>;
+
+	it('attaches the gateway meta to a node listed in config.nodes on listSearchable', async () => {
+		const { makeContext } = createNodeServiceWithGateway([openAiNode, cohereNode], {
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+			supportedActions: { openAi: { chat: ['message'] } },
+			minNodeTypeVersion: { openAi: 2 },
+			hiddenNodeProperties: { openAi: ['baseURL'] },
+		});
+
+		const results = await makeContext().nodeService.listSearchable();
+		const openAiResult = results.find((n) => n.name === 'openAi');
+
+		expect(openAiResult).toBeDefined();
+		expect((openAiResult as { aiGateway?: unknown }).aiGateway).toEqual({
+			supported: true,
+			operations: { chat: ['message'] },
+			minVersion: 2,
+			hiddenProperties: ['baseURL'],
+		});
+	});
+
+	it('omits the gateway meta for nodes not in config.nodes', async () => {
+		const { makeContext } = createNodeServiceWithGateway([openAiNode, cohereNode], {
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+		});
+
+		const results = await makeContext().nodeService.listSearchable();
+		const cohereResult = results.find((n) => n.name === 'cohere');
+
+		expect(cohereResult).toBeDefined();
+		expect((cohereResult as { aiGateway?: unknown }).aiGateway).toBeUndefined();
+	});
+
+	it('emits no gateway meta on any node when the gateway config is unavailable', async () => {
+		const { makeContext } = createNodeServiceWithGateway([openAiNode, cohereNode], null);
+
+		const results = await makeContext().nodeService.listSearchable();
+
+		for (const r of results) {
+			expect((r as { aiGateway?: unknown }).aiGateway).toBeUndefined();
+		}
+	});
+
+	it('attaches the gateway meta on getDescription for a supported node', async () => {
+		const { makeContext } = createNodeServiceWithGateway([openAiNode], {
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+			supportedActions: { openAi: { chat: ['message'] } },
+			minNodeTypeVersion: { openAi: 2 },
+		});
+
+		const desc = await makeContext().nodeService.getDescription('openAi');
+
+		expect((desc as { aiGateway?: unknown }).aiGateway).toEqual({
+			supported: true,
+			operations: { chat: ['message'] },
+			minVersion: 2,
+		});
+	});
+
+	it('preserves the __operation_only__ marker for nodes without a resource dimension', async () => {
+		const pdfCoNode = {
+			name: 'pdfCo',
+			displayName: 'PDF.co',
+			description: 'PDF operations',
+			version: 1,
+			properties: [],
+			inputs: ['main'],
+			outputs: ['main'],
+		} satisfies Record<string, unknown>;
+
+		const { makeContext } = createNodeServiceWithGateway([pdfCoNode], {
+			nodes: ['pdfCo'],
+			credentialTypes: ['pdfCoApi'],
+			providerConfig: {},
+			supportedActions: { pdfCo: { __operation_only__: ['pdfToText', 'ocr'] } },
+		});
+
+		const results = await makeContext().nodeService.listSearchable();
+		expect((results[0] as { aiGateway?: unknown }).aiGateway).toEqual({
+			supported: true,
+			operations: { __operation_only__: ['pdfToText', 'ocr'] },
+		});
+	});
+});
+
+describe('isConfigEvalsEnabled', () => {
+	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
+
+	it('resolves true when config-evaluations is on the enabled variant', async () => {
+		const adapter = createAdapterWithGatewayMock(vi.fn());
+		const getFeatureFlags = vi.fn().mockResolvedValue({
+			[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
+		});
+		vi.spyOn(Container, 'get').mockReturnValue({ getFeatureFlags } as unknown as PostHogClient);
+
+		expect(await adapter.isConfigEvalsEnabled(user)).toBe(true);
+		expect(getFeatureFlags).toHaveBeenCalledWith(user);
+	});
+
+	it('resolves false when config-evaluations is not on the enabled variant', async () => {
+		const adapter = createAdapterWithGatewayMock(vi.fn());
+		vi.spyOn(Container, 'get').mockReturnValue({
+			getFeatureFlags: vi.fn().mockResolvedValue({
+				[CONFIG_EVALUATIONS_FLAG]: 'control',
+			}),
+		} as unknown as PostHogClient);
+
+		expect(await adapter.isConfigEvalsEnabled(user)).toBe(false);
+	});
+
+	it('resolves false when the flags are absent (PostHog outage returns {})', async () => {
+		const adapter = createAdapterWithGatewayMock(vi.fn());
+		vi.spyOn(Container, 'get').mockReturnValue({
+			getFeatureFlags: vi.fn().mockResolvedValue({}),
+		} as unknown as PostHogClient);
+
+		expect(await adapter.isConfigEvalsEnabled(user)).toBe(false);
 	});
 });

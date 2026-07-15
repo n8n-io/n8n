@@ -1,5 +1,29 @@
 import { getDateTimeSection, getSystemPrompt } from '../system-prompt';
 
+const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
+
+async function getSystemPromptWithEnabledModules(
+	enabledModules: string | undefined,
+): Promise<string> {
+	vi.resetModules();
+	if (enabledModules === undefined) {
+		delete process.env.N8N_ENABLED_MODULES;
+	} else {
+		process.env.N8N_ENABLED_MODULES = enabledModules;
+	}
+
+	const { getSystemPrompt: getSystemPromptFresh } = await import('../system-prompt.js');
+	return getSystemPromptFresh({});
+}
+
+afterEach(() => {
+	if (ORIGINAL_ENABLED_MODULES === undefined) {
+		delete process.env.N8N_ENABLED_MODULES;
+	} else {
+		process.env.N8N_ENABLED_MODULES = ORIGINAL_ENABLED_MODULES;
+	}
+});
+
 describe('getDateTimeSection', () => {
 	afterEach(() => vi.useRealTimers());
 
@@ -67,9 +91,10 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('## Tool Discovery');
 			expect(prompt).toContain('additional tools available beyond the ones listed above');
-			expect(prompt).toContain('search "credential" for the credentials tool');
 			expect(prompt).toContain('search "file" for filesystem tools');
-			expect(prompt).toContain('search "workflow" for workflow management');
+			expect(prompt).toContain('search "n8n docs" for `n8n-docs`');
+			expect(prompt).toContain('search "create tasks" for `create-tasks`');
+			expect(prompt).toContain('search "eval" for `evals`');
 			expect(prompt).not.toContain('connected service or MCP integration');
 			expect(prompt).not.toContain('connected MCP integrations');
 		});
@@ -96,7 +121,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain(
 				'search "notion page" or "linear issue" for the corresponding MCP tool',
 			);
-			expect(prompt).toContain('search "credential" for the credentials tool');
+			expect(prompt).toContain('search "n8n docs" for `n8n-docs`');
 		});
 
 		it('omits Tool Discovery guidance when deferred tool search is disabled even if MCP tools exist', () => {
@@ -191,14 +216,28 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain("Match the user's request against skill descriptions");
 			expect(prompt).toContain('**Single workflow build or edit**');
 			expect(prompt).toContain('`workflow-builder`');
-			expect(prompt).toContain('workspace file tools');
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).toContain('`planning`');
+			expect(prompt).toContain('load `create-tasks` via `load_tool`');
 			expect(prompt).toContain('planningContext.source: "planning-skill"');
 			expect(prompt).toContain('multiple durable artifacts');
 			expect(prompt).toContain('shared data-table schema/migration');
 			expect(prompt).not.toContain('build-workflow-with-agent');
+		});
+
+		it('forbids the build-agent tool during workflow building when the agents module is enabled', async () => {
+			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
+
+			expect(prompt).toContain('do not call `build-agent` at all');
+			expect(prompt).toContain('do not route around that by delegating to `build-agent`');
+		});
+
+		it('omits the build-agent fence and intent gate when the agents module is disabled', async () => {
+			const prompt = await getSystemPromptWithEnabledModules(undefined);
+
+			expect(prompt).not.toContain('build-agent');
+			expect(prompt).not.toContain('Intent gate');
 		});
 
 		it('routes standalone data-table work through the data-table-manager skill', () => {
@@ -208,9 +247,13 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('`data-table-manager`');
 			expect(prompt).toContain('what data tables do I have?');
 			expect(prompt).toContain(
-				'never call `data-tables` or `parse-file` without loading `data-table-manager` first',
+				'Never call `data-tables` or `parse-file` without loading `data-table-manager` first',
 			);
-			expect(prompt).toContain('Do not call `create-tasks` or `delegate`');
+			expect(prompt).toContain(
+				'never call `create-tasks` without loading it via `load_tool` first',
+			);
+			expect(prompt).toContain('never call `n8n-docs` without loading it via `load_tool` first');
+			expect(prompt).toContain('Do not call `create-tasks`');
 		});
 
 		it('loads data-table-manager before workflow-builder when tables are involved', () => {
@@ -264,6 +307,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('**n8n docs/product guidance**');
 			expect(prompt).toContain('credential setup');
 			expect(prompt).toContain('`n8n-docs-assistant`');
+			expect(prompt).toContain('load `n8n-docs` via `load_tool`');
 			expect(prompt).toContain('`n8n-docs`');
 		});
 
@@ -280,7 +324,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('needsBrowserSetup=true');
 			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly \(not `delegate`\)/);
+			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 	});
 
@@ -306,6 +350,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('knowledge-base/reference/index.json');
 			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');
+			expect(prompt).not.toContain('workspace_list_files');
+			expect(prompt).toContain('mkdir -p');
 			expect(prompt).toContain('Consult the knowledge base before planning or building');
 			expect(prompt).not.toContain('knowledge-base/best-practices/*.md');
 		});

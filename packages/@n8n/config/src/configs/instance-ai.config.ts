@@ -4,7 +4,7 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-opus-4-8"). */
+	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
 
@@ -27,10 +27,6 @@ export class InstanceAiConfig {
 	/** Token threshold for Reflector to condense observations. */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
 	reflectorObservationTokens: number = 40_000;
-
-	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
-	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
-	subAgentMaxSteps: number = 100;
 
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
@@ -175,6 +171,14 @@ export class InstanceAiConfig {
 	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
 	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
 	runDebugEnabled: boolean = false;
+
+	/**
+	 * EXPERIMENTAL: persist Instance AI events to a durable DB log
+	 * (`instance_ai_events`) and serve SSE replay + history from it. Off =
+	 * today's in-memory-only behavior. See RFC: instance-ai durable event log.
+	 */
+	@Env('N8N_INSTANCE_AI_DURABLE_LOG')
+	durableLog: boolean = false;
 
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')

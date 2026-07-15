@@ -18,12 +18,14 @@ remotely over a secure SSE connection.
 |------------|-------|----------|--------------------|
 | **Filesystem (read)** | `read_file`, `list_files`, `get_file_tree`, `search_files` | All | `allow` |
 | **Filesystem (write)** | `write_file`, `edit_file`, `create_directory`, `delete`, `move`, `copy_file` | All | `ask` |
-| **Shell** | `shell_execute` | All | `deny` |
+| **Shell** | `shell_execute` | macOS · Linux/WSL2 | `deny` |
 | **Computer** | `screen_screenshot`, `screen_screenshot_region`, `mouse_move`, `mouse_click`, `mouse_double_click`, `mouse_drag`, `mouse_scroll`, `keyboard_type`, `keyboard_key_tap`, `keyboard_shortcut` | macOS, Linux (X11), Windows | `deny` |
 | **Browser** | 32 browser automation tools | All | `ask` |
 
 Modules that require native dependencies (screenshot, mouse/keyboard) are
 automatically disabled when their platform requirements aren't met.
+
+Shell execution runs inside an OS-level sandbox, see [Shell sandboxing](#shell-sandboxing).
 
 ## Quick start
 
@@ -96,6 +98,7 @@ Each capability has an independent permission mode (`deny` \| `ask` \| `allow`):
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--computer-shell-timeout <ms>` | `30000` | Shell command timeout |
+| `--dangerously-disable-shell-sandbox` | | Run `shell_execute` without the OS sandbox (**insecure** — see [Shell sandboxing](#shell-sandboxing)) |
 
 #### Browser
 
@@ -113,6 +116,7 @@ take precedence.
 | `N8N_GATEWAY_LOG_LEVEL` | `--log-level` |
 | `N8N_GATEWAY_FILESYSTEM_DIR` | `--dir` |
 | `N8N_GATEWAY_COMPUTER_SHELL_TIMEOUT` | `--computer-shell-timeout` |
+| `N8N_GATEWAY_DANGEROUSLY_DISABLE_SHELL_SANDBOX` | `--dangerously-disable-shell-sandbox` (set to `true`) |
 | `N8N_GATEWAY_BROWSER_DEFAULT` | `--browser-default` |
 | `N8N_GATEWAY_AUTO_CONFIRM` | `--auto-confirm` (set to `true`) |
 | `N8N_GATEWAY_NON_INTERACTIVE` | `--non-interactive` (set to `true`) |
@@ -124,6 +128,10 @@ take precedence.
 
 > **Note:** `--allowed-origins` is CLI-only and cannot be configured via environment variables.
 > This is intentional — it prevents a malicious actor from overriding the allowlist via an env var.
+
+> **Note:** When connecting to a non-cloud instance (any origin not matching
+> `https://*.app.n8n.cloud`), resource confirmations are always prompted in the terminal —
+> instance-side confirmation is only available for n8n cloud instances.
 
 ## Module reference
 
@@ -156,7 +164,8 @@ operations — paths outside the configured root are rejected.
 
 ### Shell
 
-Execute shell commands with configurable timeout.
+Execute shell commands with configurable timeout. Commands run inside an
+OS-level sandbox — see [Shell sandboxing](#shell-sandboxing).
 
 | Tool | Description |
 |------|-------------|
@@ -232,9 +241,14 @@ resource is rejected even when the capability is set to `allow`.
 
 ## Prerequisites
 
-### Filesystem & shell
+### Filesystem
 
 No extra dependencies — works on all platforms.
+
+### Shell
+
+macOS works out of the box. Linux and Windows (WSL2) need `bubblewrap` and
+`socat`; native Windows is not supported. See [Shell sandboxing](#shell-sandboxing).
 
 ### Screenshot
 
@@ -261,6 +275,87 @@ npx playwright install chromium firefox
 
 For local browser modes, see the
 [@n8n/mcp-browser prerequisites](../mcp-browser/README.md#prerequisites).
+
+## Shell sandboxing
+
+`shell_execute` runs every command inside an OS-level sandbox provided by
+[`@anthropic-ai/sandbox-runtime`](https://github.com/anthropic-experimental/sandbox-runtime),
+so a command, and every child process it spawns can only touch the files and
+network the sandbox permits.
+
+### What it restricts
+
+- **Writes** are confined to the working directory. The gateway settings directory is denied for both read and write.
+- **Reads** are permitted except for some sensitive directories.
+- **Outbound network** is blocked, no domains are allowed.
+
+These boundaries are enforced by the OS, so they apply to the shell command and all of its subprocesses.
+
+### OS-level enforcement
+
+| Platform | Backend | Setup |
+|----------|---------|-------|
+| macOS | Seatbelt (built in) | None |
+| Linux | bubblewrap + socat | Install packages (below) |
+| WSL2 | bubblewrap + socat | Install packages (below) |
+| WSL1 | — | Not supported — upgrade to WSL2 |
+| Native Windows | — | Not supported — run inside WSL2 |
+
+The native Windows backend is not a boundary against a deliberately malicious
+process, so it is treated as unavailable. On Windows, run the gateway inside
+WSL2.
+
+### Linux / WSL2 setup
+
+The sandbox needs two packages:
+
+- [`bubblewrap`](https://github.com/containers/bubblewrap) — unprivileged
+  sandbox that enforces filesystem isolation (`bwrap`)
+- [`socat`](http://www.dest-unreach.org/socat/) — relays network traffic
+  through the sandbox proxy
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install bubblewrap socat
+
+# Fedora
+sudo dnf install bubblewrap socat
+```
+
+> **Ubuntu 24.04+ (including WSL2):** the default AppArmor policy prevents
+> bubblewrap from creating the user namespaces it needs. Check with
+> `sysctl kernel.apparmor_restrict_unprivileged_userns`; if it returns `1`,
+> grant `bwrap` the capability and reload AppArmor:
+>
+> ```bash
+> sudo tee /etc/apparmor.d/bwrap > /dev/null <<'EOF'
+> abi <abi/4.0>,
+> include <tunables/global>
+>
+> profile bwrap /usr/bin/bwrap flags=(unconfined) {
+>   userns,
+>   include if exists <local/bwrap>
+> }
+> EOF
+> sudo systemctl reload apparmor
+> ```
+
+### Disabling the sandbox
+
+`--dangerously-disable-shell-sandbox` (or
+`N8N_GATEWAY_DANGEROUSLY_DISABLE_SHELL_SANDBOX=true`) runs shell commands
+**without** any OS isolation.
+
+> **Warning:** this removes the filesystem and network boundaries entirely: a
+> command can read your SSH keys, write anywhere your user can, and reach any
+> host. Only use it inside an already-isolated, trusted environment such as a
+> disposable container or VM.
+
+### Limitations
+
+The sandbox is an OS-level guardrail, not a full VM. Treat it as protection against accidental
+or opportunistic access rather than containment for fully untrusted code; for
+stronger isolation, run the gateway in a container or VM.
 
 ## Development
 

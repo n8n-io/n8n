@@ -6,12 +6,13 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
-import { nextTick, shallowRef } from 'vue';
+import { nextTick, ref, shallowRef } from 'vue';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -64,7 +65,7 @@ import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
-import { WAIT_NODE_TYPE } from '@/app/constants';
+import { WAIT_NODE_TYPE, AGENT_NODE_TYPE, TELEGRAM_NODE_TYPE } from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 
 const mockConfirm = vi.fn();
@@ -85,6 +86,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		isEnabled: { value: false },
 		isCredentialTypeSupported: vi.fn(() => false),
 		isActionSupported: vi.fn(() => true),
+		isActionOptionVisible: vi.fn(() => true),
 		isNodePropertyHidden: vi.fn(() => false),
 		balance: { value: undefined },
 		budget: { value: undefined },
@@ -118,6 +120,7 @@ const workflowDocumentStoreMock = {
 	getParentNodes: vi.fn().mockReturnValue([]),
 	getParentNodesByDepth: vi.fn().mockReturnValue([]),
 	getNodeByName: vi.fn().mockReturnValue(undefined),
+	checkIfNodeHasChatOrManualChatParent: vi.fn().mockReturnValue(false),
 	name: '',
 	settings: {},
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
@@ -147,6 +150,7 @@ describe('ParameterInputList', () => {
 		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);
 		workflowDocumentStoreMock.getNodeByName.mockReturnValue(undefined);
+		workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
 			shallowRef(workflowDocumentStoreMock) as unknown as ReturnType<
 				typeof injectWorkflowDocumentStore
@@ -1180,6 +1184,143 @@ describe('ParameterInputList', () => {
 	});
 
 	/**
+	 * Tests special parameter handling for Agent v3+ nodes.
+	 * Validates that the 'auto' promptType option stays visible and toggles disabled state
+	 * based on chat-trigger ancestry (Chat Trigger or Manual Chat Trigger).
+	 */
+	describe('updateAgentParameters', () => {
+		const agentParameters: INodeProperties[] = [
+			{
+				displayName: 'Source for Prompt (User Message)',
+				name: 'promptType',
+				type: 'options',
+				default: 'auto',
+				options: [
+					{ name: 'Connected Chat Trigger Node', value: 'auto' },
+					{ name: 'Define below', value: 'define' },
+				],
+			},
+		];
+
+		const optionsListStub = {
+			props: ['parameter'],
+			template:
+				'<div data-test-id="param-options"><span v-for="o in parameter.options" :key="o.value" :data-test-id="`param-option-${o.value}`" :data-disabled="String(o.disabled === true)" :data-description="o.description ?? \'\'">{{ o.name }}</span></div>',
+		};
+
+		const agentNode = (typeVersion: number) =>
+			({
+				id: 'agent-123',
+				name: 'AI Agent',
+				type: AGENT_NODE_TYPE,
+				typeVersion,
+				position: [100, 200],
+				parameters: {},
+			}) as INodeUi;
+
+		it('should keep the auto option visible but disabled when no chat trigger is connected', async () => {
+			ndvStore.activeNode = agentNode(3.1);
+			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
+
+			const { findByText, getByTestId } = renderComponent({
+				props: {
+					parameters: agentParameters,
+					nodeValues: {},
+				},
+				global: {
+					stubs: {
+						ParameterInputFull: optionsListStub,
+						Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+					},
+				},
+			});
+
+			// 'Define below' remains available
+			expect(await findByText('Define below')).toBeInTheDocument();
+			// 'auto' remains visible but disabled when there is no chat trigger ancestor
+			expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
+			expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'true');
+			expect(getByTestId('param-option-auto')).toHaveAttribute(
+				'data-description',
+				'parameterInputList.autoRequiresChatTriggerDescription',
+			);
+		});
+
+		it('should keep the auto option when a chat trigger is connected', async () => {
+			ndvStore.activeNode = agentNode(3.1);
+			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(true);
+
+			const { findByText, getByTestId } = renderComponent({
+				props: {
+					parameters: agentParameters,
+					nodeValues: {},
+				},
+				global: {
+					stubs: {
+						ParameterInputFull: optionsListStub,
+						Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+					},
+				},
+			});
+
+			expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
+			expect(await findByText('Define below')).toBeInTheDocument();
+			expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'false');
+		});
+
+		it('should toggle auto option disabled state when chat-trigger ancestry changes live', async () => {
+			// Drive the ancestry check from a reactive ref so toggling it mimics wiring/removing a
+			// chat trigger upstream while the Agent NDV is open. The computed watch source must pick
+			// up the change and re-run the parameter transform without a full re-render.
+			vi.useFakeTimers();
+			try {
+				const hasChatParent = ref(false);
+				workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockImplementation(
+					() => hasChatParent.value,
+				);
+
+				ndvStore.activeNode = agentNode(3.1);
+
+				const { findByText, getByTestId } = renderComponent({
+					props: {
+						parameters: agentParameters,
+						nodeValues: {},
+					},
+					global: {
+						stubs: {
+							ParameterInputFull: optionsListStub,
+							Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+						},
+					},
+				});
+
+				// Initially no chat-trigger ancestry: 'auto' is disabled.
+				expect(await findByText('Define below')).toBeInTheDocument();
+				expect(await findByText('Connected Chat Trigger Node')).toBeInTheDocument();
+				expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'true');
+
+				// Wire a chat trigger upstream (ancestry flips to true): 'auto' is enabled.
+				hasChatParent.value = true;
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(250);
+				await flushPromises();
+
+				expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'false');
+
+				// Remove the chat trigger upstream (ancestry flips back to false): 'auto' is disabled again.
+				hasChatParent.value = false;
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(250);
+				await flushPromises();
+
+				expect(getByTestId('param-option-auto')).toHaveAttribute('data-disabled', 'true');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	/**
 	 * Validates error/warning display for parameters with issues.
 	 * Tests issue icons, tooltips, and hiddenIssuesInputs functionality.
 	 */
@@ -1749,6 +1890,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -1784,6 +1926,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -1840,6 +1983,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(
 					(_node: INode | null, param: string) => param === 'modelSource',
 				),
@@ -1884,6 +2028,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
 				// Mirror the real store: only hidden when a gateway-managed credential is present
 				isNodePropertyHidden: vi.fn(
 					(node: INode | null, param: string) =>
@@ -1956,6 +2101,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -1990,6 +2136,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -2028,6 +2175,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -2071,6 +2219,7 @@ describe('ParameterInputList', () => {
 				isCredentialTypeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
@@ -2169,6 +2318,104 @@ describe('ParameterInputList', () => {
 				// Note: actual parameters rendered depend on node-type specific transformations
 				expect(container.querySelector('.parameter-input-list-wrapper')).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('Telegram HITL parameter gating', () => {
+		const telegramNode = {
+			...TEST_NODE_NO_ISSUES,
+			type: TELEGRAM_NODE_TYPE,
+		};
+
+		// All three are simple types that route through the stubbed ParameterInputFull,
+		// which forwards its `path` prop as a DOM attribute, so presence/absence can be
+		// asserted without needing each parameter's real (unstubbed) rendering.
+		const telegramParameters: INodeProperties[] = [
+			{ displayName: 'Chat ID', name: 'chatId', type: 'string', default: '' },
+			{ displayName: 'Approve Within Chat', name: 'chatApproval', type: 'boolean', default: false },
+			{
+				displayName: 'Chat Approval Options',
+				name: 'chatApprovalOptions',
+				type: 'string',
+				default: '',
+			},
+		];
+
+		it('hides the advanced HITL parameters when the experiment is off', async () => {
+			ndvStore.activeNode = telegramNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: telegramParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="chatId"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApproval"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="chatApprovalOptions"]')).not.toBeInTheDocument();
+		});
+
+		it('shows the advanced HITL parameters when the experiment is on', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			ndvStore.activeNode = telegramNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: telegramParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="chatId"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+		});
+
+		it('does not filter parameters for other node types', async () => {
+			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+			const { container } = renderComponent({
+				props: {
+					parameters: telegramParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+		});
+
+		it('reveals the advanced HITL parameters once the flag resolves after mount', async () => {
+			// PostHog flags resolve asynchronously after the app boots, so the NDV can
+			// mount before the real flag value is known. The parameter list must pick
+			// up the flag turning on afterwards, not just at initial render.
+			vi.useFakeTimers();
+			try {
+				const flagEnabled = ref(false);
+				mockedStore(usePostHog).isFeatureEnabled.mockImplementation(() => flagEnabled.value);
+				ndvStore.activeNode = telegramNode;
+
+				const { container } = renderComponent({
+					props: {
+						parameters: telegramParameters,
+						nodeValues: TEST_NODE_VALUES,
+					},
+				});
+				await flushPromises();
+
+				expect(container.querySelector('[path="chatApproval"]')).not.toBeInTheDocument();
+
+				flagEnabled.value = true;
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(250);
+				await flushPromises();
+
+				expect(container.querySelector('[path="chatApproval"]')).toBeInTheDocument();
+				expect(container.querySelector('[path="chatApprovalOptions"]')).toBeInTheDocument();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 });

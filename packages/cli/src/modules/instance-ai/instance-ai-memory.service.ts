@@ -4,6 +4,8 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
 	InstanceAiThreadMessagesResponse,
+	InstanceAiThreadOrigin,
+	InstanceAiThreadSourcePersisted,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -21,14 +23,22 @@ import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
+	messageParserStats,
 	parseStoredMessages,
 } from './message-parser';
 import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+
+export interface InstanceAiThreadLaunchMetadata {
+	source: InstanceAiThreadSourcePersisted;
+	origin: InstanceAiThreadOrigin;
+	sourceContext?: Record<string, unknown>;
+}
 
 function isAgentMessageLike(value: unknown): value is AgentDbMessage {
 	return (
@@ -88,6 +98,7 @@ export class InstanceAiMemoryService {
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly checkpointRepository: InstanceAiCheckpointRepository,
 		private readonly pendingConfirmationRepository: InstanceAiPendingConfirmationRepository,
+		private readonly durableLogMetrics: DurableLogMetrics,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -115,6 +126,7 @@ export class InstanceAiMemoryService {
 		userId: string,
 		threadId: string,
 		projectId: string,
+		launchMetadata?: InstanceAiThreadLaunchMetadata,
 	): Promise<InstanceAiEnsureThreadResponse> {
 		const existing = await this.agentMemory.getThread(threadId);
 		if (existing) {
@@ -133,6 +145,17 @@ export class InstanceAiMemoryService {
 				id: threadId,
 				resourceId: userId,
 				title: '',
+				...(launchMetadata
+					? {
+							metadata: {
+								source: launchMetadata.source,
+								origin: launchMetadata.origin,
+								...(launchMetadata.sourceContext
+									? { sourceContext: launchMetadata.sourceContext }
+									: {}),
+							},
+						}
+					: {}),
 			},
 			projectId,
 		);
@@ -224,7 +247,11 @@ export class InstanceAiMemoryService {
 		const checkpointMessages = await this.loadInFlightCheckpointMessages(threadId);
 		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
 
+		const fallbacksBefore = messageParserStats.fallbackActivations;
 		const messages = parseStoredMessages(storedMessages, snapshots);
+		this.durableLogMetrics.notifyParserFallbacks(
+			messageParserStats.fallbackActivations - fallbacksBefore,
+		);
 		await this.flagExpiredConfirmations(messages);
 
 		const projectId = await this.agentMemory.getThreadProjectId(threadId);

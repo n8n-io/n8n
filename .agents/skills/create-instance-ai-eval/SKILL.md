@@ -19,6 +19,20 @@ auto-discovers `*.json` and validates against
 [README](../../../packages/@n8n/instance-ai/evaluations/README.md) is the
 exhaustive field reference; this skill is the opinionated *how*.
 
+> **Committing new case JSONs into the repo is no longer the recommended
+> approach.** Author the file locally (uncommitted), calibrate it against a real
+> build, then **push it to a curated lang-tracer suite** with
+> `eval:langtracer-push` (see [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)).
+> The suite is the home for the case; the eval CLI reads it back via
+> `--source langtracer`. You still write the JSON file — it's just the input to
+> the push, not a committed artifact.
+>
+> **Exception — seeded cases.** The case-write API can't hold any seeding mode, so
+> seeded cases are never pushed. A `seedThread` case is a local throwaway (don't
+> commit it either — it dies when its trace is pruned); a `seedFile` or
+> `priorConversation` case isn't transient and has no suite home, so it's the one
+> sanctioned exception — it lives as committed JSON. See [`case-shapes.md`](case-shapes.md).
+
 ## Where the best cases come from
 
 The strongest cases encode a **real** failure, not an invented premise. Two
@@ -69,6 +83,30 @@ need + constraint ("I need field X and the built-in node doesn't expose it, so
 pull it straight from the API") — not as an implementation spec ("use an HTTP
 Request node").
 
+**Trim to the smallest multi-turn conversation that reproduces the issue.**
+Real sourced threads are long (dozens of turns of setup, debugging, and
+tangents) — do **not** transcribe them. Distill to the fewest turns that still
+drive the build or behaviour under test. Every retained turn must earn its place:
+a turn stays only if it is *load-bearing* — a value the agent must ask for
+(withheld until asked, via a director note), a correction/push-back the case
+exists to test, or a plan approval that gates the build. If removing a turn
+doesn't change what's tested, remove it. **Collapse to a single turn** whenever
+the whole request can be stated at once without a load-bearing exchange; keep it
+multi-turn *only* for those exchanges, and keep each director script in one turn
+(don't fabricate assistant "done" turns to sequence steps — see
+[`case-shapes.md`](case-shapes.md)). A minimal conversation isolates the
+capability; a transcribed one buries it in noise and tests instruction-following.
+
+**Size the build, not just the assertions.** Real sourced prompts are often
+kitchen-sink ("production-ready, runs forever, 3 feed posts *and* 8 stories a
+day", "generate 50 articles daily") and reliably blow the ~900s build budget (see
+"Known harness limitations"). A **faithful trim is a legitimate authoring move**:
+reduce batch sizes, drop one of several parallel pipelines, or merge adjacent AI
+steps so the case builds within budget — then note the reduction in the case
+`description` ("the original request also asked for an 8-stories/day pipeline;
+scoped to feed posts so it builds in budget"). Keep the capability under test; cut
+the combinatorial bulk. A case that never builds tests nothing.
+
 ## Workflow
 
 1. **State the must-haves first.** From the conversation alone, list what every
@@ -78,15 +116,36 @@ Request node").
    one** of `executionScenarios` / `processExpectations` / `outcomeExpectations`.
 2. **Draft the case** from the template below; validate it loads (see
    "Validate").
-3. **Build it once** against a running instance (see
+3. **Smoke-test the *environment* with one case before any batch.** Run a single
+   case end-to-end first. This validates auth / model / `--base-url` / the built
+   dist for ~1/Nth the cost — distinct from validating a *case*. If that one case
+   crashes at execution (especially with an identical error you'd expect to hit
+   every case), fix the environment before running the batch (see "A red is
+   signal" → environment check). Running 15 cases only to discover a stale-dist
+   crash on all of them wastes a full run.
+4. **Build it once** against a running instance (see
    [`running-evals.md`](running-evals.md)) with `--keep-workflows` so the built
    workflow stays for inspection.
-4. **Inspect** — read the built workflow (the run prints `BUILT (<id>)`; fetch
+5. **Inspect** — read the built workflow (the run prints `BUILT (<id>)`; fetch
    via `GET /rest/workflows/<id>`) and the HTML report's transcript to see what
    the agent actually did.
-5. **Calibrate** — relax any assertion the build satisfied a valid-but-different
-   way, tighten any a wrong build would have slipped past, and phrase
-   `executionScenarios` to match how the workflow runs on mocked data.
+6. **Calibrate — sharpen assertions; never dull them to force a green.** Fix
+   assertions that are genuinely mis-sized: relax one that pins a choice the
+   conversation left open (so a valid *alternative* build wrongly fails), tighten
+   one a wrong build would slip past, and phrase `executionScenarios` to match how
+   the workflow runs on mocked data. But when a scenario goes red because the
+   build has a real gap, or because the harness can't exercise it, **that red is
+   the result — keep it and surface why** (see "A red is signal", below). Never
+   delete a scenario, weaken an assertion, or drop to build-only just to make the
+   run green.
+7. **Push to the suite — do NOT commit the JSON.** Once calibrated, push the case
+   into its curated lang-tracer suite with `eval:langtracer-push` (see
+   [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)); the suite is the
+   case's home, not the repo. Leave the `data/workflows/*.json` file uncommitted
+   (or delete it once it's in the suite). Committing new case JSONs into the repo
+   is no longer the approach. (Exception: seeded cases can't be pushed — a
+   `seedFile`/`priorConversation` case stays committed JSON, a `seedThread` case is
+   a local throwaway; see [`case-shapes.md`](case-shapes.md).)
 
 `--iterations N` is available to measure flakiness (pass@k / pass^k) — reach for
 it when you suspect a case is non-deterministic or before promoting it to a
@@ -115,6 +174,49 @@ doesn't lose value: it flips from *capability-gap* (currently red) to *regressio
 guard* (currently green, catches a re-introduction). Keep it — but only after the
 non-vacuous check above proves it *would* turn red on the bad behaviour, else the
 "guard" guards nothing.
+
+## A red is signal — surface it, don't work around it
+
+Calibration exists to right-size assertions, **not** to make a case pass. When a
+run turns a scenario or expectation red, classify the red first — then keep it.
+
+**First rule out the environment.** Before reading any red as a signal about a
+case, check the shape of the failures across the run. If **every scenario fails
+with the *same* execution error** while the builds succeed and `outcomeExpectations`
+pass, that is almost never the cases — it's a broken environment, most often a
+**stale `packages/core` / `packages/cli` dist** after a branch or worktree switch
+(a refactor moved a runtime export and the built dist still calls the old one;
+e.g. `(0 , n8n_workflow_1.createDeferredPromise) is not a function` after
+`createDeferredPromise` moved to `@n8n/utils`). Fix it, don't calibrate around it:
+run a full ordered `pnpm build` (a targeted `--filter` build can fail on unrelated
+stale-dep type errors), then **restart the instance** — the running node process
+holds the old dist in memory, so rebuilding on disk changes nothing until restart
+(and `kill` by env-var pattern misses it — kill the actual `lsof -t -iTCP:<port>`
+PID). Re-probe one case, confirm executions run, then re-run the batch. Only once
+uniform environment failures are excluded do the three categories below apply:
+
+- **Real build / capability gap** — the agent's workflow is wrong or missing
+  something the user asked for (a miswired branch, a missing retry, wrong field
+  keys). This is exactly what the eval is for. **Keep it red.** Don't loosen the
+  assertion or drop the scenario; a currently-red gap is the capability signal
+  today, and a re-introduction guard once the builder improves.
+- **Harness limitation** — the build is correct but the mock/execution layer
+  can't exercise the path (see "Known harness limitations", below). **Keep the
+  scenario and say so in its `description`** — that this red is harness-caused,
+  not a build defect — so nobody misreads it as a product bug. Keep it out of
+  gated tiers if it hard-fails every run; when the harness gains the capability it
+  starts earning its keep with no re-authoring.
+- **Genuine non-determinism** — the *same* build flips green/red across runs.
+  This is the only real "noise". Confirm it with `--iterations N` before calling
+  it flaky, then de-tier and note it; deletion is the last resort.
+
+The one move to never make is **working around a red by weakening what the case
+checks** — deleting a failing scenario, loosening an assertion until a wrong
+build would pass, or quietly converting to build-only. That makes the suite look
+greener than the product is, which is the opposite of the eval's job: bugs and
+harness gaps are the deliverable, so **highlight them, don't engineer around
+them**. If you catch yourself editing a case so that a known-bad build would now
+pass, stop.
 
 ## Example
 
@@ -203,11 +305,74 @@ nodes get LLM-generated pin data). So:
   state.
 - The strongest scenarios exercise **external-service responses** — that's what
   the harness reproduces most faithfully.
-- **Data tables are never mocked.** Any scenario that reads a stored value and
-  compares (change-detection, dedup, "last seen") is unreliable — see "harness
-  flakiness" below.
+- **Data Table *reads* are pinned to the scenario.** A read op (`get` /
+  `rowExists` / `rowNotExists`) is treated as the scenario's "stored state" and
+  pinned with data derived from your `dataSetup`, so change-detection / dedup /
+  "last seen" scenarios *can* be exercised — describe the stored rows in
+  `dataSetup`. Two caveats: the pinned rows are LLM-generated (steered, not
+  byte-exact — don't assert exact values off them), and *writes/inserts* aren't
+  pinned (they hit the real per-thread table, recreated schema-only with **no
+  rows**), so read-after-write within one run isn't faithful — the read reflects
+  `dataSetup`, not what the run just wrote.
 - Don't assert exact counts that depend on mock generation ("exactly 7 posts").
   Say "fewer than the original 10".
+
+### Known harness limitations that turn scenarios red regardless of the build
+
+These produce a **reliable** red on a *correct* build. Don't engineer around them
+— write the scenario for the behaviour you want and note in `description` that the
+red is harness-caused (per "A red is signal", above):
+
+- **Resource-locator fields left empty for setup** (Google Sheets / Drive /
+  Calendar and similar node pickers). The agent legitimately leaves the
+  document/folder/calendar ID blank for the user to pick at setup; the mock
+  substitutes `__evalMockResource`, and the node then crashes looking it up
+  ("Sheet with ID __evalMockResource not found", or "Cannot read properties of
+  undefined"). Any scenario whose success path runs *through* such a node
+  hard-fails before anything downstream executes.
+- **Trigger and Data-Table-read pin data is *LLM-generated*, so not byte-exact.**
+  Both are steered by your `dataSetup` (see the mock-layer section above — you
+  *can* influence what a trigger emits or what a stored-row read returns), but
+  because the values are generated, a scenario that asserts exact values or counts
+  off them is flaky. Assert shape/branch/relative facts, not exact figures. (The
+  residual hard red here: polling / form triggers still occasionally fail to load
+  entirely — "workflow not found".)
+- **Mock response shape** — the LLM-generated mock response can omit the real
+  envelope, crashing a downstream parse/format node. Recurring, reproducible
+  shapes to expect (all produce a red on a *correct* build):
+  - **OpenAI** mock returns a plain `{content: "..."}` instead of the Responses
+    API envelope (`output[0].content[0].text`), so a LangChain chain / **Structured
+    Output Parser** receives an empty response and crashes. Any build with an
+    OpenAI chat model feeding a structured-output/parser node can red on this.
+  - **Gmail** mock returns headers as top-level capitalized fields (`From`,
+    `Subject`) instead of under `payload.headers`, so a Code/Filter node reading
+    the sender/subject gets empty strings (e.g. a "drop no-reply senders" safety
+    gate lets everything through). Assert the *wiring/ordering* of such a gate in
+    `outcomeExpectations`, not its runtime effect in a scenario.
+  - A less-common API (e.g. Gemini's top-level `candidates`) can omit its envelope
+    the same way.
+- **Agent-tool nodes can't be executed standalone.** An AI-Agent *tool* node
+  (`toolHttpRequest` and other `supplyData`-only LangChain nodes with no `execute`
+  method) only runs when the agent invokes it; the harness executing it directly
+  fails with `has a "supplyData" method but no "execute" method`. A near-universal
+  red for chat-trigger / AI-agent build cases whose tool is an HTTP-request tool —
+  the build is correct, so carry correctness in `outcomeExpectations` (agent wired
+  to trigger + model + tool) and note the execution red as harness-caused.
+- **A build can time out and produce no scored result at all** — the run reports
+  `BUILD FAILED: Run timed out` and zero graded expectations. Don't assume "spec
+  too big": the more common cause is a **single-prompt case where the agent asks
+  a clarifying `ask-user` question** and the build hangs on the unanswered
+  question until the per-iteration timeout (see [`case-shapes.md`](case-shapes.md)
+  — only confirmations auto-approve). Before treating a timeout as spec size,
+  **classify it**: read the agent's final response in the report / trace (did it
+  ask a question? flag an infeasibility? or genuinely churn through a huge
+  build?), and **re-run the case solo (`--concurrency 1`)** — concurrency makes a
+  stalled build hit the cap and masks the real reason, which a solo run surfaces
+  in seconds. Fix per cause: a clarifying-question stall → author multi-turn with
+  a director note that pre-answers it; a genuine infeasibility → it's an
+  infeasibility/honesty behaviour case (`processExpectations`), not a build case;
+  a true oversized spec → the timeout is itself a finding, but note it so the
+  zero isn't mistaken for a scored failure.
 
 ## outcomeExpectations vs processExpectations
 
@@ -251,6 +416,7 @@ case, where the source and channel were **left unspecified**):
 | Verdict | Assertion | Why |
 |---|---|---|
 | ❌ too tight | "Has an HTTP Request node calling `flightaware.com`" | Vendor was unspecified; a valid AeroDataBox build fails. (If the user *had* said "scrape FlightAware", this would be correct.) |
+| ❌ too tight | "Publishes via HTTP Request nodes" | Pins the *transport* when a first-party node is the idiomatic path — e.g. the Facebook Graph API node is the correct way to reach the Instagram Graph API, so a valid build using it fails. Assert the capability ("publishes to Instagram via the Graph API, through the Facebook Graph API node or HTTP Request"), not the mechanism. |
 | ❌ too loose | "Fetches flight data from somewhere" | A workflow that fetches but never compares passes — doesn't prove change-detection. |
 | ✅ right | "Persists the previously-seen status and compares it to the freshly-fetched one" | The defining behaviour; substitution-proof across vendors and storage choices. |
 | ✅ right | "Alert is sent only on the change-detected branch, gated by a conditional" | Proves the gate without pinning node or channel. |
@@ -265,12 +431,17 @@ Two different things — keep them apart:
 - **Robust assertion design (always do this).** The agent's unspecified choices
   vary run to run. Source-agnostic `outcomeExpectations` for an unspecified
   source aren't a concession to flakiness — they're the *correct* assertion.
-- **Harness flakiness (a defect — mitigate, don't accept).** The mock layer
-  doesn't reliably honour `dataSetup` for **state-bearing reads** (a data-table
-  "previous value"), so change-detection scenarios can flip run to run. When you
-  hit it: tighten `dataSetup`, move the fragile intent to a `processExpectation`,
-  or keep the scenario out of gated tiers — and note it in `description`. A
-  scenario whose pass/fail is noise is worse than no scenario.
+- **Harness limitations (surface them, don't hide them).** Some paths hard-fail
+  on a correct build regardless of `dataSetup` — empty resource-locator fields
+  that crash Sheets/Drive/Calendar nodes, polling triggers failing to load (see
+  "Known harness limitations" above). (State-bearing Data Table *reads* are no
+  longer in this bucket — they're pinned from `dataSetup`; only the write path and
+  exact-value assertions stay unreliable.) The fix is to *document*, not to *work
+  around*: note the limitation in `description` and keep a hard-failing scenario
+  out of gated tiers.
+  Only when a scenario flips **non-deterministically** run to run is it genuine
+  noise worth removing — a scenario that reliably fails for a documented harness
+  reason is a standing record of what the harness can't yet test, and stays.
 
 ## Negative execution scenarios
 
@@ -310,7 +481,12 @@ concluding whether the failure is your case, the build, or the harness.
   debugging.
 - **`eval-results.json`** — structured results (the machine-readable artifact;
   the direct loop produces this even with no LangSmith). Good for an LLM or
-  script to parse.
+  script to parse. **For per-case attribution under concurrency, parse this, not
+  the streamed verbose log** — with more than one lane the log lines interleave
+  across cases, so a `[scenario] FAIL` line in the stream can't be reliably tied to
+  its case. Authoritative fields: `testCases[].buildSuccessCount`,
+  `buildExpectationResultsPerRun[][].{pass,reason}`, and
+  `scenarios[].runs[].{passed,failureCategory,rootCause,execErrors}`.
 - **`eval-pr-comment.md`** — the rendered PR comment (aggregate + regression
   comparison), always written.
 
@@ -320,6 +496,43 @@ concluding whether the failure is your case, the build, or the harness.
 cd packages/@n8n/instance-ai
 npx tsx -e "import {loadWorkflowTestCasesWithFiles} from './evaluations/data/workflows/index.ts'; console.log(loadWorkflowTestCasesWithFiles('<slug>')[0].fileSlug)"
 ```
+
+## Push to a lang-tracer suite
+
+Once a case is calibrated, push it (and any others) up into a curated lang-tracer
+suite instead of committing the JSON. `eval:langtracer-push` **upserts** over the
+REST API: it creates cases missing from the suite, updates ones whose content
+drifted, leaves the rest unchanged, and never prunes. It's the inverse of
+`--source langtracer` (which pulls a suite down).
+
+```bash
+cd packages/@n8n/instance-ai
+# preview first — no writes:
+dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --dry-run --changed
+# then push (drop --dry-run):
+dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
+```
+
+- **Selectors** (at least one required — no accidental push-all): positional
+  `<slugs...>` (exact file slugs), `--changed` (new/untracked + staged + modified
+  `data/workflows/*.json`, ideal right after authoring an uncommitted case),
+  `--filter`/`--tier` (with `--exclude` as a modifier).
+- **Env:** `LANGTRACER_URL` + `LANGTRACER_API_KEY` (an `lt_` bearer; one key works
+  for MCP + REST) — put them in `.env.eval` and run under `dotenvx`.
+- **Options:** `--set-kind regression|capability_gap` (default `regression`, must
+  match the suite's kind), `--contains-user-data` (default is `synthetic`).
+- **Scenarios sync on update too:** `PATCH /cases/:id` reconciles
+  `executionScenarios` by name (update in place, insert new, delete missing —
+  lang-tracer #48), so scenario edits re-push like any other field. A lang-tracer
+  deployment predating that change silently ignores the key; if a pushed scenario
+  edit doesn't land, update the scenario in the lang-tracer UI.
+- **Seeded cases can't be pushed:** the case-write API rejects every seeding mode
+  (`seedThread` / `seedFile` / `priorConversation`), so the push lists them under
+  `skipped:` and they never reach the suite. A `seedThread` case shouldn't be
+  committed either — it dies when its trace is pruned or deleted — so derive a
+  durable synthetic case as the artifact instead. A `seedFile`/`priorConversation`
+  case isn't transient and has no suite home, so it's the one exception to
+  "don't commit the JSON" — it lives as a committed artifact.
 
 ## Running
 

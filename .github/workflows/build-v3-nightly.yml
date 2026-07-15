@@ -1,0 +1,46 @@
+# Builds and publishes nightly Docker images for the v3 (3.x) branch.
+#
+# Produces n8nio/n8n:v3-nightly and a timestamped n8nio/n8n:v3-nightly-<date>
+# (plus the matching runners images) so v3 can be trialed in docker/kubernetes
+# before release. Reuses the shared docker-build-push.yml pipeline, pointing it
+# at the 3.x branch via the `ref` input.
+#
+# Lives on master so the schedule fires (scheduled runs only trigger on the
+# default branch), but builds the 3.x branch's code.
+
+name: 'Build: v3 Nightly Docker Images'
+
+on:
+  schedule:
+    # 08:00 UTC — after the master→3.x sync (06:00) so the image reflects the latest sync
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    name: Compute date tag
+    if: github.repository == 'n8n-io/n8n'
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      date_tag: ${{ steps.date.outputs.date }}
+    steps:
+      - name: Compute date tag
+        id: date
+        run: echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build and push v3-nightly images
+    needs: prepare
+    # No permissions/secrets caps here on purpose: this mirrors the proven
+    # release-publish.yml caller so docker-build-push.yml runs with the permissions
+    # (its own per-job blocks + repo defaults) and org secrets it already relies on.
+    # Capping here risks starving its sub-jobs (SLSA/attestation/scan/push).
+    uses: ./.github/workflows/docker-build-push.yml # zizmor: ignore[excessive-permissions,secrets-inherit]
+    with:
+      ref: '3.x'
+      n8n_version: 'v3-nightly'
+      release_type: 'nightly'
+      date_tag: ${{ needs.prepare.outputs.date_tag }}
+      push_enabled: true
+    secrets: inherit

@@ -4,7 +4,17 @@ import { join } from 'node:path';
 
 import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 
+const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
+
 describe('Instance AI runtime skills', () => {
+	afterEach(() => {
+		if (ORIGINAL_ENABLED_MODULES === undefined) {
+			delete process.env.N8N_ENABLED_MODULES;
+		} else {
+			process.env.N8N_ENABLED_MODULES = ORIGINAL_ENABLED_MODULES;
+		}
+	});
+
 	it('points the workflow-builder skill at the SDK language reference', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
@@ -55,6 +65,37 @@ describe('Instance AI runtime skills', () => {
 		expect(loadResult.content).toContain('Fast Routing');
 	});
 
+	it('excludes the bundled intent-recognition skill unless the agents module is enabled', async () => {
+		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai');
+
+		expect(source.registry.skills).not.toContainEqual(
+			expect.objectContaining({ id: 'intent-recognition' }),
+		);
+		await expect(source.loadSkill('intent-recognition')).resolves.toBeNull();
+	});
+
+	it('loads the bundled intent-recognition skill when the agents module is enabled', async () => {
+		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai, agents');
+
+		expect(source.registry.skills).toContainEqual(
+			expect.objectContaining({ id: 'intent-recognition' }),
+		);
+		expect(
+			source.registry.skills.find((entry) => entry.id === 'intent-recognition')?.description,
+		).toContain('Must be used before deciding the intent of any automation request');
+		const skill = await source.loadSkill('intent-recognition');
+		expect(skill?.name).toBe('intent-recognition');
+		expect(skill?.instructions).toContain('This skill must be used before deciding');
+
+		const loadTool = createSkillLoadTool(source);
+		const loadResult = await loadTool.handler?.({ skillId: 'intent-recognition' }, {});
+		const loadedText = skillLoadText(loadResult);
+		expect(loadedText).toContain('[Skill: "intent-recognition"]');
+		expect(loadedText).toContain(
+			'workflow-anchored | agent-anchored | needs-clarification | out-of-scope',
+		);
+	});
+
 	it('loads the bundled Computer Use credential setup skill', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find(
@@ -100,6 +141,7 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('n8n-docs-assistant');
+		expect(loaded?.instructions).toContain('Before calling `n8n-docs`, load it via `load_tool`');
 		expect(loaded?.instructions).toContain('n8n-docs(action="lookup")');
 		expect(loaded?.instructions).toContain('intent: "credential-setup"');
 		expect(loaded?.instructions).toContain('oauthRedirectUrl');
@@ -156,9 +198,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
-		expect(loaded?.instructions).toContain(
-			'`delegate` to build, patch, fix, verify, or update workflows',
-		);
+		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
 		expect(loaded?.instructions).toContain('Never call `.onFalse()` more than once');
@@ -184,6 +224,9 @@ describe('Instance AI runtime skills', () => {
 
 		const loaded = await source.loadSkill('planning');
 		expect(loaded?.instructions).toContain('## When NOT to use this skill');
+		expect(loaded?.instructions).toContain(
+			'Before calling `create-tasks`, load it via `load_tool`',
+		);
 		expect(loaded?.instructions).toContain('Do not call `create-tasks` just to get approval');
 		expect(loaded?.instructions).toContain('planningContext.source: "planning-skill"');
 		expect(loaded?.instructions).toContain('Do not spawn another agent');
@@ -278,7 +321,10 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.description).toContain('planned-task-follow-up');
 
 		const loaded = await source.loadSkill('planned-task-runtime');
-		expect(loaded?.instructions).toContain('<planned-task-follow-up type="synthesize">');
+		expect(loaded?.instructions).toContain(
+			'Before calling `create-tasks`, load it via `load_tool`',
+		);
+		expect(loaded?.instructions).toContain('load `create-tasks` via `load_tool` if needed');
 		expect(loaded?.instructions).toContain('You MUST take action in this same turn');
 		expect(loaded?.instructions).toContain('awaiting_replan');
 		expect(loaded?.instructions).toMatch(/Do NOT reply with an\s+acknowledgement/);
@@ -308,3 +354,23 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('do this unprompted');
 	});
 });
+
+function skillLoadText(output: unknown): string {
+	const record = output as { type?: string; value?: Array<{ type: string; text: string }> };
+	if (record?.type !== 'content' || !Array.isArray(record.value)) {
+		throw new Error(`Expected content-form skill load output, got: ${JSON.stringify(output)}`);
+	}
+	return record.value.map((part) => part.text).join('\n');
+}
+
+async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string | undefined) {
+	vi.resetModules();
+	if (enabledModules === undefined) {
+		delete process.env.N8N_ENABLED_MODULES;
+	} else {
+		process.env.N8N_ENABLED_MODULES = enabledModules;
+	}
+
+	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills.js');
+	return loadInstanceAiRuntimeSkillSource();
+}

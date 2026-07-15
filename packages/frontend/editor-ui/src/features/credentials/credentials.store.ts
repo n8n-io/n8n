@@ -434,13 +434,22 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		if (data.id) {
 			credentialTestResults.value.set(data.id, 'pending');
 		}
-		const result = await credentialsApi.testCredential(rootStore.restApiContext, {
-			credentials: data,
-		});
-		if (data.id) {
-			credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+		try {
+			const result = await credentialsApi.testCredential(rootStore.restApiContext, {
+				credentials: data,
+			});
+			if (data.id) {
+				credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+			}
+			return result;
+		} catch (error) {
+			// A rejected request must not leave the credential stuck in 'pending' —
+			// consumers gate on reaching a definitive result.
+			if (data.id) {
+				credentialTestResults.value.set(data.id, 'error');
+			}
+			throw error;
 		}
-		return result;
 	};
 
 	const getNewCredentialName = async (params: {

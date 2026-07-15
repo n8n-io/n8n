@@ -36,6 +36,7 @@ import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -401,6 +402,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(WorkflowHistoryCompactionService).init();
 		Container.get(WorkflowStatisticsRollupService).init();
 		Container.get(N8NCheckpointStorage).init();
+		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();
@@ -416,6 +418,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			);
 			const { WorkflowPublicationOutboxCleanupService } = await import(
 				'@/workflows/publication/workflow-publication-outbox-cleanup.service'
+			);
+			const { WorkflowPublicationReconciler } = await import(
+				'@/workflows/publication/workflow-publication-reconciler.service'
 			);
 
 			// Import for its side effect: registering the trigger deactivator's
@@ -437,6 +442,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				});
 
 			Container.get(WorkflowPublicationOutboxCleanupService).init();
+			Container.get(WorkflowPublicationReconciler).init();
 		} else {
 			await this.activeWorkflowManager.init();
 		}

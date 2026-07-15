@@ -1,40 +1,7 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { BUILTIN_CREDENTIALS_DOCS_URL } from '@/app/constants/urls';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import Modal from '@/app/components/Modal.vue';
-
-const uiStore = useUIStore();
-const credentialsStore = useCredentialsStore();
-
-const modalData = computed(() => uiStore.modalsById[AI_GATEWAY_TOP_UP_MODAL_KEY]?.data);
-const credentialType = computed<string | undefined>(
-	() => modalData.value?.credentialType as string | undefined,
-);
-
-const credentialTypeInfo = computed(() => {
-	if (!credentialType.value) return null;
-	return credentialsStore.getCredentialTypeByName(credentialType.value) ?? null;
-});
-
-const credentialDocsUrl = computed(() => {
-	const type = credentialTypeInfo.value;
-	if (!type?.documentationUrl) return '';
-
-	if (type.documentationUrl.startsWith('http')) {
-		return type.documentationUrl;
-	}
-
-	return `${BUILTIN_CREDENTIALS_DOCS_URL}${type.documentationUrl}/`;
-});
-
-const credentialDocsLinkText = computed(() => {
-	const name = credentialTypeInfo.value?.displayName;
-	return name ? `See how to configure the ${name} credential` : 'See credential setup guide';
-});
 </script>
 
 <template>
@@ -53,18 +20,6 @@ const credentialDocsLinkText = computed(() => {
 					<div :class="$style.paragraphs">
 						<p :class="$style.paragraph">
 							You'll be notified in the coming weeks when this feature becomes available.
-						</p>
-						<p :class="$style.paragraph">
-							In the meantime you can switch to using your own credentials.
-						</p>
-						<p v-if="credentialType" :class="$style.paragraph">
-							<N8nLink
-								:to="credentialDocsUrl"
-								new-window
-								data-test-id="ai-gateway-topup-credentials-docs-link"
-							>
-								{{ credentialDocsLinkText }}
-							</N8nLink>
 						</p>
 					</div>
 				</div>

@@ -231,5 +231,17 @@ describe('AWS signing (integration, real signer)', () => {
 			expect(headers.Authorization).toContain('AWS4-HMAC-SHA256');
 			expect(headers.authorization).toBeUndefined();
 		});
+
+		it('signs a vpce Bedrock request with the bedrock service namespace via aws4', async () => {
+			process.env.N8N_AWS_LEGACY_SIGNER = 'true';
+
+			const result = await aws.authenticate(credentials, {
+				...baseRequest,
+				url: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com/model/anthropic.claude-v2/invoke',
+			});
+
+			const headers = result.headers as Record<string, string>;
+			expect(headers.Authorization).toContain('/us-east-1/bedrock/aws4_request');
+		});
 	});
 });
