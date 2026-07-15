@@ -441,6 +441,71 @@ describe('workflow package export — with variables', () => {
 		expect(variableFiles(entries)).toEqual([]);
 	});
 
+	describe('variable value read permission (canExportVariableValues)', () => {
+		it('rejects a valued export when variables are referenced but the caller may not read values', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			await createVariable('API_URL', 'https://api.example.com');
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project,
+				variableNames: ['API_URL'],
+			});
+
+			await expect(
+				service.exportPackage({
+					user: owner,
+					workflowIds: [workflow.id],
+					canExportVariableValues: false,
+				}),
+			).rejects.toThrow(/variable:list/);
+		});
+
+		it('exports a workflow that references no variables even when the caller may not read values', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow without vars',
+				project,
+				variableNames: [],
+			});
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [workflow.id],
+				canExportVariableValues: false,
+			});
+			const { manifest } = await readExport(stream);
+
+			expect(manifest).not.toHaveProperty('variables');
+			expect(manifest.requirements).toBeUndefined();
+		});
+
+		it('allows a name-only export of referenced variables when values are excluded', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			await createVariable('API_URL', 'https://api.example.com');
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project,
+				variableNames: ['API_URL'],
+			});
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [workflow.id],
+				includeVariableValues: false,
+				canExportVariableValues: false,
+			});
+			const { manifest, entries } = await readExport(stream);
+
+			expect(manifest.requirements).toEqual({
+				variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
+			});
+			expect(variableFiles(entries)).toEqual([]);
+		});
+	});
+
 	describe('telemetry event', () => {
 		it('counts only bundled variable files, not referenced names', async () => {
 			const owner = await createOwner();

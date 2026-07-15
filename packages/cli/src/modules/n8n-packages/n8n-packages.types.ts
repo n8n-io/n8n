@@ -57,6 +57,7 @@ export interface ExportPackageRequest {
 	folderIds?: string[];
 	projectIds?: string[];
 	includeVariableValues?: boolean;
+	canExportVariableValues?: boolean;
 }
 
 export type ImportPackageRequest = {

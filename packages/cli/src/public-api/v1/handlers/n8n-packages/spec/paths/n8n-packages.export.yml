@@ -16,7 +16,7 @@ post:
     response is streamed as `application/gzip` with a `Content-Disposition`
     attachment header. Requires the n8n Packages feature to be licensed.
 
-    API key scopes: `workflow:export` is required when exporting workflows or folders, and `project:export` is required when exporting projects. When `includeVariableValues` is true (the default), `variable:list` is also required.
+    API key scopes: `workflow:export` is required when exporting workflows or folders, and `project:export` is required when exporting projects. When `includeVariableValues` is true (the default) and the exported workflows reference variables, `variable:list` is also required; exports that reference no variables never need it.
   requestBody:
     description: Workflows, folders, or projects to include in the exported package.
     required: true

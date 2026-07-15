@@ -3,6 +3,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { Readable } from 'node:stream';
 
 import { N8N_VERSION } from '@/constants';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
 import { N8nPackageParser } from './engine/n8n-package-parser';
@@ -94,6 +95,17 @@ export class N8nPackagesService {
 			projectExportResult?.requirements,
 		);
 
+		const includeVariableValues = request.includeVariableValues ?? true;
+		if (
+			includeVariableValues &&
+			requirements.variables.length > 0 &&
+			request.canExportVariableValues === false
+		) {
+			throw new ForbiddenError(
+				'The exported workflows reference variables, but the API key is missing the variable:list scope needed to bundle their values. Add the scope or set includeVariableValues to false.',
+			);
+		}
+
 		const allFolders = [
 			...(folderExportResult?.entries ?? []),
 			...(projectExportResult?.folderEntries ?? []),
@@ -130,7 +142,7 @@ export class N8nPackagesService {
 			user: request.user,
 			requirements: requirements.variables,
 			writer,
-			includeVariableValues: request.includeVariableValues ?? true,
+			includeVariableValues,
 			projectTargetsById: projectExportResult?.projectTargetsById,
 		});
 

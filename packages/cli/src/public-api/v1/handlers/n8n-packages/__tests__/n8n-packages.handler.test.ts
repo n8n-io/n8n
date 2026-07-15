@@ -222,14 +222,24 @@ describe('n8n-packages handler', () => {
 			expect(mockService.exportPackage).not.toHaveBeenCalled();
 		});
 
-		it('throws ForbiddenError when bundling variable values without variable:list scope', async () => {
-			const caught = await run(
-				makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export']),
-				makeResponse(),
-			);
+		it('does not reject upfront without variable:list scope; forwards canExportVariableValues=false for the service to enforce', async () => {
+			const stream = new PassThrough();
+			mockService.exportPackage.mockResolvedValue(stream);
+			const res = makeResponse();
 
-			expect(caught).toBeInstanceOf(ForbiddenError);
-			expect(mockService.exportPackage).not.toHaveBeenCalled();
+			const resultPromise = run(makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export']), res);
+			stream.end(Buffer.from('package-bytes'));
+			const caught = await resultPromise;
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				user: { id: 'user-1' },
+				workflowIds: ['wf-1'],
+				folderIds: [],
+				projectIds: [],
+				includeVariableValues: true,
+				canExportVariableValues: false,
+			});
 		});
 
 		it('allows value-less export without variable:list scope', async () => {
@@ -251,6 +261,24 @@ describe('n8n-packages handler', () => {
 				folderIds: [],
 				projectIds: [],
 				includeVariableValues: false,
+				canExportVariableValues: false,
+			});
+		});
+
+		it('propagates the ForbiddenError thrown by the service scope gate and emits access-denied', async () => {
+			mockService.exportPackage.mockRejectedValue(
+				new ForbiddenError('missing the variable:list scope'),
+			);
+
+			const caught = await run(
+				makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export']),
+				makeResponse(),
+			);
+
+			expect(caught).toBeInstanceOf(ForbiddenError);
+			expect(emittedEvent('n8n-package-export-failed')).toMatchObject({
+				reason: 'access-denied',
+				workflowIds: ['wf-1'],
 			});
 		});
 
@@ -330,6 +358,7 @@ describe('n8n-packages handler', () => {
 				folderIds: [],
 				projectIds: [],
 				includeVariableValues: true,
+				canExportVariableValues: true,
 			});
 			expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/gzip');
 			expect(res.setHeader).toHaveBeenCalledWith(
@@ -358,6 +387,7 @@ describe('n8n-packages handler', () => {
 				folderIds: [],
 				projectIds: ['project-1'],
 				includeVariableValues: true,
+				canExportVariableValues: true,
 			});
 		});
 
@@ -380,6 +410,7 @@ describe('n8n-packages handler', () => {
 				folderIds: ['fld-1'],
 				projectIds: [],
 				includeVariableValues: true,
+				canExportVariableValues: true,
 			});
 		});
 
@@ -402,6 +433,7 @@ describe('n8n-packages handler', () => {
 				folderIds: [],
 				projectIds: [],
 				includeVariableValues: false,
+				canExportVariableValues: false,
 			});
 		});
 	});

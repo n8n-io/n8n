@@ -48,8 +48,7 @@ function assertPackageExportApiKeyScopes(
 	workflowIds: string[],
 	folderIds: string[],
 	projectIds: string[],
-	includeVariableValues: boolean,
-) {
+): string[] {
 	const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
 	if (!apiKeyScopes) {
 		throw new ForbiddenError('Forbidden');
@@ -63,16 +62,14 @@ function assertPackageExportApiKeyScopes(
 	if (projectIds.length > 0) {
 		requiredScopes.push('project:export');
 	}
-	// Bundling variable values uses the same listing path as GET /variables.
-	if (includeVariableValues) {
-		requiredScopes.push('variable:list');
-	}
 
 	for (const scope of requiredScopes) {
 		if (!apiKeyScopes.includes(scope)) {
 			throw new ForbiddenError('Forbidden');
 		}
 	}
+
+	return apiKeyScopes;
 }
 
 function assertPackageImportApiKeyScopes(req: AuthenticatedRequest) {
@@ -126,12 +123,11 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					throw new BadRequestError('At least one workflowId, folderId, or projectId is required');
 				}
 
-				assertPackageExportApiKeyScopes(
+				const apiKeyScopes = assertPackageExportApiKeyScopes(
 					req,
 					workflowIds,
 					folderIds,
 					projectIds,
-					includeVariableValues,
 				);
 
 				const stream = await Container.get(N8nPackagesService).exportPackage({
@@ -140,6 +136,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					folderIds,
 					projectIds,
 					includeVariableValues,
+					canExportVariableValues: apiKeyScopes.includes('variable:list'),
 				});
 
 				return await streamPackageExport(res, stream);
