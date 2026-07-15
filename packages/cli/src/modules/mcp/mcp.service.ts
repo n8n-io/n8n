@@ -216,7 +216,7 @@ export class McpService {
 		user: User,
 		mcpAppsEnabled: boolean,
 		clientInfo?: McpClientInfo,
-		grantedScopes?: string[]
+		grantedScopes?: string[],
 	) {
 		const { McpServer } = await lazyImport<
 			typeof import('@modelcontextprotocol/sdk/server/mcp.js')
