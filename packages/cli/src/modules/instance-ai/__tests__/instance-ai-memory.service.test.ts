@@ -567,6 +567,46 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(result.messages[0].role).toBe('user');
 	});
 
+	it('excludes a group via live group ids when the excluded run has no persisted rows yet', async () => {
+		// The active run_b just started: its run-start is still in the drain
+		// queue, so the log alone cannot map it to 'mg-1'. The controller passes
+		// the live group id, and the completed sibling run_a must not derive a
+		// partial group entry.
+		mockListMessages.mockResolvedValue({ messages: [userMessage] });
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_a',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				at,
+			),
+			...toolCallRows('run_a', 1),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_a',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				at,
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1', {
+			excludeRunIds: ['run_b'],
+			excludeMessageGroupIds: ['mg-1'],
+		});
+
+		expect(mockDurableLogMetrics.recordFoldRead).not.toHaveBeenCalled();
+		expect(mockDbSnapshotStorage.getAll).not.toHaveBeenCalled();
+		expect(result.messages).toHaveLength(1);
+		expect(result.messages[0].role).toBe('user');
+	});
+
 	it('keeps interleaved runs of one group in thread order', async () => {
 		// Background runs execute concurrently with their parent, so a group's
 		// facts interleave in the log. The fold must feed the reducer in seq

@@ -104,6 +104,7 @@ function mergeMessagesById(stored: AgentDbMessage[], extras: AgentDbMessage[]): 
 function buildLogDerivedSnapshots(
 	rows: Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>,
 	skipRunIds: Set<string>,
+	skipGroupIds: Set<string>,
 ): { entries: AgentTreeSnapshot[]; skippedInFlight: boolean } {
 	// A run's run-start is its first fact, so the run-to-group mapping is
 	// complete before any grouping decision needs it.
@@ -118,8 +119,10 @@ function buildLogDerivedSnapshots(
 	// from the group's completed runs would pair it against a turn whose
 	// assistant message does not exist yet — the misalignment excludeRunIds
 	// exists to prevent. The in-flight turn renders via the SSE bootstrap, not
-	// history.
-	const skipGroupKeys = new Set<string>();
+	// history. Seeded from the caller's live group ids first: an excluded run
+	// whose run-start row is still in the drain queue has no mapping here, so
+	// persisted rows alone cannot be trusted to identify its group.
+	const skipGroupKeys = new Set<string>(skipGroupIds);
 	for (const runId of skipRunIds) {
 		const groupId = groupKeyByRun.get(runId);
 		if (groupId) skipGroupKeys.add(groupId);
@@ -296,7 +299,15 @@ export class InstanceAiMemoryService {
 	async getRichMessages(
 		_userId: string,
 		threadId: string,
-		options?: { limit?: number; page?: number; excludeRunIds?: string[] },
+		options?: {
+			limit?: number;
+			page?: number;
+			excludeRunIds?: string[];
+			/** Live in-flight group ids from run state — the durable-log fold
+			 *  cannot rely on persisted run-start rows alone to map an excluded
+			 *  run to its group (the row may still be in the drain queue). */
+			excludeMessageGroupIds?: string[];
+		},
 	): Promise<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>> {
 		const result = await this.agentMemory.listMessages({
 			threadId,
@@ -327,7 +338,12 @@ export class InstanceAiMemoryService {
 		// loaded when the fold needs its pre-log/failure fallback, keeping the
 		// heaviest instance-ai table out of the flag-on hot path.
 		const snapshots = this.instanceAiConfig.durableLog
-			? await this.foldSnapshotsFromLog(threadId, loadStoredSnapshots, options?.excludeRunIds)
+			? await this.foldSnapshotsFromLog(
+					threadId,
+					loadStoredSnapshots,
+					options?.excludeRunIds,
+					options?.excludeMessageGroupIds,
+				)
 			: await loadStoredSnapshots();
 
 		// Surface the in-flight messages from any suspended checkpoint. The
@@ -362,6 +378,7 @@ export class InstanceAiMemoryService {
 		threadId: string,
 		loadStoredSnapshots: () => Promise<AgentTreeSnapshot[]>,
 		excludeRunIds?: string[],
+		excludeMessageGroupIds?: string[],
 	): Promise<AgentTreeSnapshot[]> {
 		const start = Date.now();
 		let rows;
@@ -382,6 +399,7 @@ export class InstanceAiMemoryService {
 		const { entries, skippedInFlight } = buildLogDerivedSnapshots(
 			rows,
 			new Set(excludeRunIds ?? []),
+			new Set(excludeMessageGroupIds ?? []),
 		);
 		if (entries.length === 0) {
 			// Emptied by exclusion: the thread's only renderable content is the
