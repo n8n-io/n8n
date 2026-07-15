@@ -1,7 +1,7 @@
 export function getLlmSelectionPrompt(modelRecommendationsSection: string | null): string {
 	const recommendationGuidance = modelRecommendationsSection
 		? `\n\n${modelRecommendationsSection}`
-		: '\n\nNo Recommended LLM models section is available; do not recommend or name current, best, latest, or fallback model IDs from memory. Call ask_llm when the user needs model guidance or choice.';
+		: '\n\nNo Recommended LLM models section is available; do not recommend or name current, best, latest, or fallback model IDs from memory. Ask via `ask_questions` when the user needs model guidance or choice.';
 
 	return `\
 ## LLM Selection Guidance
@@ -12,17 +12,17 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 
 ### Workflow
 
-1. Use \`resolve_llm\` when the request contains enough provider/model detail, otherwise call \`ask_llm\`.
+1. Use \`resolve_llm\` when the request contains enough provider/model detail, otherwise ask via \`ask_questions\` and call \`resolve_llm\` with the answer.
 2. If \`resolve_llm\` succeeds, persist \`model = "{provider}/{model}"\` and \`credential = credentialId\`.
-3. If the user asks to pick, change, confirm, or configure a model or main credential, call \`ask_llm\`; do not ask in prose.
-4. If \`resolve_llm\` reports missing or ambiguous credentials/provider, call \`ask_llm\`.
-5. If \`resolve_llm\` reports \`unknown_model\`, retry with a plausible returned model value or call \`ask_llm\`.
+3. If the user asks to pick, change, confirm, or configure a model or main credential, ask via \`ask_questions\`; do not ask in prose.
+4. If \`resolve_llm\` reports missing or ambiguous credentials/provider, ask via \`ask_questions\` then retry \`resolve_llm\` with the answer.
+5. If \`resolve_llm\` reports \`unknown_model\`, retry with a plausible returned model value or ask via \`ask_questions\`.
 
 ### Rules
 
 - Fresh agents need a resolved \`model\` and \`credential\` before config is written.
 - Explicit provider/model requests go to \`resolve_llm\` first.
-- If the user asks to pick, change, confirm, or configure a model or main credential, call \`ask_llm\`; do not ask in prose.
+- If the user asks to pick, change, confirm, or configure a model or main credential, ask via \`ask_questions\`; do not ask in prose.
 - If \`resolve_llm\` succeeds, persist \`model = "{provider}/{model}"\` and \`credential = credentialId\`.
 - Only OpenAI and Anthropic models support native web search. Use native web
   search by default for those providers only, and only for
@@ -39,15 +39,15 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
   \`provider: "searxng"\`.
 - If the user explicitly asks for Brave or SearXNG, keep that provider even
   when the selected model also supports native search.
-- If \`resolve_llm\` reports missing or ambiguous credentials/provider, call \`ask_llm\`.
-- If it reports \`unknown_model\`, retry with a plausible returned model value or call \`ask_llm\`.
+- If \`resolve_llm\` reports missing or ambiguous credentials/provider, ask via \`ask_questions\` then retry \`resolve_llm\`.
+- If it reports \`unknown_model\`, retry with a plausible returned model value or ask via \`ask_questions\`.
 - For "Anthropic via OpenRouter", pass \`provider: "openrouter"\`; if the user names a routed model, pass the routed id without adding another provider prefix.
 - Prefer a provider the user already has credentials for when choosing from recommendations.
 - Never copy main LLM credential IDs from \`list_credentials\`.
 
 ### Gotchas
 
-- Use \`resolve_llm\` or \`ask_llm\` only for the target agent's main model credential.
+- Use \`resolve_llm\` only for the target agent's main model credential.
 - Use \`ask_credential\` for node tools, integrations, and Episodic Memory.
 - For OpenRouter, \`provider\` is \`"openrouter"\`; the model can be a routed id such as \`anthropic/...\`.
 - Model changes must not silently replace existing Brave or SearXNG web search with native search.
@@ -56,6 +56,6 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 ### Verify
 
 - The persisted \`model\` is in \`provider/model\` form.
-- The persisted \`credential\` came from \`resolve_llm\` or \`ask_llm\`.
+- The persisted \`credential\` came from \`resolve_llm\`.
 - Existing Brave or SearXNG \`config.webSearch\` is preserved on model changes unless the user explicitly requested a web-search method change.${recommendationGuidance}`;
 }

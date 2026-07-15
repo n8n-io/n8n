@@ -1,6 +1,11 @@
+import { Sha256 } from '@aws-crypto/sha256-js';
 import { createHttpsProxyAgent, resolveProxyUrl } from '@n8n/backend-network/proxy';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { HttpRequest } from '@smithy/protocol-http';
+import { SignatureV4 } from '@smithy/signature-v4';
 import type { AwsCredentialIdentity, AwsCredentialIdentityProvider } from '@smithy/types';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 import {
 	type IHttpRequestMethods,
 	isObjectEmpty,
@@ -18,8 +23,6 @@ import type {
 	AwsAssumeRoleCredentialsType,
 	AwsSecurityHeaders,
 } from './types';
-import type { Request } from 'aws4';
-import { sign } from 'aws4';
 
 // ── Private ──────────────────────────────────────────────────────────────────
 
@@ -58,6 +61,13 @@ function shouldStringifyBody<T>(value: T, headers: IDataObject): boolean {
  * @returns The SigV4 signing service name
  */
 function getAwsSigningService(service: string): string {
+	// Virtual-hosted-style S3 requests arrive as `<bucket>.s3` (the node builds the
+	// endpoint `<bucket>.s3.<region>.amazonaws.com`). They all sign under the `s3`
+	// signing name. aws4 derived this by inspecting the host; smithy does not, so we
+	// normalize it here.
+	if (service === 's3' || service.endsWith('.s3')) {
+		return 's3';
+	}
 	switch (service) {
 		// Mirror AWS SDK Bedrock signing for HTTP Request node AWS credentials:
 		// these endpoint families are signed with the `bedrock` service namespace.
@@ -166,30 +176,131 @@ export const awsCredentialsTest: ICredentialTestRequest = {
 };
 
 /**
+ * PrivateLink (VPC interface endpoint) hostnames shift the service and region
+ * one label to the right compared to public endpoints, e.g.
+ * `vpce-0abc123[-az].bedrock-runtime.us-east-1.vpce.amazonaws.com`. The optional
+ * `.cn` suffix covers the China regions, whose endpoints use `vpce.amazonaws.com.cn`.
+ *
+ * Only the endpoint-specific hostname (which starts with the `vpce-` id label) is
+ * matched. S3's bucket/access-point/control interface endpoints prefix another
+ * label before the id (e.g. `bucket.vpce-0abc123.s3.us-east-1.vpce.amazonaws.com`)
+ * and are intentionally not covered here.
+ *
+ * @see {@link https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html AWS PrivateLink}
+ */
+const VPCE_HOSTNAME_PATTERN = /^vpce-[^.]+\.([^.]+)\.([^.]+)\.vpce\.amazonaws\.com(?:\.cn)?$/;
+
+function isSupportedAwsRegion(region: string): region is AWSRegion {
+	return SUPPORTED_AWS_REGIONS.has(region);
+}
+
+/**
+ * Matches genuine AWS endpoint hosts (public and China partitions). Custom
+ * hostnames (API Gateway custom domains, proxies, S3-compatible stores) don't
+ * match, so labels mis-parsed as a region from them must not fail the request.
+ */
+function isAwsEndpointHostname(hostname: string): boolean {
+	return /\.amazonaws\.com(\.cn)?$/i.test(hostname);
+}
+
+/**
  * Ensures the region value belongs to the supported AWS regions list before it
  * is interpolated into request URLs or signing options. Anything outside the
  * known set is rejected with a controlled error.
  */
 export function assertSupportedAwsRegion(region: unknown): asserts region is AWSRegion {
-	if (typeof region !== 'string' || !SUPPORTED_AWS_REGIONS.has(region)) {
+	if (typeof region !== 'string' || !isSupportedAwsRegion(region)) {
 		throw new UserError('Unsupported AWS region');
 	}
 }
 
 /**
+ * Validates a user-supplied Bedrock endpoint override and returns the resolved URL.
+ * Substitutes the `{region}` placeholder after the region itself is validated, and
+ * requires an `http:`/`https:` scheme. The value is credential-holder-configured and
+ * treated as trusted; no host allow-listing / SSRF check is applied on this path.
+ *
+ * @throws {UserError} When the region is unsupported, the URL is malformed, or the scheme is not http/https.
+ */
+export function validateBedrockEndpointOverride(override: string, region: AWSRegion): string {
+	assertSupportedAwsRegion(region);
+	const resolved = override.replace(/\{region\}/g, region);
+	let url: URL;
+	try {
+		url = new URL(resolved);
+	} catch {
+		// Don't echo the raw value; it may contain URL userinfo (user:pass@host).
+		throw new UserError('Bedrock endpoint is not a valid URL');
+	}
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+		throw new UserError('Bedrock endpoint must use the http or https scheme');
+	}
+	// Strip a trailing slash only: on the SDK client's `endpoint` it would serialize
+	// operation paths as `//model/...`. Everything else the user configured is preserved.
+	return url.toString().replace(/\/$/, '');
+}
+
+/**
  * Parses an AWS service URL to extract the service name and region.
- * Some AWS services are global and don't have a region.
+ * Some AWS services are global and don't have a region. Recognizes both
+ * public endpoints (`<service>.<region>.amazonaws.com`) and PrivateLink
+ * endpoints (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`).
+ *
+ * The returned region is not validated against the supported region list;
+ * callers must check it (e.g. with {@link assertSupportedAwsRegion}) before
+ * using it for signing.
  *
  * @param url - The AWS service URL to parse
  * @returns Object containing the service name and region (null for global services)
  *
  * @see {@link https://docs.aws.amazon.com/general/latest/gr/rande.html#global-endpoints AWS Global Endpoints}
  */
-export function parseAwsUrl(url: URL): { region: AWSRegion | null; service: string } {
+export function parseAwsUrl(url: URL): { region: string | null; service: string } {
 	const hostname = url.hostname;
+	const vpceMatch = hostname.match(VPCE_HOSTNAME_PATTERN);
+	if (vpceMatch) {
+		const [, service, region] = vpceMatch;
+		return { service, region };
+	}
 	// Handle both .amazonaws.com and .amazonaws.com.cn domains
 	const [service, region] = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
-	return { service, region };
+	return { service, region: region ?? null };
+}
+
+/**
+ * Derives the signing service and region from a request URL, without
+ * regressing a caller-supplied value.
+ *
+ * - `service` is only taken from the URL when the caller didn't already
+ *   supply one (e.g. via qs.service). This lets callers force a signing
+ *   service that URL parsing can't reliably infer, without regressing
+ *   callers that rely on the URL as the source of truth (the common case:
+ *   no qs.service is set).
+ * - `region` is only taken from the URL when it's a recognized AWS region. On
+ *   an AWS endpoint host, an unrecognized label (a malformed/mistyped host, or
+ *   an odd endpoint shape the parser mis-split) throws a UserError, so the
+ *   request fails fast with a clear message instead of signing with a bad
+ *   region. On a custom (non-AWS) host, the second DNS label is usually not a
+ *   region at all, so the credential region is kept instead.
+ */
+function resolveServiceAndRegion(
+	url: URL,
+	service: string,
+	region: AWSRegion,
+): { service: string; region: AWSRegion } {
+	const parsed = parseAwsUrl(url);
+	const resolvedService = service || parsed.service;
+	let resolvedRegion = region;
+	if (parsed.region) {
+		if (isSupportedAwsRegion(parsed.region)) {
+			resolvedRegion = parsed.region;
+		} else if (isAwsEndpointHostname(url.hostname)) {
+			throw new UserError(
+				`Unsupported AWS region "${parsed.region}" parsed from endpoint host ${url.hostname}`,
+			);
+		}
+	}
+	return { service: resolvedService, region: resolvedRegion };
 }
 
 /**
@@ -240,12 +351,12 @@ export function awsGetSignInOptionsAndUpdateRequest(
 			} catch (err) {
 				console.error(err);
 			}
+		} else {
+			// UI Query Parameters are stored at the top level of requestOptions.qs, not under
+			// a nested `query` key, so merge the whole object to sign and send them.
+			query = requestWithUri.qs as IDataObject;
 		}
-		const parsed = parseAwsUrl(endpoint);
-		service = parsed.service;
-		if (parsed.region) {
-			region = parsed.region;
-		}
+		({ service, region } = resolveServiceAndRegion(endpoint, service, region));
 	} else {
 		if (!requestOptions.baseURL && !requestOptions.url) {
 			let endpointString: string;
@@ -271,10 +382,18 @@ export function awsGetSignInOptionsAndUpdateRequest(
 		} else {
 			// If no endpoint is set, we try to decompose the path and use the default endpoint
 			const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path}`);
-			const parsed = parseAwsUrl(customUrl);
-			service = parsed.service;
-			if (parsed.region) {
-				region = parsed.region;
+			({ service, region } = resolveServiceAndRegion(customUrl, service, region));
+			// Swap only the host: signing service and region stay derived from the default
+			// host above, so a custom endpoint can never change how the request is signed.
+			if (service === 'bedrock' && credentials.bedrockEndpoint) {
+				const override = new URL(
+					validateBedrockEndpointOverride(credentials.bedrockEndpoint, region),
+				);
+				customUrl.protocol = override.protocol;
+				customUrl.host = override.host;
+				if (override.pathname !== '/') {
+					customUrl.pathname = override.pathname.replace(/\/+$/, '') + customUrl.pathname;
+				}
 			}
 			if (service === 'sts') {
 				try {
@@ -330,7 +449,11 @@ export function awsGetSignInOptionsAndUpdateRequest(
 		path,
 		body: bodyContent,
 		region,
-		...(signingService !== service && { service: signingService }),
+		// Always carry the resolved signing service. The signer must not re-derive it
+		// from the hostname: virtual-hosted S3 (bucket.s3.<region>.amazonaws.com) would
+		// yield the bucket name instead of 's3', breaking the signature and the
+		// S3-specific signing rules.
+		service: signingService,
 	} as unknown as Request;
 
 	return { signOpts, url: endpoint.origin + path };
@@ -390,26 +513,158 @@ export async function assumeRole(
 	}
 }
 
-export function signOptions(
+// Splits a path+search string into the pathname and a query parameter map.
+// smithy's SignatureV4 requires query params as a separate object, not embedded in the path.
+// The path is sliced raw (not run through URL) to preserve exact bytes, which S3 signing
+// depends on. Query parsing uses URLSearchParams; repeated keys are kept as arrays since
+// smithy accepts string | string[].
+export function splitPathAndQuery(pathWithSearch: string): {
+	path: string;
+	query: Record<string, string | string[]>;
+} {
+	const idx = pathWithSearch.indexOf('?');
+	if (idx === -1) return { path: pathWithSearch, query: {} };
+
+	const query: Record<string, string | string[]> = {};
+	for (const [key, value] of new URLSearchParams(pathWithSearch.slice(idx + 1))) {
+		const existing = query[key];
+		if (existing === undefined) query[key] = value;
+		else query[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
+	}
+
+	return { path: pathWithSearch.slice(0, idx), query };
+}
+
+// Splits a `host[:port]` string into hostname and numeric port, bracket-aware for
+// IPv6 literals (e.g. `[::1]:4566`). A naive `.split(':')` would cut an IPv6
+// address at its first colon.
+export function splitHostPort(host: string): { hostname: string; port: number | undefined } {
+	if (host.startsWith('[')) {
+		const closeIdx = host.indexOf(']');
+		if (closeIdx !== -1) {
+			const hostname = host.slice(0, closeIdx + 1);
+			const rest = host.slice(closeIdx + 1);
+			const port = rest.startsWith(':') ? parseInt(rest.slice(1), 10) : undefined;
+			return { hostname, port };
+		}
+	}
+	const [hostname, portStr] = host.split(':');
+	return { hostname, port: portStr ? parseInt(portStr, 10) : undefined };
+}
+
+// Legacy aws4 signer, kept behind N8N_AWS_LEGACY_SIGNER as an operator rollback
+// lever. Temporary: removed together with aws4 once the smithy path has soaked.
+function signWithLegacyAws4(
 	requestOptions: IHttpRequestOptions,
 	signOpts: Request,
 	securityHeaders: AwsSecurityHeaders,
 	url: string,
 	method?: IHttpRequestMethods,
-) {
-	try {
-		sign(signOpts, securityHeaders);
-	} catch (err) {
-		console.error(err);
-	}
-	const options: IHttpRequestOptions = {
+): IHttpRequestOptions {
+	// Let signing errors propagate. Continuing with an unsigned request only yields
+	// an opaque 403 from AWS that hides the real cause.
+	sign(signOpts, securityHeaders);
+	return {
 		...requestOptions,
 		headers: signOpts.headers,
 		method,
 		url,
 		body: signOpts.body,
-		qs: undefined, // override since it's already in the url
+		qs: undefined,
 	};
+}
 
-	return options;
+// Translates n8n's aws4-shaped Request into a smithy HttpRequest: splits the query
+// out of the path, lowercases header keys (so smithy's canonical sort is stable),
+// and mirrors aws4's content-type/length injection for body requests.
+export function buildSmithyHttpRequest(
+	signOpts: Request,
+	method?: IHttpRequestMethods,
+): HttpRequest {
+	const { path, query } = splitPathAndQuery(signOpts.path ?? '/');
+	const { hostname, port } = splitHostPort(signOpts.host ?? '');
+
+	// Drop host; smithy derives it from hostname.
+	const headers: Record<string, string> = { host: signOpts.host ?? hostname };
+	for (const [k, v] of Object.entries((signOpts.headers ?? {}) as Record<string, string>)) {
+		const lower = k.toLowerCase();
+		if (lower !== 'host') headers[lower] = v;
+	}
+
+	// aws4 defaults the Content-Type to 'application/x-www-form-urlencoded; charset=utf-8'
+	// (not json) and sets Content-Length for any truthy body, string or Buffer;
+	// smithy injects neither.
+	const body = signOpts.body;
+	const hasBody = (typeof body === 'string' && body.length > 0) || Buffer.isBuffer(body);
+	if (hasBody) {
+		if (!headers['content-type']) {
+			headers['content-type'] = 'application/x-www-form-urlencoded; charset=utf-8';
+		}
+		if (!headers['content-length']) {
+			headers['content-length'] = String(Buffer.byteLength(body as string | Buffer));
+		}
+	}
+
+	return new HttpRequest({
+		method: (signOpts.method ?? method ?? 'GET').toUpperCase(),
+		hostname,
+		...(port !== undefined && { port }),
+		path: path || '/',
+		...(Object.keys(query).length > 0 && { query }),
+		headers,
+		body: signOpts.body ?? undefined,
+		protocol: 'https:',
+	});
+}
+
+export async function signOptions(
+	requestOptions: IHttpRequestOptions,
+	signOpts: Request,
+	securityHeaders: AwsSecurityHeaders,
+	url: string,
+	method?: IHttpRequestMethods,
+): Promise<IHttpRequestOptions> {
+	if (process.env.N8N_AWS_LEGACY_SIGNER === 'true') {
+		return signWithLegacyAws4(requestOptions, signOpts, securityHeaders, url, method);
+	}
+
+	const httpRequest = buildSmithyHttpRequest(signOpts, method);
+
+	// signOpts.service is set only when the signing name differs from the endpoint name
+	// (e.g. bedrock-runtime → bedrock). Fall back to the first label of the hostname.
+	const service = signOpts.service ?? httpRequest.hostname.split('.')[0];
+	const region = signOpts.region ?? 'us-east-1';
+
+	// S3 needs aws4-equivalent treatment that other services must not get:
+	// it requires the x-amz-content-sha256 header in the signature, and its
+	// object keys must not be path-normalized or double-encoded. aws4 special-cased
+	// S3 the same way; smithy's defaults (no checksum header, uriEscapePath: true)
+	// match aws4 only for non-S3 services.
+	const isS3 = service === 's3';
+
+	const signer = new SignatureV4({
+		credentials: {
+			accessKeyId: securityHeaders.accessKeyId,
+			secretAccessKey: securityHeaders.secretAccessKey,
+			...(securityHeaders.sessionToken && { sessionToken: securityHeaders.sessionToken }),
+		},
+		region,
+		service,
+		sha256: Sha256,
+		applyChecksum: isS3,
+		uriEscapePath: !isS3,
+	});
+
+	// Let signing errors propagate. Falling back to the unsigned request only yields
+	// an opaque 403 from AWS that hides the real cause.
+	const signedRequest = (await signer.sign(httpRequest)) as HttpRequest;
+
+	return {
+		...requestOptions,
+		headers: signedRequest.headers,
+		method,
+		url,
+		body: signOpts.body,
+		qs: undefined, // already encoded in url
+	};
 }

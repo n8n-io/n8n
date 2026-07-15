@@ -26,13 +26,8 @@ import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import {
-	PROJECT_ROOT,
-	Workflow,
-	assert,
-	calculateWorkflowChecksum,
-	ensureError,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -52,6 +47,7 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -62,6 +58,7 @@ import { WorkflowValidationService } from './workflow-validation.service';
 
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
@@ -94,6 +91,8 @@ export class WorkflowService {
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
+		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 	) {}
 
 	async getMany(
@@ -337,6 +336,8 @@ export class WorkflowService {
 			expectedChecksum?: string;
 			autosaved?: boolean;
 			source?: WorkflowActionSource;
+			versionName?: string;
+			versionDescription?: string;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -349,6 +350,8 @@ export class WorkflowService {
 			aiBuilderAssisted = false,
 			autosaved = false,
 			source = 'ui',
+			versionName,
+			versionDescription,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -547,6 +550,10 @@ export class WorkflowService {
 				workflowId,
 				autosaved,
 				source,
+				undefined,
+				versionName || versionDescription
+					? { name: versionName, description: versionDescription }
+					: undefined,
 			);
 		}
 
@@ -1242,6 +1249,10 @@ export class WorkflowService {
 				role: sw.role,
 			})),
 		);
+
+		// Caller must invalidate the workflow-project cache for these IDs after the
+		// surrounding transaction commits, since their owner project has changed.
+		return ownedWorkflowIds;
 	}
 
 	async getWorkflowsWithNodesIncluded(user: User, nodeTypes: string[], includeNodes = false) {
@@ -1433,6 +1444,10 @@ export class WorkflowService {
 
 			await this.outboxRepository.enqueue(workflowId, versionIdToActivate, trx);
 		});
+
+		// Wake the leader now that the record is committed, so it drains without
+		// waiting for the next poll cycle.
+		this.workflowPublicationNotifier.requestDrain();
 	}
 
 	/**
@@ -1469,6 +1484,15 @@ export class WorkflowService {
 			);
 
 			await this.outboxRepository.enqueue(workflowId, deactivatedVersionId, trx);
+
+			// Durable jobs are DB state, so their removal commits here rather than
+			// waiting on the leader's outbox handler: a lost hand-off would otherwise
+			// leave them firing a workflow already marked inactive.
+			await this.scheduleTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
 		});
+
+		// Wake the leader now that the record is committed, so it drains without
+		// waiting for the next poll cycle.
+		this.workflowPublicationNotifier.requestDrain();
 	}
 }

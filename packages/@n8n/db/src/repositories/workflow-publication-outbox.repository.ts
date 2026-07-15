@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -17,6 +17,18 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super(WorkflowPublicationOutbox, dataSource.manager);
+	}
+
+	/**
+	 * The in-flight (pending or in_progress) publication for a workflow, or null.
+	 * In-progress is preferred when both exist.
+	 */
+	async findInFlightByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
+		const inFlight = await this.findBy({
+			workflowId,
+			status: In([Status.InProgress, Status.Pending]),
+		});
+		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
 	}
 
 	/**
@@ -94,11 +106,11 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	private async enqueueAllActiveWithPostgresUpsert(): Promise<void> {
-		const tableName = this.getTableName('workflow_publication_outbox');
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 
 		await this.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = false
@@ -108,16 +120,66 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	private async enqueueAllActiveWithSqliteUpsert(): Promise<void> {
-		const tableName = this.getTableName('workflow_publication_outbox');
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 
 		await this.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+		);
+	}
+
+	/**
+	 * Enqueue a pending publication record for each given workflow that is active
+	 * and non-archived, at its current active version, in a single statement.
+	 * Workflows that are inactive, archived, or absent are skipped. Idempotent via
+	 * the same partial-unique-index upsert as {@link enqueue}, so the enqueued
+	 * version is always the canonical `activeVersionId`. Used by reconciliation to
+	 * re-publish workflows whose triggers went missing in memory.
+	 */
+	async enqueueByWorkflowIds(workflowIds: string[]): Promise<void> {
+		if (workflowIds.length === 0) return;
+
+		if (this.globalConfig.database.type === 'postgresdb') {
+			await this.enqueueByWorkflowIdsWithPostgresUpsert(workflowIds);
+			return;
+		}
+
+		await this.enqueueByWorkflowIdsWithSqliteUpsert(workflowIds);
+	}
+
+	private async enqueueByWorkflowIdsWithPostgresUpsert(workflowIds: string[]): Promise<void> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+
+		await this.query(
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
+			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."id" = ANY($1) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = false
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
+			[workflowIds],
+		);
+	}
+
+	private async enqueueByWorkflowIdsWithSqliteUpsert(workflowIds: string[]): Promise<void> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+		const placeholders = workflowIds.map(() => '?').join(', ');
+
+		await this.query(
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
+			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."id" IN (${placeholders}) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+			workflowIds,
 		);
 	}
 
@@ -363,6 +425,38 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			const [{ count }]: Array<{ count: number }> = await tx.query('SELECT changes() AS count');
 			return Number(count);
 		});
+	}
+
+	/**
+	 * Per-status record count and oldest `createdAt`, for the metrics gauges, in a
+	 * single grouped query. Statuses with no rows are absent from the map. The
+	 * oldest-record-age gauge only reads the active (`pending`/`in_progress`)
+	 * entries; the count gauge reads them all.
+	 */
+	async getRecordStatsByStatus(): Promise<Map<Status, { count: number; oldestCreatedAt: Date }>> {
+		const rows = await this.createQueryBuilder('o')
+			.select('o.status', 'status')
+			.addSelect('COUNT(*)', 'count')
+			.addSelect('MIN(o.createdAt)', 'oldestCreatedAt')
+			.groupBy('o.status')
+			.getRawMany<{ status: Status; count: string | number; oldestCreatedAt: string | Date }>();
+
+		return new Map(
+			rows.map((row) => [
+				row.status,
+				{ count: Number(row.count), oldestCreatedAt: this.parseTimestamp(row.oldestCreatedAt) },
+			]),
+		);
+	}
+
+	/**
+	 * Postgres hydrates timestamps into `Date`s directly. SQLite returns a raw UTC
+	 * string with no zone designator, which `new Date()` would read as local time;
+	 * tag it as UTC so the instant matches what the driver stored.
+	 */
+	private parseTimestamp(value: string | Date): Date {
+		if (value instanceof Date) return value;
+		return new Date(`${value.replace(' ', 'T')}Z`);
 	}
 
 	/**

@@ -9,6 +9,14 @@ These expectations are NOT about whether the workflow executes correctly — the
 3. **Conversation metrics (ground truth)**: deterministic counters spanning the whole conversation (restored/seeded context plus the live evaluated turn) — turn count, per-turn tool-call and confirmation counts, and how many confirmations were asked and of which kind. The reachedRunFinishCleanly flag and any per-turn runFinishStatus describe ONLY the evaluated (live) run; seeded turns carry no finish status, so a blank status on a seeded turn does not indicate an unfinished run. Treat these as authoritative. Do NOT recount turns or confirmations from the raw transcript when a metric already states the number.
 4. **Expectations**: a numbered list (indices start at 0). Judge each one.
 
+## Vocabulary: "agent" has three distinct senses — never conflate them
+
+- **The agent** (unqualified) = the builder assistant under evaluation, whose conversation you are judging.
+- **An n8n Agent / agent-builder artifact** = a first-class Agent resource — evidenced by \`build-agent\` tool calls or by the assistant explicitly proposing/creating a standalone Agent, never by anything inside a workflow.
+- **An AI Agent node** = a node of type \`@n8n/n8n-nodes-langchain.agent\` inside the workflow JSON.
+
+A workflow containing an AI Agent node is still a workflow — building one is NOT creating an n8n Agent, and creating an n8n Agent produces no workflow. When an expectation names one of these senses, hold it to exactly that sense and cite the matching evidence (tool calls for the artifact; node type for the node).
+
 ## How to judge
 
 - Judge **each expectation independently** and literally. Read what it actually asserts.

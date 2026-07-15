@@ -254,6 +254,31 @@ describe('McpServerMiddlewareService', () => {
 			expect(res.status).not.toHaveBeenCalled();
 		});
 
+		it('should attach the OAuth token scopes to the request', async () => {
+			const user = mock<User>({ id: 'user-123' });
+			const oauthToken = jwtService.sign({
+				sub: 'user-123',
+				aud: 'mcp-server-api',
+				meta: { isOAuth: true },
+			});
+
+			const req = mockReqWith(`Bearer ${oauthToken}`);
+			const res = mockDeep<Response>();
+			const next = vi.fn() as NextFunction;
+
+			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({
+				user,
+				authType: 'oauth',
+				scopes: ['workflow:read'],
+			});
+
+			await service.getAuthMiddleware()(req, res, next);
+			const authenticatedReq = req as Request & { mcpScopes?: string[] };
+
+			expect(authenticatedReq.mcpScopes).toEqual(['workflow:read']);
+			expect(next).toHaveBeenCalled();
+		});
+
 		it('should authenticate with valid API key and call next', async () => {
 			const user = mock<User>({ id: 'user-123' });
 			const apiKeyToken = jwtService.sign({
@@ -270,10 +295,16 @@ describe('McpServerMiddlewareService', () => {
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
-			const authenticatedReq = req as Request & { user?: User; mcpAuthType?: 'api_key' };
+			const authenticatedReq = req as Request & {
+				user?: User;
+				mcpAuthType?: 'api_key';
+				mcpScopes?: string[];
+			};
 
 			expect(authenticatedReq.user).toEqual(user);
 			expect(authenticatedReq.mcpAuthType).toBe('api_key');
+			// API keys are not scope-bearing: undefined means full tool access
+			expect(authenticatedReq.mcpScopes).toBeUndefined();
 			expect(next).toHaveBeenCalled();
 			expect(res.status).not.toHaveBeenCalled();
 		});

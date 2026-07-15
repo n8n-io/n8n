@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { ref } from 'vue';
+import type { INode } from 'n8n-workflow';
 import { useAiGateway } from './useAiGateway';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
@@ -116,6 +117,78 @@ describe('useAiGateway', () => {
 		it('should return false when credential type is not in gateway config', () => {
 			const { isCredentialTypeSupported } = useAiGateway();
 			expect(isCredentialTypeSupported('openAiApi')).toBe(false);
+		});
+	});
+
+	describe('isNodePropertyHidden()', () => {
+		const managedNode = {
+			type: 'n8n-nodes-base.browserbase',
+			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+		} as unknown as INode;
+
+		it('should delegate to the store', async () => {
+			mockGetGatewayConfig.mockResolvedValue({
+				nodes: [],
+				credentialTypes: [],
+				providerConfig: {},
+				hiddenNodeProperties: { 'n8n-nodes-base.browserbase': ['modelSource'] },
+			});
+			const aiGatewayStore = useAiGatewayStore();
+			await aiGatewayStore.fetchConfig();
+
+			const { isNodePropertyHidden } = useAiGateway();
+			expect(isNodePropertyHidden(managedNode, 'modelSource')).toBe(true);
+			expect(isNodePropertyHidden(managedNode, 'otherParam')).toBe(false);
+		});
+
+		it('should return false when no config is loaded', () => {
+			const { isNodePropertyHidden } = useAiGateway();
+			expect(isNodePropertyHidden(managedNode, 'modelSource')).toBe(false);
+		});
+	});
+
+	describe('isNodeTypeVersionSupported()', () => {
+		it('should delegate to the store', async () => {
+			mockGetGatewayConfig.mockResolvedValue({
+				nodes: [],
+				credentialTypes: [],
+				providerConfig: {},
+				minNodeTypeVersion: { 'n8n-nodes-base.browserbase': 2 },
+			});
+			const aiGatewayStore = useAiGatewayStore();
+			await aiGatewayStore.fetchConfig();
+
+			const { isNodeTypeVersionSupported } = useAiGateway();
+			expect(isNodeTypeVersionSupported('n8n-nodes-base.browserbase', 2)).toBe(true);
+			expect(isNodeTypeVersionSupported('n8n-nodes-base.browserbase', 1)).toBe(false);
+		});
+	});
+
+	describe('isActionOptionVisible()', () => {
+		const managedNode = {
+			type: 'n8n-nodes-base.browserbase',
+			parameters: {},
+			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+		} as unknown as INode;
+
+		it('should delegate to the store', async () => {
+			mockGetGatewayConfig.mockResolvedValue({
+				nodes: [],
+				credentialTypes: [],
+				providerConfig: {},
+				supportedActions: { 'n8n-nodes-base.browserbase': { session: ['create'] } },
+			});
+			const aiGatewayStore = useAiGatewayStore();
+			await aiGatewayStore.fetchConfig();
+
+			const { isActionOptionVisible } = useAiGateway();
+			expect(isActionOptionVisible(managedNode, 'resource', 'session')).toBe(true);
+			expect(isActionOptionVisible(managedNode, 'resource', 'other')).toBe(false);
+		});
+
+		it('should return true when no config is loaded', () => {
+			const { isActionOptionVisible } = useAiGateway();
+			expect(isActionOptionVisible(managedNode, 'resource', 'session')).toBe(true);
 		});
 	});
 });

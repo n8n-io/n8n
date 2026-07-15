@@ -16,7 +16,7 @@ import {
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	SUB_AGENT_RESOURCE_PREFIX,
 	createSubAgentResourceIdPrefix,

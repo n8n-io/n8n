@@ -76,6 +76,9 @@ export class InstanceAiModule implements ModuleInterface {
 			'./entities/instance-ai-mcp-registry-connection.entity'
 		);
 		const { InstanceAiThreadGrant } = await import('./entities/instance-ai-thread-grant.entity');
+		const { InstanceAiEventLogEntry } = await import(
+			'./entities/instance-ai-event-log-entry.entity'
+		);
 
 		return [
 			InstanceAiThread,
@@ -90,6 +93,7 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiObservationLock,
 			InstanceAiMcpRegistryConnection,
 			InstanceAiThreadGrant,
+			InstanceAiEventLogEntry,
 		];
 	}
 

@@ -28,6 +28,14 @@ import { ProjectSecretsProviderAccess } from './project-secrets-provider-access'
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
 import { RoleMappingRule } from './role-mapping-rule';
+import { ScheduledJob, ScheduledJobKind, ScheduledJobKindList } from './scheduled-job';
+import {
+	ScheduledTask,
+	ScheduledTaskStatus,
+	ScheduledTaskStatusList,
+	type TerminalTaskStatus,
+	TerminalTaskStatusList,
+} from './scheduled-task';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
@@ -49,6 +57,7 @@ import {
 import {
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
+	type WorkflowPublicationTriggerKind,
 } from './workflow-publication-trigger-status';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
@@ -79,6 +88,14 @@ export {
 	ProjectRelation,
 	RoleMappingRule,
 	Role,
+	ScheduledJob,
+	ScheduledJobKind,
+	ScheduledJobKindList,
+	ScheduledTask,
+	ScheduledTaskStatus,
+	ScheduledTaskStatusList,
+	type TerminalTaskStatus,
+	TerminalTaskStatusList,
 	Scope,
 	SharedCredentials,
 	SharedWorkflow,
@@ -95,6 +112,7 @@ export {
 	WorkflowPublicationOutboxStatus,
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
+	type WorkflowPublicationTriggerKind,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
@@ -154,6 +172,8 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	ScheduledJob,
+	ScheduledTask,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
 };

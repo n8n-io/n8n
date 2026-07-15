@@ -19,34 +19,55 @@ import {
 	validateSafeRedirectUrl,
 } from './utils';
 
-const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
-	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
+type BinaryResponse = { data: string | Buffer; fileName: string; type: string };
+
+const getBinaryDataFromNode = (
+	context: IWebhookFunctions,
+	nodeName: string,
+): IDataObject | undefined => {
+	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as
+		| IDataObject
+		| undefined;
 };
 
-export const binaryResponse = async (
-	context: IWebhookFunctions,
-): Promise<{ data: string | Buffer; fileName: string; type: string }> => {
-	const inputDataFieldName = context.getNodeParameter('inputDataFieldName', '') as string;
-	const parentNodes = context.getParentNodes(context.getNode().name);
-	const binaryNode = parentNodes
-		.reverse()
-		.find((node) => getBinaryDataFromNode(context, node?.name)?.hasOwnProperty(inputDataFieldName));
-	if (!binaryNode) {
-		throw new OperationalError(`No binary data with field ${inputDataFieldName} found.`);
-	}
-	const binaryData = getBinaryDataFromNode(context, binaryNode?.name)[
-		inputDataFieldName
-	] as IBinaryData;
+const getInputDataFieldNames = (inputDataFieldName: string) => {
+	const fieldNames = inputDataFieldName
+		.split(',')
+		.map((fieldName) => fieldName.trim())
+		.filter(Boolean);
 
-	return {
-		// If a binaryData has an id, the following field is set:
-		// N8N_DEFAULT_BINARY_DATA_MODE=filesystem
-		data: binaryData.id
-			? await context.helpers.binaryToBuffer(await context.helpers.getBinaryStream(binaryData.id))
-			: atob(binaryData.data),
-		fileName: binaryData.fileName ?? 'file',
-		type: binaryData.mimeType,
-	};
+	return fieldNames.length ? fieldNames : [inputDataFieldName];
+};
+
+export const binaryResponse = async (context: IWebhookFunctions): Promise<BinaryResponse[]> => {
+	const inputDataFieldName = context.getNodeParameter('inputDataFieldName', '') as string;
+	const inputDataFieldNames = getInputDataFieldNames(inputDataFieldName);
+	const responses: BinaryResponse[] = [];
+	const parentNodesBinaries = context
+		.getParentNodes(context.getNode().name)
+		.reverse()
+		.map((node) => getBinaryDataFromNode(context, node.name) ?? {});
+
+	for (const fieldName of inputDataFieldNames) {
+		const nodeBinary = parentNodesBinaries.find((bin) => Object.hasOwn(bin, fieldName));
+		if (!nodeBinary) {
+			throw new OperationalError(`No binary data with field ${fieldName} found.`);
+		}
+
+		const binaryData = nodeBinary[fieldName] as IBinaryData;
+
+		responses.push({
+			// If a binaryData has an id, the following field is set:
+			// N8N_DEFAULT_BINARY_DATA_MODE=filesystem
+			data: binaryData.id
+				? await context.helpers.binaryToBuffer(await context.helpers.getBinaryStream(binaryData.id))
+				: atob(binaryData.data),
+			fileName: binaryData.fileName ?? 'file',
+			type: binaryData.mimeType,
+		});
+	}
+
+	return responses;
 };
 
 export const renderFormCompletion = async (
@@ -70,7 +91,7 @@ export const renderFormCompletion = async (
 		| 'redirect'
 		| 'showText'
 		| 'returnBinary';
-	const binary = respondWith === 'returnBinary' ? await binaryResponse(context) : '';
+	const binary = respondWith === 'returnBinary' ? await binaryResponse(context) : [];
 
 	let title = options.formTitle;
 	if (!title) {

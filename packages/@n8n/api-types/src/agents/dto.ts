@@ -1,7 +1,7 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { interactiveResumeDataSchema } from '../agent-builder-interactive';
+import { AgentVectorStoreConfigSchema } from './agent-json-config.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
@@ -52,6 +52,10 @@ export class ListAgentsQueryDto extends Z.class({
 	...paginationSchema,
 	filter: agentListFilterValidator,
 	sortBy: z.enum(AGENTS_LIST_SORT_OPTIONS).optional(),
+}) {}
+
+export class AgentProviderModelsQueryDto extends Z.class({
+	credentialId: z.string().min(1).max(64).optional(),
 }) {}
 
 export class CreateAgentDto extends Z.class({
@@ -201,15 +205,15 @@ export class AgentChatMessageDto extends Z.class({
 	sessionId: z.string().min(1).optional(),
 }) {}
 
-export class AgentBuildResumeDto extends Z.class({
-	runId: z.string().min(1),
-	toolCallId: z.string().min(1),
-	resumeData: interactiveResumeDataSchema,
-}) {}
-
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),
+	// Deliberately untyped at this boundary: the possible resume shapes overlap
+	// (e.g. credential's `{approved}` matches questions' `{approved, answers}`
+	// and a non-discriminated union would parse against whichever member
+	// matches first, silently stripping fields the "wrong" schema doesn't
+	// know about). Each interactive tool validates its own resume payload via
+	// `.resume(schema)`.
 	resumeData: z.unknown(),
 }) {}
 
@@ -229,3 +233,13 @@ export class RevertAgentToVersionDto extends Z.class({
 export class CreateSlackAgentAppDto extends Z.class({
 	appConfigurationToken: z.string().min(1),
 }) {}
+
+export class TestAgentVectorStoreDto extends Z.class({
+	vectorStore: AgentVectorStoreConfigSchema,
+}) {}
+
+export interface VectorStoreTestResult {
+	success: boolean;
+	message?: string;
+	warning?: string;
+}

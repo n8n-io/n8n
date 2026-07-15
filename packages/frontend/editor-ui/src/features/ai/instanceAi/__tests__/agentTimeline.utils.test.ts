@@ -67,6 +67,22 @@ describe('extractArtifacts', () => {
 		]);
 	});
 
+	test('returns agent artifact from targetResource', () => {
+		const node = makeAgentNode({
+			targetResource: { id: 'agent-1', type: 'agent', name: 'SEO Auditor', projectId: 'proj-1' },
+		});
+
+		expect(extractArtifacts(node)).toEqual([
+			{
+				type: 'agent',
+				resourceId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'SEO Auditor',
+				completedAt: undefined,
+			},
+		]);
+	});
+
 	test('falls back to subtitle when targetResource has no name', () => {
 		const node = makeAgentNode({
 			subtitle: 'Sub Title',
@@ -258,6 +274,10 @@ describe('isVisibleTimelineEntry', () => {
 		expect(isVisibleTimelineEntry({ type: 'text', content: 'hi' }, {}, {})).toBe(true);
 	});
 
+	test('reasoning entries are always visible', () => {
+		expect(isVisibleTimelineEntry({ type: 'reasoning', content: 'hmm' }, {}, {})).toBe(true);
+	});
+
 	test('tool-call entries without a matching tool call are hidden', () => {
 		expect(isVisibleTimelineEntry(toolCallEntry, {}, {})).toBe(false);
 	});
@@ -323,9 +343,9 @@ describe('isVisibleTimelineEntry', () => {
 		expect(visibilityOf(questions(false))).toBe(true);
 	});
 
-	test('tasks, delegate, and generic tool calls are visible', () => {
+	test('tasks, default, and generic tool calls are visible', () => {
 		expect(visibilityOf(makeToolCall({ renderHint: 'tasks' }))).toBe(true);
-		expect(visibilityOf(makeToolCall({ renderHint: 'delegate' }))).toBe(true);
+		expect(visibilityOf(makeToolCall({ renderHint: 'default' }))).toBe(true);
 		expect(visibilityOf(makeToolCall({ renderHint: 'skill' }))).toBe(true);
 		expect(visibilityOf(makeToolCall({}))).toBe(true);
 	});

@@ -31,7 +31,7 @@ import { generateKeyPairSync } from 'node:crypto';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-vi.mock('@n8n/utils', () => ({ formatPemBlock: (key: string) => key }));
+vi.mock('@n8n/utils/format-pem-block', () => ({ formatPemBlock: (key: string) => key }));
 
 // SalesforceJwtApi.preAuthentication exchanges its signed JWT for a token through the
 // shared outbound HTTP client (`getTokenRequestClient`), not `this.helpers.httpRequest`.

@@ -5,8 +5,10 @@ import {
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
+	ManualRunDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	type WorkflowPublicationStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfBlockedIpError, SsrfProtectionService } from '@n8n/backend-network';
@@ -36,9 +38,11 @@ import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import express from 'express';
-import { calculateWorkflowChecksum, ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { CollaborationService } from '../collaboration/collaboration.service';
+import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { WorkflowCreationService } from './workflow-creation.service';
 import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
@@ -87,6 +91,7 @@ export class WorkflowsController {
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 	) {}
 
 	@Post('/')
@@ -496,7 +501,15 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
-	async runManually(req: WorkflowRequest.ManualRun, _res: unknown) {
+	async runManually(req: WorkflowRequest.ManualRun) {
+		// Manually validated since the schema is picked per execution case and
+		// TypeScript reflection doesn't work with plain Zod schemas
+		const parseResult = ManualRunDto.safeParse(req.body);
+		if (!parseResult.success) {
+			throw new BadRequestError(parseResult.error.errors[0].message);
+		}
+		const body = parseResult.data;
+
 		const workflowId = req.params.workflowId;
 
 		// Always load the stored workflow from the database.
@@ -512,7 +525,7 @@ export class WorkflowsController {
 
 		const result = await this.workflowExecutionService.executeManually(
 			dbWorkflow,
-			req.body,
+			body,
 			req.user,
 			req.headers['push-ref'],
 			n8nAuthCookie,
@@ -656,6 +669,29 @@ export class WorkflowsController {
 		);
 
 		return lastExecution ?? null;
+	}
+
+	@Get('/:workflowId/publication-status')
+	@ProjectScope('workflow:read')
+	async getPublicationStatus(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowPublicationStatus> {
+		// The publication tables this reads are only populated when the publication
+		// service is enabled; otherwise the legacy path runs and the status would be
+		// misleading. Treat the route as absent when the feature is off.
+		if (!this.globalConfig.workflows.useWorkflowPublicationService) {
+			throw new NotFoundError('Workflow publication status is not available');
+		}
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
+			'workflow:read',
+		]);
+		if (!workflow) {
+			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+		}
+		return await this.workflowPublicationStatusService.getStatus(workflowId);
 	}
 
 	@Post('/with-node-types')

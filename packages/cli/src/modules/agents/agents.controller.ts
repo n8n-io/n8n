@@ -1,4 +1,4 @@
-import { CreateAgentDto, ListAgentsQueryDto } from '@n8n/api-types';
+import { type AgentCapabilitySummary, CreateAgentDto, ListAgentsQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -72,6 +72,16 @@ export class AgentsController {
 		);
 	}
 
+	/** Capability metadata for the canvas node card (model + chip labels). */
+	@Get('/:agentId/summary')
+	@ProjectScope('agent:read')
+	async getSummary(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentCapabilitySummary> {
+		const { projectId, agentId } = req.params;
+		return await this.agentsService.getCapabilitySummary(agentId, projectId);
+	}
+
 	@Delete('/:agentId')
 	@ProjectScope('agent:delete')
 	async delete(
@@ -79,7 +89,7 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const deleted = await this.agentsService.delete(agentId, req.params.projectId, req.user.id);
+		const deleted = await this.agentsService.delete(agentId, req.params.projectId);
 
 		if (!deleted) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);

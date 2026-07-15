@@ -5,9 +5,10 @@ import {
 	INSTANCE_RESOURCE_ORDER,
 	ALL_INSTANCE_SCOPES,
 	getOptionState,
+	getEscalationWarningKey,
 	isOptionImplied,
 	resolveOptionState,
-	toggleOption,
+	toggleOptionInGroup,
 } from './instanceRoleScopes';
 
 const ALL_SCOPES_SET = new Set<string>(ALL_SCOPES as string[]);
@@ -59,6 +60,14 @@ describe('instanceRoleScopes config', () => {
 		expect(INSTANCE_SCOPE_GROUP_LIST.map((g) => g.resource)).toEqual(INSTANCE_RESOURCE_ORDER);
 	});
 
+	it('gives every permission option a tooltip description key', () => {
+		for (const group of INSTANCE_SCOPE_GROUP_LIST) {
+			for (const option of group.options) {
+				expect(option.descriptionKey).toBeTruthy();
+			}
+		}
+	});
+
 	describe('relationship rules', () => {
 		it('apiKey "Manage own" is a strict subset of "Manage all"', () => {
 			const own = INSTANCE_SCOPE_GROUPS.apiKey['Manage own'];
@@ -69,8 +78,8 @@ describe('instanceRoleScopes config', () => {
 
 		it('exposes the configured option labels per resource', () => {
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.apiKey)).toEqual(['Manage own', 'Manage all']);
-			expect(Object.keys(INSTANCE_SCOPE_GROUPS.tag)).toEqual(['View', 'Manage']);
-			expect(Object.keys(INSTANCE_SCOPE_GROUPS.role)).toEqual(['Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.tag)).toEqual(['Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.role)).toEqual(['Manage project roles', 'Manage']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.project)).toEqual(['Create']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.settings)).toEqual(['Manage']);
 		});
@@ -121,8 +130,16 @@ describe('isOptionImplied', () => {
 
 	it('returns false for options in groups with no superseding relationships', () => {
 		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
-		const tagView = tagGroup.options.find((o) => o.key === 'View')!;
-		expect(isOptionImplied(tagView, tagGroup.options, ['tag:read', 'tag:list'])).toBe(false);
+		const tagManage = tagGroup.options.find((o) => o.key === 'Manage')!;
+		expect(
+			isOptionImplied(tagManage, tagGroup.options, [
+				'tag:read',
+				'tag:list',
+				'tag:create',
+				'tag:update',
+				'tag:delete',
+			]),
+		).toBe(false);
 	});
 
 	it('returns false when the superseding option is present but "Manage own" is checked via own scopes only', () => {
@@ -168,35 +185,104 @@ describe('resolveOptionState', () => {
 
 	it('does not affect unrelated groups', () => {
 		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
-		const tagView = tagGroup.options.find((o) => o.key === 'View')!;
-		expect(resolveOptionState(tagView, tagGroup.options, ['tag:read'])).toBe('indeterminate');
-		expect(resolveOptionState(tagView, tagGroup.options, ['tag:read', 'tag:list'])).toBe('checked');
+		const tagManage = tagGroup.options.find((o) => o.key === 'Manage')!;
+		expect(resolveOptionState(tagManage, tagGroup.options, ['tag:read'])).toBe('indeterminate');
+		expect(
+			resolveOptionState(tagManage, tagGroup.options, [
+				'tag:read',
+				'tag:list',
+				'tag:create',
+				'tag:update',
+				'tag:delete',
+			]),
+		).toBe('checked');
 	});
 });
 
-describe('toggleOption', () => {
-	const option = ['tag:create', 'tag:update', 'tag:delete'];
-
-	it('adds the full resolved scope set when unchecked', () => {
-		const result = toggleOption(['user:read'], option);
-		expect(result).toEqual(expect.arrayContaining(['user:read', ...option]));
-		expect(result).toHaveLength(4);
+describe('getEscalationWarningKey', () => {
+	it('returns the members warning when a user Manage scope is present', () => {
+		expect(getEscalationWarningKey('user', ['user:changeRole'])).toBe(
+			'instanceRoles.warning.manageMembers',
+		);
 	});
 
-	it('adds the full resolved scope set when indeterminate', () => {
-		const result = toggleOption(['tag:create'], option);
-		expect(result).toEqual(expect.arrayContaining(option));
-		expect(result).toHaveLength(3);
+	it('returns the roles warning when role:manage is present', () => {
+		expect(getEscalationWarningKey('role', ['role:read', 'role:manage'])).toBe(
+			'instanceRoles.warning.manageRoles',
+		);
 	});
 
-	it('removes the full resolved scope set when fully checked', () => {
-		const result = toggleOption(['user:read', ...option], option);
+	it('does not warn for "Manage project roles" alone (role:manageProject without role:manage)', () => {
+		expect(getEscalationWarningKey('role', ['role:read', 'role:manageProject'])).toBeUndefined();
+	});
+
+	it('returns undefined for a non-escalating resource', () => {
+		expect(getEscalationWarningKey('tag', ['tag:read', 'tag:list'])).toBeUndefined();
+	});
+
+	it('returns undefined for an empty scope list', () => {
+		expect(getEscalationWarningKey('user', [])).toBeUndefined();
+		expect(getEscalationWarningKey('role', [])).toBeUndefined();
+	});
+
+	it('returns undefined for role when only the non-escalating role:read scope is present', () => {
+		expect(getEscalationWarningKey('role', ['role:read'])).toBeUndefined();
+	});
+});
+
+describe('toggleOptionInGroup', () => {
+	const apiKeyGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'apiKey')!;
+	const manageOwn = apiKeyGroup.options.find((o) => o.key === 'Manage own')!;
+	const manageAll = apiKeyGroup.options.find((o) => o.key === 'Manage all')!;
+
+	const roleGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'role')!;
+	const manageProjectRoles = roleGroup.options.find((o) => o.key === 'Manage project roles')!;
+	const manageAllRoles = roleGroup.options.find((o) => o.key === 'Manage')!;
+
+	it('adds the full scope set when checking an unchecked option', () => {
+		const result = toggleOptionInGroup([], manageAll, apiKeyGroup.options);
+		expect(result).toEqual(expect.arrayContaining([...manageAll.scopes]));
+		expect(result).toHaveLength(manageAll.scopes.length);
+	});
+
+	it('downgrades to "Manage own" when unchecking "Manage all" (keeps own selected)', () => {
+		const result = toggleOptionInGroup([...manageAll.scopes], manageAll, apiKeyGroup.options);
+		expect(new Set(result)).toEqual(new Set(manageOwn.scopes));
+		// The exclusive "manage" scope is gone, but every "Manage own" scope survives.
+		expect(result).not.toContain('apiKey:manage');
+		for (const scope of manageOwn.scopes) expect(result).toContain(scope);
+	});
+
+	it('downgrades to "Manage project roles" when unchecking "Manage all roles"', () => {
+		const result = toggleOptionInGroup(
+			[...manageAllRoles.scopes],
+			manageAllRoles,
+			roleGroup.options,
+		);
+		expect(new Set(result)).toEqual(new Set(manageProjectRoles.scopes));
+		expect(result).not.toContain('role:manage');
+		for (const scope of manageProjectRoles.scopes) expect(result).toContain(scope);
+	});
+
+	it('fully clears a subordinate option when it is unchecked directly', () => {
+		const result = toggleOptionInGroup([...manageOwn.scopes], manageOwn, apiKeyGroup.options);
+		expect(result).toEqual([]);
+	});
+
+	it('removes the whole scope set when the option has no subordinate', () => {
+		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
+		const manageTags = tagGroup.options.find((o) => o.key === 'Manage')!;
+		const result = toggleOptionInGroup(
+			['user:read', ...manageTags.scopes],
+			manageTags,
+			tagGroup.options,
+		);
 		expect(result).toEqual(['user:read']);
 	});
 
 	it('does not mutate the input array', () => {
-		const input = ['user:read'];
-		toggleOption(input, option);
-		expect(input).toEqual(['user:read']);
+		const input = [...manageAll.scopes];
+		toggleOptionInGroup(input, manageAll, apiKeyGroup.options);
+		expect(input).toEqual([...manageAll.scopes]);
 	});
 });

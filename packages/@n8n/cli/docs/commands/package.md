@@ -2,26 +2,38 @@
 
 Export and import workflows as portable n8n packages (`.n8np` archives).
 
-> **Beta — disabled by default.** These commands call beta endpoints that the
-> target instance must opt into with `N8N_PUBLIC_API_PACKAGES_ENABLED=true`, and
-> the n8n Packages feature must be licensed. While disabled, the instance returns
-> `404` and the CLI prints a hint explaining how to enable it.
+> **Beta feature:** n8n packages are still under development and there may be breaking changes on APIs.
 
 ## `package export`
 
-Export one or more workflows into a gzipped `.n8np` archive written to disk.
+Export workflows, folders, or projects into a gzipped `.n8np` archive written
+to disk. Each exported folder includes its nested folders. Provide workflow
+and/or folder IDs, or project IDs, but not both groups in the same command.
 
 ```bash
 n8n-cli package export --workflow-id=abc --output=export.n8np
 n8n-cli package export -w abc -w def -o team.n8np
+n8n-cli package export --folder-id=xyz -o folders.n8np
+n8n-cli package export --project-id=abc -o project.n8np
+n8n-cli package export -p abc -p def -o projects.n8np
 ```
 
 | Flag | Description |
 |------|-------------|
-| `-w, --workflow-id` | Workflow ID to include. Repeat the flag to export several. (required) |
+| `-w, --workflow-id` | Workflow ID to include. Repeat the flag to export several. |
+| `-f, --folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
+| `-p, --project-id` | Project ID to include. Repeat the flag to export several. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
 
-Requires the API key to hold the `workflow:export` scope.
+Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
+the API key to hold `workflow:export` when exporting workflows or folders, or
+`project:export` when exporting projects.
+
+Statically referenced sub-workflows must also be included in the resulting
+package. For workflow exports, include referenced sub-workflows with additional
+`--workflow-id` flags. For folder exports, referenced sub-workflows must be in
+the exported folder tree or included with `--workflow-id`. For project exports,
+referenced sub-workflows must be in one of the exported projects.
 
 ## `package import`
 
@@ -31,6 +43,7 @@ Import a `.n8np` archive into a project.
 n8n-cli package import --file=export.n8np --conflict-policy=fail
 n8n-cli package import --file=export.n8np --project=<id> --conflict-policy=new-version
 n8n-cli package import --file=export.n8np --conflict-policy=fail --credential-missing-mode=must-preexist
+n8n-cli package import --file=export.n8np --conflict-policy=fail --bindings='{"credentials":{"<sourceId>":"<targetId>"}}'
 ```
 
 | Flag | Description |
@@ -40,8 +53,10 @@ n8n-cli package import --file=export.n8np --conflict-policy=fail --credential-mi
 | `--project` | Target project ID. Defaults to your personal project. |
 | `--folder` | Target folder ID within the project. Defaults to the project root. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
-| `--credential-matching-mode` | How credential references are matched on the target instance (`id-only`). |
+| `--folder-conflict-policy` | What to do when a package folder already exists in the target project: `merge` (default, reuse the existing folder and merge the package's children into it) or `fail`. Requires a folders-enabled license when the package contains folders. |
+| `--credential-matching-mode` | How credential references are matched on the target instance: `id-only` (default, match by id), `name-and-type` (match by exact name and type), or `type-only` (match by type). For `name-and-type` and `type-only`, candidates are ranked by scope — owned by the target project, then shared into it, then global — and ties within a scope use the most recently updated credential. |
 | `--credential-missing-mode` | What to do when a referenced credential cannot be resolved. `create-stub` (instance default) creates empty placeholder credentials in the target project; `must-preexist` requires every referenced credential to already exist. |
+| `--bindings` | Explicit source→target id bindings as a JSON object keyed by entity type, e.g. `{"credentials":{"<sourceId>":"<targetId>"}}`. Only `credentials` is honoured today; these bindings are applied before `--credential-matching-mode` resolution runs. |
 
 Requires the API key to hold the `workflow:import` scope. When the import is
 blocked — for example by a workflow conflict under `--conflict-policy=fail`, or

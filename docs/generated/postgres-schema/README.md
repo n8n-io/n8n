@@ -53,7 +53,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_annotation_tags](public.execution_annotation_tags.md) | 2 |  | BASE TABLE |
 | [public.execution_annotations](public.execution_annotations.md) | 6 |  | BASE TABLE |
 | [public.execution_data](public.execution_data.md) | 4 |  | BASE TABLE |
-| [public.execution_entity](public.execution_entity.md) | 18 |  | BASE TABLE |
+| [public.execution_entity](public.execution_entity.md) | 19 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 6 |  | BASE TABLE |
 | [public.folder_tag](public.folder_tag.md) | 2 |  | BASE TABLE |
@@ -63,6 +63,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.installed_nodes](public.installed_nodes.md) | 4 |  | BASE TABLE |
 | [public.installed_packages](public.installed_packages.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) | 8 |  | BASE TABLE |
+| [public.instance_ai_events](public.instance_ai_events.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_messages](public.instance_ai_messages.md) | 8 |  | BASE TABLE |
@@ -83,7 +84,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.oauth_authorization_codes](public.oauth_authorization_codes.md) | 13 |  | BASE TABLE |
 | [public.oauth_clients](public.oauth_clients.md) | 9 |  | BASE TABLE |
 | [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) | 7 |  | BASE TABLE |
-| [public.oauth_user_consents](public.oauth_user_consents.md) | 4 |  | BASE TABLE |
+| [public.oauth_user_consents](public.oauth_user_consents.md) | 5 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
 | [public.project](public.project.md) | 9 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
@@ -92,6 +93,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
+| [public.scheduled_job](public.scheduled_job.md) | 19 |  | BASE TABLE |
+| [public.scheduled_task](public.scheduled_task.md) | 16 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
@@ -113,10 +116,11 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
 | [public.workflow_history](public.workflow_history.md) | 11 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 7 |  | BASE TABLE |
-| [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 7 |  | BASE TABLE |
+| [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 8 |  | BASE TABLE |
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
+| [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -224,6 +228,7 @@ erDiagram
 "public.insights_raw" }o--|| "public.insights_metadata" : "FOREIGN KEY (#quot;metaId#quot;) REFERENCES insights_metadata(#quot;metaId#quot;) ON DELETE CASCADE"
 "public.installed_nodes" }o--|| "public.installed_packages" : "FOREIGN KEY (package) REFERENCES installed_packages(#quot;packageName#quot;) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.instance_ai_checkpoints" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.instance_ai_events" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_iteration_logs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
@@ -262,6 +267,8 @@ erDiagram
 "public.role_mapping_rule_project" }o--|| "public.role_mapping_rule" : "FOREIGN KEY (#quot;roleMappingRuleId#quot;) REFERENCES role_mapping_rule(id) ON DELETE CASCADE"
 "public.role_scope" }o--|| "public.scope" : "FOREIGN KEY (#quot;scopeSlug#quot;) REFERENCES scope(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.role_scope" }o--|| "public.role" : "FOREIGN KEY (#quot;roleSlug#quot;) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE"
+"public.scheduled_job" }o--o| "public.workflow_published_version" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_published_version(#quot;workflowId#quot;) ON DELETE CASCADE"
+"public.scheduled_task" }o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialsId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -750,6 +757,7 @@ erDiagram
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
   json tracingContext
+  boolean usedPrivateCredentials
   timestamp_3__with_time_zone waitTill
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
@@ -816,6 +824,15 @@ erDiagram
   varchar_255_ runId
   json state
   uuid threadId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.instance_ai_events" {
+  timestamp_3__with_time_zone createdAt
+  text payload
+  varchar_64_ runId
+  integer seq
+  uuid threadId FK
+  varchar_64_ type
   timestamp_3__with_time_zone updatedAt
 }
 "public.instance_ai_iteration_logs" {
@@ -1029,6 +1046,7 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   integer id
+  json scope
   uuid userId FK
 }
 "public.processed_data" {
@@ -1088,6 +1106,45 @@ erDiagram
 "public.role_scope" {
   varchar_128_ roleSlug FK
   varchar_128_ scopeSlug FK
+}
+"public.scheduled_job" {
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ cronExpression
+  boolean enabled
+  timestamp_3__with_time_zone fireAt
+  integer id
+  integer intervalSeconds
+  varchar_16_ kind
+  timestamp_3__with_time_zone lastFiredAt
+  integer maxAttempts
+  varchar_255_ name
+  timestamp_3__with_time_zone nextRunAt
+  varchar_36_ nodeId
+  json payload
+  integer recurrenceSize
+  varchar_16_ recurrenceUnit
+  varchar_128_ taskType
+  varchar_64_ timezone
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.scheduled_task" {
+  integer attempts
+  varchar_255_ claimedBy
+  timestamp_3__with_time_zone createdAt
+  text errorMessage
+  timestamp_3__with_time_zone finishedAt
+  bigint id
+  integer jobId FK
+  integer leaseEpoch
+  timestamp_3__with_time_zone leaseExpiresAt
+  integer maxAttempts
+  json payload
+  timestamp_3__with_time_zone runAt
+  timestamp_3__with_time_zone scheduledFor
+  timestamp_3__with_time_zone startedAt
+  varchar_16_ status
+  varchar_128_ taskType
 }
 "public.scope" {
   text description
@@ -1303,6 +1360,7 @@ erDiagram
   text errorMessage
   varchar_36_ nodeId
   varchar_20_ status
+  varchar_20_ triggerKind
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId FK
   varchar_36_ workflowId FK
@@ -1327,6 +1385,14 @@ erDiagram
   timestamp_3__with_time_zone latestEvent
   varchar_128_ name
   bigint rootCount
+  varchar_36_ workflowId
+  varchar_128_ workflowName
+}
+"public.workflow_statistics_delta" {
+  timestamp_3__with_time_zone createdAt
+  bigint id
+  varchar_128_ name
+  smallint rootCountDelta
   varchar_36_ workflowId
   varchar_128_ workflowName
 }

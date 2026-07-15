@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "2.29.0",
+  "version": "2.31.0",
   "description": "Workflow base code of n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -37,7 +37,7 @@
     "watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:changed": "janitor test-scoped --runner=vitest",
+    "test:changed": "janitor test-scoped",
     "test:dev": "vitest --watch",
     "mutate": "node ../../scripts/mutation-health/mutate.mjs --package-dir packages/workflow"
   },
@@ -61,6 +61,7 @@
     "@types/ssh2": "catalog:",
     "@types/xml2js": "catalog:",
     "fast-check": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
@@ -69,6 +70,7 @@
   "dependencies": {
     "@codemirror/autocomplete": "catalog:",
     "@n8n/errors": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/tournament": "workspace:*",
     "@sentry/core": "catalog:sentry",
@@ -91,7 +93,9 @@
     "transliteration": "2.3.5",
     "uuid": "catalog:",
     "xml2js": "catalog:",
-    "jsonrepair": "catalog:",
+    "jsonrepair": "catalog:"
+  },
+  "peerDependencies": {
     "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

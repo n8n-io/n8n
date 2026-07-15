@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
 
@@ -72,6 +72,21 @@ export function transcriptAsText(transcript: TranscriptTurn[]): string {
 /** Concatenated agent narration across a turn's steps (excludes tool interactions). */
 export function agentTextOf(turn: TranscriptTurn): string {
 	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
+}
+
+/**
+ * Agent-side narration across a captured transcript, flattened as a text block
+ * for honesty checks. Single narrating turn → plain text; multi-turn → numbered
+ * by conversation turn so each claim aligns with the user turn that prompted it.
+ */
+export function agentTurnsAsText(transcript: TranscriptTurn[]): string {
+	const narrations = transcript
+		.map((turn, i) => ({ turn: i + 1, text: agentTextOf(turn) }))
+		.filter((n) => n.text.length > 0);
+
+	if (narrations.length === 0) return '';
+	if (narrations.length === 1) return narrations[0].text;
+	return narrations.map((n) => `Turn ${String(n.turn)}: ${n.text}`).join('\n\n');
 }
 
 /** The most recent turn's agent narration — a finalText fallback for seeded

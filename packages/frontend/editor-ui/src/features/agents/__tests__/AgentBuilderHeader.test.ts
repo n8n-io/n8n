@@ -4,6 +4,7 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
 import type { AgentResource } from '../types';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
@@ -76,7 +77,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nActionDropdown: {
 		name: 'ActionDropdown',
 		template: '<div v-bind="$attrs" />',
-		props: ['items', 'activatorIcon'],
+		props: ['items', 'activatorIcon', 'extraPopperClass'],
 		emits: ['select'],
 	},
 }));
@@ -118,6 +119,7 @@ function mountHeader(
 		projectName: string | null;
 		headerActions: unknown[];
 		mode: 'edit' | 'preview';
+		artifactMode: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
 	}> = {},
@@ -130,6 +132,7 @@ function mountHeader(
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
 			mode: overrides.mode,
+			artifactMode: overrides.artifactMode,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
 		},
@@ -153,10 +156,34 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(true);
 	});
 
+	it('hides breadcrumbs and switcher in artifact mode', () => {
+		const wrapper = mountHeader({ artifactMode: true });
+
+		expect(wrapper.find('[data-testid="stub-breadcrumbs"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-header-switcher"]').exists()).toBe(false);
+	});
+
+	it('hides header management actions in artifact mode', () => {
+		const wrapper = mountHeader({
+			artifactMode: true,
+			agent: { ...baseAgent, hasPublishHistory: true } as AgentResource,
+			headerActions: [{ id: 'delete', label: 'Delete' }],
+		});
+
+		expect(wrapper.find('[data-testid="agent-header-version-history-btn"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(false);
+	});
+
 	it('uses the horizontal dots action menu icon', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
 		const action = wrapper.findComponent({ name: 'ActionDropdown' });
 		expect(action.props('activatorIcon')).toBe('ellipsis');
+	});
+
+	it('widens the header action menu so labels are readable from the icon trigger', () => {
+		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete agent' }] });
+		const action = wrapper.findComponent({ name: 'ActionDropdown' });
+		expect(action.props('extraPopperClass')).toBeTruthy();
 	});
 
 	it('hides the action dropdown when no header actions are available', () => {
@@ -289,14 +316,11 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
 	});
 
-	it('navigates to the new agent page from the switcher footer', async () => {
+	it('navigates to Instance AI for agent creation from the switcher footer', async () => {
 		const wrapper = mountHeader();
 
 		await wrapper.find('[data-testid="agent-header-new-agent"]').trigger('click');
 
-		expect(routerPush).toHaveBeenCalledWith({
-			name: 'NewAgentView',
-			query: { projectId: 'p1' },
-		});
+		expect(routerPush).toHaveBeenCalledWith(instanceAiCreateAgentRoute('p1'));
 	});
 });

@@ -11,7 +11,7 @@ import type {
 
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
-import { mergeCustomHeaders } from '@utils/helpers';
+import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
 
 type LmOpenAiOptions = {
 	baseURL?: string;
@@ -250,6 +250,7 @@ export class LmOpenAi implements INodeType {
 		};
 
 		const { openAiDefaultHeaders } = Container.get(AiConfig);
+		const customHeader = getCustomCredentialHeader(credentials);
 		const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
@@ -273,7 +274,9 @@ export class LmOpenAi implements INodeType {
 			configuration,
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [
+				new N8nLlmTracing(this, { redactedHeaders: customHeader ? [customHeader.name] : [] }),
+			],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

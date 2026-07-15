@@ -14,7 +14,11 @@ import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
-import type { CreateInstanceAgentOptions, InstanceAiToolRegistry } from '../types';
+import type {
+	CreateInstanceAgentOptions,
+	InstanceAiContext,
+	InstanceAiToolRegistry,
+} from '../types';
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 
@@ -49,9 +53,13 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		memoryConfig,
 	} = options;
 
-	// Build native n8n domain tools (context captured via closures — per-run)
-	const domainTools = createAllTools(context);
-	const orchestratorDomainTools = createOrchestratorDomainTools(context);
+	// Build native n8n domain tools (context captured via closures — per-run).
+	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
+	// explicit child runs that land on the active trace — orchestration tools
+	// (e.g. verify) already get it via OrchestrationContext.
+	const domainContext: InstanceAiContext = { ...context, tracing: orchestrationContext?.tracing };
+	const domainTools = createAllTools(domainContext);
+	const orchestratorDomainTools = createOrchestratorDomainTools(domainContext);
 
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change).
@@ -77,12 +85,12 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		});
 	};
 
-	// Build orchestration tools (plan, delegate) — orchestrator-only.
+	// Build orchestration tools — orchestrator-only.
 	const orchestrationTools = orchestrationContext
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Keep MCP tools from shadowing domain or orchestration tools during object composition.
+	// Keep MCP tools from shadowing domain or orchestration tools.
 	const reservedToolNames = new Set([...domainTools.keys(), ...orchestrationTools.keys()]);
 
 	// Store all MCP tools on orchestrationContext for sub-agents.
@@ -131,12 +139,15 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		isCheckpointFollowUp: orchestrationContext?.isCheckpointFollowUp,
 	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
+	const hasDeferredExternalMcpTools =
+		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
 	const systemPrompt = getSystemPrompt({
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 		formBaseUrl: orchestrationContext?.formBaseUrl,
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
+		mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 		licenseHints: context.licenseHints,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,

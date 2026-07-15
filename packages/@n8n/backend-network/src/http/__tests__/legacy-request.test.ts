@@ -303,6 +303,45 @@ describe('OutboundHttp.requests requestLegacy', () => {
 		});
 	});
 
+	describe('digest auth', () => {
+		const baseUrl = 'https://digest.test';
+
+		// A strict Digest-only server: it issues its WWW-Authenticate challenge only to
+		// an unauthenticated first request. A stray `Basic` header gets a bare 401 with
+		// no challenge, so the client can never derive the Digest header.
+		const mockStrictDigestServer = () => {
+			// No auth header -> issue the Digest challenge.
+			nock(baseUrl, { badheaders: ['authorization'] })
+				.get('/get_file')
+				.reply(401, '', {
+					'www-authenticate': 'Digest realm="test", nonce="abc123", qop="auth"',
+				});
+
+			// A stray Basic header -> reject without a usable challenge.
+			nock(baseUrl, { reqheaders: { authorization: /^Basic /i } })
+				.get('/get_file')
+				.reply(401, 'Unauthorized');
+
+			// A proper Digest response -> serve the file.
+			nock(baseUrl, { reqheaders: { authorization: /^Digest /i } })
+				.get('/get_file')
+				.reply(200, 'FILE_CONTENTS');
+		};
+
+		it('authenticates against a Digest-only server when sendImmediately is false', async () => {
+			mockStrictDigestServer();
+			const client = makeFacade().requests({ ssrf: 'disabled' });
+
+			const body = await client.requestLegacy({
+				url: `${baseUrl}/get_file`,
+				method: 'GET',
+				auth: { user: 'user', pass: 'pass', sendImmediately: false },
+			});
+
+			expect(body).toBe('FILE_CONTENTS');
+		});
+	});
+
 	describe('body drain', () => {
 		let server: Server;
 		let port: number;

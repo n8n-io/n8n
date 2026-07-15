@@ -39,7 +39,7 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_GITHUB_ACCESS_TOKEN',
 		buildData: (token) => ({ accessToken: token }),
 	},
-	gmailOAuth2Api: {
+	gmailOAuth2: {
 		defaultName: '[eval] Gmail',
 		envVar: 'EVAL_GMAIL_ACCESS_TOKEN',
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
@@ -63,6 +63,11 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 	httpBasicAuth: {
 		defaultName: '[eval] HTTP Basic',
 		buildData: () => ({ user: 'eval-user', password: 'eval-pass' }),
+	},
+	openAiApi: {
+		defaultName: '[eval] OpenAI',
+		envVar: 'EVAL_OPENAI_API_KEY',
+		buildData: (key) => ({ apiKey: key }),
 	},
 };
 

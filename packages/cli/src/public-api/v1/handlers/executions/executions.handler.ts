@@ -174,9 +174,12 @@ const executionHandlers: ExecutionHandlers = {
 				return res.status(200).json({ data: [], nextCursor: null });
 			}
 
-			// get running executions so we exclude them from the result
+			// Collect genuinely running executions to exclude from the default listing.
+			// The active executions list also retains `waiting` executions (persisted and
+			// resumable); filter by status so waiting executions are still listed.
 			const runningExecutionsIds = Container.get(ActiveExecutions)
 				.getActiveExecutions()
+				.filter(({ status }) => status === 'running')
 				.map(({ id }) => id);
 
 			const filters: Parameters<
