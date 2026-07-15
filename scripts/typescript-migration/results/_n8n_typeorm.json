@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/typeorm",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-14T09:29:28.550Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1624,
+            1408,
+            1445
+          ],
+          "min": 1408,
+          "median": 1445,
+          "mean": 1493
+        },
+        "build": {
+          "runsMs": [
+            1963,
+            2839,
+            2851
+          ],
+          "min": 1963,
+          "median": 2839,
+          "mean": 2551
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-14T09:31:23.564Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1000,
+            898,
+            799
+          ],
+          "min": 799,
+          "median": 898,
+          "mean": 899
+        },
+        "build": {
+          "runsMs": [
+            808,
+            890,
+            1087
+          ],
+          "min": 808,
+          "median": 890,
+          "mean": 928
+        }
+      }
+    }
+  }
+}

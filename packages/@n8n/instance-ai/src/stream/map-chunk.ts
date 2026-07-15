@@ -115,6 +115,64 @@ interface ErrorInfo {
 	statusCode?: number;
 	provider?: string;
 	technicalDetails?: string;
+	code?: 'quota_exhausted';
+}
+
+/**
+ * Machine-readable code the AI service sets when the credit/quota pool is exhausted.
+ * Wire contract — kept in sync with the service/SDK and `INSTANCE_AI_ERROR_CODES`.
+ */
+export const QUOTA_EXHAUSTED_ERROR_CODE = 'quota_exhausted';
+
+/**
+ * Whether an error means the user has run out of AI credits/quota. Keyed off a
+ * machine-readable code, never the message text: the SDK exposes `errorCode` on
+ * the token-endpoint 403, and the ai-sdk carries the proxy's `error.type` in
+ * `responseBody`. The error can arrive wrapped, so its `cause` chain is inspected too.
+ */
+export function isQuotaExhaustedError(error: unknown): boolean {
+	return readErrorCode(error) === QUOTA_EXHAUSTED_ERROR_CODE;
+}
+
+/** Read the machine-readable code from the error, its ai-sdk `responseBody`, or its `cause`. */
+function readErrorCode(error: unknown): string | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
+
+	// SDK APIResponseError carries the parsed code directly.
+	if ('errorCode' in error && typeof error.errorCode === 'string') {
+		return error.errorCode;
+	}
+
+	// ai-sdk APICallError exposes the raw provider body; the service tags the code
+	// top-level (`code`), with a nested `error.type` as the fallback shape.
+	if ('responseBody' in error && typeof error.responseBody === 'string') {
+		const { code } = parseResponseBody(error.responseBody);
+		if (code) return code;
+	}
+
+	// The SDK error can reach us wrapped (thrown inside the model fetch); unwrap the cause chain.
+	if ('cause' in error && error.cause !== error) {
+		return readErrorCode(error.cause);
+	}
+
+	return undefined;
+}
+
+/** Parse an ai-sdk JSON `responseBody` into its message and machine-readable code, if present. */
+function parseResponseBody(responseBody: string): { message?: string; code?: string } {
+	try {
+		const body = JSON.parse(responseBody) as {
+			message?: string;
+			code?: string;
+			error?: { message?: string; type?: string };
+		};
+		return {
+			message: body?.error?.message ?? body?.message,
+			code: body?.code ?? body?.error?.type,
+		};
+	} catch {
+		return {};
+	}
 }
 
 function extractErrorInfo(error: unknown): ErrorInfo {
@@ -130,16 +188,8 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 
 		if ('responseBody' in error && typeof error.responseBody === 'string') {
 			info.technicalDetails = error.responseBody;
-			try {
-				const body = JSON.parse(error.responseBody) as {
-					error?: { message?: string; type?: string };
-				};
-				if (body?.error?.message) {
-					info.content = body.error.message;
-				}
-			} catch {
-				// not JSON — keep raw responseBody as technicalDetails
-			}
+			const { message } = parseResponseBody(error.responseBody);
+			if (message) info.content = message;
 		}
 
 		// Extract provider from error name or URL if available
@@ -148,6 +198,8 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 			if (urlStr.includes('anthropic')) info.provider = 'Anthropic';
 			else if (urlStr.includes('openai')) info.provider = 'OpenAI';
 		}
+
+		if (isQuotaExhaustedError(error)) info.code = QUOTA_EXHAUSTED_ERROR_CODE;
 
 		return info;
 	}
@@ -384,6 +436,7 @@ function mapErrorChunk(
 		payload: {
 			content: errorInfo.content,
 			...(errorInfo.statusCode !== undefined ? { statusCode: errorInfo.statusCode } : {}),
+			...(errorInfo.code ? { code: errorInfo.code } : {}),
 			...(errorInfo.provider ? { provider: errorInfo.provider } : {}),
 			...(errorInfo.technicalDetails ? { technicalDetails: errorInfo.technicalDetails } : {}),
 		},

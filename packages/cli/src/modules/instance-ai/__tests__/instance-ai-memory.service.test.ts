@@ -46,6 +46,8 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		},
 	};
 	const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+	// Flag off: the durable-log metrics forwarder only fires on parser fallbacks.
+	const mockDurableLogMetrics = { notifyParserFallbacks: vi.fn() };
 	return new InstanceAiMemoryService(
 		mockLogger as never,
 		mockConfig as never,
@@ -53,6 +55,7 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		mockDbSnapshotStorage as never,
 		mockCheckpointRepository as never,
 		mockPendingConfirmationRepository as never,
+		mockDurableLogMetrics as never,
 	);
 }
 

@@ -1,4 +1,67 @@
-import { mapAgentChunkToEvent } from '../map-chunk';
+import { isQuotaExhaustedError, mapAgentChunkToEvent } from '../map-chunk';
+
+type ApiCallError = Error & { statusCode?: number; responseBody?: string; url?: string };
+
+function apiError(message: string, statusCode?: number, responseBody?: string): ApiCallError {
+	const error = new Error(message) as ApiCallError;
+	if (statusCode !== undefined) error.statusCode = statusCode;
+	if (responseBody !== undefined) error.responseBody = responseBody;
+	return error;
+}
+
+/** Mirrors the SDK's APIResponseError carrying a machine-readable errorCode. */
+function sdkError(message: string, statusCode: number, errorCode?: string): Error {
+	const error = new Error(message) as Error & { statusCode: number; errorCode?: string };
+	error.statusCode = statusCode;
+	if (errorCode !== undefined) error.errorCode = errorCode;
+	return error;
+}
+
+describe('isQuotaExhaustedError', () => {
+	it('matches the SDK errorCode from the token-endpoint 403', () => {
+		expect(
+			isQuotaExhaustedError(sdkError('Have reached end of quota', 403, 'quota_exhausted')),
+		).toBe(true);
+	});
+
+	it('matches the code carried on error.cause when the SDK error is wrapped', () => {
+		const wrapped = new Error('stream failed', {
+			cause: sdkError('Have reached end of quota', 403, 'quota_exhausted'),
+		});
+		expect(isQuotaExhaustedError(wrapped)).toBe(true);
+	});
+
+	it('matches a top-level code in an ai-sdk responseBody', () => {
+		const error = apiError(
+			'Forbidden',
+			403,
+			JSON.stringify({ message: 'Have reached end of quota', code: 'quota_exhausted' }),
+		);
+		expect(isQuotaExhaustedError(error)).toBe(true);
+	});
+
+	it('falls back to a nested error.type in an ai-sdk responseBody', () => {
+		const error = apiError(
+			'Forbidden',
+			403,
+			JSON.stringify({ error: { type: 'quota_exhausted', message: 'Have reached end of quota' } }),
+		);
+		expect(isQuotaExhaustedError(error)).toBe(true);
+	});
+
+	it('does NOT match a quota-sounding message without a code (no string heuristic)', () => {
+		expect(isQuotaExhaustedError(apiError('Have reached end of quota'))).toBe(false);
+		expect(isQuotaExhaustedError('You are out of credits')).toBe(false);
+		expect(isQuotaExhaustedError(apiError('request blocked: quota', 403))).toBe(false);
+	});
+
+	it('does not match a bare 403 or unrelated errors', () => {
+		expect(isQuotaExhaustedError(apiError('Forbidden', 403))).toBe(false);
+		expect(isQuotaExhaustedError(sdkError('Forbidden', 403))).toBe(false);
+		expect(isQuotaExhaustedError(sdkError('rate limited', 429, 'rate_limit'))).toBe(false);
+		expect(isQuotaExhaustedError(undefined)).toBe(false);
+	});
+});
 
 describe('mapAgentChunkToEvent', () => {
 	const runId = 'run-1';
@@ -447,6 +510,25 @@ describe('mapAgentChunkToEvent', () => {
 				statusCode: 429,
 				provider: 'OpenAI',
 				technicalDetails: JSON.stringify({ error: { message: 'Rate limited' } }),
+			},
+		});
+	});
+
+	it('tags quota-exhausted error chunks with a quota_exhausted code', () => {
+		const responseBody = JSON.stringify({
+			error: { type: 'quota_exhausted', message: 'Have reached end of quota' },
+		});
+		const error = apiError('Forbidden', 403, responseBody);
+
+		expect(map({ type: 'error', error })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content: 'Have reached end of quota',
+				statusCode: 403,
+				code: 'quota_exhausted',
+				technicalDetails: responseBody,
 			},
 		});
 	});

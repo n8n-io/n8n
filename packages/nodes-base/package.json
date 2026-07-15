@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
@@ -682,6 +682,7 @@
       "dist/nodes/Microsoft/Dynamics/MicrosoftDynamicsCrm.node.js",
       "dist/nodes/Microsoft/Entra/MicrosoftEntra.node.js",
       "dist/nodes/Microsoft/Excel/MicrosoftExcel.node.js",
+      "dist/nodes/Microsoft/ExcelSharePoint/MicrosoftExcelSharePoint.node.js",
       "dist/nodes/Microsoft/GraphSecurity/MicrosoftGraphSecurity.node.js",
       "dist/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.js",
       "dist/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.js",
