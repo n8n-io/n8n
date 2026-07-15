@@ -57,9 +57,13 @@ node scripts/typescript-migration/add-import-extensions.mjs packages/workflow --
 
 - Uses `ts-morph` (already a catalog dep) and the package's `tsconfig.json` to
   find source files.
-- **Skips** bare/alias specifiers (`@/…`, `@utils/…`, package names) — alias
-  tails get their extension from `tsc-alias`'s `resolveFullPaths` at build time.
-- **Skips** specifiers that already carry a known extension.
+- **Rewrites alias specifiers** that match a `paths` mapping in the tsconfig
+  (`@/foo` → `@/foo.js`, `@/widgets` → `@/widgets/index.js`), resolving the
+  extension against the mapped target dir. Typecheck (`tsc --noEmit`) doesn't run
+  `tsc-alias`, so aliases need the extension too; `resolveFullPaths` still handles
+  the already-suffixed alias in emit. Packages with no `paths` skip this step.
+- **Skips** bare specifiers (package names — they never match a `@/*`-style
+  `paths` prefix) and specifiers that already carry a known extension.
 - Reports any relative specifier it can't resolve on disk for manual review;
   it does not guess.
 
@@ -70,8 +74,10 @@ node scripts/typescript-migration/add-import-extensions.mjs packages/workflow --
    `@n8n/typescript-config/modern`, or set `module: NodeNext` +
    `moduleResolution: NodeNext` locally.
 3. **Codemod:** run `add-import-extensions.mjs <pkg>` (review), then `--write`.
+   This adds extensions to both relative and `paths`-alias specifiers in source.
 4. **Aliases:** if the package keeps path aliases, enable `tsc-alias`
-   `resolveFullPaths` so alias tails also get extensions in emit.
+   `resolveFullPaths` so the alias prefix is rewritten to a relative path in
+   emit (the codemod already added the extension in source).
 5. **Verify:** `pnpm --filter <pkg> run build && pnpm --filter <pkg> run typecheck && pnpm --filter <pkg> test`.
 6. **After:** `benchmark.mjs <pkg> --label=after` → confirm the delta table.
 

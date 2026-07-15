@@ -217,7 +217,8 @@ export const runFinishPayloadSchema = z.object({
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
-	type: z.enum(['workflow', 'data-table', 'credential', 'agent', 'other']),
+	// 'agent'/'config-eval': provisional eval-artifact discovery signals; the assistant doesn't emit them yet.
+	type: z.enum(['workflow', 'data-table', 'credential', 'other', 'agent', 'config-eval']),
 	id: z.string().optional(),
 	name: z.string().optional(),
 	projectId: z.string().optional(),

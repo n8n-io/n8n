@@ -114,14 +114,14 @@ export interface ReconstructAgentRuntimeParams {
 
 async function getChatIntegrationToolServices() {
 	const { IntegrationMessageContextService } = await import(
-		'./integrations/integration-message-context.service'
+		'./integrations/integration-message-context.service.js'
 	);
 	// eslint-disable-next-line import-x/no-cycle
 	const { ChatIntegrationActionExecutor } = await import(
-		'./integrations/integration-action-executor'
+		'./integrations/integration-action-executor.js'
 	);
 	const { ChatIntegrationContextQueryExecutor } = await import(
-		'./integrations/integration-context-query-executor'
+		'./integrations/integration-context-query-executor.js'
 	);
 
 	return {
@@ -132,7 +132,7 @@ async function getChatIntegrationToolServices() {
 }
 
 async function getWorkflowRunner(): Promise<WorkflowRunner> {
-	const { WorkflowRunner } = await import('@/workflow-runner');
+	const { WorkflowRunner } = await import('@/workflow-runner.js');
 	return Container.get(WorkflowRunner);
 }
 
@@ -476,7 +476,7 @@ export class AgentRuntimeReconstructionService {
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
-				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory');
+				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory.js');
 				return await resolveWorkflowTool(ref, {
 					workflowRepository: this.workflowRepository,
 					workflowRunner: await getWorkflowRunner(),
@@ -488,7 +488,7 @@ export class AgentRuntimeReconstructionService {
 			}
 
 			if (ref.type === 'node') {
-				const { resolveNodeTool } = await import('./tools/node-tool-factory');
+				const { resolveNodeTool } = await import('./tools/node-tool-factory.js');
 				return await resolveNodeTool(ref, {
 					executor: this.ephemeralNodeExecutor,
 					projectId,
@@ -535,7 +535,7 @@ export class AgentRuntimeReconstructionService {
 			(await this.agentFileRepository.hasFilesForAgent(agentId))
 		) {
 			const { createKnowledgeRetrievalTools } = await import(
-				'./tools/knowledge/search-knowledge.tool'
+				'./tools/knowledge/search-knowledge.tool.js'
 			);
 			agent.tool(
 				createKnowledgeRetrievalTools({

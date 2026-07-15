@@ -197,7 +197,7 @@ export class AgentSkillsService {
 	}
 
 	private async clearRuntimes(agentId: string): Promise<void> {
-		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service');
+		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService).clearRuntimes(agentId);
 	}
 }

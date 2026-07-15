@@ -15,6 +15,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'sourceControl:pull',
 	'securityAudit:generate',
 	'securitySettings:manage',
+	'saml:manage',
 	'project:create',
 	'project:update',
 	'project:delete',

@@ -1655,8 +1655,8 @@ function terminalRate(arr: number[]): number {
 
 function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetrics {
 	const { testCases } = evaluation;
-	// Units = scenarios + evaluated build-expectations — mirrors the per-card badge
-	// and the terminal per-case table so the headline rate can't disagree with them.
+	// Units = scenarios + evaluated build-expectations — mirrors the per-card badge and the
+	// terminal per-case table so the headline rate can't disagree with them.
 	const units = testCases.flatMap((tc) => [
 		...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
 		...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
