@@ -2241,10 +2241,10 @@ importers:
     dependencies:
       '@typescript-eslint/typescript-estree':
         specifier: ^8.35.0
-        version: 8.35.0(typescript@6.0.2)
+        version: 8.35.0(typescript@7.0.2)
       '@typescript-eslint/utils':
         specifier: ^8.35.0
-        version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
+        version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
@@ -2263,10 +2263,10 @@ importers:
         version: 20.19.41
       '@typescript-eslint/rule-tester':
         specifier: ^8.35.0
-        version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
+        version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)
       eslint-doc-generator:
         specifier: ^2.2.2
-        version: 2.2.2(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
+        version: 2.2.2(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)
       eslint-plugin-eslint-plugin:
         specifier: ^7.0.0
         version: 7.0.0(eslint@9.29.0(jiti@2.6.1))
@@ -2277,8 +2277,8 @@ importers:
         specifier: 'catalog:'
         version: 6.0.1
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -29778,20 +29778,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/rule-tester@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)':
-    dependencies:
-      '@typescript-eslint/parser': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
-      '@typescript-eslint/typescript-estree': 8.35.0(typescript@6.0.2)
-      '@typescript-eslint/utils': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
-      ajv: 6.14.0
-      eslint: 9.29.0(jiti@2.6.1)
-      json-stable-stringify-without-jsonify: 1.0.1
-      lodash.merge: 4.6.2
-      semver: 7.7.3
-    transitivePeerDependencies:
-      - supports-color
-      - typescript
-
   '@typescript-eslint/rule-tester@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)':
     dependencies:
       '@typescript-eslint/parser': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)
@@ -31902,7 +31888,6 @@ snapshots:
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 7.0.2
-    optional: true
 
   cpu-features@0.0.10:
     dependencies:
@@ -32994,13 +32979,13 @@ snapshots:
     dependencies:
       eslint: 9.29.0(jiti@2.6.1)
 
-  eslint-doc-generator@2.2.2(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2):
+  eslint-doc-generator@2.2.2(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2):
     dependencies:
-      '@typescript-eslint/utils': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
+      '@typescript-eslint/utils': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)
       ajv: 8.18.0
       change-case: 5.4.4
       commander: 14.0.3
-      cosmiconfig: 9.0.0(typescript@6.0.2)
+      cosmiconfig: 9.0.0(typescript@7.0.2)
       deepmerge: 4.3.1
       dot-prop: 9.0.0
       editorconfig: 2.0.1
