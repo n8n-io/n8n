@@ -42,6 +42,12 @@ const props = withDefaults(
 		showModel?: boolean;
 		showInstructions?: boolean;
 		showInstructionsToolbar?: boolean;
+		/**
+		 * Emit instructions edits per keystroke instead of debounced. For hosts
+		 * whose updates are cheap local writes (inline agent → node parameter);
+		 * autosaving hosts (builder) keep the debounce.
+		 */
+		immediateUpdates?: boolean;
 	}>(),
 	{
 		disabled: false,
@@ -50,6 +56,7 @@ const props = withDefaults(
 		showModel: true,
 		showInstructions: true,
 		showInstructionsToolbar: false,
+		immediateUpdates: false,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -153,13 +160,17 @@ watch(
 	},
 );
 
-const emitInstructions = useDebounceFn(() => {
+const emitInstructionsDebounced = useDebounceFn(() => {
 	emit('update:config', { instructions: instructions.value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
 
 function onInstructionsInput(value: string) {
 	instructions.value = value;
-	void emitInstructions();
+	if (props.immediateUpdates) {
+		emit('update:config', { instructions: value });
+		return;
+	}
+	void emitInstructionsDebounced();
 }
 </script>
 

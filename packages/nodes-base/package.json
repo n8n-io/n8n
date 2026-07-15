@@ -919,6 +919,7 @@
     "eslint-plugin-n8n-nodes-base": "catalog:",
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
+    "nock": "catalog:",
     "reflect-metadata": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

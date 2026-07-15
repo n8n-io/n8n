@@ -1,4 +1,4 @@
-import type { BuiltTool, CredentialProvider, StreamChunk } from '@n8n/agents';
+import type { BuiltTelemetry, BuiltTool, CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -9,6 +9,7 @@ import type { Agent as AgentEntity } from '../../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
 import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
+import { buildBuilderTelemetry } from '../../tracing/builder-telemetry';
 import type { NodeCatalogService } from '@/node-catalog';
 
 import { AgentsBuilderService } from '../agents-builder.service';
@@ -28,6 +29,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 	const registeredToolNames: string[] = [];
 	const modelCalls: unknown[] = [];
 	const skillsCalls: unknown[] = [];
+	const telemetryCalls: unknown[] = [];
 
 	function emptyStream() {
 		return new ReadableStream<StreamChunk>({
@@ -60,7 +62,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 		configuration() {
 			return this;
 		}
-		telemetry() {
+		telemetry(t: unknown) {
+			telemetryCalls.push(t);
 			return this;
 		}
 		tool(tool: BuiltTool) {
@@ -94,6 +97,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		registeredToolNames,
 		modelCalls,
 		skillsCalls,
+		telemetryCalls,
 		MockAgent,
 		MockMemory,
 	};
@@ -195,6 +199,8 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.registeredToolNames.length = 0;
 		agentsSdkMocks.modelCalls.length = 0;
 		agentsSdkMocks.skillsCalls.length = 0;
+		agentsSdkMocks.telemetryCalls.length = 0;
+		vi.mocked(buildBuilderTelemetry).mockClear();
 	});
 
 	it('uses the session threadId for stream persistence', async () => {
@@ -293,5 +299,32 @@ describe('AgentsBuilderService session isolation', () => {
 
 		expect(agentsSdkMocks.modelCalls).toEqual(['anthropic/claude-3-5-haiku']);
 		expect(builderSettings.resolveModelConfig).toHaveBeenCalledWith(user);
+	});
+
+	it('attaches session.telemetry directly and skips buildBuilderTelemetry when provided', async () => {
+		const { service, user, credentialProvider } = setup();
+		const sentinel = { functionId: 'host' } as unknown as BuiltTelemetry;
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				telemetry: sentinel,
+			}),
+		);
+
+		expect(agentsSdkMocks.telemetryCalls).toEqual([sentinel]);
+		expect(buildBuilderTelemetry).not.toHaveBeenCalled();
+	});
+
+	it('falls back to buildBuilderTelemetry when session.telemetry is absent', async () => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+		);
+
+		expect(buildBuilderTelemetry).toHaveBeenCalled();
+		expect(agentsSdkMocks.telemetryCalls).toEqual([]);
 	});
 });
