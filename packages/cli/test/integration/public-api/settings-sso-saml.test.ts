@@ -2,18 +2,18 @@ import { testDb } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { SamlService } from '@/modules/sso-saml/saml.service.ee';
-import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
-import {
-	getCurrentAuthenticationMethod,
-	setCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { sampleConfig } from '../saml/sample-metadata';
+
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
+import { SamlService } from '@/modules/sso-saml/saml.service.ee';
+import {
+	getCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 
 describe('SAML toggle in Public API', () => {
 	let owner: User;
@@ -47,8 +47,6 @@ describe('SAML toggle in Public API', () => {
 
 	describe('POST /settings/sso/saml/toggle', () => {
 		it('enables SAML login', async () => {
-			testServer.license.enable('feat:saml');
-
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/settings/sso/saml/toggle')
@@ -60,7 +58,6 @@ describe('SAML toggle in Public API', () => {
 		});
 
 		it('disables SAML login', async () => {
-			testServer.license.enable('feat:saml');
 			await setSamlLoginEnabled(true);
 			await setCurrentAuthenticationMethod('saml');
 
@@ -75,8 +72,6 @@ describe('SAML toggle in Public API', () => {
 		});
 
 		it('rejects a malformed request body with 400', async () => {
-			testServer.license.enable('feat:saml');
-
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/settings/sso/saml/toggle')
@@ -86,8 +81,6 @@ describe('SAML toggle in Public API', () => {
 		});
 
 		it('rejects with 401 without a valid API key', async () => {
-			testServer.license.enable('feat:saml');
-
 			const response = await testServer
 				.publicApiAgentWithoutApiKey()
 				.post('/settings/sso/saml/toggle')
@@ -97,6 +90,8 @@ describe('SAML toggle in Public API', () => {
 		});
 
 		it('rejects with 403 when not licensed', async () => {
+			testServer.license.disable('feat:saml');
+
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/settings/sso/saml/toggle')
@@ -107,7 +102,6 @@ describe('SAML toggle in Public API', () => {
 		});
 
 		it('rejects with 403 when the API key lacks the saml:manage scope', async () => {
-			testServer.license.enable('feat:saml');
 			const scopedOwner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
 
 			const response = await testServer
@@ -119,7 +113,6 @@ describe('SAML toggle in Public API', () => {
 		});
 
 		it('rejects a write with 409 when SSO is managed via environment variables', async () => {
-			testServer.license.enable('feat:saml');
 			setManagedByEnv(true);
 
 			const response = await testServer
