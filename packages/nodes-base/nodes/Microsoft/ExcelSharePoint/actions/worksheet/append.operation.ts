@@ -426,7 +426,7 @@ export async function execute(
 	// autoMap/define also have to tell a genuinely empty sheet apart from a
 	// one-column sheet whose only cell already holds real data (its header) —
 	// the address alone can't do that, unlike the RAW-mode check above
-	const firstRow = usedRange.values?.[0] as SheetRow | undefined;
+	const firstRow: SheetRow | undefined = usedRange.values?.[0];
 	const isEmpty = isEmptySheet(usedRange.address, firstRow);
 	const existingColumns = isEmpty ? undefined : ((firstRow as string[]) ?? []);
 
