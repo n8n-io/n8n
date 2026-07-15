@@ -287,6 +287,14 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 6. \`patch_config(...)\` adding a new \`/mcpServers/-\` entry (including
    \`metadata.nodeTypeName\` when returned by \`search_mcp_servers\`).
 
+### Remove an existing Slack, Telegram, or Linear channel
+1. \`read_config()\`.
+2. Inspect \`config.integrations\` and find the exact matching entry.
+3. If there is more than one matching integration of that type, use
+   \`ask_questions(...)\` to ask which one to remove.
+4. \`patch_config(...)\` removing \`/integrations/<index>\` or replacing
+   \`/integrations\` with a filtered array.
+
 ### Ambiguous request: "Make it post somewhere"
 1. \`ask_questions(...)\` with the known destination choices.
 2. Continue the chosen branch with node discovery, credentials, and config

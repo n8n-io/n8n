@@ -1,10 +1,12 @@
 import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '@n8n/api-types';
 
 import {
+	FEW_SHOT_FLOWS_SECTION,
 	IMPORTANT_SECTION,
 	INTERACTIVE_TOOLS_SECTION,
 	WORKFLOW_SECTION,
 } from '../agents-builder-prompts';
+import { getConfigMutationPrompt } from '../prompts/config-mutation.prompt';
 import { getBuilderRuntimeSkills } from '../skills';
 
 describe('agents builder integrations prompt', () => {
@@ -44,6 +46,32 @@ describe('chat-channel credential guidance', () => {
 		);
 		expect(IMPORTANT_SECTION).toContain('`ask_questions` (discrete options for a known set');
 		expect(IMPORTANT_SECTION).toContain('batch multiple questions into one call');
+	});
+
+	it('tells the builder how to remove an existing chat integration', () => {
+		const integrationsSkill = getBuilderRuntimeSkills().find(
+			(skill) => skill.id === 'agent-builder-integrations',
+		);
+
+		expect(integrationsSkill?.instructions).toContain('To remove an existing chat integration');
+		expect(integrationsSkill?.instructions).toContain('config.integrations');
+		expect(integrationsSkill?.instructions).toContain('remove that entry with `patch_config`');
+		expect(integrationsSkill?.instructions).toContain(
+			'If multiple existing integrations match the requested platform, ask which one',
+		);
+		expect(integrationsSkill?.instructions).toContain(
+			'Do not call `configure_channel` to remove a channel.',
+		);
+		expect(FEW_SHOT_FLOWS_SECTION).toContain(
+			'### Remove an existing Slack, Telegram, or Linear channel',
+		);
+		expect(FEW_SHOT_FLOWS_SECTION).toContain(
+			'`patch_config(...)` removing `/integrations/<index>`',
+		);
+		expect(getConfigMutationPrompt()).toContain('#### Remove An Existing Chat Integration');
+		expect(getConfigMutationPrompt()).toContain(
+			'Omitting `integrations` preserves existing channels.',
+		);
 	});
 });
 
