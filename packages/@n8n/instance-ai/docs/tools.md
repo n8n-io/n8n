@@ -691,17 +691,20 @@ appears in the agents-module builder UI.
 |-------|------|----------|-------------|
 | `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
 | `name` | string | no | Agent name — switches back to the agent with that name built earlier in this conversation, or creates a new agent and makes it the active target; omit on follow-up calls for the current agent |
-| `agentId` | string | no | Existing agent id to edit — pass to start editing that agent or to switch the active build target; omit on follow-up calls |
+| `agentId` | string | no | Existing agent id to edit — use the `agentId` returned by earlier build-agent results; pass to start editing that agent or to switch the active build target; omit on follow-up calls |
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
-**Returns**: `{ ok: true, builderReply, configUpdated }` on success, or
-`{ ok: false, error, configUpdated? }` on failure. `configUpdated` is optional:
-it's included (reporting mutations from passes that already ran) once a
-builder turn has actually been dispatched — mid-turn failures and resume
-failures that still carry a prior checkpoint ref — but omitted for
-precondition failures before any turn starts (agents module not configured,
-missing `name`/`agentId`, no project context to bind `agentId`, or a resume
-whose suspend payload has no checkpoint ref to carry).
+**Returns**: `{ ok: true, builderReply, configUpdated, agentId,
+agentName? }` on success, or `{ ok: false, error, configUpdated?, agentId?,
+agentName? }` on failure (`agentId`/`agentName` identify the targeted agent
+once a builder turn was dispatched; precondition failures before any turn
+omit them). `configUpdated` is optional: it's included (reporting mutations
+from passes that already ran) once a builder turn has actually been
+dispatched — mid-turn failures and resume failures that still carry a prior
+checkpoint ref — but omitted for precondition failures before any turn
+starts (agents module not configured, missing `name`/`agentId`, no project
+context to bind `agentId`, or a resume whose suspend payload has no
+checkpoint ref to carry).
 
 **Interactive questions:** when the builder suspends on one of its interactive
 tools (batched questions, a credential picker, or channel setup), this tool
@@ -724,7 +727,8 @@ an unmatched name creates another agent and switches to it (the same name
 as the active target just continues it), a different `agentId` switches to
 that agent (persisted only once the builder turn settles, so a bad id
 cannot clobber the existing binding), and `agentId` wins when both are
-given.
+given. Prefer switching by the `agentId` returned from earlier calls; the
+name lookup is the fallback when the id is unknown.
 
 ## Other Domain Tools
 

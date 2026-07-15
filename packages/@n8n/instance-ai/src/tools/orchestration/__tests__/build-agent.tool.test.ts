@@ -39,6 +39,8 @@ interface BuildAgentOutput {
 	builderReply?: string;
 	configUpdated?: boolean;
 	error?: string;
+	agentId?: string;
+	agentName?: string;
 }
 
 function fakeStream(chunks: unknown[], text: string): BuilderTurnStream {
@@ -344,7 +346,13 @@ describe('build-agent tool', () => {
 
 		const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
 
-		expect(result).toEqual({ ok: false, error: friendlyMessage, configUpdated: false });
+		expect(result).toEqual({
+			ok: false,
+			error: friendlyMessage,
+			configUpdated: false,
+			agentId: 'agent-1',
+			agentName: 'New Agent',
+		});
 		expect(publishedEvents.map((event) => event.type)).toEqual([
 			'agent-spawned',
 			'agent-completed',
@@ -500,6 +508,8 @@ describe('build-agent tool', () => {
 					ok: true,
 					builderReply: 'Updated the config.',
 					configUpdated: true,
+					agentId: 'agent-1',
+					agentName: 'New Agent',
 				});
 			},
 		);
@@ -640,6 +650,25 @@ describe('build-agent tool', () => {
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-2', 'Build me another agent', {
 				threadId: 'ia-builder:thread-1:agent-2',
 				modelConfig: context.modelId,
+			});
+		});
+
+		it('returns the target agentId and name so the orchestrator can switch back by id', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-2',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+			const result = await runTool(context, { message: 'Build me another agent', name: 'Second' });
+
+			expect(result).toEqual({
+				ok: true,
+				builderReply: 'Created it.',
+				configUpdated: false,
+				agentId: 'agent-2',
+				agentName: 'Second',
 			});
 		});
 
@@ -932,7 +961,12 @@ describe('build-agent tool', () => {
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData },
 				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
 			);
-			expect(result).toEqual({ ok: true, builderReply: 'Using Slack.', configUpdated: false });
+			expect(result).toEqual({
+				ok: true,
+				builderReply: 'Using Slack.',
+				configUpdated: false,
+				agentId: 'agent-1',
+			});
 		});
 
 		it('resumes against the target carried in the builderCheckpoint ref even when the active binding points elsewhere', async () => {
@@ -1052,6 +1086,7 @@ describe('build-agent tool', () => {
 				ok: false,
 				error: 'The builder question this answer belongs to is no longer open.',
 				configUpdated: true,
+				agentId: 'agent-1',
 			});
 		});
 
@@ -1182,6 +1217,7 @@ describe('build-agent tool', () => {
 				error:
 					'The agent builder model is not configured. Set it up in the agents module settings.',
 				configUpdated: false,
+				agentId: 'agent-1',
 			});
 		});
 
@@ -1215,6 +1251,7 @@ describe('build-agent tool', () => {
 					error:
 						'The builder question this answer belongs to has expired and can no longer be resumed.',
 					configUpdated: carriedConfigUpdated,
+					agentId: 'agent-1',
 				});
 			},
 		);

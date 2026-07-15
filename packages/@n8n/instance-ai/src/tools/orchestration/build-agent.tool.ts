@@ -156,8 +156,9 @@ const buildAgentInputSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Existing agent id to edit. Pass to start editing that agent or to switch the active ' +
-				'build target; omit on follow-up calls.',
+			'Existing agent id to edit — use the `agentId` returned by earlier build-agent ' +
+				'results. Pass to start editing that agent or to switch the active build target; ' +
+				'omit on follow-up calls.',
 		),
 	workflowContext: z
 		.array(z.object({ id: z.string(), name: z.string(), description: z.string().optional() }))
@@ -170,6 +171,13 @@ const buildAgentOutputSchema = z.object({
 	builderReply: z.string().optional(),
 	configUpdated: z.boolean().optional(),
 	error: z.string().optional(),
+	agentId: z
+		.string()
+		.optional()
+		.describe(
+			'Id of the agent this turn targeted. Record it and pass it as `agentId` when switching back to this agent later.',
+		),
+	agentName: z.string().optional().describe('Display name of the targeted agent, when known.'),
 });
 
 type BuildAgentOutput = z.infer<typeof buildAgentOutputSchema>;
@@ -304,6 +312,12 @@ async function finishTurn(
 	return { ok: false, error, configUpdated };
 }
 
+/** Target identity stamped on every output of a dispatched builder turn so the
+ *  orchestrator learns the agentId and can switch back by id instead of name. */
+function targetIdentity(target: AgentBuilderTarget): { agentId: string; agentName?: string } {
+	return { agentId: target.agentId, ...(target.name ? { agentName: target.name } : {}) };
+}
+
 /**
  * Consume a builder turn stream to completion or suspension, and either
  * finish the tool call or cascade the suspension through `ctx.suspend()`.
@@ -371,7 +385,12 @@ async function runBuilderConsumeLoop(params: {
 		// not from the `delegate.streamBuild`/`resumeBuild` call sites.
 		const message = publishAgentBuilderFailure(context, builderAgentId, error);
 		if (isFriendlyMappableBuilderError(error)) {
-			return { ok: false, error: message, configUpdated: carriedConfigUpdated };
+			return {
+				ok: false,
+				error: message,
+				configUpdated: carriedConfigUpdated,
+				...targetIdentity(target),
+			};
 		}
 		throw error;
 	}
@@ -390,7 +409,7 @@ async function runBuilderConsumeLoop(params: {
 			await failTraceRun(context, traceRun, new Error(output.error ?? 'builder run failed'));
 		}
 		context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
-		return output;
+		return { ...output, ...targetIdentity(target) };
 	}
 
 	const configUpdatedSoFar = carriedConfigUpdated || didUpdateConfig(result.workSummary);
@@ -415,7 +434,12 @@ async function runBuilderConsumeLoop(params: {
 		await failTraceRun(context, traceRun, new Error(message));
 		publishAgentBuilderFailure(context, builderAgentId, new Error(message));
 		context.claimSubAgentUsage?.(`${dedupeBase}:s:invalid`, result.usage?.usage ?? [], 'errored');
-		return { ok: false, error: message, configUpdated: configUpdatedSoFar };
+		return {
+			ok: false,
+			error: message,
+			configUpdated: configUpdatedSoFar,
+			...targetIdentity(target),
+		};
 	}
 
 	// The builder-level requestId must not leak up: the FE confirms against the
@@ -487,6 +511,7 @@ async function handleResume(
 			ok: false,
 			error: 'The builder question this answer belongs to is no longer open.',
 			configUpdated: ref.configUpdated,
+			...targetIdentity(target),
 		};
 	}
 
@@ -499,6 +524,7 @@ async function handleResume(
 			error:
 				"The answer does not match the builder's open question (stale or superseded suspension). Ask the user again with a fresh build-agent call.",
 			configUpdated: ref.configUpdated,
+			...targetIdentity(target),
 		};
 	}
 
@@ -614,8 +640,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				'switches the active target. When the builder needs user input (a choice, a ' +
 				'credential, or a chat channel), it surfaces automatically as an interactive card in ' +
 				'this chat — do not relay those questions yourself; this tool call resumes with the ' +
-				'user’s answer and returns the builder’s reply. Returns the builder’s reply and ' +
-				'whether it updated the agent config.',
+				'user’s answer and returns the builder’s reply. Returns the builder’s reply, the ' +
+				'target `agentId`, and whether it updated the agent config. Record the returned ' +
+				'`agentId` and prefer passing it as `agentId` when switching back to that agent — ' +
+				'the `name` path is a fallback for when the id is unknown.',
 		)
 		.input(buildAgentInputSchema)
 		.output(buildAgentOutputSchema)
