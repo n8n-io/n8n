@@ -35,6 +35,52 @@ exhaustive field reference; this skill is the opinionated *how*.
 > `priorConversation` case isn't transient and has no suite home, so it's the one
 > sanctioned exception — it lives as committed JSON. See [`case-shapes.md`](case-shapes.md).
 
+## Set the autonomy level first
+
+**Before you source, draft, or run anything, decide how hands-on the driver
+wants to be — and say it back.** This skill runs at one of two autonomy levels.
+If the request makes the level clear ("just author and calibrate it yourself" vs.
+"stop me at each step", or an explicit mode), adopt it, state it in one line, and
+note how to override (e.g. "say 'stop me at calibration' to add a checkpoint").
+**If it's not clear, ask the driver one question** offering the two levels
+*before* doing any work.
+
+The skill has four natural decision **gates** — **selection** (which real
+failure to encode), **shape + expectations** (archetype, must-haves, scope
+trim), **calibration** (classify each red and resolve keep/loosen/drop), and
+**push** (kind + tier). The level decides what happens at each gate:
+
+| Level | Who decides when to stop | Behaviour |
+|---|---|---|
+| **autonomous** | agent | Runs all four gates start-to-finish; reports a **decision log** at the end for the driver to review. |
+| **checkpoint** | driver, per gate | Stops at each gate with a compact **proposal + recommendation**; driver says "go" or redirects. At the **calibration** gate, hands the driver a link to the just-built thread on the live instance plus login credentials so they can review the real conversation and workflow themselves before confirming (below). |
+
+**Calibration is special-cased at both levels.** A calibration verdict that
+flips a case's *meaning* — a real capability-gap red vs. a harness-caused red, or
+any loosening that would let a known-bad build pass — is **surfaced explicitly**
+(interactively in checkpoint; in the decision log in autonomous), never silently
+committed. It's the one call where a quiet mistake corrupts the suite, so it
+never fully auto-commits.
+
+**Checkpoint calibration — review the real thread on the instance.** Because the
+calibration verdict is trust-critical, in checkpoint mode you don't ask the
+driver to trust your reading of the run. You built the case against a live
+instance with `--keep-workflows` (step 4), so the thread and the workflow are
+still there — hand the driver a direct link and let them look:
+
+- **Thread:** `<base-url>/assistant/<threadId>` — the exact conversation the case
+  ran (the run prints the `threadId`; the built workflow prints as `BUILT (<id>)`
+  and opens at `<base-url>/workflow/<id>`).
+- **Login:** the email + password the eval signs in with (the owner you seeded on
+  the instance — see [`running-evals.md`](running-evals.md); the default local
+  seed is `nathan@n8n.io` / `PlaywrightTest123`).
+
+Present, per red: the assertion, whether it went green/red, your proposed
+classification (real capability gap / harness limitation / noise) and
+keep/loosen/drop, and the review link. The driver logs in, reads the thread and
+the workflow, and confirms or redirects before you write the verdict back into
+the case `description`.
+
 ## Where the best cases come from
 
 The strongest cases encode a **real** failure, not an invented premise. Two
@@ -110,6 +156,15 @@ scoped to feed posts so it builds in budget"). Keep the capability under test; c
 the combinatorial bulk. A case that never builds tests nothing.
 
 ## Workflow
+
+These steps map to the four gates from [Set the autonomy level first](#set-the-autonomy-level-first):
+sourcing (before step 1) is the **selection** gate; steps 1–2 are the **shape +
+expectations** gate; steps 5–6 are the **calibration** gate; step 7 is the
+**push** gate. In *autonomous* mode you flow through all of them and summarize in
+a decision log; in *checkpoint* mode you pause at each with a proposal, and at
+calibration you hand the driver the thread link + login to review the real build
+(see [Set the autonomy level first](#set-the-autonomy-level-first)). Calibration
+(step 6) always surfaces meaning-flipping verdicts explicitly regardless of level.
 
 1. **State the must-haves first.** From the conversation alone, list what every
    correct workflow must do (trigger type, essential operations, gating
@@ -226,6 +281,17 @@ greener than the product is, which is the opposite of the eval's job: bugs and
 harness gaps are the deliverable, so **highlight them, don't engineer around
 them**. If you catch yourself editing a case so that a known-bad build would now
 pass, stop.
+
+**Who confirms the classification depends on the autonomy level.** In
+*checkpoint* mode the keep/loosen/drop decision is the driver's to confirm: you
+hand them the thread link + login (see [Set the autonomy level
+first](#set-the-autonomy-level-first)) so they can review the real conversation
+and workflow, then you write the agreed `Harness note:` / `Capability-gap
+finding:` prefix back into the case `description`. In *autonomous* mode the agent
+proposes it explicitly in the end-of-run decision log. Either way the
+classification is stated in the open, never silently committed — misreading a
+harness red as a real gap (or the reverse) is the one calibration mistake that
+quietly corrupts the suite.
 
 ## Example
 
@@ -592,7 +658,9 @@ existing workflows). Narrow a run with `--filter <slug>` / `--tier <name>` /
 `--exclude`. See [`running-evals.md`](running-evals.md) for the run recipes,
 parallel lanes, tiers, and baselines, and the
 [README](../../../packages/@n8n/instance-ai/evaluations/README.md) for the full
-flag list.
+flag list. Run with `--keep-workflows` when you want to review a build by hand —
+in *checkpoint* mode calibration this is how the driver opens the built thread
+(`<base-url>/assistant/<threadId>`) and workflow on the instance.
 
 ## Other eval harnesses (not this skill)
 
