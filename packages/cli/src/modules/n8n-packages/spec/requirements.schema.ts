@@ -14,6 +14,12 @@ export const packageDataTableRequirementSchema = z.object({
 	usedByWorkflows: z.array(z.string().min(1)).min(1),
 });
 
+export const packageWorkflowRequirementSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	usedByWorkflows: z.array(z.string().min(1)).min(1),
+});
+
 function assertNoDuplicateId<T extends { id: string }>(
 	entries: T[] | undefined,
 	label: string,
@@ -41,8 +47,13 @@ export const packageRequirementsSchema = z.object({
 		.array(packageDataTableRequirementSchema)
 		.optional()
 		.superRefine((dataTables, ctx) => assertNoDuplicateId(dataTables, 'data table', ctx)),
+	workflows: z
+		.array(packageWorkflowRequirementSchema)
+		.optional()
+		.superRefine((workflows, ctx) => assertNoDuplicateId(workflows, 'workflow', ctx)),
 });
 
 export type PackageCredentialRequirement = z.infer<typeof packageCredentialRequirementSchema>;
 export type PackageDataTableRequirement = z.infer<typeof packageDataTableRequirementSchema>;
+export type PackageWorkflowRequirement = z.infer<typeof packageWorkflowRequirementSchema>;
 export type PackageRequirements = z.infer<typeof packageRequirementsSchema>;

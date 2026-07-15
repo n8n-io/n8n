@@ -1,37 +1,21 @@
-import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
 import { PackageExportBlockedError } from '../package-export.errors';
-import { extractSubWorkflowRequirements } from './sub-workflow-requirements';
+import type { WorkflowWorkflowRequirement } from './workflow.types';
 
 const MAX_DISPLAYED_MISSING_WORKFLOWS = 20;
 
 @Service()
 export class PackageWorkflowRequirementValidator {
-	constructor(private readonly workflowFinder: WorkflowFinderService) {}
-
 	async validateStaticSubWorkflowsIncluded(
-		user: User,
+		workflowRequirements: WorkflowWorkflowRequirement[],
 		exportedWorkflowIds: Set<string>,
 	): Promise<void> {
 		const missingSubWorkflowIds = new Set<string>();
 
-		for (const workflowId of exportedWorkflowIds) {
-			const workflow = await this.workflowFinder.findWorkflowForUser(workflowId, user, [
-				'workflow:export',
-			]);
-
-			if (!workflow) {
-				missingSubWorkflowIds.add(workflowId);
-				continue;
-			}
-
-			for (const reference of extractSubWorkflowRequirements(workflow)) {
-				if (!exportedWorkflowIds.has(reference.referencedWorkflowId)) {
-					missingSubWorkflowIds.add(reference.referencedWorkflowId);
-				}
+		for (const requirement of workflowRequirements) {
+			if (!exportedWorkflowIds.has(requirement.referencedWorkflowId)) {
+				missingSubWorkflowIds.add(requirement.referencedWorkflowId);
 			}
 		}
 

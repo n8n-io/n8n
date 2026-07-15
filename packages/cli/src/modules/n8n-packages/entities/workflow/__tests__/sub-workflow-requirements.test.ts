@@ -38,6 +38,23 @@ describe('extractSubWorkflowRequirements', () => {
 		]);
 	});
 
+	it('extracts static Tool Workflow references', () => {
+		const workflow = makeWorkflow([
+			executeWorkflowNode(
+				{ __rl: true, mode: 'list', value: 'wf-child' },
+				{
+					name: 'Call workflow',
+					type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+					typeVersion: 2.2,
+				},
+			),
+		]);
+
+		expect(extractSubWorkflowRequirements(workflow)).toEqual([
+			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
+		]);
+	});
+
 	it('dedupes repeated references in one workflow', () => {
 		const workflow = makeWorkflow([
 			executeWorkflowNode({ __rl: true, mode: 'list', value: 'wf-child' }, { id: 'node-1' }),

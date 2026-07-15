@@ -59,6 +59,33 @@ describe('packageManifestSchema', () => {
 		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate data table id/i);
 	});
 
+	it('accepts workflow requirements', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				workflows: [{ id: 'wf-child', name: 'Child workflow', usedByWorkflows: ['wf-abc'] }],
+			},
+		};
+
+		expect(packageManifestSchema.parse(manifest).requirements?.workflows).toEqual(
+			manifest.requirements.workflows,
+		);
+	});
+
+	it('rejects duplicate workflow ids in requirements.workflows', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				workflows: [
+					{ id: 'wf-child', name: 'Child A', usedByWorkflows: ['wf-abc'] },
+					{ id: 'wf-child', name: 'Child B', usedByWorkflows: ['wf-abc'] },
+				],
+			},
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate workflow id/i);
+	});
+
 	it('preserves a folders section', () => {
 		const manifest = {
 			...validManifest,

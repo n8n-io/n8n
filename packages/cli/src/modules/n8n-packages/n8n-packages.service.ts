@@ -16,6 +16,7 @@ import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { PackageWorkflowRequirementValidator } from './entities/workflow/package-workflow-requirement.validator';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
+import type { WorkflowWorkflowRequirement } from './entities/workflow/workflow.types';
 import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
@@ -116,7 +117,7 @@ export class N8nPackagesService {
 		];
 
 		await this.workflowRequirementValidator.validateStaticSubWorkflowsIncluded(
-			request.user,
+			requirements.workflows,
 			new Set(allWorkflowsInPackage.map(({ id }) => id)),
 		);
 
@@ -139,6 +140,8 @@ export class N8nPackagesService {
 		const manifestRequirements = this.buildManifestRequirements(
 			credentialExportResult.requirements,
 			dataTableExportResult.requirements,
+			requirements.workflows,
+			allWorkflowsInPackage,
 		);
 
 		const manifest = packageManifestSchema.parse({
@@ -198,12 +201,44 @@ export class N8nPackagesService {
 	private buildManifestRequirements(
 		credentials: PackageRequirements['credentials'],
 		dataTables: PackageRequirements['dataTables'],
+		workflows: WorkflowWorkflowRequirement[],
+		allWorkflowsInPackage: ManifestEntry[],
 	): PackageRequirements | undefined {
+		const workflowRequirements = this.buildManifestWorkflowRequirements(
+			workflows,
+			allWorkflowsInPackage,
+		);
 		const requirements: PackageRequirements = {
 			...(credentials?.length ? { credentials } : {}),
 			...(dataTables?.length ? { dataTables } : {}),
+			...(workflowRequirements.length ? { workflows: workflowRequirements } : {}),
 		};
 		return Object.keys(requirements).length > 0 ? requirements : undefined;
+	}
+
+	private buildManifestWorkflowRequirements(
+		requirements: WorkflowWorkflowRequirement[],
+		allWorkflowsInPackage: ManifestEntry[],
+	): NonNullable<PackageRequirements['workflows']> {
+		const workflowsById = new Map(allWorkflowsInPackage.map((workflow) => [workflow.id, workflow]));
+		const usedByWorkflowsByReferencedId = new Map<string, string[]>();
+
+		for (const requirement of requirements) {
+			const usedByWorkflows =
+				usedByWorkflowsByReferencedId.get(requirement.referencedWorkflowId) ?? [];
+
+			if (!usedByWorkflows.includes(requirement.workflowId)) {
+				usedByWorkflows.push(requirement.workflowId);
+			}
+
+			usedByWorkflowsByReferencedId.set(requirement.referencedWorkflowId, usedByWorkflows);
+		}
+
+		return [...usedByWorkflowsByReferencedId].map(([referencedWorkflowId, usedByWorkflows]) => ({
+			id: referencedWorkflowId,
+			name: workflowsById.get(referencedWorkflowId)?.name ?? '',
+			usedByWorkflows,
+		}));
 	}
 }
 

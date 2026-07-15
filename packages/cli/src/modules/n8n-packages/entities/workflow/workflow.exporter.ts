@@ -13,6 +13,8 @@ import { DataTableRequirementsExtractor } from '../data-table/data-table-require
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import type { WorkflowExportRequirements } from '../requirements.types';
+import { extractSubWorkflowRequirements } from './sub-workflow-requirements';
+import type { WorkflowWorkflowRequirement } from './workflow.types';
 
 export interface WorkflowExportRequest {
 	user: User;
@@ -55,6 +57,7 @@ export class WorkflowExporter {
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
+		const workflowRequirements: WorkflowWorkflowRequirement[] = [];
 		const fileNames = new UniqueFilenameAllocator(
 			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
 			'workflow',
@@ -75,8 +78,9 @@ export class WorkflowExporter {
 
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));
+			workflowRequirements.push(...extractSubWorkflowRequirements(workflow));
 		}
 
-		return { entries, requirements: { credentials, dataTables } };
+		return { entries, requirements: { credentials, dataTables, workflows: workflowRequirements } };
 	}
 }

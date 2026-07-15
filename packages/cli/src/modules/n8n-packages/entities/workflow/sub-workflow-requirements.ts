@@ -1,15 +1,12 @@
 import type { WorkflowEntity } from '@n8n/db';
 import { getSubworkflowId } from 'n8n-workflow';
 
-export interface WorkflowSubWorkflowReference {
-	workflowId: string;
-	referencedWorkflowId: string;
-}
+import type { WorkflowWorkflowRequirement } from './workflow.types';
 
 export function extractSubWorkflowRequirements(
 	workflow: WorkflowEntity,
-): WorkflowSubWorkflowReference[] {
-	const byId = new Map<string, WorkflowSubWorkflowReference>();
+): WorkflowWorkflowRequirement[] {
+	const byId = new Map<string, WorkflowWorkflowRequirement>();
 
 	for (const node of workflow.nodes ?? []) {
 		const referencedWorkflowId = getSubworkflowId(node);
