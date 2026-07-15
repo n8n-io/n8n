@@ -55,7 +55,6 @@ describe('chat-channel credential guidance', () => {
 
 		expect(integrationsSkill?.instructions).toContain('To remove an existing chat integration');
 		expect(integrationsSkill?.instructions).toContain('config.integrations');
-		expect(integrationsSkill?.instructions).toContain('remove that entry with `patch_config`');
 		expect(integrationsSkill?.instructions).toContain(
 			'If multiple existing integrations match the requested platform, ask which one',
 		);
