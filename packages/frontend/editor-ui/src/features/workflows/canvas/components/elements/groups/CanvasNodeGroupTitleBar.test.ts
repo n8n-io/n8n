@@ -272,6 +272,16 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(visibility.isVisible('g1')).toBe(false);
 		});
 
+		it('starts editing when the edit icon is clicked', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility();
+			visibility.setVisible('g1', true);
+
+			const wrapper = render({ data: withDescription('Before') }, visibility);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-edit-description'));
+
+			expect(wrapper.queryByTestId('canvas-node-group-description-input')).toBeTruthy();
+		});
+
 		it('emits update:description when editing from the pinned panel', async () => {
 			const visibility = useCanvasNodeGroupDescriptionVisibility();
 			visibility.setVisible('g1', true);

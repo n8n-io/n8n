@@ -565,29 +565,44 @@ function onWrapperPointerDown(event: PointerEvent) {
 						/>
 					</N8nTooltip>
 				</template>
-				<N8nTooltip
-					v-else
-					:content="
-						isPermanentlyVisible
-							? i18n.baseText('canvas.nodeGroup.unpinDescription')
-							: i18n.baseText('canvas.nodeGroup.pinDescription')
-					"
-					placement="bottom"
-				>
-					<N8nIconButton
-						class="nodrag"
-						variant="ghost"
-						size="small"
-						:icon="isPermanentlyVisible ? 'eye-off' : 'eye'"
-						:aria-label="
+				<template v-else>
+					<N8nTooltip
+						:content="i18n.baseText('canvas.nodeGroup.editDescription')"
+						placement="bottom"
+					>
+						<N8nIconButton
+							class="nodrag"
+							variant="ghost"
+							size="small"
+							icon="pen"
+							:aria-label="i18n.baseText('canvas.nodeGroup.editDescription')"
+							data-test-id="canvas-node-group-edit-description"
+							@click.stop="startEditingDescription"
+						/>
+					</N8nTooltip>
+					<N8nTooltip
+						:content="
 							isPermanentlyVisible
 								? i18n.baseText('canvas.nodeGroup.unpinDescription')
 								: i18n.baseText('canvas.nodeGroup.pinDescription')
 						"
-						data-test-id="canvas-node-group-pin-description"
-						@click.stop="onTogglePinDescription"
-					/>
-				</N8nTooltip>
+						placement="bottom"
+					>
+						<N8nIconButton
+							class="nodrag"
+							variant="ghost"
+							size="small"
+							:icon="isPermanentlyVisible ? 'eye-off' : 'eye'"
+							:aria-label="
+								isPermanentlyVisible
+									? i18n.baseText('canvas.nodeGroup.unpinDescription')
+									: i18n.baseText('canvas.nodeGroup.pinDescription')
+							"
+							data-test-id="canvas-node-group-pin-description"
+							@click.stop="onTogglePinDescription"
+						/>
+					</N8nTooltip>
+				</template>
 			</div>
 		</div>
 	</div>
@@ -835,16 +850,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 .descriptionPanelText {
 	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 	color: var(--text-color--subtle);
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 	cursor: text;
-	// Keep the collapsed panel to at most three lines.
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 3;
-	line-clamp: 3;
-	overflow: hidden;
 }
 
 .descriptionPanelEdit {
@@ -857,18 +867,23 @@ function onWrapperPointerDown(event: PointerEvent) {
 	color: var(--text-color--subtle);
 	font-family: inherit;
 	font-size: var(--font-size--sm);
-	line-height: var(--line-height--lg);
+	line-height: var(--line-height--xl);
 	resize: none;
 	overflow: hidden;
 	box-sizing: border-box;
 }
 
 .descriptionPanelActions {
-	display: flex;
+	display: none;
 	align-items: center;
 	justify-content: flex-end;
 	gap: var(--spacing--3xs);
 	flex-shrink: 0;
+}
+
+.descriptionPanel:hover .descriptionPanelActions,
+.descriptionPanelEditing .descriptionPanelActions {
+	display: flex;
 }
 
 .descriptionEmpty {
