@@ -273,6 +273,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				skill,
 				skillId: id,
 				availableTools: configuredToolOptions(),
+				existingSkillNames: appliedSkillNames(id),
 				onRemove: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
 					onRemoveSkill(skillId);
@@ -343,15 +344,22 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		return normalizeAgentSkillForSave(skill, configuredToolNames());
 	}
 
+	/** Names the skill modal validates against: every applied skill except the one being edited. */
+	function appliedSkillNames(excludeId?: string): string[] {
+		return appliedSkills.value.filter(({ id }) => id !== excludeId).map(({ skill }) => skill.name);
+	}
+
 	/**
 	 * Authoring-time mirror of the backend's `assertSkillNameIsUnique` for
 	 * local-skill hosts, which have no REST call to reject duplicates — without
-	 * it the collision only surfaces as a runtime compile failure.
+	 * it the collision only surfaces as a runtime compile failure. The modal
+	 * validates against `existingSkillNames` before closing; this confirm-time
+	 * check is the backstop for names that became duplicates while it was open.
 	 */
 	function hasDuplicateSkillName(name: string, excludeId?: string): boolean {
 		const normalized = name.trim().toLowerCase();
-		return appliedSkills.value.some(
-			({ id, skill }) => id !== excludeId && skill.name.trim().toLowerCase() === normalized,
+		return appliedSkillNames(excludeId).some(
+			(existing) => existing.trim().toLowerCase() === normalized,
 		);
 	}
 
@@ -400,6 +408,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: targetProjectId,
 				agentId: targetAgentId,
 				availableTools: configuredToolOptions(),
+				existingSkillNames: appliedSkillNames(),
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 					if (localSkills) {
 						if (agentId.value !== targetAgentId) return;

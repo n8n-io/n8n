@@ -7124,6 +7124,7 @@
 	"agents.builder.skills.duplicateName.error": "Agent already has a skill named \"{name}\"",
 	"agents.builder.skills.validation.nameRequired": "Enter a name.",
 	"agents.builder.skills.validation.nameMaxLength": "Name must be 128 characters or fewer.",
+	"agents.builder.skills.validation.nameDuplicate": "Agent already has a skill with this name.",
 	"agents.builder.skills.validation.descriptionRequired": "Enter a description.",
 	"agents.builder.skills.validation.descriptionMaxLength": "Description must be 512 characters or fewer.",
 	"agents.builder.skills.validation.instructionsRequired": "Enter instructions.",

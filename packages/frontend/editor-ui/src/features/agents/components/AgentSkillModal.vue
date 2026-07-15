@@ -20,6 +20,12 @@ export type AgentSkillModalData = {
 	skill?: AgentSkill;
 	skillId?: string;
 	availableTools?: AgentSkillAllowedToolOption[];
+	/**
+	 * Names of the agent's other skills, so a duplicate name blocks save while
+	 * the modal is still open — skill names must be unique per agent (compared
+	 * case-insensitively on the trimmed name).
+	 */
+	existingSkillNames?: string[];
 	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
 	onRemove?: (id: string) => void;
 };
@@ -200,6 +206,7 @@ function onRemove() {
 				<AgentSkillViewer
 					:skill="skill"
 					:available-tools="props.data.availableTools ?? []"
+					:existing-skill-names="props.data.existingSkillNames ?? []"
 					:selected-path="selectedPath"
 					:errors="visibleErrors"
 					:scrollable="false"

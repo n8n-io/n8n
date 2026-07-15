@@ -42,6 +42,12 @@ const props = withDefaults(
 		availableTools?: AgentSkillAllowedToolOption[];
 		disabled?: boolean;
 		errors?: Partial<Record<keyof AgentSkill, string>>;
+		/**
+		 * Names of the agent's other skills — a name colliding with one of them
+		 * (case-insensitively, trimmed) fails the name field's validation, since
+		 * skill names must be unique per agent.
+		 */
+		existingSkillNames?: string[];
 		selectedPath?: string;
 		scrollable?: boolean;
 		showValidationWarnings?: boolean;
@@ -49,6 +55,7 @@ const props = withDefaults(
 	{
 		availableTools: () => [],
 		disabled: false,
+		existingSkillNames: () => [],
 		selectedPath: SKILL_FILE,
 		scrollable: true,
 		showValidationWarnings: false,
@@ -86,7 +93,23 @@ const formValidation = reactive({
 
 const nameValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'MAX_LENGTH', config: { maximum: 128 } },
+	{ name: 'uniqueSkillName' },
 ];
+const normalizedExistingSkillNames = computed(
+	() => new Set(props.existingSkillNames.map((name) => name.trim().toLowerCase())),
+);
+const nameValidators: Record<string, IValidator> = {
+	uniqueSkillName: {
+		validate: (value: Validatable) =>
+			normalizedExistingSkillNames.value.has(
+				String(value ?? '')
+					.trim()
+					.toLowerCase(),
+			)
+				? { messageKey: 'agents.builder.skills.validation.nameDuplicate' }
+				: false,
+	},
+};
 const descriptionValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'MAX_LENGTH', config: { maximum: 512 } },
 ];
@@ -457,6 +480,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					:disabled="props.disabled"
 					:show-validation-warnings="props.showValidationWarnings"
 					:validation-rules="nameValidationRules"
+					:validators="nameValidators"
 					data-testid="agent-skill-name-input"
 					@update:model-value="onNameInput"
 					@validate="onFieldValidate('name', $event)"

@@ -130,6 +130,7 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 
 type SkillModalData = {
 	skillId?: string;
+	existingSkillNames?: string[];
 	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
 	onRemove?: (skillId: string) => void;
 };
@@ -248,6 +249,24 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 				title: 'agents.builder.skills.duplicateName.error',
 			}),
 		);
+	});
+
+	it('passes applied skill names into the modal, excluding the edited skill', () => {
+		const { uiStore, actions } = setupLocal({
+			skillRefs: [
+				{ type: 'skill', id: 'skill_triage' },
+				{ type: 'skill', id: 'skill_escalate' },
+			],
+			bodies: { skill_triage: triage, skill_escalate: { ...triage, name: 'Escalate' } },
+		});
+
+		actions.onOpenAddSkillModal();
+		const addData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(addData.existingSkillNames).toEqual(['Triage', 'Escalate']);
+
+		actions.onOpenSkillFromList('skill_escalate');
+		const editData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(editData.existingSkillNames).toEqual(['Triage']);
 	});
 
 	it("allows an edit that keeps the skill's own name", () => {
