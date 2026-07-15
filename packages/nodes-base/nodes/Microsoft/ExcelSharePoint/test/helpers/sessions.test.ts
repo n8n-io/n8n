@@ -84,4 +84,32 @@ describe('Microsoft Excel (SharePoint) — helpers/sessions', () => {
 		expect(send).not.toHaveBeenCalled();
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 	});
+
+	it("returns send's result even when closeSession itself fails", async () => {
+		apiRequest.mockImplementation(async (_method: string, resource: string) => {
+			if (resource === `${workbookRoot}/workbook/createSession`) return { id: 'session-abc' };
+			if (resource === `${workbookRoot}/workbook/closeSession`) {
+				throw new Error('closeSession unreachable');
+			}
+			throw new Error(`unexpected request: ${resource}`);
+		});
+		const send = vi.fn().mockResolvedValue('done');
+
+		const result = await withWorkbookSession.call(ctx, workbookRoot, send);
+
+		expect(result).toBe('done');
+	});
+
+	it("propagates send's error, not closeSession's, when both fail", async () => {
+		apiRequest.mockImplementation(async (_method: string, resource: string) => {
+			if (resource === `${workbookRoot}/workbook/createSession`) return { id: 'session-abc' };
+			if (resource === `${workbookRoot}/workbook/closeSession`) {
+				throw new Error('closeSession unreachable');
+			}
+			throw new Error(`unexpected request: ${resource}`);
+		});
+		const send = vi.fn().mockRejectedValue(new Error('boom'));
+
+		await expect(withWorkbookSession.call(ctx, workbookRoot, send)).rejects.toThrow('boom');
+	});
 });
