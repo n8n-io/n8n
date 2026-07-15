@@ -96,6 +96,9 @@ catalogs:
     '@daytona/sdk':
       specifier: 0.187.0
       version: 0.187.0
+    '@e965/xlsx':
+      specifier: 0.20.3
+      version: 0.20.3
     '@iconify-json/lucide':
       specifier: ^1.2.112
       version: 1.2.114
@@ -1573,8 +1576,8 @@ importers:
         specifier: ^0.52.0
         version: 0.52.0
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
 
   packages/@n8n/chat-hub:
     dependencies:
@@ -1592,8 +1595,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1614,8 +1617,8 @@ importers:
         specifier: ^20.17.50
         version: 20.19.41
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1642,8 +1645,8 @@ importers:
         specifier: 'catalog:'
         version: 14.0.14
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -1652,7 +1655,7 @@ importers:
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
-        version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+        version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
 
   packages/@n8n/codemirror-lang:
     dependencies:
@@ -1850,8 +1853,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -1884,8 +1887,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -1894,7 +1897,7 @@ importers:
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
-        version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+        version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
 
   packages/@n8n/constants:
     devDependencies:
@@ -1902,8 +1905,8 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
 
   packages/@n8n/crdt:
     dependencies:
@@ -1921,8 +1924,8 @@ importers:
         specifier: workspace:*
         version: link:../vitest-config
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -2444,6 +2447,9 @@ importers:
       '@daytona/sdk':
         specifier: 'catalog:'
         version: 0.187.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@e965/xlsx':
+        specifier: 'catalog:'
+        version: 0.20.3
       '@joplin/turndown-plugin-gfm':
         specifier: 'catalog:'
         version: 1.0.64
@@ -2525,9 +2531,6 @@ importers:
       undici:
         specifier: catalog:undici-v7
         version: 7.28.0
-      xlsx:
-        specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
-        version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -5899,6 +5902,9 @@ importers:
       '@aws-sdk/credential-providers':
         specifier: 3.808.0
         version: 3.808.0
+      '@e965/xlsx':
+        specifier: 'catalog:'
+        version: 0.20.3
       '@kafkajs/confluent-schema-registry':
         specifier: 3.8.0
         version: 3.8.0
@@ -6154,9 +6160,6 @@ importers:
       vm2:
         specifier: 'catalog:'
         version: 3.11.5
-      xlsx:
-        specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
-        version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
@@ -6278,6 +6281,9 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../core
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
@@ -6710,6 +6716,9 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -8101,6 +8110,11 @@ packages:
 
   '@dual-bundle/import-meta-resolve@4.1.0':
     resolution: {integrity: sha512-+nxncfwHM5SgAtrVzgpzJOI1ol0PkumhVo469KCf9lUi21IGcY90G98VuHm9VRrUypmAzawAHO9bs6hqeADaVg==}
+
+  '@e965/xlsx@0.20.3':
+    resolution: {integrity: sha512-703RN/3OdsRD5mtse2HBX7Um7xwaP9tlswEG6svOtjqokXoX7rJdQj7DyabD2I+xk22RgaIIU+R6BHgkpZGB/w==}
+    engines: {node: '>=0.8'}
+    hasBin: true
 
   '@ecies/ciphers@0.2.5':
     resolution: {integrity: sha512-GalEZH4JgOMHYYcYmVqnFirFsjZHeoGMDt9IxEnM9F7GRUUyUksJ7Ou53L83WHJq3RWKD3AcBpo0iQh0oMpf8A==}
@@ -22014,12 +22028,6 @@ packages:
     resolution: {integrity: sha512-h3Fbisa2nKGPxCpm89Hk33lBLsnaGBvctQopaBSOW/uIs6FTe1ATyAnKFJrzVs9vpGdsTe73WF3V4lIsk4Gacw==}
     engines: {node: '>=18'}
 
-  xlsx@https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz:
-    resolution: {integrity: sha512-+nKZ39+nvK7Qq6i0PvWWRA4j/EkfWOtkP/YhMtupm+lJIiHxUrgTr1CcKv1nBk1rHtkRRQ3O2+Ih/q/sA+FXZA==, tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
-    version: 0.20.2
-    engines: {node: '>=0.8'}
-    hasBin: true
-
   xml-crypto@6.1.2:
     resolution: {integrity: sha512-leBOVQdVi8FvPJrMYoum7Ici9qyxfE4kVi+AkpUoYCSXaQF4IlBm1cneTK9oAxR61LpYxTx7lNcsnBIeRpGW2w==}
     engines: {node: '>=16'}
@@ -24951,6 +24959,8 @@ snapshots:
       which: 4.0.0
 
   '@dual-bundle/import-meta-resolve@4.1.0': {}
+
+  '@e965/xlsx@0.20.3': {}
 
   '@ecies/ciphers@0.2.5(@noble/ciphers@1.3.0)':
     dependencies:
@@ -41137,8 +41147,6 @@ snapshots:
   wsl-utils@0.1.0:
     dependencies:
       is-wsl: 3.1.0
-
-  xlsx@https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz: {}
 
   xml-crypto@6.1.2:
     dependencies:

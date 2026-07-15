@@ -76,6 +76,7 @@ export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
 export { SamlPreferencesAttributeMapping } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
+export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
 
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
