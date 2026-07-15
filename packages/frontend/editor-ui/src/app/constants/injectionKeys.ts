@@ -17,12 +17,12 @@ export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeI
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
 /**
- * @deprecated Import from `@n8n/composables/PopOutWindowKey` instead. The key's
+ * @deprecated Import from `@n8n/composables/injectionKeys` instead. The key's
  * canonical definition moved into `@n8n/composables` (folded in with its
  * consumer `useClipboard`) during the CAT-3686 migration; this re-export keeps
  * `@/app/constants` consumers working until they are retired. (N8N-31)
  */
-export { PopOutWindowKey } from '@n8n/composables/PopOutWindowKey';
+export { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');

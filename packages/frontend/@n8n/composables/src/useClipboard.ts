@@ -1,7 +1,7 @@
 import { useClipboard as useClipboardCore, useThrottleFn } from '@vueuse/core';
 import { inject, onBeforeUnmount, onMounted, ref } from 'vue';
 
-import { PopOutWindowKey } from './PopOutWindowKey';
+import { PopOutWindowKey } from './injectionKeys';
 
 type ClipboardEventFn = (data: string, event?: ClipboardEvent) => void;
 
