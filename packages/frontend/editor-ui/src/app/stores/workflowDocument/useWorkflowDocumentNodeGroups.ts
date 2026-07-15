@@ -34,6 +34,8 @@ type NodeGroupMutationOptions = {
 type NodeGroupCreateOptions = NodeGroupMutationOptions & {
 	/** Start the group collapsed in the canvas view (e.g. imported/pasted groups). */
 	startCollapsed?: boolean;
+	/** Optional description to seed the group with (e.g. imported/pasted groups). */
+	description?: string;
 };
 
 export function useWorkflowDocumentNodeGroups() {
@@ -101,6 +103,7 @@ export function useWorkflowDocumentNodeGroups() {
 			id: window.crypto.randomUUID(),
 			nodeIds: [...nodeIds],
 			name,
+			...(options.description ? { description: options.description } : {}),
 		};
 		applyUpsertGroup(group, CHANGE_ACTION.ADD, options);
 		return group;

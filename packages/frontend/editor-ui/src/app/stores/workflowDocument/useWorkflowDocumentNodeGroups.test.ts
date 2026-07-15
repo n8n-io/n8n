@@ -35,6 +35,12 @@ describe('useWorkflowDocumentNodeGroups', () => {
 			expect(nodeGroups.allGroups.value).toHaveLength(1);
 		});
 
+		it('seeds the description when provided (e.g. paste/import)', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'A', { description: 'Copied over' });
+			expect(group.description).toBe('Copied over');
+			expect(nodeGroups.getGroupById(group.id)?.description).toBe('Copied over');
+		});
+
 		it('carries startCollapsed on the ADD event so the view can skip auto-expand', () => {
 			const changeSpy = vi.fn();
 			nodeGroups.onNodeGroupsChange(changeSpy);
