@@ -31,8 +31,8 @@ export class InstanceAiModule implements ModuleInterface {
 		// calls into tool-interrupted facts and appending run-finish{interrupted}.
 		const { GlobalConfig } = await import('@n8n/config');
 		if (Container.get(GlobalConfig).instanceAi.durableLog) {
-			const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper');
-			const { InstanceAiService } = await import('./instance-ai.service');
+			const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
+			const { InstanceAiService } = await import('./instance-ai.service.js');
 			const sweeper = Container.get(InterruptedRunSweeper);
 			sweeper.setResumeHost(Container.get(InstanceAiService));
 			void sweeper.sweep().catch((error: unknown) => {
