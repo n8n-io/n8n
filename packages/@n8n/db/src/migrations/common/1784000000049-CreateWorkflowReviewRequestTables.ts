@@ -11,6 +11,8 @@ const WORKFLOW_ENTITY_TABLE = 'workflow_entity';
 const WORKFLOW_HISTORY_TABLE = 'workflow_history';
 
 const UQ_WORKFLOW_REQUEST_WORKFLOW = 'workflow_review_request_workflow_request_workflow';
+const IDX_WORKFLOW_REQUEST_WORKFLOW_WORKFLOW_REQUEST =
+	'workflow_review_request_workflow_workflow_request';
 const UQ_WORKFLOW_REQUEST_REVIEWERS = 'workflow_review_request_reviewers_request_user';
 const UQ_WORKFLOW_REQUEST_AUTHORS = 'workflow_review_request_authors_request_user';
 
@@ -23,12 +25,15 @@ export class CreateWorkflowReviewRequestTables1784000000049 implements Reversibl
 		await this.createChildWorkflowAndJunctionIndexes(context);
 	}
 
-	async down({ schemaBuilder: { dropTable }, runQuery, tablePrefix }: MigrationContext) {
+	async down({ schemaBuilder: { dropTable }, runQuery, escape, tablePrefix }: MigrationContext) {
 		await runQuery(
 			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_AUTHORS)}`,
 		);
 		await runQuery(
 			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_REVIEWERS)}`,
+		);
+		await runQuery(
+			`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_WORKFLOW_REQUEST)}`,
 		);
 		await runQuery(
 			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_WORKFLOW)}`,
@@ -174,6 +179,10 @@ export class CreateWorkflowReviewRequestTables1784000000049 implements Reversibl
 		await runQuery(
 			`CREATE UNIQUE INDEX IF NOT EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_WORKFLOW)}
 			ON ${workflowTable}(${requestIdColumn}, ${workflowIdColumn})`,
+		);
+		await runQuery(
+			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_WORKFLOW_REQUEST)}
+			ON ${workflowTable}(${workflowIdColumn}, ${requestIdColumn})`,
 		);
 		await runQuery(
 			`CREATE UNIQUE INDEX IF NOT EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_REVIEWERS)}
