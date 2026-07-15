@@ -12,6 +12,12 @@ export class UniqueFilenameAllocator {
 		this.used.add(`${this.baseDir}/${segment}`);
 	}
 
+	reservePath(path: string): void {
+		if (path.startsWith(`${this.baseDir}/`)) {
+			this.used.add(path);
+		}
+	}
+
 	allocate(name: string): string {
 		const base = `${this.baseDir}/${generateSlug(name, this.fallback)}`;
 

@@ -15,6 +15,9 @@ import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
+import { StaticWorkflowDependencyExporter } from './entities/workflow/static-workflow-dependency.exporter';
+import { StaticWorkflowDependencyResolver } from './entities/workflow/static-workflow-dependency-resolver';
+import type { ExportedWorkflowDependencySeed } from './entities/workflow/static-workflow-dependency-resolver';
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
@@ -51,19 +54,11 @@ export class N8nPackagesService {
 		private readonly eventService: EventService,
 		private readonly workflowRequirementExporter: WorkflowRequirementExporter,
 		private readonly workflowDependencyResolver: WorkflowDependencyResolver,
+		private readonly staticWorkflowDependencyResolver: StaticWorkflowDependencyResolver,
+		private readonly staticWorkflowDependencyExporter: StaticWorkflowDependencyExporter,
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
-		// TODO: remove this once the other options are implemented
-		const missingWorkflowDependencyPolicy =
-			request.missingWorkflowDependencyPolicy ?? MissingWorkflowDependencyPolicy.Fail;
-
-		if (missingWorkflowDependencyPolicy !== MissingWorkflowDependencyPolicy.Fail) {
-			throw new PackageExportBlockedError(
-				`missingWorkflowDependencyPolicy="${missingWorkflowDependencyPolicy}" is not supported yet. Only "fail" is currently supported.`,
-			);
-		}
-
 		const writer = new TarPackageWriter();
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
@@ -101,27 +96,72 @@ export class N8nPackagesService {
 					})
 				: undefined;
 
-		const requirements = mergeRequirements(
-			workflowExportResult?.requirements,
-			folderExportResult?.requirements,
-			projectExportResult?.requirements,
-		);
-
-		const allFolders = [
+		const allFoldersBeforeAutoAdd = [
 			...(folderExportResult?.entries ?? []),
 			...(projectExportResult?.folderEntries ?? []),
 		];
-
-		const allWorkflowsInPackage = [
+		const allProjectsBeforeAutoAdd = [...(projectExportResult?.entries ?? [])];
+		const allWorkflowsBeforeAutoAdd = [
 			...(workflowExportResult?.entries ?? []),
 			...(folderExportResult?.workflowEntries ?? []),
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
+		const dependencyPolicy =
+			request.missingWorkflowDependencyPolicy ?? MissingWorkflowDependencyPolicy.Fail;
+		if (dependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly) {
+			throw new PackageExportBlockedError(
+				'Reference-only static sub-workflow dependencies are not supported. Export aborted.',
+			);
+		}
+
 		const workflowRequirements = await this.workflowDependencyResolver.resolve({
 			user: request.user,
-			workflowIds: allWorkflowsInPackage.map(({ id }) => id),
+			workflowIds: allWorkflowsBeforeAutoAdd.map(({ id }) => id),
 		});
+
+		const autoAddExportResult =
+			dependencyPolicy === MissingWorkflowDependencyPolicy.IncludeInPackage
+				? this.staticWorkflowDependencyExporter.export({
+						writer,
+						dependencies: (
+							await this.staticWorkflowDependencyResolver.resolve({
+								user: request.user,
+								requirements: workflowRequirements,
+								seeds: this.buildWorkflowDependencySeeds({
+									topLevelWorkflows: workflowExportResult?.entries ?? [],
+									folderWorkflows: folderExportResult?.workflowEntries ?? [],
+									projectWorkflows: projectExportResult?.workflowEntries ?? [],
+								}),
+							})
+						).autoAddedWorkflows,
+						existingWorkflowEntries: allWorkflowsBeforeAutoAdd,
+						existingFolderEntries: allFoldersBeforeAutoAdd,
+						existingProjectEntries: allProjectsBeforeAutoAdd,
+						projectTargetsById: projectExportResult?.projectTargetsById,
+					})
+				: undefined;
+
+		const requirements = mergeRequirements(
+			workflowExportResult?.requirements,
+			folderExportResult?.requirements,
+			projectExportResult?.requirements,
+			autoAddExportResult?.requirements,
+		);
+
+		const allFolders = this.dedupeManifestEntries([
+			...allFoldersBeforeAutoAdd,
+			...(autoAddExportResult?.folderEntries ?? []),
+		]);
+		const allProjects = this.dedupeManifestEntries([
+			...allProjectsBeforeAutoAdd,
+			...(autoAddExportResult?.projectEntries ?? []),
+		]);
+
+		const allWorkflowsInPackage = this.dedupeManifestEntries([
+			...allWorkflowsBeforeAutoAdd,
+			...(autoAddExportResult?.workflowEntries ?? []),
+		]);
 
 		assertStaticSubWorkflowsIncluded(
 			workflowRequirements,
@@ -133,7 +173,8 @@ export class N8nPackagesService {
 			requirements: requirements.credentials,
 			writer,
 			// Routes project-owned credentials into their project namespace; others stay top-level.
-			projectTargetsById: projectExportResult?.projectTargetsById,
+			projectTargetsById:
+				autoAddExportResult?.projectTargetsById ?? projectExportResult?.projectTargetsById,
 		});
 
 		const dataTableExportResult = await this.dataTableExporter.export({
@@ -141,7 +182,8 @@ export class N8nPackagesService {
 			requirements: requirements.dataTables,
 			writer,
 			// Routes project-owned data tables into their project namespace; others stay top-level.
-			projectTargetsById: projectExportResult?.projectTargetsById,
+			projectTargetsById:
+				autoAddExportResult?.projectTargetsById ?? projectExportResult?.projectTargetsById,
 		});
 
 		const workflowRequirementExportResult = this.workflowRequirementExporter.export({
@@ -166,7 +208,7 @@ export class N8nPackagesService {
 			...(manifestRequirements ? { requirements: manifestRequirements } : {}),
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),
-			...(projectExportResult?.entries ? { projects: projectExportResult.entries } : {}),
+			...(allProjects.length > 0 ? { projects: allProjects } : {}),
 		});
 
 		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
@@ -175,8 +217,8 @@ export class N8nPackagesService {
 
 		this.eventService.emit('n8n-package-exported', {
 			user: request.user,
-			...(workflowExportResult?.entries.length
-				? { workflowIds: workflowExportResult.entries.map(({ id }) => id) }
+			...(allWorkflowsInPackage.length
+				? { workflowIds: allWorkflowsInPackage.map(({ id }) => id) }
 				: {}),
 			...(folderExportResult?.entries.length
 				? { folderIds: folderExportResult.entries.map(({ id }) => id) }
@@ -207,6 +249,37 @@ export class N8nPackagesService {
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
 		const folderWorkflowIds = new Set(workflowsInFolders.map((entry) => entry.id) ?? []);
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
+	}
+
+	private buildWorkflowDependencySeeds(options: {
+		topLevelWorkflows: ManifestEntry[];
+		folderWorkflows: ManifestEntry[];
+		projectWorkflows: ManifestEntry[];
+	}): ExportedWorkflowDependencySeed[] {
+		return [
+			...options.topLevelWorkflows.map((entry) => ({
+				workflowId: entry.id,
+				origin: 'top-level' as const,
+			})),
+			...options.folderWorkflows.map((entry) => ({
+				workflowId: entry.id,
+				origin: 'folder' as const,
+			})),
+			...options.projectWorkflows.map((entry) => ({
+				workflowId: entry.id,
+				origin: 'project' as const,
+			})),
+		];
+	}
+
+	private dedupeManifestEntries(entries: ManifestEntry[]): ManifestEntry[] {
+		const byId = new Map<string, ManifestEntry>();
+		for (const entry of entries) {
+			if (!byId.has(entry.id)) {
+				byId.set(entry.id, entry);
+			}
+		}
+		return [...byId.values()];
 	}
 
 	private buildManifestRequirements(input: {
