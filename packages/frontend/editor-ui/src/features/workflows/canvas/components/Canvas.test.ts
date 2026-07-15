@@ -311,6 +311,27 @@ describe('Canvas', () => {
 			expect(vueFlow.getSelectedNodes.value).toHaveLength(0);
 		});
 
+		it('toggles only once when a double-click delivers two header clicks', async () => {
+			const { getByTestId, nodeGroupView, vueFlow } = await setupGroup();
+
+			const header = getByTestId('canvas-node-group-header');
+			// A browser double-click fires two full click gestures with an
+			// increasing detail count, then a dblclick.
+			await fireEvent.pointerDown(header);
+			await fireEvent.click(header, { detail: 1 });
+			await fireEvent.pointerDown(header);
+			await fireEvent.click(header, { detail: 2 });
+			await fireEvent.dblClick(header);
+
+			// A second toggle would expand the group right back.
+			await waitFor(() => expect(nodeGroupView.isGroupCollapsed('g1')).toBe(true));
+			expect(useTelemetry().track).not.toHaveBeenCalledWith(
+				'User expanded group',
+				expect.anything(),
+			);
+			expect(vueFlow.getSelectedNodes.value).toHaveLength(0);
+		});
+
 		it('selects the title bar without toggling on a modifier click', async () => {
 			const { getByTestId, nodeGroupView, vueFlow } = await setupGroup();
 

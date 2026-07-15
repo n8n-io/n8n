@@ -837,6 +837,7 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 		if (node.selected && !selectedIdsOnPointerDown.has(node.id)) {
 			removeSelectedNodes([node]);
 		}
+		if (event.detail > 1) return;
 		const groupId = parseCanvasGroupNodeId(node.id);
 		if (groupId) {
 			onCanvasGroupToggle(groupId, 'group-header');
