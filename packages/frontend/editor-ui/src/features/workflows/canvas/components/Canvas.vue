@@ -8,7 +8,7 @@ import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { CanvasKey } from '@/app/constants';
+import { CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION, CanvasKey } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
@@ -821,6 +821,9 @@ function onDeleteSelection() {
 // them apart.
 let selectedIdsOnPointerDown = new Set<string>();
 
+// Last header-click toggle, for double-click suppression in onNodeClick.
+let lastHeaderToggle: { groupId: string; at: number } | undefined;
+
 function onPointerDownCapture() {
 	selectedIdsOnPointerDown = new Set(selectedNodesAndGroups.value.map(({ id }) => id));
 }
@@ -837,10 +840,15 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 		if (node.selected && !selectedIdsOnPointerDown.has(node.id)) {
 			removeSelectedNodes([node]);
 		}
-		if (event.detail > 1) return;
 		const groupId = parseCanvasGroupNodeId(node.id);
 		if (groupId) {
-			onCanvasGroupToggle(groupId, 'group-header');
+			const isRepeatClick =
+				lastHeaderToggle?.groupId === groupId &&
+				event.timeStamp - lastHeaderToggle.at < CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION;
+			if (!isRepeatClick) {
+				lastHeaderToggle = { groupId, at: event.timeStamp };
+				onCanvasGroupToggle(groupId, 'group-header');
+			}
 		}
 		return;
 	}

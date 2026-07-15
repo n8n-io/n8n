@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { createEvent, fireEvent, waitFor } from '@testing-library/vue';
 import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import Canvas from './Canvas.vue';
@@ -311,16 +311,23 @@ describe('Canvas', () => {
 			expect(vueFlow.getSelectedNodes.value).toHaveLength(0);
 		});
 
+		// event.timeStamp is a readonly getter, so fireEvent can't set it
+		// through the event init — shadow it on the instance instead.
+		const clickHeaderAt = async (header: HTMLElement, timeStamp: number, detail = 1) => {
+			await fireEvent.pointerDown(header);
+			const click = createEvent.click(header, { detail });
+			Object.defineProperty(click, 'timeStamp', { value: timeStamp });
+			await fireEvent(header, click);
+		};
+
 		it('toggles only once when a double-click delivers two header clicks', async () => {
 			const { getByTestId, nodeGroupView, vueFlow } = await setupGroup();
 
 			const header = getByTestId('canvas-node-group-header');
-			// A browser double-click fires two full click gestures with an
-			// increasing detail count, then a dblclick.
-			await fireEvent.pointerDown(header);
-			await fireEvent.click(header, { detail: 1 });
-			await fireEvent.pointerDown(header);
-			await fireEvent.click(header, { detail: 2 });
+			// A browser double-click fires two full click gestures in rapid
+			// succession with an increasing detail count, then a dblclick.
+			await clickHeaderAt(header, 1000, 1);
+			await clickHeaderAt(header, 1100, 2);
 			await fireEvent.dblClick(header);
 
 			// A second toggle would expand the group right back.
@@ -330,6 +337,23 @@ describe('Canvas', () => {
 				expect.anything(),
 			);
 			expect(vueFlow.getSelectedNodes.value).toHaveLength(0);
+		});
+
+		it('treats a fast re-click past the double-click window as a second toggle', async () => {
+			const { getByTestId, nodeGroupView } = await setupGroup();
+
+			const header = getByTestId('canvas-node-group-header');
+			// Two deliberate clicks: past the suppression window, so each is a
+			// separate click sequence (detail resets to 1) and both toggle.
+			await clickHeaderAt(header, 1000);
+			await waitFor(() => expect(nodeGroupView.isGroupCollapsed('g1')).toBe(true));
+			await clickHeaderAt(header, 1400);
+
+			await waitFor(() => expect(nodeGroupView.isGroupCollapsed('g1')).toBe(false));
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				'User expanded group',
+				expect.objectContaining({ source: 'group-header' }),
+			);
 		});
 
 		it('selects the title bar without toggling on a modifier click', async () => {
