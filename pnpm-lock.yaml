@@ -1625,6 +1625,9 @@ importers:
 
   packages/@n8n/client-oauth2:
     dependencies:
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../backend-network
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -1641,6 +1644,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
+      https-proxy-agent:
+        specifier: 'catalog:'
+        version: 7.0.6
       nock:
         specifier: 'catalog:'
         version: 14.0.14
