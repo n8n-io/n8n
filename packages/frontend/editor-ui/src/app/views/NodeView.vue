@@ -130,11 +130,9 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/workflows/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import EvaluationsCanvasInfoCard from '@/features/ai/evaluation.ee/components/EvaluationsCanvasInfoCard/EvaluationsCanvasInfoCard.vue';
-import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -215,8 +213,6 @@ const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
-const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
-const chatPanelStore = useChatPanelStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const workflowHelpers = useWorkflowHelpers();
 
@@ -1666,18 +1662,6 @@ function showAddFirstStepIfEnabled() {
 	}
 }
 
-async function handlePendingBuilderPrompt() {
-	const pendingPrompt = emptyStateBuilderPromptStore.consumePendingPrompt();
-	if (pendingPrompt) {
-		await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
-		await builderStore.sendChatMessage({
-			text: pendingPrompt,
-			initialGeneration: true,
-			source: 'empty-state',
-		});
-	}
-}
-
 /**
  * Routing
  */
@@ -1932,9 +1916,6 @@ onMounted(async () => {
 				updateNodeRoute(routeNodeId.value);
 			}
 		}, 500);
-
-		// Check for pending builder prompt from empty state experiment
-		void handlePendingBuilderPrompt();
 	}
 
 	void usersStore.showPersonalizationSurvey();

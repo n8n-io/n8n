@@ -68,11 +68,6 @@ export const FOCUSED_NODES_EXPERIMENT = createExperiment('064_focused_nodes');
 export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_1');
 
 export const SIDEBAR_EXPANDED_EXPERIMENT = createExperiment('067_sidebar_expanded');
-export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout', {
-	control: 'control',
-	variantBuilderPrompt: 'variant-builder-prompt',
-	variantTemplates: 'variant-templates',
-});
 
 export const SETUP_PANEL = createExperiment('069_setup_panel', {
 	control: 'control',
@@ -155,7 +150,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	CREDENTIALS_APP_SELECTION_EXPERIMENT.name,
 	SIDEBAR_EXPANDED_EXPERIMENT.name,
-	EMPTY_STATE_EXPERIMENT.name,
 	SETUP_PANEL.name,
 	CODE_WORKFLOW_BUILDER_EXPERIMENT.name,
 	FOCUSED_NODES_EXPERIMENT.name,
