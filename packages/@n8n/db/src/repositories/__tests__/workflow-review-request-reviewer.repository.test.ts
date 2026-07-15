@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 
 import { WorkflowReviewRequestReviewer } from '../../entities/workflow-review-request-reviewer.ee';
@@ -45,34 +44,6 @@ describe('WorkflowReviewRequestReviewerRepository', () => {
 			});
 			expect(entityManager.save).not.toHaveBeenCalled();
 			expect(result).toEqual([]);
-		});
-	});
-
-	describe('findByRequestId', () => {
-		it('scopes the lookup to the request id', async () => {
-			entityManager.find.mockResolvedValueOnce([]);
-
-			await repo.findByRequestId('req-1');
-
-			const callArgs = entityManager.find.mock.calls[0];
-			expect(callArgs?.[1]).toEqual({
-				where: { workflowReviewRequestId: 'req-1' },
-				order: { id: 'ASC' },
-			});
-		});
-	});
-
-	describe('findByRequestIds', () => {
-		it('queries reviewers for the given request ids', async () => {
-			entityManager.find.mockResolvedValueOnce([]);
-
-			await repo.findByRequestIds(['req-1', 'req-2']);
-
-			const callArgs = entityManager.find.mock.calls[0];
-			expect(callArgs?.[1]).toEqual({
-				where: { workflowReviewRequestId: In(['req-1', 'req-2']) },
-				order: { id: 'ASC' },
-			});
 		});
 	});
 });

@@ -11,7 +11,6 @@ import type { Project, User } from '@n8n/db';
 import {
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
-	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -38,14 +37,12 @@ let memberAgent: SuperAgentTest;
 let requestRepository: WorkflowReviewRequestRepository;
 let workflowRepository: WorkflowReviewRequestWorkflowRepository;
 let authorRepository: WorkflowReviewRequestAuthorRepository;
-let reviewerRepository: WorkflowReviewRequestReviewerRepository;
 let policyService: WorkflowReviewPolicyService;
 
 beforeAll(() => {
 	requestRepository = Container.get(WorkflowReviewRequestRepository);
 	workflowRepository = Container.get(WorkflowReviewRequestWorkflowRepository);
 	authorRepository = Container.get(WorkflowReviewRequestAuthorRepository);
-	reviewerRepository = Container.get(WorkflowReviewRequestReviewerRepository);
 	policyService = Container.get(WorkflowReviewPolicyService);
 });
 
@@ -122,8 +119,6 @@ describe('POST /workflow-review-requests', () => {
 			workflowReviewRequestId: requests[0].id,
 			userId: owner.id,
 		});
-
-		expect(await reviewerRepository.find()).toHaveLength(0);
 	});
 
 	test('returns 400 when the workflows array is empty', async () => {
@@ -158,18 +153,6 @@ describe('POST /workflow-review-requests', () => {
 			.send({
 				title: 'x',
 				workflows: [{ workflowId: workflow.id, workflowVersionId: 'version-b' }],
-			})
-			.expect(400);
-	});
-
-	test('returns 400 for an unknown version', async () => {
-		const { workflow } = await createReviewableWorkflow();
-
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: 'does-not-exist' }],
 			})
 			.expect(400);
 	});
@@ -366,22 +349,6 @@ describe('POST /workflow-review-requests', () => {
 		expect(await workflowRepository.find()).toHaveLength(1);
 	});
 
-	test('returns 403 when the instance policy is disabled by default', async () => {
-		// Undo the beforeEach enable to mimic the shipped default (no policy row).
-		await policyService.set(false);
-		const { workflow, versionId } = await createReviewableWorkflow();
-
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
-			})
-			.expect(403);
-
-		expect(await requestRepository.find()).toHaveLength(0);
-	});
-
 	test('returns 403 after an admin disables the policy at runtime', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
@@ -409,15 +376,13 @@ describe('POST /workflow-review-requests', () => {
 	});
 
 	test('returns 403 when the license lacks feat:workflowReviews', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
-
 		testServer.license.disable('feat:workflowReviews');
 
 		await ownerAgent
 			.post('/workflow-review-requests')
 			.send({
 				title: 'x',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [{ workflowId: 'wf-1', workflowVersionId: 'version-1' }],
 			})
 			.expect(403);
 

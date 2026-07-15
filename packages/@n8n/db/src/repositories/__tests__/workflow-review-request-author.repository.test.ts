@@ -16,32 +16,23 @@ describe('WorkflowReviewRequestAuthorRepository', () => {
 	});
 
 	describe('addAuthor', () => {
-		it('persists an author row', async () => {
-			(entityManager.create as Mock).mockImplementation(
-				(_target: unknown, entityLike: unknown) => entityLike as WorkflowReviewRequestAuthor,
-			);
-			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
-
-			await repo.addAuthor({ id: 'author-1', workflowReviewRequestId: 'req-1', userId: 'user-1' });
-
-			const savedEntity = entityManager.save.mock.calls[0]?.[1];
-			expect(savedEntity).toMatchObject({
-				id: 'author-1',
-				workflowReviewRequestId: 'req-1',
-				userId: 'user-1',
-			});
-		});
-
-		it('saves through the provided transaction manager when given', async () => {
+		it('maps and saves the author through the provided transaction manager', async () => {
 			(entityManager.create as Mock).mockImplementation(
 				(_target: unknown, entityLike: unknown) => entityLike as WorkflowReviewRequestAuthor,
 			);
 			const trx = mock<EntityManager>();
 			trx.save.mockImplementation(async (_target, entity) => entity);
 
-			await repo.addAuthor({ workflowReviewRequestId: 'req-1', userId: 'user-1' }, trx);
+			await repo.addAuthor(
+				{ id: 'author-1', workflowReviewRequestId: 'req-1', userId: 'user-1' },
+				trx,
+			);
 
-			expect(trx.save).toHaveBeenCalledTimes(1);
+			expect(trx.save.mock.calls[0]?.[1]).toMatchObject({
+				id: 'author-1',
+				workflowReviewRequestId: 'req-1',
+				userId: 'user-1',
+			});
 			expect(entityManager.save).not.toHaveBeenCalled();
 		});
 	});
