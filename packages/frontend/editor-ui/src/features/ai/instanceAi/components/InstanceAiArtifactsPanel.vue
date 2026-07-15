@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
-import type { TaskItem } from '@n8n/api-types';
+import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system/components/N8nIcon';
 import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, inject, ref } from 'vue';
+import { computed, inject, ref, type Ref } from 'vue';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import {
@@ -46,6 +46,10 @@ const openDataTablePreview = inject<((id: string, projectId: string) => void) | 
 );
 const openAgentPreview = inject<((id: string, projectId: string) => void) | undefined>(
 	'openAgentPreview',
+	undefined,
+);
+const pendingComposerContext = inject<Ref<InstanceAiHandoffContext | null> | undefined>(
+	'pendingComposerContext',
 	undefined,
 );
 
@@ -126,10 +130,43 @@ function openArtifactLabel(name: string) {
 	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
 }
 
+function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry {
+	const key = handoffContextKey(context);
+
+	if (context.source === 'agent-preview') {
+		return {
+			key,
+			icon: agentPreviewContextIcon(context.agentIcon),
+			name: formatAgentPreviewContextLabel(
+				context,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(context.agentId)?.name,
+			),
+			subtitle: i18n.baseText('instanceAi.artifactsPanel.context.addedToContext'),
+		};
+	}
+
+	return {
+		key,
+		icon: 'key-round',
+		name: context.credential.displayName,
+		subtitle: i18n.baseText('instanceAi.artifactsPanel.context.credentialModal'),
+	};
+}
+
 const contextEntries = computed<ContextEntry[]>(() => {
 	const entries: ContextEntry[] = [];
 	const seen = new Set<string>();
 	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+
+	// Pending handoff (preview "Send to Assistant") lives on the composer until
+	// the first send — include it so the sidebar matches the input chip.
+	const pending = pendingComposerContext?.value;
+	if (pending) {
+		const key = handoffContextKey(pending);
+		seen.add(key);
+		entries.push(contextEntryFor(pending));
+	}
 
 	for (const message of [...thread.messages].reverse()) {
 		if (message.role !== 'user' || !message.context) continue;
@@ -137,33 +174,19 @@ const contextEntries = computed<ContextEntry[]>(() => {
 		const key = handoffContextKey(message.context);
 		if (seen.has(key) || dismissedKeys.has(key)) continue;
 		seen.add(key);
-
-		if (message.context.source === 'agent-preview') {
-			entries.push({
-				key,
-				icon: agentPreviewContextIcon(message.context.agentIcon),
-				name: formatAgentPreviewContextLabel(
-					message.context,
-					(textKey, options) => i18n.baseText(textKey, options),
-					thread.producedArtifacts.get(message.context.agentId)?.name,
-				),
-				subtitle: i18n.baseText('instanceAi.artifactsPanel.context.addedToContext'),
-			});
-			continue;
-		}
-
-		entries.push({
-			key,
-			icon: 'key-round',
-			name: message.context.credential.displayName,
-			subtitle: i18n.baseText('instanceAi.artifactsPanel.context.credentialModal'),
-		});
+		entries.push(contextEntryFor(message.context));
 	}
 
 	return entries;
 });
 
 async function dismissContext(key: string) {
+	const pending = pendingComposerContext?.value;
+	if (pendingComposerContext && pending && handoffContextKey(pending) === key) {
+		pendingComposerContext.value = null;
+		return;
+	}
+
 	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
 	dismissedKeys.add(key);
 	await store.updateThreadMetadata(thread.id, {

@@ -929,7 +929,8 @@ export interface InstanceAiContext {
 	builderDelegate?: InstanceAiBuilderDelegate;
 	/**
 	 * The agent-preview session referenced by this thread, bound when a user sends
-	 * a preview session to Instance AI. Presence gates the `get-session` tool.
+	 * a preview session to Instance AI (and rehydrated from thread metadata on
+	 * follow-up turns). Presence gates the `get-session` tool.
 	 */
 	agentPreviewSession?: { agentId: string; threadId: string; executionId?: string };
 
