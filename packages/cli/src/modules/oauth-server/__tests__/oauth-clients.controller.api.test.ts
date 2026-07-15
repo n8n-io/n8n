@@ -48,11 +48,13 @@ describe('GET /rest/mcp/oauth-clients', () => {
 			userId: owner.id,
 			clientId: ownerClient.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 		await userConsentRepository.save({
 			userId: member.id,
 			clientId: memberClient.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
@@ -128,6 +130,7 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 			userId: owner.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer.authAgentFor(owner).delete(`/mcp/oauth-clients/${client.id}`);
@@ -154,6 +157,7 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 			userId: owner.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer

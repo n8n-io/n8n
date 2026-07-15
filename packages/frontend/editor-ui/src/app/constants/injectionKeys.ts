@@ -16,7 +16,13 @@ export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
-export const PopOutWindowKey: InjectionKey<Ref<Window | undefined>> = Symbol('PopOutWindow');
+/**
+ * @deprecated Import from `@n8n/composables/injectionKeys` instead. The key's
+ * canonical definition moved into `@n8n/composables` (folded in with its
+ * consumer `useClipboard`) during the CAT-3686 migration; this re-export keeps
+ * `@/app/constants` consumers working until they are retired. (N8N-31)
+ */
+export { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');
@@ -55,6 +61,9 @@ export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi' | 'instanceAi'
  * surface results in their own UI — e.g. the Instance AI preview — set them.
  * `expandGroups` overrides canvas group expansion without touching the editor's
  * persisted view state.
+ * `executionButtonType` selects the canvas execute button treatment —
+ * `'secondary'` demotes it from the primary CTA (e.g. in the Instance AI
+ * artifact, where the conversation is the primary surface).
  * Provided by editor hosts that supersede capabilities.
  */
 export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
@@ -62,6 +71,7 @@ export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
 	expandGroups?: GroupExpansionMode;
 	executionSuccessToasts?: boolean;
 	executionErrorToasts?: boolean;
+	executionButtonType?: 'primary' | 'secondary';
 };
 export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
 	Symbol('EditorEnabledFeatures');

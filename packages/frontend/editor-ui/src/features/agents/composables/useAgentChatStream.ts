@@ -1,4 +1,4 @@
-import { ref, reactive, computed, nextTick, type Ref } from 'vue';
+import { ref, reactive, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -8,13 +8,7 @@ import type {
 	CancellationResumeData,
 } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
-import {
-	getBuilderMessages,
-	clearBuilderMessages,
-	getChatMessages,
-	getTestChatMessages,
-	clearTestChatMessages,
-} from './useAgentApi';
+import { getChatMessages, getTestChatMessages, clearTestChatMessages } from './useAgentApi';
 
 import {
 	applyOpenSuspensions,
@@ -23,7 +17,6 @@ import {
 	getMessageInteractive,
 	getMessageInteractives,
 	isApprovalSuspendInput,
-	isInteractiveToolName,
 	rebuildInteractiveFromHistory,
 	setMessageInteractives,
 	upsertMessageInteractive,
@@ -41,17 +34,12 @@ export interface FatalAgentError {
 export interface UseAgentChatStreamParams {
 	projectId: Ref<string>;
 	agentId: Ref<string>;
-	endpoint: Ref<'build' | 'chat'>;
 	/**
 	 * When provided, chat mode runs in session-continuation: history is fetched
 	 * per-thread and the id is propagated to the backend so further messages
 	 * extend the same session.
 	 */
 	continueSessionId?: Ref<string | undefined>;
-	onCodeUpdated?: () => void;
-	onCodeDelta?: (delta: string) => void;
-	onConfigUpdated?: () => void;
-	onBuildDone?: () => void;
 	onHistoryLoaded?: (count: number) => void;
 }
 
@@ -97,15 +85,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
 			let openSuspensions: AgentBuilderOpenSuspension[] = [];
-			if (params.endpoint.value === 'build') {
-				const envelope = await getBuilderMessages(
-					rootStore.restApiContext,
-					params.projectId.value,
-					params.agentId.value,
-				);
-				dbMessages = envelope.messages;
-				openSuspensions = envelope.openSuspensions;
-			} else if (continueId) {
+			if (continueId) {
 				const envelope = await getChatMessages(
 					rootStore.restApiContext,
 					params.projectId.value,
@@ -143,10 +123,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	async function clearHistory(): Promise<void> {
-		const clearRemote =
-			params.endpoint.value === 'build' ? clearBuilderMessages : clearTestChatMessages;
 		try {
-			await clearRemote(rootStore.restApiContext, params.projectId.value, params.agentId.value);
+			await clearTestChatMessages(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+			);
 			messages.value = [];
 		} catch (error) {
 			showError(error, locale.baseText('agents.chat.clearHistory.error'));
@@ -158,7 +140,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	// -------------------------------------------------------------------------
 
 	interface StreamSession {
-		builderMutated: boolean;
 		/**
 		 * Set when the stream emitted an `error` event. Callers (notably
 		 * `resume`) inspect this so they can roll back optimistic UI state
@@ -271,8 +252,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'tool-input-delta':
-				// Streaming tool input — `code-delta` handles the build-tool case.
-				// No ToolCall state mutation here.
+				// Streaming tool input isn't rendered incrementally; the full
+				// input arrives on `tool-call`. No ToolCall state mutation here.
 				break;
 			case 'tool-call': {
 				// LLM finalized the call. Update input on the existing entry,
@@ -367,11 +348,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-call-suspended': {
 				const { payload } = event;
 				const found = findToolCallById(payload.toolCallId);
-				// Builder interactive tools (ask_* / approval) suspend with their
-				// renderable input; integration actions suspend with a sidecar —
-				// keep the card-bearing tool input and store the sidecar separately.
-				const suspendIsRenderableInput =
-					isInteractiveToolName(payload.toolName) || isApprovalSuspendInput(payload.input);
+				// The approval tool suspends with its renderable input; integration
+				// actions suspend with a sidecar — keep the card-bearing tool input
+				// and store the sidecar separately.
+				const suspendIsRenderableInput = isApprovalSuspendInput(payload.input);
 				let msg: ChatMessage;
 				let tc: ToolCall;
 				if (found) {
@@ -410,16 +390,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
-			case 'code-delta': {
-				params.onCodeDelta?.(event.delta);
-				break;
-			}
-			case 'config-updated':
-			case 'tool-updated': {
-				session.builderMutated = true;
-				params.onConfigUpdated?.();
-				break;
-			}
 			case 'error': {
 				session.errorEmitted = true;
 				dropOrphanMintedBubbles(session);
@@ -447,13 +417,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return undefined;
 	}
 
-	async function consumeStream(response: Response, session: StreamSession): Promise<boolean> {
-		if (!response.body) return false;
+	async function consumeStream(response: Response, session: StreamSession): Promise<void> {
+		if (!response.body) return;
 		const reader = response.body.getReader();
 		const decoder = new TextDecoder();
 		let buffer = '';
-
-		let doneSeen = false;
 
 		try {
 			readerLoop: while (true) {
@@ -474,7 +442,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					}
 					const result = handleEvent(event, session);
 					if (result?.done) {
-						doneSeen = true;
 						break readerLoop;
 					}
 				}
@@ -482,17 +449,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		} finally {
 			reader.releaseLock();
 		}
-
-		return doneSeen;
 	}
 
 	function finalizeStream(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 		}
-
-		if (params.endpoint.value !== 'build') return;
-		if (session.builderMutated) params.onConfigUpdated?.();
 	}
 
 	async function postAndConsume(
@@ -500,7 +462,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		body: Record<string, unknown>,
 	): Promise<{ ok: boolean }> {
 		const session: StreamSession = {
-			builderMutated: false,
 			errorEmitted: false,
 			minted: new Set(),
 		};
@@ -509,7 +470,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const controller = new AbortController();
 		abortController.value = controller;
 		let transportFailed = false;
-		let doneSeen = false;
 
 		try {
 			const browserId = localStorage.getItem('n8n-browserId') ?? '';
@@ -533,7 +493,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				return { ok: false };
 			}
 
-			doneSeen = await consumeStream(response, session);
+			await consumeStream(response, session);
 			finalizeStream(session);
 		} catch (e) {
 			if (e instanceof DOMException && e.name === 'AbortError') {
@@ -556,30 +516,24 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			isStreaming.value = false;
 		}
 
-		if (params.endpoint.value === 'build' && doneSeen) {
-			await nextTick();
-			params.onBuildDone?.();
-		}
-
 		return { ok: !transportFailed && !session.errorEmitted };
 	}
 
-	async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string): Promise<void> {
+	async function streamChat(message: string): Promise<void> {
 		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}`;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
-		if (endpoint === 'chat' && params.continueSessionId?.value) {
+		if (params.continueSessionId?.value) {
 			body.sessionId = params.continueSessionId.value;
 		}
 		await postAndConsume(url, body);
 	}
 
 	/**
-	 * Resume a suspended interaction. Build-mode interactions post to
-	 * build/resume; preview chat approval prompts post to chat/resume. Both
-	 * paths re-enter the same SSE handler. The `runId` is required — it comes
-	 * from the original `tool-call-suspended` chunk (live) or from the
-	 * `openSuspensions` sidecar applied during history reload.
+	 * Resume a suspended interaction via `chat/resume`, re-entering the same
+	 * SSE handler. The `runId` is required — it comes from the original
+	 * `tool-call-suspended` chunk (live) or from the `openSuspensions` sidecar
+	 * applied during history reload.
 	 *
 	 * The UI updates optimistically, then restores the previous card state if
 	 * the resume POST or SSE stream fails.
@@ -651,8 +605,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 
 		const { baseUrl } = rootStore.restApiContext;
-		const resumeEndpoint = params.endpoint.value === 'chat' ? 'chat/resume' : 'build/resume';
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${resumeEndpoint}`;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
 		const { ok } = await postAndConsume(url, {
 			runId: payload.runId,
 			toolCallId: payload.toolCallId,
@@ -700,7 +653,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			content: trimmed,
 			status: 'success',
 		});
-		await streamFromEndpoint(params.endpoint.value, trimmed);
+		await streamChat(trimmed);
 	}
 
 	function dismissFatalError(): void {

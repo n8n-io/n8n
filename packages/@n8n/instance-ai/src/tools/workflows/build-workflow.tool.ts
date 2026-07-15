@@ -13,6 +13,7 @@ import {
 	buildCredentialResolutionNote,
 	resolveCredentials,
 } from './resolve-credentials';
+import { resolvedCredentialSchema } from './resolved-credential.schema';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
 	combineWarnings,
@@ -153,7 +154,14 @@ const verificationReadinessOutputSchema = z.discriminatedUnion('status', [
 	}),
 	z.object({
 		status: z.literal('not_verifiable'),
-		reason: z.enum(['not-submitted', 'missing-workflow-id', 'non-mockable-trigger']),
+		// 'non-mockable-trigger' is the legacy spelling of 'no-trigger-node',
+		// kept so stored outcomes from older threads still parse.
+		reason: z.enum([
+			'not-submitted',
+			'missing-workflow-id',
+			'no-trigger-node',
+			'non-mockable-trigger',
+		]),
 		guidance: z.string(),
 	}),
 ]);
@@ -292,9 +300,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				mockedNodeNames: z.array(z.string()).optional(),
 				mockedCredentialTypes: z.array(z.string()).optional(),
 				mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-				resolvedCredentialsByNode: z
-					.record(z.array(z.object({ type: z.string(), id: z.string(), name: z.string() })))
-					.optional(),
+				resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
 				credentialResolutionNote: z.string().optional(),
 				referencedWorkflowIds: z.array(z.string()).optional(),
 				hasUnresolvedPlaceholders: z.boolean().optional(),
@@ -742,6 +748,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						mockedNodeNames: mockResult.mockedNodeNames,
 						declaredOutputFixtures: compiled.declaredOutputFixtures,
 						workflowId: saved.id,
+						outputSchemaLookup: context.outputSchemaLookup,
 						logger: context.logger,
 					});
 					const runId = buildContext?.runId ?? context.runId;

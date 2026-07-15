@@ -1,23 +1,40 @@
+import { UserError } from 'n8n-workflow';
+
 import type { ManifestEntry } from '../spec/manifest.schema';
 
-export const PACKAGE_TOP_LEVEL_DIRS = {
-	workflows: 'workflows',
-	folders: 'folders',
-	projects: 'projects',
-} as const;
-
-type TopLevelDir = (typeof PACKAGE_TOP_LEVEL_DIRS)[keyof typeof PACKAGE_TOP_LEVEL_DIRS];
-
-// A top-level target begins with `${dir}/`; a nested one carries its scope's prefix first
-// (e.g. `projects/x/folders/a`, `folders/a/workflows/wf`).
-export function isTopLevelTarget(target: string, dir: TopLevelDir): boolean {
-	return target.startsWith(`${dir}/`);
+export function foldersInScope(
+	entries: ManifestEntry[] | undefined,
+	basePrefix = '',
+): ManifestEntry[] {
+	return (entries ?? []).filter((entry) => entry.target.startsWith(`${basePrefix}folders/`));
 }
 
-export function topLevelFolders(entries: ManifestEntry[] | undefined): ManifestEntry[] {
-	return (entries ?? []).filter((entry) => isTopLevelTarget(entry.target, 'folders'));
+export function workflowsInScope(
+	entries: ManifestEntry[] | undefined,
+	basePrefix = '',
+): ManifestEntry[] {
+	return (entries ?? []).filter(
+		(entry) =>
+			entry.target.startsWith(`${basePrefix}workflows/`) ||
+			entry.target.startsWith(`${basePrefix}folders/`),
+	);
 }
 
-export function topLevelWorkflows(entries: ManifestEntry[] | undefined): ManifestEntry[] {
-	return (entries ?? []).filter((entry) => isTopLevelTarget(entry.target, 'workflows'));
+export function deriveParentFolderId(
+	workflowTarget: string,
+	folderTargetToId: Map<string, string>,
+): string | null {
+	const idx = workflowTarget.lastIndexOf('/workflows/');
+	if (idx === -1) return null;
+
+	const containerTarget = workflowTarget.slice(0, idx);
+
+	if (!containerTarget.includes('folders/')) return null;
+	const folderId = folderTargetToId.get(containerTarget);
+	if (folderId === undefined) {
+		throw new UserError(
+			`Package workflow at "${workflowTarget}" is nested under folder "${containerTarget}", which is missing from the manifest.`,
+		);
+	}
+	return folderId;
 }

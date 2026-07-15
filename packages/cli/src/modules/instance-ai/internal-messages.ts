@@ -1,6 +1,6 @@
 import {
-	instanceAiWorkflowAttachmentSchema,
-	type InstanceAiWorkflowAttachment,
+	instanceAiResourceAttachmentSchema,
+	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
@@ -68,17 +68,18 @@ export function cleanStoredUserMessage(stored: string): string | null {
 }
 
 /**
- * Reconstructs the workflow attachments the editor hand-off encoded in a stored
- * user message, so the UI can re-surface them as artifacts after a reload.
- * Returns an empty array when the message carries no editor context.
+ * Reconstructs the resource attachments (workflows, agents) the editor hand-off
+ * encoded in a stored user message, so the UI can re-surface them as artifacts
+ * after a reload. Returns an empty array when the message carries no editor
+ * context.
  */
-export function extractEditorContextWorkflowAttachments(
+export function extractEditorContextResourceAttachments(
 	stored: string,
-): InstanceAiWorkflowAttachment[] {
+): InstanceAiResourceAttachment[] {
 	const match = EDITOR_CONTEXT_JSON.exec(stored);
 	if (!match) return [];
 	const parsed = z
-		.array(instanceAiWorkflowAttachmentSchema)
+		.array(instanceAiResourceAttachmentSchema)
 		.safeParse(jsonParse(match[1], { fallbackValue: undefined }));
 	return parsed.success ? parsed.data : [];
 }

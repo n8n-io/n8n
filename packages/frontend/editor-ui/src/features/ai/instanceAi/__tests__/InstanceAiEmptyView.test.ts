@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -17,6 +17,10 @@ import type { Project, ProjectListItem } from '@/features/collaboration/projects
 import type { FrontendModuleSettings } from '@n8n/api-types';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
+
+// Reactive so the component's `watch(() => route.query[...])` fires on mutation,
+// matching vue-router's real reactive `route.query` behavior.
+const routeQuery = reactive({}) as Record<string, string | undefined>;
 
 const {
 	experimentMocks,
@@ -291,6 +295,7 @@ vi.mock('uuid', () => ({
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
+	useRoute: () => ({ query: routeQuery }),
 	useRouter: () => ({ push: vi.fn(), replace: replaceMock }),
 }));
 
@@ -411,6 +416,7 @@ describe('InstanceAiEmptyView', () => {
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
+		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		vi.stubGlobal('localStorage', {
 			getItem: vi.fn(),
 			setItem: vi.fn(),
@@ -818,6 +824,41 @@ describe('InstanceAiEmptyView', () => {
 			params: { threadId: 'thread-placeholder' },
 		});
 		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('preselects the project from ?projectId= without starting a thread on mount', async () => {
+		const redirectedProjectId = 'team-project-42';
+		routeQuery.projectId = redirectedProjectId;
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+		await flushPromises();
+
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(replaceMock).not.toHaveBeenCalled();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', redirectedProjectId);
+	});
+
+	it('falls back to the personal project when the ?projectId= query is cleared', async () => {
+		const redirectedProjectId = 'team-project-42';
+		routeQuery.projectId = redirectedProjectId;
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+		await flushPromises();
+
+		routeQuery.projectId = undefined;
+		await flushPromises();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID);
 	});
 
 	it('shows a toast and stays on the empty view when syncThread rejects', async () => {

@@ -181,6 +181,7 @@ export {
 	STORED_PLANNED_TASK_KINDS,
 } from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export type {
 	AgentDbMessage,
@@ -246,6 +247,11 @@ export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInsta
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
 export const createLazyWorkspaceRuntimeSkillSource: typeof MaterializeRuntimeSkillsMod.createLazyWorkspaceRuntimeSkillSource =
 	lazyFunction(() => loadMaterializeRuntimeSkills().createLazyWorkspaceRuntimeSkillSource);
+export {
+	CONFIG_EVALS_SKILL_ID,
+	disabledInstanceAiSkillIds,
+	type InstanceAiSkillFlags,
+} from './skills/skill-gates';
 export declare const SANDBOX_RUNTIME_SKILLS_DIR: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILLS_DIR;
 export declare const SANDBOX_RUNTIME_SKILL_REGISTRY_FILE: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE;
 export declare const RUNTIME_SKILL_MANIFEST_FILE: typeof MaterializeRuntimeSkillsMod.RUNTIME_SKILL_MANIFEST_FILE;
@@ -324,6 +330,9 @@ export const McpClientManager: typeof McpClientManagerMod.McpClientManager = laz
 );
 export const mapAgentChunkToEvent: typeof MapChunkMod.mapAgentChunkToEvent = lazyFunction(
 	() => loadMapChunk().mapAgentChunkToEvent,
+);
+export const isQuotaExhaustedError: typeof MapChunkMod.isQuotaExhaustedError = lazyFunction(
+	() => loadMapChunk().isQuotaExhaustedError,
 );
 export const parseSuspension: typeof StreamHelpersMod.parseSuspension = lazyFunction(
 	() => loadStreamHelpers().parseSuspension,
@@ -614,6 +623,7 @@ export type {
 	NodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,
+	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
 	FetchedPage,
@@ -621,21 +631,15 @@ export type {
 	WebSearchResponse,
 	InstanceAiWebResearchService,
 	InstanceAiWorkspaceService,
+	InstanceAiWorkflowTemplateService,
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
-	InstanceAiAgentBuilderService,
-	AgentConfigSnapshot,
-	AgentBuilderSkill,
-	ChatIntegrationInfo,
-	ProjectAgentSummary,
-	AgentModelOption,
-	ModelLookupConfig,
-	McpServerSearchResult,
-	McpServerVerifyParams,
-	McpServerVerifyResult,
-	AttachableWorkflow,
-	ResolveResourceLocatorParams,
+	InstanceAiBuilderDelegate,
+	BuilderDelegateSession,
+	BuilderTurnStream,
+	BuilderOpenSuspension,
+	SessionWorkflowRef,
 } from './types';
 export type {
 	OrchestratorRunHandoffReason,
