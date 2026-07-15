@@ -354,14 +354,18 @@ red is harness-caused (per "A red is signal", above):
 - **Mock response shape** — the LLM-generated mock response can omit the real
   envelope, crashing a downstream parse/format node. Recurring, reproducible
   shapes to expect (all produce a red on a *correct* build):
-  - **OpenAI structured output** — the mock returns a plain `{content: "..."}`
-    instead of the Responses envelope (`output[0].content[0].text`), so anything
-    parsing the model output gets nothing. A **Structured Output Parser** crashes;
-    the **Information Extractor** and **Text Classifier** LangChain nodes surface
-    it as the node error **`Model output doesn't fit required format`**. This is a
-    very common red for extract/classify/route builds and is easy to misread as a
-    builder bug — the node is wired correctly, the mock envelope is the cause.
-    Carry correctness in `outcomeExpectations` and note the red as harness-caused.
+  - **OpenAI structured output** — historically the mock returned a plain
+    `{content: "..."}` instead of the Responses envelope
+    (`output[0].content[0].text`), so a **Structured Output Parser** /
+    **Information Extractor** / **Text Classifier** got nothing and errored with
+    **`Model output doesn't fit required format`**. The Responses-envelope
+    normalizer (PR #33578, merged) fixes the flat-envelope case, so many of these
+    now execute cleanly. A **narrower residual red remains** for structured-output
+    schemas declared with strict **`additionalProperties: false`**: the normalized
+    `output` wrapper (and any extra fields the mock invents, e.g. `subject`/`date`)
+    violate the strict schema, so the node still rejects the mock output. Both the
+    old and residual forms are the *mock*, not the build — carry correctness in
+    `outcomeExpectations` and note the red as harness-caused.
   - **Gmail** mock returns headers as top-level capitalized fields (`From`,
     `Subject`) instead of under `payload.headers`, so a Code/Filter node reading
     the sender/subject gets empty strings (e.g. a "drop no-reply senders" safety
