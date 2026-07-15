@@ -839,7 +839,7 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 		}
 		const groupId = parseCanvasGroupNodeId(node.id);
 		if (groupId) {
-			onCanvasGroupToggle(groupId);
+			onCanvasGroupToggle(groupId, 'group-header');
 		}
 		return;
 	}

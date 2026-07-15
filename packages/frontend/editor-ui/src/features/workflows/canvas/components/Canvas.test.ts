@@ -1348,5 +1348,25 @@ describe('Canvas', () => {
 				expect.objectContaining({ group_id: group.id, source: 'group-toolbar' }),
 			);
 		});
+
+		it('tracks a collapse with the group-header source when the header is clicked', async () => {
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
+			const nodeGroupView = buildNodeGroupView();
+			nodeGroupView.toggleCollapsed(group.id); // start expanded
+			const groupNode = createCanvasGroupElement({ id: group.id, name: group.name });
+
+			const { getByTestId } = renderComponent({
+				props: { nodes: [groupNode] },
+				global: { provide: { [NodeGroupViewKey as symbol]: nodeGroupView } },
+			});
+
+			await waitFor(() => expect(getByTestId('canvas-node-group-header')).toBeInTheDocument());
+			await fireEvent.click(getByTestId('canvas-node-group-header'));
+
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				'User collapsed group',
+				expect.objectContaining({ group_id: group.id, source: 'group-header' }),
+			);
+		});
 	});
 });
