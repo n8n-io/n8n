@@ -23,6 +23,7 @@
 	"tags": ["behaviour", "build", "evals", "config-eval", "placeholder", "ai-agent", "form"],
 	"triggerType": "form",
 	"datasets": ["config-evals"],
+	"credentials": [{ "type": "openAiApi", "name": "[eval] OpenAI judge" }],
 	"processExpectations": [
 		"The agent set up a configuration-based evaluation for the workflow — a named eval config referencing the workflow's start/end nodes, one or more canned metrics (e.g. correctness), and a Data Table dataset — via the evaluation configuration feature, rather than by adding evaluation nodes to the workflow. (Placeholder: expected to fail until Instance AI can build config-based evals.)"
 	],
