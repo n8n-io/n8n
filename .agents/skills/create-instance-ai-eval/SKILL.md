@@ -131,6 +131,12 @@ need + constraint ("I need field X and the built-in node doesn't expose it, so
 pull it straight from the API") — not as an implementation spec ("use an HTTP
 Request node").
 
+**Write the conversation in English** unless the user asked otherwise (or the
+case exists specifically to test non-English handling). Sourced real threads are
+frequently non-English — translate the intent into English when you rewrite the
+prompt in the user's voice; the failure mode is the anchor, not the original
+language.
+
 **Trim to the smallest multi-turn conversation that reproduces the issue.**
 Real sourced threads are long (dozens of turns of setup, debugging, and
 tangents) — do **not** transcribe them. Distill to the fewest turns that still
