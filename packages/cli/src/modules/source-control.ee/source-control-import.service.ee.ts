@@ -1766,10 +1766,19 @@ export class SourceControlImportService {
 	 * timeout on large execution histories, and active workflows would keep
 	 * their triggers registered in memory.
 	 *
-	 * Intentionally bypasses `WorkflowService.delete`: that path is permission-
-	 * gated by the pulling user, and workflows reach this point precisely when
-	 * that gate skipped them — the remote branch, not the puller, authorizes
-	 * these deletions.
+	 * Not using `WorkflowService.delete` here: it only deletes workflows the
+	 * pulling user holds `workflow:delete` on, and the pull already ran it for
+	 * those (see `deleteWorkflowsNotInWorkfolder`). Any workflow still standing
+	 * was skipped by that permission check, yet the FK cascade below deletes it
+	 * regardless — so we do the physical cleanup directly beforehand. Deletion
+	 * hooks (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
+	 * event don't fire for these workflows — a pre-existing gap for any
+	 * cascade-deleted workflow.
+	 *
+	 * REVIEW(question): should we instead extract the permission-free part of
+	 * `WorkflowService.delete` (deactivate + drain + delete row + hooks/events)
+	 * into an internal method and call it here? That would restore hook/event
+	 * parity, at the cost of refactoring a hot service for this edge path.
 	 */
 	private async deactivateWorkflowsAndHardDeleteExecutions(workflowIds: string[]) {
 		for (const workflowId of workflowIds) {
