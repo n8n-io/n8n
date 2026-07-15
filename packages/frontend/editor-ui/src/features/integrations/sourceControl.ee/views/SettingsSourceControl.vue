@@ -508,7 +508,7 @@ watch(connectionType, () => {
 							/>
 						</N8nTooltip>
 					</div>
-					<N8nText size="small" color="text-light">
+					<N8nText size="small" color="text-light" class="mb-s">
 						{{ locale.baseText('settings.sourceControl.branches.caption') }}
 					</N8nText>
 					<N8nCheckbox

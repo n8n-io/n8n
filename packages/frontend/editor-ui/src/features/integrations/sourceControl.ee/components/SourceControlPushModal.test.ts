@@ -1988,5 +1988,60 @@ describe('SourceControlPushModal', () => {
 				}),
 			);
 		});
+
+		it('shows an inline error for an invalid new branch name and hides it once valid', async () => {
+			sourceControlStore.preferences.branches = ['main'];
+			sourceControlStore.preferences.branchName = 'main';
+
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'variables',
+					type: 'variables',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, queryByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('source-control-push-modal-branch-new-toggle')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('source-control-push-modal-branch-new-toggle'));
+
+			// Empty new-branch field should not show the error
+			expect(queryByTestId('source-control-push-modal-branch-error')).not.toBeInTheDocument();
+
+			await userEvent.type(getByTestId('source-control-push-modal-branch-new'), 'bad branch');
+
+			await waitFor(() => {
+				expect(getByTestId('source-control-push-modal-branch-error')).toBeVisible();
+			});
+
+			await userEvent.clear(getByTestId('source-control-push-modal-branch-new'));
+			await userEvent.type(getByTestId('source-control-push-modal-branch-new'), 'feat/x');
+
+			await waitFor(() => {
+				expect(queryByTestId('source-control-push-modal-branch-error')).not.toBeInTheDocument();
+			});
+		});
 	});
 });

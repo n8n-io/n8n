@@ -484,6 +484,13 @@ const isBranchValid = computed(() =>
 		: selectedBranch.value.length > 0,
 );
 
+const showBranchNameError = computed(
+	() =>
+		isCreatingBranch.value &&
+		newBranchName.value.trim().length > 0 &&
+		!isValidGitBranchName(newBranchName.value.trim()),
+);
+
 const isSubmitDisabled = computed(() => {
 	if (!commitMessage.value.trim()) {
 		return true;
@@ -1337,6 +1344,15 @@ onMounted(async () => {
 					:label="i18n.baseText('settings.sourceControl.modals.push.branch.newBranch')"
 				/>
 			</div>
+			<N8nText
+				v-if="showBranchNameError"
+				data-test-id="source-control-push-modal-branch-error"
+				size="small"
+				color="danger"
+				class="mb-2xs"
+			>
+				{{ i18n.baseText('settings.sourceControl.modals.push.branch.invalid') }}
+			</N8nText>
 			<N8nText v-if="isCreatingBranch" size="small" color="text-light">
 				{{
 					i18n.baseText('settings.sourceControl.modals.push.branch.base', {
