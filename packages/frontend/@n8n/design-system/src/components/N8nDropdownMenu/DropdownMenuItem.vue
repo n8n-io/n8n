@@ -7,7 +7,16 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuPortal,
 } from 'reka-ui';
-import { computed, inject, nextTick, onBeforeUnmount, ref, useCssModule, watch } from 'vue';
+import {
+	computed,
+	inject,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useCssModule,
+	watch,
+} from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nLoading from '@n8n/design-system/components/N8nLoading';
@@ -83,7 +92,21 @@ const trailingProps = computed(() => ({
 	class: $style['item-trailing'],
 }));
 
-const titleAttr = computed(() => (props.label.length >= 20 ? props.label : undefined));
+// Only surface a native tooltip when the label is actually truncated by the
+// ellipsis, so users can read option names the menu is too narrow to show.
+const labelRef = ref<{ $el?: HTMLElement } | null>(null);
+const isLabelTruncated = ref(false);
+
+const measureLabelTruncation = async () => {
+	await waitForLayout();
+	const el = labelRef.value?.$el;
+	isLabelTruncated.value = el ? el.scrollWidth > el.clientWidth : false;
+};
+
+onMounted(measureLabelTruncation);
+watch(() => props.label, measureLabelTruncation);
+
+const titleAttr = computed(() => (isLabelTruncated.value ? props.label : undefined));
 
 const handleSelect = (value: T) => {
 	emit('select', value);
@@ -203,6 +226,7 @@ onBeforeUnmount(() => {
 				</slot>
 				<slot name="item-label" :item="props" :ui="labelProps">
 					<N8nText
+						ref="labelRef"
 						:class="$style['item-label']"
 						:title="titleAttr"
 						size="medium"
@@ -348,6 +372,7 @@ onBeforeUnmount(() => {
 			</slot>
 			<slot name="item-label" :item="props" :ui="labelProps">
 				<N8nText
+					ref="labelRef"
 					:class="$style['item-label']"
 					:title="titleAttr"
 					size="medium"

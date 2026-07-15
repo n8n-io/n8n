@@ -121,28 +121,44 @@ describe('N8nDropdownMenuItem', () => {
 			});
 		});
 
-		it('should show title attribute when label is 20+ characters', async () => {
+		it('should show title attribute when the label is truncated', async () => {
+			// jsdom has no layout, so stub the label element's measurements to simulate overflow.
+			const scrollSpy = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(200);
+			const clientSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);
+
 			renderMenuItem({
 				id: 'test',
-				label: 'A very long label that exceeds twenty characters',
+				label: 'A very long label that the menu is too narrow to show',
 			});
 
 			await waitFor(() => {
 				const label = document.querySelector('[role="menuitem"] .n8n-text');
-				expect(label).toHaveAttribute('title', 'A very long label that exceeds twenty characters');
+				expect(label).toHaveAttribute(
+					'title',
+					'A very long label that the menu is too narrow to show',
+				);
 			});
+
+			scrollSpy.mockRestore();
+			clientSpy.mockRestore();
 		});
 
-		it('should not show title attribute when label is under 20 characters', async () => {
+		it('should not show title attribute when the label fits', async () => {
+			const scrollSpy = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(100);
+			const clientSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);
+
 			renderMenuItem({
 				id: 'test',
-				label: 'Short label',
+				label: 'A very long label that the menu is too narrow to show',
 			});
 
 			await waitFor(() => {
-				const label = document.querySelector('[role="menuitem"] .n8n-text');
-				expect(label).not.toHaveAttribute('title');
+				expect(document.querySelector('[role="menuitem"] .n8n-text')).toBeInTheDocument();
 			});
+			expect(document.querySelector('[role="menuitem"] .n8n-text')).not.toHaveAttribute('title');
+
+			scrollSpy.mockRestore();
+			clientSpy.mockRestore();
 		});
 
 		it('should render item with custom class', async () => {
