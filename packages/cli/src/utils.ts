@@ -11,6 +11,15 @@ export function isWorkflowIdValid(id: string | null | undefined): boolean {
 	return typeof id === 'string' && id.length > 0 && id.length <= 21;
 }
 
+/**
+ * Strips the "Tool"/"HitlTool" suffix from a tool-variant node type (e.g. `openAiTool`
+ * → `openAi`), yielding the base node type. Kept in sync with the editor-ui
+ * `stripToolSuffix` so backend and frontend agree on the lookup fallback.
+ */
+export function stripToolSuffix(nodeType: string): string {
+	return nodeType.replace(/HitlTool$/, '').replace(/Tool$/, '');
+}
+
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 	return function (nodes: INode[]) {
 		const executeWorkflowTriggerNode = nodes.find(

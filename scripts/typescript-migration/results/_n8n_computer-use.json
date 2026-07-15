@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/computer-use",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T08:47:01.753Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1367,
+            1269,
+            1255
+          ],
+          "min": 1255,
+          "median": 1269,
+          "mean": 1297
+        },
+        "build": {
+          "runsMs": [
+            1149,
+            1214,
+            1133
+          ],
+          "min": 1133,
+          "median": 1149,
+          "mean": 1165
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T08:51:49.540Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            792,
+            599,
+            588
+          ],
+          "min": 588,
+          "median": 599,
+          "mean": 660
+        },
+        "build": {
+          "runsMs": [
+            535,
+            549,
+            530
+          ],
+          "min": 530,
+          "median": 535,
+          "mean": 538
+        }
+      }
+    }
+  }
+}
