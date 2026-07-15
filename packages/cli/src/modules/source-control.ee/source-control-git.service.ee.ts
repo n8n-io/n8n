@@ -390,6 +390,9 @@ export class SourceControlGitService {
 			throw new UnexpectedError('Git is not initialized (checkoutExistingBranch)');
 		}
 		await this.git.checkout(branch, ['-f']);
+		// Reset to the freshly-fetched remote tip so the subsequent commit builds on
+		// the latest remote state and the force-push cannot silently drop remote commits.
+		await this.git.raw(['reset', '--hard', `${SOURCE_CONTROL_ORIGIN}/${branch}`]);
 		await this.git.branch([`--set-upstream-to=${SOURCE_CONTROL_ORIGIN}/${branch}`, branch]);
 	}
 
@@ -400,7 +403,9 @@ export class SourceControlGitService {
 		// Start from the latest remote state of the base branch, then branch off it.
 		await this.git.checkout(baseBranch, ['-f']);
 		await this.git.raw(['reset', '--hard', `${SOURCE_CONTROL_ORIGIN}/${baseBranch}`]);
-		await this.git.checkoutBranch(newBranch, baseBranch);
+		// Use `-B` (create-or-reset) so retrying after a failed push is idempotent
+		// even when a stale local branch of the same name still exists.
+		await this.git.checkout(['-B', newBranch, baseBranch]);
 	}
 
 	async getCurrentBranch(): Promise<{ current: string; remote: string }> {
@@ -466,7 +471,7 @@ export class SourceControlGitService {
 	): Promise<PushResult> {
 		const { force, branch, setUpstream } = options;
 		if (!this.git) {
-			throw new UnexpectedError('Git is not initialized ({)');
+			throw new UnexpectedError('Git is not initialized (push)');
 		}
 		await this.setGitCommand();
 		const flags: string[] = [];

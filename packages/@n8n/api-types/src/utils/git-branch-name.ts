@@ -4,7 +4,7 @@
  * in the git layer.
  */
 export function isValidGitBranchName(name: string): boolean {
-	if (!name || name.length === 0) return false;
+	if (!name) return false;
 	if (/\s/.test(name)) return false; // no whitespace
 	if (name.startsWith('-') || name.startsWith('/')) return false;
 	if (name.endsWith('/') || name.endsWith('.') || name.endsWith('.lock')) return false;

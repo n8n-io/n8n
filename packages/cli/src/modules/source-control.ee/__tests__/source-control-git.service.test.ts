@@ -513,21 +513,38 @@ describe('SourceControlGitService', () => {
 		});
 
 		describe('createBranchFrom', () => {
-			it('resets base then creates the new branch', async () => {
+			it('resets base then force-creates the new branch with -B', async () => {
 				await gitService.createBranchFrom('feat/x', 'main');
 
 				expect(git.checkout).toHaveBeenCalledWith('main', ['-f']);
 				expect(git.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
-				expect(git.checkoutBranch).toHaveBeenCalledWith('feat/x', 'main');
+				// `-B` (create-or-reset), not the throwing `checkoutBranch`/`-b`
+				expect(git.checkout).toHaveBeenCalledWith(['-B', 'feat/x', 'main']);
+				expect(git.checkoutBranch).not.toHaveBeenCalled();
+			});
+
+			it('is idempotent when the branch already exists locally', async () => {
+				// A prior failed push can leave the local branch behind; retrying must not throw.
+				await gitService.createBranchFrom('feat/x', 'main');
+				await gitService.createBranchFrom('feat/x', 'main');
+
+				expect(git.checkout).toHaveBeenCalledWith(['-B', 'feat/x', 'main']);
+				expect(git.checkoutBranch).not.toHaveBeenCalled();
 			});
 		});
 
 		describe('checkoutExistingBranch', () => {
-			it('force-checks-out and sets upstream', async () => {
+			it('force-checks-out, resets to remote tip, and sets upstream', async () => {
 				await gitService.checkoutExistingBranch('feat/x');
 
 				expect(git.checkout).toHaveBeenCalledWith('feat/x', ['-f']);
+				expect(git.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/feat/x']);
 				expect(git.branch).toHaveBeenCalledWith(['--set-upstream-to=origin/feat/x', 'feat/x']);
+
+				// Reset must happen after the checkout so it operates on the target branch.
+				expect(git.checkout.mock.invocationCallOrder[0]).toBeLessThan(
+					git.raw.mock.invocationCallOrder[0],
+				);
 			});
 		});
 
