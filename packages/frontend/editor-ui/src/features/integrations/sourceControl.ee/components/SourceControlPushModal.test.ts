@@ -153,6 +153,10 @@ describe('SourceControlPushModal', () => {
 		pinia = createTestingPinia();
 		sourceControlStore = mockedStore(useSourceControlStore);
 		sourceControlStore.getAggregatedStatus.mockResolvedValue([]);
+		// Default branch state so pre-existing tests (that don't care about
+		// branch selection) aren't blocked by the new branch-validity check
+		sourceControlStore.preferences.branchName = 'main';
+		sourceControlStore.preferences.branches = ['main'];
 
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.settings.enterprise = defaultSettings.enterprise;
@@ -1851,6 +1855,138 @@ describe('SourceControlPushModal', () => {
 			await userEvent.type(commitInput, '{enter}');
 
 			expect(sourceControlStore.pushWorkfolder).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('branch selection', () => {
+		it('renders branch selector and toggles to new-branch input', async () => {
+			sourceControlStore.preferences.branches = ['main', 'develop'];
+			sourceControlStore.preferences.branchName = 'main';
+
+			const { getByTestId, queryByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status: [],
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('source-control-push-modal-branch-select')).toBeInTheDocument();
+			});
+			expect(queryByTestId('source-control-push-modal-branch-new')).not.toBeInTheDocument();
+
+			await userEvent.click(getByTestId('source-control-push-modal-branch-new-toggle'));
+			expect(getByTestId('source-control-push-modal-branch-new')).toBeInTheDocument();
+		});
+
+		it('sends the selected branch and createBranch flag when pushing', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'variables',
+					type: 'variables',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+			sourceControlStore.preferences.branches = ['main', 'develop'];
+			sourceControlStore.preferences.branchName = 'main';
+
+			const { getByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('source-control-push-modal-branch-select')).toBeInTheDocument();
+			});
+
+			await userEvent.type(getByTestId('source-control-push-modal-commit'), 'commit message');
+			await userEvent.click(getByTestId('source-control-push-modal-submit'));
+
+			expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
+				expect.objectContaining({
+					branch: 'main',
+					createBranch: false,
+				}),
+			);
+		});
+
+		it('disables submit until a valid new branch name is entered', async () => {
+			sourceControlStore.preferences.branches = ['main'];
+			sourceControlStore.preferences.branchName = 'main';
+
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'variables',
+					type: 'variables',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('source-control-push-modal-commit')).toBeInTheDocument();
+			});
+
+			await userEvent.type(getByTestId('source-control-push-modal-commit'), 'commit message');
+			await userEvent.click(getByTestId('source-control-push-modal-branch-new-toggle'));
+
+			const submitButton = getByTestId('source-control-push-modal-submit');
+			expect(submitButton).toBeDisabled();
+
+			await userEvent.type(getByTestId('source-control-push-modal-branch-new'), 'feat/my-change');
+
+			expect(submitButton).not.toBeDisabled();
+
+			await userEvent.click(submitButton);
+
+			expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
+				expect.objectContaining({
+					branch: 'feat/my-change',
+					createBranch: true,
+				}),
+			);
 		});
 	});
 });
