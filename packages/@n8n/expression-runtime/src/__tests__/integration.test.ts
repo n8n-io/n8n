@@ -556,6 +556,24 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 
 		expect(evaluator.evaluate('{{ $json.nested }}', data, caller)).toBe('inner');
 	});
+
+	it('should preserve the outer data bindings after a re-entrant execute() call', () => {
+		const data = {
+			$json: {
+				get nested() {
+					// Re-enters execute() on the same bridge with different data.
+					// The outer evaluation must keep resolving against its own data
+					// after the nested call returns.
+					return evaluator.evaluate('{{ "inner" }}', { $json: { val: 1 } }, caller);
+				},
+				other: 'OUTER_VALUE',
+			},
+		};
+
+		expect(evaluator.evaluate('{{ $json.nested + "|" + $json.other }}', data, caller)).toBe(
+			'inner|OUTER_VALUE',
+		);
+	});
 });
 
 describe('Integration: IsolatedVmBridge error handling', () => {
