@@ -54,6 +54,7 @@ import {
 	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
+	shutdownSharedProductTelemetry,
 	RunDebugBuffer,
 	buildRunDebugLabel,
 	createRunDebugStepHooks,
@@ -672,6 +673,11 @@ export class InstanceAiService {
 					...(await tokenManager.getAuthHeaders()),
 					...featureHeaders,
 				}),
+				// Telemetry providers are process-lived and cached per proxy
+				// deployment (see shared-provider cache), so this keeps each user's
+				// exports on their own provider instead of reusing another user's
+				// auth-header closure.
+				identityKey: user.id,
 			},
 		};
 	}
@@ -1484,6 +1490,11 @@ export class InstanceAiService {
 
 		this.eventBus.clear();
 		await this._mcpClientManager?.disconnect();
+
+		// Final drain of the process-lived LangSmith providers so spans still
+		// sitting in the batch exporter (e.g. from late memory tasks) are not
+		// lost on shutdown. Best-effort by contract — never throws.
+		await shutdownSharedProductTelemetry();
 		this.logger.debug('Instance AI service shut down');
 	}
 

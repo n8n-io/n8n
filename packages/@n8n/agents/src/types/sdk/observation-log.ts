@@ -1,5 +1,6 @@
 import type { AgentExecutionCounter } from './agent';
 import type { AgentDbMessage } from './message';
+import type { BuiltTelemetry } from '../telemetry';
 
 export const OBSERVATION_LOG_MARKERS = ['critical', 'important', 'info', 'completion'] as const;
 
@@ -80,6 +81,7 @@ export interface ObservationLogObserverInput {
 	observationLogTail: ObservationLogEntry[];
 	renderedObservationLogTail: string | null;
 	executionCounter?: AgentExecutionCounter;
+	telemetry?: BuiltTelemetry;
 }
 
 export type ObservationLogObserveFn = (input: ObservationLogObserverInput) => Promise<string>;
@@ -92,6 +94,7 @@ export interface ObservationLogReflectorInput {
 	tokenCount: number;
 	tokenBudget: number;
 	executionCounter?: AgentExecutionCounter;
+	telemetry?: BuiltTelemetry;
 }
 
 export type ObservationLogReflectFn = (input: ObservationLogReflectorInput) => Promise<string>;

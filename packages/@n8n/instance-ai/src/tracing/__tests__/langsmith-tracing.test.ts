@@ -19,6 +19,7 @@ import {
 	mergeTraceRunInputs,
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
+	shutdownSharedProductTelemetry,
 	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } from '../langsmith-tracing';
@@ -351,7 +352,11 @@ describe('createInstanceAiTraceContext', () => {
 	const originalTraceInternal = process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
 	const originalDiagnosticsEnabled = process.env.N8N_DIAGNOSTICS_ENABLED;
 
-	beforeEach(() => {
+	beforeEach(async () => {
+		// Release providers cached by the previous test before resetting the
+		// mock call counts, so this cleanup shutdown never contaminates the
+		// upcoming test's assertions on `provider.shutdown`.
+		await shutdownSharedProductTelemetry();
 		langsmithMock.reset();
 		agentsMock.reset();
 		process.env.LANGSMITH_API_KEY = 'test-key';
@@ -898,6 +903,31 @@ describe('createInstanceAiTraceContext', () => {
 		expect(redacted.attributes.display_group).toBe('workflow-builder');
 	});
 
+	it('names memory-task LLM spans distinctly, overriding the host agent_role', () => {
+		const observerSpan = {
+			name: 'ai.streamText.doStream',
+			attributes: {
+				'ai.operationId': 'ai.streamText.doStream',
+				'ai.telemetry.functionId': 'instance-ai.orchestrator.memory-observer',
+				'ai.telemetry.metadata.agent_role': 'orchestrator',
+			},
+		};
+		const reflectorSpan = {
+			name: 'ai.streamText.doStream',
+			attributes: {
+				'ai.operationId': 'ai.streamText.doStream',
+				'ai.telemetry.functionId': 'instance-ai.orchestrator.memory-reflector',
+				'ai.telemetry.metadata.agent_role': 'orchestrator',
+			},
+		};
+
+		const redactedObserver = redactLangSmithTelemetrySpan(observerSpan) as { name: string };
+		const redactedReflector = redactLangSmithTelemetrySpan(reflectorSpan) as { name: string };
+
+		expect(redactedObserver.name).toBe('llm: memory observer');
+		expect(redactedReflector.name).toBe('llm: memory reflector');
+	});
+
 	it('normalizes AI SDK tool messages for LangSmith chat rendering', () => {
 		const span = {
 			attributes: {
@@ -1018,7 +1048,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(agentsMock.getProvider().forceFlush).not.toHaveBeenCalled();
 	});
 
-	it('shuts down product telemetry once when the root run finishes', async () => {
+	it('force-flushes product telemetry when the root run finishes, without shutting down the provider', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-shutdown',
 			messageId: 'message-shutdown',
@@ -1031,13 +1061,22 @@ describe('createInstanceAiTraceContext', () => {
 		const provider = agentsMock.getProvider();
 
 		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+		const flushesAfterFirstFinish = provider.forceFlush.mock.calls.length;
+		expect(flushesAfterFirstFinish).toBeGreaterThan(0);
+
+		// Finishing again is a no-op: the trace was already released, so no
+		// further flushes happen.
 		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done again' } });
 
-		expect(provider.forceFlush).toHaveBeenCalledTimes(1);
-		expect(provider.shutdown).toHaveBeenCalledTimes(1);
+		// The provider is process-lived: background tasks (memory observer/
+		// reflector) can still finish spans on it after the root run, so
+		// releasing a trace only flushes — it never shuts the provider down.
+		expect(provider.forceFlush).toHaveBeenCalledTimes(flushesAfterFirstFinish);
+		expect(provider.shutdown).not.toHaveBeenCalled();
+		expect(tracing?.isLive?.()).toBe(false);
 	});
 
-	it('shuts down product telemetry when releasing a trace client', async () => {
+	it('force-flushes product telemetry when releasing a trace client, without shutting down the provider', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-release',
 			messageId: 'message-release',
@@ -1052,7 +1091,143 @@ describe('createInstanceAiTraceContext', () => {
 		releaseTraceClient(tracing!.rootRun.traceId);
 		await Promise.resolve();
 
+		expect(provider.forceFlush).toHaveBeenCalledTimes(1);
+		expect(provider.shutdown).not.toHaveBeenCalled();
+	});
+
+	it('exports a memory-task span created after the root run finishes and released its trace', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-late-memory-task',
+			messageId: 'message-late-memory-task',
+			runId: 'run-late-memory-task',
+			userId: 'user-late-memory-task',
+			input: { message: 'hello' },
+		});
+		expect(tracing).toBeDefined();
+
+		// Matches RuntimeTelemetry.resolve() threading the run's telemetry into
+		// a scheduled observer job before the turn finishes.
+		const telemetryOrBuilder = tracing!.getTelemetry!({
+			agentRole: 'orchestrator',
+			functionId: 'instance-ai.orchestrator.memory-observer',
+			executionMode: 'background_subagent',
+		});
+		const memoryTelemetry =
+			'build' in telemetryOrBuilder ? await telemetryOrBuilder.build() : telemetryOrBuilder;
+		const provider = agentsMock.getProvider();
+
+		// The turn finishes — and its trace is released — while the observer
+		// call built above is still pending. On master this shut down the
+		// per-trace provider, so the observer's span later exported to nothing.
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+		expect(provider.shutdown).not.toHaveBeenCalled();
+
+		// The deferred observer LLM call completes after the turn is done,
+		// using the telemetry snapshot captured before finish.
+		const tracer = memoryTelemetry.tracer as {
+			startSpan: (
+				name: string,
+				options?: { attributes?: Record<string, unknown> },
+			) => {
+				end(): void;
+			};
+		};
+		const observerSpan = tracer.startSpan('ai.streamText.doStream', {
+			attributes: { 'ai.telemetry.functionId': 'instance-ai.orchestrator.memory-observer' },
+		});
+		observerSpan.end();
+
+		const exportedObserverSpan = agentsMock
+			.getSpans()
+			.find(
+				(span) =>
+					span.attributes['ai.telemetry.functionId'] === 'instance-ai.orchestrator.memory-observer',
+			);
+		expect(exportedObserverSpan?.ended).toBe(true);
+		expect(provider.shutdown).not.toHaveBeenCalled();
+	});
+
+	it('shuts down every cached provider on shutdownSharedProductTelemetry', async () => {
+		await createInstanceAiTraceContext({
+			threadId: 'thread-drain',
+			messageId: 'message-drain',
+			runId: 'run-drain',
+			userId: 'user-drain',
+			input: { message: 'hello' },
+		});
+		const provider = agentsMock.getProvider();
+
+		await shutdownSharedProductTelemetry();
+
 		expect(provider.shutdown).toHaveBeenCalledTimes(1);
+	});
+
+	it('caches one provider per proxy identity: reused for repeats, separate across identities', async () => {
+		const buildSpy = vi.spyOn(agentsModule.LangSmithTelemetry.prototype, 'build');
+		const proxyConfigFor = (identityKey: string) => ({
+			apiUrl: 'https://proxy.test/langsmith',
+			getAuthHeaders: async () => await Promise.resolve({ Authorization: `Bearer ${identityKey}` }),
+			identityKey,
+		});
+
+		await createInstanceAiTraceContext({
+			threadId: 'thread-identity-a-1',
+			messageId: 'message-identity-a-1',
+			runId: 'run-identity-a-1',
+			userId: 'user-a',
+			input: { message: 'hello' },
+			proxyConfig: proxyConfigFor('user-a'),
+		});
+		await createInstanceAiTraceContext({
+			threadId: 'thread-identity-a-2',
+			messageId: 'message-identity-a-2',
+			runId: 'run-identity-a-2',
+			userId: 'user-a',
+			input: { message: 'hello again' },
+			proxyConfig: proxyConfigFor('user-a'),
+		});
+
+		// Same identity, repeated: the cache reuses one provider.
+		expect(buildSpy).toHaveBeenCalledTimes(1);
+
+		await createInstanceAiTraceContext({
+			threadId: 'thread-identity-b',
+			messageId: 'message-identity-b',
+			runId: 'run-identity-b',
+			userId: 'user-b',
+			input: { message: 'hello' },
+			proxyConfig: proxyConfigFor('user-b'),
+		});
+
+		// Different identity behind the same apiUrl: without the identity key,
+		// this would reuse (and leak auth headers from) user-a's provider.
+		expect(buildSpy).toHaveBeenCalledTimes(2);
+	});
+
+	it('retries the telemetry build after a failed construction', async () => {
+		const buildSpy = vi.spyOn(agentsModule.LangSmithTelemetry.prototype, 'build');
+		agentsMock.setBuildError(new Error('telemetry setup failed'));
+
+		const failedTracing = await createInstanceAiTraceContext({
+			threadId: 'thread-retry',
+			messageId: 'message-retry',
+			runId: 'run-retry',
+			userId: 'user-retry',
+			input: { message: 'hello' },
+		});
+		expect(failedTracing).toBeUndefined();
+
+		agentsMock.setBuildError(undefined);
+		const retriedTracing = await createInstanceAiTraceContext({
+			threadId: 'thread-retry',
+			messageId: 'message-retry-2',
+			runId: 'run-retry-2',
+			userId: 'user-retry',
+			input: { message: 'hello again' },
+		});
+
+		expect(retriedTracing).toBeDefined();
+		expect(buildSpy).toHaveBeenCalledTimes(2);
 	});
 
 	it('creates a new orchestrator resume root when continuing a trace', async () => {

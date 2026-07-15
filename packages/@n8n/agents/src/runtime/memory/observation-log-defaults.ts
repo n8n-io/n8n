@@ -10,13 +10,19 @@ import type { ModelConfig } from '../../types/sdk/agent';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { loadAi } from '../model/lazy-ai';
 import { createModel } from '../model/model-factory';
+import { buildExperimentalTelemetry } from '../telemetry/telemetry-options';
 
-// Keep this low while runtime history is a floating message window: short but durable facts
-// should become observations before older messages are likely to fall out of prompt context.
-export const DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS = 500;
+// The observer's fixed prompt is a few thousand tokens, so firing per tiny delta
+// is majority overhead. 8k keeps that overhead ratio acceptable while still firing
+// within a typical session instead of never. Hosts with their own tuning (e.g.
+// Instance AI) override this.
+export const DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS = 8_000;
 export const DEFAULT_OBSERVATION_LOG_TAIL_LIMIT = 20;
-export const DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS = 4_000;
-export const DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET = 4_500;
+// With the observer batching ~8k-token deltas, 12k/13.5k keeps the reflector firing
+// ~10% before the render budget, so newer observations are never silently omitted
+// from rendering between compactions.
+export const DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS = 12_000;
+export const DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET = 13_500;
 export const DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS = 30_000;
 
 export const DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT = `You are observing a conversation between a user and an agent. Extract durable observations about what happened, what was decided, what changed, and what needs follow-up. The agent will read your observations on later turns as its memory of this conversation.
@@ -307,6 +313,7 @@ export function createObservationLogObserveFn(
 			model: createModel(model),
 			system: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
+			...buildExperimentalTelemetry(input.telemetry, { functionSuffix: 'memory-observer' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
@@ -545,6 +552,7 @@ export function createObservationLogReflectFn(
 			model: createModel(model),
 			system: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt(input),
+			...buildExperimentalTelemetry(input.telemetry, { functionSuffix: 'memory-reflector' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 

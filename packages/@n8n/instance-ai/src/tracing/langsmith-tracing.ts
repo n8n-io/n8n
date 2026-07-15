@@ -78,6 +78,55 @@ const otelTraceRuntimes = new Map<string, ProductOtelTraceRuntime>();
 const hostRequire = createRequire(__filename);
 
 /**
+ * Process-lived LangSmith telemetry (tracer provider + batch exporter), shared
+ * across trace contexts and keyed by project + proxy deployment + auth
+ * identity. Background work (observational-memory observer/reflector) finishes
+ * after its message's root run; a per-trace provider shutdown would drop those
+ * spans, so providers stay alive and traces only force-flush on finish.
+ */
+const sharedProductTelemetries = new Map<string, Promise<BuiltTelemetry>>();
+
+function sharedProductTelemetryKey(projectName: string, proxyConfig?: ServiceProxyConfig): string {
+	return `${projectName}::${proxyConfig?.apiUrl ?? 'direct'}::${proxyConfig?.identityKey ?? 'shared'}`;
+}
+
+async function getSharedProductTelemetry(
+	projectName: string,
+	proxyConfig?: ServiceProxyConfig,
+): Promise<BuiltTelemetry> {
+	const key = sharedProductTelemetryKey(projectName, proxyConfig);
+	let pending = sharedProductTelemetries.get(key);
+	if (!pending) {
+		pending = createLangSmithTelemetryBuilder(projectName, proxyConfig)
+			.functionId('instance-ai.product')
+			.metadata({})
+			.recordInputs(true)
+			.recordOutputs(true)
+			.build();
+		// Drop failed builds from the cache so the next trace retries instead of
+		// permanently caching a rejection.
+		pending.catch(() => sharedProductTelemetries.delete(key));
+		sharedProductTelemetries.set(key, pending);
+	}
+	return await pending;
+}
+
+/** Shut down and forget all shared product telemetry providers. Intended for tests and process shutdown. */
+export async function shutdownSharedProductTelemetry(): Promise<void> {
+	const pending = [...sharedProductTelemetries.values()];
+	sharedProductTelemetries.clear();
+	await Promise.all(
+		pending.map(async (telemetry) => {
+			try {
+				await Telemetry.shutdown(await telemetry);
+			} catch {
+				// Best-effort teardown.
+			}
+		}),
+	);
+}
+
+/**
  * Fetch wrapper for LangSmith clients:
  * - Forces gzip encoding to avoid brotli decompressors (8.6 MB native memory each).
  * - Treats 409 Conflict as success — LangSmith returns 409 "payloads already received"
@@ -397,7 +446,13 @@ async function finishProductSpanBestEffort(
 	}
 }
 
-async function shutdownProductOtelRuntime(
+/**
+ * Release a trace's OTel bookkeeping: mark it not-live, drop its span/context
+ * maps, and force-flush the shared provider. The provider itself is
+ * process-lived (see sharedProductTelemetries) so spans from background tasks
+ * that outlive the trace still export on a later batch.
+ */
+async function releaseProductOtelRuntime(
 	runtime: ProductOtelTraceRuntime,
 	traceId: string,
 ): Promise<void> {
@@ -409,7 +464,7 @@ async function shutdownProductOtelRuntime(
 	otelTraceRuntimes.delete(traceId);
 
 	try {
-		await Telemetry.shutdown(runtime.telemetry);
+		await Telemetry.forceFlush(runtime.telemetry);
 	} catch {
 		// Product tracing is best-effort and must not fail or mask agent execution.
 	}
@@ -739,7 +794,7 @@ export function releaseTraceClient(traceId: string): void {
 		return;
 	}
 
-	void shutdownProductOtelRuntime(runtime, traceId);
+	void releaseProductOtelRuntime(runtime, traceId);
 }
 
 export interface SubmitLangsmithUserFeedbackOptions {
@@ -1159,7 +1214,7 @@ function createTraceContext(
 		if (isRootRun) {
 			await withProxyHeadersBestEffort(
 				proxyConfig,
-				async () => await shutdownProductOtelRuntime(otelRuntime, run.traceId),
+				async () => await releaseProductOtelRuntime(otelRuntime, run.traceId),
 			);
 		}
 	};
@@ -1182,7 +1237,7 @@ function createTraceContext(
 		if (isRootRun) {
 			await withProxyHeadersBestEffort(
 				proxyConfig,
-				async () => await shutdownProductOtelRuntime(otelRuntime, run.traceId),
+				async () => await releaseProductOtelRuntime(otelRuntime, run.traceId),
 			);
 		}
 	};
@@ -1656,12 +1711,7 @@ async function createProductOtelRuntime(
 	projectName: string,
 	proxyConfig?: ServiceProxyConfig,
 ): Promise<ProductOtelTraceRuntime> {
-	const telemetry = await createLangSmithTelemetryBuilder(projectName, proxyConfig)
-		.functionId('instance-ai.product')
-		.metadata({})
-		.recordInputs(true)
-		.recordOutputs(true)
-		.build();
+	const telemetry = await getSharedProductTelemetry(projectName, proxyConfig);
 
 	return {
 		telemetry,

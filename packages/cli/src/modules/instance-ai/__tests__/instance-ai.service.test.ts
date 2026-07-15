@@ -157,6 +157,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		},
 		resumeAgentRun: vi.fn(),
 		createInstanceAiTraceContext: vi.fn(async () => ({ rootRun: { otelTraceId: undefined } })),
+		shutdownSharedProductTelemetry: vi.fn(async () => {}),
 		TerminalOutcomeStorage: class {
 			constructor(_memory: unknown) {}
 		},
@@ -179,6 +180,7 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
+	shutdownSharedProductTelemetry,
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
@@ -1081,6 +1083,14 @@ describe('InstanceAiService — shutdown', () => {
 		expect(service.eventLog.flushAll).toHaveBeenCalledTimes(1);
 		expect(service.eventLog.flushAll.mock.invocationCallOrder[0]).toBeLessThan(
 			service.eventBus.clear.mock.invocationCallOrder[0],
+		);
+
+		// Shared LangSmith providers are process-lived (see langsmith-tracing.ts);
+		// only the final process shutdown drains them, after run/background
+		// cleanup has already released each trace's own bookkeeping.
+		expect(shutdownSharedProductTelemetry).toHaveBeenCalledTimes(1);
+		expect(service.eventBus.clear.mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(shutdownSharedProductTelemetry).mock.invocationCallOrder[0],
 		);
 	});
 });

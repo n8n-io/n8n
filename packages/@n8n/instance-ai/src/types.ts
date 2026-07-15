@@ -1275,6 +1275,14 @@ export interface ServiceProxyConfig {
 	 * transparently refreshed during long-running agent turns.
 	 */
 	getAuthHeaders: () => Promise<Record<string, string>>;
+	/**
+	 * Stable identity the proxy authenticates as (e.g. the calling user's id).
+	 * Process-lived telemetry providers are cached per proxy deployment, so
+	 * without this key every identity behind the same proxy URL would share
+	 * one provider's auth-header closure — the first identity's token would
+	 * be used for every later identity's exports.
+	 */
+	identityKey?: string;
 }
 
 // ── LangSmith tracing ────────────────────────────────────────────────────────
