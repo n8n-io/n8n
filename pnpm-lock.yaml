@@ -27494,12 +27494,6 @@ snapshots:
       typescript: '@typescript/typescript6@6.0.2'
       undici: 6.27.0
 
-  '@qdrant/js-client-rest@1.16.2(typescript@6.0.2)':
-    dependencies:
-      '@qdrant/openapi-typescript-fetch': 1.2.6
-      typescript: 6.0.2
-      undici: 6.27.0
-
   '@qdrant/js-client-rest@1.16.2(typescript@7.0.2)':
     dependencies:
       '@qdrant/openapi-typescript-fetch': 1.2.6
