@@ -78,13 +78,13 @@ beforeAll(async () => {
 
 afterAll(async () => {
 	const { WorkflowPublicationOutboxConsumer } = await import(
-		'@/workflows/publication/workflow-publication-outbox-consumer'
+		'@/workflows/publication/workflow-publication-outbox-consumer.js'
 	);
 	const { WorkflowPublicationOutboxCleanupService } = await import(
-		'@/workflows/publication/workflow-publication-outbox-cleanup.service'
+		'@/workflows/publication/workflow-publication-outbox-cleanup.service.js'
 	);
 	const { WorkflowPublicationReconciler } = await import(
-		'@/workflows/publication/workflow-publication-reconciler.service'
+		'@/workflows/publication/workflow-publication-reconciler.service.js'
 	);
 	Container.get(WorkflowPublicationOutboxConsumer).stopPolling();
 	Container.get(WorkflowPublicationOutboxCleanupService).stopCleanup();
