@@ -593,6 +593,7 @@ const onAddButtonClick = () => {
 						<N8nDropdownMenu
 							v-if="hasMultipleOptions"
 							:items="dropdownOptions"
+							max-width="var(--spacing--5xl)"
 							:disabled="isAddDisabled"
 							data-test-id="fixed-collection-add-header"
 							@select="optionSelected"
@@ -713,6 +714,7 @@ const onAddButtonClick = () => {
 					<N8nDropdownMenu
 						v-if="hasMultipleOptions"
 						:items="dropdownOptions"
+						max-width="var(--spacing--5xl)"
 						:disabled="isAddDisabled"
 						data-test-id="fixed-collection-add-header"
 						@select="optionSelected"

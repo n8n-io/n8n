@@ -72,12 +72,16 @@ const placementParts = computed(() => {
 });
 
 const contentContainerStyle = computed(() => {
+	const style: Record<string, string> = {};
 	if (props.maxHeight) {
-		const maxHeightValue =
+		style.maxHeight =
 			typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight;
-		return { maxHeight: maxHeightValue, overflowY: 'auto' };
+		style.overflowY = 'auto';
 	}
-	return {};
+	if (props.maxWidth) {
+		style.maxWidth = typeof props.maxWidth === 'number' ? `${props.maxWidth}px` : props.maxWidth;
+	}
+	return style;
 });
 
 const handleOpenChange = (open: boolean) => {

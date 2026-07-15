@@ -275,6 +275,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 		<template v-if="!isReadOnly" #actions>
 			<N8nDropdownMenu
 				:items="dropdownOptions"
+				max-width="var(--spacing--5xl)"
 				:disabled="isAddDisabled"
 				data-test-id="collection-parameter-add-header"
 				@select="optionSelected"
@@ -350,6 +351,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 						<template #content>{{ addTooltipText }}</template>
 						<N8nDropdownMenu
 							:items="dropdownOptions"
+							max-width="var(--spacing--5xl)"
 							:disabled="isAddDisabled"
 							data-test-id="collection-parameter-add-header"
 							@select="optionSelected"

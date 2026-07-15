@@ -512,6 +512,34 @@ describe('N8nDropdownMenu', () => {
 		});
 	});
 
+	describe('maxWidth prop', () => {
+		it('should apply maxWidth as number (pixels)', async () => {
+			render(DropdownMenu, {
+				props: {
+					items: createItems(3),
+					modelValue: true,
+					maxWidth: 320,
+				},
+			});
+
+			const { dropdown } = await getDropdownContent();
+			expect(dropdown).toHaveStyle({ maxWidth: '320px' });
+		});
+
+		it('should apply maxWidth as string', async () => {
+			render(DropdownMenu, {
+				props: {
+					items: createItems(3),
+					modelValue: true,
+					maxWidth: 'var(--spacing--5xl)',
+				},
+			});
+
+			const { dropdown } = await getDropdownContent();
+			expect(dropdown).toHaveStyle({ maxWidth: 'var(--spacing--5xl)' });
+		});
+	});
+
 	describe('teleported prop', () => {
 		it('should teleport to body by default', async () => {
 			const { container } = render(DropdownMenu, {
