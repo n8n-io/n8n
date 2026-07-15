@@ -547,6 +547,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 							icon="x"
 							:aria-label="i18n.baseText('canvas.nodeGroup.cancelEdit')"
 							data-test-id="canvas-node-group-description-cancel"
+							@mousedown.prevent
 							@click.stop="cancelEditingDescription"
 						/>
 					</N8nTooltip>
@@ -609,6 +610,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/common/var';
 @use '../../../components/elements/nodes/render-types/_canvasNodeStyles.scss' as styles;
 
 .wrapper {
@@ -837,7 +839,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	background: var(--background--subtle);
 	border: var(--border-width) solid var(--border-color--strong);
 	border-radius: var(--radius--xs);
-	z-index: 500;
+	z-index: var.$index-popper;
 }
 
 .descriptionPanelEditing {

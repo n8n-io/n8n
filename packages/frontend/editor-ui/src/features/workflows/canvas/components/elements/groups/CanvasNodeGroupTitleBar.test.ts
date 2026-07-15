@@ -294,6 +294,20 @@ describe('CanvasNodeGroupTitleBar', () => {
 
 			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'After']]);
 		});
+
+		it('discards edits when cancel is clicked', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility();
+			visibility.setVisible('g1', true);
+
+			const wrapper = render({ data: withDescription('Before') }, visibility);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-edit-description'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'Changed');
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-cancel'));
+
+			expect(wrapper.emitted()['update:description']).toBeUndefined();
+			expect(wrapper.getByTestId('canvas-node-group-description-text')).toHaveTextContent('Before');
+		});
 	});
 
 	describe('execution-status classes', () => {
