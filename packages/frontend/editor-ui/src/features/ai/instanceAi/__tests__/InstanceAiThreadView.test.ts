@@ -618,7 +618,7 @@ describe('InstanceAiThreadView', () => {
 					agentId: 'agent-1',
 					threadId: 'preview-thread-1',
 					agentName: 'SEO Auditor',
-					agentIcon: 'search',
+					agentIcon: 'megaphone',
 					sessionTitle: 'Help with tone',
 				},
 			},
@@ -630,7 +630,7 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
 			'SEO Auditor — Help with tone',
 		);
-		expect(getByTestId('instance-ai-input-context-chip-icon')).toHaveTextContent('search');
+		expect(getByTestId('instance-ai-input-context-chip-icon')).toHaveTextContent('megaphone');
 	});
 
 	it('keeps the chat input visible when no floating-eligible confirmation is pending', () => {

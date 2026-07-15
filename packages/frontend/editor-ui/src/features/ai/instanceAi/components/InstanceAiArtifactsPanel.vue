@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { TaskItem } from '@n8n/api-types';
-import type { IconName, NodeIconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system/components/N8nIcon';
 import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -51,7 +51,7 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 
 interface ContextEntry {
 	key: string;
-	icon: IconName | NodeIconName;
+	icon: string;
 	name: string;
 	subtitle: string;
 }
@@ -219,6 +219,7 @@ async function dismissContext(key: string) {
 							icon="x"
 							variant="ghost"
 							size="xsmall"
+							:class="$style.contextDismiss"
 							:aria-label="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
 							:title="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
 							data-test-id="instance-ai-context-dismiss"
@@ -397,6 +398,14 @@ async function dismissContext(key: string) {
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--sm);
 	color: var(--color--text--tint-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.contextDismiss {
+	flex-shrink: 0;
+	margin-top: calc(var(--spacing--5xs) * -1);
 }
 
 .artifactRow {
