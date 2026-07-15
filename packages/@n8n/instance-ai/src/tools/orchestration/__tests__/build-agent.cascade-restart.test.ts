@@ -272,6 +272,8 @@ function createBuilderDelegate(
 		cancelOpenSuspension: async (_agentId, runId) => {
 			await store.delete(runId);
 		},
+
+		listAgents: async () => await Promise.resolve([]),
 	};
 }
 

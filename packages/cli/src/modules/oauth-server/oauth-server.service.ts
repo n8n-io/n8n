@@ -1,4 +1,4 @@
-import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
 import {
 	InvalidGrantError,
 	InvalidTargetError,
@@ -6,17 +6,19 @@ import {
 import type {
 	AuthorizationParams,
 	OAuthServerProvider,
-} from '@modelcontextprotocol/sdk/server/auth/provider';
-import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
+} from '@modelcontextprotocol/sdk/server/auth/provider.js';
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type {
 	OAuthClientInformationFull,
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
-} from '@modelcontextprotocol/sdk/shared/auth';
+} from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
+
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
@@ -25,7 +27,6 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;

@@ -10,10 +10,7 @@ import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
-import { shouldAssignExecuteMethod } from './utils';
-
-const stripToolSuffix = (nodeType: string) =>
-	nodeType.replace(/HitlTool$/, '').replace(/Tool$/, '');
+import { shouldAssignExecuteMethod, stripToolSuffix } from './utils';
 
 @Service()
 export class NodeTypes implements INodeTypes {

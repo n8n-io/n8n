@@ -6,8 +6,9 @@
  * state, save-with-workflow, export fidelity), so there is no save status.
  *
  * Scope mirrors the inline schema: name, model + credential, instructions,
- * tools (incl. MCP servers). Skills, memory, channels, sub-agents and tasks
- * are saved-agent features — the builder banner above nudges users there.
+ * tools (incl. MCP servers), and skills (bodies embedded in the node
+ * parameter). Memory, channels, sub-agents and tasks are saved-agent
+ * features — the builder banner above nudges users there.
  */
 import { computed, inject } from 'vue';
 import { N8nInput, N8nInputLabel, N8nSectionHeader } from '@n8n/design-system';
@@ -38,6 +39,10 @@ const localConfig = computed(() => inline?.localConfig.value ?? null);
 const canUpdate = computed(() => !props.isReadOnly);
 
 const actions = computed(() => inline?.actions);
+
+// Bind through a local computed: a ComputedRef nested inside the `actions`
+// computed does not auto-unwrap in the template.
+const appliedSkills = computed(() => inline?.actions.appliedSkills.value ?? []);
 
 // Eager, not debounced: writes are local node-parameter edits (workflow
 // persistence has its own debounce), and a deferred write could fire after a
@@ -86,16 +91,19 @@ function onNameUpdate(value: string) {
 			:config="localConfig"
 			:tools="localConfig?.tools ?? []"
 			:custom-tools="{}"
-			:skills="[]"
+			:skills="appliedSkills"
 			:connected-triggers="[]"
 			:disabled="!canUpdate"
 			:project-id="projectId"
 			agent-id=""
 			:is-published="false"
-			:sections="['tools']"
+			:sections="['tools', 'skills']"
 			@add-tool="actions?.onOpenAddToolModal"
 			@open-tool="actions?.onOpenToolFromList"
 			@remove-tool="actions?.onRemoveTool"
+			@add-skill="actions?.onOpenAddSkillModal"
+			@open-skill="actions?.onOpenSkillFromList"
+			@remove-skill="actions?.onRemoveSkill"
 			@update:config="inline?.scheduleConfigUpdate"
 		/>
 	</div>
