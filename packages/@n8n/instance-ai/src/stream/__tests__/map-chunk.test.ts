@@ -302,6 +302,7 @@ describe('mapAgentChunkToEvent', () => {
 							suggestedName: 'Slack API',
 						},
 					],
+					requireUserSelection: true,
 					projectId: 'project-1',
 					inputType: 'plan-review',
 					questions: [
@@ -355,6 +356,7 @@ describe('mapAgentChunkToEvent', () => {
 						suggestedName: 'Slack API',
 					},
 				],
+				requireUserSelection: true,
 				projectId: 'project-1',
 				inputType: 'plan-review',
 				domainAccess: { url: 'https://example.com/api', host: 'example.com' },

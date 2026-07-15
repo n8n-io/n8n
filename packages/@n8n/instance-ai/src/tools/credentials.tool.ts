@@ -98,7 +98,9 @@ const searchTypesAction = z.object({
 const setupAction = z.object({
 	action: z
 		.literal('setup')
-		.describe('Open the credential setup UI for the user to create or select credentials'),
+		.describe(
+			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished. A `success` result with a `credentials` map means setup is complete (an existing credential may have been auto-selected with no user action): confirm the credentials are ready and do not tell the user a card is open or that they must authorize.',
+		),
 	credentials: z
 		.array(
 			z.object({
@@ -115,6 +117,12 @@ const setupAction = z.object({
 			}),
 		)
 		.describe('List of credentials to set up'),
+	requireUserSelection: z
+		.boolean()
+		.optional()
+		.describe(
+			'By default, when a single matching credential already exists it is auto-selected and setup resolves without user input. Set true to keep the card open and wait for an explicit user choice — use when the user asks to see the setup card, pick a different credential, or create a new one despite an existing match.',
+		),
 	credentialFlow: z
 		.object({
 			stage: z.enum(['generic', 'finalize']),
@@ -249,6 +257,7 @@ const suspendSchema = z.object({
 		.optional(),
 	projectId: z.string().optional(),
 	credentialFlow: z.object({ stage: z.enum(['generic', 'finalize']) }).optional(),
+	requireUserSelection: z.boolean().optional(),
 });
 
 const resumeSchema = z.object({
@@ -448,6 +457,7 @@ async function handleSetup(
 			credentialRequests,
 			...(context.projectId ? { projectId: context.projectId } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
+			...(input.requireUserSelection ? { requireUserSelection: true } : {}),
 		});
 	}
 
@@ -478,9 +488,14 @@ async function handleSetup(
 	}
 
 	// State 5: Approved with credential selections
+	const selectedCredentials = resumeData.credentials ?? {};
+	const hasSelections = Object.keys(selectedCredentials).length > 0;
 	return {
 		success: true,
-		credentials: resumeData.credentials,
+		credentials: selectedCredentials,
+		message: hasSelections
+			? 'Credential setup is complete — the credentials in the map above are selected and ready to use. The setup card is no longer open and no user action (such as OAuth authorization) is needed; confirm the outcome to the user.'
+			: 'The setup interaction finished without any credential selected. The setup card is no longer open — do not tell the user a card is open or waiting; report the outcome and ask how they want to proceed.',
 	};
 }
 

@@ -29,6 +29,8 @@ const props = defineProps<{
 	message: string;
 	projectId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
+	/** Keep the card open for an explicit user choice instead of auto-submitting pre-selected credentials. */
+	requireUserSelection?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -167,8 +169,10 @@ watch(
 	},
 );
 
-// Auto-continue when all credentials have been selected
+// Auto-continue when all credentials have been selected, unless the agent
+// asked to keep the card open for an explicit user choice.
 watch(allSelected, async (nowComplete, wasComplete) => {
+	if (props.requireUserSelection) return;
 	if (nowComplete && !wasComplete) {
 		await nextTick();
 		await handleContinue();
