@@ -4,17 +4,24 @@ import { createPinia, setActivePinia } from 'pinia';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
-import { DEBOUNCE_TIME, MESSAGE_AN_AGENT_NODE_TYPE, getDebounceTime } from '@/app/constants';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	DEBOUNCE_TIME,
+	MESSAGE_AN_AGENT_NODE_TYPE,
+	getDebounceTime,
+} from '@/app/constants';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { createComponentRenderer } from '@/__tests__/render';
 import AgentsMode from './AgentsMode.vue';
 
+const getNodeById = vi.fn();
 const mockDocumentStoreState = {
 	allNodes: [],
 	workflowTriggerNodes: [],
 	aiNodes: [],
 	getExpressionHandler: () => null,
+	getNodeById,
 };
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockDocumentStoreState,
@@ -23,8 +30,9 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 }));
 
 const setAddedNodeActionParameters = vi.fn();
+const shouldPrependChatTrigger = vi.fn(() => false);
 vi.mock('../../composables/useActions', () => ({
-	useActions: () => ({ setAddedNodeActionParameters }),
+	useActions: () => ({ setAddedNodeActionParameters, shouldPrependChatTrigger }),
 }));
 
 const locatorState = {
@@ -65,6 +73,8 @@ describe('AgentsMode', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		shouldPrependChatTrigger.mockReturnValue(false);
+		getNodeById.mockReturnValue(undefined);
 		pinia = createPinia();
 		setActivePinia(pinia);
 		locatorState.agentsResources.value = [];
@@ -129,6 +139,59 @@ describe('AgentsMode', () => {
 					},
 				},
 			}),
+		);
+	});
+
+	it('defaults the message to the chat input when a chat trigger will be auto-added', async () => {
+		shouldPrependChatTrigger.mockReturnValue(true);
+		pushAgentsViewStack();
+		render({ pinia });
+		await nextTick();
+
+		await userEvent.click(screen.getByText('Create new agent'));
+
+		expect(setAddedNodeActionParameters).toHaveBeenCalledWith(
+			expect.objectContaining({
+				value: { agentSource: 'inline', message: '={{ $json.chatInput }}' },
+			}),
+		);
+	});
+
+	it('defaults the message to the chat input when appending to an existing chat trigger', async () => {
+		const { useUIStore } = await import('@/app/stores/ui.store');
+		useUIStore().lastInteractedWithNodeId = 'chat-trigger-id';
+		getNodeById.mockReturnValue({ id: 'chat-trigger-id', type: CHAT_TRIGGER_NODE_TYPE });
+		locatorState.agentsResources.value = [
+			{ name: 'Support Triage', value: 'agent-1', personalisation: null },
+		];
+		pushAgentsViewStack();
+		render({ pinia });
+		await nextTick();
+
+		await userEvent.click(screen.getByText('Support Triage'));
+
+		expect(setAddedNodeActionParameters).toHaveBeenCalledWith(
+			expect.objectContaining({
+				value: expect.objectContaining({
+					agentSource: 'referenced',
+					message: '={{ $json.chatInput }}',
+				}),
+			}),
+		);
+	});
+
+	it('does not preset the message when connecting to a non-chat-trigger node', async () => {
+		const { useUIStore } = await import('@/app/stores/ui.store');
+		useUIStore().lastInteractedWithNodeId = 'some-node-id';
+		getNodeById.mockReturnValue({ id: 'some-node-id', type: 'n8n-nodes-base.set' });
+		pushAgentsViewStack();
+		render({ pinia });
+		await nextTick();
+
+		await userEvent.click(screen.getByText('Create new agent'));
+
+		expect(setAddedNodeActionParameters).toHaveBeenCalledWith(
+			expect.objectContaining({ value: { agentSource: 'inline' } }),
 		);
 	});
 

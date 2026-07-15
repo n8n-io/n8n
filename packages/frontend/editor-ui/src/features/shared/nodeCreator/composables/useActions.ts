@@ -411,5 +411,6 @@ export const useActions = () => {
 		getAddedNodesAndConnections,
 		getActionData,
 		setAddedNodeActionParameters,
+		shouldPrependChatTrigger,
 	};
 };

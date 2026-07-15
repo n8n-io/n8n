@@ -6,7 +6,14 @@ import type {
 	LabelCreateElement,
 	NodeTypeSelectedPayload,
 } from '@/Interface';
-import { DEBOUNCE_TIME, MESSAGE_AN_AGENT_NODE_TYPE, getDebounceTime } from '@/app/constants';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	DEBOUNCE_TIME,
+	MESSAGE_AN_AGENT_NODE_TYPE,
+	getDebounceTime,
+} from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { useAgentProjectNameResolver } from '@/features/agents/composables/useAgentProjectNameResolver';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
@@ -31,8 +38,10 @@ const i18n = useI18n();
 const { debounce } = useDebounce();
 const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
-const { setAddedNodeActionParameters } = useActions();
+const { setAddedNodeActionParameters, shouldPrependChatTrigger } = useActions();
 const nodeCreatorStore = useNodeCreatorStore();
+const uiStore = useUIStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const projectId = useAgentScopeProjectId();
 const { resolveProjectName } = useAgentProjectNameResolver();
@@ -118,8 +127,26 @@ watch(
 	{ immediate: true },
 );
 
+// When the added node will receive input from a chat trigger — either one
+// auto-prepended alongside it, or the existing one the node creator was
+// opened from (every non-auto-added node gets connected to
+// `lastInteractedWithNodeId`) — default the message to the chat input.
+function chatInputMessagePreset(): { message?: string } {
+	const willAutoAddChatTrigger = shouldPrependChatTrigger([{ type: MESSAGE_AN_AGENT_NODE_TYPE }]);
+	const lastInteractedWithNode = uiStore.lastInteractedWithNodeId
+		? workflowDocumentStore.value.getNodeById(uiStore.lastInteractedWithNodeId)
+		: undefined;
+	const connectsToChatTrigger = lastInteractedWithNode?.type === CHAT_TRIGGER_NODE_TYPE;
+
+	return willAutoAddChatTrigger || connectsToChatTrigger
+		? { message: '={{ $json.chatInput }}' }
+		: {};
+}
+
 function onSelected(element: INodeCreateElement) {
 	if (element.type !== 'agent') return;
+
+	const messagePreset = chatInputMessagePreset();
 
 	emit('nodeTypeSelected', [{ type: MESSAGE_AN_AGENT_NODE_TYPE }]);
 
@@ -127,7 +154,7 @@ function onSelected(element: INodeCreateElement) {
 		setAddedNodeActionParameters({
 			name: element.properties.name,
 			key: MESSAGE_AN_AGENT_NODE_TYPE,
-			value: { agentSource: 'inline' },
+			value: { agentSource: 'inline', ...messagePreset },
 		});
 		nodeCreatorStore.onAgentPanelOptionSelected({ choice: 'create_new' });
 		return;
@@ -144,6 +171,7 @@ function onSelected(element: INodeCreateElement) {
 				value: element.properties.agentId ?? '',
 				cachedResultName: element.properties.name,
 			},
+			...messagePreset,
 		},
 	});
 	nodeCreatorStore.onAgentPanelOptionSelected({ choice: 'existing_agent' });
