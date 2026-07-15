@@ -1177,6 +1177,9 @@ describe('Package import event emission', () => {
 			expect(importedPayload.options.workflowPublishingPolicy).toBe(
 				WorkflowPublishingPolicy.PreservePublishedState,
 			);
+			expect(importedPayload.options.dataTableMatchingMode).toBe('by-id');
+			expect(importedPayload.options.dataTableMissingMode).toBe('create');
+			expect(importedPayload.options.dataTableSchemaConflictPolicy).toBe('keep-existing');
 			expect(importedPayload.packageSourceId).toBeDefined();
 			expect(importedPayload.packageVersion).toBe(FORMAT_VERSION);
 			expect(importedPayload.counts).toEqual({
@@ -1186,6 +1189,11 @@ describe('Package import event emission', () => {
 					skipped: 0,
 				},
 				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
+				dataTables: {
 					matched: 0,
 					created: 0,
 					requirements: 0,
@@ -1264,6 +1272,11 @@ describe('Package import event emission', () => {
 					created: 1,
 					requirements: 3,
 				},
+				dataTables: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();
@@ -1303,6 +1316,11 @@ describe('Package import event emission', () => {
 					skipped: 1,
 				},
 				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
+				dataTables: {
 					matched: 0,
 					created: 0,
 					requirements: 0,
@@ -1348,6 +1366,11 @@ describe('Package import event emission', () => {
 					skipped: 0,
 				},
 				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
+				dataTables: {
 					matched: 0,
 					created: 0,
 					requirements: 0,

@@ -47,6 +47,7 @@ export interface ImportOrchestrationResult {
 	folderSummaries: ImportedFolderSummary[];
 	bindings: PackageImportBindings;
 	credentialResult: CredentialApplyResult;
+	dataTablePlan: DataTableImportPlan;
 }
 
 /**
@@ -120,6 +121,7 @@ export class ImportOrchestrator {
 			folderSummaries,
 			bindings,
 			credentialResult,
+			dataTablePlan,
 		};
 	}
 

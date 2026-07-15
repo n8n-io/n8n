@@ -73,4 +73,6 @@ export interface DataTableImportPlan {
 	/** Tables to create in the target project, keeping their package (source) id. */
 	creations: SerializedDataTable[];
 	failures: DataTableResolutionFailure[];
+	/** Requirements resolved to an existing compatible table, used as-is. Carried for telemetry. */
+	matchedCount: number;
 }

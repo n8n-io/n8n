@@ -47,12 +47,13 @@ export class DataTableImporter {
 		request: DataTableImportRequest,
 	): Promise<DataTableImportPlan> {
 		const requirements = request.requirements ?? [];
-		if (requirements.length === 0) return { creations: [], failures: [] };
+		if (requirements.length === 0) return { creations: [], failures: [], matchedCount: 0 };
 
 		if (!this.moduleRegistry.isActive('data-table')) {
 			return {
 				creations: [],
 				failures: [{ kind: 'module-disabled', usedByWorkflows: workflowsUsing(requirements) }],
+				matchedCount: 0,
 			};
 		}
 
@@ -65,6 +66,7 @@ export class DataTableImporter {
 
 		const creations: PlannedCreation[] = [];
 		const failures: DataTableResolutionFailure[] = [];
+		let matchedCount = 0;
 
 		for (const requirement of requirements) {
 			const packageTable = packageTablesById.get(requirement.id);
@@ -86,11 +88,12 @@ export class DataTableImporter {
 			);
 			if (effect.action === 'create') creations.push({ table: packageTable, requirement });
 			else if (effect.action === 'fail') failures.push(effect.failure);
+			else if (matchedTargetTable) matchedCount++;
 		}
 
 		failures.push(...(await this.creationFailures(context, creations)));
 
-		return { creations: creations.map(({ table }) => table), failures };
+		return { creations: creations.map(({ table }) => table), failures, matchedCount };
 	}
 
 	/**

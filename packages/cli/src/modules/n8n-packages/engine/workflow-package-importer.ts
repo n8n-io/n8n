@@ -92,7 +92,14 @@ export class WorkflowPackageImporter {
 			options: request,
 		});
 
-		this.emitImportedEvent(request, context, manifest, imported, credentialRequest);
+		this.emitImportedEvent(
+			request,
+			context,
+			manifest,
+			imported,
+			credentialRequest,
+			dataTableRequest,
+		);
 
 		return buildImportResult({
 			package: toPackageSummary(manifest),
@@ -122,8 +129,9 @@ export class WorkflowPackageImporter {
 		manifest: PackageManifest,
 		imported: ImportOrchestrationResult,
 		credentialRequest: CredentialBindingRequest,
+		dataTableRequest: DataTableImportRequest,
 	): void {
-		const { workflowOutcomes, credentialResult } = imported;
+		const { workflowOutcomes, credentialResult, dataTablePlan } = imported;
 		const importedWorkflows = workflowOutcomes.filter(({ status }) => status !== 'skipped');
 		const countByStatus = (status: WorkflowImportOutcome['status']) =>
 			workflowOutcomes.filter((outcome) => outcome.status === status).length;
@@ -139,6 +147,9 @@ export class WorkflowPackageImporter {
 				credentialMatchingMode: request.credentialMatchingMode,
 				credentialMissingMode: request.credentialMissingMode,
 				workflowPublishingPolicy: request.workflowPublishingPolicy,
+				dataTableMatchingMode: request.dataTableMatchingMode,
+				dataTableMissingMode: request.dataTableMissingMode,
+				dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 			},
 			packageSourceId: manifest.sourceId,
 			packageVersion: manifest.packageFormatVersion,
@@ -161,6 +172,11 @@ export class WorkflowPackageImporter {
 					matched: credentialResult.matched.length,
 					created: credentialResult.stubbed.length,
 					requirements: credentialRequest.requirements?.length ?? 0,
+				},
+				dataTables: {
+					matched: dataTablePlan.matchedCount,
+					created: dataTablePlan.creations.length,
+					requirements: dataTableRequest.requirements?.length ?? 0,
 				},
 			},
 		});

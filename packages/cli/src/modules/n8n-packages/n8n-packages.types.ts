@@ -147,7 +147,9 @@ export interface ImportContext {
 	folderId: string | null;
 }
 
-export type ImportPackageEventOptions = ImportCredentialProperties & ImportWorkflowProperties;
+export type ImportPackageEventOptions = ImportCredentialProperties &
+	ImportWorkflowProperties &
+	ImportDataTableProperties;
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */
 export type ImportAuditCredentialIds = {
@@ -167,6 +169,11 @@ export type ImportPackageEventCounts = {
 		skipped: number;
 	};
 	credentials: {
+		matched: number;
+		created: number;
+		requirements: number;
+	};
+	dataTables: {
 		matched: number;
 		created: number;
 		requirements: number;

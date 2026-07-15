@@ -5,6 +5,8 @@ import { FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -176,11 +178,26 @@ describe('workflow package import — with data tables', () => {
 			const createdTable = serializedDataTable({ id: 'freshtable1', name: 'Orders' });
 			const { packageBuffer } = await buildDataTablePackage([matchedTable, createdTable]);
 
-			await importPackage({ user: owner, projectId: project.id, packageBuffer });
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+			try {
+				await importPackage({ user: owner, projectId: project.id, packageBuffer });
 
-			const tables = await tablesInProject(project.id);
-			expect(tables.map(({ id }) => id).sort()).toEqual([existing.id, 'freshtable1'].sort());
-			expect(tables.find(({ id }) => id === 'freshtable1')?.name).toBe('Orders');
+				const tables = await tablesInProject(project.id);
+				expect(tables.map(({ id }) => id).sort()).toEqual([existing.id, 'freshtable1'].sort());
+				expect(tables.find(({ id }) => id === 'freshtable1')?.name).toBe('Orders');
+
+				const importedEvents = emitSpy.mock.calls.filter(
+					([name]) => name === 'n8n-package-imported',
+				);
+				expect(importedEvents).toHaveLength(1);
+				const { options, counts } = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
+				expect(options.dataTableMatchingMode).toBe('by-id');
+				expect(options.dataTableMissingMode).toBe('create');
+				expect(options.dataTableSchemaConflictPolicy).toBe('keep-existing');
+				expect(counts.dataTables).toEqual({ matched: 1, created: 1, requirements: 2 });
+			} finally {
+				emitSpy.mockRestore();
+			}
 		});
 
 		it('round-trips a real export: table lands in another project with the same id and schema', async () => {
