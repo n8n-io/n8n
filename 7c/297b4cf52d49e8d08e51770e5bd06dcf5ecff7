@@ -1,0 +1,25 @@
+packages/cli/test/integration/public-api/settings-sso-saml.test.ts
+  h_ed1b2d65e81e8e 5-6,8,12
+  s_66a9f3b2f38c40::t_7e651f293dd058 93-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7c297b4cf52d49e8d08e51770e5bd06dcf5ecff7",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_66a9f3b2f38c40": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6eaa740d-17a6-4cbc-8f8e-e44eb7cc5887",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
