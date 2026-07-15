@@ -8,7 +8,13 @@ import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION, CanvasKey } from '@/app/constants';
+import {
+	CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION,
+	CanvasKey,
+	MODAL_CONFIRM,
+} from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
+import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
@@ -53,7 +59,7 @@ import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
-import type { CanvasRenderData } from '../canvas.utils';
+import { shouldIgnoreCanvasShortcut, type CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
@@ -197,6 +203,8 @@ const props = withDefaults(
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const message = useMessage();
+const i18n = useI18n();
 
 const renderData = toRef(props, 'renderData');
 provide(CanvasRenderDataKey, renderData);
@@ -306,6 +314,9 @@ const renameKeyCode = ' ';
 useShortKeyPress(
 	renameKeyCode,
 	() => {
+		// A selection that unambiguously targets a group renames the group;
+		// anything else falls through to node rename.
+		if (renameSelectedGroup()) return;
 		if (lastSelectedNode.value) {
 			emit('update:node:name', lastSelectedNode.value.id);
 		}
@@ -717,6 +728,97 @@ function onCanvasGroupNameUpdate(groupId: string, name: string) {
 	renameGroup(groupId, name);
 }
 
+// Collapsed groups have no inline title editor, so they rename through a
+// prompt (mirroring node rename); expanded groups focus the inline editor.
+function openGroupRename(groupId: string) {
+	if (injectedNodeGroupView?.isGroupCollapsed(groupId)) {
+		void onOpenGroupRenameModal(groupId);
+	} else {
+		autofocusGroupTitleId.value = groupId;
+	}
+}
+
+// Space renames a selected group the same way it renames a selected node.
+// Only an unambiguous target acts: exactly one selected title bar, with any
+// selected nodes being members of that group — the state a header click
+// leaves behind after expanding. Loose nodes or multiple groups fall through
+// to node rename. Returns whether the rename was handled.
+function renameSelectedGroup(): boolean {
+	if (disableKeyBindings.value) return false;
+
+	const activeElement = document.activeElement;
+	if (activeElement && shouldIgnoreCanvasShortcut(activeElement)) return false;
+
+	const selectedGroups = selectedNodesAndGroups.value.filter(isCanvasGroupNode);
+	if (selectedGroups.length !== 1) return false;
+
+	const groupId = parseCanvasGroupNodeId(selectedGroups[0].id);
+	if (!groupId) return false;
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return false;
+
+	const memberIds = new Set(group.nodeIds);
+	if (!selectedNodes.value.every((node) => memberIds.has(node.id))) return false;
+
+	openGroupRename(groupId);
+	return true;
+}
+
+async function onOpenGroupRenameModal(groupId: string) {
+	if (props.readOnly || props.suppressInteraction) return;
+
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+
+	if (disableKeyBindings.value || document.querySelector('.rename-prompt')) return;
+
+	try {
+		const promptResponsePromise = message.prompt(
+			i18n.baseText('nodeView.prompt.newName') + ':',
+			i18n.baseText('canvas.nodeGroup.prompt.renameGroup') + `: ${group.name}`,
+			{
+				customClass: 'rename-prompt',
+				confirmButtonText: i18n.baseText('nodeView.prompt.rename'),
+				cancelButtonText: i18n.baseText('nodeView.prompt.cancel'),
+				inputErrorMessage: i18n.baseText('nodeView.prompt.invalidName'),
+				inputValue: group.name,
+				inputValidator: (value: string) => {
+					if (!value.trim()) {
+						return i18n.baseText('nodeView.prompt.invalidName');
+					}
+					return true;
+				},
+			},
+		);
+
+		// Wait till input is displayed
+		await nextTick();
+
+		// Focus and select input content
+		const nameInput = document.querySelector<HTMLInputElement>('.rename-prompt .el-input__inner');
+		nameInput?.focus();
+		nameInput?.select();
+
+		// Stop propagation for space key to prevent VueFlow from intercepting it
+		// when modifier keys (like Shift) are pressed.
+		// See: https://github.com/bcakmakoglu/vue-flow/issues/1999
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === ' ') {
+				e.stopPropagation();
+			}
+		};
+		nameInput?.addEventListener('keydown', handleKeyDown);
+
+		const promptResponse = await promptResponsePromise;
+
+		nameInput?.removeEventListener('keydown', handleKeyDown);
+
+		if (promptResponse.action === MODAL_CONFIRM) {
+			renameGroup(groupId, promptResponse.value.trim());
+		}
+	} catch (e) {}
+}
+
 function onCanvasGroupUngroup(
 	groupId: string,
 	source: CanvasNodeGroupEventSource = 'group-toolbar',
@@ -814,32 +916,17 @@ function onDeleteSelection() {
 	if (ids.length > 0) emit('delete:nodes', ids);
 }
 
-// VueFlow selects a clicked title bar before emitting node-click, so by then
-// a pre-existing selection is indistinguishable from one the click created.
-// Snapshot the selection when the gesture starts — pointerdown precedes the
-// click in both of VueFlow's click delivery paths — so onNodeClick can tell
-// them apart.
-let selectedIdsOnPointerDown = new Set<string>();
-
 // Last header-click toggle, for double-click suppression in onNodeClick.
 let lastHeaderToggle: { groupId: string; at: number } | undefined;
-
-function onPointerDownCapture() {
-	selectedIdsOnPointerDown = new Set(selectedNodesAndGroups.value.map(({ id }) => id));
-}
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
 	if (isCanvasGroupNode(node)) {
 		// Modifier clicks keep VueFlow's multi-select behavior (cmd/ctrl+click).
 		if (event.ctrlKey || event.metaKey || event.shiftKey) return;
 
-		// A plain click on the title bar toggles collapse instead of selecting —
-		// VueFlow already selected the node before emitting this event, so undo
-		// that. But a group selected before the gesture (e.g. via cmd+click)
-		// keeps its selection; the click only toggles it.
-		if (node.selected && !selectedIdsOnPointerDown.has(node.id)) {
-			removeSelectedNodes([node]);
-		}
+		// A plain click both selects the title bar (VueFlow selected it before
+		// emitting this event) and toggles collapse. Staying selected pairs the
+		// click with Space-to-rename, like nodes.
 		const groupId = parseCanvasGroupNodeId(node.id);
 		if (groupId) {
 			const isRepeatClick =
@@ -1319,7 +1406,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 		}
 		case 'rename_group': {
 			if (groupId && workflowDocumentStore.value.getGroupById(groupId)) {
-				autofocusGroupTitleId.value = groupId;
+				openGroupRename(groupId);
 			}
 			return;
 		}
@@ -1601,7 +1688,6 @@ defineExpose({
 		:disable-keyboard-a11y="true"
 		:delete-key-code="null"
 		data-test-id="canvas"
-		@pointerdown.capture="onPointerDownCapture"
 		@connect-start="onConnectStart"
 		@connect="onConnect"
 		@connect-end="onConnectEnd"

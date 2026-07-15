@@ -146,7 +146,14 @@ function onWrapperClick(event: MouseEvent) {
 }
 
 async function focusTitleEdit() {
-	if (props.autofocusGroupId !== group.value.id || props.readOnly || !isAutofocusReady.value)
+	// Collapsed groups have no inline rename — they rename through the modal
+	// (see Canvas.onOpenGroupRenameModal).
+	if (
+		props.autofocusGroupId !== group.value.id ||
+		props.readOnly ||
+		isCollapsed.value ||
+		!isAutofocusReady.value
+	)
 		return;
 	await nextTick();
 	titleEdit.value?.forceFocus();
@@ -265,9 +272,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 						<div ref="titleText" :class="$style.titleText">
 							<N8nInlineTextEdit
 								ref="titleEdit"
-								:class="['nodrag', $style.inlineEdit]"
+								:class="[{ nodrag: !isCollapsed }, $style.inlineEdit]"
 								:model-value="group.name"
-								:read-only="readOnly"
+								:read-only="readOnly || isCollapsed"
 								:min-width="0"
 								max-width="100%"
 								:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"

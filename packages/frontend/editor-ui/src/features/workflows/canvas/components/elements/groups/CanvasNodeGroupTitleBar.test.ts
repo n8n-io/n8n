@@ -112,7 +112,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('does not emit open:contextmenu while the title is being edited', async () => {
-			const wrapper = render();
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
 			await fireEvent.contextMenu(wrapper.getByTestId('inline-edit-input'));
 
@@ -148,11 +148,19 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('stops clicks on the title edit so renaming does not select or toggle the group', async () => {
-			const wrapper = render();
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			const outsideListener = vi.fn();
 			wrapper.container.addEventListener('click', outsideListener);
 			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
 			expect(outsideListener).not.toHaveBeenCalled();
+		});
+
+		it('lets title clicks bubble when collapsed, where the title is not editable', async () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			const outsideListener = vi.fn();
+			wrapper.container.addEventListener('click', outsideListener);
+			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
+			expect(outsideListener).toHaveBeenCalled();
 		});
 
 		it('stops clicks on the chevron toggle button', async () => {
@@ -189,10 +197,16 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(ungroup.classList.contains('nodrag')).toBe(true);
 		});
 
-		it('title edit carries nodrag', () => {
-			const wrapper = render();
+		it('title edit carries nodrag when expanded', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			const titleArea = wrapper.getByTestId('canvas-node-group-title');
 			expect(titleArea.querySelector('.nodrag')).toBeTruthy();
+		});
+
+		it('title is a plain drag surface when collapsed', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			const titleArea = wrapper.getByTestId('canvas-node-group-title');
+			expect(titleArea.querySelector('.nodrag')).toBeNull();
 		});
 	});
 
@@ -324,7 +338,10 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('focuses the title when autofocusGroupId matches the group', async () => {
-			const wrapper = render({ autofocusGroupId: 'g1' });
+			const wrapper = render({
+				data: makeData({ isCollapsed: false }),
+				autofocusGroupId: 'g1',
+			});
 			const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
 
 			await waitFor(() => {
@@ -337,6 +354,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 
 		it('waits for VueFlow to initialize node dimensions before focusing the title', async () => {
 			const wrapper = render({
+				data: makeData({ isCollapsed: false }),
 				autofocusGroupId: 'g1',
 				dimensions: { width: 0, height: 0 },
 			});
@@ -348,7 +366,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.emitted()['title:focused']).toBeUndefined();
 
 			await wrapper.rerender({
-				data: makeData(),
+				data: makeData({ isCollapsed: false }),
 				autofocusGroupId: 'g1',
 				dimensions: { width: 500, height: GROUP_HEADER_HEIGHT },
 				readOnly: false,
@@ -360,6 +378,31 @@ describe('CanvasNodeGroupTitleBar', () => {
 				expect(input.selectionEnd).toBe(input.value.length);
 				expect(wrapper.emitted()['title:focused']).toEqual([['g1']]);
 			});
+		});
+
+		// Collapsed groups rename through the modal (Canvas.onOpenGroupRenameModal),
+		// so the inline editor is inert while collapsed.
+		it('does not enter edit mode on title click when collapsed', async () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
+
+			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
+			await flushPromises();
+
+			expect(input).not.toHaveFocus();
+			expect(wrapper.emitted()['update:name']).toBeUndefined();
+		});
+
+		it('does not autofocus the title when collapsed', async () => {
+			const wrapper = render({
+				data: makeData({ isCollapsed: true }),
+				autofocusGroupId: 'g1',
+			});
+
+			await flushPromises();
+
+			expect(wrapper.getByTestId('inline-edit-input')).not.toHaveFocus();
+			expect(wrapper.emitted()['title:focused']).toBeUndefined();
 		});
 	});
 

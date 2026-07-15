@@ -49,6 +49,12 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 });
 
 const trackSpy = vi.hoisted(() => vi.fn());
+const { messagePrompt } = vi.hoisted(() => ({ messagePrompt: vi.fn() }));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ prompt: messagePrompt }),
+}));
+
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
 }));
@@ -89,12 +95,14 @@ function createCanvasGroupNode({
 	selectable = true,
 	nodeIds = ['node-1'],
 	position = { x: 0, y: 0 },
+	isCollapsed = false,
 }: {
 	id?: string;
 	nodesRect?: NonNullable<CanvasGroupNode['data']>['nodesRect'];
 	selectable?: boolean;
 	nodeIds?: string[];
 	position?: { x: number; y: number };
+	isCollapsed?: boolean;
 } = {}): CanvasGroupNode {
 	return {
 		id: `group:${id}`,
@@ -106,7 +114,7 @@ function createCanvasGroupNode({
 		data: {
 			group: { id, name: `Group ${id}`, nodeIds },
 			nodesRect,
-			isCollapsed: false,
+			isCollapsed,
 		},
 	};
 }
@@ -287,11 +295,16 @@ describe('Canvas', () => {
 	});
 
 	describe('group header click model', () => {
-		const setupGroup = async () => {
+		const setupGroup = async ({ collapsed = false } = {}) => {
 			workflowDocumentStore.setNodeGroups([{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }]);
-			const nodeGroupView = createNodeGroupViewMock(false);
+			const nodeGroupView = createNodeGroupViewMock(collapsed);
 			const rendered = renderComponent({
-				props: { nodes: [createCanvasNodeElement({ id: 'node-1' }), createCanvasGroupNode()] },
+				props: {
+					nodes: [
+						createCanvasNodeElement({ id: 'node-1' }),
+						createCanvasGroupNode({ isCollapsed: collapsed }),
+					],
+				},
 				global: { provide: { [NodeGroupViewKey as symbol]: nodeGroupView } },
 			});
 
@@ -302,13 +315,28 @@ describe('Canvas', () => {
 			return { ...rendered, nodeGroupView, vueFlow: useVueFlow(canvasId) };
 		};
 
-		it('toggles collapse without selecting the title bar on a plain header click', async () => {
+		it('selects the title bar and toggles collapse on a plain header click', async () => {
 			const { getByTestId, nodeGroupView, vueFlow } = await setupGroup();
 
 			await fireEvent.click(getByTestId('canvas-node-group-header'));
 
 			await waitFor(() => expect(nodeGroupView.isGroupCollapsed('g1')).toBe(true));
-			expect(vueFlow.getSelectedNodes.value).toHaveLength(0);
+			// Staying selected pairs the click with Space-to-rename, like nodes.
+			expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toContain('group:g1');
+		});
+
+		it('expands and selects the whole group when a collapsed header is clicked', async () => {
+			const { getByTestId, nodeGroupView, vueFlow } = await setupGroup({ collapsed: true });
+
+			await fireEvent.click(getByTestId('canvas-node-group-header'));
+
+			await waitFor(() => expect(nodeGroupView.isGroupCollapsed('g1')).toBe(false));
+			// Expanding extends the title bar's selection to its members.
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(
+					expect.arrayContaining(['group:g1', 'node-1']),
+				),
+			);
 		});
 
 		// event.timeStamp is a readonly getter, so fireEvent can't set it
@@ -336,7 +364,7 @@ describe('Canvas', () => {
 				'User expanded group',
 				expect.anything(),
 			);
-			expect(vueFlow.getSelectedNodes.value).toHaveLength(0);
+			expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toContain('group:g1');
 		});
 
 		it('treats a fast re-click past the double-click window as a second toggle', async () => {
@@ -374,6 +402,16 @@ describe('Canvas', () => {
 
 			expect(nodeGroupView.isGroupCollapsed('g1')).toBe(false);
 			expect(vueFlow.getSelectedNodes.value).toHaveLength(0);
+		});
+
+		it('toggles a collapsed group when its title text is clicked', async () => {
+			// Collapsed groups have no inline rename: the title is part of the
+			// plain header surface, so clicking it toggles like the rest.
+			const { getByTestId, nodeGroupView } = await setupGroup({ collapsed: true });
+
+			await fireEvent.click(getByTestId('inline-edit-preview'));
+
+			await waitFor(() => expect(nodeGroupView.isGroupCollapsed('g1')).toBe(false));
 		});
 
 		it('keeps a multi-selected group selected when a plain header click toggles it', async () => {
@@ -415,6 +453,138 @@ describe('Canvas', () => {
 			await waitFor(() => expect(nodeGroupView.isGroupCollapsed('g1')).toBe(true));
 			expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(
 				expect.arrayContaining(['group:g1', 'group:g2']),
+			);
+		});
+	});
+
+	describe('group rename via Space', () => {
+		beforeEach(() => {
+			messagePrompt.mockReset();
+		});
+
+		const setupSelectedGroup = async ({ collapsed }: { collapsed: boolean }) => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a', name: 'Node A' }),
+				createTestNode({ id: 'b', name: 'Node B' }),
+			]);
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['a', 'b'],
+				isCollapsed: collapsed,
+			});
+			const rendered = renderComponent({
+				props: { nodes: [groupNode] },
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(collapsed) },
+				},
+			});
+			await waitFor(() => expect(rendered.getByTestId('canvas-node-group')).toBeInTheDocument());
+
+			const vueFlow = useVueFlow(canvasId);
+			const graphNode = vueFlow.findNode(groupNode.id)!;
+			// jsdom never measures the node, but the title bar waits for VueFlow
+			// dimensions before autofocusing the inline editor.
+			Object.assign(graphNode.dimensions, { width: 300, height: 40 });
+			vueFlow.addSelectedNodes([graphNode]);
+			await waitFor(() => expect(vueFlow.findNode(groupNode.id)?.selected).toBe(true));
+
+			return { group, groupNode, ...rendered };
+		};
+
+		const pressSpace = async () => {
+			await fireEvent.keyDown(document, { key: ' ', view: window });
+			await fireEvent.keyUp(document, { key: ' ', view: window });
+		};
+
+		it('renames a collapsed group through the prompt on Space', async () => {
+			messagePrompt.mockResolvedValue({ action: 'confirm', value: 'Better name' });
+			const { group } = await setupSelectedGroup({ collapsed: true });
+
+			await pressSpace();
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.getGroupById(group.id)?.name).toBe('Better name'),
+			);
+			expect(messagePrompt).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps the name when the prompt is dismissed', async () => {
+			messagePrompt.mockResolvedValue({ action: 'cancel', value: 'Ignored' });
+			const { group } = await setupSelectedGroup({ collapsed: true });
+
+			await pressSpace();
+
+			await waitFor(() => expect(messagePrompt).toHaveBeenCalledTimes(1));
+			expect(workflowDocumentStore.getGroupById(group.id)?.name).toBe('My Group');
+		});
+
+		it('focuses the inline title editor instead of the prompt for an expanded group', async () => {
+			const { getByTestId } = await setupSelectedGroup({ collapsed: false });
+
+			await pressSpace();
+
+			await waitFor(() => expect(getByTestId('inline-edit-input')).toBeInTheDocument());
+			expect(messagePrompt).not.toHaveBeenCalled();
+		});
+
+		it('renames the group, not a member node, when the whole group is selected', async () => {
+			// Clicking a collapsed header expands the group and selects the title
+			// bar plus its members — Space must then target the group.
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a', name: 'Node A' }),
+				createTestNode({ id: 'b', name: 'Node B' }),
+			]);
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['a', 'b'],
+				isCollapsed: false,
+			});
+			const rendered = renderComponent({
+				props: {
+					nodes: [
+						groupNode,
+						createCanvasNodeElement({ id: 'a', position: { x: 40, y: 40 } }),
+						createCanvasNodeElement({ id: 'b', position: { x: 200, y: 40 } }),
+					],
+				},
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			await waitFor(() => expect(rendered.getByTestId('canvas-node-group')).toBeInTheDocument());
+
+			const vueFlow = useVueFlow(canvasId);
+			const graphNode = vueFlow.findNode(groupNode.id)!;
+			Object.assign(graphNode.dimensions, { width: 300, height: 40 });
+			vueFlow.addSelectedNodes([graphNode, vueFlow.findNode('a')!, vueFlow.findNode('b')!]);
+			await waitFor(() => expect(vueFlow.getSelectedNodes.value).toHaveLength(3));
+
+			await pressSpace();
+
+			await waitFor(() => expect(rendered.getByTestId('inline-edit-input')).toBeInTheDocument());
+			expect(rendered.emitted()['update:node:name']).toBeUndefined();
+			expect(messagePrompt).not.toHaveBeenCalled();
+		});
+
+		it('opens the prompt from the context menu rename on a collapsed group', async () => {
+			messagePrompt.mockResolvedValue({ action: 'confirm', value: 'Menu name' });
+			const { group, getByTestId } = await setupSelectedGroup({ collapsed: true });
+
+			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+			await waitFor(() =>
+				expect(getByTestId('context-menu-item-rename_group')).toBeInTheDocument(),
+			);
+			await fireEvent.click(getByTestId('context-menu-item-rename_group'));
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.getGroupById(group.id)?.name).toBe('Menu name'),
 			);
 		});
 	});
