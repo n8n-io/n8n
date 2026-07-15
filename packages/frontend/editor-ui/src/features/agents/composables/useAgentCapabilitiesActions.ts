@@ -57,8 +57,28 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * `useAgentConfigAutosave`), so the seam is injected rather than the
 	 * builder's autosave being hard-wired here. Creating a *new* skill stays in
 	 * `onOpenAddSkillModal` via the shared `createAgentSkill` API call.
+	 * Unused when `localSkills` is provided.
 	 */
 	scheduleSkillSave: (payload: { skillId: string; skill: AgentSkill }) => void;
+	/**
+	 * Skill store for hosts whose bodies live outside an agent entity — inline
+	 * agents keep them in the node parameter. `bodies` is where the handlers
+	 * look up a ref's body, and create/update persist through these callbacks,
+	 * each covering body + ref in a single host-owned write. Removal stays on
+	 * `scheduleConfigUpdate`: it only drops the ref, and the host's write
+	 * funnel prunes the orphaned body.
+	 */
+	localSkills?: {
+		bodies: ComputedRef<Record<string, AgentSkill>>;
+		createSkill: (skill: AgentSkill) => void;
+		updateSkill: (skillId: string, skill: AgentSkill) => void;
+	};
+	/**
+	 * Whether the host's agent can honor tool approvals. Inline agents pass
+	 * false: approval suspends the run for a human, and workflow executions
+	 * don't support suspend/resume — the config modals hide the toggle.
+	 */
+	supportsToolApproval?: boolean;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
 
@@ -77,6 +97,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		connectedTriggers,
 		scheduleConfigUpdate,
 		scheduleSkillSave,
+		localSkills,
+		supportsToolApproval,
 		telemetry,
 	} = deps;
 
@@ -98,6 +120,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				mcpServers: localConfig.value?.mcpServers ?? [],
 				projectId: projectId.value,
 				agentId: targetAgentId,
+				supportsToolApproval,
 				onConfirm: (payload: {
 					tools?: AgentJsonToolConfig[];
 					mcpServers?: AgentJsonMcpServerConfig[];
@@ -143,6 +166,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					customTool,
 					projectId: projectId.value,
 					agentId: agentId.value,
+					supportsToolApproval,
 					existingToolNames: tools
 						.map((toolRef, i) =>
 							i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name,
@@ -185,6 +209,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				initialNode: mcpServerToNode(mcpServer, nodeType),
 				projectId: projectId.value,
 				agentId: agentId.value,
+				supportsToolApproval,
 				existingToolNames: mcpServers
 					.filter((_, i) => i !== mcpServerIndex)
 					.map((server) => server.name),
@@ -204,16 +229,21 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	}
 
 	const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
-		const refs = localConfig.value?.skills ?? [];
+		// Inline hosts read refs from unvalidated node-parameter JSON: tolerate a
+		// non-array `skills`, skip malformed refs, and resolve bodies by own key
+		// only so ids like "constructor" can't surface prototype members.
+		const rawRefs = localConfig.value?.skills;
+		const refs = Array.isArray(rawRefs) ? rawRefs : [];
+		const bodies = localSkills?.bodies.value ?? agent.value?.skills ?? {};
 		const seen = new Set<string>();
 		const out: Array<{ id: string; skill: AgentSkill }> = [];
 
 		for (const skillRef of refs) {
-			if (!skillRef.id || seen.has(skillRef.id)) continue;
+			if (typeof skillRef?.id !== 'string' || !skillRef.id || seen.has(skillRef.id)) continue;
 			seen.add(skillRef.id);
 			out.push({
 				id: skillRef.id,
-				skill: agent.value?.skills?.[skillRef.id] ?? {
+				skill: (Object.hasOwn(bodies, skillRef.id) ? bodies[skillRef.id] : undefined) ?? {
 					name: skillRef.id,
 					description: '',
 					instructions: '',
@@ -231,8 +261,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		telemetry?.trackOpenedSkillFromList?.(id);
 
 		// Self-address the modal to the agent it was opened for (like the add
-		// modals above): confirming after an agent switch must not write the
-		// skill onto the newly active agent.
+		// modals above): a confirm or remove landing after an agent switch must
+		// not write onto the newly active agent.
 		const targetAgentId = agentId.value;
 
 		uiStore.openModalWithData({
@@ -243,11 +273,26 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				skill,
 				skillId: id,
 				availableTools: configuredToolOptions(),
-				onRemove: (skillId: string) => onRemoveSkill(skillId),
+				existingSkillNames: appliedSkillNames(id),
+				onRemove: (skillId: string) => {
+					if (agentId.value !== targetAgentId) return;
+					onRemoveSkill(skillId);
+				},
 				onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
 					if (!skillId) return;
-					if (agentId.value !== targetAgentId || agent.value?.id !== targetAgentId) return;
+					if (agentId.value !== targetAgentId) return;
 					const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
+
+					if (localSkills) {
+						if (hasDuplicateSkillName(sanitizedSkill.name, skillId)) {
+							showDuplicateSkillNameError(sanitizedSkill.name);
+							return;
+						}
+						localSkills.updateSkill(skillId, sanitizedSkill);
+						return;
+					}
+
+					if (agent.value?.id !== targetAgentId) return;
 					agent.value = {
 						...agent.value,
 						skills: {
@@ -299,6 +344,31 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		return normalizeAgentSkillForSave(skill, configuredToolNames());
 	}
 
+	/** Names the skill modal validates against: every applied skill except the one being edited. */
+	function appliedSkillNames(excludeId?: string): string[] {
+		return appliedSkills.value.filter(({ id }) => id !== excludeId).map(({ skill }) => skill.name);
+	}
+
+	/**
+	 * Authoring-time mirror of the backend's `assertSkillNameIsUnique` for
+	 * local-skill hosts. The modal validates against `existingSkillNames` before closing
+	 */
+	function hasDuplicateSkillName(name: string, excludeId?: string): boolean {
+		const normalized = name.trim().toLowerCase();
+		return appliedSkillNames(excludeId).some(
+			(existing) => existing.trim().toLowerCase() === normalized,
+		);
+	}
+
+	function showDuplicateSkillNameError(name: string) {
+		showMessage({
+			title: locale.baseText('agents.builder.skills.duplicateName.error', {
+				interpolate: { name: name.trim() },
+			}),
+			type: 'error',
+		});
+	}
+
 	function onRemoveTool(index: number) {
 		const currentTools = localConfig.value?.tools ?? [];
 		if (index < 0 || index >= currentTools.length) return;
@@ -335,7 +405,25 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: targetProjectId,
 				agentId: targetAgentId,
 				availableTools: configuredToolOptions(),
+				existingSkillNames: appliedSkillNames(),
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
+					if (localSkills) {
+						if (agentId.value !== targetAgentId) return;
+						const sanitizedSkill = filterSkillAllowedTools(skill);
+						if (hasDuplicateSkillName(sanitizedSkill.name)) {
+							showDuplicateSkillNameError(sanitizedSkill.name);
+							return;
+						}
+
+						// The host mints the skill id and writes body + ref together.
+						localSkills.createSkill(sanitizedSkill);
+						showMessage({
+							title: locale.baseText('agents.builder.skills.added'),
+							type: 'success',
+						});
+						return;
+					}
+
 					void (async () => {
 						const sanitizedSkill = filterSkillAllowedTools(skill);
 						let created: AgentSkill;

@@ -446,8 +446,8 @@ describe('GlobalConfig', () => {
 		scheduler: {
 			enabled: false,
 			materializationWindowSeconds: 60,
-			sweepIntervalSeconds: 10,
-			sweepTimeoutSeconds: 60,
+			materializationIntervalSeconds: 10,
+			materializationTimeoutSeconds: 60,
 			executorIntervalSeconds: 5,
 			executorTimeoutSeconds: 60,
 			claimBatchSize: 100,

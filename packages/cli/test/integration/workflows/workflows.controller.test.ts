@@ -5192,7 +5192,7 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 	test('should return the last successful execution', async () => {
 		const workflow = await createWorkflow({}, owner);
 
-		const { createSuccessfulExecution } = await import('../shared/db/executions');
+		const { createSuccessfulExecution } = await import('../shared/db/executions.js');
 
 		// Create multiple executions with different statuses
 		await createSuccessfulExecution(workflow);

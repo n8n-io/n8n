@@ -690,32 +690,55 @@ appears in the agents-module builder UI.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
-| `name` | string | no | Name for a NEW agent (first call only) |
-| `agentId` | string | no | Existing agent id to edit (first call only) |
+| `name` | string | no | Agent name — switches back to the agent with that name built earlier in this conversation, or creates a new agent and makes it the active target; omit on follow-up calls for the current agent |
+| `agentId` | string | no | Existing agent id to edit — use the `agentId` returned by earlier build-agent results; pass to start editing that agent or to switch the active build target; omit on follow-up calls |
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
-**Returns**: `{ ok: true, builderReply, configUpdated }` on success, or
-`{ ok: false, error, configUpdated? }` on failure. `configUpdated` is optional:
-it's included (reporting mutations from passes that already ran) once a
-builder turn has actually been dispatched — mid-turn failures and resume
-failures that still carry a prior checkpoint ref — but omitted for
-precondition failures before any turn starts (agents module not configured,
-missing `name`/`agentId`, no project context to bind `agentId`, or a resume
-whose suspend payload has no checkpoint ref to carry).
+**Returns**: `{ ok: true, builderReply, configUpdated, agentId,
+agentName? }` on success, or `{ ok: false, error, configUpdated?, agentId?,
+agentName? }` on failure (`agentId`/`agentName` identify the targeted agent
+once a builder turn was dispatched; precondition failures before any turn
+omit them). `configUpdated` is optional: it's included (reporting mutations
+from passes that already ran) once a builder turn has actually been
+dispatched — mid-turn failures and resume failures that still carry a prior
+checkpoint ref — but omitted for precondition failures before any turn
+starts (agents module not configured, missing `name`/`agentId`, no project
+context to bind `agentId`, or a resume whose suspend payload has no
+checkpoint ref to carry).
 
 **Interactive questions:** when the builder suspends on one of its interactive
 tools (batched questions, a credential picker, or channel setup), this tool
 cascades the suspension through its own suspend/resume so it renders as a
 chat card directly in the assistant conversation — no manual relaying, and the
-suspension survives a process restart. On resume, the tool re-derives the
-target agent and the builder's open suspension from persistence and verifies
-they match the suspension it originally cascaded before routing the answer
-back; a stale or superseded suspension fails the call instead of silently
-resuming the wrong one.
+suspension survives a process restart. On resume, the tool takes the target
+agent from the checkpoint ref carried in the suspend payload (falling back
+to the persisted active binding for older checkpoints), re-derives the
+builder's open suspension from persistence, and verifies they match the
+suspension it originally cascaded before routing the answer back; a stale
+or superseded suspension fails the call instead of silently resuming the
+wrong one.
 
 **Targeting:** the first call must pass `name` (new agent) or `agentId`
-(existing agent); the binding is then persisted to thread metadata so
-follow-up calls keep editing the same agent without repeating `name`/`agentId`.
+(existing agent); the active target is persisted to thread metadata so
+follow-up calls keep editing the same agent without repeating them. The
+target is rebindable: a `name` matching an agent already targeted this
+conversation switches back to it (tracked in a per-thread registry), while
+an unmatched name creates another agent and switches to it (the same name
+as the active target just continues it), a different `agentId` switches to
+that agent (persisted only once the builder turn settles, so a bad id
+cannot clobber the existing binding), and `agentId` wins when both are
+given. Prefer switching by the `agentId` returned from earlier calls; the
+name lookup is the fallback when the id is unknown.
+
+### `agents` *(domain tool — requires the `agents` backend module)*
+
+Read-only listing of the project's n8n Agent artifacts. One action, `list`:
+returns `{ count, agents: [{ agentId, name, published, updatedAt }] }`, most
+recently updated first. Registered alongside `build-agent` (agents module
+active + project-bound conversation, `agent:read` scope enforced in the
+adapter). Use it to answer questions about existing agents and to find the
+`agentId` for `build-agent` when editing an agent not built in this
+conversation. Creation and editing stay on `build-agent`.
 
 ## Other Domain Tools
 

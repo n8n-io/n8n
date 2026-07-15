@@ -226,6 +226,14 @@ describe('AgentsService', () => {
 						],
 						skills: [{ type: 'skill', id: 's1' }],
 						tasks: [{ type: 'task', id: 't1', enabled: true }],
+						mcpServers: [
+							{
+								name: 'notion-mcp',
+								url: 'https://mcp.example.com',
+								transport: 'streamableHttp',
+								authentication: 'none',
+							},
+						],
 					},
 					integrations: [
 						{ type: 'slack', credentialId: 'cred-1' },
@@ -256,6 +264,7 @@ describe('AgentsService', () => {
 						nodeTypeVersion: 1,
 					},
 				],
+				mcpServers: [{ name: 'notion-mcp' }],
 				skills: [{ id: 's1', name: 'Triage' }],
 				tasks: [{ id: 't1', name: 'Daily digest', enabled: true }],
 			});
@@ -275,6 +284,7 @@ describe('AgentsService', () => {
 				model: null,
 				channels: [],
 				tools: [],
+				mcpServers: [],
 				skills: [],
 				tasks: [],
 			});

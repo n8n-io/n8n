@@ -401,3 +401,11 @@ export declare namespace LogStreamingRequest {
 	type TestDestination = AuthenticatedRequest<{ id: string }>;
 	type DeleteDestination = AuthenticatedRequest<{ id: string }>;
 }
+
+// ----------------------------------
+//        /settings/sso/saml
+// ----------------------------------
+
+export declare namespace SsoSamlRequest {
+	type Get = AuthenticatedRequest;
+}

@@ -11,6 +11,12 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- **Secrets on the command line:** if a developer opted into anonymous dev
+  metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
+  of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a
+  subcommand or baked into a flag — are dropped, and the home dir is stripped from
+  paths, but other args are sent as-is — so never put secrets in a command. Pass
+  sensitive values via environment variables, which are never captured.
 - When adding comments, keep them concise and to the point - explain the "why"
   in a line or two; don't be overly verbose. Comments should be scoped and
   relevant to the surrounding code, not just to the current task

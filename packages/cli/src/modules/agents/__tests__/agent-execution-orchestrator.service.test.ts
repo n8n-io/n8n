@@ -489,7 +489,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('executes workflow runs with execution-scoped persistence and tool-call output', async () => {
+	it('executes workflow runs with thread-scoped persistence and tool-call output', async () => {
 		const { service, agentRepository, reconstructionService, executionService, telemetry } =
 			makeService();
 		const runtime = makeRuntime([
@@ -513,7 +513,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
 			'hello',
 			expect.objectContaining({
-				persistence: { resourceId: 'execution-1', threadId: 'thread-1' },
+				// resourceId is the memory store's read scope: it must be stable
+				// across executions (NOT the execution id) or a reused session id
+				// would never see its prior messages.
+				persistence: { resourceId: 'thread-1', threadId: 'thread-1' },
 			}),
 		);
 		expect(result).toEqual(
@@ -672,6 +675,413 @@ describe('AgentExecutionOrchestratorService', () => {
 			).rejects.toThrow('"fetch_input_data"');
 
 			expect(toolFn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('executeInlineForWorkflow', () => {
+		const inlinePayload = {
+			config: {
+				name: 'Inline Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'cred-1',
+				instructions: 'Help users',
+			},
+		};
+
+		it('compiles from the embedded config, records no session, and tracks inline telemetry', async () => {
+			const { service, agentRepository, reconstructionService, executionService, telemetry } =
+				makeService();
+			const runtime = makeRuntime([
+				{ type: 'text-start', id: 'text-1' },
+				{ type: 'text-delta', id: 'text-1', delta: 'answer' },
+				{ type: 'text-end', id: 'text-1' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				workflowId: 'wf-1',
+				callingNodeName: 'Message an Agent',
+				// Memory is injected only for caller-supplied session ids.
+				hasCallerSessionId: true,
+				nodes: [],
+				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+			};
+			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
+
+			const result = await service.executeInlineForWorkflow(
+				inlinePayload,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				userId,
+				'production',
+				undefined,
+				workflowContext,
+			);
+
+			// No entity lookup — the embedded config is the source of truth.
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+			expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: expect.objectContaining({
+						name: 'Inline Agent',
+						// Injected server-side: conversation-thread memory keeps a
+						// session-id-keyed thread across executions; long-term memory
+						// stays off (it would accumulate under the synthetic id).
+						memory: {
+							enabled: true,
+							storage: 'n8n',
+							observationalMemory: { enabled: false },
+							episodicMemory: { enabled: false },
+						},
+					}),
+					memoryOwnerAgentId: 'inline:wf-1:Message an Agent',
+					projectId,
+					runtimeProfile: 'inline',
+					skills: {},
+					toolDescriptors: {},
+					toolCodeByName: {},
+				}),
+			);
+
+			expect(result.response).toBe('answer');
+			// Inline runs have no persisted session.
+			expect(result.session).toBeNull();
+			expect(executionService.recordMessage).not.toHaveBeenCalled();
+
+			// Thread-scoped persistence: stable across executions, so a reused
+			// session id continues the same conversation.
+			expect(runtime.agent.stream).toHaveBeenCalledWith(
+				'hello',
+				expect.objectContaining({
+					persistence: { resourceId: 'thread-1', threadId: 'thread-1' },
+				}),
+			);
+
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agent_id: 'inline:wf-1:Message an Agent',
+					agent_type: 'inline',
+					run_type: 'production',
+					turn_status: 'succeeded',
+					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+				}),
+			);
+		});
+
+		it('injects no memory when the caller supplied no session id (nothing to continue)', async () => {
+			const { service, reconstructionService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
+
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				workflowId: 'wf-1',
+				callingNodeName: 'Message an Agent',
+				hasCallerSessionId: false,
+				nodes: [],
+				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+			};
+
+			await service.executeInlineForWorkflow(
+				inlinePayload,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				userId,
+				'production',
+				undefined,
+				workflowContext,
+			);
+
+			const [source] = reconstructionService.reconstructFromResolvedSource.mock.calls[0];
+			// A per-call thread can never be continued — persisting it would only
+			// accumulate rows no session UI or cleanup path can reach.
+			expect(source.config).not.toHaveProperty('memory');
+		});
+
+		it('passes embedded skill bodies through to the runtime, orphans included', async () => {
+			const { service, reconstructionService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+			const triage = {
+				name: 'Triage',
+				description: 'Triage incoming requests',
+				instructions: 'Categorize the request and route it.',
+			};
+			// Orphans are forwarded wholesale, like the entity path forwards
+			// entity.skills — the runtime only attaches referenced ids.
+			const orphan = { ...triage, name: 'Orphan' };
+
+			await service.executeInlineForWorkflow(
+				{
+					config: {
+						...inlinePayload.config,
+						skills: [{ type: 'skill', id: 'skill_triage' }],
+					},
+					skills: { skill_triage: triage, skill_orphan: orphan },
+				},
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+			);
+
+			expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: expect.objectContaining({ skills: [{ type: 'skill', id: 'skill_triage' }] }),
+					skills: { skill_triage: triage, skill_orphan: orphan },
+				}),
+			);
+		});
+
+		it('strips unknown skill-body fields instead of failing the execution', async () => {
+			const { service, reconstructionService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+			const triage = {
+				name: 'Triage',
+				description: 'Triage incoming requests',
+				instructions: 'Categorize the request and route it.',
+			};
+
+			await service.executeInlineForWorkflow(
+				{
+					config: {
+						...inlinePayload.config,
+						skills: [{ type: 'skill', id: 'skill_triage' }],
+					},
+					// A body persisted by a schema version whose extra field has
+					// since been retired must still run, like config keys do.
+					skills: { skill_triage: { ...triage, retiredField: 'from an older schema' } },
+				},
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+			);
+
+			expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ skills: { skill_triage: triage } }),
+			);
+		});
+
+		it('rejects a skill ref without a body, with a pathed error', async () => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{
+						config: {
+							...inlinePayload.config,
+							skills: [{ type: 'skill', id: 'missing' }],
+						},
+					},
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow(/config\.skills.*has no body/);
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
+		it('rejects an invalid skill body, with a pathed error', async () => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{
+						config: {
+							...inlinePayload.config,
+							skills: [{ type: 'skill', id: 'skill_triage' }],
+						},
+						skills: {
+							skill_triage: { name: 'Triage', description: 'No instructions' },
+						},
+					},
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow(/skills\.skill_triage/);
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			// Memory is injected server-side; the node cannot configure it.
+			['memory', { memory: { enabled: true, storage: 'n8n' } }],
+			// Approval suspends the run, which workflow executions can't resume.
+			[
+				'tool approval',
+				{
+					tools: [{ type: 'workflow', workflow: 'Lookup Orders', requireApproval: true }],
+				},
+			],
+			[
+				'MCP approval',
+				{
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://mcp.example.com',
+							transport: 'streamableHttp',
+							authentication: 'none',
+							approval: { mode: 'global' },
+						},
+					],
+				},
+			],
+		])('rejects configs with saved-agent-only capabilities (%s)', async (_key, extra) => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{
+						config: {
+							...inlinePayload.config,
+							...extra,
+						} as unknown as typeof inlinePayload.config,
+					},
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow(UserError);
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
+		it('rejects custom (code) tools, whose bodies live only on saved agents', async () => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{
+						config: {
+							...inlinePayload.config,
+							tools: [{ type: 'custom', id: 'my_tool' }],
+						} as unknown as typeof inlinePayload.config,
+					},
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow(UserError);
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
+		it('rejects an unrunnable draft config (no credential)', async () => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{ config: { ...inlinePayload.config, credential: '' } },
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow(UserError);
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
+		it('tracks a failed inline turn before rethrowing a stream reader error', async () => {
+			const { service, reconstructionService, telemetry } = makeService();
+			const runtime = makeRuntime();
+			runtime.agent.stream.mockResolvedValue({
+				stream: makeFailingStream(new Error('reader failed while consuming stream')),
+			});
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+			await expect(
+				service.executeInlineForWorkflow(
+					inlinePayload,
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow('reader failed while consuming stream');
+
+			// Telemetry fires even for failed runs — the rethrow happens after.
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
+				expect.objectContaining({ agent_type: 'inline', turn_status: 'failed' }),
+			);
+		});
+
+		it('surfaces inline compile failures as an OperationalError', async () => {
+			const { service, reconstructionService } = makeService();
+			reconstructionService.reconstructFromResolvedSource.mockRejectedValue(new Error('boom'));
+
+			const execution = service.executeInlineForWorkflow(
+				inlinePayload,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+			);
+
+			await expect(execution).rejects.toThrow(OperationalError);
+			await expect(execution).rejects.toThrow('Failed to compile agent: boom');
+		});
+
+		it('rejects a malformed $fromAI expression in a node tool before compiling', async () => {
+			const { service, reconstructionService } = makeService();
+
+			const execution = service.executeInlineForWorkflow(
+				{
+					config: {
+						...inlinePayload.config,
+						tools: [
+							{
+								type: 'node',
+								name: 'HTTP Request',
+								node: {
+									nodeType: 'n8n-nodes-base.httpRequestTool',
+									nodeTypeVersion: 4.4,
+									nodeParameters: { url: '={{ $fromAI( }}' },
+								},
+							},
+						],
+					} as unknown as typeof inlinePayload.config,
+				},
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+			);
+
+			await expect(execution).rejects.toThrow(UserError);
+			await expect(execution).rejects.toThrow('Invalid $fromAI expression');
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
+		it('rejects approval-gated tools, which could never resume in workflow context', async () => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{
+						config: {
+							...inlinePayload.config,
+							tools: [{ type: 'workflow', workflow: 'Lookup', requireApproval: true }],
+						} as unknown as typeof inlinePayload.config,
+					},
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow('Invalid inline agent configuration');
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
 		});
 	});
 
