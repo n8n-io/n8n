@@ -448,10 +448,8 @@ function bootstrap() {
 	if (!isInternalDev()) return; // only internal developers are asked or tracked
 
 	const answer = promptViaTty(
-		'\nn8n collects anonymous usage metrics from internal developers\n' +
-			'(the command with its arguments, duration, exit code) to improve dev tooling.\n' +
-			'Command lines are recorded verbatim, so keep secrets out of them — pass\n' +
-			'sensitive values via environment variables, which are never captured.\n\n' +
+		'\nn8n collects anonymous usage metrics from internal developers to improve dev tooling.\n' +
+			'Tip: keep secrets in environment variables, not command arguments.\n\n' +
 			'Share anonymous dev metrics? [Y/n] ',
 	);
 	if (answer === null) return; // no terminal — ask again next time
