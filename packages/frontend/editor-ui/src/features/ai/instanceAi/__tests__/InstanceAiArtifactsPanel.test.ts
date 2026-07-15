@@ -149,6 +149,45 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(getAllByTestId('instance-ai-context-row')).toHaveLength(1);
 	});
 
+	it('renders agent preview handoff context as agent name + session title when carried', () => {
+		storeState.messages = [
+			{
+				role: 'user',
+				context: {
+					source: 'agent-preview',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
+					agentName: 'SEO Auditor',
+					agentIcon: 'search',
+					sessionTitle: 'Help with tone',
+				},
+			},
+		];
+
+		const { getByText, container } = renderComponent();
+
+		expect(getByText('SEO Auditor — Help with tone')).toBeInTheDocument();
+		expect(container.querySelector('[data-icon="search"]')).toBeInTheDocument();
+	});
+
+	it('renders agent preview handoff context as the session title when only it is carried', () => {
+		storeState.messages = [
+			{
+				role: 'user',
+				context: {
+					source: 'agent-preview',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
+					sessionTitle: 'Help with tone',
+				},
+			},
+		];
+
+		const { getByText } = renderComponent();
+
+		expect(getByText('Help with tone')).toBeInTheDocument();
+	});
+
 	it('renders credential handoff context as credential setup', () => {
 		storeState.messages = [
 			{

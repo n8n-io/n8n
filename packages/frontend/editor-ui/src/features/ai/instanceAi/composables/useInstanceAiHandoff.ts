@@ -71,11 +71,17 @@ export function buildInstanceAiCredentialHandoffContext(
 export function buildInstanceAiAgentPreviewHandoffContext(params: {
 	agentId: string;
 	threadId: string;
+	agentName?: string;
+	agentIcon?: string;
+	sessionTitle?: string;
 }): InstanceAiHandoffContext {
 	return {
 		source: 'agent-preview',
 		agentId: params.agentId,
 		threadId: params.threadId,
+		...(params.agentName ? { agentName: params.agentName } : {}),
+		...(params.agentIcon ? { agentIcon: params.agentIcon } : {}),
+		...(params.sessionTitle ? { sessionTitle: params.sessionTitle } : {}),
 	};
 }
 
@@ -197,8 +203,8 @@ export function useInstanceAiHandoff() {
 			newTab?: boolean;
 			launch?: InstanceAiThreadLaunch;
 		},
-	): Promise<void> {
-		if (handoffInFlight) return;
+	): Promise<boolean> {
+		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		try {
 			const tab = options?.newTab ? window.open('', '_blank') : null;
@@ -206,7 +212,7 @@ export function useInstanceAiHandoff() {
 			if (!threadId) {
 				tab?.close();
 				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
-				return;
+				return false;
 			}
 			const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
 			if (tab) {
@@ -214,6 +220,7 @@ export function useInstanceAiHandoff() {
 			} else {
 				await router.push(route);
 			}
+			return true;
 		} finally {
 			handoffInFlight = false;
 		}

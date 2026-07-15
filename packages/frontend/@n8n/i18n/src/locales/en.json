@@ -6207,6 +6207,8 @@
 	"instanceAi.artifactsPanel.context.title": "Context",
 	"instanceAi.artifactsPanel.context.agentPreview": "Preview session",
 	"instanceAi.artifactsPanel.context.agentPreviewNamed": "{name} session",
+	"instanceAi.artifactsPanel.context.agentPreviewTitled": "{agentName} — {sessionTitle}",
+	"instanceAi.artifactsPanel.context.agentPreviewSessionTitled": "{sessionTitle}",
 	"instanceAi.artifactsPanel.context.credentialModal": "Credential setup",
 	"instanceAi.artifactsPanel.context.addedToContext": "Added to context",
 	"instanceAi.artifactsPanel.context.dismiss": "Remove context",

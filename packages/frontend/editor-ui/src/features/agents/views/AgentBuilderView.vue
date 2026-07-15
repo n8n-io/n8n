@@ -142,6 +142,9 @@ async function onSendPreviewToAssistant() {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		threadId,
+		agentName: agentName.value || undefined,
+		agentIcon: localConfig.value?.personalisation?.icon,
+		sessionTitle: currentSessionTitle.value || undefined,
 	});
 }
 
@@ -1237,11 +1240,11 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:agent="agent"
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
-				:effective-session-id="effectiveSessionId"
-				@continue-loaded="onContinueLoaded"
-				:can-send-to-assistant="canSendPreviewToInstanceAi"
-				@send-to-assistant="onSendPreviewToAssistant"
-			/>
+					:effective-session-id="effectiveSessionId"
+					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					@continue-loaded="onContinueLoaded"
+					@send-to-assistant="onSendPreviewToAssistant"
+				/>
 
 				<AgentBuilderEditorColumn
 					v-if="!isPreviewMode"

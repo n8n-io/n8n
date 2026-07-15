@@ -375,11 +375,11 @@ const commonStubs = {
 			'agent',
 			'localConfig',
 			'connectedTriggers',
-		'effectiveSessionId',
-		'initialPrompt',
-		'canSendToAssistant',
-	],
-	emits: ['config-updated', 'continue-loaded', 'open-build', 'send-to-assistant'],
+			'effectiveSessionId',
+			'initialPrompt',
+			'canSendToAssistant',
+		],
+		emits: ['config-updated', 'continue-loaded', 'open-build', 'send-to-assistant'],
 	},
 	AgentConfigTree: {
 		name: 'AgentConfigTree',
@@ -652,6 +652,9 @@ describe('AgentBuilderView — preview routing', () => {
 			projectId: 'p1',
 			agentId: 'a1',
 			threadId: 'thread-1',
+			agentName: 'Agent One',
+			agentIcon: 'bot',
+			sessionTitle: 'agents.builder.chat.newChat.label',
 		});
 	});
 

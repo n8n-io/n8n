@@ -40,7 +40,12 @@ import {
 } from './composables/useInstanceAiHandoff';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
-import { getDismissedContextKeys, handoffContextKey } from './instanceAi.handoffContext';
+import {
+	agentPreviewContextIcon,
+	formatAgentPreviewContextLabel,
+	getDismissedContextKeys,
+	handoffContextKey,
+} from './instanceAi.handoffContext';
 import { useSidebarState } from './instanceAiLayout';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
@@ -490,22 +495,16 @@ function isCurrentThreadRuntime(): boolean {
 	return store.getRuntime(props.threadId) === thread;
 }
 
-function agentPreviewContextLabel(agentId: string): string {
-	const matchingArtifact = thread.producedArtifacts.get(agentId);
-	if (matchingArtifact?.type === 'agent') {
-		return i18n.baseText('instanceAi.artifactsPanel.context.agentPreviewNamed', {
-			interpolate: { name: matchingArtifact.name },
-		});
-	}
-
-	return i18n.baseText('instanceAi.artifactsPanel.context.agentPreview');
-}
-
 const composerContextChip = computed(() => {
 	if (pendingComposerContext.value?.source === 'agent-preview') {
 		return {
 			key: handoffContextKey(pendingComposerContext.value),
-			label: agentPreviewContextLabel(pendingComposerContext.value.agentId),
+			label: formatAgentPreviewContextLabel(
+				pendingComposerContext.value,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(pendingComposerContext.value.agentId)?.name,
+			),
+			icon: agentPreviewContextIcon(pendingComposerContext.value.agentIcon),
 			isPending: true,
 		};
 	}
@@ -519,7 +518,12 @@ const composerContextChip = computed(() => {
 
 		return {
 			key,
-			label: agentPreviewContextLabel(message.context.agentId),
+			label: formatAgentPreviewContextLabel(
+				message.context,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(message.context.agentId)?.name,
+			),
+			icon: agentPreviewContextIcon(message.context.agentIcon),
 			isPending: false,
 		};
 	}
@@ -638,12 +642,13 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 		return;
 	}
 
-	const handoffContext = pendingComposerContext.value;
-	if (handoffContext) {
-		pendingComposerContext.value = null;
-	}
+	const handoffContext = pendingComposerContext.value ?? undefined;
 
-	void thread.sendMessage(message, attachments, rootStore.pushRef, handoffContext ?? undefined);
+	void thread.sendMessage(message, attachments, rootStore.pushRef, handoffContext).then((sent) => {
+		if (sent && handoffContext && pendingComposerContext.value === handoffContext) {
+			pendingComposerContext.value = null;
+		}
+	});
 }
 
 function handleStop() {

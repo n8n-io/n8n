@@ -10,6 +10,9 @@ interface AgentPreviewHandoffParams {
 	projectId: string;
 	agentId: string;
 	threadId: string;
+	agentName?: string;
+	agentIcon?: string;
+	sessionTitle?: string;
 }
 
 export function useInstanceAiAgentPreviewHandoff() {
@@ -21,14 +24,24 @@ export function useInstanceAiAgentPreviewHandoff() {
 		projectId,
 		agentId,
 		threadId,
+		agentName,
+		agentIcon,
+		sessionTitle,
 	}: AgentPreviewHandoffParams): Promise<void> {
 		if (!canSendPreviewToInstanceAi.value || !projectId || !agentId || !threadId) return;
 
-		await openThreadWithContext(
+		const opened = await openThreadWithContext(
 			projectId,
-			buildInstanceAiAgentPreviewHandoffContext({ agentId, threadId }),
+			buildInstanceAiAgentPreviewHandoffContext({
+				agentId,
+				threadId,
+				agentName,
+				agentIcon,
+				sessionTitle,
+			}),
 			{ newTab: true },
 		);
+		if (!opened) return;
 
 		telemetry.track('Instance AI opened from agent preview', {
 			agent_id: agentId,

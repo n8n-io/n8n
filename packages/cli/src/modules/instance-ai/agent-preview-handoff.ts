@@ -6,7 +6,6 @@ import {
 	AGENT_PREVIEW_CONTEXT_OPEN_TAG,
 } from './internal-messages';
 import type { AgentExecutionService } from '../agents/agent-execution.service';
-import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
 
 export type AgentPreviewHandoffResult = {
 	block: string;
@@ -18,6 +17,9 @@ export type AgentPreviewHandoffResult = {
 
 /**
  * Resolve an agent-preview handoff reference into an LLM-facing context block.
+ * The block is a reference only — it does NOT embed the transcript. The
+ * orchestrator reads the transcript on demand via the `get-session` tool, and
+ * only calls `build-agent` when the user explicitly asks to edit the agent.
  * Ownership is enforced by `getThreadDetail` (project + agent scoped).
  * On success, callers must bind `target` before streaming so `build-agent`
  * edits the shared agent. On throw, do not bind.
@@ -38,15 +40,6 @@ export async function resolveAgentPreviewHandoff(
 		throw new UserError('Preview session not found');
 	}
 
-	const transcript = formatPreviewSessionContext(
-		detail.thread,
-		detail.executions,
-		context.executionId,
-	);
-	if (transcript === null) {
-		throw new UserError('Preview session turn not found');
-	}
-
 	const trimmedTitle = detail.thread.title?.trim() ?? '';
 	const titleFallback =
 		trimmedTitle.length > 0 ? trimmedTitle : `Session #${detail.thread.sessionNumber}`;
@@ -60,12 +53,16 @@ export async function resolveAgentPreviewHandoff(
 		agentId: context.agentId,
 		threadId: context.threadId,
 		...(context.executionId ? { executionId: context.executionId } : {}),
+		...(context.agentName ? { agentName: context.agentName } : {}),
+		...(context.agentIcon ? { agentIcon: context.agentIcon } : {}),
+		...(context.sessionTitle ? { sessionTitle: context.sessionTitle } : {}),
 	});
 
 	const prose = [
 		`The user shared a real preview-chat transcript for agent \`${context.agentId}\` (${sessionLabel}).`,
-		'Analyze how the agent behaved and improve its configuration via `build-agent`.',
-		'The builder sub-agent cannot see this chat — when you call `build-agent`, pass `agentId` and include the relevant findings from this transcript in `message`.',
+		'Call `get-session` to read the transcript before commenting on the agent.',
+		'For review/analysis requests (e.g. "review the tone", "assess behavior"), answer directly from the transcript — do NOT modify the agent.',
+		'Only call `build-agent` when the user explicitly asks to update, improve, or fix the agent. The builder sub-agent cannot see this chat — pass `agentId` and the relevant findings from the transcript in `message`.',
 	].join('\n');
 
 	const block = [
@@ -73,8 +70,6 @@ export async function resolveAgentPreviewHandoff(
 		refJson,
 		'',
 		prose,
-		'',
-		transcript,
 		AGENT_PREVIEW_CONTEXT_CLOSE_TAG,
 	].join('\n');
 

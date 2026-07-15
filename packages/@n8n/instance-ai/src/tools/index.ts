@@ -37,6 +37,10 @@ const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
 );
+const loadGetSessionTool = lazyMod(
+	() =>
+		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
+);
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
 		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
@@ -195,6 +199,13 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 			loadBuildAgentTool().createBuildAgentTool(context),
+		]);
+	}
+
+	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.GET_SESSION,
+			loadGetSessionTool().createGetSessionTool(context),
 		]);
 	}
 

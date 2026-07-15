@@ -1,4 +1,14 @@
 import type { InstanceAiHandoffContext } from '@n8n/api-types';
+import {
+	isSupportedIconName,
+	type IconName,
+	type NodeIconName,
+} from '@n8n/design-system/components/N8nIcon';
+import type { BaseTextKey } from '@n8n/i18n';
+
+type AgentPreviewContext = Extract<InstanceAiHandoffContext, { source: 'agent-preview' }>;
+
+type Translate = (key: BaseTextKey, options?: { interpolate: Record<string, string> }) => string;
 
 export function handoffContextKey(context: InstanceAiHandoffContext): string {
 	if (context.source === 'agent-preview') {
@@ -12,4 +22,39 @@ export function getDismissedContextKeys(metadata: Record<string, unknown> | unde
 	return Array.isArray(metadata?.dismissedContextKeys)
 		? (metadata.dismissedContextKeys as string[])
 		: [];
+}
+
+/** Prefer the agent's personalisation icon; fall back when missing or unsupported. */
+export function agentPreviewContextIcon(icon?: string): IconName | NodeIconName {
+	return isSupportedIconName(icon) ? icon : 'robot';
+}
+
+export function formatAgentPreviewContextLabel(
+	context: AgentPreviewContext,
+	t: Translate,
+	artifactName?: string,
+): string {
+	const carriedName = context.agentName?.trim();
+	const carriedTitle = context.sessionTitle?.trim();
+
+	if (carriedName && carriedTitle) {
+		return t('instanceAi.artifactsPanel.context.agentPreviewTitled', {
+			interpolate: { agentName: carriedName, sessionTitle: carriedTitle },
+		});
+	}
+
+	if (carriedTitle) {
+		return t('instanceAi.artifactsPanel.context.agentPreviewSessionTitled', {
+			interpolate: { sessionTitle: carriedTitle },
+		});
+	}
+
+	const name = carriedName || artifactName?.trim();
+	if (name) {
+		return t('instanceAi.artifactsPanel.context.agentPreviewNamed', {
+			interpolate: { name },
+		});
+	}
+
+	return t('instanceAi.artifactsPanel.context.agentPreview');
 }

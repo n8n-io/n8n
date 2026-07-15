@@ -1056,7 +1056,7 @@ export function createThreadRuntime(
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,
 		handoffContext?: InstanceAiHandoffContext,
-	): Promise<void> {
+	): Promise<boolean> {
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
 		try {
@@ -1067,7 +1067,9 @@ export function createThreadRuntime(
 
 			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
 				removeOptimisticMessage(optimistic);
+				return false;
 			}
+			return true;
 		} finally {
 			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
 		}

@@ -124,6 +124,11 @@ const InstanceAiInputStub = defineComponent({
 					props.contextChip?.label ?? '',
 				),
 				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-context-chip-icon' },
+					props.contextChip?.icon ?? '',
+				),
+				h(
 					'button',
 					{
 						'data-test-id': 'instance-ai-input-submit',
@@ -320,7 +325,7 @@ describe('InstanceAiThreadView', () => {
 			loadThreadStatus: vi.fn().mockResolvedValue(undefined),
 			connectSSE: vi.fn(),
 			closeSSE: vi.fn(),
-			sendMessage: vi.fn().mockResolvedValue(undefined),
+			sendMessage: vi.fn().mockResolvedValue(true),
 			cancelRun: vi.fn().mockResolvedValue(undefined),
 			resolveConfirmation: vi.fn(),
 			confirmAction: vi.fn().mockResolvedValue(true),
@@ -468,6 +473,74 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
+	it('keeps pending preview context after a failed send so retry can reattach it', async () => {
+		thread.sseState = 'disconnected';
+		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
+		vi.mocked(thread.sendMessage).mockResolvedValueOnce(false).mockResolvedValue(true);
+		localStorageState.store.set(
+			'n8n-instance-ai-handoff-context:thread-1',
+			JSON.stringify({
+				source: 'agent-preview',
+				agentId: 'agent-1',
+				threadId: 'preview-thread-1',
+			}),
+		);
+		thread.producedArtifacts = new Map([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'SEO Auditor',
+				},
+			],
+		]) as typeof thread.producedArtifacts;
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
+				'SEO Auditor session',
+			);
+		});
+
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Normal message',
+			undefined,
+			expect.any(String),
+			{
+				source: 'agent-preview',
+				agentId: 'agent-1',
+				threadId: 'preview-thread-1',
+			},
+		);
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
+				'SEO Auditor session',
+			);
+		});
+
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(
+			2,
+			'Normal message',
+			undefined,
+			expect.any(String),
+			{
+				source: 'agent-preview',
+				agentId: 'agent-1',
+				threadId: 'preview-thread-1',
+			},
+		);
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+		});
+	});
+
 	it('dismisses a pending preview-context chip without sending it', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
@@ -534,6 +607,30 @@ describe('InstanceAiThreadView', () => {
 		expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
 		});
+	});
+
+	it('labels the preview-context chip with agent name + session title when carried', () => {
+		thread.messages = [
+			{
+				role: 'user',
+				context: {
+					source: 'agent-preview',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
+					agentName: 'SEO Auditor',
+					agentIcon: 'search',
+					sessionTitle: 'Help with tone',
+				},
+			},
+		] as typeof thread.messages;
+		store.getThreadMetadata.mockReturnValue(undefined);
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
+			'SEO Auditor — Help with tone',
+		);
+		expect(getByTestId('instance-ai-input-context-chip-icon')).toHaveTextContent('search');
 	});
 
 	it('keeps the chat input visible when no floating-eligible confirmation is pending', () => {
