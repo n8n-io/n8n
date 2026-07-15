@@ -22,6 +22,11 @@ export const createVitestConfigWithDecorators = (
 					// instances — one where `@Config`/`@Service` decorators registered, one used
 					// by the test — and `Container.get(...)` returns undefined for everything.
 					external: [/@n8n\/(di|config|constants)/, /n8n-workflow/],
+					// The node test harness is a test-only helper that imports vitest itself;
+					// transform it from source rather than externalizing its CJS dist (which
+					// would `require('vitest')` and fail). It still resolves the externalized
+					// @n8n/di dist above, so a single Container is shared.
+					inline: [/@n8n\/node-test-harness/],
 				},
 			},
 		},

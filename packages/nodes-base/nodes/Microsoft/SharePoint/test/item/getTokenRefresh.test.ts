@@ -1,5 +1,5 @@
-import { CredentialsHelper } from '@nodes-testing/credentials-helper';
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { CredentialsHelper } from '@n8n/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 import nock from 'nock';
 
 import { credentials } from '../credentials';

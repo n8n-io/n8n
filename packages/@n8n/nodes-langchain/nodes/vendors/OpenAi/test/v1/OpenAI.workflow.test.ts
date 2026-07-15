@@ -1,4 +1,4 @@
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 import pick from 'lodash/pick';
 import type { WorkflowTestData } from 'n8n-workflow';
 import path from 'node:path';

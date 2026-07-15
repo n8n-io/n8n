@@ -18,7 +18,6 @@ export default mergeConfig(
 				'@credentials': resolve(__dirname, 'credentials'),
 				'@test': resolve(__dirname, 'test'),
 				'@utils': resolve(__dirname, 'utils'),
-				'@nodes-testing': resolve(__dirname, '../core/nodes-testing'),
 			},
 		},
 		oxc: {

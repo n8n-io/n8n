@@ -1,4 +1,4 @@
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 
 // Reads a real fixture file (nodes/Crypto/v1/test/fixtures/binary.data, content "test") rather
 // than mocking fast-glob/fs: NodeTestHarness loads the node from dist via require(), where

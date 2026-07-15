@@ -1,4 +1,4 @@
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 import type { Request, Response } from 'express';
 import fs from 'fs/promises';
 import { mock } from 'vitest-mock-extended';

@@ -1,4 +1,4 @@
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 import nock from 'nock';
 
 // Nested-path interpolation under the SP mailbox: /users/{encoded-mailbox}/messages/{id}/move.

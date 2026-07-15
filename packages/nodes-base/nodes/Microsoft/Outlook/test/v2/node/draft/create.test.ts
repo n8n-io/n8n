@@ -1,4 +1,4 @@
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import nock from 'nock';

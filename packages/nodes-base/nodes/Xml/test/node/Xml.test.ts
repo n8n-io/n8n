@@ -2,7 +2,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 
 import { Xml } from '../../Xml.node';
 

@@ -1,4 +1,4 @@
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 import { mockDeep } from 'vitest-mock-extended';
 import { Collection, Db, MongoClient, ObjectId } from 'mongodb';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';

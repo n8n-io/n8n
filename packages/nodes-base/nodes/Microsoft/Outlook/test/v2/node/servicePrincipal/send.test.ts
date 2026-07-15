@@ -1,4 +1,4 @@
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 import nock from 'nock';
 
 // Asserts both the rewritten /users/{encoded-mailbox}/sendMail URL and the request body shape.

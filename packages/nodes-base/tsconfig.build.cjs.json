@@ -19,7 +19,6 @@
 		"credentials/**/*.test.ts",
 		"credentials/**/test/**",
 		"utils/**/*.test.ts",
-		"test/**",
-		"../core/nodes-testing"
+		"test/**"
 	]
 }

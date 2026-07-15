@@ -1,9 +1,9 @@
 import { Memoized } from '@n8n/decorators';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import callsites from 'callsites';
 import glob from 'fast-glob';
-import { mock } from './mock-extended';
 import isEmpty from 'lodash/isEmpty';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { ExecutionLifecycleHooks, WorkflowExecute } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	IRun,
@@ -16,13 +16,12 @@ import nock from 'nock';
 import { readFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect } from 'vitest';
+import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 
-import { ExecutionLifecycleHooks } from '../dist/execution-engine/execution-lifecycle-hooks';
-import { WorkflowExecute } from '../dist/execution-engine/workflow-execute';
 import { CredentialTypes } from './credential-types';
 import { CredentialsHelper } from './credentials-helper';
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
+import { mock } from './mock-extended';
 import { NodeTypes } from './node-types';
 
 type NodeOutputs = WorkflowTestData['output']['nodeData'];
@@ -53,7 +52,7 @@ export class NodeTestHarness {
 		this.packagePaths = additionalPackagePaths ?? [];
 		this.packagePaths.unshift(this.packageDir);
 
-		beforeAll(() => this.ensureNodesLoaded(), 30_000);
+		beforeAll(async () => await this.ensureNodesLoaded(), 30_000);
 		beforeEach(() => nock.disableNetConnect());
 	}
 
@@ -193,7 +192,7 @@ export class NodeTestHarness {
 				await this.loadNodesAndCredentials.init();
 			})();
 		}
-		return this.nodesLoadedPromise;
+		return await this.nodesLoadedPromise;
 	}
 
 	private async executeWorkflow(testData: WorkflowTestData) {
@@ -237,7 +236,6 @@ export class NodeTestHarness {
 		});
 		additionalData.credentialsHelper = credentialsHelper;
 
-		let executionData: IRun;
 		const runExecutionData = createRunExecutionData({
 			executionData: {
 				waitingExecutionSource: null,
@@ -254,7 +252,7 @@ export class NodeTestHarness {
 		});
 
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode, runExecutionData);
-		executionData = await workflowExecute.processRunExecutionData(workflowInstance);
+		const executionData = await workflowExecute.processRunExecutionData(workflowInstance);
 
 		const result = await waitPromise.promise;
 		return { executionData, result, nodeExecutionOrder };

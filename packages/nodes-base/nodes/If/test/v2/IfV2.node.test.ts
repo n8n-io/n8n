@@ -1,4 +1,4 @@
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeTestHarness } from '@n8n/node-test-harness';
 import { mock } from 'vitest-mock-extended';
 import get from 'lodash/get';
 import {

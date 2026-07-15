@@ -5,8 +5,7 @@
 	],
 	"compilerOptions": {
 		"paths": {
-			"@utils/*": ["./utils/*"],
-			"@nodes-testing/*": ["../../core/nodes-testing/*"]
+			"@utils/*": ["./utils/*"]
 		},
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
