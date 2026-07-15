@@ -20,7 +20,6 @@ import {
 import type {
 	GmailTriggerFilters,
 	GmailTriggerOptions,
-	GmailWorkflowStaticData,
 	GmailWorkflowStaticDataDictionary,
 	Label,
 	ListMessage,
@@ -35,7 +34,7 @@ export class GmailTrigger implements INodeType {
 		name: 'gmailTrigger',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: 1.4,
 		description:
 			'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
 		subtitle: '={{"Gmail Trigger"}}',
@@ -127,11 +126,6 @@ export class GmailTrigger implements INodeType {
 				},
 				description:
 					'Maximum number of emails to fetch each time the node polls for new messages. If more emails arrive between polls, the remaining ones will be picked up in subsequent polls.',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 1.4 } }],
-					},
-				},
 			},
 			{
 				displayName: 'Filters',
@@ -279,21 +273,12 @@ export class GmailTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const workflowStaticData = this.getWorkflowStaticData('node') as
-			| GmailWorkflowStaticData
-			| GmailWorkflowStaticDataDictionary;
+		// Static data is scoped per node name so multiple Gmail Triggers in one workflow don't share state
+		const workflowStaticData = this.getWorkflowStaticData(
+			'node',
+		) as GmailWorkflowStaticDataDictionary;
 		const node = this.getNode();
-
-		let nodeStaticData = (workflowStaticData ?? {}) as GmailWorkflowStaticData;
-		if (node.typeVersion > 1) {
-			const nodeName = node.name;
-			const dictionary = workflowStaticData as GmailWorkflowStaticDataDictionary;
-			if (!(nodeName in workflowStaticData)) {
-				dictionary[nodeName] = {};
-			}
-
-			nodeStaticData = dictionary[nodeName];
-		}
+		const nodeStaticData = (workflowStaticData[node.name] ??= {});
 
 		const now = Math.floor(DateTime.now().toSeconds()).toString();
 
@@ -306,7 +291,7 @@ export class GmailTrigger implements INodeType {
 		const filters = this.getNodeParameter('filters', {}) as GmailTriggerFilters;
 		const simple = this.getNodeParameter('simple') as boolean;
 
-		const shouldLimitMessages = node.typeVersion >= 1.4 && this.getMode() !== 'manual';
+		const shouldLimitMessages = this.getMode() !== 'manual';
 		const maxResults = shouldLimitMessages
 			? (this.getNodeParameter('maxResults', 10) as number)
 			: Infinity;
@@ -343,12 +328,7 @@ export class GmailTrigger implements INodeType {
 			return qs;
 		};
 
-		let includeDrafts = false;
-		if (node.typeVersion > 1.1) {
-			includeDrafts = filters.includeDrafts ?? false;
-		} else {
-			includeDrafts = filters.includeDrafts ?? true;
-		}
+		const includeDrafts = filters.includeDrafts ?? false;
 
 		const fetchAndProcessMessage = async (
 			messageId: string,
@@ -370,11 +350,7 @@ export class GmailTrigger implements INodeType {
 			if (!includeDrafts && fullMessage.labelIds?.includes('DRAFT')) {
 				return;
 			}
-			if (
-				node.typeVersion > 1.2 &&
-				fullMessage.labelIds?.includes('SENT') &&
-				!fullMessage.labelIds?.includes('INBOX')
-			) {
+			if (fullMessage.labelIds?.includes('SENT') && !fullMessage.labelIds?.includes('INBOX')) {
 				return;
 			}
 
@@ -441,12 +417,10 @@ export class GmailTrigger implements INodeType {
 
 			Object.assign(qs, prepareQuery.call(this, allFilters, 0), options);
 
-			if (node.typeVersion > 1.3) {
-				if (qs.q) {
-					qs.q += ' -in:scheduled';
-				} else {
-					qs.q = '-in:scheduled';
-				}
+			if (qs.q) {
+				qs.q += ' -in:scheduled';
+			} else {
+				qs.q = '-in:scheduled';
 			}
 
 			const messagesResponse: MessageListResponse = await googleApiRequest.call(
@@ -463,7 +437,7 @@ export class GmailTrigger implements INodeType {
 				return null;
 			}
 
-			// For v1.4+, filter out boundary duplicates before fetching to save API calls.
+			// Filter out boundary duplicates before fetching to save API calls.
 			// Gmail's `after:` query is inclusive at the second boundary, so messages at
 			// the lastTimeChecked timestamp can reappear.
 			if (shouldLimitMessages) {
@@ -528,8 +502,8 @@ export class GmailTrigger implements INodeType {
 
 		const nextPollPossibleDuplicates = allFetchedMessages.map((m) => m.id);
 
-		// For older versions, filter at the response level since the pre-fetch filter
-		// above is gated to v1.4+. v1.4+ already skipped these before fetching.
+		// In manual mode the pre-fetch duplicate filter above is skipped, so filter
+		// at the response level instead.
 		if (!shouldLimitMessages) {
 			const prevDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
 			if (prevDuplicates.size > 0) {
