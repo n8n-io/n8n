@@ -29,7 +29,7 @@ export class PublishedWorkflowEnqueuer {
 	 * in-memory state to rebuild for them. This is idempotent.
 	 */
 	async enqueueActiveWorkflows(): Promise<void> {
-		await this.outboxRepository.enqueueInMemoryActiveWorkflows();
+		await this.outboxRepository.enqueueForLeaderHandoff();
 		this.logger.debug('Enqueued active workflow publication records');
 	}
 

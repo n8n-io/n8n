@@ -103,16 +103,16 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * If the per-trigger data is missing (e.g. due to a crash), we will still enqueue the
 	 * workflow for publication, which is safe because the publication process is idempotent.
 	 */
-	async enqueueInMemoryActiveWorkflows(): Promise<void> {
+	async enqueueForLeaderHandoff(): Promise<void> {
 		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.enqueueRequiringLeaderPublicationWithPostgresUpsert();
+			await this.enqueueForLeaderHandoffWithPostgresUpsert();
 			return;
 		}
 
-		await this.enqueueRequiringLeaderPublicationWithSqliteUpsert();
+		await this.enqueueForLeaderHandoffWithSqliteUpsert();
 	}
 
-	private async enqueueRequiringLeaderPublicationWithPostgresUpsert(): Promise<void> {
+	private async enqueueForLeaderHandoffWithPostgresUpsert(): Promise<void> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
@@ -136,7 +136,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		);
 	}
 
-	private async enqueueRequiringLeaderPublicationWithSqliteUpsert(): Promise<void> {
+	private async enqueueForLeaderHandoffWithSqliteUpsert(): Promise<void> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
