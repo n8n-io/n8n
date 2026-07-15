@@ -29,7 +29,7 @@ const baseCorrectness: UpsertEvaluationConfigInput = {
 		{
 			name: 'Correctness',
 			preset: 'correctness',
-			provider: 'openai',
+			provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 			credentialId: 'cred-1',
 			model: 'gpt-4o',
 			outputType: 'numeric',
@@ -56,7 +56,7 @@ describe('buildEvaluationConfigDto', () => {
 			type: 'llm_judge',
 			config: {
 				preset: 'correctness',
-				provider: 'openai',
+				provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 				credentialId: 'cred-1',
 				model: 'gpt-4o',
 				outputType: 'numeric',
@@ -77,7 +77,7 @@ describe('buildEvaluationConfigDto', () => {
 				{
 					name: 'Helpfulness',
 					preset: 'helpfulness',
-					provider: 'anthropic',
+					provider: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
 					credentialId: 'cred-2',
 					model: 'claude-sonnet',
 					outputType: 'numeric',
@@ -112,7 +112,7 @@ describe('buildEvaluationConfigDto', () => {
 					{
 						name: 'Correctness',
 						preset: 'correctness',
-						provider: 'openai',
+						provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						credentialId: 'cred-1',
 						model: 'gpt-4o',
 						outputType: 'numeric',
@@ -131,7 +131,7 @@ describe('buildEvaluationConfigDto', () => {
 					{
 						name: 'Helpfulness',
 						preset: 'helpfulness',
-						provider: 'anthropic',
+						provider: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
 						credentialId: 'cred-2',
 						model: 'claude-sonnet',
 						outputType: 'numeric',

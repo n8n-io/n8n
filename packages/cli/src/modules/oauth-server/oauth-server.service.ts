@@ -1,4 +1,4 @@
-import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
 import {
 	InvalidGrantError,
 	InvalidTargetError,
@@ -6,17 +6,19 @@ import {
 import type {
 	AuthorizationParams,
 	OAuthServerProvider,
-} from '@modelcontextprotocol/sdk/server/auth/provider';
-import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
+} from '@modelcontextprotocol/sdk/server/auth/provider.js';
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type {
 	OAuthClientInformationFull,
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
-} from '@modelcontextprotocol/sdk/shared/auth';
+} from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
+
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
@@ -25,7 +27,6 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
@@ -239,12 +240,18 @@ export class OAuthServerService implements OAuthServerProvider {
 				return;
 			}
 
+			// Unknown requested scopes (e.g. `openid`) are dropped rather than
+			// rejected — the user picks the effective scopes on the consent screen.
+			const supportedScopes = targetResource?.scopes ?? [];
+			const requestedScopes = params.scopes?.filter((scope) => supportedScopes.includes(scope));
+
 			this.oauthSessionService.createSession(res, {
 				clientId: client.client_id,
 				redirectUri: params.redirectUri,
 				codeChallenge: params.codeChallenge,
 				state: params.state ?? null,
 				resource,
+				...(requestedScopes && requestedScopes.length > 0 && { requestedScopes }),
 			});
 
 			res.redirect('/oauth/consent');
@@ -316,10 +323,13 @@ export class OAuthServerService implements OAuthServerProvider {
 
 		await this.authorizationCodeService.markAuthorizationCodeAsUsed(authorizationCode);
 
+		const grantedScopes = authRecord.scope;
+
 		const { accessToken, refreshToken } = this.tokenService.generateTokenPair(
 			authRecord.userId,
 			client.client_id,
 			finalResource,
+			grantedScopes,
 		);
 
 		await this.tokenService.saveTokenPair(
@@ -327,6 +337,7 @@ export class OAuthServerService implements OAuthServerProvider {
 			refreshToken,
 			client.client_id,
 			authRecord.userId,
+			grantedScopes,
 		);
 
 		return {
@@ -334,6 +345,9 @@ export class OAuthServerService implements OAuthServerProvider {
 			token_type: 'Bearer',
 			expires_in: this.tokenService.getAccessTokenExpirySeconds(),
 			refresh_token: refreshToken,
+			// RFC 6749 §5.1: REQUIRED when the granted scopes differ from the
+			// requested ones — the user picks them on the consent screen.
+			scope: grantedScopes.join(' '),
 		};
 	}
 

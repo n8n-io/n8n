@@ -66,6 +66,8 @@ import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-bro
 import type { EvalExecutionService } from '../eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
+import type { DurableEventLog } from '../event-bus/durable-event-log';
+import type { DurableLogMetrics } from '../event-bus/durable-log-metrics';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
@@ -95,11 +97,13 @@ describe('InstanceAiController', () => {
 	const memoryService = mock<InstanceAiMemoryService>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const eventBus = mock<InProcessEventBus>();
+	const eventLog = mock<DurableEventLog>();
+	const durableLogMetrics = mock<DurableLogMetrics>();
 	const moduleRegistry = mock<ModuleRegistry>();
 	const push = mock<Push>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key' },
+		instanceAi: { gatewayApiKey: 'static-key', durableLog: false },
 		editorBaseUrl: 'http://localhost:5678',
 		port: 5678,
 	});
@@ -122,6 +126,8 @@ describe('InstanceAiController', () => {
 		evalCredentialAllowlists,
 		evalThreadRestore,
 		eventBus,
+		eventLog,
+		durableLogMetrics,
 		moduleRegistry,
 		push,
 		urlService,
@@ -1010,15 +1016,25 @@ describe('InstanceAiController', () => {
 			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			const threadResult = mock<InstanceAiEnsureThreadResponse>();
 			memoryService.ensureThread.mockResolvedValue(threadResult);
+			// Launch fields must be explicitly undefined: the deep mock proxies
+			// absent properties, which would look like a launch to the controller.
 			const payload = mock<InstanceAiEnsureThreadRequest>({
 				threadId: 'custom-id',
 				projectId: 'project-1',
+				source: undefined,
+				origin: undefined,
+				sourceContext: undefined,
 			});
 
 			const result = await controller.ensureThread(req, res, payload);
 
 			expect(result).toBe(threadResult);
-			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id', 'project-1');
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(
+				USER_ID,
+				'custom-id',
+				'project-1',
+				undefined,
+			);
 		});
 
 		it('should generate a UUID when threadId is not provided', async () => {
@@ -1028,6 +1044,9 @@ describe('InstanceAiController', () => {
 			const payload = mock<InstanceAiEnsureThreadRequest>({
 				threadId: undefined,
 				projectId: 'project-1',
+				source: undefined,
+				origin: undefined,
+				sourceContext: undefined,
 			});
 
 			await controller.ensureThread(req, res, payload);
@@ -1037,7 +1056,29 @@ describe('InstanceAiController', () => {
 				USER_ID,
 				expect.any(String),
 				'project-1',
+				undefined,
 			);
+		});
+
+		it('normalizes and forwards launch metadata when a source is provided', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			memoryService.ensureThread.mockResolvedValue(mock<InstanceAiEnsureThreadResponse>());
+			const payload = {
+				threadId: 'custom-id',
+				projectId: 'project-1',
+				source: 'not-a-known-source',
+				sourceContext: { templateId: '6270' },
+			} as InstanceAiEnsureThreadRequest;
+
+			await controller.ensureThread(req, res, payload);
+
+			// Unknown sources normalize to the fallback; origin defaults to internal.
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id', 'project-1', {
+				source: 'unknown',
+				origin: 'internal',
+				sourceContext: { templateId: '6270' },
+			});
 		});
 
 		it('reports ensure-thread failures to observability before rethrowing', async () => {
@@ -1588,5 +1629,281 @@ describe('InstanceAiController', () => {
 			// validateGatewayApiKey receives 'key1' (the first element)
 			expect(gatewayService.getUserIdForApiKey).toHaveBeenCalledWith('key1');
 		});
+	});
+});
+
+describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
+	const instanceAiService = mock<InstanceAiService>();
+	const memoryService = mock<InstanceAiMemoryService>();
+	const settingsService = mock<InstanceAiSettingsService>();
+	const eventBus = mock<InProcessEventBus>();
+	const eventLog = mock<DurableEventLog>();
+	const durableLogMetrics = mock<DurableLogMetrics>();
+	const globalConfig = mock<GlobalConfig>({
+		instanceAi: { gatewayApiKey: 'static-key', durableLog: true },
+		editorBaseUrl: 'http://localhost:5678',
+		port: 5678,
+	});
+
+	const controller = new InstanceAiController(
+		instanceAiService,
+		mock<InstanceAiGatewayService>(),
+		mock<InstanceAiBrowserSessionService>(),
+		memoryService,
+		settingsService,
+		mock<EvalExecutionService>(),
+		new EvalThreadCredentialAllowlistService(),
+		mock<EvalThreadRestoreService>(),
+		eventBus,
+		eventLog,
+		durableLogMetrics,
+		mock<ModuleRegistry>(),
+		mock<Push>(),
+		mock<UrlService>(),
+		mock<UserRepository>(),
+		mock<CredentialsService>(),
+		mock<ProjectService>(),
+		mock<InstanceAiErrorReporterService>(),
+		globalConfig,
+	);
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		settingsService.isInstanceAiEnabled.mockReturnValue(true);
+	});
+
+	it('replays from the durable log and dedups events that land during the async read', async () => {
+		memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		instanceAiService.getThreadStatus.mockReturnValue({
+			hasActiveRun: false,
+			isSuspended: false,
+			backgroundTasks: [],
+		} as never);
+
+		const handlers: Array<(stored: unknown) => void> = [];
+		eventBus.subscribe.mockImplementation((_threadId, handler) => {
+			handlers.push(handler as never);
+			return vi.fn();
+		});
+
+		const factA = {
+			id: 6,
+			event: {
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'a1',
+				payload: { toolCallId: 'tc', toolName: 't', args: {} },
+			},
+		};
+		const factB = {
+			id: 7,
+			event: {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'a1',
+				payload: { status: 'completed' },
+			},
+		};
+		eventLog.getEventsAfter.mockImplementation(async () => {
+			// While the DB read is in flight, the drain emits fact 7 live (already
+			// part of the replay result: must dedupe) and an id-less delta (must
+			// pass through: the cursor never points at it).
+			const buffering = handlers.at(-1)!;
+			buffering(factB);
+			buffering({
+				event: { type: 'text-delta', runId: 'run-1', agentId: 'a1', payload: { text: 'x' } },
+			});
+			return [factA, factB] as never;
+		});
+
+		const sseRes = mock<Response & { flush?: () => void }>({
+			setHeader: vi.fn(),
+			flushHeaders: vi.fn(),
+			write: vi.fn(),
+			end: vi.fn(),
+			flush: vi.fn(),
+		});
+		const sseReq = mock<AuthenticatedRequest>({
+			user: { id: USER_ID },
+			headers: {},
+			once: vi.fn(),
+		});
+
+		await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: 5 } as never);
+
+		expect(eventLog.getEventsAfter).toHaveBeenCalledWith(THREAD_ID, 5);
+		const frames = (sseRes.write as Mock).mock.calls.map(([frame]) => String(frame));
+		// Fact 7 was both replayed and buffered live: delivered exactly once.
+		expect(frames.filter((f) => f.includes('run-finish'))).toHaveLength(1);
+		expect(frames.filter((f) => f.includes('tool-call'))).toHaveLength(1);
+		// The id-less delta passes through with NO id: line.
+		const deltaFrame = frames.find((f) => f.includes('text-delta'));
+		expect(deltaFrame).toBeDefined();
+		expect(deltaFrame!.startsWith('data: ')).toBe(true);
+		// Replay instrumentation recorded events served + cursor age.
+		expect(durableLogMetrics.recordReplay).toHaveBeenCalledWith(2, 2);
+	});
+
+	it('delivers events that land during the run-sync tree reads', async () => {
+		memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		memoryService.getLatestRunSnapshot.mockResolvedValue(undefined);
+		instanceAiService.getThreadStatus.mockReturnValue({
+			hasActiveRun: true,
+			isSuspended: false,
+			backgroundTasks: [],
+		} as never);
+		instanceAiService.getMessageGroupId.mockReturnValue('group-1');
+		instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+
+		const handlers: Array<(stored: unknown) => void> = [];
+		eventBus.subscribe.mockImplementation((_threadId, handler) => {
+			handlers.push(handler as never);
+			return vi.fn();
+		});
+
+		eventLog.getEventsAfter.mockResolvedValue([]);
+		const treeEvent = {
+			type: 'tool-call',
+			runId: 'run-1',
+			agentId: 'a1',
+			payload: { toolCallId: 'tc', toolName: 't', args: {} },
+		};
+		eventLog.getEventsForRuns.mockImplementation(async () => {
+			// A fact lands while the bootstrap tree is being read from the DB:
+			// the buffering subscription must still be active here, or the event
+			// is lost for good (the cursor advances past it on the next event).
+			handlers.at(-1)!({
+				id: 8,
+				event: {
+					type: 'run-finish',
+					runId: 'run-1',
+					agentId: 'a1',
+					payload: { status: 'completed' },
+				},
+			});
+			return [treeEvent] as never;
+		});
+
+		const sseRes = mock<Response & { flush?: () => void }>({
+			setHeader: vi.fn(),
+			flushHeaders: vi.fn(),
+			write: vi.fn(),
+			end: vi.fn(),
+			flush: vi.fn(),
+		});
+		const sseReq = mock<AuthenticatedRequest>({
+			user: { id: USER_ID },
+			headers: {},
+			once: vi.fn(),
+		});
+
+		await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: 5 } as never);
+
+		const frames = (sseRes.write as Mock).mock.calls.map(([frame]) => String(frame));
+		const syncIndex = frames.findIndex((f) => f.startsWith('event: run-sync'));
+		const finishIndex = frames.findIndex((f) => f.includes('run-finish'));
+		expect(syncIndex).toBeGreaterThanOrEqual(0);
+		expect(finishIndex).toBeGreaterThanOrEqual(0);
+		// Delivered exactly once, after the frame whose tree may already fold it
+		// (the shared reducer applies it idempotently, like any post-frame event).
+		expect(frames.filter((f) => f.includes('run-finish'))).toHaveLength(1);
+		expect(finishIndex).toBeGreaterThan(syncIndex);
+	});
+
+	it('removes the buffering subscription when a durable read throws', async () => {
+		memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		instanceAiService.getThreadStatus.mockReturnValue({
+			hasActiveRun: false,
+			isSuspended: false,
+			backgroundTasks: [],
+		} as never);
+
+		const unsubscribers: Array<ReturnType<typeof vi.fn>> = [];
+		eventBus.subscribe.mockImplementation(() => {
+			const unsubscribe = vi.fn();
+			unsubscribers.push(unsubscribe);
+			return unsubscribe;
+		});
+		eventLog.getEventsAfter.mockRejectedValue(new Error('db down'));
+
+		const sseRes = mock<Response & { flush?: () => void }>({
+			setHeader: vi.fn(),
+			flushHeaders: vi.fn(),
+			write: vi.fn(),
+			end: vi.fn(),
+			flush: vi.fn(),
+		});
+		const sseReq = mock<AuthenticatedRequest>({
+			user: { id: USER_ID },
+			headers: {},
+			once: vi.fn(),
+		});
+
+		await expect(
+			controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: 5 } as never),
+		).rejects.toThrow('db down');
+
+		// Two subscriptions exist: the step-1 live one (cleaned up on connection
+		// close) and the temporary replay buffer, which must be removed on the
+		// error path rather than lingering on the thread emitter.
+		expect(unsubscribers).toHaveLength(2);
+		expect(unsubscribers[1]).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops the bootstrap when the client disconnects during a durable read', async () => {
+		memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		memoryService.getLatestRunSnapshot.mockResolvedValue(undefined);
+		instanceAiService.getThreadStatus.mockReturnValue({
+			hasActiveRun: true,
+			isSuspended: false,
+			backgroundTasks: [],
+		} as never);
+		instanceAiService.getMessageGroupId.mockReturnValue('group-1');
+		instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+
+		eventBus.subscribe.mockReturnValue(vi.fn());
+
+		const onceHandlers = new Map<string, () => void>();
+		const sseReq = mock<AuthenticatedRequest>({
+			user: { id: USER_ID },
+			headers: {},
+			once: vi.fn(((eventName: string, handler: () => void) => {
+				onceHandlers.set(eventName, handler);
+			}) as never),
+		});
+		const sseRes = mock<Response & { flush?: () => void }>({
+			setHeader: vi.fn(),
+			flushHeaders: vi.fn(),
+			write: vi.fn(),
+			end: vi.fn(),
+			flush: vi.fn(),
+		});
+
+		eventLog.getEventsAfter.mockImplementation(async () => {
+			// The browser goes away while the replay read is in flight. Without a
+			// post-await check, the frames below would be written to a dead
+			// response and the keep-alive interval would be created after cleanup
+			// already ran, leaking it for good.
+			onceHandlers.get('close')!();
+			return [
+				{
+					id: 6,
+					event: {
+						type: 'tool-call',
+						runId: 'run-1',
+						agentId: 'a1',
+						payload: { toolCallId: 'tc', toolName: 't', args: {} },
+					},
+				},
+			] as never;
+		});
+
+		await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: 5 } as never);
+
+		const frames = (sseRes.write as Mock).mock.calls.map(([frame]) => String(frame));
+		expect(frames.some((f) => f.includes('tool-call'))).toBe(false);
+		expect(frames.some((f) => f.startsWith('event: run-sync'))).toBe(false);
+		expect(eventLog.getEventsForRuns).not.toHaveBeenCalled();
+		expect(durableLogMetrics.recordReplay).not.toHaveBeenCalled();
 	});
 });

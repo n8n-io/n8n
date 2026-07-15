@@ -526,7 +526,9 @@ async function syncRouteToStore() {
 
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
+
 	void syncRouteToStore();
+
 	void nextTick(focusChatInputIfFocusIsIdle);
 });
 

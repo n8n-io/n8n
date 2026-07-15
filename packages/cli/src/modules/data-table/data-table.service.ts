@@ -14,7 +14,7 @@ import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
+import { In, type EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import type {
 	DataTableColumnJsType,
@@ -153,8 +153,16 @@ export class DataTableService {
 		return true;
 	}
 
-	async transferDataTablesByProjectId(fromProjectId: string, toProjectId: string) {
-		return await this.dataTableRepository.transferDataTableByProjectId(fromProjectId, toProjectId);
+	async transferDataTablesByProjectId(
+		fromProjectId: string,
+		toProjectId: string,
+		trx?: EntityManager,
+	) {
+		return await this.dataTableRepository.transferDataTableByProjectId(
+			fromProjectId,
+			toProjectId,
+			trx,
+		);
 	}
 
 	async deleteDataTableByProjectId(projectId: string) {
@@ -324,7 +332,7 @@ export class DataTableService {
 		return result;
 	}
 
-	async upsertRow<T extends boolean | undefined>(
+	async upsertRow(
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
@@ -425,7 +433,7 @@ export class DataTableService {
 		return { data: transformedData, filter: transformedFilter };
 	}
 
-	async updateRows<T extends boolean | undefined>(
+	async updateRows(
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,

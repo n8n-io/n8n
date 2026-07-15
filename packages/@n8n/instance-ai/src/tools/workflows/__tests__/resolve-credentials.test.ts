@@ -31,6 +31,7 @@ function createMockContext(existingWorkflow?: WorkflowJSON): InstanceAiContext {
 		},
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
+		workflowTemplateService: {} as InstanceAiContext['workflowTemplateService'],
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 	};
 }
@@ -101,6 +102,77 @@ describe('resolveCredentials', () => {
 			expect(result.mockedNodeNames).toEqual(['Slack']);
 			expect(result.mockedCredentialTypes).toEqual(['slackApi']);
 			expect(json.nodes[0].credentials).toEqual({});
+		});
+	});
+
+	describe('n8n Connect auto-wiring', () => {
+		function makeSlackNode() {
+			return {
+				id: '1',
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2,
+				position: [0, 0] as [number, number],
+				credentials: { slackApi: undefined as unknown as { id: string; name: string } },
+			};
+		}
+
+		it('attaches the n8n Connect managed credential when the type is gateway-supported and no stored credential exists', async () => {
+			const json = makeWorkflow({ nodes: [makeSlackNode()] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			// Managed marker persisted so the saved workflow runs zero-setup.
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+			});
+			// Reported as resolved (connected) — the agent must not route it to setup.
+			expect(result.resolvedCredentialsByNode).toEqual({
+				Slack: [{ type: 'slackApi', id: null, name: 'n8n Connect', __aiGatewayManaged: true }],
+			});
+			// Still simulated during verification, but NOT flagged as needing a real credential.
+			expect(result.mockedNodeNames).toEqual(['Slack']);
+			expect(result.mockedCredentialsByNode).toEqual({});
+			expect(result.mockedCredentialTypes).toEqual([]);
+		});
+
+		it('prefers the sole stored credential over n8n Connect', async () => {
+			const json = makeWorkflow({ nodes: [makeSlackNode()] });
+			const ctx = createMockContext();
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			const credentialMap = makeCredentialMap([
+				{ id: 'cred-1', name: 'My Slack', type: 'slackApi' },
+			]);
+
+			const result = await resolveCredentials(json, undefined, ctx, credentialMap);
+
+			expect(json.nodes[0].credentials).toEqual({ slackApi: { id: 'cred-1', name: 'My Slack' } });
+			expect(result.resolvedCredentialsByNode).toEqual({
+				Slack: [{ type: 'slackApi', id: 'cred-1', name: 'My Slack' }],
+			});
+			expect(result.mockedNodeNames).toEqual([]);
+		});
+
+		it('mocks when the type is not gateway-supported', async () => {
+			const json = makeWorkflow({ nodes: [makeSlackNode()] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(false);
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedNodeNames).toEqual(['Slack']);
+			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
 		});
 	});
 

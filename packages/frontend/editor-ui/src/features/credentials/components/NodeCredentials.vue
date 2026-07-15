@@ -48,6 +48,7 @@ import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
+import { useN8nCreditsCredentialSelectionExperiment } from '@/experiments/n8nCreditsCredentialSelection';
 
 import {
 	N8nButton,
@@ -82,6 +83,12 @@ type Props = {
 	 *  the host can render a guided inline form (Instance AI Templated Custom
 	 *  Auth recipes). Editing always opens the credential modal. */
 	inlineCredentialActions?: boolean;
+	/** Skip the component's own credential fetch on mount. Hosts with a
+	 *  synthetic workflow document (e.g. the tool config modal) own the fetch
+	 *  themselves — the component's own fetch would query the synthetic
+	 *  document's nonexistent workflow id and replace the credential store
+	 *  with the empty result. */
+	skipCredentialsFetch?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -92,6 +99,7 @@ const props = withDefaults(defineProps<Props>(), {
 	skipAutoSelect: false,
 	standalone: false,
 	inlineCredentialActions: false,
+	skipCredentialsFetch: false,
 });
 
 const emit = defineEmits<{
@@ -139,6 +147,8 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
+const { isFeatureEnabled: shouldShowOwnCredentialFirst } =
+	useN8nCreditsCredentialSelectionExperiment();
 const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
 const canCreateCredentials = computed(
@@ -319,8 +329,8 @@ watch(
 		if (allOptions.length === 0) {
 			// No credentials configured — auto-enable AI Gateway for supported types,
 			// but only on the initial setup so a later action change doesn't redirect
-			// the user onto n8n Connect.
-			if (aiGateway.isEnabled.value && isInitialEvaluation) {
+			// the user onto n8n credits. The experiment variant leaves it unselected.
+			if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
 				for (const { type } of types) {
 					if (
 						aiGateway.isCredentialTypeSupported(type.name) &&
@@ -431,7 +441,7 @@ onMounted(() => {
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
 
-	const scope = getCredentialFetchScope();
+	const scope = props.skipCredentialsFetch ? undefined : getCredentialFetchScope();
 	if (scope) {
 		void credentialsStore.fetchAllCredentialsForWorkflow(scope);
 	}
@@ -566,6 +576,20 @@ function onCredentialSelected(
 		credential_id: credentialId,
 	});
 
+	// Attribution funnel: a picked stored credential is always a user's own (BYOK)
+	// credential. Standalone hosts (Instance AI setup card) route the confirmed
+	// selection through the backend, which attributes it as `source: 'instance-ai-*'`
+	// — so only emit here for the manual canvas to avoid double-counting.
+	if (isUserAction && !props.standalone) {
+		telemetry.track('Node credential assigned', {
+			credential_type: credentialType,
+			node_type: props.node.type,
+			workflow_id: workflowDocumentStore?.value.workflowId,
+			credential_kind: 'own',
+			source: 'user',
+		});
+	}
+
 	const selectedCredentials = credentialsStore.getCredentialById(credentialId);
 	const selectedCredentialsType = props.showAll ? selectedCredentials.type : credentialType;
 	const oldCredentials = props.node.credentials?.[selectedCredentialsType] ?? null;
@@ -675,8 +699,13 @@ function showAiGatewaySelector(credentialType: string): boolean {
 function onAiGatewaySelector(credentialType: string, enable: boolean, isUserAction = true): void {
 	const credentials = { ...(props.node.credentials ?? {}) };
 
+	// Track the credential kind actually assigned, or null when the slot is cleared
+	// (toggle-off with no credential to restore) so no false assignment is recorded.
+	let assignedKind: 'n8n_connect' | 'own' | null = null;
+
 	if (enable) {
 		credentials[credentialType] = { id: null, name: '', __aiGatewayManaged: true };
+		assignedKind = 'n8n_connect';
 	} else {
 		// Toggle OFF: restore the most recent available credential for THIS node only.
 		// Avoid onCredentialSelected which calls replaceInvalidWorkflowCredentials and
@@ -689,6 +718,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 			const mostRecent = typeEntry.options.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b));
 			const restoredCredential = credentialsStore.getCredentialById(mostRecent.id);
 			credentials[credentialType] = { id: restoredCredential.id, name: restoredCredential.name };
+			assignedKind = 'own';
 		} else {
 			delete credentials[credentialType];
 		}
@@ -701,6 +731,17 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 			mode: enable ? 'n8n_connect' : 'own',
 			workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
 		});
+		// Only the manual canvas is attributed to the user here; standalone
+		// (Instance AI) assignments are counted by the backend as `instance-ai-*`.
+		if (!props.standalone && assignedKind) {
+			telemetry.track('Node credential assigned', {
+				credential_type: credentialType,
+				node_type: props.node.type,
+				workflow_id: workflowDocumentStore?.value.workflowId,
+				credential_kind: assignedKind,
+				source: 'user',
+			});
+		}
 	}
 
 	emit('credentialSelected', {

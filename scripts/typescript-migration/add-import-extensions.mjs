@@ -11,9 +11,15 @@
 //   import cfg from './data'       ->  './data.json'   (when data.json exists)
 //   import x from './widgets'      ->  './widgets/index.js'
 //
-// It SKIPS bare/alias specifiers (`@/…`, `@utils/…`, package names) — those are
-// handled by tsc-alias's `resolveFullPaths` at build time — and anything that
-// already has a known extension.
+// It also rewrites alias specifiers that match a `paths` mapping in the package
+// tsconfig (`@/foo` -> `@/foo.js`, `@/widgets` -> `@/widgets/index.js`), resolving
+// the extension against the mapped target directory. `tsc --noEmit` (typecheck)
+// does NOT run tsc-alias, so under NodeNext these aliases fail to resolve without
+// an extension; tsc-alias's `resolveFullPaths` handles the already-suffixed alias
+// at build time, so this is safe for both typecheck and build.
+//
+// It SKIPS bare specifiers (package names — they never match a `@/*`-style
+// `paths` prefix) and anything that already has a known extension.
 //
 // Dry-run by default; pass --write to apply.
 //
@@ -97,6 +103,48 @@ function resolveExtension(fromFile, spec) {
 	return null;
 }
 
+// Build matchers from the package tsconfig `paths` (e.g. `@/*` -> `./src/*`).
+// `paths` are relative to the config dir when no `baseUrl` is set. Only simple
+// single-`*` wildcard patterns are supported (that covers n8n's aliases).
+function buildAliasMatchers(compilerOptions, configDir) {
+	const paths = compilerOptions.paths ?? {};
+	const baseDir = compilerOptions.baseUrl ? resolve(configDir, compilerOptions.baseUrl) : configDir;
+	const matchers = [];
+	for (const [pattern, targets] of Object.entries(paths)) {
+		const starIdx = pattern.indexOf('*');
+		if (starIdx === -1) continue; // exact (non-wildcard) aliases are rare; skip
+		const prefix = pattern.slice(0, starIdx);
+		const suffix = pattern.slice(starIdx + 1);
+		const targetTemplates = targets
+			.filter((t) => t.includes('*'))
+			.map((t) => resolve(baseDir, t));
+		if (targetTemplates.length) matchers.push({ prefix, suffix, targetTemplates });
+	}
+	return matchers;
+}
+
+// Resolve an alias specifier to the extension it should carry (matching the
+// first `paths` target that exists on disk), or null if unmatched/unresolvable.
+function resolveAliasExtension(spec, matchers) {
+	for (const { prefix, suffix, targetTemplates } of matchers) {
+		if (!spec.startsWith(prefix) || !spec.endsWith(suffix)) continue;
+		if (spec.length < prefix.length + suffix.length) continue;
+		const captured = spec.slice(prefix.length, spec.length - suffix.length);
+		for (const template of targetTemplates) {
+			const base = template.replace('*', captured);
+			for (const ext of ['.ts', '.tsx', '.mts', '.cts']) {
+				if (existsSync(base + ext)) return '.js';
+			}
+			if (existsSync(base + '.json')) return '.json';
+			if (existsSync(base + '.js')) return '.js';
+			for (const idx of ['index.ts', 'index.tsx', 'index.mts', 'index.cts', 'index.js']) {
+				if (existsSync(join(base, idx))) return '/index.js';
+			}
+		}
+	}
+	return null;
+}
+
 async function main() {
 	const opts = parseArgs(process.argv.slice(2));
 	const tsConfigFilePath = findTsConfig(opts.package);
@@ -111,6 +159,10 @@ async function main() {
 	// files — those aren't ours to touch.
 	const pkgDir = dirname(tsConfigFilePath);
 	const project = new Project({ tsConfigFilePath });
+	const aliasMatchers = buildAliasMatchers(project.getCompilerOptions(), pkgDir);
+	if (aliasMatchers.length) {
+		console.log(`  aliases:  ${aliasMatchers.map((m) => `${m.prefix}*${m.suffix}`).join(', ')}\n`);
+	}
 	const sourceFiles = project.getSourceFiles().filter((sf) => {
 		const p = sf.getFilePath();
 		return (
@@ -146,8 +198,16 @@ async function main() {
 		}
 
 		for (const { spec, set } of targets) {
-			if (!isRelative(spec) || hasKnownExtension(spec)) continue;
-			const ext = resolveExtension(filePath, spec);
+			if (hasKnownExtension(spec)) continue;
+			let ext;
+			if (isRelative(spec)) {
+				ext = resolveExtension(filePath, spec);
+			} else if (aliasMatchers.length) {
+				ext = resolveAliasExtension(spec, aliasMatchers);
+				if (!ext) continue; // bare package spec (or unmapped) — leave it alone
+			} else {
+				continue;
+			}
 			if (!ext) {
 				unresolved.push(`${relFile}: '${spec}'`);
 				continue;

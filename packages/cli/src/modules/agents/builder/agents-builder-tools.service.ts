@@ -52,8 +52,8 @@ import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-optio
 import {
 	buildAskCredentialTool,
 	buildAskEmbeddingCredentialTool,
-	buildAskLlmTool,
-	buildAskQuestionTool,
+	buildAskQuestionsTool,
+	buildConfigureChannelTool,
 	buildResolveLlmTool,
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
@@ -513,8 +513,15 @@ export class AgentsBuilderToolsService {
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
 			}),
-			buildAskLlmTool(),
-			buildAskQuestionTool(),
+			buildAskQuestionsTool(),
+			buildConfigureChannelTool({
+				agentId,
+				projectId,
+				listChatIntegrationTypes: () =>
+					this.agentIntegrationPersistenceService
+						.listChatIntegrations()
+						.map((integration) => integration.type),
+			}),
 			buildVerifyMcpServerTool({
 				credentialProvider,
 				oauthService: this.oauthService,
@@ -624,8 +631,8 @@ export class AgentsBuilderToolsService {
 					'parameter for the template. You MUST NOT call this tool with a vague, broad, or placeholder ' +
 					'objective, an objective missing any section, or an unclear schedule. First make sure you can ' +
 					'fill every section of the template and know how often/when it should run; if anything is ' +
-					'ambiguous, ask the user clarifying questions (ask_question with discrete options for choices, ' +
-					'or empty options for open-ended) and only call create_task once the objective is complete and the cadence ' +
+					'ambiguous, ask the user clarifying questions (ask_questions with discrete options for choices, ' +
+					'or type: "text" for open-ended) and only call create_task once the objective is complete and the cadence ' +
 					'is known. This adds a `{ type: "task", id, enabled }` ref to the agent config (config.tasks) ' +
 					'and the task starts running once the agent is (re)published. Returns { ok: true, task } or ' +
 					'{ ok: false, errors }.',

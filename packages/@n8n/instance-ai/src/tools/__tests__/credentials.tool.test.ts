@@ -329,6 +329,80 @@ describe('credentials tool', () => {
 		});
 	});
 
+	// ── list with n8n Connect ───────────────────────────────────────────────
+
+	describe('list action — n8n Connect entry', () => {
+		function makeContextWithGateway(isGatewaySupported: boolean | undefined) {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
+			]);
+			if (isGatewaySupported !== undefined) {
+				(
+					context.credentialService as unknown as {
+						isAiGatewayCredentialType: Mock;
+					}
+				).isAiGatewayCredentialType = vi.fn().mockResolvedValue(isGatewaySupported);
+			}
+			return context;
+		}
+
+		it('prepends a synthetic managed entry when the type is gateway-supported', async () => {
+			const context = makeContextWithGateway(true);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'openAiApi' },
+				noSuspendCtx(),
+			);
+
+			expect((result as { credentials: unknown[] }).credentials).toEqual([
+				expect.objectContaining({ id: null, type: 'openAiApi', __aiGatewayManaged: true }),
+				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
+			]);
+		});
+
+		it('omits the managed entry when the type is not gateway-supported', async () => {
+			const context = makeContextWithGateway(false);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'cohereApi' },
+				noSuspendCtx(),
+			);
+
+			expect((result as { credentials: unknown[] }).credentials).toEqual([
+				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
+			]);
+		});
+
+		it('omits the managed entry when isAiGatewayCredentialType is not implemented', async () => {
+			const context = makeContextWithGateway(undefined);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'openAiApi' },
+				noSuspendCtx(),
+			);
+
+			const creds = (result as { credentials: Array<{ id: unknown }> }).credentials;
+			expect(creds.every((c) => c.id !== null)).toBe(true);
+		});
+
+		it('omits the managed entry when no type filter is provided', async () => {
+			const context = makeContextWithGateway(true);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
+
+			const creds = (result as { credentials: Array<{ id: unknown }> }).credentials;
+			expect(creds.every((c) => c.id !== null)).toBe(true);
+		});
+	});
+
 	// ── get ─────────────────────────────────────────────────────────────────
 
 	describe('get action', () => {
@@ -551,6 +625,53 @@ describe('credentials tool', () => {
 			);
 
 			expect(result).toEqual({ results: [] });
+		});
+
+		it('should enumerate n8n Connect types when n8nConnectOnly is set, ignoring query', async () => {
+			const context = createMockContext();
+			context.credentialService.listAiGatewayCredentialTypes = vi
+				.fn()
+				.mockResolvedValue(['openAiApi', 'anthropicApi']);
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'search-types' as const, n8nConnectOnly: true },
+				noSuspendCtx(),
+			);
+
+			expect(context.credentialService.listAiGatewayCredentialTypes).toHaveBeenCalled();
+			expect(context.credentialService.searchCredentialTypes).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				results: [
+					{ type: 'openAiApi', n8nConnect: true },
+					{ type: 'anthropicApi', n8nConnect: true },
+				],
+			});
+		});
+
+		it('should return empty results for n8nConnectOnly when the accessor is unavailable', async () => {
+			const context = createMockContext();
+			context.credentialService.listAiGatewayCredentialTypes = undefined;
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'search-types' as const, n8nConnectOnly: true },
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({ results: [] });
+		});
+
+		it('should error when query is omitted without n8nConnectOnly', async () => {
+			const context = createMockContext();
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(tool, { action: 'search-types' as const }, noSuspendCtx());
+
+			expect(context.credentialService.searchCredentialTypes).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ results: [], error: expect.stringContaining('query') });
 		});
 	});
 

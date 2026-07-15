@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -13,6 +13,42 @@ describe('useCredentialTestInBackground', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.credentialTestResults = new Map();
+	});
+
+	describe('testCredentialInBackground', () => {
+		beforeEach(() => {
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				test: { request: { url: '/test' } },
+			});
+		});
+
+		it('records a passing result when the credential data cannot be read', async () => {
+			credentialsStore.getCredentialData = vi.fn().mockResolvedValue(undefined);
+			const { testCredentialInBackground } = useCredentialTestInBackground();
+
+			await testCredentialInBackground('cred-1', 'My credential', 'slackApi');
+
+			expect(credentialsStore.credentialTestResults.get('cred-1')).toBe('success');
+		});
+
+		it('records a passing result when fetching the credential data fails', async () => {
+			credentialsStore.getCredentialData = vi.fn().mockRejectedValue(new Error('forbidden'));
+			const { testCredentialInBackground } = useCredentialTestInBackground();
+
+			await testCredentialInBackground('cred-1', 'My credential', 'slackApi');
+
+			expect(credentialsStore.credentialTestResults.get('cred-1')).toBe('success');
+		});
+
+		it('keeps an existing failed result when the credential data cannot be read', async () => {
+			credentialsStore.credentialTestResults.set('cred-1', 'error');
+			credentialsStore.getCredentialData = vi.fn().mockResolvedValue(undefined);
+			const { testCredentialInBackground } = useCredentialTestInBackground();
+
+			await testCredentialInBackground('cred-1', 'My credential', 'slackApi');
+
+			expect(credentialsStore.credentialTestResults.get('cred-1')).toBe('error');
+		});
 	});
 
 	describe('hydrateCredentialTestResults', () => {

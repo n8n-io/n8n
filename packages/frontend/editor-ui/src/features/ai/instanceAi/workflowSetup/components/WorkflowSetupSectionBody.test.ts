@@ -34,6 +34,9 @@ const nodeCredentialsMock = vi.hoisted(() => ({
 	emitCredentialSelected: null as ((update: unknown) => void) | null,
 	lastNodeProp: null as unknown,
 }));
+const parameterListMock = vi.hoisted(() => ({
+	lastHiddenIssuesInputs: undefined as string[] | undefined,
+}));
 
 vi.mock('../composables/useWorkflowSetupContext', () => ({
 	useWorkflowSetupContext: () => workflowSetupContext.current,
@@ -80,7 +83,7 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () 
 
 	return {
 		default: defineComponent({
-			props: ['node'],
+			props: ['node', 'hiddenIssuesInputs'],
 			emits: ['valueChanged', 'parameterBlur'],
 			setup(props, { emit }) {
 				const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
@@ -88,6 +91,7 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () 
 
 				return () => {
 					renderedCredentials.push((props.node as INodeUi | undefined)?.credentials);
+					parameterListMock.lastHiddenIssuesInputs = props.hiddenIssuesInputs as string[];
 
 					return h(
 						'button',
@@ -159,6 +163,7 @@ describe('WorkflowSetupSectionBody', () => {
 		workflowDocumentStoreRef.current = null;
 		nodeCredentialsMock.emitCredentialSelected = null;
 		nodeCredentialsMock.lastNodeProp = null;
+		parameterListMock.lastHiddenIssuesInputs = undefined;
 		credentialsStore.getCredentialById.mockReturnValue({ id: 'cred-1', name: 'Typeform account' });
 		nodeTypesStore.getNodeType.mockReturnValue({
 			name: 'n8n-nodes-base.typeformTrigger',
@@ -202,6 +207,29 @@ describe('WorkflowSetupSectionBody', () => {
 		await nextTick();
 
 		expect(renderedCredentials.at(-1)).toBe(credentialsBeforeParameterChange);
+	});
+
+	it('reveals validation for setup parameters on mount so required fields show immediately', async () => {
+		const section = makeWorkflowSetupSection({
+			id: 'Typeform Trigger:typeformApi',
+			targetNodeName: 'Typeform Trigger',
+			credentialType: 'typeformApi',
+			parameterNames: ['formId'],
+			node: {
+				id: 'typeform-trigger',
+				name: 'Typeform Trigger',
+				type: 'n8n-nodes-base.typeformTrigger',
+				typeVersion: 1,
+				parameters: { formId: '' },
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		// Empty => nothing hidden => the "required" issue is shown without interaction.
+		expect(parameterListMock.lastHiddenIssuesInputs).toEqual([]);
 	});
 
 	it('stores the AI Gateway-managed tag when selected in NodeCredentials', async () => {

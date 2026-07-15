@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
@@ -683,6 +683,7 @@
       "dist/nodes/Microsoft/Dynamics/MicrosoftDynamicsCrm.node.js",
       "dist/nodes/Microsoft/Entra/MicrosoftEntra.node.js",
       "dist/nodes/Microsoft/Excel/MicrosoftExcel.node.js",
+      "dist/nodes/Microsoft/ExcelSharePoint/MicrosoftExcelSharePoint.node.js",
       "dist/nodes/Microsoft/GraphSecurity/MicrosoftGraphSecurity.node.js",
       "dist/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.js",
       "dist/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.js",
@@ -919,6 +920,7 @@
     "eslint-plugin-n8n-nodes-base": "catalog:",
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
+    "nock": "catalog:",
     "reflect-metadata": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
@@ -1013,7 +1015,7 @@
     "undici": "catalog:undici-v6",
     "uuid": "catalog:",
     "vm2": "catalog:",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
+    "@e965/xlsx": "catalog:",
     "xml2js": "catalog:",
     "xmlhttprequest-ssl": "3.1.0",
     "zod": "catalog:"

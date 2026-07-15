@@ -306,6 +306,7 @@ describe('CredentialConfig', () => {
 					isResolvable: false,
 					credentialPermissions: {
 						create: true,
+						createEndUser: true,
 						update: false,
 						read: true,
 						delete: false,
@@ -334,6 +335,7 @@ describe('CredentialConfig', () => {
 					isResolvable: false,
 					credentialPermissions: {
 						create: false,
+						createEndUser: true,
 						update: true,
 						read: true,
 						delete: false,
@@ -362,6 +364,7 @@ describe('CredentialConfig', () => {
 					isResolvable: false,
 					credentialPermissions: {
 						create: false,
+						createEndUser: true,
 						update: true,
 						read: true,
 						delete: false,
@@ -376,6 +379,90 @@ describe('CredentialConfig', () => {
 				'aria-disabled',
 				'true',
 			);
+		});
+
+		it('should hide the type selector when the user cannot create end-user credentials', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: false,
+					credentialPermissions: {
+						create: false,
+						createEndUser: false,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should hide the type selector for an end-user credential without the createEndUser permission', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: false,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should show the type selector for an end-user credential with the createEndUser permission', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
 		});
 	});
 

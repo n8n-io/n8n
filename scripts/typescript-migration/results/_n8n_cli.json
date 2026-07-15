@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/cli",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T08:40:37.362Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            990,
+            943,
+            902
+          ],
+          "min": 902,
+          "median": 943,
+          "mean": 945
+        },
+        "build": {
+          "runsMs": [
+            999,
+            970,
+            982
+          ],
+          "min": 970,
+          "median": 982,
+          "mean": 984
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T08:41:16.905Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            512,
+            508,
+            614
+          ],
+          "min": 508,
+          "median": 512,
+          "mean": 544
+        },
+        "build": {
+          "runsMs": [
+            605,
+            533,
+            495
+          ],
+          "min": 495,
+          "median": 533,
+          "mean": 544
+        }
+      }
+    }
+  }
+}

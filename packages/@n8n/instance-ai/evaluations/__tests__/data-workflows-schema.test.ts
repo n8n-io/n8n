@@ -275,6 +275,47 @@ describe('loadWorkflowTestCasesWithFiles · file-aware errors', () => {
 	});
 });
 
+describe('EvalTestCaseSchema · artifact grading via outcome expectations', () => {
+	it('accepts a workflow case graded only by outcomeExpectations (no scenarios)', () => {
+		const { executionScenarios: _omit, ...rest } = validFixture();
+		const parsed = EvalTestCaseSchema.parse({
+			...rest,
+			outcomeExpectations: ['the final workflow posts to Slack'],
+		});
+		expect(parsed.outcomeExpectations).toEqual(['the final workflow posts to Slack']);
+	});
+
+	it('accepts an agent-style case graded only by outcomeExpectations (no scenarios)', () => {
+		const { executionScenarios: _omit, ...rest } = validFixture();
+		const parsed = EvalTestCaseSchema.parse({
+			...rest,
+			outcomeExpectations: ['an agent was created and no workflow was built'],
+		});
+		expect(parsed.outcomeExpectations).toEqual(['an agent was created and no workflow was built']);
+	});
+
+	it('rejects a case with no scenario and no process/outcome expectation', () => {
+		const { executionScenarios: _omit, ...rest } = validFixture();
+		expect(() => EvalTestCaseSchema.parse(rest)).toThrow(
+			/needs at least one executionScenario, or a process\/outcome expectation/,
+		);
+	});
+
+	it('rejects the removed expectedArtifacts / artifactExpectations fields (strict schema)', () => {
+		// Artifact grading moved onto outcomeExpectations — these case fields no longer exist,
+		// and the strict schema rejects them so a stale case fails loudly rather than silently.
+		expect(() =>
+			EvalTestCaseSchema.parse({ ...validFixture(), expectedArtifacts: ['agent'] }),
+		).toThrow();
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				artifactExpectations: { agent: ['the agent has a Slack tool'] },
+			}),
+		).toThrow();
+	});
+});
+
 describe('conversationTurnTextSchema', () => {
 	it('passes a plain string through unchanged', () => {
 		expect(conversationTurnTextSchema.parse('one line')).toBe('one line');
