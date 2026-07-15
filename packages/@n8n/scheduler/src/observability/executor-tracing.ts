@@ -65,8 +65,6 @@ export function createExecutorTracing(tracer: Tracer): ExecutorTracing {
  */
 export function withHandoffTracing(tracer: Tracer, handler: TaskHandler): TaskHandler {
 	return {
-		// `onDispatch` is threaded through untouched: the wrapper adds a span, not
-		// semantics, so the handler's dispatch marker keeps flowing to the executor.
 		async execute(task, onDispatch) {
 			await tracer.startSpan(
 				{

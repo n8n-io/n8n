@@ -160,7 +160,6 @@ export async function reap(
 					}
 				}
 			} else {
-				// Never dispatched, attempts left: return it to `pending` for another attempt.
 				reclaimed += await store.reclaimExpired(ref, backoff(nextAttempts), LEASE_EXPIRED_MESSAGE);
 			}
 		} catch (error) {
