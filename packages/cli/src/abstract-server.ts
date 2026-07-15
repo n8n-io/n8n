@@ -249,7 +249,7 @@ export abstract class AbstractServer {
 			// instead of the URL, since Telegram delivers every registered bot's updates to
 			// one fixed webhook URL.
 			this.app.all(
-				`/${this.endpointWebhookWaiting}${TELEGRAM_HITL_WEBHOOK_SUFFIX}`,
+				`${this.pathResolvingService.resolveWebhookWaitingEndpoint()}${TELEGRAM_HITL_WEBHOOK_SUFFIX}`,
 				createWebhookHandlerFor(Container.get(TelegramInteractionWebhooks)),
 			);
 
