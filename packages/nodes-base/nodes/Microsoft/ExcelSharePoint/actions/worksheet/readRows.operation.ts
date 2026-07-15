@@ -5,7 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
+
 import type { ExcelResponse } from '../../../Excel/v2/helpers/interfaces';
 // Reused from the OneDrive node so the two nodes' output shapes cannot drift
 import { checkRange, prepareOutput } from '../../../Excel/v2/helpers/utils';
@@ -130,6 +131,52 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+type ReadRowsSettings = {
+	/** Validated sheet resource-locator value; the segment of the request path after `/workbook/worksheets/`. */
+	worksheetId: string;
+	/** A1-style range to read, e.g. `A1:B5`. Empty means read the sheet's used range instead. */
+	range: string;
+	/** When true, return Graph's response as-is under `dataProperty` instead of parsing rows into keyed objects. */
+	rawData: boolean;
+	/** Index (relative to `range`) of the row holding column names. Only used when `rawData` is false. */
+	keyRow: number;
+	/** Index (relative to `range`) of the first row containing actual data. Only used when `rawData` is false. */
+	firstDataRow: number;
+	/** Output property to write the raw response under. Only used when `rawData` is true. */
+	dataProperty: string;
+	/** Graph `$select` fields to request. Only used when `rawData` is true. */
+	fields: string;
+};
+
+// Validated and read up front so the request-building code below only ever deals
+// with `settings.xxx`, never raw `getNodeParameter` calls or `options.foo as bar`.
+function getSettings(this: IExecuteFunctions, itemIndex: number): ReadRowsSettings {
+	const worksheetId = validatePathSegment(
+		this.getNode(),
+		'Sheet',
+		this.getNodeParameter('worksheet', itemIndex, '', { extractValue: true }) as string,
+	);
+
+	const range = this.getNodeParameter('range', itemIndex, '') as string;
+	checkRange(this.getNode(), range);
+
+	const options = this.getNodeParameter('options', itemIndex, {}) as {
+		rawData?: boolean;
+		dataProperty?: string;
+		fields?: string;
+	};
+
+	return {
+		worksheetId,
+		range,
+		rawData: options.rawData || false,
+		keyRow: this.getNodeParameter('keyRow', itemIndex, 0) as number,
+		firstDataRow: this.getNodeParameter('dataStartRow', itemIndex, 1) as number,
+		dataProperty: options.dataProperty || 'data',
+		fields: options.fields || '',
+	};
+}
+
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
@@ -138,69 +185,47 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const qs: IDataObject = {};
 		try {
 			// Validate everything local before the workbook resolution, which may
 			// cost a request in URL mode
-			const worksheetId = validatePathSegment(
-				this.getNode(),
-				'Sheet',
-				this.getNodeParameter('worksheet', i, '', { extractValue: true }) as string,
-			);
+			const settings = getSettings.call(this, i);
 
-			const options = this.getNodeParameter('options', i, {});
-
-			const range = this.getNodeParameter('range', i, '') as string;
-			checkRange(this.getNode(), range);
-
-			const rawData = (options.rawData as boolean) || false;
-
-			if (rawData && options.fields) {
-				qs.$select = options.fields;
+			const qs: IDataObject = {};
+			if (settings.rawData && settings.fields) {
+				qs.$select = settings.fields;
 			}
 
 			const workbookRoot = await resolveWorkbookRoot.call(this, i);
-			const sheetPath = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(worksheetId)}`;
-			const responseData = await microsoftApiRequest.call(
+			const sheetPath = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(settings.worksheetId)}`;
+			// Typed here instead of cast at the call site below. Parens are required:
+			// a generic instantiation can't be followed directly by a property access.
+			const responseData = await (microsoftApiRequest<ExcelResponse>).call(
 				this,
 				'GET',
-				range
-					? `${sheetPath}/range(address='${encodeURIComponent(range)}')`
+				settings.range
+					? `${sheetPath}/range(address='${encodeURIComponent(settings.range)}')`
 					: `${sheetPath}/usedRange`,
 				{},
 				qs,
 			);
 
-			if (!rawData) {
-				const keyRow = this.getNodeParameter('keyRow', i, 0) as number;
-				const firstDataRow = this.getNodeParameter('dataStartRow', i, 1) as number;
-
-				returnData.push(
-					...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
-						rawData,
-						keyRow,
-						firstDataRow,
-					}),
-				);
-			} else {
-				const dataProperty = (options.dataProperty as string) || 'data';
-				returnData.push(
-					...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
-						rawData,
-						dataProperty,
-					}),
-				);
-			}
+			// prepareOutput branches on `rawData` internally and ignores whichever
+			// of keyRow/firstDataRow/dataProperty doesn't apply to the chosen mode
+			const preparedData = prepareOutput.call(this, this.getNode(), responseData, {
+				rawData: settings.rawData,
+				keyRow: settings.keyRow,
+				firstDataRow: settings.firstDataRow,
+				dataProperty: settings.dataProperty,
+			});
+			returnData.push.apply(returnData, preparedData);
 		} catch (error) {
-			if (this.continueOnFail()) {
-				const executionErrorData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: error.message }),
-					{ itemData: { item: i } },
-				);
-				returnData.push(...executionErrorData);
-				continue;
-			}
-			throw error;
+			if (!this.continueOnFail()) throw error;
+
+			const executionErrorData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray({ error: error.message }),
+				{ itemData: { item: i } },
+			);
+			returnData.push.apply(returnData, executionErrorData);
 		}
 	}
 
