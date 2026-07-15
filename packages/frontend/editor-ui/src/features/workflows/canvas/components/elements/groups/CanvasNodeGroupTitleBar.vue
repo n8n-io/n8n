@@ -303,6 +303,10 @@ function onDescriptionKeydown(event: KeyboardEvent) {
 	if (event.key === 'Escape') {
 		event.preventDefault();
 		cancelEditingDescription();
+	} else if (event.key === 'Enter' && !event.shiftKey) {
+		// Enter commits; Shift+Enter keeps inserting a newline.
+		event.preventDefault();
+		saveDescription();
 	}
 }
 

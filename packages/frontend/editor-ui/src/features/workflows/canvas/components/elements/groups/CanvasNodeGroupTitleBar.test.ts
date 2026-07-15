@@ -295,6 +295,34 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'After']]);
 		});
 
+		it('emits update:description when Enter is pressed', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility();
+			visibility.setVisible('g1', true);
+
+			const wrapper = render({ data: withDescription('Before') }, visibility);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'After');
+			await fireEvent.keyDown(input, { key: 'Enter' });
+
+			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'After']]);
+			expect(wrapper.queryByTestId('canvas-node-group-description-input')).toBeNull();
+		});
+
+		it('keeps editing and does not commit on Shift+Enter', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility();
+			visibility.setVisible('g1', true);
+
+			const wrapper = render({ data: withDescription('Before') }, visibility);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'After');
+			await fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+
+			expect(wrapper.emitted()['update:description']).toBeUndefined();
+			expect(wrapper.queryByTestId('canvas-node-group-description-input')).toBeTruthy();
+		});
+
 		it('discards edits when cancel is clicked', async () => {
 			const visibility = useCanvasNodeGroupDescriptionVisibility();
 			visibility.setVisible('g1', true);
