@@ -16,12 +16,12 @@ export type DatePickerFormatOptions = {
 
 export type DatePickerHourCycle = NonNullable<DatePickerFormatOptions['hourCycle']>;
 
-export type DatePickerBoundsOptions = {
+type DatePickerBoundsOptions = {
 	minValue?: DateValue;
 	maxValue?: DateValue;
 };
 
-export type DatePickerSelectionOptions = DatePickerBoundsOptions & {
+type DatePickerSelectionOptions = DatePickerBoundsOptions & {
 	granularity?: string;
 	referenceStart?: DateValue;
 	isDateUnavailable?: (date: DateValue) => boolean;
@@ -200,8 +200,7 @@ export function formatDateRangeValue(
 	return `${formatDateValue(start, options)} – ${formatDateValue(end, options)}`;
 }
 
-/** Returns whether a date falls within optional min/max bounds. */
-export function isDateValueInBounds(
+function isDateValueInBounds(
 	value: DateValue,
 	{ minValue, maxValue }: DatePickerBoundsOptions,
 ): boolean {
@@ -360,7 +359,7 @@ export function parseTimeValue(
 }
 
 /** Default time-of-day when a date is first given a time component. */
-export const DEFAULT_TIME_OF_DAY = { hour: 9, minute: 0, second: 0 } as const;
+const DEFAULT_TIME_OF_DAY = { hour: 9, minute: 0, second: 0 } as const;
 
 /** Combines a calendar date with hour/minute/second into a CalendarDateTime. */
 export function toDateTimeValue(
@@ -407,7 +406,7 @@ export function shouldIncludeTimeInDateFormat(options: {
 	);
 }
 
-export type FieldValueCommitResult =
+type FieldValueCommitResult =
 	| { ok: true; range: DateRange }
 	| { ok: false; error: 'outside' | 'invalid' };
 
@@ -448,24 +447,6 @@ export function resolveFieldValueCommit(options: {
 		return { ok: false, error: 'invalid' };
 	}
 	return { ok: true, range: { start: nextStart?.copy(), end: value.copy() } };
-}
-
-/** Reads a calendar cell's `data-value` attribute into a DateValue. */
-export function parseCalendarCellDate(element: Element): DateValue | undefined {
-	const value = element.getAttribute('data-value');
-	if (!value) return undefined;
-
-	try {
-		return parseDate(value);
-	} catch {
-		// Date-time cell values include a time segment (e.g. 2026-07-15T00:00).
-		const datePart = value.split('T')[0];
-		try {
-			return parseDate(datePart);
-		} catch {
-			return undefined;
-		}
-	}
 }
 
 /** Formats the calendar header month/year label for one or more visible months. */

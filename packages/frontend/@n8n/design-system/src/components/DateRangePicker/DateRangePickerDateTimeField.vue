@@ -3,6 +3,7 @@ import type { DateValue } from '@internationalized/date';
 import { injectDateRangePickerRootContext } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
 import { useDateRangePickerContext } from './dateRangePicker.context';
 import {
 	formatDateValue,
@@ -24,17 +25,10 @@ const props = defineProps<{
 	timeLabel: string;
 }>();
 
-const emit = defineEmits<{
-	'update:error': [message: string | null];
-}>();
-
 const rootContext = injectDateRangePickerRootContext();
 const { single, showTime, hourCycle } = useDateRangePickerContext();
+const { t } = useI18n();
 
-const INVALID_DATE_MESSAGE = 'Invalid date';
-const OUTSIDE_RANGE_MESSAGE = 'Outside of allowed range';
-
-/** Formatting options for the date text input (locale, optional inline time). */
 const formatOptions = computed<DatePickerFormatOptions>(() => ({
 	locale: rootContext.locale.value,
 	hourCycle: hourCycle.value,
@@ -46,42 +40,35 @@ const formatOptions = computed<DatePickerFormatOptions>(() => ({
 	}),
 }));
 
-const datePlaceholder = computed(() => getDateValuePlaceholder(formatOptions.value));
-const timePlaceholder = computed(() => getTimeValuePlaceholder(hourCycle.value));
-
-/** Bounds / unavailable-date rules used when validating typed values. */
-const selectionOptions = computed(() => ({
-	minValue: rootContext.minValue.value,
-	maxValue: rootContext.maxValue.value,
-	isDateUnavailable: rootContext.isDateUnavailable,
-}));
-
 const dateText = ref('');
 const timeText = ref('');
-/** True while the user is editing the date input — skips external sync overwrites. */
 const editingDate = ref(false);
-/** True while the user is editing the time input — skips external sync overwrites. */
 const editingTime = ref(false);
 const inputError = ref<string | null>(null);
 
-/** The start or end value this field is bound to. */
 const fieldValue = computed(() =>
 	props.type === 'start' ? rootContext.modelValue.value.start : rootContext.modelValue.value.end,
 );
 
-/** Publishes the field error to the parent and local invalid styling. */
+const isSelectingEnd = computed(() => {
+	const { start, end } = rootContext.modelValue.value;
+	return Boolean(start && !end);
+});
+
+const isActive = computed(() => {
+	if (single.value) return true;
+	return props.type === (isSelectingEnd.value ? 'end' : 'start');
+});
+
 function setError(message: string | null) {
 	inputError.value = message;
-	emit('update:error', message);
 }
 
-/** Refreshes the date input from the current model value. */
 function syncDateText() {
 	dateText.value = formatDateValue(fieldValue.value, formatOptions.value);
 	setError(null);
 }
 
-/** Refreshes the time input from the current model value. */
 function syncTimeText() {
 	timeText.value = formatTimeValue(fieldValue.value, hourCycle.value);
 	setError(null);
@@ -104,18 +91,25 @@ watch(hourCycle, () => {
 	if (!editingTime.value) syncTimeText();
 });
 
-/** Applies a parsed date/time to the range, or surfaces a validation error. */
 function commitValue(nextValue: DateValue) {
 	const result = resolveFieldValueCommit({
 		field: props.type,
 		value: nextValue,
 		range: rootContext.modelValue.value,
 		single: single.value,
-		selectionOptions: selectionOptions.value,
+		selectionOptions: {
+			minValue: rootContext.minValue.value,
+			maxValue: rootContext.maxValue.value,
+			isDateUnavailable: rootContext.isDateUnavailable,
+		},
 	});
 
 	if (!result.ok) {
-		setError(result.error === 'outside' ? OUTSIDE_RANGE_MESSAGE : INVALID_DATE_MESSAGE);
+		setError(
+			result.error === 'outside'
+				? t('dateRangePicker.outsideRange')
+				: t('dateRangePicker.invalidDate'),
+		);
 		return;
 	}
 
@@ -123,7 +117,6 @@ function commitValue(nextValue: DateValue) {
 	rootContext.onDateChange(result.range);
 }
 
-/** Parses the date input on blur and commits it when valid. */
 function commitDate() {
 	const trimmed = dateText.value.trim();
 	if (!trimmed) {
@@ -134,14 +127,13 @@ function commitDate() {
 
 	const parsed = parseDateValue(trimmed, formatOptions.value);
 	if (!parsed) {
-		setError(INVALID_DATE_MESSAGE);
+		setError(t('dateRangePicker.invalidDate'));
 		return;
 	}
 
 	commitValue(showTime.value ? mergeDatePreservingTime(parsed, fieldValue.value) : parsed);
 }
 
-/** Parses the time input on blur and commits it onto the current date. */
 function commitTime() {
 	const current = fieldValue.value;
 	const trimmed = timeText.value.trim();
@@ -153,7 +145,6 @@ function commitTime() {
 
 	const parsedTime = parseTimeValue(trimmed, hourCycle.value);
 	if (!parsedTime) {
-		// Invalid text (e.g. AM/PM removed) — restore the last committed time.
 		setError(null);
 		syncTimeText();
 		return;
@@ -162,23 +153,19 @@ function commitTime() {
 	commitValue(toDateTimeValue(current, parsedTime));
 }
 
-/** Marks the date segment as being edited. */
 function onDateFocus() {
 	editingDate.value = true;
 }
 
-/** Stops date editing and commits the typed date. */
 function onDateBlur() {
 	editingDate.value = false;
 	commitDate();
 }
 
-/** Marks the time segment as being edited. */
 function onTimeFocus() {
 	editingTime.value = true;
 }
 
-/** Stops time editing and commits the typed time. */
 function onTimeBlur() {
 	editingTime.value = false;
 	commitTime();
@@ -186,39 +173,57 @@ function onTimeBlur() {
 </script>
 
 <template>
-	<div
-		:class="[
-			$style.DateFieldGroup,
-			showTime && $style.DateFieldGroupJoined,
-			inputError && $style.DateFieldGroupInvalid,
-		]"
-	>
-		<input
-			v-model="dateText"
-			type="text"
-			:class="$style.FieldInput"
-			:placeholder="datePlaceholder"
-			:aria-label="dateLabel"
-			:aria-invalid="inputError ? true : undefined"
-			@focus="onDateFocus"
-			@blur="onDateBlur"
-		/>
-		<input
-			v-if="showTime"
-			v-model="timeText"
-			type="text"
-			:class="$style.FieldInput"
-			:placeholder="timePlaceholder"
-			:aria-label="timeLabel"
-			:aria-invalid="inputError ? true : undefined"
-			@focus="onTimeFocus"
-			@blur="onTimeBlur"
-		/>
+	<div :class="$style.DateField">
+		<div
+			:class="[
+				$style.DateFieldGroup,
+				showTime && $style.DateFieldGroupJoined,
+				inputError && $style.DateFieldGroupInvalid,
+				isActive && $style.DateFieldGroupActive,
+			]"
+		>
+			<input
+				v-model="dateText"
+				type="text"
+				:class="$style.FieldInput"
+				:placeholder="getDateValuePlaceholder(formatOptions)"
+				:aria-label="dateLabel"
+				:aria-invalid="inputError ? true : undefined"
+				:aria-describedby="inputError ? `${type}-field-error` : undefined"
+				@focus="onDateFocus"
+				@blur="onDateBlur"
+			/>
+			<input
+				v-if="showTime"
+				v-model="timeText"
+				type="text"
+				:class="$style.FieldInput"
+				:placeholder="getTimeValuePlaceholder(hourCycle)"
+				:aria-label="timeLabel"
+				:aria-invalid="inputError ? true : undefined"
+				:aria-describedby="inputError ? `${type}-field-error` : undefined"
+				@focus="onTimeFocus"
+				@blur="onTimeBlur"
+			/>
+		</div>
+		<div
+			v-if="inputError"
+			:id="`${type}-field-error`"
+			:class="$style.FieldErrorTooltip"
+			role="alert"
+		>
+			{{ inputError }}
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
+
+.DateField {
+	position: relative;
+	min-width: 0;
+}
 
 .DateFieldGroup {
 	--input--height: var(--height--md);
@@ -234,7 +239,7 @@ function onTimeBlur() {
 
 	display: flex;
 	min-width: 0;
-	gap: 4px;
+	gap: var(--spacing--4xs);
 	height: var(--input--height);
 	border-radius: var(--input--radius);
 	background-color: var(--input--color--background);
@@ -252,11 +257,20 @@ function onTimeBlur() {
 	}
 }
 
+.DateFieldGroupActive:not(.DateFieldGroupInvalid) {
+	--joined--border-shadow: inset 0 0 0 1px var(--input--border-color--focus);
+
+	&:hover:not(:focus-within) {
+		--joined--border-shadow: inset 0 0 0 1px var(--input--border-color--focus);
+	}
+
+	&:not(:focus-within) {
+		@include focus.focus-ring;
+	}
+}
+
 .DateFieldGroupJoined {
 	position: relative;
-	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	align-items: stretch;
 }
 
 .DateFieldGroupJoined::after {
@@ -275,28 +289,47 @@ function onTimeBlur() {
 .DateFieldGroupInvalid:hover:not(:focus-within),
 .DateFieldGroupInvalid:focus-within {
 	outline: none;
+	--input--color--background: var(--background--danger);
 	--joined--border-shadow: inset 0 0 0 1px var(--input--border-color--invalid);
 	background-color: var(--input--color--background);
 }
 
+.DateFieldGroupInvalid .FieldInput {
+	color: var(--text-color--danger);
+}
+
 .FieldInput {
 	width: 100%;
-	min-width: 0;
-	height: 100%;
 	padding: 0 var(--input--padding);
 	border: none;
-	border-radius: 0;
 	background: transparent;
-	color: var(--color--text--shade-1);
-	font-size: var(--input--font-size);
-	font-family: inherit;
 	outline: none;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 
 	&::placeholder {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--subtler);
 	}
+}
+
+.FieldErrorTooltip {
+	position: absolute;
+	top: calc(100% + var(--spacing--4xs));
+	left: 0;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	max-width: 180px;
+	min-height: var(--height--sm);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	border-radius: var(--radius--xs);
+	background: var(--color--neutral-black);
+	box-shadow: var(--shadow--sm);
+	color: var(--color--neutral-100);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--md);
+	text-wrap: pretty;
+	overflow-wrap: anywhere;
+	pointer-events: none;
 }
 </style>

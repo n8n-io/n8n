@@ -16,39 +16,27 @@ import {
 	DateRangePickerPrev,
 	DateRangePickerRoot,
 	DateRangePickerTrigger,
-	injectDateRangePickerRootContext,
-	useForwardPropsEmits,
+	useForwardProps,
 	type DateRange,
+	type DateValue,
 } from 'reka-ui';
-import { computed, defineComponent, provide, ref, shallowRef, toRef, watch } from 'vue';
+import { nextTick, provide, ref, shallowRef, toRef, useSlots, watch } from 'vue';
 
 import N8nButton from '../N8nButton';
 import IconButton from '../N8nIconButton';
-import N8nDateRangePickerField from './DateRangePickerField.vue';
-import {
-	N8N_DATE_RANGE_PICKER_CONTEXT,
-	type DateRangePickerRekaRoot,
-	useDateRangePickerContext,
-} from './dateRangePicker.context';
-import N8nDateRangePickerTodayButton from './DateRangePickerTodayButton.vue';
+import { useI18n } from '../../composables/useI18n';
+import DateRangePickerDateTimeField from './DateRangePickerDateTimeField.vue';
+import DateRangePickerPresets from './DateRangePickerPresets.vue';
+import { N8N_DATE_RANGE_PICKER_CONTEXT } from './dateRangePicker.context';
 import {
 	createTodayRange,
 	formatMonthYearHeading,
+	getTodayDateValue,
+	isDateSelectable,
 	isEmptyDateRange,
 	mergeDatePreservingTime,
-	type DatePickerHourCycle,
 } from './datePicker.utils';
 import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
-
-/** Captures reka root context for the parent (must render under DateRangePickerRoot). */
-const DateRangePickerRekaBridge = defineComponent({
-	name: 'DateRangePickerRekaBridge',
-	setup() {
-		const { rekaRoot } = useDateRangePickerContext();
-		rekaRoot.value = injectDateRangePickerRootContext();
-		return () => null;
-	},
-});
 
 const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
 	weekStartsOn: 1,
@@ -56,17 +44,47 @@ const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
 	fixedWeeks: true,
 	hourCycle: 24,
 	hideInputs: false,
+	hideToday: false,
 	single: false,
 	showTime: false,
+	presets: undefined,
 });
 
 const emit = defineEmits<N8nDateRangePickerRootEmits>();
+const { t } = useI18n();
+const slots = useSlots();
 
 defineSlots<{
 	presets?: {};
 	trigger?: {};
 	footer?: { apply: () => void; close: () => void };
 }>();
+
+const presetsContainerRef = ref<HTMLElement | null>(null);
+
+function hasPresetsSidebar() {
+	return Boolean(slots.presets) || (props.presets?.length ?? 0) > 0;
+}
+
+function onPresetSelect(value: string | number) {
+	emit('select', value);
+}
+
+function onOpenAutoFocus(event: Event) {
+	if (!hasPresetsSidebar()) return;
+
+	event.preventDefault();
+
+	void nextTick(() => {
+		const presetToFocus =
+			presetsContainerRef.value?.querySelector<HTMLElement>('[tabindex="0"]') ??
+			presetsContainerRef.value?.querySelector<HTMLElement>(
+				'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+			);
+
+		presetToFocus?.focus();
+	});
+}
 
 function copyRange(range?: DateRange | null): DateRange {
 	return {
@@ -83,30 +101,66 @@ function getCommittedRange(): DateRange {
 	return copyRange(uncontrolledValue.value);
 }
 
-/** Uncontrolled committed value (ignored when `modelValue` is provided). */
 const uncontrolledValue = shallowRef(copyRange(props.defaultValue));
-/** Working selection while the popover is open — not emitted until Apply. */
+
 const draftRange = shallowRef(getCommittedRange());
+
 const applyOnClose = ref(false);
 
-const closePopover = () => {
-	if (rekaRoot.value) {
-		rekaRoot.value.open.value = false;
-	} else {
-		emit('update:open', false);
-	}
-};
+const isOpen = ref(props.open ?? props.defaultOpen ?? false);
 
-/** Commit the draft and close. */
-function applyAndClose() {
-	applyOnClose.value = true;
-	closePopover();
+const calendarPlaceholder = shallowRef<DateValue>(
+	props.placeholder ??
+		getTodayDateValue({
+			granularity: props.showTime ? (props.granularity ?? 'minute') : props.granularity,
+		}),
+);
+
+function setOpen(open: boolean) {
+	isOpen.value = open;
+	emit('update:open', open);
 }
 
-/** Close without committing (outside click / Escape / footer close). */
+function applyAndClose() {
+	applyOnClose.value = true;
+	setOpen(false);
+}
+
 function dismissPopover() {
 	applyOnClose.value = false;
-	closePopover();
+	setOpen(false);
+}
+
+function goToToday() {
+	const todayDate = getTodayDateValue({
+		granularity: getEffectiveGranularity(),
+	});
+
+	calendarPlaceholder.value = todayDate.copy();
+
+	if (
+		!isDateSelectable(todayDate, {
+			minValue: props.minValue,
+			maxValue: props.maxValue,
+			isDateUnavailable: props.isDateUnavailable,
+		})
+	) {
+		return;
+	}
+
+	const { start: previousStart, end: previousEnd } = draftRange.value;
+	const nextStart = props.showTime
+		? mergeDatePreservingTime(todayDate, previousStart)
+		: todayDate.copy();
+	const nextEnd = props.showTime
+		? mergeDatePreservingTime(todayDate, previousEnd ?? previousStart)
+		: todayDate.copy();
+
+	draftRange.value = { start: nextStart, end: nextEnd };
+
+	void nextTick(() => {
+		calendarPlaceholder.value = todayDate.copy();
+	});
 }
 
 function onDraftUpdate(value: DateRange) {
@@ -124,35 +178,68 @@ function onDraftUpdate(value: DateRange) {
 	}
 
 	if (props.single && start) {
-		end = start.copy();
+		const nextStart = start.copy();
+		// Complete immediately when the calendar already gave us a same-day range.
+		if (end && nextStart.compare(end) === 0) {
+			draftRange.value = { start: nextStart, end: nextStart.copy() };
+			return;
+		}
+
+		// reka-ui clears `endValue` on the next click while keeping the previous
+		// complete range as the modelValue watcher's "prev". That watcher only
+		// assigns `endValue` when prev had no end, so a one-shot { start, end }
+		// update leaves endValue unset and hover shows a range preview.
+		// Force an incomplete → complete transition so endValue syncs.
+		draftRange.value = { start: nextStart, end: undefined };
+		void nextTick(() => {
+			draftRange.value = { start: nextStart.copy(), end: nextStart.copy() };
+		});
+		return;
 	}
 
 	draftRange.value = { start, end };
 }
 
-const forwarded = useForwardPropsEmits(
-	reactiveOmit(props, ['modelValue', 'defaultValue']),
-	(event, ...args) => {
-		if (event === 'update:modelValue') {
-			onDraftUpdate(args[0] as DateRange);
-			return;
-		}
+function onOpenUpdate(value: boolean) {
+	isOpen.value = value;
+	emit('update:open', value);
+}
 
-		emit(event, ...args);
-	},
+function onPlaceholderUpdate(date: DateValue) {
+	calendarPlaceholder.value = date.copy();
+	emit('update:placeholder', date);
+}
+
+function onStartValueUpdate(date: DateValue | undefined) {
+	emit('update:startValue', date);
+}
+
+const forwarded = useForwardProps(
+	reactiveOmit(props, [
+		'modelValue',
+		'defaultValue',
+		'open',
+		'defaultOpen',
+		'placeholder',
+		'defaultPlaceholder',
+		'presets',
+		'hideInputs',
+		'hideToday',
+		'single',
+		'showTime',
+		'hourCycle',
+	]),
 );
-const rekaRoot = shallowRef<DateRangePickerRekaRoot | null>(null);
-const showInputs = computed(() => !props.hideInputs);
-const hourCycle = computed<DatePickerHourCycle>(() => (props.hourCycle === 12 ? 12 : 24));
-const effectiveGranularity = computed(() => {
+
+function getEffectiveGranularity() {
 	if (props.showTime) return props.granularity ?? 'minute';
 	return props.granularity;
-});
+}
+
 provide(N8N_DATE_RANGE_PICKER_CONTEXT, {
 	single: toRef(props, 'single'),
 	showTime: toRef(props, 'showTime'),
-	hourCycle,
-	rekaRoot,
+	hourCycle: toRef(props, 'hourCycle'),
 });
 
 watch(
@@ -165,153 +252,211 @@ watch(
 );
 
 watch(
-	() => rekaRoot.value?.open.value,
-	(isOpen, wasOpen) => {
-		const rootContext = rekaRoot.value;
-		if (!rootContext) return;
-
-		if (!isOpen) {
-			if (wasOpen !== true) return;
-
-			if (applyOnClose.value) {
-				const applied = copyRange(draftRange.value);
-				if (props.modelValue === undefined) {
-					uncontrolledValue.value = applied;
-				}
-				emit('update:modelValue', applied);
-				applyOnClose.value = false;
-			} else {
-				draftRange.value = getCommittedRange();
-			}
-
-			return;
-		}
-
-		applyOnClose.value = false;
-		draftRange.value = getCommittedRange();
-
-		if (!isEmptyDateRange(draftRange.value)) {
-			const start = draftRange.value.start;
-			if (start) {
-				rootContext.onPlaceholderChange(start.copy());
-			}
-			return;
-		}
-
-		const todayRange = createTodayRange({
-			granularity: rootContext.granularity.value,
-			referenceStart: draftRange.value.start,
-			minValue: rootContext.minValue.value,
-			maxValue: rootContext.maxValue.value,
-			isDateUnavailable: rootContext.isDateUnavailable,
-		});
-
-		if (!todayRange) return;
-
-		draftRange.value = {
-			start: todayRange.start.copy(),
-			end: todayRange.end.copy(),
-		};
-		rootContext.onPlaceholderChange(todayRange.start.copy());
+	() => props.open,
+	(value) => {
+		if (value === undefined) return;
+		isOpen.value = value;
 	},
 );
+
+watch(isOpen, (open, wasOpen) => {
+	if (!open) {
+		if (wasOpen !== true) return;
+
+		if (applyOnClose.value) {
+			const applied = copyRange(draftRange.value);
+			if (props.modelValue === undefined) {
+				uncontrolledValue.value = applied;
+			}
+			emit('update:modelValue', applied);
+			applyOnClose.value = false;
+		} else {
+			draftRange.value = getCommittedRange();
+		}
+
+		return;
+	}
+
+	applyOnClose.value = false;
+	draftRange.value = getCommittedRange();
+
+	if (!isEmptyDateRange(draftRange.value)) {
+		const start = draftRange.value.start;
+		if (start) {
+			calendarPlaceholder.value = start.copy();
+		}
+		return;
+	}
+
+	const todayRange = createTodayRange({
+		granularity: getEffectiveGranularity(),
+		referenceStart: draftRange.value.start,
+		minValue: props.minValue,
+		maxValue: props.maxValue,
+		isDateUnavailable: props.isDateUnavailable,
+	});
+
+	if (!todayRange) return;
+
+	draftRange.value = {
+		start: todayRange.start.copy(),
+		end: todayRange.end.copy(),
+	};
+	calendarPlaceholder.value = todayRange.start.copy();
+});
 </script>
 
 <template>
 	<DateRangePickerRoot
 		v-bind="forwarded"
+		:open="isOpen"
+		:placeholder="calendarPlaceholder"
 		:model-value="draftRange"
-		:granularity="effectiveGranularity"
+		:granularity="getEffectiveGranularity()"
 		prevent-deselect
+		@update:model-value="onDraftUpdate"
+		@update:open="onOpenUpdate"
+		@update:placeholder="onPlaceholderUpdate"
+		@update:start-value="onStartValueUpdate"
 	>
-		<DateRangePickerRekaBridge />
 		<DateRangePickerTrigger as-child>
 			<slot name="trigger">
 				<IconButton variant="subtle" icon="calendar" aria-label="Open calendar" />
 			</slot>
 		</DateRangePickerTrigger>
 
-		<DateRangePickerContent align="start" :side-offset="5" :class="$style.PopoverContent">
-			<DateRangePickerCalendar v-slot="{ weekDays, grid }" :class="$style.Calendar">
+		<DateRangePickerContent
+			align="start"
+			:side-offset="5"
+			:class="$style.PopoverContent"
+			@open-auto-focus="onOpenAutoFocus"
+		>
+			<DateRangePickerCalendar v-slot="{ weekDays, grid }">
 				<div :class="$style.PopoverInner">
-					<div v-if="$slots.presets" :class="$style.Presets">
-						<slot name="presets" />
-					</div>
-
-					<div v-if="showInputs" :class="$style.DateFieldWrapper">
-						<N8nDateRangePickerField />
-					</div>
-
-					<DateRangePickerHeader :class="$style.CalendarHeader">
-						<DateRangePickerHeading :class="$style.CalendarHeading" v-slot="{ headingValue }">
-							{{
-								formatMonthYearHeading(
-									grid.map((month) => month.value),
-									props.locale,
-								) || headingValue
-							}}
-						</DateRangePickerHeading>
-						<div :class="$style.CalendarHeaderActions">
-							<N8nDateRangePickerTodayButton />
-							<div :class="$style.CalendarPageNavigation">
-								<DateRangePickerPrev as-child>
-									<IconButton icon="chevron-left" variant="ghost" size="small" icon-size="large" />
-								</DateRangePickerPrev>
-								<DateRangePickerNext as-child>
-									<IconButton icon="chevron-right" variant="ghost" size="small" icon-size="large" />
-								</DateRangePickerNext>
-							</div>
-						</div>
-					</DateRangePickerHeader>
-
-					<DateRangePickerGrid
-						v-for="month in grid"
-						:key="month.value.toString()"
-						:class="$style.CalendarGrid"
-					>
-						<DateRangePickerGridHead>
-							<DateRangePickerGridRow :class="[$style.CalendarGridRow, $style.CalendarGridHeadRow]">
-								<DateRangePickerHeadCell
-									v-for="day in weekDays"
-									:key="day"
-									:class="$style.CalendarHeadCell"
-								>
-									{{ day.slice(0, 2) }}
-								</DateRangePickerHeadCell>
-							</DateRangePickerGridRow>
-						</DateRangePickerGridHead>
-						<DateRangePickerGridBody>
-							<DateRangePickerGridRow
-								v-for="(weekDates, index) in month.rows"
-								:key="`weekDate-${index}`"
-								:class="$style.CalendarGridRow"
-							>
-								<DateRangePickerCell
-									v-for="weekDate in weekDates"
-									:key="weekDate.toString()"
-									:date="weekDate"
-									:class="$style.CalendarCell"
-								>
-									<DateRangePickerCellTrigger
-										:day="weekDate"
-										:month="month.value"
-										:class="$style.CalendarCellTrigger"
-									/>
-								</DateRangePickerCell>
-							</DateRangePickerGridRow>
-						</DateRangePickerGridBody>
-					</DateRangePickerGrid>
-
-					<div v-if="showInputs" :class="$style.FooterWrapper">
-						<slot name="footer" :apply="applyAndClose" :close="dismissPopover">
-							<N8nButton
-								variant="subtle"
-								size="small"
-								label="Apply"
-								:class="$style.FooterButton"
-								@click="applyAndClose"
+					<div v-if="hasPresetsSidebar()" ref="presetsContainerRef" :class="$style.Presets">
+						<slot name="presets">
+							<DateRangePickerPresets
+								v-if="presets?.length"
+								:presets="presets"
+								@select="onPresetSelect"
 							/>
 						</slot>
+					</div>
+
+					<div :class="[$style.CalendarPanel, props.single && $style.CalendarPanelSingle]">
+						<div
+							v-if="!hideInputs"
+							:class="[
+								$style.DateFields,
+								(props.single || props.showTime) && $style.DateFieldsStacked,
+							]"
+						>
+							<DateRangePickerDateTimeField
+								type="start"
+								:date-label="
+									props.single ? t('dateRangePicker.date') : t('dateRangePicker.startDate')
+								"
+								:time-label="
+									props.single ? t('dateRangePicker.time') : t('dateRangePicker.startTime')
+								"
+							/>
+							<DateRangePickerDateTimeField
+								v-if="!props.single"
+								type="end"
+								:date-label="t('dateRangePicker.endDate')"
+								:time-label="t('dateRangePicker.endTime')"
+							/>
+						</div>
+
+						<DateRangePickerHeader :class="$style.CalendarHeader">
+							<DateRangePickerHeading :class="$style.CalendarHeading" v-slot="{ headingValue }">
+								{{
+									formatMonthYearHeading(
+										grid.map((month) => month.value),
+										props.locale,
+									) || headingValue
+								}}
+							</DateRangePickerHeading>
+							<div :class="$style.CalendarHeaderActions">
+								<N8nButton
+									v-if="!hideToday"
+									variant="ghost"
+									size="small"
+									label="Today"
+									@click="goToToday"
+								/>
+								<div :class="$style.CalendarPageNavigation">
+									<DateRangePickerPrev as-child>
+										<IconButton
+											icon="chevron-left"
+											variant="ghost"
+											size="small"
+											icon-size="large"
+										/>
+									</DateRangePickerPrev>
+									<DateRangePickerNext as-child>
+										<IconButton
+											icon="chevron-right"
+											variant="ghost"
+											size="small"
+											icon-size="large"
+										/>
+									</DateRangePickerNext>
+								</div>
+							</div>
+						</DateRangePickerHeader>
+
+						<DateRangePickerGrid
+							v-for="month in grid"
+							:key="month.value.toString()"
+							:class="$style.CalendarGrid"
+						>
+							<DateRangePickerGridHead>
+								<DateRangePickerGridRow
+									:class="[$style.CalendarGridRow, $style.CalendarGridHeadRow]"
+								>
+									<DateRangePickerHeadCell
+										v-for="day in weekDays"
+										:key="day"
+										:class="$style.CalendarHeadCell"
+									>
+										{{ day.slice(0, 2) }}
+									</DateRangePickerHeadCell>
+								</DateRangePickerGridRow>
+							</DateRangePickerGridHead>
+							<DateRangePickerGridBody>
+								<DateRangePickerGridRow
+									v-for="(weekDates, index) in month.rows"
+									:key="`weekDate-${index}`"
+									:class="$style.CalendarGridRow"
+								>
+									<DateRangePickerCell
+										v-for="weekDate in weekDates"
+										:key="weekDate.toString()"
+										:date="weekDate"
+										:class="$style.CalendarCell"
+									>
+										<DateRangePickerCellTrigger
+											:day="weekDate"
+											:month="month.value"
+											:class="$style.CalendarCellTrigger"
+										/>
+									</DateRangePickerCell>
+								</DateRangePickerGridRow>
+							</DateRangePickerGridBody>
+						</DateRangePickerGrid>
+
+						<div v-if="!hideInputs" :class="$style.FooterWrapper">
+							<slot name="footer" :apply="applyAndClose" :close="dismissPopover">
+								<N8nButton
+									variant="subtle"
+									size="small"
+									label="Apply"
+									:class="$style.FooterButton"
+									@click="applyAndClose"
+								/>
+							</slot>
+						</div>
 					</div>
 				</div>
 			</DateRangePickerCalendar>
@@ -320,15 +465,19 @@ watch(
 </template>
 
 <style lang="css" module>
-.DateFieldWrapper {
-	width: 100%;
+.DateFields {
+	display: flex;
+	gap: var(--spacing--4xs);
+	width: 0;
+	min-width: 100%;
 	margin-bottom: var(--spacing--2xs);
 }
 
+.DateFieldsStacked {
+	flex-direction: column;
+}
+
 .FooterWrapper {
-	width: 100%;
-	padding-top: var(--spacing--2xs);
-	margin-top: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
@@ -338,15 +487,12 @@ watch(
 	width: 100%;
 }
 
-.Calendar {
-	display: flex;
-}
-
 .CalendarHeader {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .CalendarHeading {
@@ -362,7 +508,7 @@ watch(
 }
 
 .CalendarGrid {
-	width: 100%;
+	width: fit-content;
 	user-select: none;
 	border-collapse: collapse;
 }
@@ -373,10 +519,6 @@ watch(
 	column-gap: var(--date-range-picker--cell-gap);
 	grid-template-columns: repeat(7, var(--date-range-picker--cell-size));
 	width: fit-content;
-}
-
-.CalendarGridHeadRow {
-	margin-bottom: 0;
 }
 
 .CalendarHeadCell {
@@ -400,23 +542,15 @@ watch(
 
 .CalendarCellTrigger {
 	display: flex;
-	box-sizing: border-box;
 	width: 100%;
 	height: 100%;
 	position: relative;
 	z-index: 1;
-	padding: 0;
 	justify-content: center;
 	align-items: center;
-	border: none;
-	outline: none;
 	font-weight: var(--font-weight--regular);
 	white-space: nowrap;
-	background-color: transparent;
 	font-size: var(--font-size--xs);
-	font-style: normal;
-	line-height: normal;
-	color: var(--text-color);
 	border-radius: var(--radius--2xs);
 	cursor: pointer;
 }
@@ -441,7 +575,6 @@ watch(
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	/* Bridge the column gap so the range fill stays continuous. */
 	left: calc(var(--date-range-picker--cell-gap) / -2);
 	right: calc(var(--date-range-picker--cell-gap) / -2);
 	z-index: 0;
@@ -449,7 +582,6 @@ watch(
 	border-radius: 0;
 }
 
-/* Round / clip the first cell in each row segment (not range endpoints — those half-bleed). */
 .CalendarCell:has([data-selected='true']):not(
 		.CalendarCell:has([data-selected='true']) + .CalendarCell:has([data-selected='true'])
 	):not(:has([data-selection-start='true']:not([data-selection-end='true'])))::before,
@@ -461,7 +593,6 @@ watch(
 	border-bottom-left-radius: var(--radius--2xs);
 }
 
-/* Round / clip the last cell in each row segment (not range endpoints — those half-bleed). */
 .CalendarCell:has([data-selected='true']):not(:has(+ .CalendarCell [data-selected='true'])):not(
 		:has([data-selection-end='true']:not([data-selection-start='true']))
 	):not(:has([data-selection-start='true']:not([data-selection-end='true'])))::before,
@@ -473,12 +604,6 @@ watch(
 	border-bottom-right-radius: var(--radius--2xs);
 }
 
-/*
- * Bleed the range band under half of the start/end cell so it meets the
- * endpoint fill across the column gap instead of stopping at the cell edge.
- * While the end date is still being chosen, start is the only `data-selected`
- * cell — the rules above explicitly skip it so this bleed can keep the gap filled.
- */
 .CalendarCell:has([data-selection-start='true']:not([data-selection-end='true']))::before,
 .CalendarCell:has([data-highlighted-start='true']:not([data-highlighted-end='true']))::before {
 	left: 50%;
@@ -518,7 +643,6 @@ watch(
 	color: var(--color--neutral-white);
 }
 
-/* Orange today marker sits inside the cell so the cell/hover ring stay square. */
 .CalendarCellTrigger[data-today]:not([data-selection-start='true']):not(
 		[data-selection-end='true']
 	):not([data-selected='true'])::before {
@@ -531,7 +655,6 @@ watch(
 	pointer-events: none;
 }
 
-/* Hover: light purple fill + purple ring (selected endpoints keep their deep fill). */
 .CalendarCellTrigger:hover:not([data-disabled]):not([data-selection-start='true']):not(
 		[data-selection-end='true']
 	) {
@@ -544,7 +667,6 @@ watch(
 	box-shadow: inset 0 0 0 2px var(--color--purple-500);
 }
 
-/* reka-ui marks the month placeholder with data-focused — not a selection. */
 .CalendarCellTrigger[data-focused]:not(:focus-visible):not([data-selection-start='true']):not(
 		[data-selection-end='true']
 	):not([data-selected='true']):not([data-today]):not(:hover) {
@@ -564,7 +686,7 @@ watch(
 	--date-range-picker--cell-size: var(--spacing--xl);
 	--date-range-picker--cell-gap: var(--spacing--5xs);
 	border-radius: var(--radius--2xs);
-	padding: var(--spacing--xs);
+	padding: 0;
 	border: var(--border);
 	background: var(--background--surface);
 	box-shadow: var(--shadow--sm);
@@ -576,7 +698,32 @@ watch(
 }
 
 .PopoverInner {
-	width: calc(7 * var(--date-range-picker--cell-size) + 6 * var(--date-range-picker--cell-gap));
+	display: flex;
+	align-items: stretch;
+	width: fit-content;
+}
+
+.CalendarPanel {
+	display: flex;
+	flex-direction: column;
+	width: fit-content;
+	padding: var(--spacing--xs);
+}
+
+/* Single-date mode should never show a range hover preview. */
+.CalendarPanelSingle .CalendarCell:has([data-highlighted])::before {
+	display: none;
+}
+
+.CalendarPanelSingle
+	.CalendarCellTrigger[data-highlighted-start='true']:not([data-selection-start='true']):not(
+		[data-selection-end='true']
+	),
+.CalendarPanelSingle
+	.CalendarCellTrigger[data-highlighted-end='true']:not([data-selection-start='true']):not(
+		[data-selection-end='true']
+	) {
+	background-color: transparent;
 }
 
 .PopoverContent[data-state='open'][data-side='top'] {
@@ -595,9 +742,11 @@ watch(
 .Presets {
 	display: flex;
 	flex-direction: column;
+	flex-shrink: 0;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--xs);
 	border-right: var(--border);
+	width: 10rem;
 }
 
 @keyframes slideUpAndFade {

@@ -472,6 +472,24 @@ describe('N8nDateRangePicker', () => {
 		});
 	});
 
+	describe('hideToday prop', () => {
+		it('should render the Today button by default', async () => {
+			const { container, getByRole } = render(DateRangePicker);
+			await openCalendarPopover(container);
+
+			expect(getByRole('button', { name: 'Today' })).toBeVisible();
+		});
+
+		it('should not render the Today button when hideToday is true', async () => {
+			const { container, queryByRole } = render(DateRangePicker, {
+				props: { hideToday: true },
+			});
+			await openCalendarPopover(container);
+
+			expect(queryByRole('button', { name: 'Today' })).not.toBeInTheDocument();
+		});
+	});
+
 	describe('single prop', () => {
 		it('should render a single date input when single is true', async () => {
 			const { container, queryByLabelText, getByLabelText } = render(DateRangePicker, {
@@ -494,15 +512,57 @@ describe('N8nDateRangePicker', () => {
 			const tomorrow = todayDate.add({ days: 1 });
 
 			await clickCalendarDay(popover, tomorrow);
+			await nextTick();
 			await applySelection(getByRole);
 
 			const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 			expect(lastUpdate?.start?.compare(tomorrow)).toBe(0);
 			expect(lastUpdate?.end?.compare(tomorrow)).toBe(0);
 		});
+
+		it('does not preview a range when hovering other days after selecting', async () => {
+			const { container } = render(DateRangePicker, {
+				props: { single: true },
+			});
+			const popover = await openCalendarPopover(container);
+
+			const todayDate = today(getLocalTimeZone());
+			const selected = todayDate.add({ days: 2 });
+			const pastDay = selected.subtract({ days: 3 });
+
+			await clickCalendarDay(popover, selected);
+			await nextTick();
+
+			const pastCell = popover.querySelector(
+				`[data-reka-calendar-cell-trigger][data-value="${pastDay.toString()}"]`,
+			) as HTMLElement | null;
+			expect(pastCell).toBeTruthy();
+			pastCell?.focus();
+			await nextTick();
+
+			expect(popover.querySelectorAll('[data-highlighted]')).toHaveLength(0);
+		});
 	});
 
-	describe('presets slot', () => {
+	describe('presets', () => {
+		it('should render preset buttons when provided via the presets prop', async () => {
+			const { container, getByRole, emitted } = render(DateRangePicker, {
+				props: {
+					presets: [
+						{ value: '7d', label: 'Last 7 days' },
+						{ value: '30d', label: 'Last 30 days' },
+					],
+				},
+			});
+			await openCalendarPopover(container);
+
+			const presetButton = getByRole('button', { name: 'Last 7 days' });
+			expect(presetButton).toBeVisible();
+
+			await userEvent.click(presetButton);
+			expect(emitted().select).toEqual([['7d']]);
+		});
+
 		it('should render preset buttons when provided via the presets slot', async () => {
 			const { container, getByText } = render(DateRangePicker, {
 				slots: {

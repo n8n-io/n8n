@@ -1,11 +1,11 @@
 import { CalendarDateTime, today } from '@internationalized/date';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import N8nButton from '../N8nButton';
 import DateRangePicker from './DateRangePicker.vue';
 import { formatDateRangeValue, formatDateValue } from './datePicker.utils';
-import type { DateRange } from './index';
+import type { DateRange, N8nDateRangePickerPreset } from './index';
 
 const meta = {
 	component: DateRangePicker,
@@ -138,6 +138,99 @@ export const FormattedTrigger: Story = {
 		},
 		template: `
 			<DateRangePicker v-model="range" locale="en-GB">
+				<template #trigger>
+					<N8nButton variant="subtle" icon="calendar">
+						{{ formatDateRangeValue(range, { locale: 'en-GB' }) || 'Select range' }}
+					</N8nButton>
+				</template>
+			</DateRangePicker>
+		`,
+	}),
+};
+
+export const Presets: Story = {
+	render: () => ({
+		components: { DateRangePicker, N8nButton },
+		setup() {
+			const todayDate = today('UTC');
+			const open = ref(false);
+			const range = ref<DateRange>({
+				start: todayDate.subtract({ days: 7 }),
+				end: todayDate.copy(),
+			});
+
+			const presetRanges: Record<string, DateRange> = {
+				today: { start: todayDate.copy(), end: todayDate.copy() },
+				'7d': {
+					start: todayDate.subtract({ days: 7 }),
+					end: todayDate.copy(),
+				},
+				'30d': {
+					start: todayDate.subtract({ days: 30 }),
+					end: todayDate.copy(),
+				},
+				'90d': {
+					start: todayDate.subtract({ days: 90 }),
+					end: todayDate.copy(),
+				},
+			};
+
+			function isActivePreset(presetRange: DateRange) {
+				if (!range.value.start || !range.value.end || !presetRange.start || !presetRange.end) {
+					return false;
+				}
+
+				return (
+					range.value.start.compare(presetRange.start) === 0 &&
+					range.value.end.compare(presetRange.end) === 0
+				);
+			}
+
+			const presets = computed<N8nDateRangePickerPreset[]>(() => [
+				{ value: 'today', label: 'Today', active: isActivePreset(presetRanges.today) },
+				{ value: '7d', label: 'Last 7 days', active: isActivePreset(presetRanges['7d']) },
+				{
+					value: '30d',
+					label: 'Last 30 days',
+					active: isActivePreset(presetRanges['30d']),
+					icon: 'lock',
+				},
+				{
+					value: '90d',
+					label: 'Last 90 days',
+					active: isActivePreset(presetRanges['90d']),
+					disabled: true,
+				},
+			]);
+
+			function applyPreset(value: string | number) {
+				const presetRange = presetRanges[String(value)];
+				if (!presetRange) return;
+
+				range.value = {
+					start: presetRange.start?.copy(),
+					end: presetRange.end?.copy(),
+				};
+				open.value = false;
+			}
+
+			return {
+				open,
+				range,
+				presets,
+				applyPreset,
+				formatDateRangeValue,
+			};
+		},
+		template: `
+			<DateRangePicker
+				v-model="range"
+				v-model:open="open"
+				:presets="presets"
+				hide-today
+				locale="en-GB"
+				@select="applyPreset"
+			>
 				<template #trigger>
 					<N8nButton variant="subtle" icon="calendar">
 						{{ formatDateRangeValue(range, { locale: 'en-GB' }) || 'Select range' }}

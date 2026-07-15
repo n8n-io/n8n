@@ -217,4 +217,13 @@ export default {
 	'aiAssistant.versionCard.restoreModal.days': '{count} days',
 	'aiAssistant.versionCard.restoreModal.showVersion': 'Show version',
 	'aiAssistant.versionCard.restoreModal.restore': 'Restore',
+	'dateRangePicker.invalidDate': 'Invalid date',
+	'dateRangePicker.outsideRange': 'Outside of allowed range',
+	'dateRangePicker.date': 'Date',
+	'dateRangePicker.time': 'Time',
+	'dateRangePicker.startDate': 'Start date',
+	'dateRangePicker.startTime': 'Start time',
+	'dateRangePicker.endDate': 'End date',
+	'dateRangePicker.endTime': 'End time',
+	'dateRangePicker.presets': 'Presets',
 } as N8nLocale;
