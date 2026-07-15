@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -87,16 +87,15 @@ describe('AiInsightsCard', () => {
 		expect(container.textContent).toContain('Try C');
 	});
 
-	it('re-fires the endpoint with forceRegenerate when Regenerate is clicked', async () => {
+	it('uses cached insights without a manual regenerate affordance', async () => {
 		store.$patch({ insightsByCollectionId: { 'col-1': INSIGHTS } });
-		const { getByTestId } = renderComponent();
+		const { container, queryByTestId } = renderComponent();
 
-		// cached → no mount fetch
-		await waitFor(() => expect(getByTestId('compare-ai-insights-regenerate')).toBeTruthy());
+		// cached → renders without a mount fetch
+		await waitFor(() => expect(container.textContent).toContain('B wins'));
 		expect(store.generateInsights).not.toHaveBeenCalled();
-
-		await fireEvent.click(getByTestId('compare-ai-insights-regenerate'));
-		expect(store.generateInsights).toHaveBeenCalledWith('wf-1', 'col-1', true);
+		// no on-demand regeneration is exposed
+		expect(queryByTestId('compare-ai-insights-regenerate')).toBeNull();
 	});
 
 	it('shows the error state when generation fails', async () => {

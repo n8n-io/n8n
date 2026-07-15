@@ -71,15 +71,6 @@ onMounted(async () => {
 					}}
 				</N8nText>
 			</div>
-			<N8nButton
-				variant="ghost"
-				size="small"
-				icon="refresh-cw"
-				:loading="loading"
-				:label="i18n.baseText('evaluation.compare.insights.regenerate')"
-				data-test-id="compare-ai-insights-regenerate"
-				@click="load(true)"
-			/>
 		</header>
 
 		<div v-if="loading" :class="$style.takeaways" data-test-id="compare-ai-insights-loading">
