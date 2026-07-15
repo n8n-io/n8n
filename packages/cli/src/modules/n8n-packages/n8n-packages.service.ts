@@ -15,8 +15,8 @@ import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
+import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
-import type { WorkflowWorkflowRequirement } from './entities/workflow/workflow.types';
 import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
@@ -28,9 +28,9 @@ import {
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
 import {
+	packageManifestSchema,
 	type ManifestEntry,
 	type PackageManifest,
-	packageManifestSchema,
 } from './spec/manifest.schema';
 import type { PackageRequirements } from './spec/requirements.schema';
 
@@ -42,6 +42,7 @@ export class N8nPackagesService {
 		private readonly folderExporter: FolderExporter,
 		private readonly credentialExporter: CredentialExporter,
 		private readonly dataTableExporter: DataTableExporter,
+		private readonly workflowRequirementExporter: WorkflowRequirementExporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly packageParser: N8nPackageParser,
 		private readonly packageImportConfig: PackageImportConfig,
@@ -136,11 +137,15 @@ export class N8nPackagesService {
 			projectTargetsById: projectExportResult?.projectTargetsById,
 		});
 
+		const workflowRequirementExportResult = this.workflowRequirementExporter.export({
+			requirements: requirements.workflows,
+			workflows: allWorkflowsInPackage,
+		});
+
 		const manifestRequirements = this.buildManifestRequirements({
 			credentials: credentialExportResult.requirements,
 			dataTables: dataTableExportResult.requirements,
-			workflows: requirements.workflows,
-			allWorkflowsInPackage,
+			workflows: workflowRequirementExportResult.requirements,
 		});
 
 		const manifest = packageManifestSchema.parse({
@@ -200,46 +205,16 @@ export class N8nPackagesService {
 	private buildManifestRequirements(input: {
 		credentials: PackageRequirements['credentials'];
 		dataTables: PackageRequirements['dataTables'];
-		workflows: WorkflowWorkflowRequirement[];
-		allWorkflowsInPackage: ManifestEntry[];
+		workflows: PackageRequirements['workflows'];
 	}): PackageRequirements | undefined {
-		const { credentials, dataTables, workflows, allWorkflowsInPackage } = input;
+		const { credentials, dataTables, workflows } = input;
 
-		const workflowRequirements = this.buildManifestWorkflowRequirements(
-			workflows,
-			allWorkflowsInPackage,
-		);
 		const requirements: PackageRequirements = {
 			...(credentials?.length ? { credentials } : {}),
 			...(dataTables?.length ? { dataTables } : {}),
-			...(workflowRequirements.length ? { workflows: workflowRequirements } : {}),
+			...(workflows?.length ? { workflows } : {}),
 		};
 		return Object.keys(requirements).length > 0 ? requirements : undefined;
-	}
-
-	private buildManifestWorkflowRequirements(
-		requirements: WorkflowWorkflowRequirement[],
-		allWorkflowsInPackage: ManifestEntry[],
-	): NonNullable<PackageRequirements['workflows']> {
-		const workflowsById = new Map(allWorkflowsInPackage.map((workflow) => [workflow.id, workflow]));
-		const usedByWorkflowsByReferencedId = new Map<string, string[]>();
-
-		for (const requirement of requirements) {
-			const usedByWorkflows =
-				usedByWorkflowsByReferencedId.get(requirement.referencedWorkflowId) ?? [];
-
-			if (!usedByWorkflows.includes(requirement.workflowId)) {
-				usedByWorkflows.push(requirement.workflowId);
-			}
-
-			usedByWorkflowsByReferencedId.set(requirement.referencedWorkflowId, usedByWorkflows);
-		}
-
-		return [...usedByWorkflowsByReferencedId].map(([referencedWorkflowId, usedByWorkflows]) => ({
-			id: referencedWorkflowId,
-			name: workflowsById.get(referencedWorkflowId)?.name ?? '',
-			usedByWorkflows,
-		}));
 	}
 }
 

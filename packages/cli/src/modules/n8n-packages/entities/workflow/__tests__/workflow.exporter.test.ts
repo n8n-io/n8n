@@ -13,6 +13,7 @@ import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
 } from '../../package-export.errors';
+import { WorkflowRequirementsExtractor } from '../workflow-requirements.extractor';
 import { WorkflowExporter } from '../workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
 import type { WorkflowWorkflowRequirement } from '../workflow.types';
@@ -38,6 +39,7 @@ function makeExporter(
 	returned: WorkflowEntity[],
 	credentialExtractor?: CredentialRequirementsExtractor,
 	dataTableExtractor?: DataTableRequirementsExtractor,
+	workflowExtractor?: WorkflowRequirementsExtractor,
 ) {
 	const finder = mock<WorkflowFinderService>();
 	finder.findWorkflowsByIdsForUser.mockResolvedValue(returned);
@@ -47,6 +49,7 @@ function makeExporter(
 		new WorkflowSerializer(),
 		credentialExtractor ?? new CredentialRequirementsExtractor(),
 		dataTableExtractor ?? new DataTableRequirementsExtractor(),
+		workflowExtractor ?? new WorkflowRequirementsExtractor(),
 	);
 	return { exporter, finder };
 }
