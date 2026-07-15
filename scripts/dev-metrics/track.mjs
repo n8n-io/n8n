@@ -21,9 +21,11 @@
  *   N8N_DEV_TRACK_CODE  exit code
  *   N8N_DEV_TRACK_CWD   directory the command ran in
  *
- * Each argv entry is sent as `args` (an array, boundaries preserved), truncated
- * to 16 chars unless it looks like a path (see clampArg), which caps accidental
- * secret leakage while keeping subcommands/flags/paths readable.
+ * The argv is sent as `args` (an array, boundaries preserved) after sanitizing:
+ * on the first secret-carrying word (`config`, `login`, …) — a subcommand or an
+ * inline flag like `--config.x=SECRET` — the arg is kept up to the word plus a
+ * short hint and everything after is dropped. The home dir is replaced with `~`
+ * so paths don't de-anonymize the developer.
  * `dir` is repo-relative. Errors are swallowed so tracking never disrupts a workflow.
  */
 // n8n-track-version: 1 — bump on change; setup.mjs never downgrades the installed copy.
@@ -186,10 +188,38 @@ async function sendEvent(event, anonymousId, properties) {
 	});
 }
 
-/** Truncate an argv entry to 16 chars, but keep path-like values (contain `/`)
- * whole — paths like `--filter=packages/cli` or `./scripts/x` stay analyzable. */
-function clampArg(arg) {
-	return arg.includes('/') ? arg : arg.slice(0, 16);
+// Words whose arguments/values can carry secrets (registry tokens, auth config).
+// Matched as a prefix (leading dashes ignored) so both the positional subcommand
+// `pnpm config set …` and the inline flag `pnpm i --config.//…=SECRET` are caught.
+const REDACTED_SUBCOMMANDS = ['config', 'login', 'publish', 'token'];
+
+// Chars kept after a sensitive word as a hint of what follows. A short secret
+// prefix can leak (e.g. `--token=abc…`) — accepted for the diagnostic hint.
+const HINT_CHARS = 4;
+
+/** Sanitize argv before sending. On the first arg containing a sensitive word
+ * (prefix match, leading dashes ignored) — whether a positional subcommand
+ * `config` or an inline flag `--config.x=SECRET` — keep that arg up to the word
+ * plus up to HINT_CHARS more, then drop everything after. Also replace the home
+ * dir with `~` so absolute paths don't identify the user.
+ * ponytail: prefix match over-redacts an arg merely starting with a word (e.g. a
+ * `configure` script) — losing those args is the safe failure. */
+function sanitizeArgs(args) {
+	const home = homedir();
+	const strip = (a) => (home ? a.replaceAll(home, '~') : a);
+	const out = [];
+	for (const arg of args) {
+		const bare = arg.replace(/^-+/, ''); // ignore leading dashes when matching
+		const word = REDACTED_SUBCOMMANDS.find((w) => bare.startsWith(w));
+		if (!word) {
+			out.push(strip(arg));
+			continue;
+		}
+		const end = arg.length - bare.length + word.length; // through the matched word
+		out.push(arg.slice(0, end + HINT_CHARS));
+		return out; // stop — drop everything after the sensitive word
+	}
+	return out;
 }
 
 async function main() {
@@ -230,7 +260,7 @@ async function main() {
 		actor: detectActor(),
 		binary,
 		binary_version: binaryVersion,
-		args: process.argv.slice(2).map(clampArg), // truncated unless path-like (clampArg)
+		args: sanitizeArgs(process.argv.slice(2)), // redacted/home-stripped (sanitizeArgs)
 		dir,
 		duration_ms: Number.isFinite(durationMs) ? durationMs : null,
 		exit_code: Number.isFinite(exitCode) ? exitCode : null,

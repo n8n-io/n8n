@@ -72,11 +72,16 @@ Event `dev:cli_command` with `anonymousId` = the weekly anonymous id, and:
 | `os_version` | `macOS 14.6.1`, `Ubuntu 22.04` | Friendly OS version where cheap; kernel release otherwise. |
 | `node_version`, `repo_version`, `schema_version` | | For segmenting. |
 
-**Sent:** the raw argv (`args`), plus the repo-relative `dir`, binary + version,
-timing, exit code, OS, and a static machine profile (CPU/RAM/OS version — none of
-it identifying). **Never sent:** git email, username, absolute paths as a field
-(the `dir` is repo-relative). Since `args` is verbatim, anything typed on the
-command line is transmitted as-is — scrub/aggregate on the collection side.
+**Sent:** the sanitized argv (`args`), plus the repo-relative `dir`, binary +
+version, timing, exit code, OS, and a static machine profile (CPU/RAM/OS version —
+none of it identifying). **Never sent:** git email, username, absolute paths as a
+field (the `dir` is repo-relative). `args` is sanitized before sending: for
+the first secret-carrying word (`config`, `login`, `publish`, `token`) — whether a
+subcommand or baked into a flag (`--config.//…=SECRET`) — the arg is kept up to the
+word plus up to 4 hint chars, and everything after is dropped (e.g.
+`["--filter","foo","config"]`, `["install","--config.//r"]`). The home dir is
+replaced with `~`. Everything else is sent as-is, so scrub/aggregate on the
+collection side too.
 
 One lifecycle event is also sent: **`dev:metrics_opt_in`**, fired once when a
 developer opts in (the transition into `granted`), under the same anonymous

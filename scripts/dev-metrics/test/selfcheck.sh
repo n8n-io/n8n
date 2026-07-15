@@ -26,20 +26,32 @@ grep -q "n8n-shadow-shim-version" "$BIN/pnpm" || fail "shim not installed"
 grep -q "REAL" "$BIN/pnpm.n8n-real" || fail "original not saved"
 
 cd "$REPO"
-rc=0; out=$(sh -c 'pnpm superlongcommandname packages/cli' 2>&1) || rc=$?
+rc=0; out=$(sh -c "pnpm build \"$HOME/secretpath\"" 2>&1) || rc=$?
 [ "$rc" -eq 7 ] || fail "exit code not preserved (got $rc)"
-echo "$out" | grep -q "REAL superlongcommandname packages/cli" || fail "real binary did not run"
+echo "$out" | grep -q "REAL build $HOME/secretpath" || fail "real binary did not run"
 
 N8N_DEV_SHIM_ACTIVE=1 sh -c 'pnpm test' >/dev/null 2>&1 || true   # must not track
+
+# A sensitive subcommand: args up to it are kept, everything after is redacted.
+sh -c 'pnpm --filter foo config set //registry.npmjs.org/:_authToken supersecrettoken' >/dev/null 2>&1 || true
+
+# A secret baked into a flag (typo): keep only the flag prefix, drop the value.
+sh -c 'pnpm install --config.//registry.npmjs.org/:_authToken=typosecrettoken' >/dev/null 2>&1 || true
 
 node "$SRC/setup.mjs" --enable >/dev/null                        # idempotent
 [ -e "$BIN/pnpm.n8n-real.n8n-real" ] && fail "double-saved on re-enable"
 
 sleep 1
 n=$(grep -c '"event":"dev:cli_command"' "$EV" || true)
-[ "$n" -eq 1 ] || fail "expected 1 event, got $n"
-# "superlongcommandname" (>16) is truncated; "packages/cli" is path-like, kept whole.
-grep -qF '"args":["superlongcommand","packages/cli"]' "$EV" || fail "argv not clamped as expected"
+[ "$n" -eq 3 ] || fail "expected 3 events, got $n"
+# Home dir stripped to ~; path arg otherwise sent whole (no truncation).
+grep -qF '"args":["build","~/secretpath"]' "$EV" || fail "home dir not stripped from args"
+# Args up to the subcommand kept, everything after it dropped (secret never seen).
+grep -qF '"args":["--filter","foo","config"]' "$EV" || fail "sensitive subcommand not redacted"
+grep -qF 'supersecrettoken' "$EV" && fail "secret token leaked into event"
+# Inline flag secret: prefix + 4-char hint (".//r") kept, value dropped.
+grep -qF '"args":["install","--config.//r"]' "$EV" || fail "inline flag secret not redacted"
+grep -qF 'typosecrettoken' "$EV" && fail "inline secret leaked into event"
 grep -q '"binary_version":"9.9.9"' "$EV" || fail "version not detected"
 grep -q '"cpu_cores"' "$EV" || fail "machine info not captured"
 
