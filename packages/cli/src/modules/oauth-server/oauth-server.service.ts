@@ -31,6 +31,15 @@ import { OAuthClientLimitReachedError } from './oauth.errors';
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
 
+/** A client the user has consented to, enriched with the grant details of the consent. */
+export type ConnectedOAuthClient = Omit<
+	OAuthClient,
+	'clientSecret' | 'clientSecretExpiresAt' | 'setUpdateDate'
+> & {
+	grantedAt: number;
+	scopes: string[];
+};
+
 /** Maximum length for a single redirect URI */
 const MAX_REDIRECT_URI_LENGTH = 2048;
 
@@ -421,24 +430,30 @@ export class OAuthServerService implements OAuthServerProvider {
 	}
 
 	/**
-	 * Get all OAuth clients for a specific user (excluding sensitive data)
+	 * Get all OAuth clients the user has consented to (excluding sensitive
+	 * data), together with the grant details of the consent itself.
 	 */
-	async getAllClients(
-		userId: string,
-	): Promise<Array<Omit<OAuthClient, 'clientSecret' | 'clientSecretExpiresAt' | 'setUpdateDate'>>> {
+	async getAllClients(userId: string): Promise<ConnectedOAuthClient[]> {
 		// Get all consents for the user with client information
 		const userConsents = await this.userConsentRepository.findByUserWithClient(userId);
 
 		// Extract and sanitize the client information
 		return userConsents.map((consent) => {
 			const { clientSecret, clientSecretExpiresAt, ...sanitizedClient } = consent.client;
-			return sanitizedClient;
+			return {
+				...sanitizedClient,
+				// bigint columns come back as strings on Postgres
+				grantedAt: Number(consent.grantedAt),
+				scopes: consent.scope,
+			};
 		});
 	}
 
 	/**
-	 * Delete an OAuth client and all related data.
-	 * Verifies that the requesting user has a consent relationship with the client.
+	 * Revoke the requesting user's grant for a client: their consent, tokens,
+	 * and authorization codes. Other users' grants for the same client are
+	 * untouched. The client registration itself is garbage-collected once the
+	 * last consent is gone, freeing a slot under the instance client cap.
 	 */
 	async deleteClient(clientId: string, userId: string): Promise<void> {
 		// First check if the client exists
@@ -456,14 +471,37 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new Error(`OAuth client with ID ${clientId} not found`);
 		}
 
-		this.logger.info('Deleting OAuth client and related data', { clientId });
+		this.logger.info('Revoking OAuth client access for user', { clientId, userId });
 
-		await this.oauthClientRepository.delete({ id: clientId });
+		// Independent deletes across separate tables; the GC step below only needs
+		// the consent gone, so run them together rather than serially.
+		await Promise.all([
+			this.tokenService.revokeAllTokensForGrant(clientId, userId),
+			this.authorizationCodeService.deleteForGrant(clientId, userId),
+			this.userConsentRepository.delete({ clientId, userId }),
+		]);
 
-		this.logger.info('OAuth client deleted successfully', {
-			clientId,
-			clientName: client.name,
-		});
+		// Garbage-collect the client only when no consents remain. One conditional
+		// delete keeps it atomic: a concurrent authorization for the same client
+		// either commits its consent first (NOT EXISTS keeps the client) or fails
+		// cleanly on the FK instead of being silently cascade-deleted.
+		const consentsTable = this.userConsentRepository.metadata.tableName;
+		const result = await this.oauthClientRepository
+			.createQueryBuilder()
+			.delete()
+			.from(OAuthClient)
+			.where(
+				`id = :clientId AND NOT EXISTS (SELECT 1 FROM ${consentsTable} WHERE "clientId" = :clientId)`,
+				{ clientId },
+			)
+			.execute();
+
+		if (result.affected && result.affected > 0) {
+			this.logger.info('OAuth client deleted after last consent was revoked', {
+				clientId,
+				clientName: client.name,
+			});
+		}
 	}
 }
 
