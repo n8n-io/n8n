@@ -233,9 +233,29 @@ describe('useSourceControlStore', () => {
 					force: data.force,
 					commitMessage: data.commitMessage,
 					fileNames: data.fileNames,
+					branch: undefined,
+					createBranch: undefined,
 				},
 			);
 			expect(sourceControlStore.state.commitMessage).toBe(data.commitMessage);
+		});
+
+		it('forwards branch and createBranch', async () => {
+			const mockPushWorkfolder = vi.mocked(vcApi.pushWorkfolder);
+			mockPushWorkfolder.mockResolvedValue({ files: [], commit: null });
+
+			await sourceControlStore.pushWorkfolder({
+				commitMessage: 'msg',
+				fileNames: [],
+				force: true,
+				branch: 'feat/x',
+				createBranch: true,
+			});
+
+			expect(mockPushWorkfolder).toHaveBeenCalledWith(
+				{}, // restApiContext
+				expect.objectContaining({ branch: 'feat/x', createBranch: true }),
+			);
 		});
 	});
 

@@ -46,12 +46,16 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		commitMessage: string;
 		fileNames: SourceControlledFile[];
 		force: boolean;
+		branch?: string;
+		createBranch?: boolean;
 	}) => {
 		state.commitMessage = data.commitMessage;
 		return await vcApi.pushWorkfolder(rootStore.restApiContext, {
 			force: data.force,
 			commitMessage: data.commitMessage,
 			fileNames: data.fileNames,
+			branch: data.branch,
+			createBranch: data.createBranch,
 		});
 	};
 
