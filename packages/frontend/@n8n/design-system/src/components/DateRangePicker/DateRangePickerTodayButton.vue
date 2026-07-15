@@ -4,10 +4,10 @@ import { nextTick } from 'vue';
 
 import N8nButton from '../N8nButton';
 import { useDateRangePickerContext } from './dateRangePicker.context';
-import { getTodayDateValue, isDateSelectable, resolveDateSelection } from './datePicker.utils';
+import { getTodayDateValue, isDateSelectable, mergeDatePreservingTime } from './datePicker.utils';
 
 const rootContext = injectDateRangePickerRootContext();
-const { activeField, single, showTime } = useDateRangePickerContext();
+const { activeField, showTime } = useDateRangePickerContext();
 
 function goToToday() {
 	const todayDate = getTodayDateValue({
@@ -26,17 +26,18 @@ function goToToday() {
 		return;
 	}
 
-	const selection = resolveDateSelection({
-		selected: todayDate,
-		range: rootContext.modelValue.value,
-		activeField: activeField.value,
-		single: single.value,
-		preserveTime: showTime.value,
-	});
+	const { start: previousStart, end: previousEnd } = rootContext.modelValue.value;
+	const nextStart = showTime.value
+		? mergeDatePreservingTime(todayDate, previousStart)
+		: todayDate.copy();
+	const nextEnd = showTime.value
+		? mergeDatePreservingTime(todayDate, previousEnd ?? previousStart)
+		: todayDate.copy();
 
-	rootContext.onDateChange(selection.range);
-	activeField.value = selection.nextActiveField;
-	// reka's modelValue watcher (flush: pre) resets placeholder → start; restore after it runs.
+	rootContext.onDateChange({ start: nextStart, end: nextEnd });
+	// Complete range — next calendar click starts a new start → end cycle.
+	activeField.value = 'start';
+
 	void nextTick(() => {
 		rootContext.onPlaceholderChange(todayDate.copy());
 	});

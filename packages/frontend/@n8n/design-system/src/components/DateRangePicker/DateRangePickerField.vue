@@ -28,13 +28,10 @@ watch(
 			return;
 		}
 
+		// Only sync from range when empty — pending/complete steps are owned by
+		// calendar selection (selectionStep), not inferred from start===end.
 		if (!range?.start && !range?.end) {
 			activeField.value = 'start';
-			return;
-		}
-
-		if (range.start && !range.end) {
-			activeField.value = 'end';
 		}
 	},
 	{ deep: true, immediate: true },

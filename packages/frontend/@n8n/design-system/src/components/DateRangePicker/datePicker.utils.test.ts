@@ -1,6 +1,7 @@
 import { CalendarDate, CalendarDateTime } from '@internationalized/date';
 
 import {
+	createTodayRange,
 	formatDateRangeValue,
 	formatDateValue,
 	formatMonthYearHeading,
@@ -10,8 +11,9 @@ import {
 	mergeDatePreservingTime,
 	parseDateValue,
 	parseTimeValue,
-	createTodayRange,
 	resolveDateSelection,
+	resolveFieldValueCommit,
+	shouldIncludeTimeInDateFormat,
 	toDateTimeValue,
 } from './datePicker.utils';
 
@@ -163,72 +165,149 @@ describe('datePicker.utils', () => {
 			const result = resolveDateSelection({
 				selected,
 				range: { start: undefined, end: undefined },
-				activeField: 'end',
+				selectionStep: 'start',
 				single: true,
 			});
 
 			expect(result.range.start?.compare(selected)).toBe(0);
 			expect(result.range.end?.compare(selected)).toBe(0);
-			expect(result.nextActiveField).toBe('start');
+			expect(result.nextSelectionStep).toBe('start');
 		});
 
-		it('sets the end date when the end field is active', () => {
-			const start = new CalendarDate(2025, 6, 10);
-			const selected = new CalendarDate(2025, 6, 20);
+		it('sets the start date when selectionStep is start', () => {
+			const selected = new CalendarDate(2025, 8, 16);
 
 			const result = resolveDateSelection({
 				selected,
-				range: { start, end: start },
-				activeField: 'end',
+				range: { start: undefined, end: undefined },
+				selectionStep: 'start',
 			});
 
-			expect(result.range.start?.compare(start)).toBe(0);
-			expect(result.range.end?.compare(selected)).toBe(0);
-			expect(result.nextActiveField).toBe('start');
+			expect(result.range.start?.compare(selected)).toBe(0);
+			expect(result.range.end).toBeUndefined();
+			expect(result.nextSelectionStep).toBe('end');
 		});
 
-		it('swaps the range when the end field is active and the date is before start', () => {
-			const start = new CalendarDate(2025, 6, 20);
-			const selected = new CalendarDate(2025, 6, 10);
+		it('sets the end date when selectionStep is end', () => {
+			const start = new CalendarDate(2025, 8, 16);
+			const selected = new CalendarDate(2025, 8, 22);
 
 			const result = resolveDateSelection({
 				selected,
 				range: { start, end: undefined },
-				activeField: 'end',
+				selectionStep: 'end',
+			});
+
+			expect(result.range.start?.compare(start)).toBe(0);
+			expect(result.range.end?.compare(selected)).toBe(0);
+			expect(result.nextSelectionStep).toBe('start');
+		});
+
+		it('swaps the range when the end date is before start', () => {
+			const start = new CalendarDate(2025, 8, 22);
+			const selected = new CalendarDate(2025, 8, 16);
+
+			const result = resolveDateSelection({
+				selected,
+				range: { start, end: undefined },
+				selectionStep: 'end',
 			});
 
 			expect(result.range.start?.compare(selected)).toBe(0);
 			expect(result.range.end?.compare(start)).toBe(0);
-			expect(result.nextActiveField).toBe('start');
+			expect(result.nextSelectionStep).toBe('start');
 		});
 
-		it('updates the start date when the start field is active', () => {
-			const start = new CalendarDate(2025, 6, 5);
-			const end = new CalendarDate(2025, 6, 20);
+		it('always clears end when selectionStep is start', () => {
+			const start = new CalendarDate(2025, 8, 16);
+			const end = new CalendarDate(2025, 8, 22);
+			const selected = new CalendarDate(2025, 8, 18);
 
 			const result = resolveDateSelection({
-				selected: start,
-				range: { start: end, end },
-				activeField: 'start',
+				selected,
+				range: { start, end },
+				selectionStep: 'start',
 			});
 
-			expect(result.range.start?.compare(start)).toBe(0);
-			expect(result.range.end?.compare(end)).toBe(0);
-			expect(result.nextActiveField).toBe('end');
+			expect(result.range.start?.compare(selected)).toBe(0);
+			expect(result.range.end).toBeUndefined();
+			expect(result.nextSelectionStep).toBe('end');
 		});
 
-		it('preserves time when requested', () => {
-			const existing = new CalendarDateTime(2025, 6, 10, 17, 30, 0);
+		it('preserves time when starting a new range', () => {
+			const existingStart = new CalendarDateTime(2025, 6, 10, 17, 30, 0);
+			const existingEnd = new CalendarDateTime(2025, 6, 15, 9, 0, 0);
+			const selected = new CalendarDate(2025, 6, 12);
+
+			const result = resolveDateSelection({
+				selected,
+				range: { start: existingStart, end: existingEnd },
+				selectionStep: 'start',
+				preserveTime: true,
+			});
+
+			expect(result.range.start?.toString()).toBe('2025-06-12T17:30:00');
+			expect(result.range.end).toBeUndefined();
+			expect(result.nextSelectionStep).toBe('end');
+		});
+
+		it('preserves time when completing a range', () => {
+			const start = new CalendarDateTime(2025, 6, 10, 9, 30, 0);
 			const selected = new CalendarDate(2025, 6, 20);
 
 			const result = resolveDateSelection({
 				selected,
-				range: { start: existing, end: existing },
-				activeField: 'end',
+				range: { start, end: undefined },
+				selectionStep: 'end',
 				preserveTime: true,
 			});
 
-			expect(result.range.end?.toString()).toBe('2025-06-20T17:30:00');
+			expect(result.range.start?.toString()).toBe('2025-06-10T09:30:00');
+			expect(result.range.end?.toString()).toBe('2025-06-20T09:30:00');
+			expect(result.nextSelectionStep).toBe('start');
+		});
+
+		it('alternates start and end across two full cycles', () => {
+			const d16 = new CalendarDate(2025, 8, 16);
+			const d22 = new CalendarDate(2025, 8, 22);
+			const d23 = new CalendarDate(2025, 8, 23);
+			const d25 = new CalendarDate(2025, 8, 25);
+
+			const firstStart = resolveDateSelection({
+				selected: d16,
+				range: { start: undefined, end: undefined },
+				selectionStep: 'start',
+			});
+			expect(firstStart.range.start?.compare(d16)).toBe(0);
+			expect(firstStart.range.end).toBeUndefined();
+			expect(firstStart.nextSelectionStep).toBe('end');
+
+			const firstEnd = resolveDateSelection({
+				selected: d22,
+				range: firstStart.range,
+				selectionStep: firstStart.nextSelectionStep,
+			});
+			expect(firstEnd.range.start?.compare(d16)).toBe(0);
+			expect(firstEnd.range.end?.compare(d22)).toBe(0);
+			expect(firstEnd.nextSelectionStep).toBe('start');
+
+			const secondStart = resolveDateSelection({
+				selected: d23,
+				range: firstEnd.range,
+				selectionStep: firstEnd.nextSelectionStep,
+			});
+			expect(secondStart.range.start?.compare(d23)).toBe(0);
+			expect(secondStart.range.end).toBeUndefined();
+			expect(secondStart.nextSelectionStep).toBe('end');
+
+			const secondEnd = resolveDateSelection({
+				selected: d25,
+				range: secondStart.range,
+				selectionStep: secondStart.nextSelectionStep,
+			});
+			expect(secondEnd.range.start?.compare(d23)).toBe(0);
+			expect(secondEnd.range.end?.compare(d25)).toBe(0);
+			expect(secondEnd.nextSelectionStep).toBe('start');
 		});
 	});
 
@@ -278,6 +357,79 @@ describe('datePicker.utils', () => {
 			const result = mergeDatePreservingTime(selected, existing);
 
 			expect(result.toString()).toBe('2025-06-20T09:30:00');
+		});
+
+		it('defaults to 9:00 when no existing time is present', () => {
+			const selected = new CalendarDate(2025, 6, 20);
+
+			expect(mergeDatePreservingTime(selected).toString()).toBe('2025-06-20T09:00:00');
+			expect(mergeDatePreservingTime(selected, new CalendarDate(2025, 6, 15)).toString()).toBe(
+				'2025-06-20T09:00:00',
+			);
+		});
+	});
+
+	describe('shouldIncludeTimeInDateFormat', () => {
+		it('is false when a separate time field is shown', () => {
+			expect(
+				shouldIncludeTimeInDateFormat({
+					showTime: true,
+					granularity: 'minute',
+				}),
+			).toBe(false);
+		});
+
+		it('is true when granularity includes time and showTime is off', () => {
+			expect(
+				shouldIncludeTimeInDateFormat({
+					showTime: false,
+					granularity: 'minute',
+				}),
+			).toBe(true);
+		});
+	});
+
+	describe('resolveFieldValueCommit', () => {
+		it('sets both ends in single mode', () => {
+			const value = new CalendarDate(2025, 6, 15);
+			const result = resolveFieldValueCommit({
+				field: 'start',
+				value,
+				range: { start: undefined, end: undefined },
+				single: true,
+			});
+
+			expect(result.ok).toBe(true);
+			if (!result.ok) return;
+			expect(result.range.start?.compare(value)).toBe(0);
+			expect(result.range.end?.compare(value)).toBe(0);
+		});
+
+		it('clears end when a new start is after the current end', () => {
+			const result = resolveFieldValueCommit({
+				field: 'start',
+				value: new CalendarDate(2025, 6, 20),
+				range: {
+					start: new CalendarDate(2025, 6, 10),
+					end: new CalendarDate(2025, 6, 15),
+				},
+			});
+
+			expect(result.ok).toBe(true);
+			if (!result.ok) return;
+			expect(result.range.start?.toString()).toBe('2025-06-20');
+			expect(result.range.end).toBeUndefined();
+		});
+
+		it('rejects values outside the allowed bounds', () => {
+			const result = resolveFieldValueCommit({
+				field: 'end',
+				value: new CalendarDate(2025, 1, 1),
+				range: { start: new CalendarDate(2025, 6, 10), end: undefined },
+				selectionOptions: { minValue: new CalendarDate(2025, 6, 1) },
+			});
+
+			expect(result).toEqual({ ok: false, error: 'outside' });
 		});
 	});
 

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import type { DateValue } from '@internationalized/date';
 import { reactiveOmit } from '@vueuse/core';
+import type { DateValue } from '@internationalized/date';
 import {
 	DateRangePickerCalendar,
 	DateRangePickerCell,
@@ -25,7 +25,7 @@ import { computed, defineComponent, nextTick, provide, ref, shallowRef, toRef, w
 
 import N8nButton from '../N8nButton';
 import IconButton from '../N8nIconButton';
-import N8nDateRangePickerClearButton from './DateRangePickerClearButton.vue';
+import N8nDateRangePickerDayButton from './DateRangePickerDayButton.vue';
 import N8nDateRangePickerField from './DateRangePickerField.vue';
 import {
 	N8N_DATE_RANGE_PICKER_CONTEXT,
@@ -37,7 +37,7 @@ import {
 	createTodayRange,
 	formatMonthYearHeading,
 	isEmptyDateRange,
-	parseCalendarCellDate,
+	mergeDatePreservingTime,
 	resolveDateSelection,
 	type DatePickerHourCycle,
 } from './datePicker.utils';
@@ -113,11 +113,49 @@ function dismissPopover() {
 }
 
 function onDraftUpdate(value: DateRange) {
-	draftRange.value = copyRange(value);
+	const previous = draftRange.value;
+	let start = value.start?.copy();
+	let end = value.end?.copy();
+
+	// Reka re-attaches the previous end when we clear it for a pending start.
+	// Drop that stale end while we're awaiting the end click.
+	if (
+		!props.single &&
+		activeCalendarField.value === 'end' &&
+		start &&
+		end &&
+		previous.start &&
+		!previous.end &&
+		start.compare(previous.start) === 0
+	) {
+		end = undefined;
+	}
+
+	if (props.showTime) {
+		if (start) {
+			start = mergeDatePreservingTime(start, previous.start ?? previous.end);
+		}
+		if (end) {
+			// Completing a range: prefer the previous end time, else the start time.
+			end = mergeDatePreservingTime(end, previous.end ?? previous.start ?? start);
+		}
+	}
+
+	if (props.single && start) {
+		end = start.copy();
+	}
+
+	draftRange.value = { start, end };
+}
+
+/** Next calendar click always starts a new start → end → start → end cycle. */
+function resetSelectionStep() {
+	activeCalendarField.value = 'start';
 }
 
 const forwarded = useForwardPropsEmits(
-	reactiveOmit(props, ['modelValue', 'defaultValue']),
+	// Force readonly below — omit so a consumer prop can't re-enable Reka selection.
+	reactiveOmit(props, ['modelValue', 'defaultValue', 'readonly']),
 	(event, ...args) => {
 		if (event === 'update:modelValue') {
 			onDraftUpdate(args[0] as DateRange);
@@ -127,15 +165,19 @@ const forwarded = useForwardPropsEmits(
 		emit(event, ...args);
 	},
 );
-const activeCalendarField = ref<'start' | 'end'>('end');
+const activeCalendarField = ref<'start' | 'end'>('start');
 const skipNextCellClick = ref(false);
-const blockedCellInteraction = ref(false);
 const rekaRoot = shallowRef<DateRangePickerRekaRoot | null>(null);
 const showInputs = computed(() => !props.hideInputs);
 const hourCycle = computed<DatePickerHourCycle>(() => (props.hourCycle === 12 ? 12 : 24));
 const effectiveGranularity = computed(() => {
 	if (props.showTime) return props.granularity ?? 'minute';
 	return props.granularity;
+});
+/** Lets Reka paint the hover preview while a complete range is selected (selection stays ours). */
+const calendarFixedDate = computed<'start' | 'end' | undefined>(() => {
+	if (props.single) return undefined;
+	return activeCalendarField.value === 'start' ? 'end' : 'start';
 });
 provide(N8N_DATE_RANGE_PICKER_CONTEXT, {
 	activeField: activeCalendarField,
@@ -181,7 +223,7 @@ watch(
 				draftRange.value = getCommittedRange();
 			}
 
-			activeCalendarField.value = 'start';
+			resetSelectionStep();
 			return;
 		}
 
@@ -193,7 +235,7 @@ watch(
 			if (start) {
 				rootContext.onPlaceholderChange(start.copy());
 			}
-			activeCalendarField.value = props.single ? 'start' : 'end';
+			resetSelectionStep();
 			return;
 		}
 
@@ -212,7 +254,7 @@ watch(
 			end: todayRange.end.copy(),
 		};
 		rootContext.onPlaceholderChange(todayRange.start.copy());
-		activeCalendarField.value = props.single ? 'start' : 'end';
+		resetSelectionStep();
 	},
 );
 
@@ -230,34 +272,23 @@ function markPageNavigation() {
 	});
 }
 
-function isCalendarCellTarget(event: Event): HTMLElement | null {
-	const target = (event.target as Element | null)?.closest('[data-reka-calendar-cell-trigger]');
-	if (!target || target.hasAttribute('data-disabled') || target.hasAttribute('data-unavailable')) {
-		return null;
-	}
+function isDateDisabledOrUnavailable(date: DateValue): boolean {
+	const rootContext = rekaRoot.value;
+	if (!rootContext) return true;
 
-	return target as HTMLElement;
+	if (rootContext.isDateUnavailable?.(date)) return true;
+	if (rootContext.minValue.value && date.compare(rootContext.minValue.value) < 0) return true;
+	if (rootContext.maxValue.value && rootContext.maxValue.value.compare(date) < 0) return true;
+	return false;
 }
 
-function isPlaceholderDayCell(target: HTMLElement): boolean {
+function shouldSkipPlaceholderDate(date: DateValue): boolean {
+	if (!skipNextCellClick.value) return false;
+
 	const rootContext = rekaRoot.value;
 	if (!rootContext) return false;
 
-	const selectedDate = parseCalendarCellDate(target);
-	if (!selectedDate) return false;
-
-	return selectedDate.compare(rootContext.placeholder.value) === 0;
-}
-
-function shouldSkipPlaceholderCellInteraction(target: HTMLElement): boolean {
-	if (!skipNextCellClick.value) return false;
-
-	return isPlaceholderDayCell(target);
-}
-
-function blockCalendarCellEvent(event: Event) {
-	event.preventDefault();
-	event.stopImmediatePropagation();
+	return date.compare(rootContext.placeholder.value) === 0;
 }
 
 function applySelection(selectedDate: DateValue) {
@@ -266,42 +297,30 @@ function applySelection(selectedDate: DateValue) {
 
 	const selection = resolveDateSelection({
 		selected: selectedDate,
-		range: rootContext.modelValue.value,
-		activeField: activeCalendarField.value,
+		range: draftRange.value,
+		selectionStep: activeCalendarField.value,
 		single: props.single,
 		preserveTime: props.showTime,
 	});
 
+	// Advance the step before model updates so onDraftUpdate can ignore stale ends.
+	activeCalendarField.value = selection.nextSelectionStep;
+	draftRange.value = {
+		start: selection.range.start?.copy(),
+		end: selection.range.end?.copy(),
+	};
 	rootContext.onDateChange(selection.range);
-	activeCalendarField.value = selection.nextActiveField;
-	// reka's modelValue watcher (flush: pre) resets placeholder → start; restore after it runs.
+	// reka's modelValue watcher resets placeholder → start; restore after it runs.
 	void nextTick(() => {
 		rootContext.onPlaceholderChange(selectedDate.copy());
 	});
 }
 
-function handleCalendarPointerDownCapture(event: PointerEvent) {
-	const target = isCalendarCellTarget(event);
-	if (!target || !shouldSkipPlaceholderCellInteraction(target)) return;
+function selectCalendarDay(date: DateValue) {
+	if (isDateDisabledOrUnavailable(date)) return;
 
-	skipNextCellClick.value = false;
-	blockedCellInteraction.value = true;
-	blockCalendarCellEvent(event);
-}
-
-function handleCalendarClickCapture(event: MouseEvent) {
-	const target = isCalendarCellTarget(event);
-	if (!target) return;
-
-	if (blockedCellInteraction.value) {
-		blockedCellInteraction.value = false;
-		blockCalendarCellEvent(event);
-		return;
-	}
-
-	if (shouldSkipPlaceholderCellInteraction(target)) {
+	if (shouldSkipPlaceholderDate(date)) {
 		skipNextCellClick.value = false;
-		blockCalendarCellEvent(event);
 		return;
 	}
 
@@ -309,34 +328,15 @@ function handleCalendarClickCapture(event: MouseEvent) {
 		skipNextCellClick.value = false;
 	}
 
-	const selectedDate = parseCalendarCellDate(target);
-	if (!selectedDate) return;
-
-	blockCalendarCellEvent(event);
-	applySelection(selectedDate);
+	applySelection(date);
 }
 
-function handleCalendarKeydownCapture(event: KeyboardEvent) {
+/** Keyboard nav still focuses Reka's CellTrigger — intercept Enter/Space before it. */
+function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
 	if (event.key !== 'Enter' && event.key !== ' ') return;
-
-	const target = isCalendarCellTarget(event);
-	if (!target) return;
-
-	if (shouldSkipPlaceholderCellInteraction(target)) {
-		skipNextCellClick.value = false;
-		blockCalendarCellEvent(event);
-		return;
-	}
-
-	if (skipNextCellClick.value) {
-		skipNextCellClick.value = false;
-	}
-
-	const selectedDate = parseCalendarCellDate(target);
-	if (!selectedDate) return;
-
-	blockCalendarCellEvent(event);
-	applySelection(selectedDate);
+	event.preventDefault();
+	event.stopImmediatePropagation();
+	selectCalendarDay(date);
 }
 </script>
 
@@ -345,6 +345,9 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 		v-bind="forwarded"
 		:model-value="draftRange"
 		:granularity="effectiveGranularity"
+		:readonly="true"
+		:fixed-date="calendarFixedDate"
+		prevent-deselect
 	>
 		<DateRangePickerRekaBridge />
 		<DateRangePickerTrigger as-child>
@@ -355,10 +358,7 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 
 		<DateRangePickerContent align="start" :side-offset="5" :class="$style.PopoverContent">
 			<DateRangePickerCalendar v-slot="{ weekDays, grid }" :class="$style.Calendar">
-				<div
-					:class="[$style.PopoverInner, showTime && $style.PopoverInnerWithTime]"
-					:data-active-field="activeCalendarField"
-				>
+				<div :class="$style.PopoverInner" :data-active-field="activeCalendarField">
 					<div v-if="$slots.presets" :class="$style.Presets">
 						<slot name="presets" />
 					</div>
@@ -389,52 +389,59 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 						</div>
 					</DateRangePickerHeader>
 
-					<div
-						@pointerdown.prevent
-						@pointerdown.capture="handleCalendarPointerDownCapture"
-						@click.capture="handleCalendarClickCapture"
-						@keydown.capture="handleCalendarKeydownCapture"
+					<DateRangePickerGrid
+						v-for="month in grid"
+						:key="month.value.toString()"
+						:class="$style.CalendarGrid"
 					>
-						<DateRangePickerGrid
-							v-for="month in grid"
-							:key="month.value.toString()"
-							:class="$style.CalendarGrid"
-						>
-							<DateRangePickerGridHead>
-								<DateRangePickerGridRow
-									:class="[$style.CalendarGridRow, $style.CalendarGridHeadRow]"
+						<DateRangePickerGridHead>
+							<DateRangePickerGridRow :class="[$style.CalendarGridRow, $style.CalendarGridHeadRow]">
+								<DateRangePickerHeadCell
+									v-for="day in weekDays"
+									:key="day"
+									:class="$style.CalendarHeadCell"
 								>
-									<DateRangePickerHeadCell
-										v-for="day in weekDays"
-										:key="day"
-										:class="$style.CalendarHeadCell"
-									>
-										{{ day.slice(0, 2) }}
-									</DateRangePickerHeadCell>
-								</DateRangePickerGridRow>
-							</DateRangePickerGridHead>
-							<DateRangePickerGridBody>
-								<DateRangePickerGridRow
-									v-for="(weekDates, index) in month.rows"
-									:key="`weekDate-${index}`"
-									:class="$style.CalendarGridRow"
+									{{ day.slice(0, 2) }}
+								</DateRangePickerHeadCell>
+							</DateRangePickerGridRow>
+						</DateRangePickerGridHead>
+						<DateRangePickerGridBody>
+							<DateRangePickerGridRow
+								v-for="(weekDates, index) in month.rows"
+								:key="`weekDate-${index}`"
+								:class="$style.CalendarGridRow"
+							>
+								<DateRangePickerCell
+									v-for="weekDate in weekDates"
+									:key="weekDate.toString()"
+									:date="weekDate"
+									:class="$style.CalendarCell"
 								>
-									<DateRangePickerCell
-										v-for="weekDate in weekDates"
-										:key="weekDate.toString()"
-										:date="weekDate"
-										:class="$style.CalendarCell"
+									<!--
+										CellTrigger is display-only (readonly + pointer-events: none).
+										DayButton owns clicks/hover so Reka never resets the range and
+										hover preview still updates via focusedValue.
+									-->
+									<div
+										:class="$style.CalendarCellHitArea"
+										@keydown.capture="handleCellKeydown(weekDate, $event)"
 									>
 										<DateRangePickerCellTrigger
 											:day="weekDate"
 											:month="month.value"
 											:class="$style.CalendarCellTrigger"
 										/>
-									</DateRangePickerCell>
-								</DateRangePickerGridRow>
-							</DateRangePickerGridBody>
-						</DateRangePickerGrid>
-					</div>
+										<N8nDateRangePickerDayButton
+											:day="weekDate"
+											:class="$style.CalendarCellButton"
+											:disabled="isDateDisabledOrUnavailable(weekDate)"
+											@select="selectCalendarDay(weekDate)"
+										/>
+									</div>
+								</DateRangePickerCell>
+							</DateRangePickerGridRow>
+						</DateRangePickerGridBody>
+					</DateRangePickerGrid>
 
 					<div v-if="showInputs" :class="$style.FooterWrapper">
 						<slot name="footer" :apply="applyAndClose" :close="dismissPopover">
@@ -445,7 +452,6 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 								:class="$style.FooterButton"
 								@click="applyAndClose"
 							/>
-							<N8nDateRangePickerClearButton :class="$style.FooterButton" />
 						</slot>
 					</div>
 				</div>
@@ -457,6 +463,7 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 <style lang="css" module>
 .DateFieldWrapper {
 	width: 100%;
+	margin-bottom: var(--spacing--2xs);
 }
 
 .FooterWrapper {
@@ -531,6 +538,28 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 	text-align: center;
 }
 
+.CalendarCellHitArea {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+.CalendarCellButton {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	margin: 0;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius--2xs);
+	background: transparent;
+	cursor: pointer;
+}
+
+.CalendarCellButton:disabled {
+	cursor: not-allowed;
+}
+
 .CalendarCellTrigger {
 	display: flex;
 	box-sizing: border-box;
@@ -546,7 +575,7 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 	font-weight: var(--font-weight--regular);
 	white-space: nowrap;
 	background-color: transparent;
-	cursor: pointer;
+	pointer-events: none;
 	font-size: var(--font-size--xs);
 	font-style: normal;
 	line-height: normal;
@@ -660,10 +689,6 @@ function handleCalendarKeydownCapture(event: KeyboardEvent) {
 
 .PopoverInner {
 	width: calc(7 * var(--date-range-picker--cell-size));
-}
-
-.PopoverInnerWithTime {
-	width: max(calc(7 * var(--date-range-picker--cell-size)), 18rem);
 }
 
 .PopoverContent[data-state='open'][data-side='top'] {

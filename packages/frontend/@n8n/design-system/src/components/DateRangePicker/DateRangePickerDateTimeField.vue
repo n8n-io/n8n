@@ -3,16 +3,15 @@ import type { DateValue } from '@internationalized/date';
 import { injectDateRangePickerRootContext } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 
-import N8nInput from '../N8nInput';
 import { useDateRangePickerContext } from './dateRangePicker.context';
 import {
 	formatDateValue,
 	formatTimeValue,
-	isDateRangeValid,
-	isDateSelectable,
 	mergeDatePreservingTime,
 	parseDateValue,
 	parseTimeValue,
+	resolveFieldValueCommit,
+	shouldIncludeTimeInDateFormat,
 	toDateTimeValue,
 	type DatePickerFormatOptions,
 } from './datePicker.utils';
@@ -33,27 +32,19 @@ const { activeField, single, showTime, hourCycle } = useDateRangePickerContext()
 const INVALID_DATE_MESSAGE = 'Invalid date';
 const OUTSIDE_RANGE_MESSAGE = 'Outside of allowed range';
 
-const formatOptions = computed<DatePickerFormatOptions>(() => {
-	let includeTime = false;
+/** Formatting options for the date text input (locale, optional inline time). */
+const formatOptions = computed<DatePickerFormatOptions>(() => ({
+	locale: rootContext.locale.value,
+	hourCycle: hourCycle.value,
+	includeTime: shouldIncludeTimeInDateFormat({
+		showTime: showTime.value,
+		granularity: rootContext.granularity.value,
+		start: rootContext.modelValue.value.start,
+		end: rootContext.modelValue.value.end,
+	}),
+}));
 
-	if (!showTime.value) {
-		const granularity = rootContext.granularity.value;
-		if (granularity && granularity !== 'day') {
-			includeTime = true;
-		} else {
-			const { start, end } = rootContext.modelValue.value;
-			includeTime =
-				(start !== undefined && 'hour' in start) || (end !== undefined && 'hour' in end);
-		}
-	}
-
-	return {
-		locale: rootContext.locale.value,
-		includeTime,
-		hourCycle: hourCycle.value,
-	};
-});
-
+/** Bounds / unavailable-date rules used when validating typed values. */
 const selectionOptions = computed(() => ({
 	minValue: rootContext.minValue.value,
 	maxValue: rootContext.maxValue.value,
@@ -62,24 +53,30 @@ const selectionOptions = computed(() => ({
 
 const dateText = ref('');
 const timeText = ref('');
+/** True while the user is editing the date input — skips external sync overwrites. */
 const editingDate = ref(false);
+/** True while the user is editing the time input — skips external sync overwrites. */
 const editingTime = ref(false);
 const inputError = ref<string | null>(null);
 
+/** The start or end value this field is bound to. */
 const fieldValue = computed(() =>
 	props.type === 'start' ? rootContext.modelValue.value.start : rootContext.modelValue.value.end,
 );
 
+/** Publishes the field error to the parent and local invalid styling. */
 function setError(message: string | null) {
 	inputError.value = message;
 	emit('update:error', message);
 }
 
+/** Refreshes the date input from the current model value. */
 function syncDateText() {
 	dateText.value = formatDateValue(fieldValue.value, formatOptions.value);
 	setError(null);
 }
 
+/** Refreshes the time input from the current model value. */
 function syncTimeText() {
 	timeText.value = formatTimeValue(fieldValue.value, hourCycle.value);
 	setError(null);
@@ -102,15 +99,28 @@ watch(hourCycle, () => {
 	if (!editingTime.value) syncTimeText();
 });
 
-function updateRange(start: DateValue | undefined, end: DateValue | undefined) {
-	rootContext.onDateChange({ start, end });
+/** Applies a parsed date/time to the range, or surfaces a validation error. */
+function commitValue(nextValue: DateValue) {
+	const result = resolveFieldValueCommit({
+		field: props.type,
+		value: nextValue,
+		range: rootContext.modelValue.value,
+		single: single.value,
+		selectionOptions: selectionOptions.value,
+	});
+
+	if (!result.ok) {
+		setError(result.error === 'outside' ? OUTSIDE_RANGE_MESSAGE : INVALID_DATE_MESSAGE);
+		return;
+	}
+
+	setError(null);
+	rootContext.onDateChange(result.range);
 }
 
+/** Parses the date input on blur and commits it when valid. */
 function commitDate() {
-	const currentStart = rootContext.modelValue.value.start;
-	const currentEnd = rootContext.modelValue.value.end;
 	const trimmed = dateText.value.trim();
-
 	if (!trimmed) {
 		setError(null);
 		syncDateText();
@@ -123,47 +133,13 @@ function commitDate() {
 		return;
 	}
 
-	const nextValue = showTime.value ? mergeDatePreservingTime(parsed, fieldValue.value) : parsed;
-
-	if (!isDateSelectable(nextValue, selectionOptions.value)) {
-		setError(OUTSIDE_RANGE_MESSAGE);
-		return;
-	}
-
-	if (single.value) {
-		setError(null);
-		updateRange(nextValue.copy(), nextValue.copy());
-		return;
-	}
-
-	if (props.type === 'start') {
-		const nextEnd =
-			currentEnd && currentEnd.compare(nextValue) < 0 ? undefined : currentEnd?.copy();
-		if (!isDateRangeValid(nextValue, nextEnd, selectionOptions.value)) {
-			setError(INVALID_DATE_MESSAGE);
-			return;
-		}
-		setError(null);
-		updateRange(nextValue.copy(), nextEnd?.copy());
-		return;
-	}
-
-	const nextStart =
-		currentStart && nextValue.compare(currentStart) < 0 ? undefined : currentStart?.copy();
-	if (!isDateRangeValid(nextStart, nextValue, selectionOptions.value)) {
-		setError(INVALID_DATE_MESSAGE);
-		return;
-	}
-	setError(null);
-	updateRange(nextStart?.copy(), nextValue.copy());
+	commitValue(showTime.value ? mergeDatePreservingTime(parsed, fieldValue.value) : parsed);
 }
 
+/** Parses the time input on blur and commits it onto the current date. */
 function commitTime() {
-	const currentStart = rootContext.modelValue.value.start;
-	const currentEnd = rootContext.modelValue.value.end;
 	const current = fieldValue.value;
 	const trimmed = timeText.value.trim();
-
 	if (!current || !trimmed) {
 		setError(null);
 		syncTimeText();
@@ -172,56 +148,34 @@ function commitTime() {
 
 	const parsedTime = parseTimeValue(trimmed, hourCycle.value);
 	if (!parsedTime) {
-		setError(INVALID_DATE_MESSAGE);
-		return;
-	}
-
-	const nextValue = toDateTimeValue(current, parsedTime);
-
-	if (!isDateSelectable(nextValue, selectionOptions.value)) {
-		setError(OUTSIDE_RANGE_MESSAGE);
-		return;
-	}
-
-	if (single.value) {
+		// Invalid text (e.g. AM/PM removed) — restore the last committed time.
 		setError(null);
-		updateRange(nextValue.copy(), nextValue.copy());
+		syncTimeText();
 		return;
 	}
 
-	if (props.type === 'start') {
-		if (!isDateRangeValid(nextValue, currentEnd, selectionOptions.value)) {
-			setError(INVALID_DATE_MESSAGE);
-			return;
-		}
-		setError(null);
-		updateRange(nextValue.copy(), currentEnd?.copy());
-		return;
-	}
-
-	if (!isDateRangeValid(currentStart, nextValue, selectionOptions.value)) {
-		setError(INVALID_DATE_MESSAGE);
-		return;
-	}
-	setError(null);
-	updateRange(currentStart?.copy(), nextValue.copy());
+	commitValue(toDateTimeValue(current, parsedTime));
 }
 
+/** Marks the date segment as being edited and activates this field. */
 function onDateFocus() {
 	editingDate.value = true;
 	activeField.value = props.type;
 }
 
+/** Stops date editing and commits the typed date. */
 function onDateBlur() {
 	editingDate.value = false;
 	commitDate();
 }
 
+/** Marks the time segment as being edited and activates this field. */
 function onTimeFocus() {
 	editingTime.value = true;
 	activeField.value = props.type;
 }
 
+/** Stops time editing and commits the typed time. */
 function onTimeBlur() {
 	editingTime.value = false;
 	commitTime();
@@ -233,14 +187,15 @@ function onTimeBlur() {
 		:class="[
 			$style.DateFieldGroup,
 			showTime && $style.DateFieldGroupJoined,
-			activeField === type && $style.DateFieldGroupActive,
 			inputError && $style.DateFieldGroupInvalid,
+			!single && activeField === type && $style.DateFieldGroupActive,
 		]"
+		:data-active-date-field="!single && activeField === type ? type : undefined"
 	>
-		<N8nInput
+		<input
 			v-model="dateText"
-			size="small"
-			:class="$style.DateFieldInput"
+			type="text"
+			:class="$style.FieldInput"
 			:aria-label="dateLabel"
 			:aria-invalid="inputError ? true : undefined"
 			@focus="onDateFocus"
@@ -249,9 +204,8 @@ function onTimeBlur() {
 		<input
 			v-if="showTime"
 			v-model="timeText"
-			:type="hourCycle === 12 ? 'text' : 'time'"
-			:class="[$style.TimeFieldInput, hourCycle === 12 && $style.TimeFieldInputAmPm]"
-			:placeholder="hourCycle === 12 ? 'hh:mm AM' : undefined"
+			type="text"
+			:class="$style.FieldInput"
 			:aria-label="timeLabel"
 			:aria-invalid="inputError ? true : undefined"
 			@focus="onTimeFocus"
@@ -260,14 +214,11 @@ function onTimeBlur() {
 	</div>
 </template>
 
-<style lang="css" module>
-.DateFieldGroup {
-	display: flex;
-	min-width: 0;
-}
+<style lang="scss" module>
+@use '../../css/mixins/focus';
 
-.DateFieldGroupJoined {
-	--input--height: var(--height--sm);
+.DateFieldGroup {
+	--input--height: var(--height--md);
 	--input--radius: var(--radius--3xs);
 	--input--font-size: var(--font-size--xs);
 	--input--padding: var(--spacing--2xs);
@@ -275,117 +226,76 @@ function onTimeBlur() {
 	--input--border-color: var(--border-color);
 	--input--border-color--hover: var(--border-color--strong);
 	--input--border-color--focus: var(--focus--border-color);
+	--input--border-color--invalid: var(--color--red-500);
+	--joined--border-shadow: inset 0 0 0 1px var(--input--border-color);
 
-	align-items: center;
-	min-height: var(--input--height);
+	display: flex;
+	min-width: 0;
+	gap: 4px;
+	height: var(--input--height);
 	border-radius: var(--input--radius);
 	background-color: var(--input--color--background);
-	box-shadow: inset 0 0 0 1px var(--input--border-color);
+	box-shadow: var(--joined--border-shadow);
 	overflow: hidden;
+
+	@include focus.focus-within-ring;
+
+	&:hover:not(:focus-within) {
+		--joined--border-shadow: inset 0 0 0 1px var(--input--border-color--hover);
+	}
+
+	&:focus-within {
+		--joined--border-shadow: inset 0 0 0 1px var(--input--border-color--focus);
+	}
 }
 
-.DateFieldGroupJoined:hover:not(:focus-within) {
-	box-shadow: inset 0 0 0 1px var(--input--border-color--hover);
+.DateFieldGroupJoined {
+	position: relative;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	align-items: stretch;
 }
 
-.DateFieldGroupJoined:focus-within {
-	outline: var(--focus--border-width) solid var(--focus--outline-color);
-	box-shadow: inset 0 0 0 1px var(--input--border-color--focus);
+.DateFieldGroupJoined::after {
+	content: '';
+	position: absolute;
+	top: var(--spacing--3xs);
+	bottom: var(--spacing--3xs);
+	left: 50%;
+	width: 1px;
+	transform: translateX(-50%);
+	background-color: var(--input--border-color);
+	pointer-events: none;
 }
 
-.DateFieldGroupJoined.DateFieldGroupActive {
-	box-shadow: inset 0 0 0 2px var(--focus--border-color);
+.DateFieldGroupActive:not(:focus-within) {
+	--joined--border-shadow: inset 0 0 0 1px var(--input--border-color--focus);
+	background-color: var(--color--primary--tint-3);
 }
 
-.DateFieldGroupJoined.DateFieldGroupActive:hover:not(:focus-within),
-.DateFieldGroupJoined.DateFieldGroupActive:focus-within {
+.DateFieldGroupInvalid,
+.DateFieldGroupInvalid:hover:not(:focus-within),
+.DateFieldGroupInvalid:focus-within,
+.DateFieldGroupInvalid.DateFieldGroupActive:not(:focus-within) {
 	outline: none;
-	box-shadow: inset 0 0 0 2px var(--focus--border-color);
+	--joined--border-shadow: inset 0 0 0 1px var(--input--border-color--invalid);
+	background-color: var(--input--color--background);
 }
 
-.DateFieldGroupInvalid.DateFieldGroupJoined,
-.DateFieldGroupInvalid.DateFieldGroupJoined:hover:not(:focus-within),
-.DateFieldGroupInvalid.DateFieldGroupJoined:focus-within,
-.DateFieldGroupInvalid.DateFieldGroupJoined.DateFieldGroupActive,
-.DateFieldGroupInvalid.DateFieldGroupJoined.DateFieldGroupActive:hover:not(:focus-within),
-.DateFieldGroupInvalid.DateFieldGroupJoined.DateFieldGroupActive:focus-within {
-	outline: none;
-	box-shadow: inset 0 0 0 1px var(--border-color--danger);
-}
-
-.DateFieldGroupInvalid:not(.DateFieldGroupJoined) .DateFieldInput :global(.n8n-input__wrapper),
-.DateFieldGroupInvalid:not(.DateFieldGroupJoined)
-	.DateFieldInput
-	:global(.n8n-input__wrapper:focus-within),
-.DateFieldGroupInvalid:not(.DateFieldGroupJoined)
-	.DateFieldInput
-	:global(.n8n-input__wrapper:hover:not(:focus-within)) {
-	outline: none;
-	box-shadow: inset 0 0 0 1px var(--border-color--danger);
-}
-
-.DateFieldInput {
+.FieldInput {
 	width: 100%;
 	min-width: 0;
-	flex: 1;
-}
-
-.DateFieldGroupJoined .DateFieldInput :global(.n8n-input__wrapper),
-.DateFieldGroupJoined .DateFieldInput :global(.n8n-input__wrapper:hover:not(:focus-within)),
-.DateFieldGroupJoined .DateFieldInput :global(.n8n-input__wrapper:focus-within) {
-	min-height: var(--input--height);
-	border-radius: 0;
-	background: transparent;
-	box-shadow: none;
-	outline: none;
-}
-
-.DateFieldInput :global(input) {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.TimeFieldInput {
-	flex-shrink: 0;
-	align-self: stretch;
+	height: 100%;
 	padding: 0 var(--input--padding);
 	border: none;
-	border-left: 1px solid var(--input--border-color);
 	border-radius: 0;
 	background: transparent;
 	color: var(--color--text--shade-1);
 	font-size: var(--input--font-size);
 	font-family: inherit;
 	outline: none;
-}
-
-.TimeFieldInputAmPm {
-	width: 6.75rem;
-}
-
-.TimeFieldInput::-webkit-calendar-picker-indicator {
-	display: none;
-	-webkit-appearance: none;
-}
-
-.DateFieldGroup:not(.DateFieldGroupJoined)
-	.DateFieldInput
-	:global(.n8n-input__wrapper:focus-within) {
-	outline: none;
-}
-
-.DateFieldGroupActive:not(.DateFieldGroupJoined):not(.DateFieldGroupInvalid)
-	.DateFieldInput
-	:global(.n8n-input__wrapper),
-.DateFieldGroupActive:not(.DateFieldGroupJoined):not(.DateFieldGroupInvalid)
-	.DateFieldInput
-	:global(.n8n-input__wrapper:focus-within),
-.DateFieldGroupActive:not(.DateFieldGroupJoined):not(.DateFieldGroupInvalid)
-	.DateFieldInput
-	:global(.n8n-input__wrapper:hover:not(:focus-within)) {
-	outline: none;
-	box-shadow: inset 0 0 0 2px var(--focus--border-color);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 </style>
