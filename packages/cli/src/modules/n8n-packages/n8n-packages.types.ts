@@ -68,9 +68,9 @@ export const DataTableMissingMode = {
 } as const;
 
 export const DataTableSchemaConflictPolicy = {
-	/** Accepts a matched table that satisfies the package schema, tolerating extra target columns. */
+	/** Accepts a matched table that has every package column, ignoring additional columns the table has of its own. Never alters the table. */
 	KeepExisting: 'keep-existing',
-	/** Strict drift detection: fails the import on any schema difference, including extra target columns. */
+	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */

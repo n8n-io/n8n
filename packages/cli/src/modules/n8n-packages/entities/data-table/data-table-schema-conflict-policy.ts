@@ -7,10 +7,10 @@ type TargetColumns = Array<{ name: string; type: string }>;
 
 /**
  * Decides whether a matched table's schema blocks the import. `keep-existing`
- * accepts a target that satisfies the package schema, tolerating extra target
- * columns; `fail` is the strict drift-detection choice and rejects any
- * difference, including a harmless superset. Both are non-destructive — the
- * matched table is never altered either way.
+ * accepts a target that satisfies the package schema, even when the target has
+ * additional columns of its own; `fail` is the strict drift-detection choice
+ * and rejects any difference, including a harmless superset. Both are
+ * non-destructive — the matched table is never altered either way.
  */
 /* eslint-disable @typescript-eslint/naming-convention -- API data table schema conflict policy keys */
 const SCHEMA_CONFLICTS: Record<
