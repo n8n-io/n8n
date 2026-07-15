@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_4d378d1ede48ed::t_4228aaa0e272a3 187-189
+packages/cli/test/integration/public-api/settings-sso-saml.test.ts
+  s_4d378d1ede48ed::t_ea15a647d2db2a 1-134
+packages/cli/src/public-api/v1/handlers/settings-sso-saml/spec/paths/settings.sso.saml.toggle.yml
+  s_4d378d1ede48ed::t_8bbe952e57b282 1-34
+packages/cli/src/public-api/types.ts
+  h_ed1b2d65e81e8e 402
+  s_4d378d1ede48ed::t_4c4cfcd12957b7 403-405
+  s_4d378d1ede48ed::t_8df8d2bb4e891d 6
+packages/cli/src/public-api/v1/handlers/settings-sso-saml/settings-sso-saml.handler.ts
+  s_4d378d1ede48ed::t_123d9739dc6072 1-43
+  s_4d378d1ede48ed::t_2c5cea32215bfc 44-45
+packages/cli/src/public-api/v1/openapi.yml
+  s_4d378d1ede48ed::t_079a35d085ec5b 70-71
+packages/cli/src/public-api/v1/handlers/settings-sso-saml/spec/schemas/saml-toggle.response.yml
+  s_4d378d1ede48ed::t_a65fce86564250 1-9
+packages/cli/src/public-api/v1/handlers/settings-sso-saml/spec/schemas/saml-toggle.request.yml
+  s_4d378d1ede48ed::t_c4c1b6e381bed6 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "20b56acd94a44148fbf3ae6810dd986ab7489c13",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4d378d1ede48ed": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "add41757-e46c-49a2-abc7-a4aa0573862a",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  }
+}
