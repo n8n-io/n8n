@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/readRows.sp.test.ts
+  s_d617b0cea1e757::t_700fb2126cf17d 1-36
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/readRows.sp.workflow.json
+  s_d617b0cea1e757::t_50f43c1291876c 1-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3727acbce537ccc7f2f43414ca6410ec3215002d",
+  "prompts": {},
+  "sessions": {
+    "s_d617b0cea1e757": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b89a3ee-4aba-4b85-a778-80d03cbf21d4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
