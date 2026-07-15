@@ -49,6 +49,13 @@ Narrow any run with `--filter <slug>` (filename substring, comma = OR),
 `--tier <name>`, and `--exclude`. `--keep-workflows` leaves built workflows for
 inspection; `--iterations N` runs each case N times for pass@k / pass^k.
 
+## Case source: disk vs langtracer
+
+| Source | When to use it |
+|---|---|
+| **`disk`** (default) | **Preferred for local development** — authoring and calibrating the case in front of you: drop the JSON into `data/workflows/`, `--filter` it, iterate. Also the only home of the `agents` tier and the seeded carve-out cases; since the corpus migration the directory holds only those, not the full suite. |
+| **`langtracer`** (`--source langtracer --suite n8n-workflows`) | Bigger runs (the full corpus or a whole tier), re-running specific cases that already live in the suite, and CI — which always runs this way. Needs `LANGTRACER_URL`/`LANGTRACER_API_KEY` in your env. |
+
 ## Configuration & secrets
 
 The harness reads its configuration from environment variables — how you supply
@@ -161,14 +168,16 @@ groupings, propagated to LangSmith as example splits so `--tier <name>` maps to 
 server-side filter. The two that matter for CI:
 
 - **`full`** — every case; nightly / full-suite runs.
-- **`pr`** — curated thin set (~6 cases) for the PR gate: high baseline
-  reliability + capability diversity.
+- **`pr`** — curated thin set for the PR gate: high baseline reliability +
+  capability diversity.
 
 Other values group cases logically (e.g. `behaviour` for conversation-behaviour
-cases, `seeded` for transient `seedThread` cases kept out of CI). Add a case to a
-tier by putting the value in its `datasets` array and re-syncing. **Only promote
-to `pr` after `--iterations 5+` shows it's reliably green** — a flaky case in the
-gate poisons it.
+cases, `seeded` for transient `seedThread` cases kept out of CI). For a new
+local case, put the value in its `datasets` array before pushing; for a case
+already in LangTracer, edit `datasets` there — `eval:langtracer-push`
+deliberately does not re-sync tier-only edits to an existing case. **Only
+promote to `pr` after `--iterations 5+` shows it's reliably green** — a flaky
+case in the gate poisons it.
 
 ## Baselines & regression
 
@@ -183,14 +192,18 @@ for low noise:
 
 ```bash
 # with your env loaded and LANGSMITH_API_KEY set, from packages/@n8n/instance-ai/
-pnpm eval:instance-ai --experiment-name instance-ai-baseline --iterations 10
+# (--dataset/--baseline-prefix mirror CI's pins — langtracer mode otherwise
+# derives suite-scoped names and later runs would never find this baseline)
+pnpm eval:instance-ai --source langtracer --suite n8n-workflows \
+  --dataset instance-ai-workflow-evals --baseline-prefix instance-ai-baseline- \
+  --experiment-name instance-ai-baseline --iterations 10
 ```
 
 LangSmith appends a random suffix; the most-recently-started `instance-ai-baseline-*`
 becomes the next comparison target. In CI, the same is a workflow dispatch:
 
 ```bash
-gh workflow run ci-instance-ai-evals.yml -f experiment-name=instance-ai-baseline -f iterations=10
+gh workflow run test-evals-instance-ai.yml -f experiment-name=instance-ai-baseline -f iterations=10
 gh workflow run ci-instance-ai-evals.yml -f pr=<number>   # re-run evals against a PR's head
 ```
 
