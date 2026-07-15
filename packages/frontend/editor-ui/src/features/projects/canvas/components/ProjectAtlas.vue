@@ -1,25 +1,30 @@
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, reactive, ref, shallowRef } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef } from 'vue';
 import { N8nButton } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
-import type { WorkflowTriggerType } from '@n8n/api-types';
 
 import type { GraphModel, WorkflowRelationType } from '../graph-model';
-import { buildGraphModel } from '../graph-model';
-import { useProjectDependencyGraph } from '../composables/useProjectDependencyGraph';
+import {
+	CREDENTIAL_TINT,
+	convexHull,
+	folderColor,
+	smoothClosedPath,
+	TRIGGER_TINTS,
+	useFullProjectModel,
+	usePanZoom,
+} from '../atlas-shared';
 
-const props = defineProps<{ projectId: string }>();
+const props = defineProps<{ projectId: string; hulls?: boolean }>();
 
 const i18n = useI18n();
-const { fetchRootGraph, fetchFolderGraph, getAllGraphs } = useProjectDependencyGraph(
-	props.projectId,
-);
+const { isLoading, model: atlasModel, load } = useFullProjectModel(props.projectId);
 
 /* ============================== data ============================== */
 
 interface AtlasNode {
 	id: string;
+	kind: 'workflow' | 'credential';
 	name: string;
 	tint: string;
 	radius: number;
@@ -35,80 +40,97 @@ interface AtlasEdge {
 	id: string;
 	source: number;
 	target: number;
-	type: WorkflowRelationType;
+	type: WorkflowRelationType | 'uses-credential';
 }
 
-const isLoading = ref(true);
 const nodes = shallowRef<AtlasNode[]>([]);
 const edges = shallowRef<AtlasEdge[]>([]);
+const hullFolderIds = shallowRef<string[]>([]);
 
-const TINTS: Record<WorkflowTriggerType, string> = {
-	chat: 'var(--color--primary)',
-	webhook: 'var(--color--primary)',
-	slack: 'var(--color--primary)',
-	schedule: 'var(--color--success)',
-	form: 'var(--color--success)',
-	error: 'var(--color--warning)',
-	mcp: 'var(--color--secondary)',
-	subworkflow: 'var(--color--text--tint-1)',
-	manual: 'var(--color--text--tint-1)',
-	none: 'var(--color--text--tint-1)',
-};
-
-/** Fetch the root graph plus every folder discovered along the way — the full project. */
-async function fetchWholeProject(): Promise<GraphModel> {
-	await fetchRootGraph();
-	const fetched = new Set<string>();
-	let model = buildGraphModel(getAllGraphs());
-	let guard = 0;
-	while (guard++ < 50) {
-		const pending = [...model.folders.keys()].filter((id) => !fetched.has(id));
-		if (pending.length === 0) break;
-		for (const folderId of pending) {
-			fetched.add(folderId);
-			await fetchFolderGraph(folderId);
-		}
-		model = buildGraphModel(getAllGraphs());
-	}
-	return model;
-}
+const TINTS = TRIGGER_TINTS;
 
 function buildAtlas(model: GraphModel): void {
-	const workflows = [...model.workflows.values()];
-	const index = new Map(workflows.map((wf, i) => [wf.id, i]));
+	// preserve current positions across rebuilds (e.g. credentials toggled on/off)
+	const previous = new Map(nodes.value.map((node) => [node.id, node]));
+
+	interface AtlasEntity {
+		id: string;
+		kind: AtlasNode['kind'];
+		name: string;
+		tint: string;
+		folderId: string | null;
+	}
+	const entities: AtlasEntity[] = [...model.workflows.values()].map((wf) => ({
+		id: wf.id,
+		kind: 'workflow',
+		name: wf.name,
+		tint: model.toolTargets.has(wf.id) ? 'var(--color--secondary)' : TINTS[wf.triggerType],
+		folderId: wf.external ? null : wf.parentFolderId,
+	}));
+	if (config.showCredentials) {
+		for (const credential of model.credentials.values()) {
+			entities.push({
+				id: credential.id,
+				kind: 'credential',
+				name: credential.name,
+				tint: CREDENTIAL_TINT,
+				folderId: null,
+			});
+		}
+	}
+	const index = new Map(entities.map((entity, i) => [entity.id, i]));
 
 	const atlasEdges: AtlasEdge[] = [];
-	const degree = new Array<number>(workflows.length).fill(0);
-	for (const relation of model.relations) {
-		const source = index.get(relation.source);
-		const target = index.get(relation.target);
-		if (source === undefined || target === undefined || source === target) continue;
-		atlasEdges.push({
-			id: `${relation.source}→${relation.target}:${relation.type}`,
-			source,
-			target,
-			type: relation.type,
-		});
+	const degree = new Array<number>(entities.length).fill(0);
+	const addEdge = (sourceId: string, targetId: string, type: AtlasEdge['type']): void => {
+		const source = index.get(sourceId);
+		const target = index.get(targetId);
+		if (source === undefined || target === undefined || source === target) return;
+		atlasEdges.push({ id: `${sourceId}→${targetId}:${type}`, source, target, type });
 		degree[source]++;
 		degree[target]++;
+	};
+	const relationVisible: Record<WorkflowRelationType, boolean> = {
+		'calls-workflow': config.showCalls,
+		'uses-as-tool': config.showTools,
+		'handles-errors-for': config.showErrors,
+	};
+	for (const relation of model.relations) {
+		if (!relationVisible[relation.type]) continue;
+		addEdge(relation.source, relation.target, relation.type);
+	}
+	if (config.showCredentials) {
+		for (const link of model.credentialLinks) {
+			addEdge(link.workflowId, link.credentialId, 'uses-credential');
+		}
 	}
 
-	nodes.value = workflows.map((wf, i) => {
+	nodes.value = entities.map((entity, i) => {
 		const angle = i * 2.399963229728653;
 		const spread = 40 * Math.sqrt(i + 1);
+		const existing = previous.get(entity.id);
 		return {
-			id: wf.id,
-			name: wf.name,
-			tint: model.toolTargets.has(wf.id) ? 'var(--color--secondary)' : TINTS[wf.triggerType],
-			radius: Math.min(22, 8 + Math.sqrt(degree[i]) * 2.5),
-			folderId: wf.external ? null : wf.parentFolderId,
-			x: Math.cos(angle) * spread,
-			y: Math.sin(angle) * spread,
-			vx: 0,
-			vy: 0,
+			...entity,
+			radius:
+				entity.kind === 'credential'
+					? Math.min(16, 6 + Math.sqrt(degree[i]) * 2)
+					: Math.min(22, 8 + Math.sqrt(degree[i]) * 2.5),
+			x: existing?.x ?? Math.cos(angle) * spread,
+			y: existing?.y ?? Math.sin(angle) * spread,
+			vx: existing?.vx ?? 0,
+			vy: existing?.vy ?? 0,
 		};
 	});
 	edges.value = atlasEdges;
+	hullFolderIds.value = props.hulls
+		? [...new Set(nodes.value.map((node) => node.folderId).filter((id): id is string => !!id))]
+		: [];
+}
+
+/** Rebuild the atlas after a content toggle, keeping node positions, and re-energize. */
+function rebuildAtlas(): void {
+	if (atlasModel.value) buildAtlas(atlasModel.value);
+	reheat();
 }
 
 /* ============================== simulation ============================== */
@@ -124,6 +146,10 @@ const config = reactive({
 	/** Residual energy — keeps the atlas gently drifting instead of freezing. */
 	activity: 0.02,
 	showLabels: true,
+	showCalls: true,
+	showTools: true,
+	showErrors: true,
+	showCredentials: true,
 });
 
 /** Hard collision: nodes never overlap, whatever the other forces say. */
@@ -230,6 +256,7 @@ const svgEl = ref<SVGSVGElement>();
 const worldEl = ref<SVGGElement>();
 const nodeEls = new Map<string, SVGGElement>();
 const edgeEls = new Map<string, SVGLineElement>();
+const hullEls = new Map<string, SVGPathElement>();
 
 function setNodeEl(id: string, el: unknown): void {
 	if (el) nodeEls.set(id, el as SVGGElement);
@@ -241,7 +268,42 @@ function setEdgeEl(id: string, el: unknown): void {
 	else edgeEls.delete(id);
 }
 
-const view = { x: 0, y: 0, zoom: 1 };
+function setHullEl(id: string, el: unknown): void {
+	if (el) hullEls.set(id, el as SVGPathElement);
+	else hullEls.delete(id);
+}
+
+const { transform, onPointerDown, onPointerMove, onPointerUp, onWheel, centerOn } =
+	usePanZoom(svgEl);
+
+const HULL_PADDING = 26;
+
+function renderHulls(): void {
+	if (!props.hulls) return;
+	const members = new Map<string, AtlasNode[]>();
+	for (const node of nodes.value) {
+		if (!node.folderId) continue;
+		const list = members.get(node.folderId) ?? [];
+		list.push(node);
+		members.set(node.folderId, list);
+	}
+	for (const folderId of hullFolderIds.value) {
+		const el = hullEls.get(folderId);
+		const list = members.get(folderId);
+		if (!el || !list?.length) continue;
+		// inflate each node into four offset points so the hull hugs the circles
+		const points = list.flatMap((node) => {
+			const r = node.radius + HULL_PADDING;
+			return [
+				{ x: node.x - r, y: node.y },
+				{ x: node.x + r, y: node.y },
+				{ x: node.x, y: node.y - r },
+				{ x: node.x, y: node.y + r },
+			];
+		});
+		el.setAttribute('d', smoothClosedPath(convexHull(points)));
+	}
+}
 
 function renderFrame(): void {
 	const ns = nodes.value;
@@ -259,50 +321,14 @@ function renderFrame(): void {
 		el.setAttribute('x2', String(t.x));
 		el.setAttribute('y2', String(t.y));
 	}
-	worldEl.value?.setAttribute('transform', `translate(${view.x}, ${view.y}) scale(${view.zoom})`);
+	renderHulls();
+	worldEl.value?.setAttribute('transform', transform.value);
 }
 
 function loop(): void {
 	tick();
 	renderFrame();
 	rafId = requestAnimationFrame(loop);
-}
-
-/* ============================== view navigation (no node dragging) ============================== */
-
-let panning: { startX: number; startY: number; viewX: number; viewY: number } | null = null;
-
-function onPointerDown(event: PointerEvent): void {
-	if (event.button !== 0) return;
-	panning = { startX: event.clientX, startY: event.clientY, viewX: view.x, viewY: view.y };
-}
-
-function onPointerMove(event: PointerEvent): void {
-	if (!panning) return;
-	view.x = panning.viewX + (event.clientX - panning.startX);
-	view.y = panning.viewY + (event.clientY - panning.startY);
-}
-
-function onPointerUp(): void {
-	panning = null;
-}
-
-function onWheel(event: WheelEvent): void {
-	event.preventDefault();
-	const bounds = svgEl.value?.getBoundingClientRect();
-	if (!bounds) return;
-	if (event.ctrlKey || event.metaKey) {
-		const factor = Math.exp(-event.deltaY * 0.01);
-		const zoom = Math.min(3, Math.max(0.1, view.zoom * factor));
-		const cx = event.clientX - bounds.left;
-		const cy = event.clientY - bounds.top;
-		view.x = cx - ((cx - view.x) / view.zoom) * zoom;
-		view.y = cy - ((cy - view.y) / view.zoom) * zoom;
-		view.zoom = zoom;
-	} else {
-		view.x -= event.deltaX;
-		view.y -= event.deltaY;
-	}
 }
 
 /* ============================== hover ============================== */
@@ -318,17 +344,10 @@ function isEdgeConnected(edge: AtlasEdge): boolean {
 /* ============================== lifecycle ============================== */
 
 onMounted(async () => {
-	try {
-		const model = await fetchWholeProject();
-		buildAtlas(model);
-	} finally {
-		isLoading.value = false;
-	}
-	const bounds = svgEl.value?.getBoundingClientRect();
-	if (bounds) {
-		view.x = bounds.width / 2;
-		view.y = bounds.height / 2;
-	}
+	const loaded = await load();
+	buildAtlas(loaded);
+	await nextTick();
+	centerOn(svgEl.value);
 	rafId = requestAnimationFrame(loop);
 });
 
@@ -416,6 +435,13 @@ const sliders: Array<{
 				@wheel="onWheel"
 			>
 				<g ref="worldEl">
+					<path
+						v-for="folderId in hullFolderIds"
+						:key="folderId"
+						:ref="(el) => setHullEl(folderId, el)"
+						class="project-atlas__hull"
+						:style="{ fill: folderColor(folderId), stroke: folderColor(folderId) }"
+					/>
 					<line
 						v-for="edge in edges"
 						:key="edge.id"
@@ -423,6 +449,7 @@ const sliders: Array<{
 						class="project-atlas__edge"
 						:class="{
 							'project-atlas__edge--tool': edge.type === 'uses-as-tool',
+							'project-atlas__edge--credential': edge.type === 'uses-credential',
 							'project-atlas__edge--highlighted': isEdgeConnected(edge),
 							'project-atlas__edge--dimmed': hoveredId !== null && !isEdgeConnected(edge),
 						}"
@@ -435,7 +462,23 @@ const sliders: Array<{
 						@pointerenter="hoveredId = node.id"
 						@pointerleave="hoveredId = null"
 					>
-						<circle :r="node.radius" :style="{ fill: node.tint }" class="project-atlas__dot" />
+						<circle
+							v-if="node.kind === 'workflow'"
+							:r="node.radius"
+							:style="{ fill: node.tint }"
+							class="project-atlas__dot"
+						/>
+						<rect
+							v-else
+							:x="-node.radius"
+							:y="-node.radius"
+							:width="node.radius * 2"
+							:height="node.radius * 2"
+							rx="3"
+							transform="rotate(45)"
+							:style="{ fill: node.tint }"
+							class="project-atlas__dot project-atlas__dot--credential"
+						/>
 						<text
 							v-if="config.showLabels || hoveredId === node.id"
 							class="project-atlas__label"
@@ -471,6 +514,50 @@ const sliders: Array<{
 						{{ i18n.baseText('projectCanvas.atlas.config.labels') }}
 					</span>
 					<input v-model="config.showLabels" type="checkbox" />
+				</label>
+				<label class="project-atlas__config-row">
+					<span class="project-atlas__config-label">
+						{{ i18n.baseText('projectCanvas.filter.callsWorkflow') }}
+					</span>
+					<input
+						v-model="config.showCalls"
+						type="checkbox"
+						data-testid="project-atlas-config-calls"
+						@change="rebuildAtlas"
+					/>
+				</label>
+				<label class="project-atlas__config-row">
+					<span class="project-atlas__config-label">
+						{{ i18n.baseText('projectCanvas.filter.usesAsTool') }}
+					</span>
+					<input
+						v-model="config.showTools"
+						type="checkbox"
+						data-testid="project-atlas-config-tools"
+						@change="rebuildAtlas"
+					/>
+				</label>
+				<label class="project-atlas__config-row">
+					<span class="project-atlas__config-label">
+						{{ i18n.baseText('projectCanvas.filter.handlesErrors') }}
+					</span>
+					<input
+						v-model="config.showErrors"
+						type="checkbox"
+						data-testid="project-atlas-config-errors"
+						@change="rebuildAtlas"
+					/>
+				</label>
+				<label class="project-atlas__config-row">
+					<span class="project-atlas__config-label">
+						{{ i18n.baseText('projectCanvas.atlas.config.credentials') }}
+					</span>
+					<input
+						v-model="config.showCredentials"
+						type="checkbox"
+						data-testid="project-atlas-config-credentials"
+						@change="rebuildAtlas"
+					/>
 				</label>
 				<N8nButton
 					type="secondary"
@@ -515,6 +602,13 @@ const sliders: Array<{
 	}
 }
 
+.project-atlas__hull {
+	fill-opacity: 0.1;
+	stroke-opacity: 0.35;
+	stroke-width: 1.5;
+	pointer-events: none;
+}
+
 .project-atlas__edge {
 	stroke: var(--color--foreground--shade-1);
 	stroke-width: 1.2;
@@ -524,6 +618,13 @@ const sliders: Array<{
 	&--tool {
 		stroke: var(--color--secondary);
 		stroke-dasharray: 5 4;
+	}
+
+	&--credential {
+		stroke: var(--color--warning);
+		stroke-width: 1;
+		stroke-dasharray: 2 4;
+		opacity: 0.45;
 	}
 
 	&--highlighted {

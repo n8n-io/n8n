@@ -23,7 +23,10 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import ProjectAtlas from './components/ProjectAtlas.vue';
+import ProjectBoxes from './components/ProjectBoxes.vue';
+import ProjectBundle from './components/ProjectBundle.vue';
 import ProjectCanvasContainer from './components/ProjectCanvasContainer.vue';
+import ProjectNested from './components/ProjectNested.vue';
 import type { ProjectCanvasMenuItem } from './components/ProjectCanvasContextMenu.vue';
 import ProjectCanvasContextMenu from './components/ProjectCanvasContextMenu.vue';
 import ProjectCanvasEdge from './components/ProjectCanvasEdge.vue';
@@ -106,6 +109,8 @@ const model = shallowRef<GraphModel>({
 	folders: new Map(),
 	relations: [],
 	toolTargets: new Set(),
+	credentials: new Map(),
+	credentialLinks: [],
 });
 
 /** World positions (top-left) of every unit; folder position = collapsed node anchor. */
@@ -196,11 +201,15 @@ const relationshipTypeOptions: Array<{ label: string; value: WorkflowRelationTyp
 	{ label: i18n.baseText('projectCanvas.filter.handlesErrors'), value: 'handles-errors-for' },
 ];
 
-type CanvasTab = 'canvas' | 'atlas';
+type CanvasTab = 'canvas' | 'atlas' | 'hulls' | 'nested' | 'boxes' | 'bundle';
 const activeTab = ref<CanvasTab>('canvas');
 const tabOptions = [
 	{ label: i18n.baseText('projectCanvas.tabs.canvas'), value: 'canvas' },
 	{ label: i18n.baseText('projectCanvas.tabs.atlas'), value: 'atlas' },
+	{ label: i18n.baseText('projectCanvas.tabs.hulls'), value: 'hulls' },
+	{ label: i18n.baseText('projectCanvas.tabs.nested'), value: 'nested' },
+	{ label: i18n.baseText('projectCanvas.tabs.boxes'), value: 'boxes' },
+	{ label: i18n.baseText('projectCanvas.tabs.bundle'), value: 'bundle' },
 ];
 
 const initialising = ref(true);
@@ -1511,6 +1520,18 @@ defineExpose({
 
 		<div v-if="activeTab === 'atlas'" class="project-canvas__canvas-area">
 			<ProjectAtlas :project-id="projectId" />
+		</div>
+		<div v-if="activeTab === 'hulls'" class="project-canvas__canvas-area">
+			<ProjectAtlas :project-id="projectId" hulls />
+		</div>
+		<div v-if="activeTab === 'nested'" class="project-canvas__canvas-area">
+			<ProjectNested :project-id="projectId" />
+		</div>
+		<div v-if="activeTab === 'boxes'" class="project-canvas__canvas-area">
+			<ProjectBoxes :project-id="projectId" />
+		</div>
+		<div v-if="activeTab === 'bundle'" class="project-canvas__canvas-area">
+			<ProjectBundle :project-id="projectId" />
 		</div>
 	</div>
 </template>

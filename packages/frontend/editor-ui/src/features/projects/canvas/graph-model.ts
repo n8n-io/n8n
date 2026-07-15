@@ -36,12 +36,25 @@ export interface GraphRelation {
 	type: WorkflowRelationType;
 }
 
+export interface GraphCredentialUnit {
+	id: string;
+	name: string;
+}
+
+export interface GraphCredentialLink {
+	workflowId: string;
+	credentialId: string;
+}
+
 export interface GraphModel {
 	workflows: Map<string, GraphWorkflowUnit>;
 	folders: Map<string, GraphFolderUnit>;
 	relations: GraphRelation[];
 	/** Workflow IDs that are the target of at least one uses-as-tool relation. */
 	toolTargets: Set<string>;
+	/** Credentials owned or referenced by the project's workflows (Atlas only). */
+	credentials: Map<string, GraphCredentialUnit>;
+	credentialLinks: GraphCredentialLink[];
 }
 
 export interface VisibleEdge {
@@ -66,6 +79,9 @@ export function buildGraphModel(graphs: ProjectDependencyGraph[]): GraphModel {
 	const relations: GraphRelation[] = [];
 	const relationKeys = new Set<string>();
 	const toolTargets = new Set<string>();
+	const credentials = new Map<string, GraphCredentialUnit>();
+	const credentialLinks: GraphCredentialLink[] = [];
+	const credentialLinkKeys = new Set<string>();
 
 	for (const graph of graphs) {
 		for (const node of graph.nodes) {
@@ -76,6 +92,10 @@ export function buildGraphModel(graphs: ProjectDependencyGraph[]): GraphModel {
 					parentFolderId: node.metadata.parentFolderId ?? null,
 					workflowCount: node.metadata.workflowCount ?? 0,
 				});
+				continue;
+			}
+			if (node.type === 'credential') {
+				credentials.set(node.id, { id: node.id, name: node.name });
 				continue;
 			}
 			if (node.type !== 'workflow') continue;
@@ -98,6 +118,13 @@ export function buildGraphModel(graphs: ProjectDependencyGraph[]): GraphModel {
 		}
 
 		for (const edge of graph.edges) {
+			if (edge.type === 'uses-credential') {
+				const key = `${edge.sourceId}→${edge.targetId}`;
+				if (credentialLinkKeys.has(key)) continue;
+				credentialLinkKeys.add(key);
+				credentialLinks.push({ workflowId: edge.sourceId, credentialId: edge.targetId });
+				continue;
+			}
 			if (!isWorkflowRelationType(edge.type)) continue;
 			const key = `${edge.sourceId}→${edge.targetId}:${edge.type}`;
 			if (relationKeys.has(key)) continue;
@@ -107,7 +134,7 @@ export function buildGraphModel(graphs: ProjectDependencyGraph[]): GraphModel {
 		}
 	}
 
-	return { workflows, folders, relations, toolTargets };
+	return { workflows, folders, relations, toolTargets, credentials, credentialLinks };
 }
 
 /**
