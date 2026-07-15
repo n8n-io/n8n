@@ -52,7 +52,7 @@
     ".": {
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "import": "./src/index.ts"
+      "import": "./dist/index.js"
     }
   },
   "dependencies": {
