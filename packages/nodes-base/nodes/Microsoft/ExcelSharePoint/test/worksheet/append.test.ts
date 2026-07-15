@@ -211,6 +211,22 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 		expect(result[0].map((item) => item.json)).toEqual([{ city: 'Berlin', name: 'Sara' }]);
 	});
 
+	it('appends below a one-column sheet that already has just its header, without overwriting it', async () => {
+		ctx.getInputData.mockReturnValue([{ json: { Notes: 'hello' } }]);
+		setParams({ ...byIdParams, dataMode: 'autoMap' });
+		apiRequest
+			.mockResolvedValueOnce({ address: 'Sheet1!A1', values: [['Notes']] })
+			.mockResolvedValueOnce({ values: [['hello']] });
+
+		const result = await node.execute.call(ctx);
+
+		// Must land on row 2, not overwrite the existing header at A1
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PATCH', `${SHEET_PATH}/range(address='A2:A2')`, {
+			values: [['hello']],
+		});
+		expect(result[0].map((item) => item.json)).toEqual([{ Notes: 'hello' }]);
+	});
+
 	it('writes one header for a multi-item batch appended to an empty sheet', async () => {
 		ctx.getInputData.mockReturnValue([
 			{ json: { name: 'bob', age: 25 } },

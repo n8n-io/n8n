@@ -5,7 +5,12 @@ import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
 import type { ExcelResponse, SheetRow } from '../../../Excel/v2/helpers/interfaces';
 // Reused from the OneDrive node so range math and output shaping cannot drift
-import { findAppendRange, prepareOutput } from '../../../Excel/v2/helpers/utils';
+import {
+	findAppendRange,
+	nextExcelColumn,
+	parseAddress,
+	prepareOutput,
+} from '../../../Excel/v2/helpers/utils';
 import {
 	workbookRLC,
 	siteRLC,
@@ -17,6 +22,7 @@ import {
 	columnsFromFields,
 	columnsFromItem,
 	defineRow,
+	isEmptySheet,
 	isEmptyUsedRange,
 	type DataMode,
 	type FieldEntry,
@@ -247,6 +253,20 @@ function buildItemRows(
 	return { columnsRow: columnsRow ?? [], okRows, errorRows };
 }
 
+/**
+ * `findAppendRange` treats any single-cell used-range address as an empty
+ * table and starts writing at that same cell — correct for a genuinely blank
+ * sheet, but it would overwrite a one-column sheet's real header if that
+ * header is the sheet's only populated cell. This computes the row below it
+ * instead, for that one case `findAppendRange` can't tell apart.
+ */
+function appendBelowSingleCell(address: string, cols: number, rows: number): string {
+	const { cellFrom } = parseAddress(address);
+	const startRow = Number(cellFrom.row) + 1;
+	const endColumn = nextExcelColumn(cellFrom.column, Math.max(cols - 1, 0));
+	return `${cellFrom.column}${startRow}:${endColumn}${startRow + Math.max(rows - 1, 0)}`;
+}
+
 /** Reassembles per-item output, keyed by original item index, back into that same order. */
 function combineInOrder(
 	itemCount: number,
@@ -331,10 +351,16 @@ async function executeMapped(
 			? [columnsRow, ...okRows.map((r) => r.row)]
 			: okRows.map((r) => r.row);
 
-		const range = findAppendRange(usedRangeAddress, {
-			cols: rowsToWrite[0]?.length ?? 0,
-			rows: rowsToWrite.length,
-		});
+		// A one-column sheet with only its header looks identical to a blank
+		// sheet to findAppendRange (both are single-cell addresses) — write
+		// below that cell explicitly instead of letting it assume row 1 is free
+		const range =
+			isEmptyUsedRange(usedRangeAddress) && !writesHeader
+				? appendBelowSingleCell(usedRangeAddress, rowsToWrite[0]?.length ?? 0, rowsToWrite.length)
+				: findAppendRange(usedRangeAddress, {
+						cols: rowsToWrite[0]?.length ?? 0,
+						rows: rowsToWrite.length,
+					});
 		const responseData = await (microsoftApiRequest<ExcelResponse>).call(
 			this,
 			'PATCH',
@@ -389,19 +415,28 @@ export async function execute(
 	);
 
 	// An empty sheet has no header row to read; the raw/mapped writers seed one
-	// from the input instead of throwing (the OneDrive node's behaviour)
-	const isEmpty = isEmptyUsedRange(usedRange.address);
-	const existingColumns = isEmpty ? undefined : ((usedRange.values?.[0] as string[]) ?? []);
+	// from the input instead of throwing (the OneDrive node's behaviour). RAW
+	// mode keeps the OneDrive node's address-only check for exact parity.
+	if (settings.dataMode === 'raw') {
+		const isEmpty = isEmptyUsedRange(usedRange.address);
+		const existingColumns = isEmpty ? undefined : ((usedRange.values?.[0] as string[]) ?? []);
+		return await executeRaw.call(this, sheetPath, usedRange.address, existingColumns, settings);
+	}
 
-	return settings.dataMode === 'raw'
-		? await executeRaw.call(this, sheetPath, usedRange.address, existingColumns, settings)
-		: await executeMapped.call(
-				this,
-				items,
-				sheetPath,
-				usedRange.address,
-				isEmpty,
-				existingColumns,
-				settings,
-			);
+	// autoMap/define also have to tell a genuinely empty sheet apart from a
+	// one-column sheet whose only cell already holds real data (its header) —
+	// the address alone can't do that, unlike the RAW-mode check above
+	const firstRow = usedRange.values?.[0] as SheetRow | undefined;
+	const isEmpty = isEmptySheet(usedRange.address, firstRow);
+	const existingColumns = isEmpty ? undefined : ((firstRow as string[]) ?? []);
+
+	return await executeMapped.call(
+		this,
+		items,
+		sheetPath,
+		usedRange.address,
+		isEmpty,
+		existingColumns,
+		settings,
+	);
 }

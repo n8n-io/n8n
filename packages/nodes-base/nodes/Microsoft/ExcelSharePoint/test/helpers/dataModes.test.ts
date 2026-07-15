@@ -3,6 +3,7 @@ import {
 	columnsFromFields,
 	columnsFromItem,
 	defineRow,
+	isEmptySheet,
 	isEmptyUsedRange,
 } from '../../helpers/dataModes';
 
@@ -14,6 +15,24 @@ describe('Microsoft Excel (SharePoint) — helpers/dataModes', () => {
 
 		it('treats a multi-cell address as non-empty', () => {
 			expect(isEmptyUsedRange('Sheet1!A1:B2')).toBe(false);
+		});
+	});
+
+	describe('isEmptySheet', () => {
+		it('treats a single-cell address with a blank cell as empty', () => {
+			expect(isEmptySheet('Sheet1!A1', [''])).toBe(true);
+		});
+
+		it('treats a single-cell address with no row data at all as empty', () => {
+			expect(isEmptySheet('Sheet1!A1', undefined)).toBe(true);
+		});
+
+		it('does not treat a one-column sheet with only its header as empty', () => {
+			expect(isEmptySheet('Sheet1!A1', ['Notes'])).toBe(false);
+		});
+
+		it('treats a multi-cell address as non-empty regardless of content', () => {
+			expect(isEmptySheet('Sheet1!A1:B2', [''])).toBe(false);
 		});
 	});
 
