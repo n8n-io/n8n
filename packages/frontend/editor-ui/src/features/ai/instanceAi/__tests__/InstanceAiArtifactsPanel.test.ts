@@ -270,7 +270,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(getAllByTestId('instance-ai-context-row')).toHaveLength(1);
 	});
 
-	it('clears pending handoff context on dismiss without writing thread metadata', async () => {
+	it('clears pending handoff context on dismiss and persists the dismissed key', async () => {
 		const pendingComposerContext = ref({
 			source: 'agent-preview' as const,
 			agentId: 'agent-1',
@@ -289,7 +289,45 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
 
 		expect(pendingComposerContext.value).toBeNull();
-		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
+		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
+			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
+		});
+		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
+	});
+
+	it('dismisses pending context that is also present on a user message', async () => {
+		const pendingComposerContext = ref({
+			source: 'agent-preview' as const,
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			agentName: 'SEO Auditor',
+		});
+		storeState.messages = [
+			{
+				role: 'user',
+				context: {
+					source: 'agent-preview',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
+					agentName: 'SEO Auditor',
+				},
+			},
+		];
+
+		const { getByTestId, queryByText } = renderComponent({
+			global: {
+				provide: {
+					pendingComposerContext,
+				},
+			},
+		});
+
+		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
+
+		expect(pendingComposerContext.value).toBeNull();
+		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
+			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
+		});
 		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
 	});
 
