@@ -281,6 +281,18 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	it('should not fetch credentials on mount when skipCredentialsFetch is set', () => {
+		// Hosts with a synthetic workflow document (e.g. the tool config modal)
+		// own the credential fetch themselves; the component's own fetch would
+		// query a nonexistent workflow id and wipe the store with its empty result.
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {};
+
+		renderComponent({ props: { skipCredentialsFetch: true } });
+
+		expect(credentialsStore.fetchAllCredentialsForWorkflow).not.toHaveBeenCalled();
+	});
+
 	it('should fetch credentials scoped to the project for an unsaved workflow', () => {
 		workflowsStore.isNewWorkflow = true;
 		projectsStore.currentProject = { id: 'project-1' } as Project;

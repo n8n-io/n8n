@@ -1,5 +1,6 @@
 ---
 openapi: 3.0.0
+x-enable-proxy: false
 info:
   title: n8n Public API
   description: n8n Public API
@@ -15,6 +16,12 @@ externalDocs:
   url: https://docs.n8n.io/api/
 servers:
   - url: /api/v1
+    description: Current n8n instance (self-hosted built-in playground)
+  - url: '{url}/api/v1'
+    description: Self-hosted n8n instance
+    variables:
+      url:
+        default: https://example.com
 tags:
   - name: Audit
     description: Operations about security audit

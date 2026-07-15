@@ -1,6 +1,12 @@
 import { Time } from '@n8n/constants';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
+import {
+	DEFAULT_CLOCK_SKEW_OPTIONS,
+	isClockSkewSignificant,
+	measureClockSkew,
+	type ClockSkewOptions,
+} from './clock-skew';
 import { InvalidLifecycleOptionsError } from './errors';
 import {
 	DEFAULT_EXECUTOR_OPTIONS,
@@ -27,6 +33,13 @@ import { tracePass } from '../observability/pass-tracing';
 import { noopTracer, type Tracer } from '../observability/tracer';
 
 export type SchedulerEventLevel = 'debug' | 'info' | 'warn' | 'error';
+
+/**
+ * A task firing this far past its scheduled time is reported once, per fire. Kept
+ * well above normal sub-second dispatch jitter so the warning flags a genuinely
+ * late fire (a blocked event loop, a skewed clock) rather than routine load.
+ */
+export const DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS = 30;
 
 /**
  * A lifecycle milestone, incident or notable outcome the scheduler reports,
@@ -62,8 +75,27 @@ export interface SchedulerDeps {
 	reaper?: Partial<ReaperOptions>;
 	retention?: Partial<RetentionOptions>;
 
+	/** Tuning for the start-time clock-skew check (only used when {@link now} is set). */
+	clockSkew?: Partial<ClockSkewOptions>;
+
+	/**
+	 * Warn through {@link onEvent} when a task fires at least this many seconds after
+	 * its scheduled time (a blocked event loop or a skewed clock). Defaults to
+	 * {@link DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS}.
+	 */
+	dispatchLagWarnThresholdSeconds?: number;
+
 	/** Cadences of the loops `start` runs, one per pass. */
 	lifecycle?: Partial<LifecycleOptions>;
+
+	/**
+	 * Reads the current time from the clock the scheduler coordinates on, the same
+	 * clock due-ness and leases are judged against. Optional: when given, `start`
+	 * samples it once and reports a warning through {@link onEvent} if it differs
+	 * from this instance's own clock enough to fire tasks early or late. How the
+	 * time is read is the host's concern; left out, the check is skipped.
+	 */
+	now?: () => Promise<Date>;
 
 	onEvent?: (event: SchedulerEvent) => void;
 
@@ -106,6 +138,9 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	const reaperOptions = withDefaults(DEFAULT_REAPER_OPTIONS, deps.reaper);
 	const retentionOptions = withDefaults(DEFAULT_RETENTION_OPTIONS, deps.retention);
 	const lifecycleOptions = withDefaults(DEFAULT_LIFECYCLE_OPTIONS, deps.lifecycle);
+	const clockSkewOptions = withDefaults(DEFAULT_CLOCK_SKEW_OPTIONS, deps.clockSkew);
+	const dispatchLagWarnThresholdSeconds =
+		deps.dispatchLagWarnThresholdSeconds ?? DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS;
 
 	if (!(lifecycleOptions.jitterRatio >= 0 && lifecycleOptions.jitterRatio < 1)) {
 		throw new InvalidLifecycleOptionsError(
@@ -206,11 +241,18 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					error: described(error),
 				});
 			},
-			onDispatch: (taskType, lagSeconds) =>
+			onDispatch: (taskType, lagSeconds) => {
 				recordMetric(() => {
 					metrics.recordDispatch(taskType);
 					metrics.observeDispatchLagSeconds(taskType, lagSeconds);
-				}),
+				});
+				if (lagSeconds >= dispatchLagWarnThresholdSeconds) {
+					emit('warn', 'Scheduler fired a task later than its scheduled time', {
+						taskType,
+						lagSeconds: Math.round(lagSeconds),
+					});
+				}
+			},
 			onFire: (taskType, result) =>
 				recordMetric(() => {
 					metrics.recordFireOutcome(taskType, result);
@@ -446,6 +488,27 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		),
 	];
 
+	const checkClockSkew = async () => {
+		if (deps.now === undefined) return;
+		try {
+			const before = Date.now();
+			const referenceNow = await deps.now();
+			const after = Date.now();
+			const skew = measureClockSkew({ before, referenceNow: referenceNow.getTime(), after });
+			if (isClockSkewSignificant(skew, clockSkewOptions.warnThresholdMs)) {
+				emit(
+					'warn',
+					'Scheduler detected a clock difference between this instance and the clock it coordinates on; scheduled tasks may fire slightly early or late. Synchronise this instance clock (e.g. via NTP).',
+					{ offsetMs: Math.round(skew.offsetMs), roundTripMs: Math.round(skew.roundTripMs) },
+				);
+			}
+		} catch (error) {
+			emit('debug', 'Scheduler could not check the clock difference', {
+				error: described(error),
+			});
+		}
+	};
+
 	let started = false;
 	let stopping: Promise<void> | undefined;
 
@@ -471,6 +534,9 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					loop.start();
 				}
 				emit('info', 'Scheduler started', { hostId });
+				// Detached: the clock check reports through the event sink and must
+				// never delay the loops that are already running.
+				void checkClockSkew();
 			}
 		},
 

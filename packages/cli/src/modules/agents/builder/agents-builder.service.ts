@@ -1,9 +1,11 @@
 import type {
+	BuiltTelemetry,
 	CredentialProvider,
 	ModelConfig,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
+	Telemetry,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
@@ -48,6 +50,12 @@ export interface BuilderSessionOptions {
 	 * Used by hosts (e.g. instance AI) that already resolved a model upstream.
 	 */
 	modelConfig?: ModelConfig;
+	/**
+	 * Host-provided telemetry for this session (e.g. instance AI's parent-trace
+	 * telemetry). When set, it replaces the builder's own LangSmith wiring so
+	 * sub-agent spans join the host trace.
+	 */
+	telemetry?: Telemetry | BuiltTelemetry;
 }
 
 @Service()
@@ -193,6 +201,7 @@ export class AgentsBuilderService {
 		// directly and skip the builder's own settings chain entirely — no
 		// `BuilderNotConfiguredError` is possible on this path, and there is no
 		// tracing-proxy config to forward since it isn't the builder's own proxy.
+		// Hosts that want tracing on this path pass `session.telemetry` instead.
 		const { config: modelConfig, tracingProxyConfig } = session.modelConfig
 			? { config: session.modelConfig, tracingProxyConfig: undefined }
 			: await this.builderSettings.resolveModelConfig(user);
@@ -242,14 +251,16 @@ export class AgentsBuilderService {
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
 			.configuration({ maxIterations: 30 });
 
-		const telemetry = await buildBuilderTelemetry({
-			agentId,
-			projectId,
-			userId: user.id,
-			threadId: session.threadId,
-			model: modelConfig,
-			tracingProxyConfig,
-		});
+		const telemetry =
+			session.telemetry ??
+			(await buildBuilderTelemetry({
+				agentId,
+				projectId,
+				userId: user.id,
+				threadId: session.threadId,
+				model: modelConfig,
+				tracingProxyConfig,
+			}));
 		if (telemetry) builder.telemetry(telemetry);
 
 		for (const tool of [...tools.json, ...tools.shared]) {
