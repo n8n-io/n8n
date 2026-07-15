@@ -577,6 +577,20 @@ describe('SourceControlGitService', () => {
 				expect(git.push).toHaveBeenCalledWith('origin', 'feat/x', ['-f']);
 			});
 		});
+
+		describe('fetch', () => {
+			beforeEach(() => {
+				vi.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+			});
+
+			it('prunes stale remote-tracking branches', async () => {
+				await gitService.fetch();
+
+				// Without --prune, a branch deleted on the remote keeps showing up in
+				// `git branch -r` (and therefore the branch picker) indefinitely.
+				expect(git.fetch).toHaveBeenCalledWith(['--prune']);
+			});
+		});
 	});
 
 	describe('getFileContent', () => {

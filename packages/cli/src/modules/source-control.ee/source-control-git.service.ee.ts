@@ -448,7 +448,9 @@ export class SourceControlGitService {
 			throw new UnexpectedError('Git is not initialized (fetch)');
 		}
 		await this.setGitCommand();
-		return await this.git.fetch();
+		// Prune stale remote-tracking refs so branches deleted on the remote stop
+		// showing up locally (plain `git fetch` never removes them on its own).
+		return await this.git.fetch(['--prune']);
 	}
 
 	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {
