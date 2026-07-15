@@ -135,6 +135,6 @@ describe('formatPreviewSessionContext', () => {
 		const block = formatPreviewSessionContext(makeThread(), executions);
 
 		expect(block).toMatch(/\[transcript truncated: \d+ later turns omitted\]/);
-		expect(block!.length).toBeLessThan(120_000);
+		expect(block!.length).toBeLessThanOrEqual(100_000);
 	});
 });

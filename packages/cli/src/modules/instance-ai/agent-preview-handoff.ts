@@ -16,6 +16,15 @@ export type AgentPreviewHandoffResult = {
 	target: { agentId: string; projectId: string };
 };
 
+const ESCAPED_AGENT_PREVIEW_CONTEXT_OPEN_TAG = '&lt;agent-preview-context&gt;';
+const ESCAPED_AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '&lt;/agent-preview-context&gt;';
+
+function escapeAgentPreviewContextDelimiters(value: string): string {
+	return value
+		.replaceAll(AGENT_PREVIEW_CONTEXT_OPEN_TAG, ESCAPED_AGENT_PREVIEW_CONTEXT_OPEN_TAG)
+		.replaceAll(AGENT_PREVIEW_CONTEXT_CLOSE_TAG, ESCAPED_AGENT_PREVIEW_CONTEXT_CLOSE_TAG);
+}
+
 /**
  * Resolve an agent-preview handoff reference into an LLM-facing context block.
  * Ownership is enforced by `getThreadDetail` (project + agent scoped).
@@ -54,6 +63,8 @@ export async function resolveAgentPreviewHandoff(
 		trimmedTitle.length > 0
 			? `"${trimmedTitle}" (session #${detail.thread.sessionNumber})`
 			: `session #${detail.thread.sessionNumber}`;
+	const safeSessionLabel = escapeAgentPreviewContextDelimiters(sessionLabel);
+	const safeTranscript = escapeAgentPreviewContextDelimiters(transcript);
 
 	const refJson = JSON.stringify({
 		source: context.source,
@@ -63,7 +74,7 @@ export async function resolveAgentPreviewHandoff(
 	});
 
 	const prose = [
-		`The user shared a real preview-chat transcript for agent \`${context.agentId}\` (${sessionLabel}).`,
+		`The user shared a real preview-chat transcript for agent \`${context.agentId}\` (${safeSessionLabel}).`,
 		'Analyze how the agent behaved and improve its configuration via `build-agent`.',
 		'The builder sub-agent cannot see this chat — when you call `build-agent`, pass `agentId` and include the relevant findings from this transcript in `message`.',
 	].join('\n');
@@ -74,7 +85,7 @@ export async function resolveAgentPreviewHandoff(
 		'',
 		prose,
 		'',
-		transcript,
+		safeTranscript,
 		AGENT_PREVIEW_CONTEXT_CLOSE_TAG,
 	].join('\n');
 

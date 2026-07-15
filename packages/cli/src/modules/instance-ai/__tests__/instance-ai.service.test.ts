@@ -3048,6 +3048,15 @@ describe('InstanceAiService — OAuth callback URL', () => {
 	});
 });
 
+describe('InstanceAiService — editor handoff context resources', () => {
+	it('builds the context block from combined workflow and agent attachments', () => {
+		const source = InstanceAiService.toString();
+
+		expect(source).toContain('buildContextResourcesBlock(contextAttachments)');
+		expect(source).not.toContain('buildContextResourcesBlock(workflowAttachments)');
+	});
+});
+
 describe('InstanceAiService — workflow verification follow-up gate', () => {
 	type VerificationGateService = {
 		workflowObligations: { getObligation: Mock };

@@ -3138,7 +3138,7 @@ export class InstanceAiService {
 			}
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-			const contextResourcesBlock = buildContextResourcesBlock(workflowAttachments);
+			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
 
 			let handoffContextBlock = '';
 			let agentPreviewTitleFallback: string | undefined;

@@ -102,28 +102,44 @@ export function formatPreviewSessionContext(
 		`Preview session transcript — title: ${thread.title ?? '(untitled)'}, ` +
 		`session #${thread.sessionNumber}, scope: ${scopeLabel}, turns: ${scoped.length}`;
 
-	const lines = [
+	const prefix = [
 		PREVIEW_CONTEXT_OPEN_TAG,
 		header,
 		'',
 		'The user shared this transcript of a real conversation with the target agent',
 		'so you can assess its behavior and improve its configuration.',
-	];
-
-	let length = lines.join('\n').length;
+	].join('\n');
+	const closing = `\n${PREVIEW_CONTEXT_CLOSE_TAG}`;
+	const includedTurns: string[] = [];
+	let includedLength = 0;
 	let omitted = 0;
-	for (const execution of scoped) {
-		if (length > MAX_BLOCK_CHARS) {
-			omitted++;
-			continue;
+
+	for (let i = 0; i < scoped.length; i++) {
+		const formatted = `\n${formatExecution(scoped[i])}`;
+		const projectedLength = prefix.length + includedLength + formatted.length + closing.length;
+		if (projectedLength > MAX_BLOCK_CHARS) {
+			omitted = scoped.length - i;
+			break;
 		}
-		const formatted = `\n${formatExecution(execution)}`;
-		lines.push(formatted);
-		length += formatted.length + 1;
+		includedTurns.push(formatted);
+		includedLength += formatted.length;
 	}
-	if (omitted > 0) {
-		lines.push(`\n[transcript truncated: ${omitted} later turns omitted]`);
+
+	let footer = '';
+	while (omitted > 0) {
+		const footerCandidate = `\n[transcript truncated: ${omitted} later turns omitted]`;
+		const projectedLength =
+			prefix.length + includedLength + footerCandidate.length + closing.length;
+		if (projectedLength <= MAX_BLOCK_CHARS) {
+			footer = footerCandidate;
+			break;
+		}
+
+		const removedTurn = includedTurns.pop();
+		if (!removedTurn) break;
+		includedLength -= removedTurn.length;
+		omitted++;
 	}
-	lines.push(PREVIEW_CONTEXT_CLOSE_TAG);
-	return lines.join('\n');
+
+	return prefix + includedTurns.join('') + footer + closing;
 }
