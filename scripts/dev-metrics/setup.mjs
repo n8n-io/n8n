@@ -273,17 +273,18 @@ function fireEvent(event) {
 function enable() {
 	const firstOptIn = readState()?.consent !== 'granted';
 	writeState({ consent: 'granted' });
-	console.log('✓ n8n dev metrics enabled. Thanks for helping improve the tooling!');
+	emit('\n✓ n8n dev metrics enabled. Thanks for helping improve the tooling!\n\n'+
+							'You can opt out of dev metrics at any time by running "pnpm dev-metrics:reset"\n', GREEN);
 	for (const r of installBinaries()) {
-		if (r.action === 'missing') console.log(`  ${r.bin}: not found on PATH — skipped.`);
+		if (r.action === 'missing') emit(`  ${r.bin}: not found on PATH — skipped.`);
 		else if (r.action === 'unwritable')
-			console.log(`  ${r.bin}: ${r.path} not writable — skipped.`);
+			emit(`  ${r.bin}: ${r.path} not writable — skipped.`);
 		else if (r.action === 'error')
-			console.log(`  ${r.bin}: shim install failed — original left in place.`);
+			emit(`  ${r.bin}: shim install failed — original left in place.`);
 		else if (r.action === 'refreshed')
-			console.log(`  ${r.bin}: shim already installed (${r.path}).`);
+			emit(`  ${r.bin}: shim already installed (${r.path}).`);
 		else
-			console.log(
+			emit(
 				`  ${r.bin}: replaced ${r.path} with a shim (original -> ${r.bin}${SAVED_SUFFIX}).`,
 			);
 	}
@@ -293,8 +294,8 @@ function enable() {
 function disable() {
 	writeState({ consent: 'denied' });
 	const restored = uninstallBinaries();
-	console.log('✓ n8n dev metrics disabled. Nothing will be sent.');
-	console.log(`  restored: ${restored.length ? restored.join(', ') : '(nothing was installed)'}`);
+	emit('✓ n8n dev metrics disabled. Nothing will be sent.', GREEN);
+	emit(`  restored: ${restored.length ? restored.join(', ') : '(nothing was installed)'}`);
 }
 
 /**
@@ -318,32 +319,32 @@ function reset() {
 	} catch {
 		// not installed
 	}
-	console.log('✓ n8n dev metrics reset to first-run state (consent undecided).');
-	console.log(`  state file: ${stateRemoved ? 'removed' : '(none)'}`);
-	console.log(`  tracker:    ${trackerRemoved ? 'removed' : '(none)'}`);
-	console.log(`  restored:   ${restored.length ? restored.join(', ') : '(nothing)'}`);
+	emit('✓ n8n dev metrics reset to first-run state (consent undecided).', GREEN);
+	emit(`  state file: ${stateRemoved ? 'removed' : '(none)'}`);
+	emit(`  tracker:    ${trackerRemoved ? 'removed' : '(none)'}`);
+	emit(`  restored:   ${restored.length ? restored.join(', ') : '(nothing)'}`);
 }
 
 function status() {
 	const state = readState();
-	console.log(`n8n dev metrics: consent=${state?.consent ?? '(undecided)'}`);
-	console.log(`  state file: ${statePath()}`);
-	console.log(
+	emit(`n8n dev metrics: consent=${state?.consent ?? '(undecided)'}`);
+	emit(`  state file: ${statePath()}`);
+	emit(
 		`  weekly id:  ${state?.anonId ?? '(none yet — assigned on first tracked command)'}${state?.week ? ` (week ${state.week})` : ''}`,
 	);
-	console.log(`  shim src:   ${SHADOW_SHIM_SRC} (v${shimVersion(SHADOW_SHIM_SRC) ?? '?'})`);
+	emit(`  shim src:   ${SHADOW_SHIM_SRC} (v${shimVersion(SHADOW_SHIM_SRC) ?? '?'})`);
 	const td = trackerDest();
-	console.log(
+	emit(
 		`  tracker:    ${existsSync(td) ? `${td} (v${trackVersion(td) ?? '?'}, src v${trackVersion(TRACK_SRC) ?? '?'})` : '(not installed)'}`,
 	);
 	for (const bin of SHADOWED_BINARIES) {
 		const front = whichOnPath(bin);
 		const shimmed = front && isOurShim(front);
-		console.log(
+		emit(
 			`  ${bin}: ${shimmed ? `shimmed @ ${front} (v${shimVersion(front) ?? '?'})` : 'not shimmed'} (real: ${resolveRealBinary(bin) || '?'})`,
 		);
 	}
-	console.log(`  git email:  ${gitEmail() || '(unset)'} (internal: ${isInternalDev()})`);
+	emit(`  git email:  ${gitEmail() || '(unset)'} (internal: ${isInternalDev()})`);
 }
 
 /**
@@ -361,6 +362,37 @@ const PROMPT_TIMEOUT_MS = 30_000;
 /** Sleep synchronously without spinning the CPU (to poll the non-blocking tty). */
 function sleepMs(ms) {
 	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+const GREEN = '\x1b[32m';
+const RESET = '\x1b[0m';
+
+/** Write a user-facing line to the controlling terminal so it's visible even
+ * when a parent (pnpm) has captured stdout. Falls back to stdout when there's
+ * no tty (CI / non-interactive). Mirrors console.log by appending a newline.
+ * A `color` (ANSI code) is applied only when the destination is a real
+ * terminal and NO_COLOR isn't set, so codes never leak into captured logs. */
+function emit(message, color) {
+	let fd;
+	try {
+		fd = openSync('/dev/tty', constants.O_WRONLY);
+		writeSync(fd, colorize(message, color, true) + '\n');
+	} catch {
+		// no controlling terminal — fall back to stdout (color only if it's a tty)
+		process.stdout.write(colorize(message, color, process.stdout.isTTY) + '\n');
+	} finally {
+		if (fd !== undefined) {
+			try {
+				closeSync(fd);
+			} catch {}
+		}
+	}
+}
+
+/** Wrap `text` in an ANSI color when the target supports it and NO_COLOR is unset. */
+function colorize(text, color, toTerminal) {
+	if (!color || !toTerminal || process.env.NO_COLOR) return text;
+	return `${color}${text}${RESET}`;
 }
 
 function promptViaTty(message) {
@@ -424,7 +456,7 @@ function main() {
 	if (flag === '--disable') return disable();
 	if (flag === '--reset') return reset();
 	if (flag === '--help' || flag === '-h') {
-		console.log(
+		emit(
 			'Usage: node scripts/dev-metrics/setup.mjs [--status|--enable|--disable|--reset]\n' +
 				'  --status   show consent and per-binary shim status\n' +
 				'  --enable   opt in + replace binaries with shims\n' +
