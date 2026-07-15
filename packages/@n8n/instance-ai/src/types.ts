@@ -671,7 +671,9 @@ export type EvaluationConfigMetricPreset = 'correctness' | 'helpfulness';
 export interface EvaluationConfigMetricInput {
 	name: string;
 	preset: EvaluationConfigMetricPreset;
-	provider: string;
+	/** LLM-judge chat-model node type. Optional: when omitted it is derived from
+	 *  the credential (each credential type maps to exactly one provider). */
+	provider?: string;
 	credentialId: string;
 	model: string;
 	outputType: 'numeric' | 'boolean';
