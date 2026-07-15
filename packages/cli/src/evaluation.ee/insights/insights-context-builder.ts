@@ -1,8 +1,9 @@
-import { normalizeMetricScore } from '@n8n/api-types';
 import { TestCaseExecutionRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
+
+import { averageNormalizedScore } from './insights-scoring';
 
 // Bounds that keep the prompt (and its token cost) from ballooning on large
 // datasets / workflows. Per-case fields are truncated and both the case count
@@ -10,6 +11,9 @@ import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 const MAX_CASES_PER_VERSION = 3;
 const MAX_FIELD_CHARS = 400;
 const MAX_DIFF_NAMES = 15;
+// Only the first this-many cases per run (ordered by runIndex) are fetched, so
+// on larger datasets regression selection is limited to that window — a
+// bounded, approximate "worst cases" rather than an exhaustive scan.
 const CASE_FETCH_LIMIT = 100;
 
 // One version as the service hands it to the builder — already scored, so the
@@ -74,22 +78,6 @@ const scoresToPercent = (scores: Record<string, number>): Record<string, number>
 	const out: Record<string, number> = {};
 	for (const [key, value] of Object.entries(scores)) out[key] = Math.round(value * 100);
 	return out;
-};
-
-// Mean of a case's normalized [0,1] score metrics — mirrors the aggregate
-// scoring so a case score and the version avg can't disagree on which metrics
-// count.
-const caseScore = (metrics: Record<string, number | boolean> | null | undefined): number | null => {
-	if (!metrics) return null;
-	const values: number[] = [];
-	for (const [key, raw] of Object.entries(metrics)) {
-		const numeric = typeof raw === 'boolean' ? (raw ? 1 : 0) : raw;
-		if (typeof numeric !== 'number') continue;
-		const score = normalizeMetricScore(key, numeric);
-		if (score !== null) values.push(score);
-	}
-	if (values.length === 0) return null;
-	return values.reduce((sum, value) => sum + value, 0) / values.length;
 };
 
 /**
@@ -200,8 +188,8 @@ export class InsightsContextBuilder {
 		versionCases.forEach((testCase, position) => {
 			const key = testCase.runIndex ?? position;
 			const baseCase = baseCasesByIndex.get(key);
-			const baseScore = caseScore(baseCase?.metrics);
-			const versionScore = caseScore(testCase.metrics);
+			const baseScore = averageNormalizedScore(baseCase?.metrics);
+			const versionScore = averageNormalizedScore(testCase.metrics);
 			// Only rank cases where both sides scored and the version did worse.
 			if (baseScore === null || versionScore === null) return;
 			const drop = baseScore - versionScore;

@@ -1,10 +1,6 @@
 import { Agent } from '@n8n/agents';
 import type { AiInsightsPayload, AiInsightsResponse } from '@n8n/api-types';
-import {
-	aiInsightsPayloadSchema,
-	aiInsightsResponseSchema,
-	normalizeMetricScore,
-} from '@n8n/api-types';
+import { aiInsightsPayloadSchema, aiInsightsResponseSchema } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import type { TestRun, User } from '@n8n/db';
 import { EvaluationCollectionRepository } from '@n8n/db';
@@ -18,6 +14,7 @@ import { Telemetry } from '@/telemetry';
 import { InsightsContextBuilder } from './insights-context-builder';
 import type { InsightsContext, InsightsContextVersion } from './insights-context-builder';
 import { InsightsModelResolver } from './insights-model-resolver';
+import { averageNormalizedScore, normalizedScores } from './insights-scoring';
 
 // System prompt for the insights agent. Kept terse; the per-collection facts
 // (scores, node diffs, regressed cases) arrive in the user prompt, and the
@@ -189,10 +186,6 @@ export class EvalInsightsService {
 	// ---- internals ----
 
 	private summariseRun(run: TestRun, index: number): RunSummary {
-		const scores = this.scoreMetrics(run.metrics);
-		const values = Object.values(scores);
-		const avgScore =
-			values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 		// Label by index letter — A/B/C — so the FE legend chips line up. The
 		// agent (and the deterministic path) refer back to these labels.
 		const versionLabel = String.fromCharCode(0x41 + index);
@@ -200,28 +193,9 @@ export class EvalInsightsService {
 			testRunId: run.id,
 			versionLabel,
 			workflowVersionId: run.workflowVersionId,
-			avgScore,
-			scores,
+			avgScore: averageNormalizedScore(run.metrics),
+			scores: normalizedScores(run.metrics),
 		};
-	}
-
-	// Per-metric scores normalized to [0, 1] by their scale (AI-judge metrics
-	// are 1–5 → /5); operational metrics (token counts, execution time) and
-	// unknown-scale values are dropped. Booleans coerce to 0/1. Shares the
-	// `normalizeMetricScore` contract with the FE + versions-table scoring so
-	// winner/regressions reflect the same "score" the user sees.
-	private scoreMetrics(
-		metrics: Record<string, number | boolean> | null | undefined,
-	): Record<string, number> {
-		if (!metrics) return {};
-		const out: Record<string, number> = {};
-		for (const [key, raw] of Object.entries(metrics)) {
-			const value = typeof raw === 'boolean' ? (raw ? 1 : 0) : raw;
-			if (typeof value !== 'number') continue;
-			const score = normalizeMetricScore(key, value);
-			if (score !== null) out[key] = score;
-		}
-		return out;
 	}
 
 	/** Highest-`avgScore` run, or null when nothing scored. */
@@ -278,20 +252,29 @@ export class EvalInsightsService {
 	}
 
 	// Keep the model's output consistent with the deterministically-chosen
-	// baseline it was given: force the winner to the base version and drop any
-	// regression whose label the model invented or that points at the base
-	// itself. Guards against a hallucinated winner/label contradicting the
-	// diff + cases rendered on the same card.
+	// baseline and the data it was given: force the winner to the base version,
+	// and keep only regressions the context scores actually support — a known,
+	// non-base version that really scored below the base on the named metric.
+	// Drops hallucinated labels/metrics and wrong-direction claims so the copy
+	// can't contradict the scores + diff rendered on the same card.
 	private reconcile(payload: AiInsightsPayload, context: InsightsContext): AiInsightsPayload {
-		const knownLabels = new Set(context.versions.map((version) => version.label));
+		const versionByLabel = new Map(context.versions.map((version) => [version.label, version]));
+		const base = versionByLabel.get(context.baseVersionLabel);
 		return {
 			...payload,
 			winner: { ...payload.winner, versionLabel: context.baseVersionLabel },
-			regressions: payload.regressions.filter(
-				(regression) =>
-					regression.versionLabel !== context.baseVersionLabel &&
-					knownLabels.has(regression.versionLabel),
-			),
+			regressions: payload.regressions.filter((regression) => {
+				if (regression.versionLabel === context.baseVersionLabel) return false;
+				const versionScore = versionByLabel.get(regression.versionLabel)?.metricScores[
+					regression.metric
+				];
+				const baseScore = base?.metricScores[regression.metric];
+				return (
+					typeof versionScore === 'number' &&
+					typeof baseScore === 'number' &&
+					versionScore < baseScore
+				);
+			}),
 		};
 	}
 

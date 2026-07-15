@@ -135,7 +135,8 @@ describe('EvalInsightsService', () => {
 
 		it('returns the model payload and real model id when the agent succeeds', async () => {
 			modelResolver.resolve.mockResolvedValueOnce(resolvedModel);
-			// Context with A + B so reconcile keeps the (real, non-base) A regression.
+			// Context with A + B where A really scored below B on correctness, so
+			// reconcile keeps the (real, non-base, data-supported) A regression.
 			contextBuilder.build.mockResolvedValueOnce({
 				collectionName: 'My collection',
 				baseVersionLabel: 'B',
@@ -144,7 +145,7 @@ describe('EvalInsightsService', () => {
 						label: 'A',
 						isBase: false,
 						avgScorePercent: 40,
-						metricScores: {},
+						metricScores: { correctness: 40 },
 						workflowDiff: null,
 						regressedCases: [],
 					},
@@ -152,7 +153,7 @@ describe('EvalInsightsService', () => {
 						label: 'B',
 						isBase: true,
 						avgScorePercent: 100,
-						metricScores: {},
+						metricScores: { correctness: 100 },
 						workflowDiff: null,
 						regressedCases: [],
 					},
@@ -205,8 +206,10 @@ describe('EvalInsightsService', () => {
 			expect(result.modelUsed).toBe(DETERMINISTIC_MODEL_TAG);
 		});
 
-		it('forces the winner to the base version and drops unknown-label regressions', async () => {
+		it('forces the winner to base and keeps only data-supported regressions', async () => {
 			modelResolver.resolve.mockResolvedValueOnce(resolvedModel);
+			// A scored below base B on correctness (a real regression) but above it
+			// on helpfulness (not a regression).
 			contextBuilder.build.mockResolvedValueOnce({
 				collectionName: 'My collection',
 				baseVersionLabel: 'B',
@@ -214,27 +217,30 @@ describe('EvalInsightsService', () => {
 					{
 						label: 'A',
 						isBase: false,
-						avgScorePercent: 40,
-						metricScores: {},
+						avgScorePercent: 65,
+						metricScores: { correctness: 40, helpfulness: 90 },
 						workflowDiff: null,
 						regressedCases: [],
 					},
 					{
 						label: 'B',
 						isBase: true,
-						avgScorePercent: 100,
-						metricScores: {},
+						avgScorePercent: 75,
+						metricScores: { correctness: 100, helpfulness: 50 },
 						workflowDiff: null,
 						regressedCases: [],
 					},
 				],
 			});
-			// Model hallucinates a different winner + a regression on an unknown "D".
+			// Model hallucinates a different winner and three regressions: a real
+			// one (A/correctness), a wrong-direction one (A/helpfulness, where A
+			// actually beat B), and one on an unknown version "D".
 			generateMock.mockResolvedValueOnce({
 				structuredOutput: {
 					winner: { versionLabel: 'A', headline: 'A wins', body: 'A leads.' },
 					regressions: [
 						{ versionLabel: 'A', metric: 'correctness', delta: -60, headline: 'A down', body: '.' },
+						{ versionLabel: 'A', metric: 'helpfulness', delta: -40, headline: 'A down', body: '.' },
 						{ versionLabel: 'D', metric: 'correctness', delta: -10, headline: 'D down', body: '.' },
 					],
 					suggestedNext: { headline: 'Next', body: '.', hypothesis: '.' },
@@ -246,8 +252,11 @@ describe('EvalInsightsService', () => {
 
 			expect(result.status).toBe('ok');
 			expect(result.insights.winner.versionLabel).toBe('B');
-			// "A" (real, non-base) kept; "D" (unknown) dropped.
-			expect(result.insights.regressions.map((r) => r.versionLabel)).toEqual(['A']);
+			// Only the real A/correctness regression survives: helpfulness is
+			// wrong-direction, "D" is an unknown label.
+			expect(result.insights.regressions).toEqual([
+				{ versionLabel: 'A', metric: 'correctness', delta: -60, headline: 'A down', body: '.' },
+			]);
 		});
 
 		it('falls back to deterministic when no supported judge model is configured', async () => {
