@@ -736,19 +736,31 @@ export class InstanceAiController {
 
 		// Exclude snapshots for active/suspended runs — they have no matching
 		// assistant message in native memory yet and would misalign the
-		// positional snapshot-to-message matching in parseStoredMessages.
+		// positional snapshot-to-message matching in parseStoredMessages. The
+		// live message-group ids ride along so the durable-log fold can exclude
+		// a whole in-flight group even when the active run's own run-start row
+		// has not been persisted yet (it is the group mapping's source there).
 		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
 		const activeRunId = this.instanceAiService.getActiveRunId(threadId);
 		const excludeRunIds: string[] = [];
-		if (activeRunId) excludeRunIds.push(activeRunId);
+		const excludeMessageGroupIds: string[] = [];
+		if (activeRunId) {
+			excludeRunIds.push(activeRunId);
+			const activeGroupId = this.instanceAiService.getMessageGroupId(threadId);
+			if (activeGroupId) excludeMessageGroupIds.push(activeGroupId);
+		}
 		for (const t of threadStatus.backgroundTasks) {
-			if (t.status === 'running' && t.runId) excludeRunIds.push(t.runId);
+			if (t.status !== 'running') continue;
+			if (t.runId) excludeRunIds.push(t.runId);
+			if (t.messageGroupId) excludeMessageGroupIds.push(t.messageGroupId);
 		}
 
 		const result = await this.memoryService.getRichMessages(req.user.id, threadId, {
 			limit: query.limit,
 			page: query.page,
 			excludeRunIds: excludeRunIds.length > 0 ? excludeRunIds : undefined,
+			excludeMessageGroupIds:
+				excludeMessageGroupIds.length > 0 ? excludeMessageGroupIds : undefined,
 		});
 
 		// Include the next SSE event ID so the frontend can skip past events

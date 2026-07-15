@@ -42,6 +42,15 @@ export class DurableLogMetrics {
 		cursorAgeEventsMax: 0,
 	};
 
+	/** History read counters (fold-on-read path). */
+	history = {
+		/** getRichMessages reads that derived trees from the durable log. */
+		foldReads: 0,
+		foldLatencyMsTotal: 0,
+		/** Agent trees derived from the log across those reads. */
+		treesDerived: 0,
+	};
+
 	constructor(private readonly eventService: EventService) {}
 
 	recordDrainBatch(rows: number, bytes: number): void {
@@ -77,6 +86,13 @@ export class DurableLogMetrics {
 			events: eventsServed,
 			cursorAgeEvents,
 		});
+	}
+
+	recordFoldRead(latencyMs: number, trees: number): void {
+		this.history.foldReads++;
+		this.history.foldLatencyMsTotal += latencyMs;
+		this.history.treesDerived += trees;
+		this.eventService.emit('instance-ai-history-folded', { latencyMs, trees });
 	}
 
 	/**
