@@ -37,6 +37,8 @@ const slackOAuth2ApiType = {
 const slackNodeType = {
 	name: 'n8n-nodes-base.slack',
 	displayName: 'Slack',
+	description: '',
+	group: [],
 	version: 2,
 	defaults: { name: 'Slack' },
 	inputs: [NodeConnectionTypes.Main],
