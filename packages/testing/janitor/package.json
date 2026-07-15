@@ -51,7 +51,6 @@
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "fast-check": "catalog:",
-    "tsx": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
