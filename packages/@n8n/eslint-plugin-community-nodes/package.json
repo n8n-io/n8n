@@ -41,7 +41,7 @@
     "eslint-doc-generator": "^2.2.2",
     "eslint-plugin-eslint-plugin": "^7.0.0",
     "rimraf": "catalog:",
-    "typescript": "catalog:typescript",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
   },
