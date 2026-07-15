@@ -8,8 +8,10 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { AiService } from '@/services/ai.service';
 
+import { BUILDER_NOT_CONFIGURED_CODE } from '@n8n/api-types';
+
 import { AgentsBuilderSettingsService } from '../agents-builder-settings.service';
-import { BUILDER_NOT_CONFIGURED_CODE, BuilderNotConfiguredError } from '../errors';
+import { BuilderNotConfiguredError } from '../errors';
 
 const ENV_KEYS = ['N8N_AI_ANTHROPIC_KEY', 'ANTHROPIC_API_KEY'] as const;
 
@@ -253,69 +255,13 @@ describe('AgentsBuilderSettingsService', () => {
 		});
 	});
 
-	describe('getStatus', () => {
-		it('mode=custom + resolvable credential → isConfigured: true', async () => {
-			mockPersistedSettings({
-				mode: 'custom',
-				provider: 'anthropic',
-				credentialId: 'cred-1',
-				modelName: 'claude-3-5-sonnet',
-			});
-			credentialsFinderService.findCredentialById.mockResolvedValue(
-				mock<CredentialsEntity>({ id: 'cred-1', type: 'anthropicApi' }),
-			);
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
-		});
-
-		it('mode=custom + missing credential → isConfigured: false', async () => {
-			mockPersistedSettings({
-				mode: 'custom',
-				provider: 'anthropic',
-				credentialId: 'cred-1',
-				modelName: 'claude-3-5-sonnet',
-			});
-			credentialsFinderService.findCredentialById.mockResolvedValue(null);
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: false });
-		});
-
-		it('mode=default + proxy enabled → isConfigured: true', async () => {
-			mockPersistedSettings({ mode: 'default' });
-			aiService.isProxyEnabled.mockReturnValue(true);
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
-		});
-
-		it('mode=default + proxy disabled + env set → isConfigured: true (env-var backstop counts)', async () => {
-			mockPersistedSettings({ mode: 'default' });
-			aiService.isProxyEnabled.mockReturnValue(false);
-			process.env.N8N_AI_ANTHROPIC_KEY = 'sk-env';
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
-		});
-
-		it('mode=default + proxy disabled + ANTHROPIC_API_KEY set → isConfigured: true', async () => {
-			mockPersistedSettings({ mode: 'default' });
-			aiService.isProxyEnabled.mockReturnValue(false);
-			process.env.ANTHROPIC_API_KEY = 'sk-env';
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
-		});
-
-		it('mode=default + proxy disabled + env empty → isConfigured: false', async () => {
-			mockPersistedSettings({ mode: 'default' });
-			aiService.isProxyEnabled.mockReturnValue(false);
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: false });
-		});
-
+	describe('getAdminSettings', () => {
 		it('no persisted settings → defaults to mode=default', async () => {
 			mockPersistedSettings(null);
-			aiService.isProxyEnabled.mockReturnValue(true);
 
-			const status = await service.getStatus();
-			expect(status).toEqual({ isConfigured: true });
+			const result = await service.getAdminSettings();
+
+			expect(result.settings).toEqual({ mode: 'default' });
 		});
 	});
 

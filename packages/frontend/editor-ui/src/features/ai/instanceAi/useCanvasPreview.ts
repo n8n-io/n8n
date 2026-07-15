@@ -113,23 +113,23 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 
 	const isPreviewVisible = computed(() => isPreviewOpen.value && activeTabId.value !== undefined);
 
-	// --- Workflow attachments (e.g. an editor hand-off) ---
-	// A workflow attached to a message surfaces as an artifact tab via the
+	// --- Resource attachments (workflow or agent hand-offs) ---
+	// A workflow or agent attached to a message surfaces as an artifact tab via the
 	// resource registry. The first one is opened on arrival. (Its execution, if
 	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
-	const firstAttachedWorkflowId = computed(() => {
+	const firstAttachedArtifactId = computed(() => {
 		for (const message of thread.messages) {
 			for (const attachment of message.attachments ?? []) {
-				if (attachment.type === 'workflow') return attachment.id;
+				if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
 			}
 		}
 		return undefined;
 	});
 
-	// Open the attached workflow on arrival. Only when nothing is open, so it
+	// Open the attached resource on arrival. Only when nothing is open, so it
 	// never steals focus from an agent-driven open or a user selection.
 	watch(
-		firstAttachedWorkflowId,
+		firstAttachedArtifactId,
 		(id) => {
 			if (!id || activeTabId.value !== undefined) return;
 			activeTabId.value = id;

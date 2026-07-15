@@ -46,6 +46,8 @@ const {
 
 const renderOptions = computed(() => render.value.options as CanvasNodeAgentRender['options']);
 
+const isInline = computed(() => renderOptions.value.agentSource === 'inline');
+
 // Mirror CanvasNodeDefault's state classes so the card shows the same run
 // feedback as every other node (green border + check on success, animated
 // glow while running/waiting, red border on error).
@@ -62,24 +64,36 @@ const agentResourceLocator = computed<INodeParameterResourceLocator>(
 );
 
 const agentId = computed(() => {
+	// Inline cards never key off the agentId param (a leftover value is
+	// retained only so mode toggling is non-destructive) — and an empty id
+	// also idles the capability-summary fetch below.
+	if (isInline.value) return '';
 	const value = agentResourceLocator.value.value;
 	return typeof value === 'string' ? value : String(value ?? '');
 });
 
-const isConfigured = computed(() => agentId.value !== '');
+// Inline cards are always "configured": they render from the embedded
+// definition (placeholders for missing model), never the referenced picker.
+const isConfigured = computed(() => isInline.value || agentId.value !== '');
 
 // Shared scope resolution (picker / canvas card / NDV must all read/write
 // the same agent record).
 const projectId = useAgentScopeProjectId();
 
-const { summary, error } = useAgentCapabilitySummary(projectId, agentId);
+const { summary: fetchedSummary, error } = useAgentCapabilitySummary(projectId, agentId);
 
-const hasError = computed(() => Boolean(error.value));
+// Inline cards render from the pre-projected summary in the render options —
+// no fetch, no event-bus refresh; reactivity comes from the render options.
+const summary = computed(() =>
+	isInline.value ? (renderOptions.value.inlineSummary ?? null) : fetchedSummary.value,
+);
+
+const hasError = computed(() => !isInline.value && Boolean(error.value));
 
 const agentName = computed(
 	() =>
 		summary.value?.name ??
-		agentResourceLocator.value.cachedResultName ??
+		(isInline.value ? undefined : agentResourceLocator.value.cachedResultName) ??
 		i18n.baseText('agentNode.card.defaultName'),
 );
 
@@ -139,7 +153,8 @@ function onOpenContextMenu(event: MouseEvent) {
 }
 
 function openAgent() {
-	if (!isConfigured.value || !projectId.value) return;
+	// Inline agents have no builder page — they are edited in the node's NDV.
+	if (isInline.value || !isConfigured.value || !projectId.value) return;
 
 	// No origin node id: this trip starts from the canvas, so "Back to
 	// workflow" must land on the canvas — a set node id would reopen the
@@ -175,7 +190,7 @@ watch(
 					<N8nText :bold="true" :class="$style.name">{{ agentName }}</N8nText>
 				</div>
 				<N8nTooltip
-					v-if="isConfigured"
+					v-if="isConfigured && !isInline"
 					:content="i18n.baseText('agentNode.card.openAgent')"
 					placement="top"
 				>

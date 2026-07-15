@@ -1235,8 +1235,11 @@ import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
+import { ModuleRegistry } from '@n8n/backend-common';
+import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
@@ -3644,5 +3647,65 @@ describe('resolveMetricProviders', () => {
 				llmJudgeProviderRegistry: undefined,
 			}),
 		).rejects.toThrow(UnexpectedError);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — builder delegate telemetry ("Builder created agent")
+// ---------------------------------------------------------------------------
+
+describe('createContext — builder delegate telemetry', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	afterEach(() => {
+		// Container.get is globally spied below (multiple tokens routed through
+		// one mockImplementation) — restore it so later tests keep the real,
+		// module-inactive-by-default ModuleRegistry.
+		vi.restoreAllMocks();
+	});
+
+	/** Route Container.get for the two tokens createContext resolves when wiring the builder delegate. */
+	function mockBuilderModuleActive(delegate: InstanceAiBuilderDelegate) {
+		const moduleRegistry = { isActive: vi.fn().mockReturnValue(true) };
+		const builderDelegateAdapter = { createDelegate: vi.fn().mockReturnValue(delegate) };
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return moduleRegistry;
+			if (token === InstanceAiBuilderDelegateAdapterService) return builderDelegateAdapter;
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+	}
+
+	it('tracks "Builder created agent" after a successful delegate createAgent, in a thread context', async () => {
+		const mockTelemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: mockTelemetry });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		delegate.createAgent.mockResolvedValue({ agentId: 'agent-9', projectId: 'proj-1' });
+		mockBuilderModuleActive(delegate);
+
+		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+		const created = await context.builderDelegate?.createAgent('New agent');
+
+		expect(created).toEqual({ agentId: 'agent-9', projectId: 'proj-1' });
+		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder created agent', {
+			thread_id: 'thread-1',
+			agent_id: 'agent-9',
+			project_id: 'proj-1',
+		});
+	});
+
+	it('does not track when the context has no threadId', async () => {
+		const mockTelemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: mockTelemetry });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		delegate.createAgent.mockResolvedValue({ agentId: 'agent-9', projectId: 'proj-1' });
+		mockBuilderModuleActive(delegate);
+
+		const context = service.createContext(mockUser, { projectId: 'proj-1' });
+		await context.builderDelegate?.createAgent('New agent');
+
+		expect(mockTelemetry.track).not.toHaveBeenCalledWith(
+			'Builder created agent',
+			expect.anything(),
+		);
 	});
 });

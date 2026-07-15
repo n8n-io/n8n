@@ -97,30 +97,10 @@ export class AgentsBuilderSettingsService {
 		this.cached = settings;
 	}
 
-	/** Get the persisted admin settings + the derived `isConfigured` flag. */
+	/** Get the persisted admin settings. */
 	async getAdminSettings(): Promise<AgentBuilderAdminSettingsResponse> {
 		const settings = await this.loadSettings();
-		const isConfigured = await this.computeIsConfigured(settings);
-		return { settings, isConfigured };
-	}
-
-	/** Lightweight readiness check used by the builder UI to gate the input box. */
-	async getStatus(): Promise<{ isConfigured: boolean }> {
-		const settings = await this.loadSettings();
-		const isConfigured = await this.computeIsConfigured(settings);
-		return { isConfigured };
-	}
-
-	private async computeIsConfigured(settings: AgentBuilderAdminSettings): Promise<boolean> {
-		if (settings.mode === 'custom') {
-			const credential = await this.credentialsFinderService.findCredentialById(
-				settings.credentialId,
-			);
-			return !!credential;
-		}
-		// mode === 'default' — true if any of the runtime resolution branches
-		// can succeed: AI proxy enabled, or the env-var backstop is set.
-		return this.aiService.isProxyEnabled() || !!readEnvAnthropicKey();
+		return { settings };
 	}
 
 	/**

@@ -1,15 +1,12 @@
 <script lang="ts" setup>
 /**
  * Shared channel-setup body + orchestration for the `configure_channel`
- * builder tool. Single-sourced because the agents-chat builder
- * (`ConfigureChannelCard.vue`) and the AI assistant
- * (`InstanceAiChannelSetup.vue`) render the identical `AgentChannel*Setup`
- * flow for the identical suspend payload — only how each surface reports the
- * outcome differs (agents-chat resumes the tool call directly, instance AI
- * goes through its own confirm/resolve transport). This component owns the
- * body + composable wiring and emits a single `resolve` event; the two
- * surfaces are thin adapters around it that translate `resolve` into their
- * own transport call.
+ * builder tool, rendered by the AI assistant (`InstanceAiChannelSetup.vue`).
+ * Kept as its own component — rather than inlined into that consumer —
+ * because it owns non-trivial body + composable wiring
+ * (`AgentChannel*Setup`) for the tool's suspend payload and emits a single
+ * `resolve` event that the consumer translates into its own confirm/resolve
+ * transport call.
  */
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
