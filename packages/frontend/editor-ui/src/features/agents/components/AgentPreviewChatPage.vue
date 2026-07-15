@@ -39,12 +39,12 @@ const inputDraft = ref('');
 				:continue-session-id="effectiveSessionId"
 				:agent-config="localConfig"
 				:agent-status="deriveAgentStatus(agent)"
-			:connected-triggers="connectedTriggers"
-			:can-send-to-assistant="canSendToAssistant"
-			@continue-loaded="emit('continue-loaded', $event)"
-			@open-build="emit('open-build')"
-			@send-to-assistant="emit('send-to-assistant')"
-		/>
+				:connected-triggers="connectedTriggers"
+				:can-send-to-assistant="canSendToAssistant"
+				@continue-loaded="emit('continue-loaded', $event)"
+				@open-build="emit('open-build')"
+				@send-to-assistant="emit('send-to-assistant')"
+			/>
 		</div>
 	</main>
 </template>
