@@ -1699,7 +1699,7 @@ export class InstanceAiAdapterService {
 					const raw = await credentialsService.decrypt(credential, true);
 					const tokenData = raw.oauthTokenData;
 					if (tokenData && typeof tokenData === 'object') {
-						const { OauthService } = await import('@/oauth/oauth.service');
+						const { OauthService } = await import('@/oauth/oauth.service.js');
 						const identifier = OauthService.extractAccountIdentifier(
 							tokenData as Record<string, unknown>,
 						);

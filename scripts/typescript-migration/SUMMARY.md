@@ -1,6 +1,10 @@
 # TypeScript 6 → 7 migration benchmarks
 
+<<<<<<< typescript-cli
+Generated 2026-07-14T13:18:27.416Z from `scripts/typescript-migration/results/`.
+=======
 Generated 2026-07-15T09:07:07.705Z from `scripts/typescript-migration/results/`.
+>>>>>>> master
 
 | Package | typecheck Δ | build Δ |
 | --- | --- | --- |
@@ -25,6 +29,7 @@ Generated 2026-07-15T09:07:07.705Z from `scripts/typescript-migration/results/`.
 | `@n8n/instance-ai` | -70.0% | -40.3% |
 | `@n8n/n8n-benchmark` | -49.2% | -39.0% |
 | `@n8n/typeorm` | -37.9% | -68.7% |
+| `n8n` | -75.5% | -71.3% |
 
 ```
 === @n8n/agents — median times (Δ vs "before") ===
@@ -272,5 +277,17 @@ typecheck:
 build:
   before               2.84s
   after                890ms  -1949ms (-68.7%)
+```
+
+```
+=== n8n — median times (Δ vs "before") ===
+
+typecheck:
+  before              20.87s
+  after                5.12s  -15750ms (-75.5%)
+
+build:
+  before              12.86s
+  after                3.69s  -9172ms (-71.3%)
 ```
 

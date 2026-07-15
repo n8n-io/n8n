@@ -1,7 +1,7 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
 	const { WorkflowSaveConflictError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error'
+		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error.js'
 	);
 	return {
 		WorkflowSaveConflictError,

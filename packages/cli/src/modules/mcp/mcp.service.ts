@@ -16,19 +16,20 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
+import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
 import { ManualExecutionCancelledError, type IRun } from 'n8n-workflow';
 
-import {
-	createAddDataTableColumnTool,
-	createAddDataTableRowsTool,
-	createCreateDataTableTool,
-	createDeleteDataTableColumnTool,
-	createRenameDataTableColumnTool,
-	createRenameDataTableTool,
-	createSearchDataTablesTool,
-} from './tools/data-table';
+import { ActiveExecutions } from '@/active-executions';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { N8N_VERSION } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ExecutionService } from '@/executions/execution.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { NodeCatalogService } from '@/node-catalog';
+
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
@@ -56,13 +57,7 @@ import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-w
 import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
 import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
 import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
-import { NodeCatalogService } from '@/node-catalog';
 
-import { ActiveExecutions } from '@/active-executions';
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { N8N_VERSION } from '@/constants';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -77,13 +72,21 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
+import {
+	createAddDataTableColumnTool,
+	createAddDataTableRowsTool,
+	createCreateDataTableTool,
+	createDeleteDataTableColumnTool,
+	createRenameDataTableColumnTool,
+	createRenameDataTableTool,
+	createSearchDataTablesTool,
+} from './tools/data-table';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
-import { ExecutionService } from '@/executions/execution.service';
 
 /**
  * Pending MCP execution response, used for queue mode support.
@@ -217,7 +220,10 @@ export class McpService {
 		clientInfo?: McpClientInfo,
 		grantedScopes?: string[],
 	) {
-		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
+		const { McpServer } = await lazyImport<
+			typeof import('@modelcontextprotocol/sdk/server/mcp.js')
+		>(async () => await import('@modelcontextprotocol/sdk/server/mcp.js'));
+
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const allowedToolNames = getAllowedToolNames(grantedScopes);
 		// The builder walkthrough is only useful when the grant can actually
