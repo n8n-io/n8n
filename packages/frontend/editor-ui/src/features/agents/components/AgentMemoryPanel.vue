@@ -317,12 +317,15 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 					<div :class="$style.credentialPicker">
 						<CredentialPicker
 							app-name="OpenAI"
+							size="medium"
+							button-size="large"
 							:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
 							:selected-credential-id="episodicMemoryCredential"
 							:project-id="projectId"
 							:show-delete="false"
 							hide-create-new
 							:teleported="false"
+							:class="$style.credentialPicker"
 							data-testid="agent-episodic-memory-credential-picker"
 							@credential-selected="enableEpisodicMemory"
 						/>
@@ -369,6 +372,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+	padding-top: var(--spacing--lg);
 }
 
 .dialogContent .row {
@@ -382,6 +386,11 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	width: 100%;
 	max-width: none;
 	margin-left: 0;
+}
+
+.credentialPicker input {
+	min-height: 36px;
+	height: 36px;
 }
 
 .row {
