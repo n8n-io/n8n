@@ -7,7 +7,7 @@ import { useDateRangePickerContext } from './dateRangePicker.context';
 import { getTodayDateValue, isDateSelectable, mergeDatePreservingTime } from './datePicker.utils';
 
 const rootContext = injectDateRangePickerRootContext();
-const { activeField, showTime } = useDateRangePickerContext();
+const { showTime } = useDateRangePickerContext();
 
 function goToToday() {
 	const todayDate = getTodayDateValue({
@@ -35,8 +35,6 @@ function goToToday() {
 		: todayDate.copy();
 
 	rootContext.onDateChange({ start: nextStart, end: nextEnd });
-	// Complete range — next calendar click starts a new start → end cycle.
-	activeField.value = 'start';
 
 	void nextTick(() => {
 		rootContext.onPlaceholderChange(todayDate.copy());

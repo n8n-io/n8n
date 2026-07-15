@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { injectDateRangePickerRootContext } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 import DateRangePickerDateTimeField from './DateRangePickerDateTimeField.vue';
 import { useDateRangePickerContext } from './dateRangePicker.context';
 import { isDateRangeValid, isDateSelectable } from './datePicker.utils';
 
 const rootContext = injectDateRangePickerRootContext();
-const { activeField, single, showTime } = useDateRangePickerContext();
+const { single, showTime } = useDateRangePickerContext();
 
 const OUTSIDE_RANGE_MESSAGE = 'Outside of allowed range';
 
@@ -19,23 +19,6 @@ const selectionOptions = computed(() => ({
 	maxValue: rootContext.maxValue.value,
 	isDateUnavailable: rootContext.isDateUnavailable,
 }));
-
-watch(
-	() => rootContext.modelValue.value,
-	(range) => {
-		if (single.value) {
-			activeField.value = 'start';
-			return;
-		}
-
-		// Only sync from range when empty — pending/complete steps are owned by
-		// calendar selection (selectionStep), not inferred from start===end.
-		if (!range?.start && !range?.end) {
-			activeField.value = 'start';
-		}
-	},
-	{ deep: true, immediate: true },
-);
 
 const errorMessage = computed(() => {
 	if (startError.value) return startError.value;

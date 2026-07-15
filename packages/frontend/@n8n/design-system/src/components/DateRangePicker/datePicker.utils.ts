@@ -147,27 +147,6 @@ function parseFormattedDateValue(
 	);
 }
 
-/** Sets start from a calendar click and always clears end (start → end → start → end). */
-function applyStartSelection(selected: DateValue, _range: DateRange): DateRange {
-	return { start: selected.copy(), end: undefined };
-}
-
-/** Sets end from a calendar click, swapping start/end when the user picks an earlier day. */
-function applyEndSelection(selected: DateValue, range: DateRange): DateRange {
-	const end = selected.copy();
-	const start = range.start?.copy();
-
-	if (!start) {
-		return { start: end.copy(), end: undefined };
-	}
-
-	if (end.compare(start) < 0) {
-		return { start: end.copy(), end: start.copy() };
-	}
-
-	return { start, end };
-}
-
 /** Formats a single date for display (`MMM dd, yyyy`, optionally with time). */
 export function formatDateValue(
 	value: DateValue | undefined,
@@ -182,6 +161,19 @@ export function formatDateValue(
 	if (!options.includeTime) return formatted;
 
 	return `${formatted}, ${formatTimeParts(date, locale, options.hourCycle ?? 24)}`;
+}
+
+/** Placeholder matching the shape of `formatDateValue` output. */
+export function getDateValuePlaceholder(options: DatePickerFormatOptions = {}): string {
+	const datePart = 'mmm dd, yyyy';
+	if (!options.includeTime) return datePart;
+
+	return `${datePart}, ${getTimeValuePlaceholder(options.hourCycle ?? 24)}`;
+}
+
+/** Placeholder matching the shape of `formatTimeValue` output. */
+export function getTimeValuePlaceholder(hourCycle: DatePickerHourCycle = 24): string {
+	return hourCycle === 12 ? 'hh:mm AM/PM' : 'HH:mm';
 }
 
 /** Formats a start/end range for the trigger label (collapses same-day ranges). */
@@ -456,47 +448,6 @@ export function resolveFieldValueCommit(options: {
 		return { ok: false, error: 'invalid' };
 	}
 	return { ok: true, range: { start: nextStart?.copy(), end: value.copy() } };
-}
-
-/**
- * Resolves a calendar-day click into the next range and selection step.
- * Always alternates start → end → start → end. Start always clears end; end may
- * swap bounds. The step always advances.
- */
-export function resolveDateSelection(options: {
-	selected: DateValue;
-	range: DateRange;
-	selectionStep: 'start' | 'end';
-	single?: boolean;
-	preserveTime?: boolean;
-}): { range: DateRange; nextSelectionStep: 'start' | 'end' } {
-	const { selected, range, selectionStep, single = false, preserveTime = false } = options;
-
-	if (single) {
-		const singleDate = preserveTime ? mergeDatePreservingTime(selected, range.start) : selected;
-		return {
-			range: {
-				start: singleDate.copy(),
-				end: singleDate.copy(),
-			},
-			nextSelectionStep: 'start',
-		};
-	}
-
-	const withTime = preserveTime
-		? mergeDatePreservingTime(
-				selected,
-				selectionStep === 'end' ? (range.end ?? range.start) : range.start,
-			)
-		: selected.copy();
-
-	return {
-		range:
-			selectionStep === 'start'
-				? applyStartSelection(withTime, range)
-				: applyEndSelection(withTime, range),
-		nextSelectionStep: selectionStep === 'start' ? 'end' : 'start',
-	};
 }
 
 /** Reads a calendar cell's `data-value` attribute into a DateValue. */

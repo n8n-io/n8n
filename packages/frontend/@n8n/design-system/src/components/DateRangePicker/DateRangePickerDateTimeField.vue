@@ -7,6 +7,8 @@ import { useDateRangePickerContext } from './dateRangePicker.context';
 import {
 	formatDateValue,
 	formatTimeValue,
+	getDateValuePlaceholder,
+	getTimeValuePlaceholder,
 	mergeDatePreservingTime,
 	parseDateValue,
 	parseTimeValue,
@@ -27,7 +29,7 @@ const emit = defineEmits<{
 }>();
 
 const rootContext = injectDateRangePickerRootContext();
-const { activeField, single, showTime, hourCycle } = useDateRangePickerContext();
+const { single, showTime, hourCycle } = useDateRangePickerContext();
 
 const INVALID_DATE_MESSAGE = 'Invalid date';
 const OUTSIDE_RANGE_MESSAGE = 'Outside of allowed range';
@@ -43,6 +45,9 @@ const formatOptions = computed<DatePickerFormatOptions>(() => ({
 		end: rootContext.modelValue.value.end,
 	}),
 }));
+
+const datePlaceholder = computed(() => getDateValuePlaceholder(formatOptions.value));
+const timePlaceholder = computed(() => getTimeValuePlaceholder(hourCycle.value));
 
 /** Bounds / unavailable-date rules used when validating typed values. */
 const selectionOptions = computed(() => ({
@@ -157,10 +162,9 @@ function commitTime() {
 	commitValue(toDateTimeValue(current, parsedTime));
 }
 
-/** Marks the date segment as being edited and activates this field. */
+/** Marks the date segment as being edited. */
 function onDateFocus() {
 	editingDate.value = true;
-	activeField.value = props.type;
 }
 
 /** Stops date editing and commits the typed date. */
@@ -169,10 +173,9 @@ function onDateBlur() {
 	commitDate();
 }
 
-/** Marks the time segment as being edited and activates this field. */
+/** Marks the time segment as being edited. */
 function onTimeFocus() {
 	editingTime.value = true;
-	activeField.value = props.type;
 }
 
 /** Stops time editing and commits the typed time. */
@@ -188,14 +191,13 @@ function onTimeBlur() {
 			$style.DateFieldGroup,
 			showTime && $style.DateFieldGroupJoined,
 			inputError && $style.DateFieldGroupInvalid,
-			!single && activeField === type && $style.DateFieldGroupActive,
 		]"
-		:data-active-date-field="!single && activeField === type ? type : undefined"
 	>
 		<input
 			v-model="dateText"
 			type="text"
 			:class="$style.FieldInput"
+			:placeholder="datePlaceholder"
 			:aria-label="dateLabel"
 			:aria-invalid="inputError ? true : undefined"
 			@focus="onDateFocus"
@@ -206,6 +208,7 @@ function onTimeBlur() {
 			v-model="timeText"
 			type="text"
 			:class="$style.FieldInput"
+			:placeholder="timePlaceholder"
 			:aria-label="timeLabel"
 			:aria-invalid="inputError ? true : undefined"
 			@focus="onTimeFocus"
@@ -268,15 +271,9 @@ function onTimeBlur() {
 	pointer-events: none;
 }
 
-.DateFieldGroupActive:not(:focus-within) {
-	--joined--border-shadow: inset 0 0 0 1px var(--input--border-color--focus);
-	background-color: var(--color--primary--tint-3);
-}
-
 .DateFieldGroupInvalid,
 .DateFieldGroupInvalid:hover:not(:focus-within),
-.DateFieldGroupInvalid:focus-within,
-.DateFieldGroupInvalid.DateFieldGroupActive:not(:focus-within) {
+.DateFieldGroupInvalid:focus-within {
 	outline: none;
 	--joined--border-shadow: inset 0 0 0 1px var(--input--border-color--invalid);
 	background-color: var(--input--color--background);
@@ -297,5 +294,9 @@ function onTimeBlur() {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+
+	&::placeholder {
+		color: var(--color--text--tint-1);
+	}
 }
 </style>

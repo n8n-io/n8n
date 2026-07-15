@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { reactiveOmit } from '@vueuse/core';
-import type { DateValue } from '@internationalized/date';
 import {
 	DateRangePickerCalendar,
 	DateRangePickerCell,
@@ -21,11 +20,10 @@ import {
 	useForwardPropsEmits,
 	type DateRange,
 } from 'reka-ui';
-import { computed, defineComponent, nextTick, provide, ref, shallowRef, toRef, watch } from 'vue';
+import { computed, defineComponent, provide, ref, shallowRef, toRef, watch } from 'vue';
 
 import N8nButton from '../N8nButton';
 import IconButton from '../N8nIconButton';
-import N8nDateRangePickerDayButton from './DateRangePickerDayButton.vue';
 import N8nDateRangePickerField from './DateRangePickerField.vue';
 import {
 	N8N_DATE_RANGE_PICKER_CONTEXT,
@@ -38,7 +36,6 @@ import {
 	formatMonthYearHeading,
 	isEmptyDateRange,
 	mergeDatePreservingTime,
-	resolveDateSelection,
 	type DatePickerHourCycle,
 } from './datePicker.utils';
 import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
@@ -117,26 +114,11 @@ function onDraftUpdate(value: DateRange) {
 	let start = value.start?.copy();
 	let end = value.end?.copy();
 
-	// Reka re-attaches the previous end when we clear it for a pending start.
-	// Drop that stale end while we're awaiting the end click.
-	if (
-		!props.single &&
-		activeCalendarField.value === 'end' &&
-		start &&
-		end &&
-		previous.start &&
-		!previous.end &&
-		start.compare(previous.start) === 0
-	) {
-		end = undefined;
-	}
-
 	if (props.showTime) {
 		if (start) {
 			start = mergeDatePreservingTime(start, previous.start ?? previous.end);
 		}
 		if (end) {
-			// Completing a range: prefer the previous end time, else the start time.
 			end = mergeDatePreservingTime(end, previous.end ?? previous.start ?? start);
 		}
 	}
@@ -148,14 +130,8 @@ function onDraftUpdate(value: DateRange) {
 	draftRange.value = { start, end };
 }
 
-/** Next calendar click always starts a new start → end → start → end cycle. */
-function resetSelectionStep() {
-	activeCalendarField.value = 'start';
-}
-
 const forwarded = useForwardPropsEmits(
-	// Force readonly below — omit so a consumer prop can't re-enable Reka selection.
-	reactiveOmit(props, ['modelValue', 'defaultValue', 'readonly']),
+	reactiveOmit(props, ['modelValue', 'defaultValue']),
 	(event, ...args) => {
 		if (event === 'update:modelValue') {
 			onDraftUpdate(args[0] as DateRange);
@@ -165,8 +141,6 @@ const forwarded = useForwardPropsEmits(
 		emit(event, ...args);
 	},
 );
-const activeCalendarField = ref<'start' | 'end'>('start');
-const skipNextCellClick = ref(false);
 const rekaRoot = shallowRef<DateRangePickerRekaRoot | null>(null);
 const showInputs = computed(() => !props.hideInputs);
 const hourCycle = computed<DatePickerHourCycle>(() => (props.hourCycle === 12 ? 12 : 24));
@@ -174,13 +148,7 @@ const effectiveGranularity = computed(() => {
 	if (props.showTime) return props.granularity ?? 'minute';
 	return props.granularity;
 });
-/** Lets Reka paint the hover preview while a complete range is selected (selection stays ours). */
-const calendarFixedDate = computed<'start' | 'end' | undefined>(() => {
-	if (props.single) return undefined;
-	return activeCalendarField.value === 'start' ? 'end' : 'start';
-});
 provide(N8N_DATE_RANGE_PICKER_CONTEXT, {
-	activeField: activeCalendarField,
 	single: toRef(props, 'single'),
 	showTime: toRef(props, 'showTime'),
 	hourCycle,
@@ -192,14 +160,7 @@ watch(
 	(value) => {
 		if (value === undefined) return;
 
-		const next = copyRange(value);
-		if (!rekaRoot.value?.open.value) {
-			draftRange.value = next;
-			return;
-		}
-
-		// Parent updated the value while open (e.g. presets) — keep the draft in sync.
-		draftRange.value = next;
+		draftRange.value = copyRange(value);
 	},
 );
 
@@ -223,7 +184,6 @@ watch(
 				draftRange.value = getCommittedRange();
 			}
 
-			resetSelectionStep();
 			return;
 		}
 
@@ -235,7 +195,6 @@ watch(
 			if (start) {
 				rootContext.onPlaceholderChange(start.copy());
 			}
-			resetSelectionStep();
 			return;
 		}
 
@@ -254,90 +213,8 @@ watch(
 			end: todayRange.end.copy(),
 		};
 		rootContext.onPlaceholderChange(todayRange.start.copy());
-		resetSelectionStep();
 	},
 );
-
-function blurFocusedCalendarCell() {
-	const active = document.activeElement;
-	if (active instanceof HTMLElement && active.closest('[data-reka-calendar-cell-trigger]')) {
-		active.blur();
-	}
-}
-
-function markPageNavigation() {
-	skipNextCellClick.value = true;
-	nextTick(() => {
-		blurFocusedCalendarCell();
-	});
-}
-
-function isDateDisabledOrUnavailable(date: DateValue): boolean {
-	const rootContext = rekaRoot.value;
-	if (!rootContext) return true;
-
-	if (rootContext.isDateUnavailable?.(date)) return true;
-	if (rootContext.minValue.value && date.compare(rootContext.minValue.value) < 0) return true;
-	if (rootContext.maxValue.value && rootContext.maxValue.value.compare(date) < 0) return true;
-	return false;
-}
-
-function shouldSkipPlaceholderDate(date: DateValue): boolean {
-	if (!skipNextCellClick.value) return false;
-
-	const rootContext = rekaRoot.value;
-	if (!rootContext) return false;
-
-	return date.compare(rootContext.placeholder.value) === 0;
-}
-
-function applySelection(selectedDate: DateValue) {
-	const rootContext = rekaRoot.value;
-	if (!rootContext) return;
-
-	const selection = resolveDateSelection({
-		selected: selectedDate,
-		range: draftRange.value,
-		selectionStep: activeCalendarField.value,
-		single: props.single,
-		preserveTime: props.showTime,
-	});
-
-	// Advance the step before model updates so onDraftUpdate can ignore stale ends.
-	activeCalendarField.value = selection.nextSelectionStep;
-	draftRange.value = {
-		start: selection.range.start?.copy(),
-		end: selection.range.end?.copy(),
-	};
-	rootContext.onDateChange(selection.range);
-	// reka's modelValue watcher resets placeholder → start; restore after it runs.
-	void nextTick(() => {
-		rootContext.onPlaceholderChange(selectedDate.copy());
-	});
-}
-
-function selectCalendarDay(date: DateValue) {
-	if (isDateDisabledOrUnavailable(date)) return;
-
-	if (shouldSkipPlaceholderDate(date)) {
-		skipNextCellClick.value = false;
-		return;
-	}
-
-	if (skipNextCellClick.value) {
-		skipNextCellClick.value = false;
-	}
-
-	applySelection(date);
-}
-
-/** Keyboard nav still focuses Reka's CellTrigger — intercept Enter/Space before it. */
-function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
-	if (event.key !== 'Enter' && event.key !== ' ') return;
-	event.preventDefault();
-	event.stopImmediatePropagation();
-	selectCalendarDay(date);
-}
 </script>
 
 <template>
@@ -345,8 +222,6 @@ function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
 		v-bind="forwarded"
 		:model-value="draftRange"
 		:granularity="effectiveGranularity"
-		:readonly="true"
-		:fixed-date="calendarFixedDate"
 		prevent-deselect
 	>
 		<DateRangePickerRekaBridge />
@@ -358,7 +233,7 @@ function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
 
 		<DateRangePickerContent align="start" :side-offset="5" :class="$style.PopoverContent">
 			<DateRangePickerCalendar v-slot="{ weekDays, grid }" :class="$style.Calendar">
-				<div :class="$style.PopoverInner" :data-active-field="activeCalendarField">
+				<div :class="$style.PopoverInner">
 					<div v-if="$slots.presets" :class="$style.Presets">
 						<slot name="presets" />
 					</div>
@@ -378,7 +253,7 @@ function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
 						</DateRangePickerHeading>
 						<div :class="$style.CalendarHeaderActions">
 							<N8nDateRangePickerTodayButton />
-							<div :class="$style.CalendarPageNavigation" @click.capture="markPageNavigation">
+							<div :class="$style.CalendarPageNavigation">
 								<DateRangePickerPrev as-child>
 									<IconButton icon="chevron-left" variant="ghost" size="small" icon-size="large" />
 								</DateRangePickerPrev>
@@ -417,27 +292,11 @@ function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
 									:date="weekDate"
 									:class="$style.CalendarCell"
 								>
-									<!--
-										CellTrigger is display-only (readonly + pointer-events: none).
-										DayButton owns clicks/hover so Reka never resets the range and
-										hover preview still updates via focusedValue.
-									-->
-									<div
-										:class="$style.CalendarCellHitArea"
-										@keydown.capture="handleCellKeydown(weekDate, $event)"
-									>
-										<DateRangePickerCellTrigger
-											:day="weekDate"
-											:month="month.value"
-											:class="$style.CalendarCellTrigger"
-										/>
-										<N8nDateRangePickerDayButton
-											:day="weekDate"
-											:class="$style.CalendarCellButton"
-											:disabled="isDateDisabledOrUnavailable(weekDate)"
-											@select="selectCalendarDay(weekDate)"
-										/>
-									</div>
+									<DateRangePickerCellTrigger
+										:day="weekDate"
+										:month="month.value"
+										:class="$style.CalendarCellTrigger"
+									/>
 								</DateRangePickerCell>
 							</DateRangePickerGridRow>
 						</DateRangePickerGridBody>
@@ -511,6 +370,7 @@ function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
 .CalendarGridRow {
 	display: grid;
 	margin-bottom: var(--spacing--4xs);
+	column-gap: var(--date-range-picker--cell-gap);
 	grid-template-columns: repeat(7, var(--date-range-picker--cell-size));
 	width: fit-content;
 }
@@ -538,28 +398,6 @@ function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
 	text-align: center;
 }
 
-.CalendarCellHitArea {
-	position: relative;
-	width: 100%;
-	height: 100%;
-}
-
-.CalendarCellButton {
-	position: absolute;
-	inset: 0;
-	z-index: 2;
-	margin: 0;
-	padding: 0;
-	border: none;
-	border-radius: var(--radius--2xs);
-	background: transparent;
-	cursor: pointer;
-}
-
-.CalendarCellButton:disabled {
-	cursor: not-allowed;
-}
-
 .CalendarCellTrigger {
 	display: flex;
 	box-sizing: border-box;
@@ -575,22 +413,16 @@ function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
 	font-weight: var(--font-weight--regular);
 	white-space: nowrap;
 	background-color: transparent;
-	pointer-events: none;
 	font-size: var(--font-size--xs);
 	font-style: normal;
 	line-height: normal;
 	color: var(--text-color);
 	border-radius: var(--radius--2xs);
+	cursor: pointer;
 }
 
 .CalendarCellTrigger[data-outside-view] {
 	color: var(--text-color--subtler);
-}
-
-.CalendarCellTrigger:hover:not([data-disabled]):not([data-selection-start='true']):not(
-		[data-selection-end='true']
-	):not([data-selected='true']):not([data-today]) {
-	background-color: var(--background--hover);
 }
 
 .CalendarCellTrigger[data-disabled] {
@@ -603,70 +435,125 @@ function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
 	text-decoration: line-through;
 }
 
-.CalendarCell:has([data-selected='true'])::before {
+.CalendarCell:has([data-selected='true'])::before,
+.CalendarCell:has([data-highlighted])::before {
 	content: '';
 	position: absolute;
-	inset: 0;
+	top: 0;
+	bottom: 0;
+	/* Bridge the column gap so the range fill stays continuous. */
+	left: calc(var(--date-range-picker--cell-gap) / -2);
+	right: calc(var(--date-range-picker--cell-gap) / -2);
 	z-index: 0;
-	background: var(--background--hover);
+	background: var(--color--purple-100);
 	border-radius: 0;
 }
 
-/* Round the first selected cell in each row segment. */
+/* Round / clip the first cell in each row segment (not range endpoints — those half-bleed). */
 .CalendarCell:has([data-selected='true']):not(
 		.CalendarCell:has([data-selected='true']) + .CalendarCell:has([data-selected='true'])
-	)::before {
+	):not(:has([data-selection-start='true']:not([data-selection-end='true'])))::before,
+.CalendarCell:has([data-highlighted]):not(
+		.CalendarCell:has([data-highlighted]) + .CalendarCell:has([data-highlighted])
+	):not(:has([data-highlighted-start='true']:not([data-highlighted-end='true'])))::before {
+	left: 0;
 	border-top-left-radius: var(--radius--2xs);
 	border-bottom-left-radius: var(--radius--2xs);
 }
 
-/* Round the last selected cell in each row segment. */
-.CalendarCell:has([data-selected='true']):not(
-		:has(+ .CalendarCell [data-selected='true'])
+/* Round / clip the last cell in each row segment (not range endpoints — those half-bleed). */
+.CalendarCell:has([data-selected='true']):not(:has(+ .CalendarCell [data-selected='true'])):not(
+		:has([data-selection-end='true']:not([data-selection-start='true']))
+	):not(:has([data-selection-start='true']:not([data-selection-end='true'])))::before,
+.CalendarCell:has([data-highlighted]):not(:has(+ .CalendarCell [data-highlighted])):not(
+		:has([data-highlighted-end='true']:not([data-highlighted-start='true']))
 	)::before {
+	right: 0;
 	border-top-right-radius: var(--radius--2xs);
 	border-bottom-right-radius: var(--radius--2xs);
+}
+
+/*
+ * Bleed the range band under half of the start/end cell so it meets the
+ * endpoint fill across the column gap instead of stopping at the cell edge.
+ * While the end date is still being chosen, start is the only `data-selected`
+ * cell — the rules above explicitly skip it so this bleed can keep the gap filled.
+ */
+.CalendarCell:has([data-selection-start='true']:not([data-selection-end='true']))::before,
+.CalendarCell:has([data-highlighted-start='true']:not([data-highlighted-end='true']))::before {
+	left: 50%;
+	right: calc(var(--date-range-picker--cell-gap) / -2);
+	border-radius: 0;
+}
+
+.CalendarCell:has([data-selection-end='true']:not([data-selection-start='true']))::before,
+.CalendarCell:has([data-highlighted-end='true']:not([data-highlighted-start='true']))::before {
+	left: calc(var(--date-range-picker--cell-gap) / -2);
+	right: 50%;
+	border-radius: 0;
+}
+
+.CalendarCell:has([data-selection-start='true'][data-selection-end='true'])::before,
+.CalendarCell:has([data-highlighted-start='true'][data-highlighted-end='true'])::before {
+	display: none;
+}
+
+.CalendarCellTrigger[data-highlighted-start='true'],
+.CalendarCellTrigger[data-highlighted-end='true'] {
+	background-color: var(--color--purple-100);
+	color: var(--text-color);
+	border-radius: var(--radius--2xs);
 }
 
 .CalendarCellTrigger[data-selection-start='true'],
 .CalendarCellTrigger[data-selection-end='true'] {
 	background-color: var(--color--purple-500);
 	color: var(--color--neutral-white);
-	box-shadow: none;
 	border-radius: var(--radius--2xs);
-}
-
-.PopoverInner[data-active-field='start'] .CalendarCellTrigger[data-selection-start='true'] {
-	background-color: var(--color--purple-600);
-}
-
-.PopoverInner[data-active-field='end'] .CalendarCellTrigger[data-selection-end='true'] {
-	background-color: var(--color--purple-600);
 }
 
 .CalendarCellTrigger[data-today]:not([data-selection-start='true']):not(
 		[data-selection-end='true']
 	):not([data-selected='true']) {
-	background-color: var(--color--danger);
 	color: var(--color--neutral-white);
+}
+
+/* Orange today marker sits inside the cell so the cell/hover ring stay square. */
+.CalendarCellTrigger[data-today]:not([data-selection-start='true']):not(
+		[data-selection-end='true']
+	):not([data-selected='true'])::before {
+	content: '';
+	position: absolute;
+	inset: var(--spacing--5xs);
+	z-index: -1;
 	border-radius: var(--radius--full);
-	box-shadow: none;
+	background-color: var(--color--orange-500);
+	pointer-events: none;
+}
+
+/* Hover: light purple fill + purple ring (selected endpoints keep their deep fill). */
+.CalendarCellTrigger:hover:not([data-disabled]):not([data-selection-start='true']):not(
+		[data-selection-end='true']
+	) {
+	background-color: var(--color--purple-100);
+	box-shadow: inset 0 0 0 2px var(--color--purple-500);
+}
+
+.CalendarCellTrigger[data-selection-start='true']:hover:not([data-disabled]),
+.CalendarCellTrigger[data-selection-end='true']:hover:not([data-disabled]) {
+	box-shadow: inset 0 0 0 2px var(--color--purple-500);
 }
 
 /* reka-ui marks the month placeholder with data-focused — not a selection. */
 .CalendarCellTrigger[data-focused]:not(:focus-visible):not([data-selection-start='true']):not(
 		[data-selection-end='true']
-	):not([data-selected='true']):not([data-today]) {
+	):not([data-selected='true']):not([data-today]):not(:hover) {
 	background-color: transparent;
 	box-shadow: none;
 }
 
-/* Keyboard-only focus — avoid styling the placeholder day after month navigation. */
-.CalendarCellTrigger:focus-visible:not([data-selection-start='true']):not(
-		[data-selection-end='true']
-	):not([data-selected='true']):not([data-today]) {
-	background-color: var(--background--hover);
-	box-shadow: none;
+.CalendarCellTrigger:focus-visible:not([data-disabled]) {
+	box-shadow: inset 0 0 0 2px var(--color--purple-500);
 }
 
 .CalendarPageNavigation {
@@ -675,6 +562,7 @@ function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
 
 .PopoverContent {
 	--date-range-picker--cell-size: var(--spacing--xl);
+	--date-range-picker--cell-gap: var(--spacing--5xs);
 	border-radius: var(--radius--2xs);
 	padding: var(--spacing--xs);
 	border: var(--border);
@@ -688,7 +576,7 @@ function handleCellKeydown(date: DateValue, event: KeyboardEvent) {
 }
 
 .PopoverInner {
-	width: calc(7 * var(--date-range-picker--cell-size));
+	width: calc(7 * var(--date-range-picker--cell-size) + 6 * var(--date-range-picker--cell-gap));
 }
 
 .PopoverContent[data-state='open'][data-side='top'] {

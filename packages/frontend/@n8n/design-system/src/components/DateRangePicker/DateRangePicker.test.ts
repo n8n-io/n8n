@@ -28,14 +28,18 @@ async function applySelection(
 	await nextTick();
 }
 
-/** Clicks our overlay day button (Reka's cell trigger is pointer-events: none). */
+/** Clicks a calendar day cell trigger. */
 async function clickCalendarDay(popover: HTMLElement, date: { toString(): string }) {
 	const day = date.toString();
-	const button =
-		(popover.querySelector(`[data-n8n-calendar-day="${day}"]`) as HTMLElement | null) ??
-		(popover.querySelector(`[data-n8n-calendar-day^="${day}"]`) as HTMLElement | null);
-	expect(button).toBeTruthy();
-	await userEvent.click(button as HTMLElement);
+	const cell =
+		(popover.querySelector(
+			`[data-reka-calendar-cell-trigger][data-value="${day}"]`,
+		) as HTMLElement | null) ??
+		(popover.querySelector(
+			`[data-reka-calendar-cell-trigger][data-value^="${day}"]`,
+		) as HTMLElement | null);
+	expect(cell).toBeTruthy();
+	await userEvent.click(cell as HTMLElement);
 }
 
 describe('N8nDateRangePicker', () => {
@@ -117,7 +121,7 @@ describe('N8nDateRangePicker', () => {
 		expect(lastUpdate?.end?.compare(todayDate)).toBe(0);
 	});
 
-	it('stays on the selected month when choosing an end date in another month', async () => {
+	it('can complete a range by selecting an end date in another month', async () => {
 		const { container, emitted, getByRole } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
@@ -128,16 +132,6 @@ describe('N8nDateRangePicker', () => {
 		await clickCalendarDay(popover, todayDate);
 		await userEvent.click(popover.querySelector('[aria-label="Next page"]') as HTMLElement);
 		await clickCalendarDay(popover, targetDay);
-
-		await nextTick();
-
-		const selectedEndCell = popover.querySelector(
-			`[data-value="${targetDay.toString()}"]`,
-		) as HTMLElement;
-		expect(selectedEndCell).toBeTruthy();
-		expect(selectedEndCell.hasAttribute('data-focused')).toBe(true);
-		expect(selectedEndCell.getAttribute('data-selection-end')).toBe('true');
-
 		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
@@ -164,21 +158,23 @@ describe('N8nDateRangePicker', () => {
 		expect(firstCell.hasAttribute('data-focused')).toBe(true);
 	});
 
-	it('ignores the placeholder day click immediately after changing month', async () => {
+	it('starts a new range from the focused placeholder day when clicked after changing month', async () => {
 		const { container, emitted, getByRole } = render(DateRangePicker);
 		const popover = await openCalendarPopover(container);
 
 		const todayDate = today(getLocalTimeZone());
 		const firstOfNextMonth = todayDate.add({ months: 1 }).set({ day: 1 });
+		const secondOfNextMonth = firstOfNextMonth.add({ days: 1 });
 
 		await userEvent.click(popover.querySelector('[aria-label="Next page"]') as HTMLElement);
 
 		await clickCalendarDay(popover, firstOfNextMonth);
+		await clickCalendarDay(popover, secondOfNextMonth);
 		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
-		expect(lastUpdate?.start?.compare(todayDate)).toBe(0);
-		expect(lastUpdate?.end?.compare(todayDate)).toBe(0);
+		expect(lastUpdate?.start?.compare(firstOfNextMonth)).toBe(0);
+		expect(lastUpdate?.end?.compare(secondOfNextMonth)).toBe(0);
 	});
 
 	it('starts a new range from the clicked day after today is auto-selected', async () => {
@@ -189,7 +185,6 @@ describe('N8nDateRangePicker', () => {
 		const tomorrow = todayDate.add({ days: 1 });
 		const dayAfter = tomorrow.add({ days: 1 });
 
-		expect(popover.querySelector('[data-active-field="start"]')).toBeTruthy();
 		await clickCalendarDay(popover, tomorrow);
 		await clickCalendarDay(popover, dayAfter);
 		await applySelection(getByRole);
@@ -230,28 +225,13 @@ describe('N8nDateRangePicker', () => {
 		const fiveDaysAgo = todayDate.subtract({ days: 5 });
 
 		await clickCalendarDay(popover, tomorrow);
-		expect(popover.querySelector('[data-active-field="end"]')).toBeTruthy();
-
 		await clickCalendarDay(popover, fiveDaysAgo);
-		expect(popover.querySelector('[data-active-field="start"]')).toBeTruthy();
 
 		await applySelection(getByRole);
 
 		const lastUpdate = emitted('update:modelValue')?.at(-1)?.[0];
 		expect(lastUpdate?.start?.compare(fiveDaysAgo)).toBe(0);
 		expect(lastUpdate?.end?.compare(tomorrow)).toBe(0);
-	});
-
-	it('switches to end immediately after selecting start', async () => {
-		const { container } = render(DateRangePicker);
-		const popover = await openCalendarPopover(container);
-
-		const todayDate = today(getLocalTimeZone());
-		const tomorrow = todayDate.add({ days: 1 });
-
-		await clickCalendarDay(popover, tomorrow);
-
-		expect(popover.querySelector('[data-active-field="end"]')).toBeTruthy();
 	});
 
 	it('starts a new range on the next click after a complete selection', async () => {
@@ -268,10 +248,7 @@ describe('N8nDateRangePicker', () => {
 		});
 		const popover = await openCalendarPopover(container);
 
-		expect(popover.querySelector('[data-active-field="start"]')).toBeTruthy();
-
 		await clickCalendarDay(popover, newStart);
-		expect(popover.querySelector('[data-active-field="end"]')).toBeTruthy();
 		expect(
 			popover.querySelector(`[data-value="${end.toString()}"][data-selection-end="true"]`),
 		).toBeFalsy();
@@ -312,14 +289,8 @@ describe('N8nDateRangePicker', () => {
 		const secondEnd = todayDate.add({ days: 11 });
 
 		await clickCalendarDay(popover, firstStart);
-		expect(popover.querySelector('[data-active-field="end"]')).toBeTruthy();
-
 		await clickCalendarDay(popover, firstEnd);
-		expect(popover.querySelector('[data-active-field="start"]')).toBeTruthy();
-
 		await clickCalendarDay(popover, secondStart);
-		expect(popover.querySelector('[data-active-field="end"]')).toBeTruthy();
-
 		await clickCalendarDay(popover, secondEnd);
 		await applySelection(getByRole);
 
