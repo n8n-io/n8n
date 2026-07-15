@@ -33,10 +33,12 @@ describe('Projects in Public API', () => {
 	});
 
 	describe('GET /projects', () => {
-		it('should return all projects with pagination', async () => {
+		it('if licensed, should return all projects with pagination', async () => {
 			/**
 			 * Arrange
 			 */
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
 			const owner = await createOwnerWithApiKey();
 			const projects = await Promise.all([
 				createTeamProject(),
@@ -76,10 +78,33 @@ describe('Projects in Public API', () => {
 			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
 		});
 
+		it('if not licensed, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwnerWithApiKey();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).get('/projects');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty(
+				'message',
+				new FeatureNotLicensedError('feat:projectRole:admin').message,
+			);
+		});
+
 		it('if missing scope, should reject', async () => {
 			/**
 			 * Arrange
 			 */
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
 			const member = await createMemberWithApiKey();
 
 			/**
@@ -387,10 +412,12 @@ describe('Projects in Public API', () => {
 	});
 
 	describe('GET /projects/:id/users', () => {
-		it('should return project members with pagination', async () => {
+		it('if licensed, should return project members with pagination', async () => {
 			/**
 			 * Arrange
 			 */
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
 			testServer.license.enable('feat:projectRole:viewer');
 			testServer.license.enable('feat:projectRole:editor');
 			const owner = await createOwnerWithApiKey();
@@ -439,10 +466,12 @@ describe('Projects in Public API', () => {
 			expect(editorRow.role).toBe('project:editor');
 		});
 
-		it('should respect limit and cursor for pagination', async () => {
+		it('if licensed, should respect limit and cursor for pagination', async () => {
 			/**
 			 * Arrange
 			 */
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
 			testServer.license.enable('feat:projectRole:viewer');
 			testServer.license.enable('feat:projectRole:editor');
 			const owner = await createOwnerWithApiKey();
@@ -498,28 +527,24 @@ describe('Projects in Public API', () => {
 			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
 		});
 
-		it('if missing scope, should reject', async () => {
-			/**
-			 * Arrange
-			 */
-			const member = await createMemberWithApiKey({ scopes: ['tag:read'] });
-			const project = await createTeamProject('shared-project', member);
+		it('if not licensed, should reject', async () => {
+			const owner = await createOwnerWithApiKey();
+			const project = await createTeamProject();
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
-				.publicApiAgentFor(member)
+				.publicApiAgentFor(owner)
 				.get(`/projects/${project.id}/users`);
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(403);
-			expect(response.body).toHaveProperty('message', 'Forbidden');
+			expect(response.body).toHaveProperty(
+				'message',
+				new FeatureNotLicensedError('feat:projectRole:admin').message,
+			);
 		});
 
 		it('if project not found, should reject with 404', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
 			const owner = await createOwnerWithApiKey();
 
 			const response = await testServer.publicApiAgentFor(owner).get('/projects/123456/users');
@@ -529,6 +554,8 @@ describe('Projects in Public API', () => {
 		});
 
 		it('if user has no access to project, should reject with 404', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
 			const owner = await createOwnerWithApiKey();
 			const member = await createMemberWithApiKey({ scopes: ['user:list'] });
 			const project = await createTeamProject('other-owner-project', owner);
