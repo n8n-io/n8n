@@ -1,7 +1,8 @@
-import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { render } from '@testing-library/vue';
 import { defineComponent, h, ref } from 'vue';
-import { useClipboard } from '@/app/composables/useClipboard';
+
+import { useClipboard } from './useClipboard';
 
 const testValue = 'This is a test';
 
