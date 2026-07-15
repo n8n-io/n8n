@@ -405,6 +405,9 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		]);
 		expect(assistant.agentTree?.status).toBe('completed');
 		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
+		// The stored rows are not even loaded: the snapshot query only runs when
+		// the fold needs its fallback.
+		expect(mockDbSnapshotStorage.getAll).not.toHaveBeenCalled();
 	});
 
 	it('renders a run that crashed before its snapshot was written', async () => {

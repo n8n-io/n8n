@@ -298,28 +298,31 @@ export class InstanceAiMemoryService {
 			page: options?.page ?? 0,
 		});
 
-		let snapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
-			this.logger.warn('Failed to load agent tree snapshots', {
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
+		const loadStoredSnapshots = async (): Promise<AgentTreeSnapshot[]> => {
+			let snapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
+				this.logger.warn('Failed to load agent tree snapshots', {
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return [] as AgentTreeSnapshot[];
 			});
-			return [] as AgentTreeSnapshot[];
-		});
-
-		// Exclude snapshots for active runs — they have no matching assistant
-		// message in memory yet and would misalign the positional
-		// snapshot-to-message matching in parseStoredMessages.
-		if (options?.excludeRunIds?.length) {
-			const excluded = new Set(options.excludeRunIds);
-			snapshots = snapshots.filter((s) => !excluded.has(s.runId));
-		}
+			// Exclude snapshots for active runs — they have no matching assistant
+			// message in memory yet and would misalign the positional
+			// snapshot-to-message matching in parseStoredMessages.
+			if (options?.excludeRunIds?.length) {
+				const excluded = new Set(options.excludeRunIds);
+				snapshots = snapshots.filter((s) => !excluded.has(s.runId));
+			}
+			return snapshots;
+		};
 
 		// Durable-log flag (fold-on-read): history trees derive from the event
-		// log; the stored snapshots above only serve as the pre-log/failure
-		// fallback (they remain the flag-off and rollback path).
-		if (this.instanceAiConfig.durableLog) {
-			snapshots = await this.foldSnapshotsFromLog(threadId, snapshots, options?.excludeRunIds);
-		}
+		// log; the stored snapshots (the flag-off and rollback path) are only
+		// loaded when the fold needs its pre-log/failure fallback, keeping the
+		// heaviest instance-ai table out of the flag-on hot path.
+		const snapshots = this.instanceAiConfig.durableLog
+			? await this.foldSnapshotsFromLog(threadId, loadStoredSnapshots, options?.excludeRunIds)
+			: await loadStoredSnapshots();
 
 		// Surface the in-flight messages from any suspended checkpoint. The
 		// user's prompt is persisted to memory on receipt, but the intermediate
@@ -345,13 +348,13 @@ export class InstanceAiMemoryService {
 	/**
 	 * Durable-log fold-on-read: with the flag on, history agent trees derive
 	 * from the event log. Stored snapshot rows keep being written (they are the
-	 * flag-off and rollback path) but are not read here; they only serve as the
-	 * fallback when the thread has no log rows or the read fails/derives
-	 * nothing.
+	 * flag-off and rollback path) but are neither read nor loaded here; the
+	 * lazy loader runs only when the thread has no log rows or the read
+	 * fails/derives nothing.
 	 */
 	private async foldSnapshotsFromLog(
 		threadId: string,
-		storedSnapshots: AgentTreeSnapshot[],
+		loadStoredSnapshots: () => Promise<AgentTreeSnapshot[]>,
 		excludeRunIds?: string[],
 	): Promise<AgentTreeSnapshot[]> {
 		const start = Date.now();
@@ -363,15 +366,15 @@ export class InstanceAiMemoryService {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return storedSnapshots;
+			return await loadStoredSnapshots();
 		}
 		// Pre-log thread (instance ran before the flag): stored snapshots still
 		// render. Production flips the flag together with the backfill migration
 		// (INS-851), so this branch is a dev-instance safety, not a design.
-		if (rows.length === 0) return storedSnapshots;
+		if (rows.length === 0) return await loadStoredSnapshots();
 
 		const entries = buildLogDerivedSnapshots(rows, new Set(excludeRunIds ?? []));
-		if (entries.length === 0) return storedSnapshots;
+		if (entries.length === 0) return await loadStoredSnapshots();
 		entries.sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
 
 		this.durableLogMetrics.recordFoldRead(Date.now() - start, entries.length);
