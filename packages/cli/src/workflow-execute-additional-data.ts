@@ -319,7 +319,7 @@ export async function executeWorkflow(
 
 	const executionId = await activeExecutions.add(runData);
 
-	const { OwnershipService } = await import('@/services/ownership.service');
+	const { OwnershipService } = await import('@/services/ownership.service.js');
 	const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
 		Container.get(OwnershipService),
 		workflowData.id,
