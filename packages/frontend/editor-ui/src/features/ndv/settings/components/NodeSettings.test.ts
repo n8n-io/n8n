@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { shallowRef } from 'vue';
+import { ref, shallowRef } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
 
@@ -76,7 +76,26 @@ const agentNodeType = {
 	inputs: ['main'],
 	outputs: ['main'],
 	properties: [
-		{ displayName: 'Agent', name: 'agentId', type: 'agentSelector', default: '' },
+		// Mirrors the real v2 node: agentSource gates the agentId selector, and
+		// the inline definition lives in a hidden parameter.
+		{
+			displayName: 'Agent Source',
+			name: 'agentSource',
+			type: 'options',
+			options: [
+				{ name: 'Saved Agent', value: 'referenced' },
+				{ name: 'Inline Agent', value: 'inline' },
+			],
+			default: 'referenced',
+		},
+		{
+			displayName: 'Agent',
+			name: 'agentId',
+			type: 'agentSelector',
+			default: { __rl: true, mode: 'list', value: '' },
+			displayOptions: { show: { agentSource: ['referenced'] } },
+		},
+		{ displayName: 'Inline Agent', name: 'inlineAgent', type: 'hidden', default: {} },
 		{ displayName: 'Message', name: 'text', type: 'string', default: '' },
 		{
 			displayName: 'Advanced',
@@ -94,10 +113,11 @@ interface RenderOptions {
 	node?: typeof httpNode;
 	nodeType?: INodeTypeDescription;
 	provide?: Record<symbol, unknown>;
+	stubs?: Record<string, unknown>;
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
-	const { runData, node = httpNode, nodeType = httpNodeType, provide = {} } = options;
+	const { runData, node = httpNode, nodeType = httpNodeType, provide = {}, stubs = {} } = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
 
@@ -137,7 +157,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))),
 	);
 
-	return createComponentRenderer(NodeSettings, {
+	const renderResult = createComponentRenderer(NodeSettings, {
 		global: {
 			provide,
 			stubs: {
@@ -157,7 +177,9 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 				CommunityNodeFooter: true,
 				CommunityNodeUpdateInfo: true,
 				AgentNdvBuilderBanner: true,
-				AgentNdvReferencedControls: true,
+				AgentNdvReferencedSummary: true,
+				AgentNdvInlineControls: true,
+				...stubs,
 			},
 		},
 	})({
@@ -170,6 +192,8 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 			executable: false,
 		},
 	});
+
+	return { ...renderResult, workflowDocumentStore };
 };
 
 describe('NodeSettings', () => {
@@ -215,12 +239,13 @@ describe('NodeSettings', () => {
 	});
 
 	describe('AI Agent node surfaces', () => {
-		// The children are stubbed, so NodeSettings only checks the orchestrator's presence.
+		// The children are stubbed, so NodeSettings only checks the facade's
+		// presence + mode. A missing `mode` resolves to referenced.
 		const provide = {
 			[NdvAgentConfigKey as symbol]: {} as UseNdvAgentConfigReturn,
 		};
 
-		it('renders the banner and Agent section on the Parameters tab', async () => {
+		it('renders the banner and referenced summary on the Parameters tab', async () => {
 			const { container } = renderNodeSettings({
 				node: agentNode,
 				nodeType: agentNodeType,
@@ -229,11 +254,28 @@ describe('NodeSettings', () => {
 
 			await waitFor(() => {
 				expect(container.querySelector('agent-ndv-builder-banner-stub')).not.toBeNull();
-				expect(container.querySelector('agent-ndv-referenced-controls-stub')).not.toBeNull();
+				expect(container.querySelector('agent-ndv-referenced-summary-stub')).not.toBeNull();
 			});
+			expect(container.querySelector('agent-ndv-inline-controls-stub')).toBeNull();
 		});
 
-		it('renders no agent surfaces when the orchestrator is not provided', async () => {
+		it('renders the inline controls instead of the summary in inline mode', async () => {
+			const { container } = renderNodeSettings({
+				node: agentNode,
+				nodeType: agentNodeType,
+				provide: {
+					[NdvAgentConfigKey as symbol]: { mode: ref('inline') } as UseNdvAgentConfigReturn,
+				},
+			});
+
+			await waitFor(() => {
+				expect(container.querySelector('agent-ndv-builder-banner-stub')).not.toBeNull();
+				expect(container.querySelector('agent-ndv-inline-controls-stub')).not.toBeNull();
+			});
+			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
+		});
+
+		it('renders no agent surfaces when the facade is not provided', async () => {
 			const { container, findByTestId } = renderNodeSettings({
 				node: agentNode,
 				nodeType: agentNodeType,
@@ -241,7 +283,7 @@ describe('NodeSettings', () => {
 
 			await findByTestId('tab-params');
 			expect(container.querySelector('agent-ndv-builder-banner-stub')).toBeNull();
-			expect(container.querySelector('agent-ndv-referenced-controls-stub')).toBeNull();
+			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
 		});
 
 		it('renders no agent surfaces for a non-agent node', async () => {
@@ -249,7 +291,56 @@ describe('NodeSettings', () => {
 
 			await findByTestId('tab-params');
 			expect(container.querySelector('agent-ndv-builder-banner-stub')).toBeNull();
-			expect(container.querySelector('agent-ndv-referenced-controls-stub')).toBeNull();
+			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
+		});
+
+		it('re-points an inline node at a saved agent in a single referenced-mode commit', async () => {
+			const inlineAgentNode = createTestNode({
+				name: 'Message an Agent',
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+				parameters: { agentSource: 'inline' },
+			});
+			const agentReference = {
+				__rl: true,
+				mode: 'list',
+				value: 'agent-9',
+				cachedResultName: 'Drafted',
+			};
+
+			const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+				node: inlineAgentNode,
+				nodeType: agentNodeType,
+				provide: {
+					[NdvAgentConfigKey as symbol]: { mode: ref('inline') } as UseNdvAgentConfigReturn,
+				},
+				stubs: {
+					// The banner's draft-creation flow ends in this emit; the stub only
+					// needs to fire it with the new saved agent's resource locator.
+					AgentNdvBuilderBanner: {
+						template:
+							'<button data-test-id="set-agent-reference-stub" @click="$emit(\'set-agent-reference\', agentReference)" />',
+						emits: ['set-agent-reference'],
+						data: () => ({ agentReference }),
+					},
+				},
+			});
+
+			await fireEvent.click(await findByTestId('set-agent-reference-stub'));
+
+			// One commit flips the node back to referenced mode AND points it at the
+			// new agent — a two-commit sequence would leave an inconsistent
+			// intermediate state (e.g. inline mode with a dangling reference).
+			expect(workflowDocumentStore.setNodeParameters).toHaveBeenCalledTimes(1);
+			expect(workflowDocumentStore.setNodeParameters).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: inlineAgentNode.name,
+					value: expect.objectContaining({
+						agentId: agentReference,
+						agentSource: 'referenced',
+					}),
+				}),
+			);
 		});
 	});
 });
