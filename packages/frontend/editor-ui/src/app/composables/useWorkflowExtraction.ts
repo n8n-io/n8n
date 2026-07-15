@@ -5,6 +5,7 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
 	NodeHelpers,
+	EXECUTE_WORKFLOW_NODE_TYPE,
 } from 'n8n-workflow';
 import type {
 	ExtractableSubgraphData,
@@ -121,7 +122,7 @@ export function useWorkflowExtraction() {
 				},
 				options: {},
 			},
-			type: 'n8n-nodes-base.executeWorkflow',
+			type: EXECUTE_WORKFLOW_NODE_TYPE,
 			typeVersion: 1.2,
 			position,
 			name,
