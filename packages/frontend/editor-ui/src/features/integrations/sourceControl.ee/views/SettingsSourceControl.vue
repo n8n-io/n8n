@@ -24,6 +24,7 @@ import {
 	N8nFormInput,
 	N8nHeading,
 	N8nNotice,
+	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 const locale = useI18n();
@@ -507,6 +508,9 @@ watch(connectionType, () => {
 							/>
 						</N8nTooltip>
 					</div>
+					<N8nText size="small" color="text-light">
+						{{ locale.baseText('settings.sourceControl.branches.caption') }}
+					</N8nText>
 					<N8nCheckbox
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
