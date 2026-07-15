@@ -150,8 +150,14 @@ export const parseSourceRepo = (attestations) => {
 	return { owner: match[1], repo: match[2], gitCommit };
 };
 
+// A source fetch failure fails the scan outright, so bound the requests —
+// a stalled connection must not hang the gate.
+const SOURCE_FETCH_TIMEOUT_MS = 30_000;
+
 const fetchSourceInfo = async (packageName, version) => {
-	const { data } = await axios.get(`${registry}-/npm/v1/attestations/${packageName}@${version}`);
+	const { data } = await axios.get(`${registry}-/npm/v1/attestations/${packageName}@${version}`, {
+		timeout: SOURCE_FETCH_TIMEOUT_MS,
+	});
 	return parseSourceRepo(data.attestations);
 };
 
@@ -181,7 +187,10 @@ export const findPackageRoot = (sourceDir, packageName) => {
 
 const downloadAndExtractSource = async ({ owner, repo, gitCommit }, packageName) => {
 	const url = `https://codeload.github.com/${owner}/${repo}/tar.gz/${gitCommit}`;
-	const { data } = await axios.get(url, { responseType: 'arraybuffer' });
+	const { data } = await axios.get(url, {
+		responseType: 'arraybuffer',
+		timeout: SOURCE_FETCH_TIMEOUT_MS,
+	});
 
 	const tarballName = `source-${gitCommit}.tgz`;
 	fs.writeFileSync(safeJoinPath(TEMP_DIR, tarballName), Buffer.from(data));
@@ -232,20 +241,12 @@ export const buildScanConfig = async () => {
 		// Register the full `eslint-plugin-n8n-nodes-base` plugin and apply its
 		// three rulesets so the scan gate enforces the same rules as
 		// `n8n-node lint` (see node-cli/src/configs/eslint.ts). The off-overrides
-		// below are kept identical. Scoping differs on purpose: `n8n-node lint`
-		// runs at dev-time on `nodes/**` / `credentials/**` `.ts` sources. The
-		// scanner prefers the provenance-attested source checkout (where these
-		// globs match real `.ts` sources), but its fallback path scans published
-		// tarballs, which ship compiled output under `dist/` (e.g.
-		// `dist/nodes/Foo/Foo.node.js` + `.d.ts`). We match `nodes`/`credentials`
-		// dirs at any depth and target `.ts`/`.d.ts` only — the AST-walking rules
-		// resolve against the type-preserving `.d.ts`. Compiled `.js` is
-		// deliberately excluded: the description AST is buried in a constructor
-		// there so the rules no-op, and file-shape rules like
-		// node-filename-against-convention would false-positive on the `.js`
-		// extension (that check is meaningful only against `.ts` sources at
-		// dev-time). Without the `dist/`-aware glob these rules never run at the
-		// gate at all.
+		// below are kept identical. The `.ts` globs only ever match the
+		// provenance-attested source checkout — the tarball leg lints compiled
+		// `.js` and the published package.json only, where these rules would
+		// no-op (the description AST is buried in a constructor) or
+		// false-positive (the filename-convention rules hard-code a `.ts`
+		// suffix that compiled output can never satisfy).
 		{ plugins: { 'n8n-nodes-base': n8nNodesPlugin } },
 		{
 			files: ['package.json'],
@@ -387,10 +388,12 @@ export const analyzePackageByName = async (packageName, version) => {
 
 		stdout.write(`✅ Provenance check passed for ${label} \n`);
 
-		// Also lint the source the provenance attestation points at: the
+		// Lint the source the provenance attestation points at: the
 		// node/credential rules are written for `.ts` sources and mostly no-op
 		// (or false-positive on filenames) against the compiled output shipped
-		// in the tarball.
+		// in the tarball. An unreachable source is a hard failure — falling
+		// back to a tarball-only scan would silently reintroduce that blind
+		// spot.
 		stdout.write(`Fetching source for ${label}...`);
 		let sourceDir = null;
 		let sourceInfo = null;
@@ -408,15 +411,22 @@ export const analyzePackageByName = async (packageName, version) => {
 			stdout.cursorTo(0);
 		}
 
-		if (sourceDir) {
-			const shortCommit = sourceInfo.gitCommit.slice(0, 7);
-			stdout.write(
-				`✅ Fetched source from github.com/${sourceInfo.owner}/${sourceInfo.repo}@${shortCommit} \n`,
-			);
-		} else {
+		if (!sourceDir) {
 			const reason = sourceError?.message ?? 'unsupported or unlocatable source repository';
-			stdout.write(`⚠️ Could not fetch source (${reason}), scanning only the published tarball \n`);
+			stdout.write(`❌ Could not fetch source for ${label} \n`);
+
+			return {
+				packageName,
+				version: exactVersion,
+				passed: false,
+				message: `Could not fetch the source repository recorded in the package's npm provenance (${reason}). The scan lints the attested source, so it must be reachable — publish with provenance from a public GitHub repository.`,
+			};
 		}
+
+		const shortCommit = sourceInfo.gitCommit.slice(0, 7);
+		stdout.write(
+			`✅ Fetched source from github.com/${sourceInfo.owner}/${sourceInfo.repo}@${shortCommit} \n`,
+		);
 
 		stdout.write(`Downloading ${label}...`);
 		const packageDir = await downloadAndExtractPackage(packageName, exactVersion);
@@ -427,25 +437,19 @@ export const analyzePackageByName = async (packageName, version) => {
 		stdout.write(`✅ Downloaded ${label} \n`);
 
 		stdout.write(`Analyzing ${label}...`);
-		let analysisResult;
-		if (sourceDir) {
-			// The source checkout gets the full rule set on real `.ts` sources.
-			// The shipped artifact must stay scanned too: provenance pins the
-			// source commit, not the build output — a build step can emit
-			// anything into `dist/`. Scope the tarball leg to compiled `.js` and
-			// the published package.json; `.ts`/`.d.ts` declarations are covered
-			// better by the source scan and only false-positive on filename
-			// rules here.
-			const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
-			const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
-			analysisResult = {
-				passed: sourceResult.passed && distResult.passed,
-				message: [sourceResult, distResult].find((r) => !r.passed)?.message,
-				details: [sourceResult.details, distResult.details].filter(Boolean).join('\n') || undefined,
-			};
-		} else {
-			analysisResult = await analyzePackage(packageDir);
-		}
+		// The source checkout gets the full rule set on real `.ts` sources.
+		// The shipped artifact must stay scanned too: provenance pins the
+		// source commit, not the build output — a build step can emit anything
+		// into `dist/`. Scope the tarball leg to compiled `.js` and the
+		// published package.json; `.ts`/`.d.ts` declarations are covered better
+		// by the source scan and only false-positive on filename rules here.
+		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
+		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
+		const analysisResult = {
+			passed: sourceResult.passed && distResult.passed,
+			message: [sourceResult, distResult].find((r) => !r.passed)?.message,
+			details: [sourceResult.details, distResult.details].filter(Boolean).join('\n') || undefined,
+		};
 		if (stdout.TTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
