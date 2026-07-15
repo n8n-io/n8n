@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 
 import { FolderService } from '@/services/folder.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { createFolder } from '../shared/db/folders';
 import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';
@@ -184,6 +185,36 @@ describe('POST /projects/:projectId/folders', () => {
 			.send({ name: 'Folder' });
 
 		expect(response.statusCode).toBe(500);
+	});
+});
+
+describe('POST /projects/folders', () => {
+	test("should create a folder in the calling user's personal project", async () => {
+		testServer.license.enable('feat:folders');
+
+		const response = await authOwnerAgent
+			.post('/projects/folders')
+			.send({ name: 'Top Level Folder' });
+
+		expect(response.statusCode).toBe(201);
+		expect(response.body).toHaveProperty('name', 'Top Level Folder');
+
+		const listResponse = await authOwnerAgent
+			.get(`/projects/${ownerPersonalProject.id}/folders`)
+			.query({ filter: JSON.stringify({ name: 'Top Level Folder' }) });
+
+		expect(listResponse.body.count).toBe(1);
+		expect(listResponse.body.data[0].id).toBe(response.body.id);
+	});
+
+	test('should return 404 when the calling user has no personal project', async () => {
+		testServer.license.enable('feat:folders');
+		vi.spyOn(Container.get(ProjectService), 'getPersonalProject').mockResolvedValueOnce(null);
+
+		const response = await authOwnerAgent.post('/projects/folders').send({ name: 'Folder' });
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Could not find a personal project for this user');
 	});
 });
 

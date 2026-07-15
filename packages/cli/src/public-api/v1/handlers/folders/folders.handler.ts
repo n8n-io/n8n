@@ -12,6 +12,7 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { FolderService } from '@/services/folder.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
@@ -33,6 +34,7 @@ const handleError = (error: unknown) => {
 
 type FolderHandlers = {
 	createFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
+	createPersonalFolder: PublicAPIEndpoint<AuthenticatedRequest>;
 	getFolders: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
 	deleteFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string; folderId: string }>>;
 	getFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string; folderId: string }>>;
@@ -54,6 +56,33 @@ const folderHandlers: FolderHandlers = {
 
 			try {
 				const folder = await Container.get(FolderService).createFolder(payload.data, projectId);
+				return res.status(201).json(folder);
+			} catch (error) {
+				return handleError(error);
+			}
+		},
+	],
+	createPersonalFolder: [
+		isLicensed('feat:folders'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'folder:create' }),
+		async (req, res) => {
+			const personalProject = await Container.get(ProjectService).getPersonalProject(req.user);
+			if (!personalProject) {
+				throw new NotFoundError('Could not find a personal project for this user');
+			}
+
+			await assertProjectScope(req.user, personalProject.id, ['folder:create']);
+
+			const payload = CreateFolderDto.safeParse(req.body);
+			if (payload.error) {
+				throw new BadRequestError(payload.error.errors[0].message);
+			}
+
+			try {
+				const folder = await Container.get(FolderService).createFolder(
+					payload.data,
+					personalProject.id,
+				);
 				return res.status(201).json(folder);
 			} catch (error) {
 				return handleError(error);

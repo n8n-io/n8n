@@ -1,0 +1,30 @@
+post:
+  x-eov-operation-id: createPersonalFolder
+  x-required-scope: folder:create
+  x-eov-operation-handler: v1/handlers/folders/folders.handler
+  tags:
+    - Folders
+  summary: Create a folder in your personal project
+  description: Create a folder in the calling user's personal project.
+  requestBody:
+    description: Payload for folder to create.
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/folder.create.yml'
+    required: true
+  responses:
+    '201':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/folder.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
