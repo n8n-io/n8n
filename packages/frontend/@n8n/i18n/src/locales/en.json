@@ -4133,6 +4133,7 @@
 	"canvas.nodeGroup.expand": "Expand",
 	"canvas.nodeGroup.collapse": "Collapse",
 	"canvas.nodeGroup.prompt.renameGroup": "Rename group",
+	"canvas.nodeGroup.prompt.duplicateName": "A group with this name already exists",
 	"workflowExtraction.error.failure": "Sub-workflow conversion failed",
 	"workflowExtraction.error.selectionGraph.inputEdgeToNonRoot": "Non-input node '{node}' has a connection from a node outside the current selection.",
 	"workflowExtraction.error.selectionGraph.outputEdgeFromNonLeaf": "Non-output node '{node}' has a connection to a node outside the current selection.",

@@ -573,6 +573,26 @@ describe('Canvas', () => {
 			expect(messagePrompt).not.toHaveBeenCalled();
 		});
 
+		it('flags duplicate group names inline in the prompt', async () => {
+			messagePrompt.mockResolvedValue({ action: 'cancel', value: '' });
+			const { group } = await setupSelectedGroup({ collapsed: true });
+			// Another group whose name the rename could collide with.
+			workflowDocumentStore.createGroup(['x'], 'Taken');
+
+			await pressSpace();
+
+			await waitFor(() => expect(messagePrompt).toHaveBeenCalledTimes(1));
+			const options = messagePrompt.mock.calls[0][2] as {
+				inputValidator: (value: string) => string | true;
+			};
+			expect(options.inputValidator('Taken')).toBe('A group with this name already exists');
+			expect(options.inputValidator('  Taken  ')).toBe('A group with this name already exists');
+			// Keeping the current name and picking a fresh one stay valid.
+			expect(options.inputValidator(group.name)).toBe(true);
+			expect(options.inputValidator('Fresh name')).toBe(true);
+			expect(options.inputValidator('   ')).toBe('Invalid Name');
+		});
+
 		it('opens the prompt from the context menu rename on a collapsed group', async () => {
 			messagePrompt.mockResolvedValue({ action: 'confirm', value: 'Menu name' });
 			const { group, getByTestId } = await setupSelectedGroup({ collapsed: true });

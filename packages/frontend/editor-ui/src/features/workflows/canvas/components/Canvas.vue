@@ -783,8 +783,18 @@ async function onOpenGroupRenameModal(groupId: string) {
 				inputErrorMessage: i18n.baseText('nodeView.prompt.invalidName'),
 				inputValue: group.name,
 				inputValidator: (value: string) => {
-					if (!value.trim()) {
+					const trimmed = value.trim();
+					if (!trimmed) {
 						return i18n.baseText('nodeView.prompt.invalidName');
+					}
+					// The store silently uniquifies clashing names on rename
+					// (exact match against another group) — surface that as an
+					// inline error instead. Keeping the current name is valid.
+					const isTaken = workflowDocumentStore.value.allGroups.some(
+						(other) => other.id !== groupId && other.name === trimmed,
+					);
+					if (isTaken) {
+						return i18n.baseText('canvas.nodeGroup.prompt.duplicateName');
 					}
 					return true;
 				},
