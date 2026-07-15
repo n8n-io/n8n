@@ -38,6 +38,7 @@ describe('OAuthAuthorizationCodeService', () => {
 				codeChallenge,
 				state,
 				resource,
+				['workflow:read'],
 			);
 
 			expect(result).toHaveLength(64); // 32 bytes hex = 64 characters
@@ -50,6 +51,7 @@ describe('OAuthAuthorizationCodeService', () => {
 				codeChallengeMethod: 'S256',
 				state,
 				resource,
+				scope: ['workflow:read'],
 				expiresAt: expect.any(Number),
 				used: false,
 			});

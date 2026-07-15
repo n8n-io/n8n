@@ -34,7 +34,7 @@ let exportPackage: (...args: unknown[]) => unknown;
 let importPackage: (...args: unknown[]) => unknown;
 
 beforeAll(async () => {
-	handler = (await import('../n8n-packages.handler')) as unknown as typeof handler;
+	handler = (await import('../n8n-packages.handler.js')) as unknown as typeof handler;
 	exportPackage = handler.exportPackage[1];
 	importPackage = handler.importPackage[1];
 });
@@ -49,6 +49,7 @@ describe('n8n-packages handler', () => {
 			folderIds?: string[];
 			projectIds?: string[];
 			includeVariableValues?: boolean;
+			missingWorkflowDependencyPolicy?: string;
 		},
 		apiKeyScopes?: string[],
 	) {
@@ -239,6 +240,7 @@ describe('n8n-packages handler', () => {
 				projectIds: [],
 				includeVariableValues: true,
 				canExportVariableValues: false,
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 		});
 
@@ -262,6 +264,7 @@ describe('n8n-packages handler', () => {
 				projectIds: [],
 				includeVariableValues: false,
 				canExportVariableValues: false,
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 		});
 
@@ -359,6 +362,7 @@ describe('n8n-packages handler', () => {
 				projectIds: [],
 				includeVariableValues: true,
 				canExportVariableValues: true,
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 			expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/gzip');
 			expect(res.setHeader).toHaveBeenCalledWith(
@@ -366,6 +370,36 @@ describe('n8n-packages handler', () => {
 				'attachment; filename="export.n8np"',
 			);
 			expect(mockEventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('forwards a non-default missing workflow dependency policy', async () => {
+			const stream = new PassThrough();
+			mockService.exportPackage.mockResolvedValue(stream);
+			const res = makeResponse();
+
+			const resultPromise = run(
+				makeRequest(
+					{
+						workflowIds: ['wf-1'],
+						missingWorkflowDependencyPolicy: 'reference-only',
+					},
+					['workflow:export'],
+				),
+				res,
+			);
+			stream.end(Buffer.from('package-bytes'));
+			const caught = await resultPromise;
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				user: { id: 'user-1' },
+				workflowIds: ['wf-1'],
+				folderIds: [],
+				projectIds: [],
+				includeVariableValues: true,
+				canExportVariableValues: false,
+				missingWorkflowDependencyPolicy: 'reference-only',
+			});
 		});
 
 		it('streams the export for a valid project request', async () => {
@@ -388,6 +422,7 @@ describe('n8n-packages handler', () => {
 				projectIds: ['project-1'],
 				includeVariableValues: true,
 				canExportVariableValues: true,
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 		});
 
@@ -411,6 +446,7 @@ describe('n8n-packages handler', () => {
 				projectIds: [],
 				includeVariableValues: true,
 				canExportVariableValues: true,
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 		});
 
@@ -434,6 +470,7 @@ describe('n8n-packages handler', () => {
 				projectIds: [],
 				includeVariableValues: false,
 				canExportVariableValues: false,
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 		});
 	});

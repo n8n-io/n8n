@@ -1281,7 +1281,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 
 			const { CredentialResolutionError } = await import(
-				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error'
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error.js'
 			);
 
 			const resolvableCredentialEntity = {
@@ -1315,7 +1315,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 
 			const { CredentialResolutionError } = await import(
-				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error'
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error.js'
 			);
 
 			const resolvableCredentialEntity = {

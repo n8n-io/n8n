@@ -31,6 +31,7 @@ type ExportPackageRequest = AuthenticatedRequest<
 		folderIds?: string[];
 		projectIds?: string[];
 		includeVariableValues?: boolean;
+		missingWorkflowDependencyPolicy?: 'fail' | 'reference-only' | 'include-in-package';
 	}
 >;
 
@@ -137,6 +138,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					projectIds,
 					includeVariableValues,
 					canExportVariableValues: apiKeyScopes.includes('variable:list'),
+					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
 				});
 
 				return await streamPackageExport(res, stream);

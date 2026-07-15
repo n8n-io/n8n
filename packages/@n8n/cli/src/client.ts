@@ -20,6 +20,14 @@ export interface ImportPackageFields {
 	folderConflictPolicy?: string;
 }
 
+export interface ExportPackageFields {
+	workflowIds?: string[];
+	folderIds?: string[];
+	projectIds?: string[];
+	includeVariableValues?: boolean;
+	missingWorkflowDependencyPolicy?: string;
+}
+
 export class ApiError extends Error {
 	constructor(
 		readonly statusCode: number,
@@ -423,24 +431,22 @@ export class N8nClient {
 
 	// ─── Packages (beta) ───────────────────────────────────────────
 
-	async exportPackage(fields: {
-		workflowIds?: string[];
-		folderIds?: string[];
-		projectIds?: string[];
-		includeVariableValues?: boolean;
-	}): Promise<Buffer> {
+	async exportPackage(fields: ExportPackageFields): Promise<Buffer> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
 		const body: {
 			workflowIds?: string[];
 			folderIds?: string[];
 			projectIds?: string[];
 			includeVariableValues?: boolean;
+			missingWorkflowDependencyPolicy?: string;
 		} = {};
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
 		// `undefined` is dropped by JSON serialization, so the API's default applies.
 		body.includeVariableValues = fields.includeVariableValues;
+		if (fields.missingWorkflowDependencyPolicy)
+			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
 
 		return await this.request<Buffer>('POST', '/n8n-packages/export', {
 			body,
