@@ -10,6 +10,7 @@ import {
 	getLatestAgentArtifactResult,
 	getExecutionResultsByWorkflow,
 	isAgentEditingWorkflow,
+	isAgentEditingAgent,
 } from '../canvasPreview.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
@@ -403,6 +404,28 @@ describe('getLatestAgentArtifactResult', () => {
 			agentId: 'agent-1',
 			projectId: 'project-1',
 			toolCallId: 'tc-mutate',
+			kind: 'mutated',
+		});
+	});
+
+	test('mutates on a failed turn that still updated the config', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-mutate-fail',
+					toolName: 'build-agent',
+					args: { message: 'add a skill' },
+					result: { ok: false, error: 'The agent builder run errored.', configUpdated: true },
+				}),
+			],
+		});
+
+		expect(
+			getLatestAgentArtifactResult(orchestrator, { agentId: 'agent-1', projectId: 'project-1' }),
+		).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-mutate-fail',
 			kind: 'mutated',
 		});
 	});
@@ -1189,5 +1212,70 @@ describe('isAgentEditingWorkflow', () => {
 			],
 		});
 		expect(isAgentEditingWorkflow(node, 'wf-9')).toBe(true);
+	});
+});
+
+describe('isAgentEditingAgent', () => {
+	test('locks while an active agent-builder child targets the agent', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-1',
+			kind: 'agent-builder',
+			status: 'active',
+			targetResource: { type: 'agent', id: 'agent-1' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(true);
+	});
+
+	test('does not lock once the agent-builder child has completed', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-1',
+			kind: 'agent-builder',
+			status: 'completed',
+			targetResource: { type: 'agent', id: 'agent-1' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(false);
+	});
+
+	test('locks while an active agent run has a successful build-agent result for the agent', () => {
+		const node = makeAgentNode({
+			status: 'active',
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-agent',
+					args: { message: 'add a skill' },
+					result: { ok: true, configUpdated: true },
+				}),
+			],
+		});
+		expect(isAgentEditingAgent(node, 'agent-1')).toBe(true);
+	});
+
+	test('does not lock the same tree once the root node is no longer active', () => {
+		const node = makeAgentNode({
+			status: 'completed',
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-agent',
+					args: { message: 'add a skill' },
+					result: { ok: true, configUpdated: true },
+				}),
+			],
+		});
+		expect(isAgentEditingAgent(node, 'agent-1')).toBe(false);
+	});
+
+	test('does not lock when the active builder targets a different agent id', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-1',
+			kind: 'agent-builder',
+			status: 'active',
+			targetResource: { type: 'agent', id: 'agent-other' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(false);
 	});
 });

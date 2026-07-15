@@ -4,7 +4,7 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
-	InstanceAiWorkflowAttachment,
+	InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -45,7 +45,7 @@ const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-mess
 
 export interface PendingFirstMessage {
 	message: string;
-	attachments?: InstanceAiWorkflowAttachment[];
+	attachments?: InstanceAiResourceAttachment[];
 	context?: InstanceAiHandoffContext;
 }
 
@@ -147,7 +147,7 @@ export function useInstanceAiHandoff() {
 	async function startThread(
 		projectId: string,
 		message: string,
-		attachments?: InstanceAiWorkflowAttachment[],
+		attachments?: InstanceAiResourceAttachment[],
 		prepare?: (threadId: string) => void,
 		options?: {
 			newTab?: boolean;
