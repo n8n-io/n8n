@@ -198,21 +198,35 @@ function getSettings(this: IExecuteFunctions): AppendSettings {
 	};
 }
 
-type ItemRow = { itemIndex: number; row: SheetRow } | { itemIndex: number; error: Error };
+type MappedDataMode = 'autoMap' | 'define';
+type RowResult = { itemIndex: number; row: SheetRow };
+type RowError = { itemIndex: number; error: Error };
+
+/** How to seed the header row from the first item, when the sheet has no data yet. */
+function columnSeeder(
+	dataMode: MappedDataMode,
+	items: INodeExecutionData[],
+	getFields: (itemIndex: number) => FieldEntry[],
+): (itemIndex: number) => string[] {
+	return dataMode === 'autoMap'
+		? (itemIndex) => columnsFromItem(items[itemIndex].json)
+		: (itemIndex) => columnsFromFields(getFields(itemIndex));
+}
 
 // autoMap/define build one row per item; a bad item (an expression failure, say)
-// is recorded and skipped under continueOnFail rather than blocking the batch —
-// the one departure from the OneDrive node, which has no such isolation. The
-// write itself still happens once for the whole batch, same as OneDrive.
+// is skipped under continue-on-fail rather than blocking the batch — the one
+// departure from the OneDrive node, which has no such isolation. The write
+// itself still happens once for the whole batch, same as OneDrive.
 function buildItemRows(
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
-	dataMode: 'autoMap' | 'define',
+	dataMode: MappedDataMode,
 	getFields: (itemIndex: number) => FieldEntry[],
 	seedColumns: (itemIndex: number) => string[],
-): { columnsRow: string[]; rows: ItemRow[] } {
+): { columnsRow: string[]; okRows: RowResult[]; errorRows: RowError[] } {
 	let columnsRow: string[] | undefined;
-	const rows: ItemRow[] = [];
+	const okRows: RowResult[] = [];
+	const errorRows: RowError[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -223,103 +237,104 @@ function buildItemRows(
 					? autoMapRow(items[i].json, columnsRow)
 					: defineRow(getFields(i), columnsRow);
 
-			rows.push({ itemIndex: i, row });
+			okRows.push({ itemIndex: i, row });
 		} catch (error) {
 			if (!continueOnFail) throw error;
-			rows.push({ itemIndex: i, error: error as Error });
+			errorRows.push({ itemIndex: i, error: error as Error });
 		}
 	}
 
-	return { columnsRow: columnsRow ?? [], rows };
+	return { columnsRow: columnsRow ?? [], okRows, errorRows };
 }
 
-export async function execute(
+/** Reassembles per-item output, keyed by original item index, back into that same order. */
+function combineInOrder(
+	itemCount: number,
+	byIndex: Map<number, INodeExecutionData[]>,
+): INodeExecutionData[] {
+	const returnData: INodeExecutionData[] = [];
+	for (let i = 0; i < itemCount; i++) {
+		const entries = byIndex.get(i);
+		if (entries) returnData.push.apply(returnData, entries);
+	}
+	return returnData;
+}
+
+// RAW mode never gets an auto-written header, and (like the OneDrive node)
+// isn't a per-item concept: one blob of rows for the whole batch, in one write.
+async function executeRaw(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
+	sheetPath: string,
+	usedRangeAddress: string,
+	existingColumns: string[] | undefined,
+	settings: AppendSettings,
 ): Promise<INodeExecutionData[]> {
-	// https://learn.microsoft.com/en-us/graph/api/worksheet-range
-	const settings = getSettings.call(this);
-
-	const workbookRoot = await resolveWorkbookRoot.call(this, 0);
-	const sheetPath = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(settings.worksheetId)}`;
-
-	const usedRange = await (microsoftApiRequest<ExcelResponse & { address: string }>).call(
+	const range = findAppendRange(usedRangeAddress, {
+		cols: settings.rawRows[0]?.length ?? 0,
+		rows: settings.rawRows.length,
+	});
+	const responseData = await (microsoftApiRequest<ExcelResponse>).call(
 		this,
-		'GET',
-		`${sheetPath}/usedRange`,
+		'PATCH',
+		`${sheetPath}/range(address='${range}')`,
+		{ values: settings.rawRows },
 	);
 
-	// An empty sheet has no header row to read; seed one from the first
-	// successfully-built item instead of throwing (the OneDrive node's
-	// behaviour for autoMap/define)
-	const isEmpty = isEmptyUsedRange(usedRange.address);
-	const existingColumns = isEmpty ? undefined : ((usedRange.values?.[0] as string[]) ?? []);
+	return prepareOutput.call(this, this.getNode(), responseData, {
+		columnsRow: existingColumns,
+		dataProperty: settings.dataProperty,
+		rawData: settings.rawData,
+	});
+}
 
-	if (settings.dataMode === 'raw') {
-		const range = findAppendRange(usedRange.address, {
-			cols: settings.rawRows[0]?.length ?? 0,
-			rows: settings.rawRows.length,
-		});
-		const responseData = await (microsoftApiRequest<ExcelResponse>).call(
-			this,
-			'PATCH',
-			`${sheetPath}/range(address='${range}')`,
-			{ values: settings.rawRows },
-		);
-
-		// RAW mode never gets an auto-written header, and (like the OneDrive
-		// node) isn't a per-item concept: one blob of rows for the whole batch
-		return prepareOutput.call(this, this.getNode(), responseData, {
-			columnsRow: existingColumns,
-			dataProperty: settings.dataProperty,
-			rawData: settings.rawData,
-		});
-	}
-
+// autoMap/define: one row per item, written together in a single PATCH.
+async function executeMapped(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+	sheetPath: string,
+	usedRangeAddress: string,
+	isEmpty: boolean,
+	existingColumns: string[] | undefined,
+	settings: AppendSettings,
+): Promise<INodeExecutionData[]> {
+	const dataMode = settings.dataMode as MappedDataMode;
 	const getFields = (itemIndex: number) =>
 		this.getNodeParameter('fieldsUi.values', itemIndex, []) as FieldEntry[];
 	const seedColumns =
 		existingColumns !== undefined
 			? () => existingColumns
-			: settings.dataMode === 'autoMap'
-				? (itemIndex: number) => columnsFromItem(items[itemIndex].json)
-				: (itemIndex: number) => columnsFromFields(getFields(itemIndex));
+			: columnSeeder(dataMode, items, getFields);
 
-	const { columnsRow, rows } = buildItemRows(
+	const { columnsRow, okRows, errorRows } = buildItemRows(
 		items,
 		this.continueOnFail(),
-		settings.dataMode,
+		dataMode,
 		getFields,
 		seedColumns,
 	);
 
 	const outputByIndex = new Map<number, INodeExecutionData[]>();
-
-	for (const r of rows) {
-		if ('error' in r) {
-			outputByIndex.set(
-				r.itemIndex,
-				this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: r.error.message }),
-					{ itemData: { item: r.itemIndex } },
-				),
-			);
-		}
+	for (const { itemIndex, error } of errorRows) {
+		outputByIndex.set(
+			itemIndex,
+			this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray({ error: error.message }),
+				{ itemData: { item: itemIndex } },
+			),
+		);
 	}
 
-	const okRows = rows.filter((r): r is { itemIndex: number; row: SheetRow } => 'row' in r);
-
 	if (okRows.length > 0) {
+		// Only write the header once, the first time there's data to seed it from
 		const writesHeader = isEmpty;
 		const rowsToWrite = writesHeader
 			? [columnsRow, ...okRows.map((r) => r.row)]
 			: okRows.map((r) => r.row);
 
-		const range = findAppendRange(usedRange.address, {
+		const range = findAppendRange(usedRangeAddress, {
 			cols: rowsToWrite[0]?.length ?? 0,
 			rows: rowsToWrite.length,
 		});
-
 		const responseData = await (microsoftApiRequest<ExcelResponse>).call(
 			this,
 			'PATCH',
@@ -354,10 +369,39 @@ export async function execute(
 		}
 	}
 
-	const returnData: INodeExecutionData[] = [];
-	for (let i = 0; i < items.length; i++) {
-		const entries = outputByIndex.get(i);
-		if (entries) returnData.push.apply(returnData, entries);
-	}
-	return returnData;
+	return combineInOrder(items.length, outputByIndex);
+}
+
+export async function execute(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	// https://learn.microsoft.com/en-us/graph/api/worksheet-range
+	const settings = getSettings.call(this);
+
+	const workbookRoot = await resolveWorkbookRoot.call(this, 0);
+	const sheetPath = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(settings.worksheetId)}`;
+
+	const usedRange = await (microsoftApiRequest<ExcelResponse & { address: string }>).call(
+		this,
+		'GET',
+		`${sheetPath}/usedRange`,
+	);
+
+	// An empty sheet has no header row to read; the raw/mapped writers seed one
+	// from the input instead of throwing (the OneDrive node's behaviour)
+	const isEmpty = isEmptyUsedRange(usedRange.address);
+	const existingColumns = isEmpty ? undefined : ((usedRange.values?.[0] as string[]) ?? []);
+
+	return settings.dataMode === 'raw'
+		? await executeRaw.call(this, sheetPath, usedRange.address, existingColumns, settings)
+		: await executeMapped.call(
+				this,
+				items,
+				sheetPath,
+				usedRange.address,
+				isEmpty,
+				existingColumns,
+				settings,
+			);
 }
