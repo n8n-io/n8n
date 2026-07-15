@@ -65,13 +65,6 @@ export async function nodeExecuteAfter(
 		pushDataWithPlaceholderOutputData,
 	);
 
-	if (pushDataWithPlaceholderOutputData.data.executionStatus !== 'waiting') {
-		// `trackNodeExecution` only reads nodeName/error and is typed for the
-		// `nodeExecuteAfter` payload (which now carries `sequenceNumber`), so pass
-		// the original event rather than the trimmed `nodeExecuteAfterData` copy.
-		void trackNodeExecution(pushData, workflowExecutionStateStore.workflowId);
-	}
-
 	workflowExecutionStateStore.executingNode.removeExecutingNode(pushData.nodeName);
 
 	// Side effects

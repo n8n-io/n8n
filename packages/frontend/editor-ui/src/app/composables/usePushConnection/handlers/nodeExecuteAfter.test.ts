@@ -23,7 +23,10 @@ vi.mock('@/features/execution/executions/executions.utils', async (importOrigina
 	return { ...actual, openFormPopupWindow: vi.fn() };
 });
 
+vi.mock('./trackNodeExecution', () => ({ trackNodeExecution: vi.fn() }));
+
 import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
+import { trackNodeExecution } from './trackNodeExecution';
 
 describe('nodeExecuteAfter', () => {
 	const documentId = createWorkflowDocumentId('test-wf');
@@ -33,6 +36,7 @@ describe('nodeExecuteAfter', () => {
 
 	beforeEach(() => {
 		vi.mocked(openFormPopupWindow).mockClear();
+		vi.mocked(trackNodeExecution).mockClear();
 		setActivePinia(createPinia());
 
 		options = { router: mock<Router>(), documentId };
@@ -90,6 +94,32 @@ describe('nodeExecuteAfter', () => {
 				Array.from({ length: 1 }).fill({ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }),
 			],
 		});
+	});
+
+	it('tracks a non-waiting node execution exactly once', async () => {
+		const event: NodeExecuteAfter = {
+			type: 'nodeExecuteAfter',
+			data: {
+				executionId: 'exec-1',
+				nodeName: 'Test Node',
+				sequenceNumber: 1,
+				itemCountByConnectionType: { main: [1] },
+				data: {
+					executionTime: 100,
+					startTime: 1234567890,
+					executionIndex: 0,
+					source: [],
+				},
+			},
+		};
+
+		await nodeExecuteAfter(event, options);
+
+		expect(trackNodeExecution).toHaveBeenCalledTimes(1);
+		expect(trackNodeExecution).toHaveBeenCalledWith(
+			event.data,
+			workflowExecutionStateStore.workflowId,
+		);
 	});
 
 	it('should skip when the execution id does not match the active execution', async () => {
