@@ -43,7 +43,7 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		this.logger = this.logger.scoped('scheduler');
 	}
 
-	async execute(task: ClaimedTask): Promise<void> {
+	async execute(task: ClaimedTask, onDispatch: () => void): Promise<void> {
 		const { workflowId, nodeId } = this.parsePayload(task);
 		const workflowData =
 			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(workflowId);
@@ -75,6 +75,8 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 				/* responsePromise= */ undefined,
 				deduplicationKey,
 			);
+
+			onDispatch();
 
 			this.eventService.emit('workflow-executed', {
 				workflowId,

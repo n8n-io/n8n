@@ -81,11 +81,7 @@ const agentNodeType = {
 		{
 			displayName: 'Agent Source',
 			name: 'agentSource',
-			type: 'options',
-			options: [
-				{ name: 'Saved Agent', value: 'referenced' },
-				{ name: 'Inline Agent', value: 'inline' },
-			],
+			type: 'hidden',
 			default: 'referenced',
 		},
 		{

@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/expression-runtime",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T10:29:22.645Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1735,
+            1443,
+            1389
+          ],
+          "min": 1389,
+          "median": 1443,
+          "mean": 1522
+        },
+        "build": {
+          "runsMs": [
+            2915,
+            2455,
+            2889
+          ],
+          "min": 2455,
+          "median": 2889,
+          "mean": 2753
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T10:31:42.484Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            621,
+            619,
+            585
+          ],
+          "min": 585,
+          "median": 619,
+          "mean": 608
+        },
+        "build": {
+          "runsMs": [
+            1160,
+            1664,
+            2326
+          ],
+          "min": 1160,
+          "median": 1664,
+          "mean": 1717
+        }
+      }
+    }
+  }
+}
