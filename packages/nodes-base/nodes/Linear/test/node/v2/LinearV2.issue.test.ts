@@ -5,6 +5,7 @@ import * as commentCreate from '../../../v2/actions/comment/create.operation';
 import * as issueCreate from '../../../v2/actions/issue/create.operation';
 import * as issueGet from '../../../v2/actions/issue/get.operation';
 import * as issueGetAll from '../../../v2/actions/issue/getAll.operation';
+import * as issueSearch from '../../../v2/actions/issue/search.operation';
 
 describe('Linear v2 → Issue & Comment', () => {
 	let mockThis: IExecuteFunctions;
@@ -109,6 +110,65 @@ describe('Linear v2 → Issue & Comment', () => {
 					query: expect.stringContaining('issue'),
 					variables: expect.objectContaining({ issueId: 'issue-42' }),
 				}),
+			);
+		});
+	});
+
+	describe('issue.getAll filters', () => {
+		it('builds an IssueFilter from label, project and cycle filters', async () => {
+			const allItemsSpy = vi
+				.spyOn(GenericFunctions, 'linearApiRequestAllItems')
+				.mockResolvedValue([{ id: 'issue-1' }]);
+
+			vi.mocked(mockThis.getNodeParameter).mockImplementation((param: string) => {
+				if (param === 'returnAll') return false;
+				if (param === 'limit') return 50;
+				if (param === 'filters') {
+					return { labelId: 'label-1', projectId: 'proj-1', cycleId: 'cycle-1' };
+				}
+				return undefined;
+			});
+
+			await issueGetAll.execute.call(mockThis, [{ json: {} }]);
+
+			expect(allItemsSpy).toHaveBeenCalledWith(
+				'data.issues',
+				expect.objectContaining({
+					variables: expect.objectContaining({
+						filter: {
+							labels: { some: { id: { eq: 'label-1' } } },
+							project: { id: { eq: 'proj-1' } },
+							cycle: { id: { eq: 'cycle-1' } },
+						},
+					}),
+				}),
+				50,
+			);
+		});
+	});
+
+	describe('issue.search', () => {
+		it('uses the searchIssues query with the term', async () => {
+			const allItemsSpy = vi
+				.spyOn(GenericFunctions, 'linearApiRequestAllItems')
+				.mockResolvedValue([{ id: 'issue-9', title: 'match' }]);
+
+			vi.mocked(mockThis.getNodeParameter).mockImplementation((param: string) => {
+				if (param === 'query') return 'payment bug';
+				if (param === 'returnAll') return false;
+				if (param === 'limit') return 25;
+				return undefined;
+			});
+
+			await issueSearch.execute.call(mockThis, [{ json: {} }]);
+
+			expect(allItemsSpy).toHaveBeenCalledWith(
+				'data.searchIssues',
+				expect.objectContaining({
+					query: expect.stringContaining('searchIssues'),
+					variables: expect.objectContaining({ term: 'payment bug' }),
+				}),
+				25,
 			);
 		});
 	});

@@ -2,12 +2,11 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import * as archive from './archive.operation';
 import * as create from './create.operation';
-import * as deleteCycle from './delete.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as update from './update.operation';
 
-export { archive, create, deleteCycle as delete, get, getAll, update };
+export { archive, create, get, getAll, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -34,12 +33,6 @@ export const description: INodeProperties[] = [
 				action: 'Create a cycle',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a cycle',
-				action: 'Delete a cycle',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a cycle',
@@ -62,7 +55,6 @@ export const description: INodeProperties[] = [
 	},
 	...archive.description,
 	...create.description,
-	...deleteCycle.description,
 	...get.description,
 	...getAll.description,
 	...update.description,

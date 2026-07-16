@@ -45,11 +45,38 @@ const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Cycle Name or ID',
+				name: 'cycleId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: { loadOptionsMethod: 'getCycles' },
+				default: '',
+			},
+			{
+				displayName: 'Label Name or ID',
+				name: 'labelId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: { loadOptionsMethod: 'getLabels' },
+				default: '',
+			},
+			{
 				displayName: 'Priority',
 				name: 'priority',
 				type: 'options',
 				options: PRIORITY_OPTIONS,
 				default: 0,
+			},
+			{
+				displayName: 'Project Name or ID',
+				name: 'projectId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: { loadOptionsMethod: 'getProjects' },
+				default: '',
 			},
 			{
 				displayName: 'State Name or ID',
@@ -95,9 +122,12 @@ export async function execute(
 	// Build filter object for the query
 	const filter: IDataObject = {};
 	if (filters.assigneeId) filter.assignee = { id: { eq: filters.assigneeId } };
+	if (filters.cycleId) filter.cycle = { id: { eq: filters.cycleId } };
+	if (filters.labelId) filter.labels = { some: { id: { eq: filters.labelId } } };
 	if (filters.priority !== undefined && filters.priority !== '') {
 		filter.priority = { eq: filters.priority };
 	}
+	if (filters.projectId) filter.project = { id: { eq: filters.projectId } };
 	if (filters.stateId) filter.state = { id: { eq: filters.stateId } };
 	if (filters.teamId) filter.team = { id: { eq: filters.teamId } };
 

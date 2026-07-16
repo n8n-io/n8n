@@ -79,9 +79,12 @@ export async function linearApiRequestAllItems(
 ): Promise<IDataObject[]> {
 	const returnData: IDataObject[] = [];
 
+	// Linear allows up to 250 items per page; use the largest page that still
+	// respects an explicit limit to minimise round-trips.
+	const MAX_PAGE_SIZE = 250;
 	const variables: IDataObject = {
 		...body.variables,
-		first: limit && limit < 50 ? limit : 50,
+		first: limit && limit < MAX_PAGE_SIZE ? limit : MAX_PAGE_SIZE,
 		after: null,
 	};
 	const requestBody = { ...body, variables };

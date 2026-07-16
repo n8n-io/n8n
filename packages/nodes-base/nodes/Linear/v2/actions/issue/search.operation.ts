@@ -11,7 +11,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Text to search for in issue titles and descriptions',
+		description: 'Text to search for across issues (title, description, and identifier)',
 	},
 	{
 		displayName: 'Return All',
@@ -53,8 +53,8 @@ export async function execute(
 	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
 
 	const body = {
-		query: `query IssueSearch($first: Int, $after: String, $filter: IssueFilter) {
-			issues(first: $first, after: $after, filter: $filter) {
+		query: `query IssueSearch($term: String!, $first: Int, $after: String) {
+			searchIssues(term: $term, first: $first, after: $after) {
 				nodes {
 					${ISSUE_FIELDS}
 				}
@@ -65,18 +65,13 @@ export async function execute(
 			}
 		}`,
 		variables: {
+			term: searchQuery,
 			first: 50,
-			filter: {
-				or: [
-					{ title: { containsIgnoreCase: searchQuery } },
-					{ description: { containsIgnoreCase: searchQuery } },
-				],
-			},
 		},
 	};
 
 	try {
-		const issues = await linearApiRequestAllItems.call(this, 'data.issues', body, limit);
+		const issues = await linearApiRequestAllItems.call(this, 'data.searchIssues', body, limit);
 
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(issues),

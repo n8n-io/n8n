@@ -214,7 +214,7 @@ export class LinearTriggerV2 implements INodeType {
 				};
 
 				for (const node of nodes) {
-					if (node.url === webhookUrl && node.team.id === teamId && node.enabled === true) {
+					if (node.url === webhookUrl && node.team.id === teamId && node.enabled) {
 						webhookData.webhookId = node.id as string;
 						return true;
 					}

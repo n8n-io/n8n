@@ -7,7 +7,7 @@ type NodeMap = {
 	user: 'get' | 'getAll' | 'getCurrent';
 	team: 'get' | 'getAll';
 	label: 'create' | 'get' | 'getAll' | 'update' | 'delete';
-	cycle: 'create' | 'get' | 'getAll' | 'update' | 'delete' | 'archive';
+	cycle: 'create' | 'get' | 'getAll' | 'update' | 'archive';
 	attachment: 'create' | 'get' | 'getAll' | 'delete';
 	workflowState: 'get' | 'getAll';
 	document: 'create' | 'get' | 'getAll' | 'update' | 'delete';

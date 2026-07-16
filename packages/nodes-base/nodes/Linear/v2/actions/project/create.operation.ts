@@ -5,8 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { linearApiRequest } from '../../../shared/GenericFunctions';
 
 const properties: INodeProperties[] = [
 	{
@@ -55,11 +55,11 @@ const properties: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{ name: 'Backlog', value: 'backlog' },
-					{ name: 'Planned', value: 'planned' },
+					{ name: 'Cancelled', value: 'cancelled' },
+					{ name: 'Completed', value: 'completed' },
 					{ name: 'In Progress', value: 'inProgress' },
 					{ name: 'Paused', value: 'paused' },
-					{ name: 'Completed', value: 'completed' },
-					{ name: 'Cancelled', value: 'cancelled' },
+					{ name: 'Planned', value: 'planned' },
 				],
 				default: 'planned',
 			},
@@ -145,11 +145,12 @@ export async function execute(
 				this.helpers.returnJsonArray(project),
 				{ itemData: { item: i } },
 			);
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
+				returnData.push.apply(
+					returnData,
+					this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: (error as Error).message }),
 						{ itemData: { item: i } },
 					),
