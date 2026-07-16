@@ -459,7 +459,7 @@ export class SamlService {
 
 	private async broadcastReloadSAMLConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-saml-config' });
 		}
 	}

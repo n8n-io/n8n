@@ -56,6 +56,14 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		defaultName: '[eval] WhatsApp OAuth account',
 		buildData: () => ({ clientId: 'eval-client-id', clientSecret: 'eval-client-secret' }),
 	},
+	googlePalmApi: {
+		defaultName: '[eval] Google Gemini',
+		envVar: 'EVAL_GEMINI_API_KEY',
+		buildData: (key) => ({
+			host: 'https://generativelanguage.googleapis.com',
+			apiKey: key,
+		}),
+	},
 	httpHeaderAuth: {
 		defaultName: '[eval] HTTP Header',
 		buildData: () => ({ name: 'Authorization', value: 'Bearer eval-placeholder' }),

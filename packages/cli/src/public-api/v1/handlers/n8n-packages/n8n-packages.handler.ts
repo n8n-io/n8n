@@ -26,7 +26,12 @@ const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export';
 type ExportPackageRequest = AuthenticatedRequest<
 	{},
 	{},
-	{ workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] }
+	{
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
+		missingWorkflowDependencyPolicy?: 'fail' | 'reference-only' | 'include-in-package';
+	}
 >;
 
 type ImportPackageRequest = PackageRequest.Import & {
@@ -121,6 +126,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					workflowIds,
 					folderIds,
 					projectIds,
+					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
 				});
 
 				return await streamPackageExport(res, stream);
@@ -176,6 +182,9 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
 					workflowIdPolicy: payload.data.workflowIdPolicy,
 					folderConflictPolicy: payload.data.folderConflictPolicy,
+					dataTableMatchingMode: payload.data.dataTableMatchingMode,
+					dataTableMissingMode: payload.data.dataTableMissingMode,
+					dataTableSchemaConflictPolicy: payload.data.dataTableSchemaConflictPolicy,
 					packageBuffer: packageFile.buffer,
 				});
 				return res.status(200).json(result);

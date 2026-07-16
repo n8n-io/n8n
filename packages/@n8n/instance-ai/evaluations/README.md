@@ -266,6 +266,28 @@ Operational details:
 - The judge retries on failure, has a per-attempt timeout, and falls back to an all-fail verdict — a judge failure can't break a run.
 - Absent both fields, it's a complete no-op.
 
+### Artifact types (workflow / agent / config-eval)
+
+A test case's build can produce more than a workflow — a builder can also create a standalone **agent** or attach a **config-eval** (an evaluation config on a workflow, graded against its referenced dataset). These are graded through the **same `outcomeExpectations`** as everything else — there are no artifact-specific case fields.
+
+When a build produces a non-workflow artifact, the harness discovers it, fetches it, and renders it into the judge context as an **Agent** / **Config-eval** section (agent: sanitized JSON config + skills; config-eval: the eval configs + a sample of the referenced data-table dataset). Each section falls back to `(no agent produced)` / `(no config-eval produced)` when the build produced none — mirroring the workflow block's `(no workflow built)`. Authors then write ordinary `outcomeExpectations` covering existence, absence and content:
+
+```json
+"outcomeExpectations": [
+  "An agent was created and no workflow was built.",
+  "The agent instructions mention escalating to a human for refund requests."
+]
+```
+
+Because these are plain outcome expectations, scoring, the gate, the PR comment, and the HTML report all handle them with no artifact-specific plumbing. A scenario-less agent case is graded on its expectations (`requiresWorkflowOutput` keys off execution scenarios only, so a missing workflow isn't reported as a build failure).
+
+Discovery reads the build's SSE tool-result stream (in `outcome/event-parser.ts`, alongside workflow/data-table id capture):
+
+- **agent** — the build-agent sub-agent announces itself with an `agent-spawned` event carrying `targetResource: { type: 'agent', id }`; that `id` is the ref. (The `build-agent` tool result carries no id.)
+- **config-eval** — the `eval-config` tool's `create` action returns `{ config }`; the ref is the owning workflow id from the call args (config-evals are fetched per-workflow).
+
+Not yet covered: an automatic "unexpected artifact" fail (a build producing an artifact the case never mentions). That's parked until the signals exist, to be added later as a binary check or per-dataset rather than as a case-schema field.
+
 ## Environment variables
 
 | Variable | Required | Description |

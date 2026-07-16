@@ -9,6 +9,7 @@ export function createInMemoryEventBus(): InstanceAiEventBus {
 	return {
 		publish(threadId, event) {
 			const list = storeByThread.get(threadId) ?? [];
+			if (event.ts === undefined) event = { ...event, ts: Date.now() };
 			const stored: StoredEvent = { id: list.length + 1, event };
 			list.push(stored);
 			storeByThread.set(threadId, list);

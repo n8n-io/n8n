@@ -298,7 +298,7 @@ describe('POST /mcp-oauth/register', () => {
 	});
 
 	test('should reject with descriptive server_error on the post-insert rollback (race path)', async () => {
-		const { OAuthServerService } = await import('../oauth-server.service');
+		const { OAuthServerService } = await import('../oauth-server.service.js');
 		const globalConfig = Container.get(GlobalConfig);
 		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
 		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
@@ -805,7 +805,7 @@ describe('IP rate limit configuration', () => {
 	let OAuthController: typeof OAuthControllerClass;
 
 	beforeAll(async () => {
-		({ OAuthController } = await import('../oauth.controller'));
+		({ OAuthController } = await import('../oauth.controller.js'));
 	});
 
 	test('applies the configured limits to the shared OAuth endpoints', () => {
