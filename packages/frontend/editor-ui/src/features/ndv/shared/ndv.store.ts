@@ -20,16 +20,15 @@ import type { INodeIssues } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore, getActivePinia, type Pinia } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { computed, inject, ref, type ShallowRef } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { injectStrict } from '@/app/utils/injectStrict';
 
 export type NDVStoreId = WorkflowDocumentId;
 
@@ -484,18 +483,50 @@ export function disposeNDVStore(store: NDVStore) {
 /**
  * Injects the NDV store for the current workflow document.
  *
- * Resolves to a workflow-scoped NDV store derived from the injected
- * `WorkflowDocumentStoreKey` when available, falling back to a store keyed by
- * the current `workflowsStore.workflowId` for callers outside the provide tree
- * (App.vue header etc.). Returns a `ShallowRef` so consumers re-derive when
- * the active workflow document changes.
+ * Resolves a workflow-scoped NDV store strictly from the injected
+ * `WorkflowDocumentStoreKey`, so it must be called from within the provide
+ * tree below `App.vue` (i.e. inside a component `setup()` whose ancestor
+ * provides the workflow document store). There is intentionally no
+ * `workflowsStore.workflowId` fallback: callers that may run outside the
+ * provide tree (socket/push handlers, router guards, `App.vue` itself) or
+ * before a workflow is loaded must derive the NDV store from
+ * `injectWorkflowDocumentStore().value.documentId` instead.
+ *
+ * Returns a `ShallowRef` so consumers re-derive when the active workflow
+ * document changes.
  */
 export function injectNDVStore(): ShallowRef<NDVStore> {
-	const workflowsStore = useWorkflowsStore();
-	const fallback = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
-	const injected = inject(WorkflowDocumentStoreKey, null);
+	const workflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
 
-	return computed(() =>
-		injected?.value?.documentId ? useNDVStore(injected.value.documentId) : fallback.value,
-	);
+	return computed(() => {
+		const documentStore = workflowDocumentStore.value;
+		if (!documentStore) {
+			throw new Error(
+				'injectNDVStore() was accessed without an active workflow document store. ' +
+					'Derive the NDV store from injectWorkflowDocumentStore().value.documentId in contexts ' +
+					'that can run without a loaded workflow.',
+			);
+		}
+		return useNDVStore(documentStore.documentId);
+	});
+}
+
+/**
+ * Non-throwing variant of {@link injectNDVStore} for parameter-input components
+ * that are reused outside a loaded workflow document (e.g. the credential and
+ * external-secrets settings modals). Resolves the workflow-scoped NDV store when
+ * a workflow document store is provided, and `null` otherwise — so consumers must
+ * guard accesses (`ndvStore.value?.x`). Editor-only components should keep the
+ * strict {@link injectNDVStore}.
+ *
+ * Returns a `ShallowRef` so consumers re-derive when the active workflow document
+ * changes.
+ */
+export function injectNDVStoreIfProvided(): ShallowRef<NDVStore | null> {
+	const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+
+	return computed(() => {
+		const documentStore = workflowDocumentStore?.value;
+		return documentStore ? useNDVStore(documentStore.documentId) : null;
+	});
 }

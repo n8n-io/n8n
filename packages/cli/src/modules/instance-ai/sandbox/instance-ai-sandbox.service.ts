@@ -116,7 +116,7 @@ export type InstanceAiSandboxProxy = {
 	getClient: () => Promise<{
 		getSandboxProxyConfig: () => Promise<{ image?: string }>;
 		getSandboxProxyBaseUrl: () => string;
-		getBuilderApiProxyToken: (
+		getInstanceAiApiProxyToken: (
 			user: { id: string },
 			options: { userMessageId: string },
 		) => Promise<{ accessToken: string }>;
@@ -174,6 +174,7 @@ export class InstanceAiSandboxService {
 			n8nSandboxServiceUrl,
 			n8nSandboxServiceApiKey,
 			sandboxImage,
+			sandboxSnapshot,
 			sandboxTimeout,
 			sandboxNamePrefix,
 			sandboxEphemeral,
@@ -198,6 +199,7 @@ export class InstanceAiSandboxService {
 				daytonaApiUrl: daytonaApiUrl || undefined,
 				daytonaApiKey: daytonaApiKey || undefined,
 				image: sandboxImage || undefined,
+				snapshot: sandboxSnapshot || undefined,
 				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
@@ -234,7 +236,7 @@ export class InstanceAiSandboxService {
 					image: proxyConfig.image,
 					logger: this.logger,
 					getAuthToken: async () => {
-						const token = await client.getBuilderApiProxyToken(
+						const token = await client.getInstanceAiApiProxyToken(
 							{ id: user.id },
 							{ userMessageId: nanoid() },
 						);

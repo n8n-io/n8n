@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| binaryDataSizeBytes | bigint | 0 | false |  |  | Byte size of binary data offloaded to separate storage (db/fs/S3), deduplicated by blob; excludes inline binary counted in jsonSizeBytes. 0 means unknown. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | deduplicationKey | varchar(255) |  | true |  |  |  |
 | deletedAt | timestamp(3) with time zone |  | true |  |  |  |
@@ -18,6 +19,7 @@
 | stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
 | storedAt | varchar(2) | 'db'::character varying | false |  |  |  |
 | tracingContext | json |  | true |  |  |  |
+| usedPrivateCredentials | boolean | false | false |  |  | Whether this execution ran with at least one dynamically-resolved private credential. |
 | waitTill | timestamp(3) with time zone |  | true |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 | workflowVersionId | varchar(36) | NULL::character varying | true |  |  | Version id of the workflow run by this execution; denormalized from the data bundle. |
@@ -26,14 +28,16 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_execution_entity_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
+| execution_entity_binaryDataSizeBytes_not_null | n | NOT NULL "binaryDataSizeBytes" |
 | execution_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | execution_entity_finished_not_null | n | NOT NULL finished |
 | execution_entity_id_not_null | n | NOT NULL id |
 | execution_entity_jsonSizeBytes_not_null | n | NOT NULL "jsonSizeBytes" |
 | execution_entity_mode_not_null | n | NOT NULL mode |
 | execution_entity_status_not_null | n | NOT NULL status |
-| execution_entity_storedAt_check | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying])::text[]))) |
 | execution_entity_storedAt_not_null | n | NOT NULL "storedAt" |
+| execution_entity_usedPrivateCredentials_not_null | n | NOT NULL "usedPrivateCredentials" |
 | execution_entity_workflowId_not_null | n | NOT NULL "workflowId" |
 | fk_execution_entity_workflow_id | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
 | pk_e3e63bbf986767844bbe1166d4e | PRIMARY KEY | PRIMARY KEY (id) |
@@ -63,6 +67,7 @@ erDiagram
 "public.execution_entity" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.execution_entity" {
+  bigint binaryDataSizeBytes
   timestamp_3__with_time_zone createdAt
   varchar_255_ deduplicationKey
   timestamp_3__with_time_zone deletedAt
@@ -77,6 +82,7 @@ erDiagram
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
   json tracingContext
+  boolean usedPrivateCredentials
   timestamp_3__with_time_zone waitTill
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId

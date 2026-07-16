@@ -2,10 +2,13 @@ import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
+	buildRunWorkflowSessionGrantKey,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
+	type InstanceAiConfirmResponse,
 	type InstanceAiResourceDecision,
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
@@ -13,6 +16,7 @@ import {
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
+	type InstanceAiHandoffContext,
 	type TaskList,
 	type AgentRunState,
 } from '@n8n/api-types';
@@ -20,6 +24,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type { IWorkflowDb } from '@/Interface';
 import {
 	postMessage,
 	postCancel,
@@ -31,15 +37,34 @@ import {
 	fetchThreadMessages as fetchThreadMessagesApi,
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
-import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
-import { getLatestBuildResult } from './canvasPreview.utils';
+import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
+import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
+import {
+	findToolCallInTree,
+	isOrchestratorLive,
+	markAssistantMessageStreaming,
+	resolveActiveRunId,
+	shouldRearmRunAfterConfirm,
+	syncLiveRunFromStatus,
+} from './instanceAi.liveRunState';
 
 export interface PlanEditContext {
 	requestId: string;
 	inputThreadId?: string;
 	taskCount: number;
+}
+
+/**
+ * State the editor handed off, snapshotted before its stores are torn down so
+ * the artifact can seed it directly without refetching. `workflow`/`execution`
+ * are omitted when the editor didn't have them loaded, leaving a fetch fallback.
+ */
+export interface PendingHandoff {
+	workflowId: string;
+	workflow?: IWorkflowDb;
+	execution?: IExecutionResponse;
 }
 
 export interface PendingConfirmationItem {
@@ -51,6 +76,11 @@ export interface PendingConfirmationItem {
 export type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
 
 const MAX_DEBUG_EVENTS = 1000;
+/** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
+const MAX_SEEN_EVENT_IDS = 1000;
+
+/** Silence window after which an active run with no stream traffic counts as stalled. */
+const GENERATION_STALL_TIMEOUT_MS = 60_000;
 
 /**
  * Cross-runtime hooks the store wires up at creation time.
@@ -64,6 +94,18 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
+	/** Thread-list metadata, used to enrich historical artifacts. */
+	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
+}
+
+const AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
+
+function getAgentBuilderTargetFromThreadMetadata(metadata: Record<string, unknown> | undefined) {
+	const raw = metadata?.[AGENT_BUILDER_TARGET_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
+	return { agentId: target.agentId, projectId: target.projectId };
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
@@ -100,19 +142,27 @@ function collectPendingConfirmations(
 	}
 }
 
-/** Find a tool call in an agent tree by its confirmation requestId. */
-function findToolCallInTree(
+/**
+ * Whether any tool call in the tree still waits on user input. Broader than
+ * `collectPendingConfirmations`: plan-review and expired confirmations also
+ * pause the run, so the stall watchdog must not count them as thinking time.
+ */
+function hasUnresolvedConfirmation(
 	node: InstanceAiAgentNode,
-	requestId: string,
-): InstanceAiToolCallState | undefined {
+	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
+): boolean {
 	for (const tc of node.toolCalls) {
-		if (tc.confirmation?.requestId === requestId) return tc;
+		if (
+			tc.confirmation &&
+			tc.isLoading &&
+			tc.confirmationStatus !== 'approved' &&
+			tc.confirmationStatus !== 'denied' &&
+			!resolved.has(tc.confirmation.requestId)
+		) {
+			return true;
+		}
 	}
-	for (const child of node.children) {
-		const found = findToolCallInTree(child, requestId);
-		if (found) return found;
-	}
-	return undefined;
+	return node.children.some((child) => hasUnresolvedConfirmation(child, resolved));
 }
 
 function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | null {
@@ -198,34 +248,35 @@ export function collapseDeltaEvents(events: DebugEventEntry[]): DebugEventEntry[
 
 /**
  * Walk historical messages and build the reducer routing maps that SSE replay
- * events need to reduce into existing run state. Pure: returns fresh maps the
- * caller can `Object.assign` onto its own state.
+ * events need to reduce into existing run state. Each message's agent tree is
+ * adopted (not copied) into its run state, so replayed/live events mutate the
+ * exact nodes the message renders.
  *
- * - `runStateByGroupId`: snapshot of run state keyed by message group id
+ * - `runStateByGroupId`: run state per message group id, adopting `msg.agentTree`
  * - `groupIdByRunId`: every runId in the group → its group id, so late events
  *   from older runs in a merged A→B→C chain still route to the right message
  */
 export function buildRoutingFromMessages(messages: InstanceAiMessage[]): {
-	runStateByGroupId: Record<string, AgentRunState>;
-	groupIdByRunId: Record<string, string>;
+	runStateByGroupId: Map<string, AgentRunState>;
+	groupIdByRunId: Map<string, string>;
 } {
-	const runStateByGroupId: Record<string, AgentRunState> = {};
-	const groupIdByRunId: Record<string, string> = {};
+	const runStateByGroupId = new Map<string, AgentRunState>();
+	const groupIdByRunId = new Map<string, string>();
 
 	for (const msg of messages) {
 		if (msg.role !== 'assistant' || !msg.agentTree) continue;
 		const groupId = msg.messageGroupId ?? msg.runId;
 		if (!groupId || !isSafeObjectKey(groupId)) continue;
-		const rebuiltRunState = rebuildRunStateFromTree(msg.agentTree);
+		const rebuiltRunState = createRunStateFromTree(msg.agentTree);
 		if (!rebuiltRunState) continue;
-		runStateByGroupId[groupId] = rebuiltRunState;
+		runStateByGroupId.set(groupId, rebuiltRunState);
 		if (msg.runIds) {
 			for (const rid of msg.runIds) {
 				if (!isSafeObjectKey(rid)) continue;
-				groupIdByRunId[rid] = groupId;
+				groupIdByRunId.set(rid, groupId);
 			}
 		}
-		if (msg.runId && isSafeObjectKey(msg.runId)) groupIdByRunId[msg.runId] = groupId;
+		if (msg.runId && isSafeObjectKey(msg.runId)) groupIdByRunId.set(msg.runId, groupId);
 	}
 
 	return { runStateByGroupId, groupIdByRunId };
@@ -261,13 +312,59 @@ export function createThreadRuntime(
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
+	// Event ids already applied on this thread — guards against replay overlap,
+	// e.g. an auto-reconnect replaying an id that already arrived just before
+	// the disconnect. Not reactive: only consulted inside onSSEMessage.
+	const seenEventIds = new Set<number>();
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
 	const activePlanEdit = ref<PlanEditContext | null>(null);
 	const updatingPlanRequestIds = reactive(new Set<string>());
 
-	// --- Non-reactive runtime state ---
-	let runStateByGroupId: Record<string, AgentRunState> = {};
-	let groupIdByRunId: Record<string, string> = {};
+	// Workflow + execution the editor was showing at hand-off, to load once when
+	// the artifact first opens. Transient (never persisted): set by the editor
+	// hand-off right before navigation and consumed by the workflow preview on
+	// mount, so it applies only on the redirect — not on reload, and it never
+	// pins the canvas afterwards. Carries the snapshotted payloads (taken before
+	// the editor's stores are torn down) so the artifact seeds them with no refetch.
+	const pendingHandoff = ref<PendingHandoff | null>(null);
+	function setPendingHandoff(value: PendingHandoff): void {
+		pendingHandoff.value = value;
+	}
+	function consumePendingHandoff(
+		workflowId: string,
+	): Omit<PendingHandoff, 'workflowId'> | undefined {
+		const pending = pendingHandoff.value;
+		if (pending?.workflowId !== workflowId) return undefined;
+		pendingHandoff.value = null;
+		return { workflow: pending.workflow, execution: pending.execution };
+	}
+
+	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
+	// thread runtime so it survives the preview canvas unmounting on a tab switch
+	// and is re-seeded on remount; a fresh runtime per thread resets it (INS-611).
+	// Plain Map: only read imperatively (on push events / remount), never rendered.
+	const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
+	function rememberManualExecution(
+		workflowId: string,
+		executionId: string,
+		agentExecutionId: string | undefined,
+	): void {
+		rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId });
+	}
+	function getRememberedManualExecution(workflowId: string): RememberedManualExecution | undefined {
+		return rememberedManualExecutions.get(workflowId);
+	}
+	function forgetManualExecution(workflowId: string): void {
+		rememberedManualExecutions.delete(workflowId);
+	}
+
+	// --- Reducer routing state ---
+	// Plain Maps: the routing tables themselves are never rendered. The run
+	// STATES they hold are reactive (created via `createRunState*` in the
+	// reducer) — that's where rendering reactivity lives, since `msg.agentTree`
+	// is the run state's own root node.
+	const runStateByGroupId = new Map<string, AgentRunState>();
+	const groupIdByRunId = new Map<string, string>();
 	let eventSource: EventSource | null = null;
 	let sseGeneration = 0;
 	let hydrationGeneration = 0;
@@ -279,10 +376,11 @@ export function createThreadRuntime(
 	const hasMessages = computed(() => messages.value.length > 0);
 	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
 
-	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
+	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
+		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -337,6 +435,47 @@ export function createThreadRuntime(
 		{ flush: 'sync' },
 	);
 
+	// --- Telemetry: 'Builder generation stalled' ---
+	// Fires when the active run has produced nothing on the stream for a minute.
+	// A run paused on user input (confirmation, plan review) isn't stalled, so
+	// the watchdog disarms for those. Every received SSE event re-arms it, so it
+	// fires at most once per silent stretch.
+	let generationStallTimer: ReturnType<typeof setTimeout> | null = null;
+
+	// Scoped to the active run's message (not all messages) so a stale
+	// confirmation left on an older message can't suppress stall detection.
+	const isAwaitingUserInput = computed(() => {
+		const runId = activeRunId.value;
+		if (runId === null) return false;
+		const activeMessage = messages.value.find(
+			(m) => m.role === 'assistant' && (m.runId === runId || (m.runIds?.includes(runId) ?? false)),
+		);
+		if (!activeMessage?.agentTree) return false;
+		return hasUnresolvedConfirmation(activeMessage.agentTree, resolvedConfirmationIds);
+	});
+
+	const isGenerationPending = computed(() => isStreaming.value && !isAwaitingUserInput.value);
+
+	function disarmGenerationStallWatchdog(): void {
+		if (generationStallTimer === null) return;
+		clearTimeout(generationStallTimer);
+		generationStallTimer = null;
+	}
+
+	/** (Re)start the silence countdown while generation is pending, stop it otherwise. */
+	function resetGenerationStallWatchdog(): void {
+		disarmGenerationStallWatchdog();
+		if (!isGenerationPending.value) return;
+		generationStallTimer = setTimeout(() => {
+			generationStallTimer = null;
+			telemetry.track('Builder generation stalled', { thread_id: threadId });
+		}, GENERATION_STALL_TIMEOUT_MS);
+	}
+
+	// Covers arm/disarm transitions that happen without stream traffic — e.g.
+	// POST /message sets the run id while SSE stays silent (the primary stall case).
+	watch(isGenerationPending, resetGenerationStallWatchdog);
+
 	/**
 	 * Derive a single contextual follow-up suggestion from the last completed
 	 * assistant message. Shown as the input placeholder + Tab to autocomplete.
@@ -390,6 +529,13 @@ export function createThreadRuntime(
 		return undefined;
 	}
 
+	function rearmRunState(runId: string | null | undefined): void {
+		if (!runId) return;
+		activeRunId.value = runId;
+		markAssistantMessageStreaming(messages.value, runId);
+		triggerRef(messages);
+	}
+
 	// --- Session "Always allow" ---
 	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
 	// runtime is disposed and recreated. Key: `${toolName}:${args.action ?? ''}`
@@ -404,6 +550,12 @@ export function createThreadRuntime(
 			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
+		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
+		// workflow the user approved.
+		if (toolName === 'executions' && action === 'run') {
+			const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
+			return buildRunWorkflowSessionGrantKey(workflowId);
+		}
 		return `${toolName}:${action}`;
 	}
 
@@ -421,6 +573,7 @@ export function createThreadRuntime(
 		if (conf.setupRequests?.length) return false;
 		if (conf.credentialRequests?.length) return false;
 		if (conf.questions?.length) return false;
+		if (conf.channelConfig) return false;
 		return true;
 	}
 
@@ -473,15 +626,49 @@ export function createThreadRuntime(
 	// --- SSE lifecycle ---
 
 	function onSSEMessage(sseEvent: MessageEvent): void {
-		// Track last event ID for this thread (for reconnection)
-		if (sseEvent.lastEventId) {
-			lastEventId.value = Number(sseEvent.lastEventId);
-		}
 		try {
 			const parsed = instanceAiEventSchema.safeParse(JSON.parse(String(sseEvent.data)));
 			if (!parsed.success) {
 				console.warn('[InstanceAI] Invalid SSE event, skipping:', parsed.error.message);
 				return;
+			}
+			// Event ids come from a shared per-thread sequence, so they are valid
+			// across mains — but concurrent producers on different mains can arrive
+			// interleaved out of order, so the reconnect cursor keeps the max seen
+			// rather than the latest, and duplicates are dropped by id.
+			//
+			// The dedup is gated on durable event types: under the durable log,
+			// ephemeral frames (deltas/status) ship without an `id:` line, so
+			// `sseEvent.lastEventId` on them ECHOES the previous id-bearing value
+			// and the duplicate-drop would swallow every delta after a durable
+			// fact. Ephemeral frames still advance the max-cursor, a no-op for an
+			// echo (always ≤ the cursor), while with the flag off deltas carry real
+			// ids, keeping today's reconnect replay granularity.
+			const eventId = sseEvent.lastEventId ? Number(sseEvent.lastEventId) : undefined;
+			if (eventId !== undefined && Number.isFinite(eventId)) {
+				if (INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has(parsed.data.type)) {
+					lastEventId.value = Math.max(lastEventId.value ?? 0, eventId);
+				} else {
+					// A backend sequence reset (single-main restart, or seq-key TTL expiry)
+					// re-issues ids from 1. Seeing id 1 again while it's still in the dedup
+					// set means the sequence restarted, so drop the stale cursor + dedup
+					// state and render the fresh sequence instead of dropping it as
+					// duplicates. Precise, not a heuristic: id 1 is issued once per sequence
+					// lifetime, and a legit replay from cursor 0 can't reach here because
+					// the cursor and seenEventIds only ever reset together (in resetState).
+					if (eventId === 1 && seenEventIds.has(1)) {
+						seenEventIds.clear();
+						lastEventId.value = undefined;
+					}
+					if (seenEventIds.has(eventId)) return;
+					seenEventIds.add(eventId);
+					if (seenEventIds.size > MAX_SEEN_EVENT_IDS) {
+						// Sets iterate in insertion order — evict the oldest (≈ lowest) id.
+						const oldest: number | undefined = seenEventIds.values().next().value;
+						if (oldest !== undefined) seenEventIds.delete(oldest);
+					}
+					lastEventId.value = Math.max(lastEventId.value ?? 0, eventId);
+				}
 			}
 			// Push to debug event buffer (capped)
 			debugEvents.value.push({
@@ -501,6 +688,8 @@ export function createThreadRuntime(
 				},
 				parsed.data,
 			);
+			// Anything received on the stream means generation isn't stalled.
+			resetGenerationStallWatchdog();
 			if (parsed.data.type === 'tasks-update') {
 				latestTasks.value = parsed.data.payload.tasks;
 			}
@@ -523,7 +712,7 @@ export function createThreadRuntime(
 			if (parsed.data.type === 'run-start' || parsed.data.type === 'run-finish') {
 				triggerRef(messages);
 			}
-			// When a run finishes, refresh thread list to pick up Mastra-generated titles
+			// When a run finishes, refresh thread list to pick up auto-generated titles
 			if (previousRunId && activeRunId.value === null) {
 				hooks.onRunFinish();
 			}
@@ -551,7 +740,9 @@ export function createThreadRuntime(
 
 			const groupId = data.messageGroupId ?? data.runId;
 			if (!isSafeObjectKey(data.runId) || !isSafeObjectKey(groupId)) return;
-			const rebuiltRunState = rebuildRunStateFromTree(data.agentTree);
+			// Adopts the snapshot tree's nodes — `msg.agentTree` below points at the
+			// same objects, so subsequent live events mutate what's rendered.
+			const rebuiltRunState = createRunStateFromTree(data.agentTree);
 			if (!rebuiltRunState) return;
 
 			// Find the message to update — by messageGroupId first, then runId
@@ -601,7 +792,7 @@ export function createThreadRuntime(
 			}
 
 			// Rebuild normalized run state keyed by groupId
-			runStateByGroupId[groupId] = rebuiltRunState;
+			runStateByGroupId.set(groupId, rebuiltRunState);
 
 			// Restore runId → groupId mappings for ALL runs in the group.
 			// This ensures late events from older follow-up runs still route
@@ -609,11 +800,11 @@ export function createThreadRuntime(
 			if (data.runIds) {
 				for (const rid of data.runIds) {
 					if (!isSafeObjectKey(rid)) continue;
-					groupIdByRunId[rid] = groupId;
+					groupIdByRunId.set(rid, groupId);
 				}
 			}
 			// Always register the current runId
-			groupIdByRunId[data.runId] = groupId;
+			groupIdByRunId.set(data.runId, groupId);
 		} catch {
 			// Malformed run-sync — skip
 		}
@@ -687,9 +878,11 @@ export function createThreadRuntime(
 		resetFeedback();
 		resolvedConfirmationIds.clear();
 		sessionAlwaysAllowKeys.value = new Set();
-		runStateByGroupId = {};
-		groupIdByRunId = {};
+		runStateByGroupId.clear();
+		groupIdByRunId.clear();
 		lastEventId.value = undefined;
+		seenEventIds.clear();
+		disarmGenerationStallWatchdog();
 	}
 
 	function dispose(): void {
@@ -722,14 +915,16 @@ export function createThreadRuntime(
 					// Rebuild reducer routing state from historical messages so SSE
 					// replay events (which arrive before run-sync) can reduce into
 					// existing run states instead of being dropped or creating phantoms.
-					const routing = buildRoutingFromMessages(result.messages);
-					Object.assign(runStateByGroupId, routing.runStateByGroupId);
-					Object.assign(groupIdByRunId, routing.groupIdByRunId);
+					const routing = buildRoutingFromMessages(messages.value);
+					routing.runStateByGroupId.forEach((value, key) => runStateByGroupId.set(key, value));
+					routing.groupIdByRunId.forEach((value, key) => groupIdByRunId.set(key, value));
 				}
 				// Set SSE cursor to skip past events already covered by historical messages.
 				// This prevents duplicate messages when SSE replays in-memory events.
+				// Never move the cursor backwards: SSE may have advanced it while this
+				// request was in flight.
 				if (result.nextEventId !== null && result.nextEventId !== undefined) {
-					lastEventId.value = result.nextEventId - 1;
+					lastEventId.value = Math.max(lastEventId.value ?? 0, result.nextEventId - 1);
 				}
 				if (result.projectId) projectId.value = result.projectId;
 				return 'applied';
@@ -752,16 +947,13 @@ export function createThreadRuntime(
 		try {
 			const status = await fetchThreadStatusApi(rootStore.restApiContext, threadId);
 
-			const hasActivity =
-				status.hasActiveRun || status.isSuspended || status.backgroundTasks.length > 0;
+			const hasActivity = isOrchestratorLive(status) || status.backgroundTasks.length > 0;
 			if (!hasActivity) return;
 
-			const lastAssistant = [...messages.value].reverse().find((m) => m.role === 'assistant');
-			if (!lastAssistant) return;
-
-			if (status.hasActiveRun || status.isSuspended) {
-				activeRunId.value = lastAssistant.runId ?? null;
-				lastAssistant.isStreaming = status.hasActiveRun;
+			const runId = syncLiveRunFromStatus(status, messages.value);
+			if (runId) {
+				activeRunId.value = runId;
+				triggerRef(messages);
 			}
 
 			// Background task visibility is handled by the run-sync control frame
@@ -819,6 +1011,7 @@ export function createThreadRuntime(
 	async function dispatchUserMessage(
 		message: string,
 		attachments?: InstanceAiAttachment[],
+		handoffContext?: InstanceAiHandoffContext,
 		pushRef?: string,
 	): Promise<boolean> {
 		try {
@@ -827,6 +1020,7 @@ export function createThreadRuntime(
 				threadId,
 				message,
 				attachments,
+				handoffContext,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
 			);
@@ -859,6 +1053,7 @@ export function createThreadRuntime(
 		message: string,
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,
+		handoffContext?: InstanceAiHandoffContext,
 	): Promise<void> {
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
@@ -868,7 +1063,7 @@ export function createThreadRuntime(
 			const optimistic = pushOptimisticUserMessage(message, attachments);
 			trackUserMessageSent(isFirstMessage);
 
-			if (!(await dispatchUserMessage(message, attachments, pushRef))) {
+			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
 				removeOptimisticMessage(optimistic);
 			}
 		} finally {
@@ -938,7 +1133,22 @@ export function createThreadRuntime(
 		payload: InstanceAiConfirmRequest,
 	): Promise<boolean> {
 		try {
-			await postConfirmation(rootStore.restApiContext, requestId, payload);
+			const response: InstanceAiConfirmResponse = await postConfirmation(
+				rootStore.restApiContext,
+				requestId,
+				payload,
+			);
+			ensureSSEConnected();
+			if (shouldRearmRunAfterConfirm(payload)) {
+				rearmRunState(
+					resolveActiveRunId({
+						confirmRunId: response.runId,
+						messages: messages.value,
+						requestId,
+					}),
+				);
+			}
+			await loadThreadStatus();
 			return true;
 		} catch (error: unknown) {
 			// Surface the server's UserError text when present (e.g. "This
@@ -1013,6 +1223,7 @@ export function createThreadRuntime(
 		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
+		linkableResourceNameIndex,
 		feedbackByResponseId,
 		rateableResponseId,
 		currentTasks,
@@ -1021,6 +1232,11 @@ export function createThreadRuntime(
 		isAwaitingConfirmation,
 
 		// actions
+		setPendingHandoff,
+		consumePendingHandoff,
+		rememberManualExecution,
+		getRememberedManualExecution,
+		forgetManualExecution,
 		resetState,
 		dispose,
 		connectSSE,

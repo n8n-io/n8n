@@ -14,6 +14,7 @@ import { structuralComputed } from '@n8n/composables/structuralComputed';
 import type {
 	ExecutionStatus,
 	ExecutionSummary,
+	IPinData,
 	IRunExecutionData,
 	ITaskData,
 	ITaskStartedData,
@@ -52,6 +53,7 @@ import type {
 import type { ExecutionOutputMap } from '@/app/types/executionData';
 
 const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
+const EMPTY_EXECUTION_PIN_DATA_BY_NODE_NAME: IPinData = {};
 const EMPTY_EXECUTION_STATUS_BY_NODE_ID = new Map<string, ComputedRef<ExecutionStatus>>();
 const EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID = new Map<string, ComputedRef<ITaskData[] | null>>();
 const EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID = new Map<string, ExecutionOutputMap>();
@@ -229,6 +231,13 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			return undefined;
 		}
 
+		const isExecutionDataDisplayed = computed(
+			() =>
+				!isInDebugMode.value &&
+				activeExecutionId.value === undefined &&
+				typeof displayedExecutionId.value === 'string',
+		);
+
 		const activeExecutionRunData = computed(() => {
 			const executionId = getResolvedActiveExecutionId();
 			if (!executionId) return null;
@@ -269,11 +278,10 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				.executionResultDataLastUpdate;
 		});
 
-		function getActiveExecutionRunDataByNodeName(nodeName: string) {
+		function getActiveExecutionRunDataByNodeName(nodeName: string): ITaskData[] | null {
 			const runData = activeExecutionRunData.value;
 			if (runData === null) return null;
-			if (!runData.hasOwnProperty(nodeName)) return null;
-			return runData[nodeName];
+			return runData[nodeName] ?? null;
 		}
 
 		/**
@@ -294,6 +302,12 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 					.executionIssuesByNodeName;
 			}
 			return EMPTY_EXECUTION_ISSUES_BY_NODE_NAME;
+		});
+
+		const activeExecutionPinDataByNodeName = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_PIN_DATA_BY_NODE_NAME;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionPinDataByNodeName;
 		});
 
 		// Active/displayed/pending fallback for the per-node-id execution data
@@ -890,6 +904,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			stoppedExecutionId: readonly(stoppedExecutionId),
 			executingNode,
 			activeExecution,
+			isExecutionDataDisplayed,
 			activeExecutionRunData,
 			activeExecutionExecutedNode,
 			activeExecutionStartedData,
@@ -901,6 +916,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			getPastChatMessages,
 			getActiveExecutionRunDataByNodeName,
 			activeExecutionIssuesByNodeName,
+			activeExecutionPinDataByNodeName,
 			activeExecutionStatusByNodeId,
 			activeExecutionRunDataByNodeId,
 			activeExecutionRunDataOutputMapByNodeId,

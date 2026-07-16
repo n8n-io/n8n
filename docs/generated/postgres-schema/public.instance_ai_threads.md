@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | uuid |  | false | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) [public.instance_ai_messages](public.instance_ai_messages.md) [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) [public.instance_ai_observation_locks](public.instance_ai_observation_locks.md) [public.instance_ai_observational_memory](public.instance_ai_observational_memory.md) [public.instance_ai_observations](public.instance_ai_observations.md) [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) [public.instance_ai_run_snapshots](public.instance_ai_run_snapshots.md) |  |  |
+| id | uuid |  | false | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) [public.instance_ai_events](public.instance_ai_events.md) [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) [public.instance_ai_messages](public.instance_ai_messages.md) [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) [public.instance_ai_observation_locks](public.instance_ai_observation_locks.md) [public.instance_ai_observational_memory](public.instance_ai_observational_memory.md) [public.instance_ai_observations](public.instance_ai_observations.md) [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) [public.instance_ai_run_snapshots](public.instance_ai_run_snapshots.md) [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) |  |  |
 | metadata | json |  | true |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Project this thread is scoped to |
 | resourceId | varchar(255) |  | false |  |  |  |
@@ -40,6 +40,7 @@ erDiagram
 
 "public.ai_builder_temporary_workflow" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_checkpoints" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.instance_ai_events" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_iteration_logs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_messages" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_observation_cursors" |o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
@@ -48,6 +49,7 @@ erDiagram
 "public.instance_ai_observations" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_pending_confirmations" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_run_snapshots" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.instance_ai_thread_grants" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.instance_ai_threads" {
@@ -73,6 +75,15 @@ erDiagram
   varchar_255_ runId
   json state
   uuid threadId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.instance_ai_events" {
+  timestamp_3__with_time_zone createdAt
+  text payload
+  varchar_64_ runId
+  integer seq
+  uuid threadId FK
+  varchar_64_ type
   timestamp_3__with_time_zone updatedAt
 }
 "public.instance_ai_iteration_logs" {
@@ -180,6 +191,13 @@ erDiagram
   varchar_64_ traceId
   text tree
   timestamp_3__with_time_zone updatedAt
+}
+"public.instance_ai_thread_grants" {
+  timestamp_3__with_time_zone createdAt
+  varchar_512_ grantKey
+  uuid threadId FK
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
 }
 "public.project" {
   timestamp_3__with_time_zone createdAt

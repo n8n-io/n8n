@@ -58,7 +58,12 @@ const props = defineProps<{
 		projectId?: string;
 		/** Optional — tagged onto telemetry events for correlation with agent analytics. */
 		agentId?: string;
-		onConfirm: (tools: AgentJsonToolRef[], mcpServers?: AgentJsonMcpServerConfig[]) => void;
+		/** Inline agents pass false: approval needs suspend/resume, which workflow executions don't support. */
+		supportsToolApproval?: boolean;
+		onConfirm: (props: {
+			tools?: AgentJsonToolRef[];
+			mcpServers?: AgentJsonMcpServerConfig[];
+		}) => void;
 	};
 }>();
 
@@ -529,6 +534,7 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 			toolRef: newRef,
 			projectId: props.data.projectId,
 			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
 			existingToolNames: getExistingToolNames(workingTools.value),
 			onConfirm: (savedRef: AgentJsonToolRef) => {
 				addToolRef(savedRef);
@@ -556,6 +562,7 @@ function openConfigForNewMcpServer(
 			initialNode: mcpServerToNode(server, nodeType),
 			projectId: props.data.projectId,
 			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
 			existingToolNames: getExistingMcpServerNames(workingMcpServers.value),
 			onConfirm: (savedServer: AgentJsonMcpServerConfig) => {
 				addMcpServer(savedServer);
@@ -648,6 +655,7 @@ function handleConfigureTool(tool: ConfiguredToolView | ConfiguredWorkflowView) 
 			toolRef,
 			projectId: props.data.projectId,
 			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
 			existingToolNames: getExistingToolNames(workingTools.value, toolRef),
 			onConfirm: (updatedRef: AgentJsonToolRef) => {
 				workingToolEntries.value = workingToolEntries.value.map((entry) =>
@@ -672,6 +680,7 @@ function handleConfigureMcpServer(serverView: ConfiguredMcpServerView) {
 			initialNode: mcpServerToNode(serverView.server, nodeType),
 			projectId: props.data.projectId,
 			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
 			existingToolNames: getExistingMcpServerNames(workingMcpServers.value, serverView.server),
 			onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
 				workingMcpServerEntries.value = workingMcpServerEntries.value.map((entry) =>
@@ -684,7 +693,10 @@ function handleConfigureMcpServer(serverView: ConfiguredMcpServerView) {
 }
 
 function commit() {
-	props.data.onConfirm(workingTools.value, workingMcpServers.value);
+	props.data.onConfirm({
+		tools: workingTools.value,
+		mcpServers: workingMcpServers.value,
+	});
 }
 </script>
 

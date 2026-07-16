@@ -41,6 +41,7 @@ erDiagram
   text value
 }
 "public.execution_entity" {
+  bigint binaryDataSizeBytes
   timestamp_3__with_time_zone createdAt
   varchar_255_ deduplicationKey
   timestamp_3__with_time_zone deletedAt
@@ -55,6 +56,7 @@ erDiagram
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
   json tracingContext
+  boolean usedPrivateCredentials
   timestamp_3__with_time_zone waitTill
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId

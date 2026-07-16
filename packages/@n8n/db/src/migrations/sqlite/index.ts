@@ -55,6 +55,9 @@ import { LimitWorkflowVersionTriggerToContent1784000000003 } from './17840000000
 import { CreateAgentHistoryTable1784000000011 } from './1784000000011-CreateAgentHistoryTable';
 import { AddScopeColumnToOAuthTables1784000000026 } from './1784000000026-AddScopeColumnToOAuthTables';
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
+import { AllowAzureStoredAt1784000000034 } from './1784000000034-AllowAzureStoredAt';
+import { DropAgentDescriptionFromAgents1784000000037 } from './1784000000037-DropAgentDescriptionFromAgents';
+import { AddRecurringCronScheduleKind1784000000045 } from './1784000000045-AddRecurringCronScheduleKind';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -199,6 +202,18 @@ import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
 import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity';
+import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/1784000000033-AddBinaryDataSizeBytesToExecutionEntity';
+import { AddUniqueAgentFileNames1784000000035 } from '../common/1784000000035-AddUniqueAgentFileNames';
+import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000000036-CreateInstanceAiThreadGrantTable';
+import { SetChatHubEnabledFromUsage1784000000038 } from '../common/1784000000038-SetChatHubEnabledFromUsage';
+import { DropAgentExecutionFallbackColumns1784000000039 } from '../common/1784000000039-DropAgentExecutionFallbackColumns';
+import { CreateWorkflowPublicationTriggerStatusTable1784000000040 } from '../common/1784000000040-CreateWorkflowPublicationTriggerStatusTable';
+import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../common/1784000000041-AddUsedPrivateCredentialsToExecutionEntity';
+import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-CreateSchedulerTables';
+import { AddPartialIndexForGlobalCredentials1784000000044 } from '../common/1784000000044-AddPartialIndexForGlobalCredentials';
+import { CreateInstanceAiEventsTable1784000000046 } from '../common/1784000000046-CreateInstanceAiEventsTable';
+import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/1784000000047-BackfillPreScopingOAuthGrantScopes';
+import { AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048 } from '../common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -401,6 +416,21 @@ const sqliteMigrations: Migration[] = [
 	AddProjectIdToInstanceAiThread1784000000028,
 	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
 	CreateAgentChatSubscriptions1784000000030,
+	AddBinaryDataSizeBytesToExecutionEntity1784000000033,
+	AllowAzureStoredAt1784000000034,
+	AddUniqueAgentFileNames1784000000035,
+	CreateInstanceAiThreadGrantTable1784000000036,
+	DropAgentDescriptionFromAgents1784000000037,
+	SetChatHubEnabledFromUsage1784000000038,
+	DropAgentExecutionFallbackColumns1784000000039,
+	CreateWorkflowPublicationTriggerStatusTable1784000000040,
+	AddUsedPrivateCredentialsToExecutionEntity1784000000041,
+	CreateSchedulerTables1784000000042,
+	AddPartialIndexForGlobalCredentials1784000000044,
+	AddRecurringCronScheduleKind1784000000045,
+	CreateInstanceAiEventsTable1784000000046,
+	BackfillPreScopingOAuthGrantScopes1784000000047,
+	AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048,
 ];
 
 export { sqliteMigrations };

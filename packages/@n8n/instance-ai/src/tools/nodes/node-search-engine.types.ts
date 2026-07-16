@@ -94,6 +94,12 @@ export interface SubnodeRequirement {
 	required: boolean;
 	/** Conditions under which this subnode is required. */
 	displayOptions?: Record<string, unknown>;
+	/**
+	 * Preferred node to satisfy this requirement, matching a provider the user
+	 * already has a credential for. Set for ai_languageModel when an LLM
+	 * credential exists; use it instead of the generic default.
+	 */
+	suggestedNode?: string;
 }
 
 /** Node search result with scoring and subnode requirements. */

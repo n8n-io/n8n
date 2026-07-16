@@ -25,6 +25,7 @@ describe('outbound-user-agent', () => {
 			Container.set(HttpRequestConfig, {
 				enforceGlobalUserAgent: false,
 				globalUserAgentValue: '',
+				responseBodyReadTimeout: 300_000,
 			});
 
 			expect(getDefaultN8nOutboundUserAgent()).toBe('n8n');
@@ -34,6 +35,7 @@ describe('outbound-user-agent', () => {
 			Container.set(HttpRequestConfig, {
 				enforceGlobalUserAgent: false,
 				globalUserAgentValue: 'some-custom-value',
+				responseBodyReadTimeout: 300_000,
 			});
 
 			expect(getDefaultN8nOutboundUserAgent()).toBe('n8n');
@@ -43,6 +45,7 @@ describe('outbound-user-agent', () => {
 			Container.set(HttpRequestConfig, {
 				enforceGlobalUserAgent: true,
 				globalUserAgentValue: '',
+				responseBodyReadTimeout: 300_000,
 			});
 
 			expect(getDefaultN8nOutboundUserAgent()).toMatch(
@@ -54,6 +57,7 @@ describe('outbound-user-agent', () => {
 			Container.set(HttpRequestConfig, {
 				enforceGlobalUserAgent: true,
 				globalUserAgentValue: 'AcmeCorp/1.0',
+				responseBodyReadTimeout: 300_000,
 			});
 
 			expect(getDefaultN8nOutboundUserAgent()).toBe('AcmeCorp/1.0');
@@ -69,11 +73,12 @@ describe('outbound-user-agent', () => {
 
 			const di = await import('@n8n/di');
 			const config = await import('@n8n/config');
-			const mod = await import('../user-agent');
+			const mod = await import('../user-agent.js');
 
 			di.Container.set(config.HttpRequestConfig, {
 				enforceGlobalUserAgent: true,
 				globalUserAgentValue: '',
+				responseBodyReadTimeout: 300_000,
 			});
 
 			expect(mod.getDefaultN8nOutboundUserAgent()).toBe(

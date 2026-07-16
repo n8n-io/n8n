@@ -1,4 +1,4 @@
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	isExpression as isExpressionUtil,
@@ -6,7 +6,8 @@ import {
 } from '@/app/utils/expressions';
 
 import debounce from 'lodash/debounce';
-import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
+import { type IDataObject } from 'n8n-workflow';
 import {
 	computed,
 	onMounted,
@@ -35,9 +36,9 @@ export function useResolvedExpression({
 	stringifyObject?: MaybeRefOrGetter<boolean>;
 	contextNodeName?: MaybeRefOrGetter<string>;
 }) {
-	const ndvStore = injectNDVStore();
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
 	const { resolveExpression } = useWorkflowHelpers();
 

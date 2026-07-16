@@ -9,7 +9,7 @@ import {
 	type SimplifiedExecution,
 } from './executionFinished';
 import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
-import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { createRunExecutionData, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
@@ -21,6 +21,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
@@ -29,6 +30,16 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import type { PushHandlerOptions } from './types';
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 const documentId = createWorkflowDocumentId('1');
 const opts: PushHandlerOptions = {
@@ -622,6 +633,70 @@ describe('executionFinished', () => {
 		expect(fetchSpy).toHaveBeenCalledWith('exec-x');
 	});
 
+	it('keeps fetched execution pin data available after a live execution finishes', async () => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+
+		const executionId = 'exec-with-pin-data';
+		const nodeName = 'Get Berlin Weather';
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		useExecutionDataStore(createExecutionDataId(executionId)).setExecution(
+			mock<IExecutionResponse>({
+				id: executionId,
+				workflowId: '1',
+				status: 'running',
+				data: { resultData: { runData: {} } },
+			}),
+		);
+		workflowExecutionStateStore.setActiveExecutionId(executionId);
+
+		const fetchedExecution: IExecutionResponse = {
+			id: executionId,
+			workflowId: '1',
+			finished: true,
+			mode: 'manual',
+			status: 'success',
+			startedAt: new Date(),
+			createdAt: new Date(),
+			workflowData: mock<IWorkflowDb>({ id: '1', nodes: [], connections: {} }),
+			data: createRunExecutionData({
+				resultData: {
+					lastNodeExecuted: nodeName,
+					runData: {
+						[nodeName]: [
+							{
+								executionStatus: 'success',
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: { main: [[{ json: { ok: true } }]] },
+							},
+						],
+					},
+					pinData: {
+						[nodeName]: [{ json: { source: 'verification-fixture' } }],
+					},
+				},
+			}),
+		};
+
+		vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockResolvedValue(fetchedExecution);
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId, workflowId: '1', status: 'success' },
+			},
+			opts,
+		);
+
+		expect(workflowExecutionStateStore.activeExecutionId).toBeUndefined();
+		expect(workflowExecutionStateStore.displayedExecutionId).toBe(executionId);
+		expect(workflowExecutionStateStore.activeExecutionPinDataByNodeName).toEqual({
+			[nodeName]: [{ json: { source: 'verification-fixture' } }],
+		});
+	});
+
 	it('processes a late finish for the execution this document just stopped', async () => {
 		setActivePinia(createTestingPinia());
 
@@ -746,11 +821,13 @@ describe('manual execution stats tracking', () => {
 		it('shows success toast when executed node has run data', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send Telegram';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -777,11 +854,13 @@ describe('manual execution stats tracking', () => {
 		it('shows warning toast when executed node was not reached', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -806,11 +885,13 @@ describe('manual execution stats tracking', () => {
 		it('does not show warning toast when successToastAlreadyShown is true', () => {
 			setActivePinia(createTestingPinia());
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(''),
+			);
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowExecutionStateStore, 'activeExecution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {

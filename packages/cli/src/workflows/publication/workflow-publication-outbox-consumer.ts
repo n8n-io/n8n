@@ -1,23 +1,30 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import { UnexpectedError, ensureError } from 'n8n-workflow';
+import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { UnexpectedError } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import type {
+	PublicationOutcomeReason,
+	PublicationOutcomeResult,
+} from '@/events/maps/workflow-publication-metrics.event-map';
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It owns the
- * queue mechanics only: the poll loop, leader lifecycle, and claiming the next
- * pending record. For each claimed record it delegates to the applier (which
- * reconciles triggers and returns a result) and then to the reporter (which
- * writes the terminal status and side effects). Any unexpected error from the
- * applier is turned into a failed result so the reporter remains the single
- * writer of terminal outbox statuses.
+ * queue mechanics only: the poll loop and claiming the next pending record. For
+ * each claimed record it delegates to the applier (which reconciles triggers
+ * and returns a result) and then to the reporter (which writes the terminal
+ * status and side effects). Any unexpected error from the applier is turned
+ * into a failed result so the reporter remains the single writer of terminal
+ * outbox statuses.
  */
 @Service()
 export class WorkflowPublicationOutboxConsumer {
@@ -27,6 +34,8 @@ export class WorkflowPublicationOutboxConsumer {
 
 	private isShuttingDown = false;
 
+	private activeDrain: Promise<number> | null = null;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowsConfig: WorkflowsConfig,
@@ -35,6 +44,9 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly applier: WorkflowPublicationApplier,
 		private readonly reporter: PublicationStatusReporter,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
+		private readonly tracing: Tracing,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -47,7 +59,6 @@ export class WorkflowPublicationOutboxConsumer {
 		await this.drainPending();
 	}
 
-	@OnLeaderTakeover()
 	startPolling() {
 		if (!this.workflowsConfig.useWorkflowPublicationService || this.isShuttingDown) return;
 		if (this.isPolling) return;
@@ -57,7 +68,6 @@ export class WorkflowPublicationOutboxConsumer {
 		this.logger.debug('Started outbox polling');
 	}
 
-	@OnLeaderStepdown()
 	stopPolling() {
 		this.isPolling = false;
 
@@ -69,13 +79,30 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	@OnShutdown()
-	shutdown() {
+	async shutdown() {
 		this.isShuttingDown = true;
 		this.stopPolling();
+		// Wait for any in-flight drain to finish so triggers aren't left half-activated.
+		await this.activeDrain;
 	}
 
-	// We will rely on the `workflow-publish-wake-up` event in the future, but
-	// will keep the poller as a fallback since pubsub delivery is not ensured.
+	/**
+	 * Wake the consumer in response to a `workflow-publish-wake-up` pubsub event so
+	 * it drains the outbox immediately instead of waiting for the next poll cycle.
+	 *
+	 * Also start polling - this is idempotent, so harmless if we're already polling.
+	 */
+	@OnPubSubEvent('workflow-publish-wake-up', { instanceType: 'main', instanceRole: 'leader' })
+	async wakeUp(): Promise<void> {
+		if (!this.workflowsConfig.useWorkflowPublicationService) return;
+
+		this.startPolling();
+		await this.drainPending();
+	}
+
+	// The `workflow-publish-wake-up` event drains the outbox promptly (see
+	// `wakeUp`); the poller is kept as a fallback since pubsub delivery is not
+	// ensured.
 	private schedulePollCycle() {
 		clearTimeout(this.pollTimeout);
 		if (!this.shouldKeepPolling()) return;
@@ -94,8 +121,9 @@ export class WorkflowPublicationOutboxConsumer {
 	private async pollCycle() {
 		const processed = await this.drainPending();
 
-		if (processed > 0) {
-			this.logger.debug(`Processed ${processed} workflow publication outbox record(s)`);
+		// Only log if we processed more than 1 since we log each individual record
+		if (processed > 1) {
+			this.logger.debug(`Processed ${processed} workflow publication outbox records in this cycle`);
 		}
 	}
 
@@ -103,20 +131,63 @@ export class WorkflowPublicationOutboxConsumer {
 	 * Claim and process every currently pending record in a single pass, returning
 	 * the number processed. Used both by the scheduled poll cycle and at leader
 	 * startup for an immediate drain. The loop stops if the instance steps down or
-	 * shuts down mid-drain. Claiming is atomic, so an extra concurrent drain never
-	 * double-processes a record.
+	 * shuts down mid-drain; claiming is atomic, so an extra concurrent drain never
+	 * double-processes a record. Concurrent callers coalesce onto the same in-flight
+	 * pass rather than running an overlapping drain, which also lets shutdown wait
+	 * for the active pass to settle.
 	 */
 	async drainPending(): Promise<number> {
-		let processed = 0;
-		while (this.shouldKeepPolling()) {
-			const record = await this.outboxRepository.claimNextPendingRecord();
-			if (!record) break;
+		if (this.activeDrain) return await this.activeDrain;
 
-			await this.processRecord(record);
-			processed++;
+		const drain = this.runDrain();
+		this.activeDrain = drain;
+		try {
+			return await drain;
+		} finally {
+			this.activeDrain = null;
 		}
+	}
 
-		return processed;
+	private async runDrain(): Promise<number> {
+		const concurrency = this.workflowsConfig.workflowPublicationConcurrency;
+		return await this.tracing.startSpan(
+			{
+				name: 'Publication outbox drain',
+				op: 'publication.outbox.drain',
+				attributes: { 'n8n.publication.consumer_concurrency': concurrency },
+			},
+			async (span) => {
+				let processed = 0;
+				// Run worker loops in parallel. Each claims and processes records
+				// until none remain (claiming is atomic, so workers never grab the same record).
+				let aborted = false;
+				const runWorker = async () => {
+					while (!aborted && this.shouldKeepPolling()) {
+						const record = await this.outboxRepository.claimNextPendingRecord();
+						if (!record) break;
+
+						await this.processRecord(record);
+						processed++;
+					}
+				};
+
+				const workerTasks = Array.from({ length: concurrency }, async () => {
+					await runWorker().catch((error) => {
+						aborted = true;
+						throw error;
+					});
+				});
+
+				const results = await Promise.allSettled(workerTasks);
+
+				const failure = results.find((r) => r.status === 'rejected');
+				if (failure?.status === 'rejected') throw failure.reason;
+
+				span.setAttribute('n8n.publication.records_processed', processed);
+				span.setStatus({ code: SpanStatus.ok });
+				return processed;
+			},
+		);
 	}
 
 	private shouldKeepPolling() {
@@ -129,24 +200,113 @@ export class WorkflowPublicationOutboxConsumer {
 	 * a `failed` result so the reporter still writes a terminal status. A failure
 	 * in the reporter itself can only be logged: the record is left in progress
 	 * for a later poll cycle to retry.
+	 *
+	 * Both the apply and the report run under the workflow's {@link WorkflowPublicationLifecycleLock}
+	 * so leader stepdown cannot tear this workflow's triggers down mid-record, and the
+	 * terminal-status write always lands before teardown proceeds. If leadership was lost
+	 * between claiming the record and entering the critical section, the record is returned
+	 * to the queue (so the new leader reprocesses it) and nothing is applied here.
 	 */
 	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
-		let result: PublicationResult;
+		await this.tracing.startSpan(
+			{
+				name: 'Publication outbox record',
+				op: 'publication.outbox.process_record',
+				attributes: {
+					...this.tracing.pickWorkflowAttributes({ id: record.workflowId }),
+					'n8n.publication.outbox_id': record.id,
+					'n8n.publication.published_version_id': record.publishedVersionId,
+				},
+			},
+			async (span) => {
+				await this.lifecycleLock.runExclusive(record.workflowId, async () => {
+					// A record claimed while leader can reach here after stepdown (e.g. while
+					// waiting on the lock during teardown). Activating triggers now would leave
+					// them running on a demoted instance, so hand the record back to the queue.
+					if (!this.instanceSettings.isLeader) {
+						await this.outboxRepository.returnToPending(record.id);
+						this.logger.debug('Returned publication outbox record to queue: no longer leader', {
+							outboxId: record.id,
+							workflowId: record.workflowId,
+						});
+						return;
+					}
 
-		try {
-			result = await this.applier.apply(record);
-		} catch (error) {
-			const cause = ensureError(error);
-			result = {
-				type: 'failed',
-				error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
-			};
-		}
+					this.logger.debug('Started processing workflow publication outbox record', {
+						outboxId: record.id,
+						workflowId: record.workflowId,
+						publishedVersionId: record.publishedVersionId,
+					});
 
-		try {
-			await this.reporter.report(record, result);
-		} catch (reportError) {
-			this.errorReporter.error(reportError, { shouldBeLogged: true });
+					const startedAt = Date.now();
+					let result: PublicationResult;
+
+					try {
+						result = await this.applier.apply(record);
+					} catch (error) {
+						const cause = ensureError(error);
+						result = {
+							type: 'failed',
+							error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+						};
+					}
+
+					let reporterFailed = false;
+					try {
+						await this.reporter.report(record, result);
+					} catch (reportError) {
+						reporterFailed = true;
+						this.errorReporter.error(reportError, { shouldBeLogged: true });
+					}
+
+					this.eventService.emit('workflow-publication-outbox-record-processed', {
+						...this.toOutcomeLabels(result, reporterFailed),
+						durationMs: Date.now() - startedAt,
+					});
+
+					this.logger.debug('Finished processing workflow publication outbox record', {
+						outboxId: record.id,
+						workflowId: record.workflowId,
+						result: result.type,
+					});
+
+					span.setAttribute('n8n.publication.result', result.type);
+				});
+
+				span.setStatus({ code: SpanStatus.ok });
+			},
+		);
+	}
+
+	/**
+	 * Maps a publication result to its metric labels. A reporter failure overrides
+	 * the result to `failed` (the terminal status write never landed), and
+	 * `version-missing` maps to `failed`/`version_missing` to match the terminal
+	 * `failed` status the outbox record is given (and thus the records gauge).
+	 */
+	private toOutcomeLabels(
+		result: PublicationResult,
+		reporterFailed: boolean,
+	): { result: PublicationOutcomeResult; reason: PublicationOutcomeReason } {
+		if (reporterFailed) return { result: 'failed', reason: 'none' };
+
+		switch (result.type) {
+			case 'completed':
+				return { result: 'published', reason: 'none' };
+			case 'unpublished':
+				return { result: 'unpublished', reason: 'none' };
+			case 'skipped':
+				return {
+					result: 'skipped',
+					reason:
+						result.reason === 'workflow-not-found' ? 'workflow_not_found' : 'workflow_inactive',
+				};
+			case 'version-missing':
+				return { result: 'failed', reason: 'version_missing' };
+			case 'partial':
+				return { result: 'partial_success', reason: 'none' };
+			case 'failed':
+				return { result: 'failed', reason: 'none' };
 		}
 	}
 }

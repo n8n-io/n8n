@@ -45,6 +45,7 @@ import type {
 	CanvasNode,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
+	GroupExpansionMode,
 	ViewportBoundaries,
 } from '@/features/workflows/canvas/canvas.types';
 import {
@@ -84,6 +85,7 @@ import type {
 	ExecutionSummary,
 	IConnection,
 	INodeParameters,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -304,7 +306,15 @@ const isNDVV2 = computed(() => true);
 
 // Per-editor host overrides (AI features + read-only). The artifact host marks
 // the canvas read-only while a workflow-builder agent mutates the workflow.
-const { readOnly: externalReadOnly } = useEditorContext();
+const {
+	readOnly: externalReadOnly,
+	expandGroups: externalExpandGroups,
+	executionButtonType,
+} = useEditorContext();
+
+const runWorkflowButtonType = computed(() =>
+	isDemoRoute.value ? 'secondary' : executionButtonType.value,
+);
 
 const isCanvasReadOnly = computed(() => {
 	return (
@@ -316,6 +326,10 @@ const isCanvasReadOnly = computed(() => {
 		(builderStore.streaming && !builderStore.isHelpStreaming) ||
 		externalReadOnly.value
 	);
+});
+
+const groupExpansionMode = computed<GroupExpansionMode | undefined>(() => {
+	return isDemoRoute.value ? 'all' : externalExpandGroups.value;
 });
 
 const canExecuteOnCanvas = computed(() => {
@@ -388,6 +402,29 @@ function updateNodesIssues() {
 	nodeHelpers.updateNodesParameterIssues();
 }
 
+// End-user credential validity depends on workflow-wide state — the resolver and
+// the enabled trigger set — yet credential issues are cached per node. Recompute
+// all nodes' credential issues whenever that dependency changes so a stale message
+// can't linger after switching the resolver or changing/toggling/adding a trigger.
+watch(
+	() => {
+		const doc = workflowDocumentStore?.value;
+		const triggerSignature = (doc?.workflowTriggerNodes ?? [])
+			.filter((trigger) => !trigger.disabled)
+			.map((trigger) => `${trigger.type}:${JSON.stringify(trigger.parameters ?? {})}`)
+			.join('|');
+		return `${doc?.settings?.credentialResolverId ?? ''}#${triggerSignature}`;
+	},
+	() => {
+		// The load path already computes credential issues once after the workflow
+		// loads (updateNodesIssues). Skip while still loading so this doesn't churn
+		// node issues during the document store's transient setup window, where
+		// NDV-dependent render code can still throw.
+		if (isLoading.value) return;
+		nodeHelpers.updateNodesCredentialsIssues();
+	},
+);
+
 /**
  * Workflow
  */
@@ -407,15 +444,6 @@ async function openWorkflow(data: IWorkflowDb) {
 		workflowId: data.id,
 		workflowName: data.name,
 	});
-
-	// @TODO Check why this is needed when working on executions
-	// const selectedExecution = executionsStore.activeExecution;
-	// if (selectedExecution?.workflowId !== data.id) {
-	// 	executionsStore.activeExecution = null;
-	// 	workflowsStore.currentWorkflowExecutions = [];
-	// } else {
-	// 	executionsStore.activeExecution = selectedExecution;
-	// }
 
 	fitView();
 }
@@ -491,6 +519,18 @@ function onDeleteNodes(ids: string[]) {
 
 function onRevertDeleteNode({ node }: { node: INodeUi }) {
 	revertDeleteNode(node);
+}
+
+function onRevertAddNodeGroup({ group }: { group: IWorkflowGroup }) {
+	workflowDocumentStore.value.deleteGroup(group.id);
+}
+
+function onRevertRemoveNodeGroup({ group }: { group: IWorkflowGroup }) {
+	workflowDocumentStore.value.restoreGroup(group);
+}
+
+function onRevertUpdateNodeGroup({ group }: { group: IWorkflowGroup }) {
+	workflowDocumentStore.value.restoreGroup(group);
 }
 
 function onToggleNodeDisabled(id: string) {
@@ -1405,6 +1445,9 @@ function addUndoRedoEventBindings() {
 	historyBus.on('revertRenameNode', onRevertRenameNode);
 	historyBus.on('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.on('enableNodeToggle', onRevertToggleNodeDisabled);
+	historyBus.on('revertAddNodeGroup', onRevertAddNodeGroup);
+	historyBus.on('revertRemoveNodeGroup', onRevertRemoveNodeGroup);
+	historyBus.on('revertUpdateNodeGroup', onRevertUpdateNodeGroup);
 }
 
 function removeUndoRedoEventBindings() {
@@ -1416,6 +1459,9 @@ function removeUndoRedoEventBindings() {
 	historyBus.off('revertRenameNode', onRevertRenameNode);
 	historyBus.off('revertReplaceNodeParameters', onRevertReplaceNodeParameters);
 	historyBus.off('enableNodeToggle', onRevertToggleNodeDisabled);
+	historyBus.off('revertAddNodeGroup', onRevertAddNodeGroup);
+	historyBus.off('revertRemoveNodeGroup', onRevertRemoveNodeGroup);
+	historyBus.off('revertUpdateNodeGroup', onRevertUpdateNodeGroup);
 }
 
 /**
@@ -1643,8 +1689,11 @@ function unregisterCustomActions() {
 
 function showAddFirstStepIfEnabled() {
 	if (uiStore.addFirstStepOnLoad) {
-		void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+		void onOpenNodeCreatorForTriggerNodes(
+			uiStore.addFirstStepOnLoadSource ?? NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
+		);
 		uiStore.addFirstStepOnLoad = false;
+		uiStore.addFirstStepOnLoadSource = undefined;
 	}
 }
 
@@ -1793,13 +1842,15 @@ const workflowExecutionTriggerNodeName = computed(() => {
 		return undefined;
 	}
 
-	if (workflowsStore.workflowExecutionData?.triggerNode) {
-		return workflowsStore.workflowExecutionData.triggerNode;
+	if (workflowExecutionState.value.activeExecution?.triggerNode) {
+		return workflowExecutionState.value.activeExecution.triggerNode;
 	}
 
 	// In case of partial execution, triggerNode is not set, so I'm trying to find from runData
-	return Object.keys(workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {}).find(
-		(name) => workflowDocumentStore?.value?.workflowTriggerNodes.some((node) => node.name === name),
+	return Object.keys(
+		workflowExecutionState.value.activeExecution?.data?.resultData.runData ?? {},
+	).find((name) =>
+		workflowDocumentStore?.value?.workflowTriggerNodes.some((node) => node.name === name),
 	);
 });
 
@@ -1958,6 +2009,7 @@ onBeforeUnmount(() => {
 			:show-fallback-nodes="showFallbackNodes"
 			:event-bus="canvasEventBus"
 			:read-only="isCanvasReadOnly"
+			:group-expansion-mode="groupExpansionMode"
 			:can-execute="canExecuteOnCanvas"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
@@ -1979,6 +2031,7 @@ onBeforeUnmount(() => {
 			@update:logs:input-open="logsStore.toggleInputOpen"
 			@update:logs:output-open="logsStore.toggleOutputOpen"
 			@update:has-range-selection="canvasStore.setHasRangeSelection"
+			@update:selected-group="canvasStore.setSelectedGroupId"
 			@open:sub-workflow="onOpenSubWorkflow"
 			@click:node="onClickNode"
 			@click:node:add="onClickNodeAdd"
@@ -2027,7 +2080,7 @@ onBeforeUnmount(() => {
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
 					:selected-trigger-node-name="workflowExecutionState.selectedTriggerNodeName"
-					:embedded="isDemoRoute"
+					:type="runWorkflowButtonType"
 					@mouseenter="onRunWorkflowButtonMouseEnter"
 					@mouseleave="onRunWorkflowButtonMouseLeave"
 					@execute="runEntireWorkflow('main')"

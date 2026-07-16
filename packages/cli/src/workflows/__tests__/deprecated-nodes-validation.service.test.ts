@@ -1,6 +1,7 @@
 import type { NodesConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
-import type { INode, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeType } from 'n8n-workflow';
+import { fail } from 'node:assert';
+import { mock } from 'vitest-mock-extended';
 
 import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { NodeTypes } from '@/node-types';
@@ -13,10 +14,7 @@ describe('DeprecatedNodesValidationService', () => {
 
 	const nodeTypeFor = (type: string, deprecated?: boolean): INodeType =>
 		mock<INodeType>({
-			description: mock<INodeTypeDescription>({
-				name: type,
-				deprecated: deprecated ? true : undefined,
-			}),
+			description: { name: type, deprecated: deprecated ? true : undefined },
 		});
 
 	beforeEach(() => {

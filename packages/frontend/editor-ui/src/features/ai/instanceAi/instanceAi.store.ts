@@ -2,8 +2,13 @@ import { defineStore } from 'pinia';
 import { ref, computed, inject, provide, shallowReactive, type InjectionKey } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
-import { ensureThread, getInstanceAiCredits } from './instanceAi.api';
+import {
+	ensureThread,
+	getInstanceAiCredits,
+	type InstanceAiThreadLaunchInput,
+} from './instanceAi.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
@@ -21,6 +26,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
+	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
 
 	// --- Instance-level state ---
@@ -39,10 +45,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			const thread = threads.value.find((t) => t.id === threadId);
 			if (thread) thread.title = title;
 		},
-		// Refresh thread list to pick up Mastra-generated titles
+		// Refresh thread list to pick up auto-generated titles
 		onRunFinish: () => {
 			void loadThreads();
 		},
+		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
@@ -64,13 +71,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 		runtime.dispose();
 		runtimes.delete(threadId);
-	}
-
-	function disposeRuntimes(): void {
-		for (const runtime of runtimes.values()) {
-			runtime.dispose();
-		}
-		runtimes.clear();
 	}
 
 	// --- Settings delegation ---
@@ -117,6 +117,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			if (message.type !== 'updateInstanceAiCredits') return;
 			creditsQuota.value = message.data.creditsQuota;
 			creditsClaimed.value = message.data.creditsClaimed;
+			// Per-message claims also carry the thread's running total — write it onto the
+			// matching thread so the credits dropdown updates live for the acting user.
+			const { creditsPerThread } = message.data;
+			if (creditsPerThread !== undefined) {
+				const thread = threads.value.find((t) => t.id === creditsPerThread.threadId);
+				if (thread) {
+					thread.metadata = { ...thread.metadata, creditsUsed: creditsPerThread.totalCreditsUsed };
+				}
+			}
 		});
 	}
 
@@ -164,11 +173,28 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function syncThread(threadId: string, projectId: string): Promise<void> {
+	async function syncThread(
+		threadId: string,
+		projectId: string,
+		launch?: InstanceAiThreadLaunchInput,
+	): Promise<void> {
 		if (persistedThreadIds.has(threadId)) return;
 
-		const result = await ensureThread(rootStore.restApiContext, threadId, projectId);
+		const result = await ensureThread(rootStore.restApiContext, threadId, projectId, launch);
 		persistedThreadIds.add(result.thread.id);
+
+		if (launch) {
+			const templateId = launch.sourceContext?.templateId;
+			telemetry.track('User launched Instance AI thread', {
+				thread_id: result.thread.id,
+				instance_id: rootStore.instanceId,
+				source: launch.source,
+				origin: launch.origin,
+				...(typeof templateId === 'string' || typeof templateId === 'number'
+					? { template_id: templateId }
+					: {}),
+			});
+		}
 
 		const existingThread = threads.value.find((thread) => thread.id === threadId);
 		if (existingThread) {
@@ -221,6 +247,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return threads.value.find((t) => t.id === threadId)?.metadata;
 	}
 
+	/** Reactive per-thread credit total (decimal), or undefined if none recorded yet. */
+	function threadCreditsUsed(threadId: string): number | undefined {
+		const used = threads.value.find((t) => t.id === threadId)?.metadata?.creditsUsed;
+		return typeof used === 'number' ? used : undefined;
+	}
+
 	async function updateThreadMetadata(
 		threadId: string,
 		metadata: Record<string, unknown>,
@@ -255,6 +287,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		deleteThread,
 		renameThread,
 		getThreadMetadata,
+		threadCreditsUsed,
 		updateThreadMetadata,
 		loadThreads,
 		fetchCredits,
@@ -263,7 +296,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getOrCreateRuntime,
 		getRuntime,
 		disposeRuntime,
-		disposeRuntimes,
 		syncThread,
 	};
 });

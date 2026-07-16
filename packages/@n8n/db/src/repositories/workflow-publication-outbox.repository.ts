@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -8,6 +8,7 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus as Status,
 } from '../entities/workflow-publication-outbox';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 @Service()
 export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPublicationOutbox> {
@@ -16,6 +17,18 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super(WorkflowPublicationOutbox, dataSource.manager);
+	}
+
+	/**
+	 * The in-flight (pending or in_progress) publication for a workflow, or null.
+	 * In-progress is preferred when both exist.
+	 */
+	async findInFlightByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
+		const inFlight = await this.findBy({
+			workflowId,
+			status: In([Status.InProgress, Status.Pending]),
+		});
+		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
 	}
 
 	/**
@@ -79,44 +92,121 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
-	 * Enqueue a pending publication record for every active, non-archived workflow
-	 * at its current active version, in a single statement. Idempotent via the same
-	 * partial-unique-index upsert as {@link enqueue}.
+	 * Enqueue a pending publication record for the current version of each active workflow
+	 * with at least one in-memory trigger.
+	 *
+	 * These must be re-published on startup or leader handoff to ensure that all
+	 * of the in-memory state is correctly initialized. For workflows with no in-memory triggers,
+	 * we can skip re-publishing because their triggers are already persisted.
+	 *
+	 * NOTE: we only exclude workflows where we KNOW that there are no in-memory triggers.
+	 * If the per-trigger data is missing (e.g. due to a crash), we will still enqueue the
+	 * workflow for publication, which is safe because the publication process is idempotent.
 	 */
-	async enqueueAllActiveWorkflows(): Promise<void> {
+	async enqueueForLeaderHandoff(): Promise<void> {
 		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.enqueueAllActiveWithPostgresUpsert();
+			await this.enqueueForLeaderHandoffWithPostgresUpsert();
 			return;
 		}
 
-		await this.enqueueAllActiveWithSqliteUpsert();
+		await this.enqueueForLeaderHandoffWithSqliteUpsert();
 	}
 
-	private async enqueueAllActiveWithPostgresUpsert(): Promise<void> {
-		const tableName = this.getTableName('workflow_publication_outbox');
+	private async enqueueForLeaderHandoffWithPostgresUpsert(): Promise<void> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
+		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
 
 		await this.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = false
+			 AND (
+			   -- Enqueue workflows with at least one in-memory trigger
+				 EXISTS (
+					 SELECT 1 FROM ${triggerStatusTableName} ts
+					 WHERE ts."workflowId" = w."id" AND ts."triggerKind" = 'in-memory'
+				 )
+				 -- Enqueue workflows where we have no trigger status data
+				 OR NOT EXISTS (SELECT 1 FROM ${triggerStatusTableName} ts WHERE ts."workflowId" = w."id")
+			 )
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
 		);
 	}
 
-	private async enqueueAllActiveWithSqliteUpsert(): Promise<void> {
-		const tableName = this.getTableName('workflow_publication_outbox');
+	private async enqueueForLeaderHandoffWithSqliteUpsert(): Promise<void> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
+		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
 
 		await this.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
+			 AND (
+			   -- Enqueue workflows with at least one in-memory trigger
+				 EXISTS (
+					 SELECT 1 FROM ${triggerStatusTableName} ts
+					 WHERE ts."workflowId" = w."id" AND ts."triggerKind" = 'in-memory'
+				 )
+				 -- Enqueue workflows where we have no trigger status data
+				 OR NOT EXISTS (SELECT 1 FROM ${triggerStatusTableName} ts WHERE ts."workflowId" = w."id")
+			 )
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+		);
+	}
+
+	/**
+	 * Enqueue a pending publication record for each given workflow that is active
+	 * and non-archived, at its current active version, in a single statement.
+	 * Workflows that are inactive, archived, or absent are skipped. Idempotent via
+	 * the same partial-unique-index upsert as {@link enqueue}, so the enqueued
+	 * version is always the canonical `activeVersionId`. Used by reconciliation to
+	 * re-publish workflows whose triggers went missing in memory.
+	 */
+	async enqueueByWorkflowIds(workflowIds: string[]): Promise<void> {
+		if (workflowIds.length === 0) return;
+
+		if (this.globalConfig.database.type === 'postgresdb') {
+			await this.enqueueByWorkflowIdsWithPostgresUpsert(workflowIds);
+			return;
+		}
+
+		await this.enqueueByWorkflowIdsWithSqliteUpsert(workflowIds);
+	}
+
+	private async enqueueByWorkflowIdsWithPostgresUpsert(workflowIds: string[]): Promise<void> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+
+		await this.query(
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
+			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."id" = ANY($1) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = false
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
+			[workflowIds],
+		);
+	}
+
+	private async enqueueByWorkflowIdsWithSqliteUpsert(workflowIds: string[]): Promise<void> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+		const placeholders = workflowIds.map(() => '?').join(', ');
+
+		await this.query(
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
+			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."id" IN (${placeholders}) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+			workflowIds,
 		);
 	}
 
@@ -139,27 +229,39 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 
 	private async claimWithPostgresLocking(): Promise<WorkflowPublicationOutbox | null> {
 		const tableName = this.getTableName('workflow_publication_outbox');
+		const leaseSeconds = this.globalConfig.workflows.publicationOutboxLeaseSeconds;
 
 		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw
 		// UPDATE ... RETURNING (unlike INSERT, which returns the rows directly).
 		const [rows]: [WorkflowPublicationOutbox[], number] = await this.query(
 			// Claim the oldest pending row whose workflow has no in-progress row,
-			// so a workflow is never published concurrently. Ordering by id gives
+			// or re-lease a stale in-progress row whose leader likely died (no
+			// progress for longer than the lease). Reprocessing is idempotent via
+			// the reconciliation diff, so re-leasing is safe. Ordering by id gives
 			// FIFO: ids are monotonically assigned, so the oldest is processed first.
 			`UPDATE ${tableName}
 			 SET "status" = '${Status.InProgress}', "updatedAt" = CURRENT_TIMESTAMP(3)
 			 WHERE "id" = (
 				 SELECT o."id" FROM ${tableName} o
-				 WHERE o."status" = '${Status.Pending}'
-				 AND NOT EXISTS (
-					 SELECT 1 FROM ${tableName} ip
-					 WHERE ip."workflowId" = o."workflowId" AND ip."status" = '${Status.InProgress}'
+				 WHERE (
+					 o."status" = '${Status.Pending}'
+					 -- skip workflows that are already being processed
+					 AND NOT EXISTS (
+						 SELECT 1 FROM ${tableName} ip
+						 WHERE ip."workflowId" = o."workflowId" AND ip."status" = '${Status.InProgress}'
+					 )
+				 )
+				 OR (
+					 -- reclaim expired leases
+					 o."status" = '${Status.InProgress}'
+					 AND o."updatedAt" < CURRENT_TIMESTAMP(3) - make_interval(secs => $1)
 				 )
 				 ORDER BY o."id" ASC
 				 LIMIT 1
 				 FOR UPDATE SKIP LOCKED
 			 )
 			 RETURNING *`,
+			[leaseSeconds],
 		);
 
 		return rows[0] ?? null;
@@ -168,51 +270,92 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	// Two statements rather than one because `update` doesn't return the claimed
 	// row. The `BEGIN IMMEDIATE` transaction serializes claimers.
 	private async claimWithSqliteTransaction(): Promise<WorkflowPublicationOutbox | null> {
+		const leaseSeconds = Math.round(this.globalConfig.workflows.publicationOutboxLeaseSeconds);
+
 		return await this.manager.transaction(async (tx) => {
+			const queryBuilder = tx.createQueryBuilder(WorkflowPublicationOutbox, 'o');
+
+			const noInProgressSubquery = queryBuilder
+				.subQuery()
+				.select('1')
+				.from(WorkflowPublicationOutbox, 'ip')
+				.where('ip.workflowId = o.workflowId')
+				.andWhere('ip.status = :inProgress')
+				.getQuery();
+
 			// Claim the oldest pending row whose workflow has no in-progress row,
-			// so a workflow is never published concurrently. Ordering by id gives
+			// or re-lease a stale in-progress row whose leader likely died (no
+			// progress for longer than the lease). Reprocessing is idempotent via
+			// the reconciliation diff, so re-leasing is safe. Ordering by id gives
 			// FIFO: ids are monotonically assigned, so the oldest is processed first.
-			const record = await tx
-				.createQueryBuilder(WorkflowPublicationOutbox, 'o')
-				.where('o.status = :pending', { pending: Status.Pending })
-				.andWhere((qb) => {
-					const sub = qb
-						.subQuery()
-						.select('1')
-						.from(WorkflowPublicationOutbox, 'ip')
-						.where('ip.workflowId = o.workflowId')
-						.andWhere('ip.status = :inProgress')
-						.getQuery();
-					return `NOT EXISTS ${sub}`;
-				})
+			const record = await queryBuilder
+				.where(
+					new Brackets((qb) => {
+						qb.where('o.status = :pending', { pending: Status.Pending }).andWhere(
+							`NOT EXISTS ${noInProgressSubquery}`,
+						);
+					}),
+				)
+				.orWhere(
+					new Brackets((qb) => {
+						qb.where('o.status = :inProgress').andWhere(
+							"o.updatedAt < STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', :leaseModifier)",
+							{ leaseModifier: `-${leaseSeconds} seconds` },
+						);
+					}),
+				)
 				.setParameter('inProgress', Status.InProgress)
 				.orderBy('o.id', 'ASC')
 				.getOne();
 
 			if (!record) return null;
 
-			await tx.update(
-				WorkflowPublicationOutbox,
-				{ id: record.id, status: Status.Pending },
-				{ status: Status.InProgress },
-			);
+			// `{ id }` (not `{ id, status: Pending }`) so a reclaimed in-progress
+			// row is re-leased too. TypeORM bumps `updatedAt` on `.update()`.
+			await tx.update(WorkflowPublicationOutbox, { id: record.id }, { status: Status.InProgress });
 			record.status = Status.InProgress;
 			return record;
 		});
 	}
 
-	/** Mark a claimed record as successfully processed. */
-	async markCompleted(id: number): Promise<void> {
-		const result = await this.update(
+	/**
+	 * Return a claimed (`in_progress`) record to `pending` so another leader can
+	 * reprocess it, when this instance is no longer the leader. Best-effort: zero
+	 * rows affected (already resolved or re-leased) is not an error.
+	 *
+	 * If a newer pending record was enqueued meanwhile, the flip collides with the
+	 * one-pending-row-per-workflow unique index; that record supersedes this one, so
+	 * we delete this row instead. Catching the collision keeps it atomic against a
+	 * concurrent enqueue.
+	 */
+	async returnToPending(id: number): Promise<void> {
+		try {
+			await this.update(
+				{ id, status: Status.InProgress },
+				{ status: Status.Pending, errorMessage: null },
+			);
+		} catch (error) {
+			if (!isUniqueConstraintError(error)) throw error;
+			await this.delete({ id, status: Status.InProgress });
+		}
+	}
+
+	/** Mark a claimed record as successfully processed. Pass `trx` to enroll in an existing transaction. */
+	async markCompleted(id: number, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.Completed, errorMessage: null },
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Completed);
 	}
 
-	/** Mark a claimed record as failed and record the error for diagnostics. */
-	async markFailed(id: number, errorMessage: string): Promise<void> {
-		const result = await this.update(
+	/** Mark a claimed record as failed and record the error for diagnostics. Pass `trx` to enroll in an existing transaction. */
+	async markFailed(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.Failed, errorMessage },
 		);
@@ -222,14 +365,125 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	/**
 	 * Mark a claimed record as partially successful: the published version advanced
 	 * and some triggers are running, but others failed to (de)register. The message
-	 * carries per-node detail for diagnostics. The workflow stays published.
+	 * carries per-node detail for diagnostics. The workflow stays published. Pass
+	 * `trx` to enroll in an existing transaction.
 	 */
-	async markPartialSuccess(id: number, errorMessage: string): Promise<void> {
-		const result = await this.update(
+	async markPartialSuccess(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.PartialSuccess, errorMessage },
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.PartialSuccess);
+	}
+
+	/**
+	 * Delete terminal records older than their retention window, in a single batch.
+	 * `completed` and `failed`/`partial_success` have different retention configs.
+	 *
+	 * @returns number deleted so the caller can loop until a batch comes back short.
+	 */
+	async deleteTerminalOlderThan(
+		completedRetentionSeconds: number,
+		failedRetentionSeconds: number,
+		batchSize: number,
+	): Promise<number> {
+		if (this.globalConfig.database.type === 'postgresdb') {
+			return await this.deleteTerminalWithPostgres(
+				completedRetentionSeconds,
+				failedRetentionSeconds,
+				batchSize,
+			);
+		}
+
+		return await this.deleteTerminalWithSqlite(
+			completedRetentionSeconds,
+			failedRetentionSeconds,
+			batchSize,
+		);
+	}
+
+	private async deleteTerminalWithPostgres(
+		completedRetentionSeconds: number,
+		failedRetentionSeconds: number,
+		batchSize: number,
+	): Promise<number> {
+		const tableName = this.getTableName('workflow_publication_outbox');
+
+		const [row]: Array<{ count: string | number }> = await this.query(
+			`WITH deleted AS (
+				DELETE FROM ${tableName}
+				WHERE "id" IN (
+					SELECT "id" FROM ${tableName}
+					WHERE ("status" = '${Status.Completed}' AND "updatedAt" < CURRENT_TIMESTAMP(3) - make_interval(secs => $1))
+						OR ("status" IN ('${Status.Failed}', '${Status.PartialSuccess}') AND "updatedAt" < CURRENT_TIMESTAMP(3) - make_interval(secs => $2))
+					LIMIT $3
+				)
+				RETURNING "id"
+			)
+			SELECT COUNT(*) AS "count" FROM deleted`,
+			[completedRetentionSeconds, failedRetentionSeconds, batchSize],
+		);
+
+		return Number(row.count);
+	}
+
+	private async deleteTerminalWithSqlite(
+		completedRetentionSeconds: number,
+		failedRetentionSeconds: number,
+		batchSize: number,
+	): Promise<number> {
+		const tableName = this.getTableName('workflow_publication_outbox');
+		const completedModifier = `-${Math.round(completedRetentionSeconds)} seconds`;
+		const failedModifier = `-${Math.round(failedRetentionSeconds)} seconds`;
+
+		return await this.manager.transaction(async (tx) => {
+			await tx.query(
+				`DELETE FROM ${tableName}
+				 WHERE "id" IN (
+					SELECT "id" FROM ${tableName}
+					WHERE ("status" = '${Status.Completed}' AND "updatedAt" < STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', ?))
+						OR ("status" IN ('${Status.Failed}', '${Status.PartialSuccess}') AND "updatedAt" < STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', ?))
+					LIMIT ?
+				 )`,
+				[completedModifier, failedModifier, batchSize],
+			);
+			const [{ count }]: Array<{ count: number }> = await tx.query('SELECT changes() AS count');
+			return Number(count);
+		});
+	}
+
+	/**
+	 * Per-status record count and oldest `createdAt`, for the metrics gauges, in a
+	 * single grouped query. Statuses with no rows are absent from the map. The
+	 * oldest-record-age gauge only reads the active (`pending`/`in_progress`)
+	 * entries; the count gauge reads them all.
+	 */
+	async getRecordStatsByStatus(): Promise<Map<Status, { count: number; oldestCreatedAt: Date }>> {
+		const rows = await this.createQueryBuilder('o')
+			.select('o.status', 'status')
+			.addSelect('COUNT(*)', 'count')
+			.addSelect('MIN(o.createdAt)', 'oldestCreatedAt')
+			.groupBy('o.status')
+			.getRawMany<{ status: Status; count: string | number; oldestCreatedAt: string | Date }>();
+
+		return new Map(
+			rows.map((row) => [
+				row.status,
+				{ count: Number(row.count), oldestCreatedAt: this.parseTimestamp(row.oldestCreatedAt) },
+			]),
+		);
+	}
+
+	/**
+	 * Postgres hydrates timestamps into `Date`s directly. SQLite returns a raw UTC
+	 * string with no zone designator, which `new Date()` would read as local time;
+	 * tag it as UTC so the instant matches what the driver stored.
+	 */
+	private parseTimestamp(value: string | Date): Date {
+		if (value instanceof Date) return value;
+		return new Date(`${value.replace(' ', 'T')}Z`);
 	}
 
 	/**

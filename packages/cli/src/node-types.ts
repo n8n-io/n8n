@@ -5,12 +5,12 @@ import { readdir, readFile } from 'fs/promises';
 import { RoutingNode } from 'n8n-core';
 import type { ExecuteContext } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
-import { NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
-import { shouldAssignExecuteMethod } from './utils';
+import { shouldAssignExecuteMethod, stripToolSuffix } from './utils';
 
 @Service()
 export class NodeTypes implements INodeTypes {
@@ -74,9 +74,8 @@ export class NodeTypes implements INodeTypes {
 		}
 
 		// Make sure the nodeType to actually get from disk is the un-wrapped type
-		// Handle both regular Tool suffix and HitlTool suffix
 		if (toolRequested) {
-			nodeType = nodeType.replace(/HitlTool$/, '').replace(/Tool$/, '');
+			nodeType = stripToolSuffix(nodeType);
 		}
 
 		const node = this.loadNodesAndCredentials.getNode(nodeType);
@@ -173,10 +172,16 @@ export class NodeTypes implements INodeTypes {
 
 	getNodeTypeDescriptions(nodeTypes: NeededNodeType[]): INodeTypeDescription[] {
 		return nodeTypes.map(({ name: nodeTypeName, version: nodeTypeVersion }) => {
-			const nodeType = this.loadNodesAndCredentials.getNode(nodeTypeName);
+			const isSyntheticTool =
+				nodeTypeName.endsWith('Tool') && !this.loadNodesAndCredentials.recognizesNode(nodeTypeName);
+			const baseName = isSyntheticTool ? stripToolSuffix(nodeTypeName) : nodeTypeName;
+
+			const nodeType = this.loadNodesAndCredentials.getNode(baseName);
 			const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, nodeTypeVersion);
 
-			const descriptionCopy = { ...description };
+			const descriptionCopy = isSyntheticTool
+				? this.buildSyntheticToolDescription(nodeTypeName, description)
+				: { ...description };
 
 			// TODO: do we still need this?
 			descriptionCopy.name = descriptionCopy.name.startsWith('n8n-nodes')
@@ -185,5 +190,26 @@ export class NodeTypes implements INodeTypes {
 
 			return descriptionCopy;
 		});
+	}
+
+	/**
+	 * Rebuilds a synthetic tool's description from a plain copy of its base node.
+	 * `getByNameAndVersion` returns a prototype-backed tool type whose fields are
+	 * lost when the description is serialized to the task runner, so we can't reuse it.
+	 */
+	private buildSyntheticToolDescription(
+		nodeTypeName: string,
+		description: INodeTypeDescription,
+	): INodeTypeDescription {
+		if (nodeTypeName.endsWith('HitlTool')) {
+			return convertNodeToHitlTool({ description: deepCopy(description) }).description;
+		}
+
+		// Object-form `usableAsTool` carries replacements to apply before conversion
+		const base =
+			typeof description.usableAsTool === 'object'
+				? { ...deepCopy(description), ...description.usableAsTool?.replacements }
+				: deepCopy(description);
+		return convertNodeToAiTool({ description: base }).description;
 	}
 }

@@ -5,14 +5,17 @@ import type { CanvasConnection, NodeExecutionSnapshot } from '../canvas.types';
 import {
 	aggregateGroupExecution,
 	buildCollapsedGroupByNodeId,
+	computeGroupFrameRects,
 	computeNodesRectFromStore,
 	mapGroupsToVueFlowNodes,
 	remapCollapsedGroupConnections,
+	titleBarFromNodesRect,
 } from './useCanvasMapping.groups';
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_PADDING_X,
+	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
@@ -53,6 +56,67 @@ function nodeStore(...nodes: INodeUi[]) {
 function snapshotGetter(byId: Record<string, Partial<NodeExecutionSnapshot>> = {}) {
 	return (id: string): NodeExecutionSnapshot => createNodeExecutionSnapshot(byId[id]);
 }
+
+describe('computeGroupFrameRects', () => {
+	// Coordinates intentionally off the grid so an accidental snap() would surface.
+	const nodesRect = { x: 317, y: 213, width: 396, height: 120 };
+
+	it('anchors both rects at the same unsnapped top-left, offset by padding and header', () => {
+		const { collapsed, expanded } = computeGroupFrameRects(nodesRect);
+		const x = nodesRect.x - GROUP_PADDING_X;
+		const y = nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT;
+
+		expect(collapsed).toMatchObject({ x, y });
+		expect(expanded).toMatchObject({ x, y });
+	});
+
+	it('sizes the collapsed rect as a fixed-size chip', () => {
+		const { collapsed } = computeGroupFrameRects(nodesRect);
+		expect(collapsed.width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
+		expect(collapsed.height).toBe(GROUP_HEADER_HEIGHT);
+	});
+
+	it('sizes the expanded rect to span the cluster plus padding', () => {
+		const { expanded } = computeGroupFrameRects(nodesRect);
+		expect(expanded.width).toBe(nodesRect.width + 2 * GROUP_PADDING_X);
+		expect(expanded.height).toBe(
+			GROUP_HEADER_HEIGHT + nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
+		);
+	});
+
+	it('floors the expanded width at the collapsed chip width for a tight cluster', () => {
+		const { expanded } = computeGroupFrameRects({ ...nodesRect, width: 10 });
+		expect(expanded.width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
+	});
+
+	it('exposes an expanded height that, minus the header, equals the padded cluster height', () => {
+		const { expanded } = computeGroupFrameRects(nodesRect);
+		expect(expanded.height - GROUP_HEADER_HEIGHT).toBe(
+			nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
+		);
+	});
+});
+
+describe('titleBarFromNodesRect', () => {
+	// Off-grid so snapping is observable.
+	const nodesRect = { x: 317, y: 213, width: 396, height: 120 };
+
+	it('snaps the position to the grid while computeGroupFrameRects stays unsnapped', () => {
+		const { expanded } = computeGroupFrameRects(nodesRect);
+		const titleBar = titleBarFromNodesRect(nodesRect, false);
+
+		expect(titleBar.position).toEqual({ x: snapToGrid(expanded.x), y: snapToGrid(expanded.y) });
+		// The raw rect is not grid-aligned, so snapping must have moved it.
+		expect(titleBar.position.x).not.toBe(expanded.x);
+	});
+
+	it('uses the chip width when collapsed and the expanded width otherwise', () => {
+		expect(titleBarFromNodesRect(nodesRect, true).width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
+		expect(titleBarFromNodesRect(nodesRect, false).width).toBe(
+			nodesRect.width + 2 * GROUP_PADDING_X,
+		);
+	});
+});
 
 describe('computeNodesRectFromStore', () => {
 	// Same defaults used by the design system canvas grid (16 × 6).
@@ -297,9 +361,9 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out[0].connectable).toBe(false);
 	});
 
-	it("marks the title bar NOT selectable when expanded — the group's nodes are the interactive surface then", () => {
+	it('keeps the title bar selectable when expanded — selecting it selects the whole group', () => {
 		const out = setup(false);
-		expect(out[0].selectable).toBe(false);
+		expect(out[0].selectable).toBe(true);
 	});
 
 	it('keeps a collapsed title bar selectable but not draggable when readOnly', () => {
@@ -373,6 +437,36 @@ describe('mapGroupsToVueFlowNodes', () => {
 			width: 96,
 			height: 96,
 		});
+	});
+
+	it('marks the group deactivated when every member node is disabled', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			{ ...makeNode('b', 400, 200), disabled: true },
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(true);
+	});
+
+	it('does not mark the group deactivated while any member node is enabled', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			makeNode('b', 400, 200),
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(false);
 	});
 });
 

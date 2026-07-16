@@ -1,6 +1,7 @@
 import type {
 	AgentIntegrationConfig,
 	ChatHubMessageStatus,
+	InstanceAiEvent,
 	PushMessage,
 	WorkerStatus,
 } from '@n8n/api-types';
@@ -65,6 +66,20 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// #region Execution control
+
+	/**
+	 * Stop a specific in-memory execution on whichever worker is running it. Used in queue
+	 * mode for subworkflow executions, which run inline in the parent's worker process and
+	 * therefore have no Bull job to abort. Each worker checks its own `ActiveExecutions` and
+	 * cancels the execution if it holds it.
+	 */
+	'stop-execution': {
+		executionId: string;
+	};
+
+	// #endregion
+
 	// #region Multi-main setup
 
 	'add-webhooks-triggers-and-pollers': {
@@ -85,6 +100,11 @@ export type PubSubCommandMap = {
 	'display-workflow-deactivation': {
 		workflowId: string;
 	};
+
+	/** Wake the leader's publication outbox consumer to drain pending records now.
+	 * The consumer polls as a backup, but this lets publication feel fast without frequent polling.
+	 */
+	'workflow-publish-wake-up': never;
 
 	'display-workflow-activation-error': {
 		workflowId: string;
@@ -129,6 +149,39 @@ export type PubSubCommandMap = {
 			status?: ChatHubMessageStatus;
 			error?: string;
 		};
+	};
+
+	/**
+	 * Relay an Instance AI stream event to sibling mains.
+	 *
+	 * The agent runs on whichever main received `POST /chat/:threadId` and emits
+	 * events into that main's in-process bus, but the client's `GET /events/:threadId`
+	 * SSE connection may be held by a different main. The producing main relays each
+	 * event; the main holding the SSE subscription re-emits it locally to its client.
+	 */
+	'relay-instance-ai-event': {
+		threadId: string;
+		/**
+		 * Producer-assigned stored event. The id comes from the shared per-thread
+		 * sequence, so every main stores and serves identical event ids and the
+		 * frontend's replay cursor is valid against any main. With the durable
+		 * log enabled ids are DB-assigned seqs and ephemeral events (deltas,
+		 * status) carry no id at all: they are live-only.
+		 */
+		storedEvent: { id?: number; event: InstanceAiEvent };
+	};
+
+	/**
+	 * Relay an Instance AI task-control action (correction / cancel / clear) to
+	 * sibling mains. The action may target a background task or run held
+	 * in another main's in-memory state. Broadcast + local-gate: every main applies
+	 * it only to its own local slice of the thread.
+	 */
+	'relay-instance-ai-task-control': {
+		threadId: string;
+		taskId?: string;
+		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
+		correction?: string;
 	};
 
 	/**

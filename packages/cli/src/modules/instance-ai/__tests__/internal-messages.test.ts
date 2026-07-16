@@ -1,4 +1,28 @@
-import { cleanStoredUserMessage, AUTO_FOLLOW_UP_MESSAGE } from '../internal-messages';
+import {
+	cleanStoredUserMessage,
+	extractEditorContextResourceAttachments,
+	withCurrentDateTime,
+	AUTO_FOLLOW_UP_MESSAGE,
+} from '../internal-messages';
+
+type EditorContextAttachment =
+	| { type: 'workflow'; id: string; name?: string; executionId?: string }
+	| { type: 'agent'; id: string; name?: string; projectId: string };
+
+/** Mirrors the marker the service writes in buildContextResourcesBlock. */
+function editorContextMarker(
+	attachments: EditorContextAttachment[],
+	prose = 'The user opened this conversation from the workflow editor.',
+): string {
+	return `<editor-context>\n${JSON.stringify(attachments)}\n\n${prose}\n</editor-context>`;
+}
+
+function credentialContextMarker(): string {
+	return `<credential-context>\n${JSON.stringify({
+		source: 'credential-modal',
+		credential: { credentialType: 'gmailOAuth2Api', displayName: 'Gmail OAuth2 API' },
+	})}\n\nThe user opened this conversation from the credential setup modal.\n</credential-context>`;
+}
 
 describe('cleanStoredUserMessage', () => {
 	it('returns plain text unchanged', () => {
@@ -41,5 +65,84 @@ describe('cleanStoredUserMessage', () => {
 	it('does not strip task blocks that are not at the beginning', () => {
 		const stored = 'Some text\n<running-tasks>\ntask\n</running-tasks>\n\nMore text';
 		expect(cleanStoredUserMessage(stored)).toBe(stored);
+	});
+
+	it('strips an <editor-context> block that is the entire message (no user text)', () => {
+		const stored = editorContextMarker([{ type: 'workflow', id: 'wf-1', name: 'My workflow' }]);
+		expect(cleanStoredUserMessage(stored)).toBe('');
+	});
+
+	it('strips an <editor-context> block followed by user text', () => {
+		const stored = `${editorContextMarker([{ type: 'workflow', id: 'wf-1' }])}\n\nFix the trigger`;
+		expect(cleanStoredUserMessage(stored)).toBe('Fix the trigger');
+	});
+
+	it('strips a <credential-context> block followed by user text', () => {
+		const stored = `${credentialContextMarker()}\n\nHow do I set up Gmail OAuth?`;
+		expect(cleanStoredUserMessage(stored)).toBe('How do I set up Gmail OAuth?');
+	});
+
+	it('strips stacked leading blocks (editor-context ahead of running-tasks)', () => {
+		const stored = `${editorContextMarker([{ type: 'workflow', id: 'wf-1' }])}\n\n<running-tasks>\n[task info]\n</running-tasks>\n\nFix the trigger`;
+		expect(cleanStoredUserMessage(stored)).toBe('Fix the trigger');
+	});
+
+	it('strips the appended <current-date-time> block', () => {
+		const stored = withCurrentDateTime(
+			'Build me a workflow',
+			'\n## Current Date and Time\n\n2026-06-17T10:00+02:00',
+		);
+		expect(stored).toContain('<current-date-time>');
+		expect(cleanStoredUserMessage(stored)).toBe('Build me a workflow');
+	});
+
+	it('strips both a leading task block and the appended date/time block', () => {
+		const enriched = '<running-tasks>\n[task info]\n</running-tasks>\n\nUser message';
+		const stored = withCurrentDateTime(enriched, '\n2026-06-17T10:00+02:00');
+		expect(cleanStoredUserMessage(stored)).toBe('User message');
+	});
+});
+
+describe('extractEditorContextResourceAttachments', () => {
+	it('reconstructs workflow attachments from the marker', () => {
+		const stored = editorContextMarker([
+			{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
+		]);
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
+		]);
+	});
+
+	it('reconstructs agent attachments from the marker', () => {
+		const stored = editorContextMarker(
+			[{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' }],
+			'The user opened this conversation from the agent editor.',
+		);
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+		]);
+	});
+
+	it('reconstructs mixed workflow and agent attachments from the marker', () => {
+		const stored = editorContextMarker(
+			[
+				{ type: 'workflow', id: 'wf-1', name: 'My workflow' },
+				{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+			],
+			'prose',
+		);
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'workflow', id: 'wf-1', name: 'My workflow' },
+			{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+		]);
+	});
+
+	it('returns an empty array for a message without an editor-context block', () => {
+		expect(extractEditorContextResourceAttachments('Just a normal message')).toEqual([]);
+	});
+
+	it('returns an empty array when the marker JSON is invalid', () => {
+		const stored = '<editor-context>\nnot json\n\nprose\n</editor-context>';
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([]);
 	});
 });

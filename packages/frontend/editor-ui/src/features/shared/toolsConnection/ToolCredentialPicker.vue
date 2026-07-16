@@ -8,13 +8,22 @@ import {
 	type ToolCredentialRef,
 } from './types';
 
-const props = defineProps<{
-	item: ToolConnectionItem;
-	credentials: ToolCredentialRef[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		item: ToolConnectionItem;
+		credentials: ToolCredentialRef[];
+		connectVariant?: 'solid' | 'outline';
+	}>(),
+	{
+		connectVariant: 'solid',
+	},
+);
 
 const emit = defineEmits<{
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
+	'credential-dropdown-open': [item: ToolConnectionItem];
+	'first-credential-connect': [item: ToolConnectionItem];
+	'new-credential-connect': [item: ToolConnectionItem];
 }>();
 
 const i18n = useI18n();
@@ -50,9 +59,12 @@ const filteredCredentials = computed(() => {
 
 watch(isOpen, (open) => {
 	if (open) {
+		emit('credential-dropdown-open', props.item);
 		searchQuery.value = '';
 		void nextTick(() => {
-			(searchInputRef.value?.$el as HTMLElement | undefined)?.querySelector('input')?.focus();
+			(searchInputRef.value?.$el as HTMLElement | undefined)
+				?.querySelector('input')
+				?.focus({ preventScroll: true });
 		});
 	}
 });
@@ -66,15 +78,26 @@ const createAuthType = computed(
 	() => props.credentials.find((c) => c.required)?.authType ?? props.credentials[0]?.authType,
 );
 
-function createCredential() {
+function createCredential(source: 'direct' | 'dropdown') {
 	if (!createAuthType.value) return;
+	if (source === 'direct') {
+		emit('first-credential-connect', props.item);
+	} else {
+		emit('new-credential-connect', props.item);
+	}
 	adapter?.openNewCredential(createAuthType.value);
+	isOpen.value = false;
+}
+
+function editCredential(credentialId: string) {
+	adapter?.openExistingCredential(credentialId);
 	isOpen.value = false;
 }
 </script>
 
 <template>
 	<N8nPopover
+		v-if="isConnected || availableCredentials.length > 0"
 		v-model:open="isOpen"
 		side="bottom"
 		align="end"
@@ -97,7 +120,7 @@ function createCredential() {
 			</button>
 			<N8nButton
 				v-else
-				variant="solid"
+				:variant="connectVariant"
 				size="small"
 				data-test-id="tool-credential-picker-trigger-connect"
 			>
@@ -130,19 +153,28 @@ function createCredential() {
 				<li
 					v-for="cred in filteredCredentials"
 					:key="`${cred.authType}:${cred.id}`"
-					:class="[$style.row, { [$style.rowActive]: selectedCredentialIds.includes(cred.id) }]"
+					:class="$style.row"
 					data-test-id="tool-credential-picker-row"
 					:data-credential-id="cred.id"
 					:data-auth-type="cred.authType"
 					@click="pickCredential(cred.authType, cred.id)"
 				>
 					<span :class="$style.rowLabel">{{ cred.name }}</span>
-					<N8nIcon
-						v-if="selectedCredentialIds.includes(cred.id)"
-						icon="check"
-						:size="14"
-						:class="$style.rowCheck"
-					/>
+					<span :class="$style.rowActions">
+						<span :class="$style.rowCheck" aria-hidden="true">
+							<N8nIcon v-if="selectedCredentialIds.includes(cred.id)" icon="check" :size="14" />
+						</span>
+						<button
+							type="button"
+							:class="$style.rowEdit"
+							:title="i18n.baseText('generic.edit')"
+							:aria-label="i18n.baseText('generic.edit')"
+							data-test-id="tool-credential-picker-edit"
+							@click.stop="editCredential(cred.id)"
+						>
+							<N8nIcon icon="square-pen" :size="14" />
+						</button>
+					</span>
 				</li>
 			</ul>
 			<button
@@ -150,13 +182,22 @@ function createCredential() {
 				type="button"
 				:class="$style.createRow"
 				data-test-id="tool-credential-picker-create"
-				@click="createCredential"
+				@click="createCredential('dropdown')"
 			>
 				<N8nIcon icon="plus" :size="14" />
 				<span>{{ i18n.baseText('tools.connection.credentialPicker.create') }}</span>
 			</button>
 		</template>
 	</N8nPopover>
+	<N8nButton
+		v-else
+		:variant="connectVariant"
+		size="small"
+		data-test-id="tool-credential-picker-trigger-connect"
+		@click="createCredential('direct')"
+	>
+		<span>{{ i18n.baseText('tools.connection.action.connect') }}</span>
+	</N8nButton>
 </template>
 
 <style lang="scss" module>
@@ -167,19 +208,14 @@ function createCredential() {
 .connectedPill {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	background: none;
 	border: 0;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	cursor: pointer;
-	border-radius: var(--border-radius--base);
 	white-space: nowrap;
-
-	&:hover {
-		background: var(--color--background--light-2);
-	}
 }
 
 .statusDot {
@@ -209,23 +245,23 @@ function createCredential() {
 .row {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--2xs);
+	padding: var(--spacing--2xs);
 	cursor: pointer;
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--2xs);
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
 	transition: background-color 80ms ease;
 
 	&:hover {
 		background: var(--color--background--light-2);
-	}
-}
 
-.rowActive {
-	color: var(--color--text);
-	font-weight: var(--font-weight--medium);
+		.rowEdit {
+			opacity: 1;
+			pointer-events: auto;
+			color: var(--color--text);
+		}
+	}
 }
 
 .rowLabel {
@@ -234,9 +270,32 @@ function createCredential() {
 	white-space: nowrap;
 }
 
-.rowCheck {
-	color: var(--color--text--tint-1);
+.rowActions {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+.rowCheck {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color--text--tint-1);
+}
+
+.rowEdit {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 0;
+	opacity: 0;
+	background: none;
+	pointer-events: none;
+	color: var(--color--text--tint-1);
+	cursor: pointer;
 }
 
 .emptyRow {
@@ -249,14 +308,15 @@ function createCredential() {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	width: 100%;
-	padding: var(--spacing--2xs);
+	padding: var(--spacing--xs);
 	border-top: 1px solid var(--color--foreground);
 	background: none;
 	border-left: 0;
 	border-right: 0;
 	border-bottom: 0;
 	color: var(--color--text);
-	font-size: var(--font-size--2xs);
+	border-bottom-left-radius: var(--radius--2xs);
+	border-bottom-right-radius: var(--radius--2xs);
 	cursor: pointer;
 	text-align: left;
 

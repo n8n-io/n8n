@@ -5,22 +5,24 @@ import type {
 	InstanceAiToolCallState,
 	TaskList,
 } from '@n8n/api-types';
-import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
+import {
+	buildTimelineBlocks,
+	extractArtifacts,
+	isStreamingTimelineEntry,
+	type ArtifactInfo,
+} from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
-import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
-import DelegateCard from './DelegateCard.vue';
-import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
-import ToolCallStep from './ToolCallStep.vue';
+import ThinkingBlock from './ThinkingBlock.vue';
+import TimelineTextSegment from './TimelineTextSegment.vue';
 
 const i18n = useI18n();
 const thread = useThread();
@@ -74,7 +76,7 @@ function formatArtifactMetadata(artifact: ArtifactInfo): string {
 		parts.push(i18n.baseText('instanceAi.artifactCard.updatedJustNow'));
 	}
 
-	return parts.join(' \u2502 ');
+	return parts.join(' │ ');
 }
 
 const props = withDefaults(
@@ -92,10 +94,6 @@ const props = withDefaults(
 
 const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
 
-defineSlots<{
-	'after-tool-call'?: (props: { toolCall: InstanceAiToolCallState }) => unknown;
-}>();
-
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
 const toolCallsById = computed(() => {
 	const map: Record<string, InstanceAiToolCallState> = {};
@@ -104,6 +102,24 @@ const toolCallsById = computed(() => {
 	}
 	return map;
 });
+
+/** Index children by agentId for O(1) lookup and proper reactivity tracking. */
+const childrenById = computed(() => {
+	const map: Record<string, InstanceAiAgentNode> = {};
+	for (const child of props.agentNode.children) {
+		map[child.agentId] = child;
+	}
+	return map;
+});
+
+const renderBlocks = computed(() =>
+	buildTimelineBlocks(
+		timelineEntries.value,
+		toolCallsById.value,
+		childrenById.value,
+		props.agentNode.status,
+	),
+);
 
 function getPlanTasks(tc: InstanceAiToolCallState): PlannedTaskArg[] {
 	return (
@@ -147,15 +163,6 @@ function isPlanCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	if (requestId && thread.resolvedConfirmationIds.has(requestId)) return true;
 	return false;
 }
-
-/** Index children by agentId for O(1) lookup and proper reactivity tracking. */
-const childrenById = computed(() => {
-	const map: Record<string, InstanceAiAgentNode> = {};
-	for (const child of props.agentNode.children) {
-		map[child.agentId] = child;
-	}
-	return map;
-});
 
 function handlePlanApprove(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
@@ -239,91 +246,52 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 </script>
 
 <template>
-	<div :class="$style.timeline">
-		<template v-for="(entry, idx) in timelineEntries" :key="idx">
-			<!-- Text segment -->
-			<N8nText
-				v-if="entry.type === 'text'"
-				size="large"
+	<div v-if="renderBlocks.length > 0" :class="$style.timeline">
+		<template v-for="block in renderBlocks" :key="block.key">
+			<!-- Collapsible thinking trace: reasoning + narration + tool calls -->
+			<ThinkingBlock
+				v-if="block.type === 'thinking'"
+				:agent-node="props.agentNode"
+				:entries="block.entries"
+				:active="block.active"
+				:awaiting-input="block.active && thread.isAwaitingConfirmation"
+			/>
+
+			<!-- User-facing text (leaf keeps the per-token content read out of this render) -->
+			<TimelineTextSegment
+				v-else-if="block.type === 'text'"
+				:entry="block.entry"
 				:compact="props.compact"
+				:streaming="isStreamingTimelineEntry(props.agentNode, block.entry)"
 				:class="$style.timelineItem"
-			>
-				<InstanceAiMarkdown :content="entry.content" />
-			</N8nText>
+			/>
 
-			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
-			<template
-				v-else-if="
-					entry.type === 'tool-call' &&
-					toolCallsById[entry.toolCallId] &&
-					!HIDDEN_TOOLS.has(toolCallsById[entry.toolCallId].toolName)
-				"
-			>
-				<TaskChecklist
-					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
-					:tasks="props.agentNode.tasks"
-				/>
-				<DelegateCard
-					v-else-if="toolCallsById[entry.toolCallId].renderHint === 'delegate'"
-					:args="toolCallsById[entry.toolCallId].args"
-					:result="toolCallsById[entry.toolCallId].result"
-					:is-loading="toolCallsById[entry.toolCallId].isLoading"
-					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
-				/>
-				<!-- Hidden tool calls (builder/data-table/eval-setup handled by child agent via AgentSection) -->
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'eval-setup'" />
-				<PlanReviewPanel
-					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
-					:key="toolCallsById[entry.toolCallId].confirmation?.requestId"
-					:planned-tasks="getPlanTasks(toolCallsById[entry.toolCallId])"
-					:status="getPlanReviewStatus(toolCallsById[entry.toolCallId])"
-					:updating="isPlanReviewUpdating(toolCallsById[entry.toolCallId])"
-					:read-only="isPlanCardReadOnly(toolCallsById[entry.toolCallId])"
-					:expired="toolCallsById[entry.toolCallId].confirmation?.expired"
-					@approve="handlePlanApprove(toolCallsById[entry.toolCallId])"
-					@ask-for-edits="handlePlanAskForEdits(toolCallsById[entry.toolCallId])"
-					@deny="handlePlanDeny(toolCallsById[entry.toolCallId])"
-				/>
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
-				<!-- Answered questions (read-only after resolution) -->
-				<AnsweredQuestions
-					v-else-if="
-						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
-						!toolCallsById[entry.toolCallId].isLoading
-					"
-					:tool-call="toolCallsById[entry.toolCallId]"
-				/>
-				<!-- Suppress default tool call while questions are pending -->
-				<template
-					v-else-if="
-						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
-						toolCallsById[entry.toolCallId].isLoading
-					"
-				/>
-				<ToolCallStep v-else :tool-call="toolCallsById[entry.toolCallId]" :show-connector="true">
-					<slot name="after-tool-call" :tool-call="toolCallsById[entry.toolCallId]" />
-				</ToolCallStep>
-			</template>
+			<TaskChecklist v-else-if="block.type === 'tasks'" :tasks="props.agentNode.tasks" />
 
-			<!-- Child agent — flat section. Running builder sub-agents are
-				 extracted and rendered at the bottom of the conversation by
-				 InstanceAiView; once a builder finishes it reappears here in its
-				 chronological slot. -->
-			<template
-				v-else-if="
-					entry.type === 'child' &&
-					childrenById[entry.agentId] &&
-					!isActiveBuilderAgent(childrenById[entry.agentId])
-				"
-			>
-				<AgentSection :agent-node="childrenById[entry.agentId]" />
+			<PlanReviewPanel
+				v-else-if="block.type === 'plan-review'"
+				:key="block.toolCall.confirmation?.requestId"
+				:planned-tasks="getPlanTasks(block.toolCall)"
+				:status="getPlanReviewStatus(block.toolCall)"
+				:updating="isPlanReviewUpdating(block.toolCall)"
+				:read-only="isPlanCardReadOnly(block.toolCall)"
+				:expired="block.toolCall.confirmation?.expired"
+				@approve="handlePlanApprove(block.toolCall)"
+				@ask-for-edits="handlePlanAskForEdits(block.toolCall)"
+				@deny="handlePlanDeny(block.toolCall)"
+			/>
 
-				<!-- Artifact cards for completed subagents (skip when inside grouped view) -->
+			<!-- Answered questions (read-only after resolution) -->
+			<AnsweredQuestions v-else-if="block.type === 'questions'" :tool-call="block.toolCall" />
+
+			<!-- Child agent — flat section -->
+			<template v-else-if="block.type === 'child'">
+				<AgentSection :agent-node="block.child" />
+
+				<!-- Artifact cards for completed subagents (skip when inside scoped view) -->
 				<template v-if="!props.visibleEntries">
 					<ArtifactCard
-						v-for="artifact in extractArtifacts(childrenById[entry.agentId])"
+						v-for="artifact in extractArtifacts(block.child)"
 						:key="artifact.resourceId"
 						:type="artifact.type"
 						:name="resolveArtifactName(artifact)"
@@ -340,9 +308,11 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 
 <style lang="scss" module>
 .timeline {
+	/** Keep in sync with the nested activity rail overshoot in N8nAiActivityStep. */
+	--n8n--ai-activity-step-gap: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--n8n--ai-activity-step-gap);
 }
 
 .timelineItem {

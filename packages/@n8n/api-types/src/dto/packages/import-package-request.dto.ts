@@ -8,10 +8,14 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'folderId',
 	'credentialMatchingMode',
 	'credentialMissingMode',
-	'credentialBindings',
+	'bindings',
 	'workflowConflictPolicy',
 	'workflowPublishingPolicy',
 	'workflowIdPolicy',
+	'folderConflictPolicy',
+	'dataTableMatchingMode',
+	'dataTableMissingMode',
+	'dataTableSchemaConflictPolicy',
 ] as const;
 
 /** Multipart text fields: empty / whitespace-only values become `undefined`. */
@@ -24,54 +28,62 @@ const optionalFormId = z
 		return trimmed.length > 0 ? trimmed : undefined;
 	});
 
-function isStringRecord(value: unknown): value is Record<string, string> {
-	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-	return Object.entries(value).every(
-		([sourceId, targetId]) =>
-			sourceId.length > 0 && typeof targetId === 'string' && targetId.length > 0,
-	);
-}
+const BINDINGS_ERROR_MESSAGE =
+	'bindings must be a JSON object, e.g. {"credentials":{"<sourceId>":"<targetId>"}}';
 
-const credentialBindingsSchema = z
+const bindingMapSchema = z.record(z.string().min(1), z.string().min(1));
+const bindingsObjectSchema = z.object({ credentials: bindingMapSchema }).partial().strict();
+
+type BindingsInput = z.infer<typeof bindingsObjectSchema>;
+
+const bindingsSchema = z
 	.string()
 	.optional()
-	.transform((value, ctx) => {
+	.transform((value, ctx): BindingsInput => {
 		if (value === undefined || value.trim().length === 0) return {};
 
 		let parsed: unknown;
 		try {
 			parsed = JSON.parse(value);
 		} catch {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message:
-					'credentialBindings must be a JSON object mapping source credential ids to target credential ids',
-			});
+			ctx.addIssue({ code: z.ZodIssueCode.custom, message: BINDINGS_ERROR_MESSAGE });
 			return z.NEVER;
 		}
 
-		if (!isStringRecord(parsed)) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message:
-					'credentialBindings must be a JSON object mapping source credential ids to target credential ids',
-			});
+		const result = bindingsObjectSchema.safeParse(parsed);
+		if (!result.success) {
+			for (const issue of result.error.issues) {
+				ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue.message, path: issue.path });
+			}
 			return z.NEVER;
 		}
 
-		return parsed;
+		return result.data;
 	});
 
 export class ImportPackageRequestDto extends Z.class({
 	projectId: optionalFormId,
 	folderId: optionalFormId,
-	credentialMatchingMode: z.enum(['id-only']).optional().default('id-only'),
-	credentialMissingMode: z.enum(['must-preexist']).optional().default('must-preexist'),
-	credentialBindings: credentialBindingsSchema,
+	credentialMatchingMode: z
+		.enum(['id-only', 'name-and-type', 'type-only'])
+		.optional()
+		.default('id-only'),
+	credentialMissingMode: z.enum(['must-preexist', 'create-stub']).optional().default('create-stub'),
+	bindings: bindingsSchema,
 	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']),
 	workflowPublishingPolicy: z
 		.enum(['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'])
 		.optional()
 		.default('preserve-published-state'),
 	workflowIdPolicy: z.enum(['new', 'source']).optional().default('new'),
+	folderConflictPolicy: z.enum(['merge', 'fail']).optional().default('merge'),
+	dataTableMatchingMode: z.enum(['by-id']).optional().default('by-id'),
+	dataTableMissingMode: z
+		.enum(['create', 'must-preexist', 'do-nothing'])
+		.optional()
+		.default('create'),
+	dataTableSchemaConflictPolicy: z
+		.enum(['keep-existing', 'fail'])
+		.optional()
+		.default('keep-existing'),
 }) {}

@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { UnexpectedError } from 'n8n-workflow';
 import type {
 	Workflow,
@@ -9,7 +10,6 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowActivateMode,
 	ITriggerResponse,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
 	ExecutionError,

@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/ai-workflow-builder",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T12:19:04.693Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            3989,
+            3871,
+            3814
+          ],
+          "min": 3814,
+          "median": 3871,
+          "mean": 3891
+        },
+        "build": {
+          "runsMs": [
+            3252,
+            3539,
+            3178
+          ],
+          "min": 3178,
+          "median": 3252,
+          "mean": 3323
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-09T13:04:08.936Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1188,
+            1135,
+            1191
+          ],
+          "min": 1135,
+          "median": 1188,
+          "mean": 1171
+        },
+        "build": {
+          "runsMs": [
+            1533,
+            2534,
+            2174
+          ],
+          "min": 1533,
+          "median": 2174,
+          "mean": 2080
+        }
+      }
+    }
+  }
+}

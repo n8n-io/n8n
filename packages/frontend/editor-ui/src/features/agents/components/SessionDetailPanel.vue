@@ -15,6 +15,7 @@ import {
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
+import { parseIntegrationActionCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
@@ -59,6 +60,16 @@ function formatTimestamp(ts: number): string {
 	const { date, time } = convertToDisplayDate(new Date(ts).toISOString());
 	return `${date} ${time}`;
 }
+
+/**
+ * Card carried by an integration action tool call (any `<platform>_action`),
+ * rendered as the interaction preview instead of raw input/output JSON.
+ */
+const actionCard = computed(() =>
+	props.item?.kind === 'tool'
+		? parseIntegrationActionCard(ensureParsed(props.item.toolInput))?.card
+		: undefined,
+);
 
 function ensureParsed(value: unknown): unknown {
 	if (typeof value === 'string') {
@@ -124,6 +135,7 @@ function highlightJson(value: unknown, indent = 0): string {
 
 const toolDisplayName = computed((): string => {
 	if (!props.item || (props.item.kind !== 'tool' && props.item.kind !== 'suspension')) return '';
+	if (props.item.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
 	const key = builtinToolLabelKey(props.item.toolName, props.item.toolOutput);
 	return key ? i18n.baseText(key) : formatToolNameForDisplay(props.item.toolName);
 });
@@ -221,7 +233,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						<dt :class="$style.label">{{ i18n.baseText('agentSessions.timeline.created') }}</dt>
 						<dd :class="$style.value">{{ formatTimestamp(item.timestamp) }}</dd>
 					</dl>
-					<div :class="$style.executionButton" v-if="fullExecutionHref">
+					<div v-if="fullExecutionHref" :class="$style.executionButton">
 						<N8nButton
 							variant="outline"
 							size="small"
@@ -289,8 +301,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'tool'">
-						<template v-if="item.toolName === 'rich_interaction'">
-							<RichInteractionCard :input="item.toolInput" :output="item.toolOutput" />
+						<template v-if="actionCard">
+							<RichInteractionCard :input="actionCard" :output="ensureParsed(item.toolOutput)" />
 						</template>
 						<template v-else>
 							<div>

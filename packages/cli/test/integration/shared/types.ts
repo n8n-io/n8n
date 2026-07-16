@@ -51,7 +51,8 @@ type EndpointGroup =
 	| 'third-party-licenses'
 	| 'mcp'
 	| 'workflowDependencies'
-	| 'encryption-keys';
+	| 'encryption-keys'
+	| 'test-webhooks';
 
 type ModuleName =
 	| 'insights'
@@ -72,6 +73,8 @@ export interface SetupProps {
 	enabledFeatures?: BooleanLicenseFeature[];
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
 	modules?: ModuleName[];
+	/** Override the default test timeout (ms) for the shared `beforeAll` setup hook. */
+	setupTimeout?: number;
 }
 
 export type SuperAgentTest = TestAgent;

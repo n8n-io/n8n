@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils/is-record';
+
 const MAX_LOG_ERROR_LENGTH = 1_000;
 const MAX_LOG_ERROR_INPUT_LENGTH = 8_000;
 const MAX_LOG_ERROR_SANITIZE_INPUT_LENGTH = MAX_LOG_ERROR_INPUT_LENGTH + MAX_LOG_ERROR_LENGTH;
@@ -14,10 +16,6 @@ const KEY_VALUE_SECRET_PATTERN = new RegExp(
 );
 const AUTHORIZATION_PATTERN =
 	/\b(authorization)(\s*[:=]\s*)(["']?)(?:(Bearer|Basic)\s+)?[^\s"',;&}]+(\3)/gi;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
 
 function getStringProperty(value: unknown, keys: string[]): string | undefined {
 	if (!isRecord(value)) return undefined;

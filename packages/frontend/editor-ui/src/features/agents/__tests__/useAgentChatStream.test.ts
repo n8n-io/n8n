@@ -1,12 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ref, nextTick } from 'vue';
-import {
-	APPROVAL_TOOL_NAME,
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
-	type AgentSseEvent,
-} from '@n8n/api-types';
+import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, type AgentSseEvent } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
@@ -19,6 +14,18 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn() }),
 }));
+
+const getChatMessagesMock = vi.fn();
+const getTestChatMessagesMock = vi.fn();
+
+vi.mock('../composables/useAgentApi', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../composables/useAgentApi')>();
+	return {
+		...actual,
+		getChatMessages: (...args: unknown[]) => getChatMessagesMock(...args),
+		getTestChatMessages: (...args: unknown[]) => getTestChatMessagesMock(...args),
+	};
+});
 
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 
@@ -39,11 +46,11 @@ function makeSseResponse(events: AgentSseEvent[]): Response {
 	});
 }
 
-function buildHook(endpoint: 'build' | 'chat' = 'build') {
+function buildHook(continueSessionId?: string) {
 	return useAgentChatStream({
 		projectId: ref('p1'),
 		agentId: ref('a1'),
-		endpoint: ref<'build' | 'chat'>(endpoint),
+		...(continueSessionId ? { continueSessionId: ref(continueSessionId) } : {}),
 	});
 }
 
@@ -63,106 +70,6 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		globalThis.fetch = originalFetch;
 		vi.stubGlobal('localStorage', originalLocalStorage);
 		vi.restoreAllMocks();
-	});
-
-	it('renders an interactive ask_llm card and stamps the runId from the suspended event', async () => {
-		const events: AgentSseEvent[] = [
-			{
-				type: 'tool-call-suspended',
-				payload: {
-					toolCallId: 'tc-1',
-					runId: 'run-42',
-					toolName: ASK_LLM_TOOL_NAME,
-					input: { purpose: 'main model' },
-				},
-			},
-			{ type: 'done' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('hello');
-		await nextTick();
-
-		expect(hook.messages.value).toHaveLength(2);
-		const assistant = hook.messages.value[1];
-		expect(assistant.role).toBe('assistant');
-		expect(assistant.status).toBe('awaitingUser');
-		expect(assistant.toolCalls).toHaveLength(1);
-		expect(assistant.toolCalls?.[0].state).toBe('suspended');
-		expect(assistant.interactive?.toolName).toBe(ASK_LLM_TOOL_NAME);
-		expect(assistant.interactive?.runId).toBe('run-42');
-		expect(assistant.interactive?.resolvedValue).toBeUndefined();
-		expect(assistant.interactive?.resolvedAt).toBeUndefined();
-	});
-
-	it('flips the card to resolved state when a follow-up `tool-result` carries the matching toolCallId', async () => {
-		const events: AgentSseEvent[] = [
-			{
-				type: 'tool-call-suspended',
-				payload: {
-					toolCallId: 'tc-1',
-					runId: 'run-42',
-					toolName: ASK_CREDENTIAL_TOOL_NAME,
-					input: { purpose: 'Slack', credentialType: 'slackApi' },
-				},
-			},
-			{
-				type: 'tool-result',
-				toolCallId: 'tc-1',
-				toolName: ASK_CREDENTIAL_TOOL_NAME,
-				output: { credentialId: 'cred-1', credentialName: 'Acme Slack' },
-			},
-			{ type: 'done' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('add slack');
-		await nextTick();
-
-		const assistant = hook.messages.value[1];
-		expect(assistant.toolCalls?.[0].state).toBe('done');
-		expect(assistant.status).toBe('success');
-		expect(assistant.interactive?.resolvedAt).toBeDefined();
-		expect(assistant.interactive?.resolvedValue).toEqual({
-			credentialId: 'cred-1',
-			credentialName: 'Acme Slack',
-		});
-	});
-
-	it('does NOT lose the interactive card when tool-call-suspended arrives after a tool-call already ran', async () => {
-		// SDK ordering: the `tool-call` event lands first, then
-		// `tool-call-suspended` marks it as awaiting user input.
-		const events: AgentSseEvent[] = [
-			{
-				type: 'tool-call',
-				toolCallId: 'tc-1',
-				toolName: ASK_LLM_TOOL_NAME,
-				input: { purpose: 'main' },
-			},
-			{
-				type: 'tool-call-suspended',
-				payload: {
-					toolCallId: 'tc-1',
-					runId: 'run-7',
-					toolName: ASK_LLM_TOOL_NAME,
-					input: { purpose: 'main' },
-				},
-			},
-			{ type: 'done' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('build me an agent');
-		await nextTick();
-
-		const assistant = hook.messages.value[1];
-		expect(assistant.toolCalls).toHaveLength(1);
-		expect(assistant.toolCalls?.[0].state).toBe('suspended');
-		expect(assistant.interactive?.runId).toBe('run-7');
-		expect(assistant.status).toBe('awaitingUser');
 	});
 
 	it('renders an approval card when preview chat suspends for tool approval', async () => {
@@ -190,7 +97,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		];
 		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
 
-		const hook = buildHook('chat');
+		const hook = buildHook();
 		await hook.sendMessage('calculate 2 + 2');
 		await nextTick();
 
@@ -246,7 +153,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-		const hook = buildHook('chat');
+		const hook = buildHook();
 		await hook.sendMessage('calculate 2 + 2');
 		await nextTick();
 
@@ -334,18 +241,18 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		// in place, not push a duplicate into a freshly-minted ChatMessage.
 		const events: AgentSseEvent[] = [
 			{ type: 'start-step' },
-			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: ASK_LLM_TOOL_NAME },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'calculator' },
 			{
 				type: 'tool-call',
 				toolCallId: 'tc-1',
-				toolName: ASK_LLM_TOOL_NAME,
-				input: { purpose: 'main' },
+				toolName: 'calculator',
+				input: { input: '2 + 2' },
 			},
 			{ type: 'finish-step' },
 			{
 				type: 'tool-execution-start',
 				toolCallId: 'tc-1',
-				toolName: ASK_LLM_TOOL_NAME,
+				toolName: 'calculator',
 				startTime: 1_000,
 			},
 			{
@@ -353,8 +260,8 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				payload: {
 					toolCallId: 'tc-1',
 					runId: 'run-9',
-					toolName: ASK_LLM_TOOL_NAME,
-					input: { purpose: 'main' },
+					toolName: 'calculator',
+					input: { type: 'approval', toolName: 'calculator', args: { input: '2 + 2' } },
 				},
 			},
 			{ type: 'done' },
@@ -674,5 +581,342 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		const tc = hook.messages.value[1].toolCalls?.[0];
 		expect(tc?.startTime).toBe(1_000);
 		expect(tc?.endTime).toBe(1_014);
+	});
+
+	it('preserves tool input and stores the suspend payload for integration actions', async () => {
+		const cardInput = {
+			action: 'respond',
+			input: { message: { card: { components: [{ type: 'button', value: 'yes' }] } } },
+		};
+		const sidecar = {
+			type: 'integration_action',
+			action: 'respond',
+			integrationConnectionId: 'n8n_chat',
+			messageContext: null,
+		};
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: cardInput,
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-1',
+					runId: 'run-1',
+					toolName: N8N_CHAT_ACTION_TOOL_NAME,
+					input: sidecar,
+				},
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('hello');
+		await nextTick();
+
+		const msg = hook.messages.value.at(-1)!;
+		const tc = msg.toolCalls!.find((t) => t.toolCallId === 'tc-1')!;
+		expect(tc.input).toEqual(cardInput); // NOT clobbered by the sidecar
+		expect(tc.suspendPayload).toEqual(sidecar);
+		expect(tc.state).toBe('suspended');
+		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(msg.interactive?.runId).toBe('run-1');
+		expect(msg.status).toBe('awaitingUser');
+	});
+
+	it('renders a resolved display-only n8n_chat card when its tool result arrives', async () => {
+		// Display-only cards (no interactive components) never suspend — the
+		// card must still attach to the message when the tool resolves.
+		const cardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					text: 'Snapshot:',
+					card: {
+						title: 'Account Snapshot',
+						components: [{ type: 'fields', fields: [{ label: 'ARR', value: '$1m' }] }],
+					},
+				},
+			},
+		};
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: cardInput,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				output: { ok: true },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('show me a snapshot');
+		await nextTick();
+
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(msg.interactive?.resolvedAt).toBeDefined();
+		expect(msg.status).not.toBe('awaitingUser');
+	});
+
+	it('keeps multiple resolved n8n_chat cards from one streamed assistant message', async () => {
+		const firstCardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						title: 'First card',
+						components: [{ type: 'fields', fields: [{ label: 'Status', value: 'Ready' }] }],
+					},
+				},
+			},
+		};
+		const secondCardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						title: 'Second card',
+						components: [{ type: 'fields', fields: [{ label: 'Owner', value: 'Sales' }] }],
+					},
+				},
+			},
+		};
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-card-1',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: firstCardInput,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-card-1',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				output: { ok: true },
+			},
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-card-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: secondCardInput,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-card-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				output: { ok: true },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('show two cards');
+		await nextTick();
+
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.toolCalls?.map((tc) => tc.toolCallId)).toEqual(['tc-card-1', 'tc-card-2']);
+		expect(msg.interactives?.map((payload) => payload.toolCallId)).toEqual([
+			'tc-card-1',
+			'tc-card-2',
+		]);
+		expect(
+			msg.interactives?.every((payload) => payload.toolName === N8N_CHAT_ACTION_TOOL_NAME),
+		).toBe(true);
+	});
+
+	it('keeps the assistant message awaiting while another card in the same message is still open', async () => {
+		const firstCardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [{ type: 'button', label: 'Yes', value: 'yes' }],
+					},
+				},
+			},
+		};
+		const secondCardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [{ type: 'button', label: 'No', value: 'no' }],
+					},
+				},
+			},
+		};
+		const sidecar = {
+			type: 'integration_action',
+			action: 'respond',
+			integrationConnectionId: 'n8n_chat',
+			messageContext: null,
+		};
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-card-1',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: firstCardInput,
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-card-1',
+					runId: 'run-card-1',
+					toolName: N8N_CHAT_ACTION_TOOL_NAME,
+					input: sidecar,
+				},
+			},
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-card-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: secondCardInput,
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-card-2',
+					runId: 'run-card-2',
+					toolName: N8N_CHAT_ACTION_TOOL_NAME,
+					input: sidecar,
+				},
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-card-1',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				output: { type: 'button', value: 'yes' },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('show two choices');
+		await nextTick();
+
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.status).toBe('awaitingUser');
+		expect(
+			msg.interactives?.find((payload) => payload.toolCallId === 'tc-card-1')?.resolvedAt,
+		).toBe(1);
+		expect(
+			msg.interactives?.find((payload) => payload.toolCallId === 'tc-card-2')?.resolvedAt,
+		).toBeUndefined();
+	});
+});
+
+describe('useAgentChatStream — loadHistory', () => {
+	let originalFetch: typeof fetch;
+	let originalLocalStorage: typeof globalThis.localStorage | undefined;
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
+		originalLocalStorage = globalThis.localStorage;
+		vi.stubGlobal('localStorage', {
+			getItem: vi.fn(() => ''),
+		});
+		getChatMessagesMock.mockReset();
+		getTestChatMessagesMock.mockReset();
+	});
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		vi.stubGlobal('localStorage', originalLocalStorage);
+		vi.restoreAllMocks();
+	});
+
+	it('re-arms a suspended n8n_chat_action card from the chat history sidecar', async () => {
+		const cardInput = {
+			action: 'respond',
+			input: { message: { card: { components: [{ type: 'button', value: 'ok' }] } } },
+		};
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'm1',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: N8N_CHAT_ACTION_TOOL_NAME,
+							toolCallId: 'tc-1',
+							input: cardInput,
+							state: 'pending',
+						},
+					],
+				},
+			],
+			openSuspensions: [{ toolCallId: 'tc-1', runId: 'run-9' }],
+		});
+
+		// loadHistory uses getTestChatMessages when no continue session id is set
+		const hook = useAgentChatStream({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+		});
+		await hook.loadHistory();
+
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(msg.interactive?.runId).toBe('run-9');
+		expect(msg.status).toBe('awaitingUser');
+	});
+
+	it('re-arms a suspended n8n_chat_action card from continued session history', async () => {
+		const cardInput = {
+			action: 'respond',
+			input: { message: { card: { components: [{ type: 'button', value: 'approve' }] } } },
+		};
+		getChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'm1',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: N8N_CHAT_ACTION_TOOL_NAME,
+							toolCallId: 'tc-continued',
+							input: cardInput,
+							state: 'pending',
+						},
+					],
+				},
+			],
+			openSuspensions: [{ toolCallId: 'tc-continued', runId: 'run-continued' }],
+		});
+
+		const hook = useAgentChatStream({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			continueSessionId: ref('thread-1'),
+		});
+		await hook.loadHistory();
+
+		expect(getChatMessagesMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+		);
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(msg.interactive?.runId).toBe('run-continued');
+		expect(msg.status).toBe('awaitingUser');
 	});
 });

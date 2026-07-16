@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { detectAuthenticationParameterValue } from '@n8n/ai-utilities/node-catalog';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ExploreResourcesParams, ExploreResourcesResult } from '@n8n/instance-ai';
@@ -61,11 +62,8 @@ export class NodeResourceExplorerService {
 		// `getNodeParameter('authentication', 0)` falls back to the wrong default when
 		// the parameter isn't set — pre-fill it so cred-resolution picks the right slot.
 		if (!currentNodeParameters.authentication && nodeDescription) {
-			const authValue = findAuthenticationValueForCredential(
-				nodeDescription,
-				params.credentialType,
-			);
-			if (authValue) currentNodeParameters.authentication = authValue;
+			const authValue = detectAuthenticationParameterValue(nodeDescription, params.credentialType);
+			if (authValue !== undefined) currentNodeParameters.authentication = authValue;
 		}
 
 		const additionalData = await getBase({
@@ -99,7 +97,8 @@ export class NodeResourceExplorerService {
 						value: r.value,
 						url: r.url,
 					})),
-					paginationToken: result.paginationToken,
+					paginationToken:
+						typeof result.paginationToken === 'string' ? result.paginationToken : undefined,
 					...(builderHint ? { builderHint } : {}),
 				};
 			}
@@ -135,33 +134,6 @@ export class NodeResourceExplorerService {
 			return undefined;
 		}
 	}
-}
-
-/**
- * Find the `authentication` parameter option whose linked credential type
- * matches the supplied credential type, so the dynamic param call resolves
- * the credential without the node falling back to its default auth mode.
- */
-function findAuthenticationValueForCredential(
-	nodeDescription: INodeTypeDescription,
-	credentialType: string,
-): string | undefined {
-	const authProp = nodeDescription.properties.find((p) => p.name === 'authentication');
-	if (!authProp?.options) return undefined;
-
-	for (const opt of authProp.options) {
-		if (typeof opt !== 'object' || !('value' in opt) || typeof opt.value !== 'string') continue;
-		const credTypes = nodeDescription.credentials
-			?.filter((c) => {
-				const show = c.displayOptions?.show?.authentication;
-				return Array.isArray(show) && show.includes(opt.value);
-			})
-			.map((c) => c.name);
-		if (credTypes?.includes(credentialType)) {
-			return opt.value;
-		}
-	}
-	return undefined;
 }
 
 /**

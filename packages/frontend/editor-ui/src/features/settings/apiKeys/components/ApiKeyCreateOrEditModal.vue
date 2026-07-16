@@ -99,10 +99,13 @@ const props = withDefaults(
 	defineProps<{
 		mode?: 'new' | 'edit';
 		activeId?: string;
+		/** When set, the modal opens straight into the created view to show a freshly rotated key. */
+		rotatedApiKey?: ApiKeyWithRawValue | null;
 	}>(),
 	{
 		mode: 'new',
 		activeId: '',
+		rotatedApiKey: null,
 	},
 );
 
@@ -133,6 +136,12 @@ const isCustomDateInThePast = (date: Date) => Date.now() > date.getTime();
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.api'));
+
+	if (props.rotatedApiKey) {
+		newApiKey.value = props.rotatedApiKey;
+		rawApiKey.value = props.rotatedApiKey.rawApiKey;
+		return;
+	}
 
 	setTimeout(() => {
 		inputRef.value?.focus();
@@ -240,6 +249,9 @@ async function copyApiKey() {
 }
 
 const modalTitle = computed(() => {
+	if (props.rotatedApiKey) {
+		return i18n.baseText('settings.api.rotate.success.title');
+	}
 	if (isReadOnly.value && currentApiKey.value?.owner) {
 		return i18n.baseText('settings.api.view.modal.title.readonly', {
 			interpolate: { email: currentApiKey.value.owner.email },
@@ -422,6 +434,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 							@click="showRevokeConfirm = true"
 						/>
 						<N8nButton
+							variant="outline"
 							:label="i18n.baseText('settings.api.view.modal.close.button')"
 							data-test-id="api-key-readonly-close"
 							@click="closeModal"

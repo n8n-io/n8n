@@ -10,8 +10,10 @@
 import fs from 'fs';
 import path from 'path';
 
+import { getTestCaseAnchorId } from './report-anchors';
 import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
+import { getCaseRunStatus, getCaseRunStatusLabel, getRunScoredCounts } from '../summary';
 import type {
 	BuildExpectationResult,
 	ConversationMetrics,
@@ -22,6 +24,7 @@ import type {
 	TurnCounter,
 	WorkflowTestCaseResult,
 } from '../types';
+import { caseDisplayPrompt } from '../utils/conversation-text';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -36,7 +39,7 @@ function escapeHtml(str: string): string {
 		.replace(/'/g, '&#39;');
 }
 
-type StageStatus = 'pass' | 'fail';
+type StageStatus = 'pass' | 'fail' | 'na';
 
 interface StageReview {
 	label: string;
@@ -278,7 +281,7 @@ function renderStageReview(stage: StageReview): string {
 				<span class="review-status-dot ${stage.status}"></span>
 				<span class="review-stage-label">${escapeHtml(stage.label)}</span>
 			</div>
-			<span class="review-status-pill ${stage.status}">${stage.status === 'pass' ? 'green' : 'red'}</span>
+			<span class="review-status-pill ${stage.status}">${stage.status === 'pass' ? 'green' : stage.status === 'na' ? 'no verdict' : 'red'}</span>
 		</div>
 		<div class="review-stage-reason">${escapeHtml(stage.reason)}</div>
 		<div class="review-stage-body">${stage.body}</div>
@@ -286,7 +289,7 @@ function renderStageReview(stage: StageReview): string {
 }
 
 function firstPromptText(result: WorkflowTestCaseResult): string {
-	return result.testCase.conversation[0]?.text ?? '';
+	return caseDisplayPrompt(result.testCase, result.transcript);
 }
 
 function promptReview(result: WorkflowTestCaseResult, sr: ExecutionScenarioResult): StageReview {
@@ -332,7 +335,8 @@ function plannerReview(result: WorkflowTestCaseResult): StageReview {
 	const workflowItems = planCalls
 		.map((call) => {
 			const item = asRecord(call.args.item);
-			const itemKind = getString(item?.kind);
+			if (!item) return undefined;
+			const itemKind = getString(item.kind);
 			if (itemKind !== 'workflow') return undefined;
 			const name = getString(item.name);
 			const summary =
@@ -344,7 +348,8 @@ function plannerReview(result: WorkflowTestCaseResult): StageReview {
 	const checkpointItems = planCalls
 		.map((call) => {
 			const item = asRecord(call.args.item);
-			const itemKind = getString(item?.kind);
+			if (!item) return undefined;
+			const itemKind = getString(item.kind);
 			if (itemKind !== 'checkpoint') return undefined;
 			return getString(item.title) ?? getString(item.instructions);
 		})
@@ -446,10 +451,12 @@ function verifierReview(sr: ExecutionScenarioResult): StageReview {
 
 	return {
 		label: '4. Verifier judgment',
-		status: sr.success ? 'pass' : 'fail',
+		status: sr.success ? 'pass' : sr.incomplete ? 'na' : 'fail',
 		reason: sr.success
 			? 'The verifier accepted this scenario.'
-			: `The verifier rejected this scenario${sr.failureCategory ? ` as ${sr.failureCategory}` : ''}.`,
+			: sr.incomplete
+				? 'The verifier returned no verdict after all attempts — this run is excluded from scoring.'
+				: `The verifier rejected this scenario${sr.failureCategory ? ` as ${sr.failureCategory}` : ''}.`,
 		body: bodyParts.join(''),
 	};
 }
@@ -533,7 +540,23 @@ function renderScenario(
 ): string {
 	const icon = sr.success ? '&#10003;' : '&#10007;';
 	const statusClass = sr.success ? 'pass' : 'fail';
-	const execLink = renderExecutionLink(sr, result.n8nBaseUrl, result.workflowId);
+	const execLink = renderExecutionLink(sr, result.n8nBaseUrl, sr.workflowId ?? result.workflowId);
+
+	// Verifier-incomplete: neutral one-liner, excluded from scoring.
+	if (sr.incomplete) {
+		return `<div class="scenario na">
+			<div class="scenario-header" onclick="this.parentElement.classList.toggle('expanded')">
+				<span class="scenario-icon na">⌀</span>
+				<span class="scenario-name">${escapeHtml(sr.scenario.name)}</span>
+				<span class="scenario-summary-inline">verifier returned no verdict — excluded from scoring</span>
+				${execLink}
+			</div>
+			<div class="scenario-detail" id="scenario-${String(index)}">
+				${renderScenarioReview(result, sr)}
+				${renderScenarioDetail(sr)}
+			</div>
+		</div>`;
+	}
 
 	// Passing scenarios: compact one-liner with collapsible detail
 	if (sr.success) {
@@ -662,7 +685,10 @@ function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 			for (const req of nr.interceptedRequests) {
 				html += '<div class="request-pair">';
 				html += '<div class="request-header">Request sent</div>';
-				html += `<div class="request-method">${escapeHtml(req.method)} ${escapeHtml(req.url)}</div>`;
+				// `req.url` is typed string but older captures stored undefined for
+				// URL-less requests (broken node routing); never let that (or an
+				// empty wire-server fallback) crash report generation.
+				html += `<div class="request-method">${escapeHtml(req.method)} ${escapeHtml(req.url || '(no URL)')}</div>`;
 				if (req.requestBody) {
 					html += `<pre class="json-block json-sm"><code>${escapeHtml(JSON.stringify(req.requestBody, null, 2))}</code></pre>`;
 				}
@@ -775,7 +801,13 @@ function renderConversationTranscript(transcript: TranscriptTurn[] | undefined):
 }
 
 function renderTranscriptTurn(turn: TranscriptTurn, turnNum: number): string {
-	const parts: string[] = [`<div class="transcript-turn-header">Turn ${String(turnNum)}</div>`];
+	// Judged as part of the whole conversation; marked subtly only for human readers.
+	const seededTag = turn.seeded
+		? ' <span class="transcript-seeded" title="restored prior context — not part of the evaluated run">seeded</span>'
+		: '';
+	const parts: string[] = [
+		`<div class="transcript-turn-header">Turn ${String(turnNum)}${seededTag}</div>`,
+	];
 	if (turn.userMessage) {
 		parts.push(
 			`<div class="transcript-line transcript-user"><span class="transcript-icon">👤</span><span class="transcript-text">${escapeHtml(turn.userMessage)}</span></div>`,
@@ -785,7 +817,7 @@ function renderTranscriptTurn(turn: TranscriptTurn, turnNum: number): string {
 		const block = renderStep(step);
 		if (block) parts.push(block);
 	}
-	return `<div class="transcript-turn">${parts.join('')}</div>`;
+	return `<div class="transcript-turn${turn.seeded ? ' seeded' : ''}">${parts.join('')}</div>`;
 }
 
 function renderStep(step: TranscriptStep): string | null {
@@ -815,7 +847,9 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			const answerByQId = new Map<string, string>();
 			for (const a of interaction.answers ?? []) {
 				const selected = a.selectedOptions.join(', ');
-				const text = [selected, a.customText].filter(Boolean).join(' — ');
+				// A skipped answer is a real response — surface it so it's not mistaken
+				// for an unanswered question (mirrors the judge-text transcript).
+				const text = a.skipped ? '(skipped)' : [selected, a.customText].filter(Boolean).join(' — ');
 				if (text) answerByQId.set(a.questionId, text);
 			}
 			const lines = interaction.questions
@@ -978,17 +1012,34 @@ function dimensionLabel(d: CheckDimension): string {
 	return d.replace(/_/g, ' ');
 }
 
-function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[]): string {
+function checkCountsSummary(outcomes: CheckOutcome[], fractionSuffix = ''): string {
 	const passed = outcomes.filter((o) => o.status === 'pass').length;
 	const failed = outcomes.filter((o) => o.status === 'fail').length;
 	const naCount = outcomes.filter((o) => o.status === 'n_a').length;
+	const errorCount = outcomes.filter((o) => o.status === 'error').length;
 	const scored = passed + failed;
-	const headerCounts = `${String(passed)}/${String(scored)}${naCount > 0 ? ` · ${String(naCount)} N/A` : ''}`;
+	const extras = [
+		...(naCount > 0 ? [`${String(naCount)} N/A`] : []),
+		...(errorCount > 0 ? [`${String(errorCount)} error`] : []),
+	];
+	return `${String(passed)}/${String(scored)}${fractionSuffix}${extras.length > 0 ? ` · ${extras.join(' · ')}` : ''}`;
+}
+
+function checkIcon(status: CheckOutcome['status']): string {
+	if (status === 'pass') return '&#10003;';
+	if (status === 'fail') return '&#10007;';
+	if (status === 'error') return '!';
+	return '⌀';
+}
+
+function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[]): string {
+	const failed = outcomes.filter((o) => o.status === 'fail').length;
+	const headerCounts = checkCountsSummary(outcomes);
 	const headerClass = failed > 0 ? 'fail' : 'pass';
 
 	const items = outcomes
 		.map((o) => {
-			const icon = o.status === 'pass' ? '&#10003;' : o.status === 'fail' ? '&#10007;' : '⌀';
+			const icon = checkIcon(o.status);
 			const kindTag = `<span class="check-kind check-kind-${o.kind}">${o.kind}</span>`;
 			const comment = o.comment ? ` — ${escapeHtml(o.comment)}` : '';
 			return `<li class="check ${o.status}"><span class="check-icon ${o.status}">${icon}</span> <code>${escapeHtml(o.name)}</code> ${kindTag}${comment}</li>`;
@@ -1001,11 +1052,8 @@ function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[
 function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 	if (!outcomes || outcomes.length === 0) return '';
 
-	const totalPassed = outcomes.filter((o) => o.status === 'pass').length;
 	const totalFailed = outcomes.filter((o) => o.status === 'fail').length;
-	const totalNa = outcomes.filter((o) => o.status === 'n_a').length;
-	const totalScored = totalPassed + totalFailed;
-	const summary = `${String(totalPassed)}/${String(totalScored)} passed${totalNa > 0 ? ` · ${String(totalNa)} N/A` : ''}`;
+	const summary = checkCountsSummary(outcomes, ' passed');
 	const summaryClass = totalFailed > 0 ? 'fail' : 'pass';
 	const openAttr = totalFailed > 0 ? 'open' : '';
 
@@ -1019,29 +1067,38 @@ function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 
 // ---------------------------------------------------------------------------
 // Build expectations
+//
+// Aggregates a list of pass/fail/incomplete verdicts into a `<details>`
+// checklist shell; per-item markup comes from `renderItem`.
 // ---------------------------------------------------------------------------
 
-function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
-	if (!results || results.length === 0) return '';
+function renderChecklistSection<T extends { pass: boolean; incomplete?: boolean }>(
+	title: string,
+	entries: T[] | undefined,
+	renderItem: (entry: T) => string,
+): string {
+	if (!entries || entries.length === 0) return '';
 	// `incomplete` (no verdict) stays out of the pass/fail count — rendered neutrally.
-	const passCount = results.filter((r) => r.pass && !r.incomplete).length;
-	const failCount = results.filter((r) => !r.pass && !r.incomplete).length;
-	const incompleteCount = results.filter((r) => r.incomplete).length;
+	const passCount = entries.filter((e) => e.pass && !e.incomplete).length;
+	const failCount = entries.filter((e) => !e.pass && !e.incomplete).length;
+	const incompleteCount = entries.filter((e) => e.incomplete).length;
 	const scored = passCount + failCount;
 	const statusClass = failCount > 0 ? 'fail' : 'pass';
 	const openAttr = failCount > 0 ? 'open' : '';
 	const summary = `${String(passCount)}/${String(scored)}${incompleteCount > 0 ? ` · ${String(incompleteCount)} no verdict` : ''}`;
-	const items = results
-		.map((r) => {
-			const cls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
-			const icon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
-			const judgment = r.reason
-				? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
-				: '';
-			return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
-		})
-		.join('');
-	return `<details class="section" ${openAttr}><summary>Build expectations <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
+	const items = entries.map(renderItem).join('');
+	return `<details class="section" ${openAttr}><summary>${title} <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
+}
+
+function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
+	return renderChecklistSection('Build expectations', results, (r) => {
+		const cls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
+		const icon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
+		const judgment = r.reason
+			? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
+			: '';
+		return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -1148,25 +1205,23 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 // ---------------------------------------------------------------------------
 
 function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string {
-	// Pass rate counts scenarios AND build expectations as units (incomplete expectations excluded).
-	const scoredExpectations = (result.buildExpectationResults ?? []).filter((e) => !e.incomplete);
-	const passCount =
-		result.executionScenarioResults.filter((sr) => sr.success).length +
-		scoredExpectations.filter((e) => e.pass).length;
-	const totalCount = result.executionScenarioResults.length + scoredExpectations.length;
+	// Pass rate counts scenarios and build expectations as units (incomplete units excluded).
+	const { passCount, totalCount } = getRunScoredCounts(result);
 	const allPass = passCount === totalCount && totalCount > 0;
-	const statusClass = result.workflowBuildSuccess ? (allPass ? 'pass' : 'mixed') : 'fail';
+	const caseStatus = getCaseRunStatus(result);
+	const statusClass = caseStatus === 'build_failed' ? 'fail' : allPass ? 'pass' : 'mixed';
 
-	const buildBadge = result.workflowBuildSuccess
-		? '<span class="badge badge-pass">BUILT</span>'
-		: '<span class="badge badge-fail">BUILD FAILED</span>';
+	const buildBadge =
+		caseStatus === 'build_failed'
+			? '<span class="badge badge-fail">BUILD FAILED</span>'
+			: `<span class="badge badge-pass">${getCaseRunStatusLabel(result)}</span>`;
 
 	const scoreBadge =
 		totalCount > 0
 			? `<span class="badge badge-${allPass ? 'pass' : 'fail'}">${String(passCount)}/${String(totalCount)}</span>`
 			: '';
 
-	const prompt = result.testCase.conversation[0].text;
+	const prompt = caseDisplayPrompt(result.testCase, result.transcript);
 	const truncatedPrompt = prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt;
 	// Header label = the source-file slug (the same identifier the PR comment
 	// uses), falling back to the description then the prompt. The full prompt
@@ -1179,10 +1234,11 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 
 	// Inline indicators for quick triage without expanding — scenarios and expectations as units.
 	const scenarioIndicators = [
-		...result.executionScenarioResults.map(
-			(sr) =>
-				`<span class="scenario-indicator ${sr.success ? 'pass' : 'fail'}" title="${escapeHtml(sr.scenario.name)}">${sr.success ? '✓' : '✗'} scenario: ${escapeHtml(sr.scenario.name)}</span>`,
-		),
+		...result.executionScenarioResults.map((sr) => {
+			const cls = sr.incomplete ? 'na' : sr.success ? 'pass' : 'fail';
+			const icon = sr.incomplete ? '⌀' : sr.success ? '✓' : '✗';
+			return `<span class="scenario-indicator ${cls}" title="${escapeHtml(sr.scenario.name)}">${icon} scenario: ${escapeHtml(sr.scenario.name)}</span>`;
+		}),
 		...(result.buildExpectationResults ?? []).map((e) => {
 			const cls = e.incomplete ? 'na' : e.pass ? 'pass' : 'fail';
 			const icon = e.incomplete ? '⌀' : e.pass ? '✓' : '✗';
@@ -1195,7 +1251,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 		scenariosHtml = result.executionScenarioResults
 			.map((sr, i) => renderScenario(sr, tcIndex * 100 + i, result))
 			.join('');
-	} else if (!result.workflowBuildSuccess) {
+	} else if (caseStatus === 'build_failed') {
 		const errorDetail = result.buildError
 			? `<div class="error-box">${escapeHtml(result.buildError)}</div>`
 			: '';
@@ -1205,6 +1261,11 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 	const workflowLink =
 		result.workflowId && result.n8nBaseUrl
 			? `<a class="workflow-link" href="${workflowUrl(result.n8nBaseUrl, result.workflowId)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">open in n8n →</a>`
+			: '';
+
+	const llmDebugLink =
+		(result.runDebug?.length ?? 0) > 0
+			? `<a class="workflow-link" href="workflow-eval-llm-debug.html#${escapeHtml(getTestCaseAnchorId(result, tcIndex))}" onclick="event.stopPropagation()">LLM steps →</a>`
 			: '';
 
 	return `<div class="test-case ${statusClass}">
@@ -1218,6 +1279,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 				${result.threadId ? `<span class="workflow-id" title="thread id — open in the UI">🧵 ${escapeHtml(result.threadId)}</span>` : ''}
 				${result.workflowId ? `<span class="workflow-id">${escapeHtml(result.workflowId)}</span>` : ''}
 				${workflowLink}
+				${llmDebugLink}
 			</div>
 			<div class="scenario-indicators">${scenarioIndicators}</div>
 		</div>
@@ -1239,12 +1301,24 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 
 export function generateWorkflowReport(results: WorkflowTestCaseResult[]): string {
 	const totalTestCases = results.length;
-	const builtCount = results.filter((r) => r.workflowBuildSuccess).length;
+	const checkedOrBuiltCount = results.filter((r) => getCaseRunStatus(r) !== 'build_failed').length;
+	const scoredCounts = results.reduce(
+		(counts, result) => {
+			const resultCounts = getRunScoredCounts(result);
+			counts.passCount += resultCounts.passCount;
+			counts.totalCount += resultCounts.totalCount;
+			return counts;
+		},
+		{ passCount: 0, totalCount: 0 },
+	);
+	const passCount = scoredCounts.passCount;
+	const failCount = scoredCounts.totalCount - passCount;
+	const totalChecks = scoredCounts.totalCount;
 	const allScenarios = results.flatMap((r) => r.executionScenarioResults);
-	const passCount = allScenarios.filter((sr) => sr.success).length;
-	const failCount = allScenarios.length - passCount;
-	const totalScenarios = allScenarios.length;
-	const passRate = totalScenarios > 0 ? Math.round((passCount / totalScenarios) * 100) : 0;
+	// Verifier-incomplete runs (no verdict) are visible but not scored.
+	const totalScenarios = allScenarios.filter((sr) => !sr.incomplete).length;
+	const noVerdictCount = allScenarios.length - totalScenarios;
+	const passRate = totalChecks > 0 ? Math.round((passCount / totalChecks) * 100) : 0;
 
 	return `<!DOCTYPE html>
 <html lang="en">
@@ -1331,6 +1405,7 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.scenario-icon { font-weight: bold; font-size: 14px; min-width: 16px; }
 	.scenario-icon.pass { color: var(--color-pass); }
 	.scenario-icon.fail { color: var(--color-fail); }
+	.scenario-icon.na { color: #8b949e; }
 	.scenario-name { color: var(--text-primary); font-weight: 600; }
 	.scenario-desc { color: var(--text-muted); font-size: 12px; }
 	.scenario-summary-inline { color: var(--text-muted); font-size: 12px; flex: 1; }
@@ -1351,6 +1426,8 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.check-icon.fail { color: var(--color-fail); }
 	.check-icon.n_a { color: var(--text-muted); }
 	.check.n_a code { color: var(--text-muted); }
+	.check-icon.error { color: var(--color-warn); }
+	.check.error code { color: var(--color-warn); }
 	.check-kind { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 	.check-kind-llm { color: var(--color-purple); }
 	.expectation { padding: 5px 0; display: flex; align-items: baseline; gap: 8px; list-style: none; line-height: 1.5; }
@@ -1376,20 +1453,24 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.review-overview-chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); font-size: 11px; font-weight: 600; }
 	.review-overview-chip.pass { border-color: #238636; color: var(--color-pass); background: var(--color-pass-bg); }
 	.review-overview-chip.fail { border-color: #da3633; color: var(--color-fail); background: var(--color-fail-bg); }
+	.review-overview-chip.na { border-color: #8b949e; color: #8b949e; }
 	.review-grid { display: grid; grid-template-columns: 1fr; }
 	.review-stage { padding: 12px; border-top: 1px solid var(--border-light); border-left: 4px solid var(--border); background: var(--bg-secondary); }
 	.review-stage:first-child { border-top: 0; }
 	.review-stage.pass { border-left-color: var(--color-pass); }
 	.review-stage.fail { border-left-color: var(--color-fail); }
+	.review-stage.na { border-left-color: #8b949e; }
 	.review-stage-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
 	.review-stage-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
 	.review-stage-label { color: var(--text-primary); font-size: 12px; font-weight: 700; }
 	.review-status-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
 	.review-status-dot.pass { background: var(--color-pass); box-shadow: 0 0 0 3px var(--color-pass-bg); }
 	.review-status-dot.fail { background: var(--color-fail); box-shadow: 0 0 0 3px var(--color-fail-bg); }
+	.review-status-dot.na { background: #8b949e; box-shadow: 0 0 0 3px rgba(139,148,158,0.2); }
 	.review-status-pill { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0; }
 	.review-status-pill.pass { background: var(--color-pass-bg); color: var(--color-pass); }
 	.review-status-pill.fail { background: var(--color-fail-bg); color: var(--color-fail); }
+	.review-status-pill.na { background: rgba(139,148,158,0.15); color: #8b949e; }
 	.review-stage-reason { color: var(--text-secondary); font-size: 12px; line-height: 1.6; margin-bottom: 4px; }
 	.review-stage-body { margin-top: 6px; }
 	.review-subsection { padding-top: 4px; }
@@ -1474,6 +1555,8 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.transcript-turn { padding: 8px 0; border-bottom: 1px dashed var(--border-light); }
 	.transcript-turn:last-child { border-bottom: none; }
 	.transcript-turn-header { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px; }
+	.transcript-turn.seeded { border-left: 2px solid var(--border-light); padding-left: 10px; }
+	.transcript-seeded { text-transform: none; letter-spacing: 0; color: var(--text-muted); border: 1px solid var(--border-light); border-radius: 3px; padding: 0 5px; margin-left: 6px; }
 	.transcript-line { display: flex; gap: 8px; padding: 4px 0; align-items: flex-start; font-size: 13px; line-height: 1.5; }
 	.transcript-icon { width: 18px; text-align: center; flex-shrink: 0; }
 	.transcript-text { color: var(--text-primary); white-space: pre-wrap; }
@@ -1511,7 +1594,7 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 <body>
 
 <h1>Workflow evaluation report</h1>
-<p class="subtitle">Generated ${new Date().toLocaleString()} &mdash; ${String(totalScenarios)} scenarios across ${String(totalTestCases)} test cases</p>
+<p class="subtitle">Generated ${new Date().toLocaleString()} &mdash; ${String(totalChecks)} checks (${String(totalScenarios)} scenarios) across ${String(totalTestCases)} test cases</p>
 
 <div class="dashboard">
 	<div class="stat-card">
@@ -1525,10 +1608,18 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	<div class="stat-card">
 		<div class="label">Failed</div>
 		<div class="value${failCount > 0 ? ' fail' : ''}">${String(failCount)}</div>
-	</div>
-	<div class="stat-card">
-		<div class="label">Built</div>
-		<div class="value${builtCount === totalTestCases ? ' pass' : ' mixed'}">${String(builtCount)}/${String(totalTestCases)}</div>
+		</div>${
+			noVerdictCount > 0
+				? `
+		<div class="stat-card">
+			<div class="label">No verdict</div>
+			<div class="value">${String(noVerdictCount)}</div>
+		</div>`
+				: ''
+		}
+		<div class="stat-card">
+			<div class="label">Checked/Built</div>
+		<div class="value${checkedOrBuiltCount === totalTestCases ? ' pass' : ' mixed'}">${String(checkedOrBuiltCount)}/${String(totalTestCases)}</div>
 	</div>
 </div>
 

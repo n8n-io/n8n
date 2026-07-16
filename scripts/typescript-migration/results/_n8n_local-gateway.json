@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/local-gateway",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T11:00:59.892Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1009,
+            952,
+            945
+          ],
+          "min": 945,
+          "median": 952,
+          "mean": 969
+        },
+        "build": {
+          "runsMs": [
+            2013,
+            2005,
+            1968
+          ],
+          "min": 1968,
+          "median": 2005,
+          "mean": 1995
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T11:03:45.460Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            529,
+            507,
+            513
+          ],
+          "min": 507,
+          "median": 513,
+          "mean": 516
+        },
+        "build": {
+          "runsMs": [
+            1161,
+            1180,
+            1140
+          ],
+          "min": 1140,
+          "median": 1161,
+          "mean": 1161
+        }
+      }
+    }
+  }
+}

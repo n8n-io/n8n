@@ -70,6 +70,7 @@ const {
 		confirm: vi.fn(),
 	},
 	mockWorkflowDocumentStore: {
+		workflowId: '123',
 		updateNodeProperties: vi.fn(),
 		getNodeByName: vi.fn(),
 		getStartNode: vi.fn(),

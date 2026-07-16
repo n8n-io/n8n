@@ -420,6 +420,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			startedAt, // must never change
 			customData,
 			jsonSizeBytes, // computed by ExecutionPersistence on write; never set from a caller here
+			binaryDataSizeBytes, // computed by ExecutionPersistence on write; never set from a caller here
 			...executionInformation
 		} = execution;
 
@@ -649,16 +650,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private getStatusCondition(status?: ExecutionStatus) {
 		const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
 
-		if (status === 'success') {
-			condition.status = 'success';
-		} else if (status === 'waiting') {
-			condition.status = 'waiting';
-		} else if (status === 'error') {
-			condition.status = In(['error', 'crashed']);
-		} else if (status === 'canceled') {
-			condition.status = 'canceled';
-		} else if (status === 'running') {
-			condition.status = 'running';
+		if (status) {
+			condition.status = status;
 		}
 
 		return condition;
@@ -745,12 +738,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		workflowId: true,
 		workflowVersionId: true,
 		jsonSizeBytes: true,
+		binaryDataSizeBytes: true,
 		mode: true,
 		retryOf: true,
 		status: true,
 		createdAt: true,
 		startedAt: true,
 		stoppedAt: true,
+		usedPrivateCredentials: true,
 	};
 
 	private annotationFields = {
@@ -830,12 +825,24 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		stoppedAt?: Date | string;
 		waitTill?: Date | string | null;
 		jsonSizeBytes?: number | string;
+		binaryDataSizeBytes?: number | string;
+		usedPrivateCredentials?: boolean | number;
 	}): ExecutionSummary {
 		execution.id = execution.id.toString();
 
 		if (execution.jsonSizeBytes !== undefined && typeof execution.jsonSizeBytes === 'string') {
 			// Raw query bypasses the entity transformer, so Postgres hands bigint back as a string.
 			execution.jsonSizeBytes = Number(execution.jsonSizeBytes);
+		}
+
+		if (typeof execution.binaryDataSizeBytes === 'string') {
+			// Raw query bypasses the entity transformer, so Postgres hands bigint back as a string.
+			execution.binaryDataSizeBytes = Number(execution.binaryDataSizeBytes);
+		}
+
+		// SQLite returns 0/1 for booleans; coerce to a proper boolean.
+		if (typeof execution.usedPrivateCredentials === 'number') {
+			execution.usedPrivateCredentials = execution.usedPrivateCredentials !== 0;
 		}
 
 		const normalizeDateString = (date: string) => {

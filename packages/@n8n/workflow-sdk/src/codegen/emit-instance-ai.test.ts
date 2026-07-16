@@ -4,6 +4,7 @@ import {
 	buildImports,
 	hoistSharedCredentials,
 	SDK_FUNCTIONS,
+	SDK_IMPORTABLE_FUNCTIONS,
 } from './emit-instance-ai';
 import type { WorkflowJSON } from '../types/base';
 
@@ -251,6 +252,7 @@ describe('emit-instance-ai', () => {
 			// Validation
 			'validateNodeConfig',
 			'validateWorkflow',
+			'getSchemaBaseDirs',
 			'setSchemaBaseDirs',
 			// Pin-data + schema discovery
 			'discoverOutputSchemaForNode',
@@ -259,6 +261,20 @@ describe('emit-instance-ai', () => {
 			'inferSchemasFromRunData',
 			'needsPinData',
 			'normalizePinData',
+			// Mock/pin-data generation building blocks (src/mock-data/) — eval
+			// and simulated-verification tooling, never in workflow bodies
+			'buildDateAnchors',
+			'buildNodeSchemaSection',
+			'buildPinDataUserPrompt',
+			'buildSchemaContexts',
+			'collectDownstreamConsumers',
+			'describeAiRootShape',
+			'findEnvelopeKey',
+			'findOutputParserTargets',
+			'isAiRootNodeType',
+			'parsePinDataResponse',
+			'repairStructuredOutput',
+			'workflowToMermaid',
 			// Display-options matching
 			'matchesDisplayOptions',
 			// Plugin registration
@@ -324,6 +340,12 @@ describe('emit-instance-ai', () => {
 
 		it('has no stale entries in SDK_FUNCTIONS', () => {
 			const stale = SDK_FUNCTIONS.filter((n) => !sdkFunctionExports.has(n)).sort();
+
+			expect(stale).toEqual([]);
+		});
+
+		it('has no stale entries in SDK_IMPORTABLE_FUNCTIONS', () => {
+			const stale = SDK_IMPORTABLE_FUNCTIONS.filter((n) => !sdkFunctionExports.has(n)).sort();
 
 			expect(stale).toEqual([]);
 		});

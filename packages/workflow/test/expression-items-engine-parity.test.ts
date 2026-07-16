@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import * as Helpers from './helpers';
-import { ExpressionError } from '../src/errors/expression.error';
 import { createRunExecutionData } from '../src';
+import { ExpressionError } from '../src/errors/expression.error';
 import { Workflow } from '../src/workflow';
 
 // Engine-parity tests for `$items()` boundary behaviour.

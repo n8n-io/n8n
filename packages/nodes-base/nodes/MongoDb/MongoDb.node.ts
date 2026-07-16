@@ -5,7 +5,7 @@ import type {
 	Sort,
 } from 'mongodb';
 import { ObjectId } from 'mongodb';
-import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, UserError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -82,7 +82,7 @@ export class MongoDb implements INodeType {
 					const { databases } = await client.db().admin().listDatabases();
 
 					if (!(databases as IDataObject[]).map((db) => db.name).includes(database)) {
-						throw new ApplicationError(`Database "${database}" does not exist`, {
+						throw new UserError(`Database "${database}" does not exist`, {
 							level: 'warning',
 						});
 					}

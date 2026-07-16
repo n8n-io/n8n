@@ -388,6 +388,40 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		expect(queryByTestId('execution-preview-ellipsis-button')).not.toBeInTheDocument();
 	});
 
+	describe('execution data size', () => {
+		it('shows the combined json + binary size in human-readable form', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					execution: {
+						...executionData,
+						status: 'success',
+						jsonSizeBytes: 100 * 1024,
+						binaryDataSizeBytes: 44 * 1024,
+					},
+				},
+			});
+
+			await nextTick();
+
+			expect(getByTestId('execution-preview-id').textContent).toContain('144KB');
+		});
+
+		it('omits the size segment when both sizes are zero/undefined', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					execution: { ...executionData, status: 'success' },
+				},
+			});
+
+			await nextTick();
+
+			const header = getByTestId('execution-preview-id').textContent ?? '';
+			expect(header).toContain('ID#');
+			expect(header).not.toContain('KB');
+			expect(header).not.toContain('MB');
+		});
+	});
+
 	describe('workflow version link', () => {
 		const makeVersion = (overrides: Partial<WorkflowVersion> = {}): WorkflowVersion => ({
 			versionId: faker.string.uuid(),

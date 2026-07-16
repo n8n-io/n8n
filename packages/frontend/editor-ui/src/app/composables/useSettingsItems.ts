@@ -71,12 +71,12 @@ export function useSettingsItems() {
 						: undefined,
 			},
 			{
-				id: 'settings-project-roles',
+				id: 'settings-roles',
 				icon: 'user-round',
-				label: i18n.baseText('settings.projectRoles'),
+				label: i18n.baseText('settings.roles'),
 				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.PROJECT_ROLES_SETTINGS),
-				route: { to: { name: VIEWS.PROJECT_ROLES_SETTINGS } },
+				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
+				route: { to: { name: VIEWS.ROLES_SETTINGS } },
 				new: true,
 			},
 			{

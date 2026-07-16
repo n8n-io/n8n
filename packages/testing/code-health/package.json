@@ -27,15 +27,18 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"license": "MIT",
-	"devDependencies": {
+	"dependencies": {
 		"@n8n/rules-engine": "workspace:*",
 		"@n8n/vitest-config": "workspace:*",
-		"@vitest/coverage-v8": "catalog:",
 		"fast-glob": "catalog:",
 		"ts-morph": "catalog:",
 		"tsx": "catalog:",
 		"typescript": "catalog:",
-		"vitest": "catalog:",
 		"yaml": "catalog:"
-	}
+	},
+  "devDependencies": {
+		"@vitest/coverage-v8": "catalog:",
+		"fast-check": "catalog:",
+		"vitest": "catalog:"
+  }
 }

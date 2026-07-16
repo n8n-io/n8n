@@ -1001,6 +1001,41 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 		expect(code).toContain('"mode"'); // Remaining condition preserved
 	});
 
+	it('uses resolveOneOfSchemas for duplicate properties with different displayOptions', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [],
+		};
+
+		const props: NodeProperty[] = [
+			{
+				name: 'body',
+				displayName: 'Body',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { sendBody: [true], specifyBody: ['string'] } },
+			},
+			{
+				name: 'body',
+				displayName: 'Body',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { sendBody: [true], contentType: ['raw'] } },
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(node, 1, {}, props, 5, []);
+
+		expect(code).toContain('resolveOneOfSchemas');
+		expect(code).toContain('body: resolveOneOfSchemas({');
+		expect(code).toContain('"specifyBody":["string"]');
+		expect(code).toContain('"contentType":["raw"]');
+		expect(code).not.toContain('"specifyBody":["string"],"contentType":["raw"]');
+	});
+
 	it('uses static property schema when displayOptions only contain discriminator keys', () => {
 		const node: NodeTypeDescription = {
 			...baseNodeProps,
@@ -2422,5 +2457,27 @@ describe('mapPropertyToZodSchema for workflowSelector', () => {
 		expect(schema).toContain('__rl: z.literal(true)');
 		expect(schema).toContain("z.literal('list')");
 		expect(schema).toContain("z.literal('id')");
+	});
+});
+
+describe('mapPropertyToZodSchema for agentSelector', () => {
+	it('emits a resource-locator-shaped union (not z.unknown) like workflowSelector', () => {
+		const prop = {
+			name: 'agentId',
+			displayName: 'Agent',
+			type: 'agentSelector',
+			default: { mode: 'list', value: '' },
+			required: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
+		expect(schema).toContain('value: z.union([z.string(), z.number()])');
+		expect(schema).toContain('cachedResultName: z.string().optional()');
+		expect(schema).toContain('expressionSchema');
 	});
 });

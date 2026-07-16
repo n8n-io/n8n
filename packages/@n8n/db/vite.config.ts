@@ -1,7 +1,9 @@
 import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decorators';
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+// Uses the legacy JS compiler via the `typescript6` alias: tsgo (typescript 7)
+// ships no programmatic API for this LanguageService-based entity transform.
+import ts from 'typescript6';
 import { mergeConfig, type Plugin } from 'vite';
 import { configDefaults } from 'vitest/config';
 
@@ -16,8 +18,8 @@ import { configDefaults } from 'vitest/config';
  * only `tsc` with cross-file type information collapses the union to `String`. Vite's
  * oxc transform — and SWC — emit `Object` instead, which TypeORM rejects at
  * `DataSource.initialize()`. Single-file `transpileModule` also emits `Object` because
- * it can't resolve the imported alias. A full Program is required, which mirrors the
- * old jest config that set `isolatedModules: false` for exactly this reason.
+ * it can't resolve the imported alias. A full Program is required — the same
+ * reason a non-isolated-modules TypeScript compile is needed here.
  *
  * Scoping to `src/entities/**` keeps the cost contained: only the ~50 entity files pay
  * the tsc price (and the Program is rooted there), while DI `@Service` constructor
@@ -137,20 +139,13 @@ function tscDecoratorTransform(): Plugin {
 	};
 }
 
-export default mergeConfig(
-	createVitestConfigWithDecorators({
-		// The n8n root jest.config sets `restoreMocks: true`, and most test files silently
-		// rely on it — omit this and mocks bleed between tests.
-		restoreMocks: true,
-	}),
-	{
-		plugins: [tscDecoratorTransform()],
-		test: {
-			// Vitest 4's default exclude is only node_modules/.git — it does NOT cover dist.
-			// Without this, compiled test files left in dist (tsc never deletes orphaned
-			// output) get collected and fail (CJS `require('vitest')`). The build also
-			// excludes test files now, but this guards against pre-existing stale artifacts.
-			exclude: [...configDefaults.exclude, '**/dist/**'],
-		},
+export default mergeConfig(createVitestConfigWithDecorators({}), {
+	plugins: [tscDecoratorTransform()],
+	test: {
+		// Vitest 4's default exclude is only node_modules/.git — it does NOT cover dist.
+		// Without this, compiled test files left in dist (tsc never deletes orphaned
+		// output) get collected and fail (CJS `require('vitest')`). The build also
+		// excludes test files now, but this guards against pre-existing stale artifacts.
+		exclude: [...configDefaults.exclude, '**/dist/**'],
 	},
-);
+});

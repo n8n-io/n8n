@@ -20,4 +20,5 @@ export {
 	type KeyedRateLimiterConfig,
 	createBodyKeyedRateLimiter,
 	createUserKeyedRateLimiter,
+	createIpRateLimit,
 } from './rate-limit';

@@ -24,8 +24,8 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionBox } from '@n8n/design-system';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
+import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { useDependencies } from '@/app/composables/useDependencies';
 
@@ -80,6 +80,16 @@ const currentProject = computed(() => {
 });
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const addDataTableDisabled = computed(
+	() => readOnlyEnv.value || !dataTableStore.projectPermissions.dataTable.create,
+);
+
+const addDataTableDisabledTooltip = computed(() =>
+	readOnlyEnv.value
+		? i18n.baseText('readOnlyEnv.cantAdd.any')
+		: i18n.baseText('dataTable.empty.button.disabled.tooltip'),
+);
 
 const DATA_TABLE_SORT_MAP = {
 	lastUpdated: 'updatedAt:desc',
@@ -209,20 +219,12 @@ watch(
 			</ProjectHeader>
 		</template>
 		<template #empty>
-			<N8nActionBox
-				data-test-id="empty-data-table-action-box"
-				:heading="i18n.baseText('dataTable.empty.label')"
-				:description="i18n.baseText('dataTable.empty.description')"
-				:button-text="i18n.baseText('dataTable.add.button.label')"
-				button-type="secondary"
-				:button-disabled="!dataTableStore.projectPermissions.dataTable.create"
-				:button-icon="!dataTableStore.projectPermissions.dataTable.create ? 'lock' : undefined"
+			<ResourcesListEmptyState
+				resource-key="dataTable"
+				:button-disabled="addDataTableDisabled"
+				:disabled-tooltip-text="addDataTableDisabled ? addDataTableDisabledTooltip : undefined"
 				@click:button="onAddModalClick"
-			>
-				<template #disabledButtonTooltip>
-					{{ i18n.baseText('dataTable.empty.button.disabled.tooltip') }}
-				</template>
-			</N8nActionBox>
+			/>
 		</template>
 		<template #item="{ item: data }">
 			<DataTableCard

@@ -25,6 +25,7 @@ import { retry } from '@n8n/utils/retry';
 import { computed, getCurrentInstance, type Ref } from 'vue';
 
 import { useToast } from '@/app/composables/useToast';
+import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
 import {
@@ -33,6 +34,7 @@ import {
 	CHAT_HITL_TOOL_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	IN_PROGRESS_EXECUTION_ID,
+	MODAL_CONFIRM,
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 
@@ -78,6 +80,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const workflowHelpers = useWorkflowHelpers();
 	const i18n = useI18n();
 	const toast = useToast();
+	const message = useMessage();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const settingsStore = useSettingsStore();
@@ -179,10 +182,34 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				);
 			}
 
-			const runData = workflowsStore.getWorkflowRunData;
+			const runData = workflowExecutionState.value.activeExecutionRunData;
 
 			const isNewWorkflow = !workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId];
-			if (isNewWorkflow || (uiStore.stateIsDirty && settingsStore.isAutosaveEnabled)) {
+
+			// With N8N_WORKFLOWS_AUTOSAVE_DISABLED=true the editor no longer
+			// force-saves before executing, so canvas-only edits would be
+			// dropped by the executor (it only ever runs the DB copy). Prompt
+			// the user to save first so the run reflects the canvas. ADO-5328.
+			if (!isNewWorkflow && uiStore.stateIsDirty && !settingsStore.isAutosaveEnabled) {
+				const response = await message.confirm(i18n.baseText('workflowRun.saveBeforeRun.message'), {
+					title: i18n.baseText('workflowRun.saveBeforeRun.headline'),
+					type: 'info',
+					confirmButtonText: i18n.baseText('workflowRun.saveBeforeRun.confirmButtonText'),
+					cancelButtonText: i18n.baseText('workflowRun.saveBeforeRun.cancelButtonText'),
+					showClose: true,
+				});
+
+				if (response !== MODAL_CONFIRM) {
+					return undefined;
+				}
+
+				const saved = await workflowSaving.saveCurrentWorkflow({
+					id: workflowDocumentStore.value.workflowId,
+				});
+				if (!saved) {
+					return undefined;
+				}
+			} else if (isNewWorkflow || (uiStore.stateIsDirty && settingsStore.isAutosaveEnabled)) {
 				await workflowSaving.saveCurrentWorkflow({ id: workflowDocumentStore.value.workflowId });
 			}
 
@@ -455,7 +482,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			try {
 				await displayForm({
 					nodes: workflowData.nodes,
-					runData: workflowsStore.getWorkflowExecution?.data?.resultData?.runData,
+					runData: workflowExecutionState.value.activeExecution?.data?.resultData?.runData,
 					destinationNode: options.destinationNode?.nodeName,
 					triggerNode: options.triggerNode,
 					pinData,
@@ -601,7 +628,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 	async function stopWaitingForWebhook() {
 		try {
-			await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+			await workflowsStore.removeTestWebhook(workflowDocumentStore.value.workflowId);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.stopWaitingForWebhook.title'));
 			return;

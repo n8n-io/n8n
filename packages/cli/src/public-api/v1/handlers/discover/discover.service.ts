@@ -1,6 +1,7 @@
-import type { ApiKeyScope } from '@n8n/permissions';
-import path from 'path';
 import RefParser from '@apidevtools/json-schema-ref-parser';
+import type { ApiKeyScope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils/is-record';
+import path from 'path';
 
 import type { ScopeTaggedMiddleware } from '../../shared/middlewares/global.middleware';
 
@@ -47,10 +48,6 @@ export interface DiscoverOptions {
 }
 
 let cachedEndpointsPromise: Promise<EndpointInfo[]> | undefined;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isScopeTagged(value: unknown): value is ScopeTaggedMiddleware {
 	return typeof value === 'function' && '__apiKeyScope' in value;
@@ -121,9 +118,15 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 			let handlerModule = handlerCache.get(handlerPath);
 			if (!handlerModule) {
 				try {
-					const fullHandlerPath = path.join(publicApiRoot, handlerPath);
-					// eslint-disable-next-line @typescript-eslint/no-require-imports
-					const loaded = require(fullHandlerPath);
+					// The `.js` extension is required: under NodeNext, `await import()` is emitted
+					// as a native dynamic import, which (unlike `require`) does no extension guessing.
+					// The spec's handler paths are extensionless, so append it here.
+					const fullHandlerPath = path.join(publicApiRoot, `${handlerPath}.js`);
+					const imported: unknown = await import(fullHandlerPath);
+					if (!isRecord(imported)) continue;
+					// Handlers use `export = xHandlers`, which surfaces as `.default`
+					// under both tsc's CJS downleveling and Vitest's Vite interop.
+					const loaded = isRecord(imported.default) ? imported.default : imported;
 					if (!isRecord(loaded)) continue;
 					handlerModule = loaded;
 					handlerCache.set(handlerPath, handlerModule);

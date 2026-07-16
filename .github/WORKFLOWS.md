@@ -71,7 +71,6 @@ Complete reference for n8n's `.github/` folder.
 │  │ Schedule │───▶│  Nightly/Weekly Jobs             │    ┌────────────┐   │
 │  │  (cron)  │    │  ├─ docker-build-push (nightly)  │───▶│   Images   │   │
 │  └──────────┘    │  ├─ test-benchmark-nightly       │───▶│  Metrics   │   │
-│                  │  ├─ test-workflows-nightly       │    └────────────┘   │
 │                  │  ├─ test-e2e-vm-expressions      │                     │
 │                  │  └─ test-e2e-coverage-weekly     │                     │
 │                  └──────────────────────────────────┘                     │
@@ -175,19 +174,19 @@ These only run if specific files changed:
 |------------------------------------------------------------------------|-----------------------------|------------|
 | `packages/@n8n/task-runner-python/**`                                  | `ci-python.yml`             | any        |
 | `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
-| `packages/frontend/@n8n/storybook/**`, design-system, chat             | `test-visual-storybook.yml` | master     |
+| `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
 | `docker/images/n8n-base/Dockerfile`                                    | `build-base-image.yml`      | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
 | `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-sync-api-docs.yml`    | master     |
-| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
+| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 
 ### On PR Review
 
 | Event                      | Workflow                    | Condition                                            |
 |----------------------------|-----------------------------|------------------------------------------------------|
-| Review approved            | `test-visual-chromatic.yml` | + design files changed                               |
+| Review approved            | `release-chromatic.yml` | + design files changed                               |
 | Comment with `@claude`     | `util-claude.yml`           | mention in any comment                               |
 | Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
 
@@ -196,11 +195,39 @@ workflow eval is the most expensive job in PR CI (LLM-bound builds). Running it
 on every push made cost untenable; firing on every review approval cascaded
 through the dismiss-stale-on-push → re-approve loop, which also blew up.
 The current trigger fires once per `opened` / `reopened` / `ready_for_review`
-on a PR touching the eval surface, and runs the `pr` test-case dataset (~6
-high-reliability, capability-diverse cases) instead of the full ~14. To re-run
-after pushing a fix, use the workflow's manual dispatch button — also lets you
-override `tier` to `full` for broader coverage on a specific PR. The lighter
-`test-evals-discovery.yml` still runs on every push as part of `ci-pull-requests.yml`.
+on a non-fork PR touching the eval surface, and runs the `pr` test-case dataset
+(a small set of high-reliability, capability-diverse cases) instead of the full
+suite. Test cases are pulled at run time from the LangTracer suite
+`n8n-workflows` — the source of truth; CI has no disk fallback (local runs
+keep `--source disk` for authoring). To
+re-run after pushing a fix, dispatch `ci-instance-ai-evals.yml` with the PR
+number (optionally `tier: full` for broader coverage) — results post back to
+the PR. The lighter `test-evals-discovery.yml` still runs on every push as part
+of `ci-pull-requests.yml`.
+
+**`ci-instance-ai-evals.yml` is the PR gate; `test-evals-instance-ai.yml` is
+the lab bench.** The gate deliberately exposes only PR re-runs. Anything that
+isn't PR gating — baselines, model experiments, arbitrary branch runs — goes
+through `test-evals-instance-ai.yml`'s own dispatch form ("Instance AI
+Evals: Experiments"): full knob set (branch, filter, tier, suite,
+iterations, experiment-name, model), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
+model-comparison arms), and SHA-keyed docker cache hits on master. Evals never
+run on fork PRs: the event trigger gates on `head.repo.fork`, and the `pr`
+re-run path refuses fork PRs in `resolve` (dispatched runs carry secrets).
+
+**MCP workflow evals (`ci-mcp-evals.yml`) are manual only (`workflow_dispatch`),
+never per-PR or scheduled.** They reuse the Instance AI verifier but build each
+workflow through the instance MCP server by driving the `claude` CLI, which adds
+Anthropic build cost on top of the verifier — too expensive to run
+automatically. The job boots `lanes` n8n containers on one runner and runs a
+single `eval:instance-ai --build-via-mcp` process: each case is built by driving
+its lane's own MCP server with `claude`, then verified on that same lane
+(work-stealing across lanes, capped per-lane). One process → one experiment in
+the isolated `mcp-workflow-evals` LangSmith dataset, so there is no shard/merge
+step. Dispatch from the Actions tab (set `experiment-name=mcp-baseline` to
+refresh the baseline, `filter=<slug>` to run a single case, or `lanes` to widen
+parallelism). See the `--build-via-mcp` section in
+`packages/@n8n/instance-ai/evaluations/README.md`.
 
 ### On PR Close/Merge
 
@@ -267,7 +294,7 @@ release-publish.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
 
-test-workflows-nightly.yml
+test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
     └──────────────────────────▶  test-workflows-callable.yml
 
 test-e2e-vm-expressions-nightly.yml
@@ -305,7 +332,7 @@ test-workflows-pr-comment.yml
 │  ───────────────────────                                                   │
 │  ci-pull-requests.yml runs full suite                                      │
 │  ├─ NO ci-check-pr-title.yml (skipped for release branches)                │
-│  └─ NO test-visual-chromatic.yml (skipped)                                 │
+│  └─ NO release-chromatic.yml (skipped)                                 │
 │                          │                                                 │
 │                          ▼ [Merge PR]                                      │
 │  STAGE 3: Publish                                                          │
@@ -380,16 +407,31 @@ Push to master/1.x
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
-| Daily 00:00               | `test-visual-storybook.yml`       | Storybook deploy         |
-| Daily 00:00               | `test-visual-chromatic.yml`       | Visual regression        |
+| Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
+| Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
-| Daily 02:00               | `test-workflows-nightly.yml`      | Workflow tests           |
 | Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
+| Daily 06:00               | `util-sync-master-to-3x.yml`      | Sync master → 3.x (v3)   |
+| Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
+
+---
+
+## v3 development (master + 3.x)
+
+During the v3 release window, `master` carries normal feature work (behind opt-in
+flags) and the long-lived `3.x` branch carries breaking changes. `master` is
+synced into `3.x` daily by `util-sync-master-to-3x.yml` (conflicts open a draft PR
+labeled `automation:v3-sync`, request the breaking-commit authors as reviewers via
+`sync-conflict-owners.mjs`, post to `#alerts-v3-sync`, and pause further syncs).
+`build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
+by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`.
+
+See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
 
 ---
 
@@ -432,7 +474,7 @@ Workflows with `workflow_call` trigger:
 | `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
-| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled` | Docker build          |
+| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag` | Docker build |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
@@ -577,7 +619,7 @@ Supply chain security ensures artifacts haven't been tampered with. We provide t
 
 - **Runs on:** stable/nightly/rc Docker builds
 - **Scans:** n8n image, runners image
-- **Output:** Slack `#updates-security` when vulnerabilities are detected
+- **Output:** GitHub Actions step summary (`$GITHUB_STEP_SUMMARY`) and run logs
 
 ### SBOM
 
