@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/listSearch.ts
+  s_d57dc1bdefde8e::t_98661079b96be3 10
+  s_d57dc1bdefde8e::t_4bd1ad9d987ee4 11,143-148,161-164
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/utils.ts
+  s_d57dc1bdefde8e::t_5f3e42789bcce6 35-40,43-44
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/methods/listSearch.test.ts
+  s_d57dc1bdefde8e::t_5ec533b8ee1165 9,23-30,41-46,232-321,341-342
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/index.ts
+  s_d57dc1bdefde8e::t_12aacff09681d7 1,6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "16849a81a7ad4532308073596582fbebee06addc",
+  "prompts": {},
+  "sessions": {
+    "s_d57dc1bdefde8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7bb02aa9-ecfd-4bd9-ad13-9c30e50de22b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
