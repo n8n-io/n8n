@@ -43,14 +43,14 @@ export class N8nPackagesService {
 		private readonly folderExporter: FolderExporter,
 		private readonly credentialExporter: CredentialExporter,
 		private readonly dataTableExporter: DataTableExporter,
-		private readonly workflowRequirementExporter: WorkflowRequirementExporter,
-		private readonly workflowDependencyResolver: WorkflowDependencyResolver,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly packageParser: N8nPackageParser,
 		private readonly packageImportConfig: PackageImportConfig,
 		private readonly projectPackageImporter: ProjectPackageImporter,
 		private readonly workflowPackageImporter: WorkflowPackageImporter,
 		private readonly eventService: EventService,
+		private readonly workflowRequirementExporter: WorkflowRequirementExporter,
+		private readonly workflowDependencyResolver: WorkflowDependencyResolver,
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
