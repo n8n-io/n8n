@@ -192,7 +192,7 @@ export function makeWorkflow(options?: {
 		id: uuid(),
 		name: 'Schedule Trigger',
 		type: 'n8n-nodes-base.scheduleTrigger',
-		parameters: {},
+		parameters: SCHEDULE_TRIGGER_PARAMETERS,
 		typeVersion: 1,
 		position: [740, 240],
 	};
@@ -217,3 +217,9 @@ export function makeWorkflow(options?: {
 }
 
 export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
+
+export const SCHEDULE_TRIGGER_PARAMETERS = {
+	rule: {
+		interval: [{ field: 'days' }],
+	},
+};

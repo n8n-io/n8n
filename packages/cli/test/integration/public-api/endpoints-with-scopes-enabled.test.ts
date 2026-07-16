@@ -1684,7 +1684,7 @@ describe('Public API endpoints with API key scopes', () => {
 							},
 							{
 								id: 'uuid-1234',
-								parameters: {},
+								parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
 								name: 'Schedule Trigger',
 								type: 'n8n-nodes-base.scheduleTrigger',
 								typeVersion: 1,
@@ -1765,7 +1765,7 @@ describe('Public API endpoints with API key scopes', () => {
 							},
 							{
 								id: 'uuid-1234',
-								parameters: {},
+								parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
 								name: 'Schedule Trigger',
 								type: 'n8n-nodes-base.scheduleTrigger',
 								typeVersion: 1,

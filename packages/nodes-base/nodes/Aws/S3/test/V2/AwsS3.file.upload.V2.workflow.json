@@ -12,6 +12,7 @@
 		{
 			"parameters": {
 				"operation": "toJson",
+				"mode": "each",
 				"options": {}
 			},
 			"id": "eae2946a-1a1e-47e9-9fd6-e32119b13ec0",

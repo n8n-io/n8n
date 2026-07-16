@@ -2071,7 +2071,7 @@ describe('PUT /workflows/:id', () => {
 				},
 				{
 					id: 'uuid-1234',
-					parameters: {},
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
 					name: 'Schedule Trigger',
 					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
@@ -2155,7 +2155,7 @@ describe('PUT /workflows/:id', () => {
 			nodes: [
 				{
 					id: 'uuid-updated',
-					parameters: {},
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
 					name: 'Updated Schedule Trigger',
 					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
@@ -2236,7 +2236,7 @@ describe('PUT /workflows/:id', () => {
 				},
 				{
 					id: 'uuid-2',
-					parameters: {},
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
 					name: 'Schedule Trigger',
 					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
