@@ -1,6 +1,7 @@
 import type { Mocked } from 'vitest';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -484,7 +485,9 @@ describe('OAuthTokenService', () => {
 
 			expect(result).toMatchObject({ user: null });
 		});
+	});
 
+	describe('verifyOAuthAccessToken audience resolution', () => {
 		it('should deny when a resource-scoped audience cannot be resolved', async () => {
 			// Fail closed: the token carries an audience but no resource resolves for
 			// it (deleted, or a transient resolver failure the registry swallows), so
@@ -775,6 +778,7 @@ describe('OAuthTokenService', () => {
 				urlService,
 				mock<McpSettingsService>(),
 				mcpConfig,
+				mock<GlobalConfig>(),
 			);
 
 			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());

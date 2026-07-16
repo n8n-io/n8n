@@ -65,7 +65,7 @@ export function createExecutorTracing(tracer: Tracer): ExecutorTracing {
  */
 export function withHandoffTracing(tracer: Tracer, handler: TaskHandler): TaskHandler {
 	return {
-		async execute(task) {
+		async execute(task, onDispatch) {
 			await tracer.startSpan(
 				{
 					name: 'Scheduler handoff',
@@ -77,7 +77,7 @@ export function withHandoffTracing(tracer: Tracer, handler: TaskHandler): TaskHa
 					},
 				},
 				async (span) => {
-					await handler.execute(task);
+					await handler.execute(task, onDispatch);
 					span.setStatus({ code: SpanStatus.ok });
 				},
 			);

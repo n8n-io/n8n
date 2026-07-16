@@ -2232,6 +2232,9 @@ describe('TelemetryEventRelay', () => {
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
+					dataTableMatchingMode: 'by-id',
+					dataTableMissingMode: 'create',
+					dataTableSchemaConflictPolicy: 'keep-existing',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -2251,6 +2254,11 @@ describe('TelemetryEventRelay', () => {
 						created: 1,
 						requirements: 3,
 					},
+					dataTables: {
+						matched: 1,
+						created: 1,
+						requirements: 2,
+					},
 				},
 			};
 
@@ -2263,12 +2271,18 @@ describe('TelemetryEventRelay', () => {
 				credential_matching_mode: 'id-only',
 				credential_missing_mode: 'must-preexist',
 				workflow_publishing_policy: 'preserve-published-state',
+				data_table_matching_mode: 'by-id',
+				data_table_missing_mode: 'create',
+				data_table_schema_conflict_policy: 'keep-existing',
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
 				credentials_matched: 2,
 				credentials_created: 1,
 				credentials_required: 3,
+				data_tables_matched: 1,
+				data_tables_created: 1,
+				data_tables_required: 2,
 			});
 		});
 

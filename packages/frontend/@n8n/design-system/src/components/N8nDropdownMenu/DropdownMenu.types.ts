@@ -89,6 +89,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	teleported?: boolean;
 	/** Maximum height of the dropdown menu */
 	maxHeight?: string | number;
+	/** Maximum width of the dropdown menu. */
+	width?: string;
 	/** Whether to show loading state */
 	loading?: boolean;
 	/** Number of skeleton items to show when loading */

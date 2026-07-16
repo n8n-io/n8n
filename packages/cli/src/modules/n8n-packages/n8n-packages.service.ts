@@ -172,6 +172,9 @@ export class N8nPackagesService {
 			...(credentialExportResult.entries.length > 0
 				? { credentials: credentialExportResult.entries }
 				: {}),
+			...(dataTableExportResult.entries.length > 0
+				? { dataTables: dataTableExportResult.entries }
+				: {}),
 			...(variableExportResult.entries.length > 0
 				? { variables: variableExportResult.entries }
 				: {}),

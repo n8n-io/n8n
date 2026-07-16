@@ -4,7 +4,7 @@ import { DataTableSerializer } from '../data-table.serializer';
 
 function makeDataTable(overrides: Partial<DataTable> = {}): DataTable {
 	return {
-		id: 'dt-1',
+		id: 'dt1',
 		name: 'Customers',
 		projectId: 'proj-1',
 		project: undefined,
@@ -26,7 +26,7 @@ describe('DataTableSerializer', () => {
 					name: 'email',
 					type: 'string',
 					index: 0,
-					dataTableId: 'dt-1',
+					dataTableId: 'dt1',
 					createdAt: new Date('2024-01-01T00:00:00.000Z'),
 					updatedAt: new Date('2024-01-01T00:00:00.000Z'),
 				},
@@ -36,7 +36,7 @@ describe('DataTableSerializer', () => {
 		const serialized = serializer.serialize(dataTable);
 
 		expect(serialized).toEqual({
-			id: 'dt-1',
+			id: 'dt1',
 			name: 'Customers',
 			columns: [{ name: 'email', type: 'string', index: 0 }],
 		});
