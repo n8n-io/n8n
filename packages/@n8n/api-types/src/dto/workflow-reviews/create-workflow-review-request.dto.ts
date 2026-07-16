@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { Z } from '../../zod-class';
 
 export class CreateWorkflowReviewRequestDto extends Z.class({
-	title: z.string().trim().min(1).max(512),
-	description: z.string().max(10_000).optional(),
+	title: z.string().trim().min(1).max(128),
+	description: z.string().max(512).optional(),
 	workflows: z
 		.array(
 			z.object({

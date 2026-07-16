@@ -169,13 +169,26 @@ describe('POST /workflow-review-requests', () => {
 			.expect(400);
 	});
 
-	test('returns 400 for a title exceeding 512 characters', async () => {
+	test('returns 400 for a title exceeding 128 characters', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
 		await ownerAgent
 			.post('/workflow-review-requests')
 			.send({
-				title: 'a'.repeat(513),
+				title: 'a'.repeat(129),
+				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+			})
+			.expect(400);
+	});
+
+	test('returns 400 for a description exceeding 512 characters', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+
+		await ownerAgent
+			.post('/workflow-review-requests')
+			.send({
+				title: 'x',
+				description: 'a'.repeat(513),
 				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
 			})
 			.expect(400);
