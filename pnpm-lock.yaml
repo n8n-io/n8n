@@ -2686,10 +2686,10 @@ importers:
         version: link:../utils
       vue:
         specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
+        version: 3.5.26(@typescript/typescript6@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.5(vue@3.5.26(@typescript/typescript6@6.0.2))
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -2712,9 +2712,12 @@ importers:
       '@types/semver':
         specifier: 'catalog:'
         version: 7.7.0
+      '@typescript/native':
+        specifier: catalog:typescript-tooling
+        version: typescript@7.0.2
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 5.2.4(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(@typescript/typescript6@6.0.2))
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
@@ -2725,8 +2728,8 @@ importers:
         specifier: 7.7.3
         version: 7.7.3
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript-tooling
+        version: '@typescript/typescript6@6.0.2'
       unplugin-icons:
         specifier: catalog:frontend
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
@@ -2738,13 +2741,13 @@ importers:
         version: 2.3.3(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vite-svg-loader:
         specifier: catalog:frontend
-        version: 5.1.0(vue@3.5.26(typescript@6.0.2))
+        version: 5.1.0(vue@3.5.26(@typescript/typescript6@6.0.2))
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)
 
   packages/@n8n/mcp-browser:
     dependencies:
@@ -41742,6 +41745,14 @@ snapshots:
   vue-github-button@3.1.3:
     dependencies:
       github-buttons: 2.29.1
+
+  vue-i18n@11.4.5(vue@3.5.26(@typescript/typescript6@6.0.2)):
+    dependencies:
+      '@intlify/core-base': 11.4.5
+      '@intlify/devtools-types': 11.4.5
+      '@intlify/shared': 11.4.5
+      '@vue/devtools-api': 6.6.4
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
 
   vue-i18n@11.4.5(vue@3.5.26(typescript@6.0.2)):
     dependencies:
