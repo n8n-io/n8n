@@ -20,9 +20,9 @@ export class AgentToolV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: [2.2],
+			iconColor: 'black',
 			defaults: {
 				name: 'AI Agent Tool',
-				color: '#404040',
 			},
 			inputs: `={{
 				((hasOutputParser, needsFallback) => {
