@@ -2694,6 +2694,49 @@ describe('TestRunnerService', () => {
 			);
 		});
 
+		test('compiles from the supplied snapshot and does not re-read the live config', async () => {
+			// Collection runs pass a frozen config snapshot so a config edit racing
+			// the run can't change later versions' compilation. The runner must
+			// compile from that snapshot and skip the live DB lookup.
+			evaluationConfigRepository.findByIdAndWorkflowId.mockClear();
+			workflowRepository.findById.mockResolvedValueOnce({
+				id: 'wf-1',
+				name: 'Live',
+				nodes: [{ name: 'LiveNode' }],
+				connections: {},
+				settings: {},
+			} as never);
+			workflowHistoryService.findVersion.mockResolvedValueOnce({
+				versionId: 'wfv-x',
+				nodes: [{ name: 'SnapshotNode' } as never],
+				connections: {} as never,
+			} as never);
+			testRunRepository.createTestRun.mockResolvedValueOnce(mock<TestRun>({ id: 'tr-snap' }));
+
+			const snapshot = { id: 'cfg-1', name: 'frozen', metrics: [] } as never;
+			let compiledConfig: unknown;
+			workflowCompiler.compile.mockImplementationOnce((wf, config) => {
+				compiledConfig = config;
+				return wf as never;
+			});
+
+			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1, {
+				collectionId: 'col-1',
+				workflowVersionId: 'wfv-x',
+				evaluationConfigId: 'cfg-1',
+				evaluationConfigSnapshot: snapshot,
+				compileFromConfig: true,
+			});
+			await finished.catch(() => undefined);
+
+			expect(evaluationConfigRepository.findByIdAndWorkflowId).not.toHaveBeenCalled();
+			expect(compiledConfig).toBe(snapshot);
+			expect(testRunRepository.createTestRun).toHaveBeenCalledWith(
+				'wf-1',
+				expect.objectContaining({ evaluationConfigSnapshot: snapshot }),
+			);
+		});
+
 		test('overwrites workflowData.versionId with the pinned history versionId', async () => {
 			// `ExecutionPersistence` reads `workflowData.versionId` and stores
 			// it on the execution row. If the live workflow's `versionId` leaks
