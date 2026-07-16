@@ -241,7 +241,7 @@ catalogs:
     '@vitejs/plugin-vue': ^5.2.4
     '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0
-    '@vueuse/core': ^10.11.0
+    '@vueuse/core': ^14.3.0
     element-plus: 2.4.3
     highlight.js: 11.8.0
     pinia: ^2.2.4
