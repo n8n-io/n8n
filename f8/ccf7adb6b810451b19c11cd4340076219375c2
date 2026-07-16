@@ -7,11 +7,9 @@ packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
   s_146af3b34ae01d::t_2080c5033b3d44 13
   s_146af3b34ae01d::t_4738a0ebe79c3b 2,6
 packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-data-tables.integration.test.ts
-  s_146af3b34ae01d::t_f04ad8f20ab3ad 148
-  s_146af3b34ae01d::t_82ac2d7312a124 183-219
-  s_146af3b34ae01d::t_dcc8cb0a963c68 14
-  s_146af3b34ae01d::t_ed7d3cd55d24e8 1-13,15-18,20-50,52-108,110-139,141-147,149-182,220-334
-  s_146af3b34ae01d::t_182c3980c2cbd8 19
+  s_146af3b34ae01d::t_82ac2d7312a124 290,303,304,317
+  s_146af3b34ae01d::t_dcc8cb0a963c68 16
+  s_146af3b34ae01d::t_ed7d3cd55d24e8 2-3,5-15,18-21,26-30,33-38,39,54,57-58,126,154,168,171,173-178,181-182,198,204,210-211,232,237,238-239,261,274,275,336,367-368,372,374,382,385,394-395,400,411,420,442-443,457,479-480,482,483-486,488-489,491-510
 packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
   s_146af3b34ae01d::t_6dabc9069f19f2 2,14
   s_146af3b34ae01d::t_d2eb4922eb20e0 15-17,21-25,29,33-37,40,44
@@ -20,7 +18,7 @@ packages/@n8n/api-types/src/index.ts
 packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
   s_146af3b34ae01d::t_9d45a92a996bbe 10-34,39-43,47
 packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
-  s_146af3b34ae01d::t_876cae55792a2c 2047,2058
+  s_146af3b34ae01d::t_876cae55792a2c 2284,2295
 packages/cli/src/modules/n8n-packages/spec/serialized/data-table.schema.ts
   s_146af3b34ae01d::t_f3a0f91f97c501 2-6,8-21
   s_146af3b34ae01d::t_383536cc4fef34 1,7
@@ -51,49 +49,49 @@ packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
 packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
   s_146af3b34ae01d::t_b48f2820f507d2 48-61
 packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
-  s_146af3b34ae01d::t_2b7cb9ba5a74ce 10
-  s_146af3b34ae01d::t_fef60e286fe381 32
-  s_146af3b34ae01d::t_c3608fb28bc989 23
-  s_146af3b34ae01d::t_bab1147241c283 162-172
-  s_146af3b34ae01d::t_25f448199fc8af 109-113
-  s_146af3b34ae01d::t_0f11027eb138e5 147
-  s_146af3b34ae01d::t_456560fd8e73e4 90-97
-  s_146af3b34ae01d::t_f6fed71a99a5fd 122
+  s_146af3b34ae01d::t_2b7cb9ba5a74ce 12
+  s_146af3b34ae01d::t_fef60e286fe381 40
+  s_146af3b34ae01d::t_c3608fb28bc989 31
+  s_146af3b34ae01d::t_bab1147241c283 178-188
+  s_146af3b34ae01d::t_25f448199fc8af 120-124
+  s_146af3b34ae01d::t_0f11027eb138e5 158
+  s_146af3b34ae01d::t_456560fd8e73e4 101-108
+  s_146af3b34ae01d::t_f6fed71a99a5fd 133
 packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.exporter.test.ts
   s_146af3b34ae01d::t_0625c97c902742 6,38-40,46,54,60-61,70,99-100,112,130-131,155-156,177-178,196-197,226-227,243-244,246
   s_146af3b34ae01d::t_fc65b23d440336 11,28-29
   s_146af3b34ae01d::t_18a5d84b8ee032 1-4,7-10,12-27,30-37,41-45,47-53,55-59,62-69,71-98,101-111,113-129,132-154,157-176,179-195,198-218,220-225,228-242,247-263
   s_146af3b34ae01d::t_f1b9d5bbd2dfdb 5
 packages/cli/src/events/relays/telemetry.event-relay.ts
-  s_146af3b34ae01d::t_7c234caae0dfd6 1007
+  s_146af3b34ae01d::t_7c234caae0dfd6 1058
 packages/cli/src/modules/n8n-packages/entities/data-table/data-table-requirements.extractor.ts
   s_146af3b34ae01d::t_551cacbd3b736d 1-12,14-21,24-26,30-33,38-39,41-42
   s_146af3b34ae01d::t_327613aab6471f 13,22-23,27-29,34-37,40
 packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
-  s_146af3b34ae01d::t_025920c1038d8c 11
-  s_146af3b34ae01d::t_75318fffa9a27a 12,75
-  s_146af3b34ae01d::t_68f45bc91146da 52,72
+  s_146af3b34ae01d::t_025920c1038d8c 12
+  s_146af3b34ae01d::t_75318fffa9a27a 13,80
+  s_146af3b34ae01d::t_68f45bc91146da 57,77
   s_146af3b34ae01d::t_fd59fe1462a40d 37
 packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
-  s_146af3b34ae01d::t_b5395f7d1860f4 110
+  s_146af3b34ae01d::t_b5395f7d1860f4 131
 packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
   s_146af3b34ae01d::t_5b7859ebff55b0 10-11
-  s_146af3b34ae01d::t_236788e91f7f3c 32-36,42-43
-  s_146af3b34ae01d::t_b54c829367fcf3 208-229
-  s_146af3b34ae01d::t_bf34186507b81a 230
+  s_146af3b34ae01d::t_236788e91f7f3c 36-40,47-48
+  s_146af3b34ae01d::t_b54c829367fcf3 247-268
+  s_146af3b34ae01d::t_bf34186507b81a 269
 packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
   s_146af3b34ae01d::t_b3b63bfe5f8e83 146
 packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
   s_146af3b34ae01d::t_116861a903f6b6 1
   s_146af3b34ae01d::t_86264d1fd1be95 2-4
 packages/cli/src/modules/n8n-packages/__tests__/utils/test-builders.ts
-  s_146af3b34ae01d::t_5fbc8d00dcc86a 77-107,109,111-117
-  s_146af3b34ae01d::t_7fc0d68fd0575b 108,110
+  s_146af3b34ae01d::t_5fbc8d00dcc86a 77,79-80,82-84,86-87,89,91-93,104-109
+  s_146af3b34ae01d::t_7fc0d68fd0575b 102
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.5.2",
-  "base_commit_sha": "6c91bcdd878ef471c8782507c0d74cd0daaa4581",
+  "base_commit_sha": "f8ccf7adb6b810451b19c11cd4340076219375c2",
   "prompts": {},
   "humans": {
     "h_5d40c27a8fdfd1": {

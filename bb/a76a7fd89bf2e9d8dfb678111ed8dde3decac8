@@ -1,0 +1,42 @@
+packages/cli/src/modules/mcp/__tests__/execute-workflow.tool.test.ts
+  s_aa293e286af037::t_fdc4b7dd4f6d04 795,802-803,820-821,824
+  s_aa293e286af037::t_839c54a7b75e86 18,20,22
+  s_aa293e286af037::t_3a768f114f4467 32,41
+packages/cli/src/modules/mcp/tools/test-workflow.tool.ts
+  s_aa293e286af037::t_1edc47ca6bf52b 27,30
+  s_aa293e286af037::t_17a1a0bba4b81b 166
+  s_aa293e286af037::t_dfbd086535827e 108
+  s_aa293e286af037::t_a8e26f510c9a6b 244-247,249
+packages/cli/src/modules/mcp/tools/execution-utils.ts
+  s_aa293e286af037::t_d1093ab5b3c2b2 5-10,21-23,31-34,40,47-48,56-59,61-68,70-75,85-86,92-98,100-104,153-154
+  ai_agent 69
+packages/cli/src/modules/mcp/tools/execute-workflow.tool.ts
+  ai_agent 159-172
+  s_aa293e286af037::t_facbfaa7529cad 32,35
+  s_aa293e286af037::t_5c5c8ac133e07c 173-175
+  s_aa293e286af037::t_223811ca7ed21e 93
+  s_aa293e286af037::t_895f318dd35b58 114
+  s_aa293e286af037::t_d606ea4563224e 6
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_aa293e286af037::t_88b05482e9561a 267
+packages/cli/src/modules/mcp/__tests__/execution-utils.test.ts
+  s_aa293e286af037::t_96b0e99db07d30 63-75
+  s_aa293e286af037::t_60750272554fe7 105,108-110
+  s_aa293e286af037::t_172007f8633859 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bba76a7fd89bf2e9d8dfb678111ed8dde3decac8",
+  "prompts": {},
+  "sessions": {
+    "s_aa293e286af037": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e03e0a1-bc0c-4dcd-830e-e1ddc82eb921",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

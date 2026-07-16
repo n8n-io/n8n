@@ -1,0 +1,27 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_3472fb7f0bd378::t_cd65667e61a93e 838-842
+  s_3472fb7f0bd378::t_7b3b7561ee9064 894
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_3472fb7f0bd378::t_ec6e2b8a720c69 5459-5461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "acb2a2470df1624019adc2b0f452b89817615045",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3472fb7f0bd378": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "55eb3910-c38d-4363-aaa8-2e77c0a349d1",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,70 @@
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  s_f74d857aade032::t_36cdd289ac11eb 1803
+  s_f74d857aade032::t_714601af078cf4 1817,1823-1824
+  s_f74d857aade032::t_36da3a8d3629b1 1815-1816,1818-1822,1825
+  s_f74d857aade032::t_999a9713e6985b 1759-1802,1804-1814,1826-1827
+packages/cli/src/workflows/workflow.service.ts
+  s_f74d857aade032::t_a8520b900d42b5 41
+  s_f74d857aade032::t_0e97c155189eee 1059-1062
+  s_f74d857aade032::t_2397fec10f06c6 79
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_f74d857aade032::t_32cb9409a228f9 79
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_f74d857aade032::t_b292a8e4b22df6 1763-1767,1774-1780
+  s_f74d857aade032::t_0489deacb3c6c1 150-151
+  s_f74d857aade032::t_6051aa733ace54 1768-1772
+  ai_agent 1723-1725,1750-1752
+  s_f74d857aade032::t_a402b006291658 1670-1674
+  s_f74d857aade032::t_2ad4ab37322107 39,41
+  s_f74d857aade032::t_9049f5cf424b08 1712-1722,1726-1732,1741-1749,1753-1762,1773,1781-1798
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_f74d857aade032::t_9b8a17079c6f61 1305
+  s_f74d857aade032::t_f3a700b610996d 80,341,1041
+  s_f74d857aade032::t_21bc624046f3a2 19
+  s_f74d857aade032::t_d0560a0bca388b 1353-1360,1364
+  ai_agent 1361-1363
+  s_f74d857aade032::t_d1f4ee3b4f14a4 1267
+  s_f74d857aade032::t_813717bb3c01df 1287
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_f74d857aade032::t_43ad4261680383 15
+  s_f74d857aade032::t_891f81fc371a96 2496-2498
+  s_f74d857aade032::t_ba49d7aa9e9443 3069,3073-3075
+  s_f74d857aade032::t_423410057e674c 33,35
+  s_f74d857aade032::t_73230aa950f948 2515-2516
+  ai_agent 3070-3072
+  s_f74d857aade032::t_e6b41be65b3eac 76-77
+  s_f74d857aade032::t_5bd6d9b3d60831 2477-2488
+  s_f74d857aade032::t_bd8f1301f5bda0 3048
+  s_f74d857aade032::t_db66eb0648e4c6 2510-2514,2517-2527
+  s_f74d857aade032::t_7b1144b5544bad 117-118
+  s_f74d857aade032::t_1393c25291e037 3062-3068,3076-3088
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  s_f74d857aade032::t_59e8c65694dc32 127-128
+packages/cli/src/executions/execution-persistence.ts
+  s_f74d857aade032::t_1c24de1bf466cc 537-541,546-547,549-551,553-555,557-565,570-571
+  s_f74d857aade032::t_784df1b8cd2e2e 544-545,548,552
+  s_f74d857aade032::t_46187ca0ad31df 64-66
+  s_f74d857aade032::t_20b04f942a6950 542-543,556,566-569
+  s_f74d857aade032::t_fdbe4695024d22 67-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "71339719a22063d74d349b79b19b00347110d754",
+  "prompts": {},
+  "humans": {
+    "h_0ff5b37e8b04b1": {
+      "author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f74d857aade032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b0a5ab2-3750-4f55-bfb8-bbd302d3b1aa",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

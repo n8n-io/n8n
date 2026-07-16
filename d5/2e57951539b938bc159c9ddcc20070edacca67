@@ -1,0 +1,23 @@
+scripts/check-boundaries.mjs
+  s_768f033e6fe33a::t_c99662c390391d 12-16
+  s_768f033e6fe33a::t_de87229019a085 53-55
+  s_768f033e6fe33a::t_a24b0004d03d36 40-45
+.boundaries-baseline.json
+  s_768f033e6fe33a::t_5da6ef0861cfd5 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d52e57951539b938bc159c9ddcc20070edacca67",
+  "prompts": {},
+  "sessions": {
+    "s_768f033e6fe33a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da0be38a-3d09-4b8c-91c9-2a290c191b69",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
