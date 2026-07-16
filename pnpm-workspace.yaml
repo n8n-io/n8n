@@ -217,6 +217,13 @@ catalogMode: strict
 catalogs:
   typescript:
     typescript: 7.0.2
+  # Side-by-side TS7: tsgo `tsc` for typecheck/build, plus the real TS6 JS API
+  # (as `typescript`) for tooling that needs the programmatic compiler API —
+  # e.g. @typescript-eslint/typescript-estree, which TS7 does not yet provide.
+  # See scripts/typescript-migration/README.md "Choosing the TypeScript catalog".
+  typescript-tooling:
+    '@typescript/native': 'npm:typescript@7.0.2'
+    typescript: 'npm:@typescript/typescript6@6.0.2'
   e2e:
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
