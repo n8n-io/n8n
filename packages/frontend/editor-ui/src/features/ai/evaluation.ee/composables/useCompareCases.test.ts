@@ -158,4 +158,36 @@ describe('useCompareCases', () => {
 		// tokens/execution time are operational and excluded.
 		expect(caseRows.value[0].cells[0].score).toBe(0.8);
 	});
+
+	it('aligns by runIndex so a version missing a middle case does not shift later cases', async () => {
+		seed([
+			caseRecord({ id: 'a0', testRunId: 'run-a', runIndex: 0, metrics: { helpfulness: 5 } }),
+			caseRecord({ id: 'a1', testRunId: 'run-a', runIndex: 1, metrics: { helpfulness: 4 } }),
+			caseRecord({ id: 'a2', testRunId: 'run-a', runIndex: 2, metrics: { helpfulness: 3 } }),
+			// run-b is missing the middle case (runIndex 1).
+			caseRecord({ id: 'b0', testRunId: 'run-b', runIndex: 0, metrics: { helpfulness: 5 } }),
+			caseRecord({ id: 'b2', testRunId: 'run-b', runIndex: 2, metrics: { helpfulness: 2 } }),
+		]);
+		const { caseRows } = useCompareCases(ref(detailWith(['run-a', 'run-b'])), ref('wf-1'));
+		await nextTick();
+
+		expect(caseRows.value).toHaveLength(3);
+		// runIndex 1: run-b has no case → null cell, not run-b's next case shifted up.
+		expect(caseRows.value[1].cells[0].testCaseId).toBe('a1');
+		expect(caseRows.value[1].cells[1].testCaseId).toBeNull();
+		// runIndex 2: b2 stays paired with a2 (same seeded case), not with a1.
+		expect(caseRows.value[2].cells[0].testCaseId).toBe('a2');
+		expect(caseRows.value[2].cells[1].testCaseId).toBe('b2');
+	});
+
+	it('resolves to a loaded (not stuck) state for an empty collection', async () => {
+		const { casesLoaded, loading, caseRows } = useCompareCases(ref(detailWith([])), ref('wf-1'));
+		await nextTick();
+
+		// The watcher must still invoke load() for a detail with no runs so its
+		// empty-run completion branch runs, rather than sitting in loading forever.
+		expect(casesLoaded.value).toBe(true);
+		expect(loading.value).toBe(false);
+		expect(caseRows.value).toEqual([]);
+	});
 });

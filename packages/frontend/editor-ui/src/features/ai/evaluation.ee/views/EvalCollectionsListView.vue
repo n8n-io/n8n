@@ -120,6 +120,10 @@ watch(
 	() => props.workflowId,
 	async (next, prev) => {
 		if (next === prev) return;
+		// Reset to the first page: the length-based clamp below won't fire when the
+		// new workflow happens to have the same cached collection count, which would
+		// otherwise strand the user on the previous workflow's page.
+		collectionsPage.value = 1;
 		stopAllPolling();
 		await loadForWorkflow(next);
 	},

@@ -50,8 +50,9 @@ function inputPreview(inputs: JsonObject | undefined): string {
  * one row per test case across versions.
  *
  * There is no collection-level per-case endpoint and no case id shared across
- * runs, so this fans out `fetchTestCaseExecutions` per run and aligns by sorted
- * `runIndex` position (the ordering the run-detail view uses). Divergent case
+ * runs, so this fans out `fetchTestCaseExecutions` per run and aligns cells by
+ * `runIndex` (the seeded per-case sequence) — a version missing a case leaves a
+ * null cell rather than shifting later cases into the wrong row. Divergent case
  * counts surface as a `mismatch` rather than silently misaligning rows.
  */
 export function useCompareCases(
@@ -139,13 +140,23 @@ export function useCompareCases(
 	});
 
 	const caseRows = computed<CompareCaseRow[]>(() => {
-		const versions = casesByVersion.value;
-		const rowCount = mismatch.value.maxCount;
-		const rows: CompareCaseRow[] = [];
+		// Align cells by `runIndex` (the seeded per-case sequence), not list
+		// position: a version missing a case in the middle must leave a null cell
+		// in that row rather than shift every later case up and pair unrelated
+		// inputs. Fall back to list position only when a record has no runIndex.
+		const byIndex = casesByVersion.value.map((cases) => {
+			const map = new Map<number, TestCaseExecutionRecord>();
+			cases.forEach((record, position) => map.set(record.runIndex ?? position, record));
+			return map;
+		});
 
-		for (let index = 0; index < rowCount; index++) {
-			const cells: CompareCaseCell[] = versions.map((cases, versionIndex) => {
-				const record = cases[index];
+		const allIndices = [...new Set(byIndex.flatMap((map) => [...map.keys()]))].sort(
+			(a, b) => a - b,
+		);
+
+		return allIndices.map((runIndex, rowIndex) => {
+			const cells: CompareCaseCell[] = byIndex.map((map, versionIndex) => {
+				const record = map.get(runIndex);
 				return {
 					versionIndex,
 					testCaseId: record?.id ?? null,
@@ -157,23 +168,25 @@ export function useCompareCases(
 			});
 
 			const firstWithInputs = cells.find((cell) => cell.inputs !== undefined);
-			rows.push({
-				index,
-				displayIndex: index + 1,
+			return {
+				index: rowIndex,
+				displayIndex: rowIndex + 1,
 				inputPreview: inputPreview(firstWithInputs?.inputs),
 				cells,
 				bestVersionIndex: indexOfMax(cells.map((cell) => cell.score)),
-			});
-		}
-
-		return rows;
+			};
+		});
 	});
 
 	// Refetch whenever the run set changes (collection switch reuses the view).
+	// The key is `null` while the detail hasn't loaded and an empty string once
+	// it has but with no runs — distinguishing them so an empty collection still
+	// runs `load()` (which resolves its own empty-run completion state) instead
+	// of sitting in the initial loading state forever.
 	watch(
-		() => (detail.value?.runs ?? []).map((run) => run.testRunId).join(','),
-		async (next) => {
-			if (next) await load();
+		() => (detail.value ? (detail.value.runs ?? []).map((run) => run.testRunId).join(',') : null),
+		async (key) => {
+			if (key !== null) await load();
 		},
 		{ immediate: true },
 	);
