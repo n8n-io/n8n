@@ -20,6 +20,9 @@ const SLACK_HISTORY_HEADER =
 	'Earlier messages in this Slack thread, for context (you were mentioned partway through the conversation):';
 const SLACK_HISTORY_OPEN_TAG = '<slack_thread_history>';
 const SLACK_HISTORY_CLOSE_TAG = '</slack_thread_history>';
+/** Fixed cost of header + tags + the two `\n` joins around the open tag (header→open, open→close). Each history line adds `line.length + 1` (its preceding newline). */
+const SLACK_HISTORY_FRAMING_CHARS =
+	SLACK_HISTORY_HEADER.length + SLACK_HISTORY_OPEN_TAG.length + SLACK_HISTORY_CLOSE_TAG.length + 2;
 
 interface SlackThreadContext {
 	channelId: string;
@@ -258,7 +261,8 @@ async function fetchSlackThreadHistory(
 	try {
 		const triggeringMessageId = triggeringMessage.id;
 		const collected: string[] = [];
-		let totalChars = 0;
+		// Budget the final joined block (framing + newlines), not just line bodies.
+		let totalChars = SLACK_HISTORY_FRAMING_CHARS;
 
 		for await (const message of thread.messages) {
 			if (collected.length >= SLACK_HISTORY_MAX_MESSAGES) break;
@@ -268,11 +272,11 @@ async function fetchSlackThreadHistory(
 			if (!text) continue;
 
 			const line = formatSlackHistoryLine(message, text, context);
-			const lineLength = line.length;
-			if (totalChars + lineLength > SLACK_HISTORY_MAX_CHARS) break;
+			const lineCost = line.length + 1; // line + its preceding `\n` in the joined block
+			if (totalChars + lineCost > SLACK_HISTORY_MAX_CHARS) break;
 
 			collected.push(line);
-			totalChars += lineLength;
+			totalChars += lineCost;
 		}
 
 		if (collected.length === 0) return undefined;

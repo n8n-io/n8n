@@ -1342,6 +1342,15 @@ describe('AgentChatBridge — Slack thread history', () => {
 		}));
 	}
 
+	function historyBlock(message: string): string {
+		const header = 'Earlier messages in this Slack thread, for context';
+		const start = message.indexOf(header);
+		const closeTag = '</slack_thread_history>';
+		const close = message.indexOf(closeTag);
+		if (start === -1 || close === -1) return '';
+		return message.slice(start, close + closeTag.length);
+	}
+
 	function historyBlockContent(message: string): string {
 		const open = message.indexOf('<slack_thread_history>');
 		const close = message.indexOf('</slack_thread_history>');
@@ -1403,7 +1412,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 	it('caps the total history size at the character limit', async () => {
 		const { bot, handlers } = makeBot();
 		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
-		// 9 messages of 1000 chars each → 9081 formatted chars, well over the 8000 cap.
+		// 9 × ~1000-char bodies → well over the 8000 cap once framing/newlines are included.
 		const thread = makeThread('thread-1', undefined, {
 			[Symbol.asyncIterator]: () => {
 				return (async function* () {
@@ -1438,9 +1447,10 @@ describe('AgentChatBridge — Slack thread history', () => {
 
 		const call = agentExecutor.captured[0];
 		const lines = historyLines(call.message);
-		// The cap engaged: not all 9 messages fit, and the kept content is ≤ 8000 chars.
+		const block = historyBlock(call.message);
+		// The cap engaged: not all 9 messages fit, and the full framed block is ≤ 8000 chars.
 		expect(lines.length).toBeLessThan(9);
-		expect(lines.join('').length).toBeLessThanOrEqual(8000);
+		expect(block.length).toBeLessThanOrEqual(8000);
 	});
 
 	it('truncates individual history messages that exceed the per-message limit', async () => {
