@@ -204,7 +204,7 @@ export function useNodeSettingsParameters() {
 
 		if (
 			displayKey === 'displayOptions' &&
-			parameter.envFeatureFlag &&
+			typeof parameter.envFeatureFlag === 'string' &&
 			!envFeatureFlag.value(parameter.envFeatureFlag)
 		) {
 			return false;
