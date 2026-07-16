@@ -1,5 +1,7 @@
 {
 	"version": 1,
+	"generated": "2026-07-14T12:44:08.434Z",
+	"totalViolations": 56,
 	"violations": {
 		"packages/@n8n/ai-workflow-builder.ee/package.json": [
 			{
@@ -9,40 +11,92 @@
 				"hash": "6ee5e003d795"
 			},
 			{
-				"rule": "single-instance-libs",
-				"line": 61,
-				"message": "\"@langchain/core\" is a runtime dependency of \"@n8n/ai-workflow-builder\"; it must be a peerDependency.",
-				"hash": "352bf126d45a"
+				"rule": "catalog-violations",
+				"line": 76,
+				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9c770d66baf2"
+			}
+		],
+		"packages/@n8n/node-cli/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 78,
+				"message": "eslint@>= 9 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "1b5deae544ea"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 53,
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "b6a694c807bc"
+			}
+		],
+		"packages/@n8n/nodes-langchain/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 314,
+				"message": "mysql2@3.17.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "2d7d1b715d0c"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 318,
+				"message": "openai@^6.34.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "3c1f53f0afe3"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 308,
+				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "26f20ebea4b1"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 313,
+				"message": "mongodb appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "46cb48884e22"
 			},
 			{
 				"rule": "single-instance-libs",
-				"line": 85,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/ai-workflow-builder\"; it must be a peerDependency.",
-				"hash": "fd6171764eb4"
+				"line": 253,
+				"message": "\"@langchain/core\" is a runtime dependency of \"@n8n/n8n-nodes-langchain\"; it must be a peerDependency.",
+				"hash": "a3cb17459555"
+			},
+			{
+				"rule": "single-instance-libs",
+				"line": 304,
+				"message": "\"form-data\" is a runtime dependency of \"@n8n/n8n-nodes-langchain\"; it must be a peerDependency.",
+				"hash": "d3d8fabe4a38"
+			},
+			{
+				"rule": "single-instance-libs",
+				"line": 330,
+				"message": "\"zod\" is a runtime dependency of \"@n8n/n8n-nodes-langchain\"; it must be a peerDependency.",
+				"hash": "6dea0e57951a"
 			}
 		],
 		"packages/@n8n/tournament/package.json": [
 			{
 				"rule": "catalog-violations",
-				"line": 43,
+				"line": 41,
 				"message": "@types/node@^18.13.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
 				"hash": "6368b5d3b924"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 52,
+				"line": 50,
 				"message": "ast-types appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "27edcbb2b4f8"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 53,
+				"line": 51,
 				"message": "esprima-next appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "75058f9a4d30"
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 54,
+				"line": 52,
 				"message": "recast appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "5f2b50fef19d"
 			}
@@ -262,145 +316,239 @@
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 93,
-				"message": "recast appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "b660317b5f6f"
+				"line": 90,
+				"message": "pg@^8.17.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "6cac348bdcc8"
+			}
+		],
+		"packages/frontend/@n8n/chat/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 68,
+				"message": "unplugin-icons@^0.19.0 should use \"catalog:frontend\" (exists in pnpm-workspace.yaml [frontend])",
+				"hash": "a0d24d761026"
+			}
+		],
+		"packages/cli/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 177,
+				"message": "@opentelemetry/sdk-trace-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "1cf7f6bcf5d1"
 			},
 			{
-				"rule": "single-instance-libs",
-				"line": 85,
-				"message": "\"form-data\" is a runtime dependency of \"n8n-workflow\"; it must be a peerDependency.",
-				"hash": "a5f5104e7293"
+				"rule": "catalog-violations",
+				"line": 178,
+				"message": "@opentelemetry/sdk-trace-node appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "a3dad0b8dc21"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 271,
+				"message": "ws appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "cd07242e8163"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 89,
+				"message": "@types/psl appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "6e62e0076b0a"
+			}
+		],
+		"packages/@n8n/agents/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 111,
+				"message": "@opentelemetry/sdk-trace-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "c5c495ac3508"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 112,
+				"message": "@opentelemetry/sdk-trace-node appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "a77ced903cdf"
+			}
+		],
+		"packages/@n8n/mcp-browser/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 37,
+				"message": "ws appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9650c1b55f3c"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 31,
+				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "8466b03b1044"
+			}
+		],
+		"packages/@n8n/task-runner/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 53,
+				"message": "ws appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "51cb5069f382"
+			}
+		],
+		"packages/@n8n/instance-ai/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 95,
+				"message": "@types/psl appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "56dabb51b433"
+			}
+		],
+		"packages/nodes-base/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 955,
+				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9795e6c6d9e9"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 970,
+				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "02341f2b5e3e"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 982,
+				"message": "mongodb appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "f688907d087a"
+			}
+		],
+		"packages/@n8n/computer-use/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 48,
+				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "f50c1eee2ed6"
+			}
+		],
+		"packages/workflow/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 78,
+				"message": "ast-types appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "1c7d7cf0b0fe"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 81,
+				"message": "esprima-next appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "627a716b5d23"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 90,
+				"message": "recast appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "b660317b5f6f"
 			}
 		],
 		"packages/frontend/editor-ui/package.json": [
 			{
 				"rule": "catalog-violations",
-				"line": 128,
+				"line": 83,
 				"message": "esprima-next appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "62156c2613b2"
 			}
 		],
-		"packages/core/package.json": [
+		"packages/@n8n/benchmark/package.json": [
 			{
-				"rule": "single-instance-libs",
-				"line": 65,
-				"message": "\"@langchain/core\" is a runtime dependency of \"n8n-core\"; it must be a peerDependency.",
-				"hash": "602aad4587ee"
+				"rule": "catalog-violations",
+				"line": 38,
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "6c742564e868"
+			}
+		],
+		"packages/@n8n/cli/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 78,
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "78dcf13f2250"
+			}
+		],
+		"package.json": [
+			{
+				"rule": "stale-overrides",
+				"line": 108,
+				"message": "Override \"@azure/identity\" duplicates a catalog entry for @azure/identity — set the override to \"catalog:\" or remove it",
+				"hash": "ef24d04a4347"
 			},
 			{
-				"rule": "single-instance-libs",
-				"line": 86,
-				"message": "\"form-data\" is a runtime dependency of \"n8n-core\"; it must be a peerDependency.",
-				"hash": "643d5b8cd4be"
-			}
-		],
-		"packages/@n8n/ai-utilities/package.json": [
-			{
-				"rule": "single-instance-libs",
-				"line": 154,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/ai-utilities\"; it must be a peerDependency.",
-				"hash": "2ed5d6717e54"
+				"rule": "stale-overrides",
+				"line": 109,
+				"message": "Override \"@lezer/common\" duplicates a catalog entry for @lezer/common — set the override to \"catalog:\" or remove it",
+				"hash": "1e5d2fb72ef8"
 			},
 			{
-				"rule": "single-instance-libs",
-				"line": 156,
-				"message": "\"@langchain/core\" is a runtime dependency of \"@n8n/ai-utilities\"; it must be a peerDependency.",
-				"hash": "5626f18eefaf"
-			}
-		],
-		"packages/@n8n/backend-network/package.json": [
-			{
-				"rule": "single-instance-libs",
-				"line": 76,
-				"message": "\"form-data\" is a runtime dependency of \"@n8n/backend-network\"; it must be a peerDependency.",
-				"hash": "6b988cc15b6f"
+				"rule": "stale-overrides",
+				"line": 114,
+				"message": "Override \"@types/node\" duplicates a catalog entry for @types/node — set the override to \"catalog:\" or remove it",
+				"hash": "d3577ed2e92d"
 			},
 			{
-				"rule": "single-instance-libs",
-				"line": 84,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/backend-network\"; it must be a peerDependency.",
-				"hash": "3af671752aa6"
-			}
-		],
-		"packages/@n8n/blob-storage/package.json": [
+				"rule": "stale-overrides",
+				"line": 115,
+				"message": "Override \"chokidar\" duplicates a catalog entry for chokidar — set the override to \"catalog:\" or remove it",
+				"hash": "8496c5755ef0"
+			},
 			{
-				"rule": "single-instance-libs",
-				"line": 51,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/blob-storage\"; it must be a peerDependency.",
-				"hash": "2beb68b6b1eb"
-			}
-		],
-		"packages/@n8n/config/package.json": [
+				"rule": "stale-overrides",
+				"line": 130,
+				"message": "Override \"form-data\" duplicates a catalog entry for form-data — set the override to \"catalog:\" or remove it",
+				"hash": "ec13014b18ab"
+			},
 			{
-				"rule": "single-instance-libs",
-				"line": 29,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/config\"; it must be a peerDependency.",
-				"hash": "0acfb4c2c019"
-			}
-		],
-		"packages/@n8n/db/package.json": [
+				"rule": "stale-overrides",
+				"line": 134,
+				"message": "Override \"nodemailer\" duplicates a catalog entry for nodemailer — set the override to \"catalog:\" or remove it",
+				"hash": "1a696378ebfc"
+			},
 			{
-				"rule": "single-instance-libs",
-				"line": 52,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/db\"; it must be a peerDependency.",
-				"hash": "67751e0ed127"
-			}
-		],
-		"packages/@n8n/engine/package.json": [
+				"rule": "stale-overrides",
+				"line": 136,
+				"message": "Override \"zod\" duplicates a catalog entry for zod — set the override to \"catalog:\" or remove it",
+				"hash": "6224a1e7997d"
+			},
 			{
-				"rule": "single-instance-libs",
-				"line": 37,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/engine\"; it must be a peerDependency.",
-				"hash": "a25ac9357fce"
-			}
-		],
-		"packages/@n8n/expression-runtime/package.json": [
+				"rule": "stale-overrides",
+				"line": 145,
+				"message": "Override \"@rudderstack/rudder-sdk-node@<=3.0.0\" duplicates a catalog entry for @rudderstack/rudder-sdk-node — set the override to \"catalog:\" or remove it",
+				"hash": "71f703e2c449"
+			},
 			{
-				"rule": "single-instance-libs",
-				"line": 51,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/expression-runtime\"; it must be a peerDependency.",
-				"hash": "5669d2783982"
-			}
-		],
-		"packages/@n8n/extension-sdk/package.json": [
+				"rule": "stale-overrides",
+				"line": 153,
+				"message": "Override \"lodash\" duplicates a catalog entry for lodash — set the override to \"catalog:\" or remove it",
+				"hash": "3cbb69cc0ff8"
+			},
 			{
-				"rule": "single-instance-libs",
-				"line": 68,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/extension-sdk\"; it must be a peerDependency.",
-				"hash": "ab05f1864411"
-			}
-		],
-		"packages/@n8n/mcp-apps/package.json": [
+				"rule": "stale-overrides",
+				"line": 160,
+				"message": "Override \"flatted\" duplicates a catalog entry for flatted — set the override to \"catalog:\" or remove it",
+				"hash": "7fe03ed5fec2"
+			},
 			{
-				"rule": "single-instance-libs",
-				"line": 45,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/mcp-apps\"; it must be a peerDependency.",
-				"hash": "5e1c42cefa8d"
-			}
-		],
-		"packages/@n8n/permissions/package.json": [
+				"rule": "stale-overrides",
+				"line": 169,
+				"message": "Override \"yaml@<=2.8.3\" duplicates a catalog entry for yaml — set the override to \"catalog:\" or remove it",
+				"hash": "a5ab421c217c"
+			},
 			{
-				"rule": "single-instance-libs",
-				"line": 26,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/permissions\"; it must be a peerDependency.",
-				"hash": "ead6e5815a0f"
-			}
-		],
-		"packages/@n8n/syslog-client/package.json": [
+				"rule": "stale-overrides",
+				"line": 174,
+				"message": "Override \"uuid@<=13.0.1\" duplicates a catalog entry for uuid — set the override to \"catalog:\" or remove it",
+				"hash": "abd23b6d69fe"
+			},
 			{
-				"rule": "single-instance-libs",
-				"line": 26,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/syslog-client\"; it must be a peerDependency.",
-				"hash": "d1cff54dc25f"
-			}
-		],
-		"packages/@n8n/telemetry/package.json": [
-			{
-				"rule": "single-instance-libs",
-				"line": 28,
-				"message": "\"zod\" is a runtime dependency of \"@n8n/telemetry\"; it must be a peerDependency.",
-				"hash": "d61edcda4afe"
+				"rule": "stale-overrides",
+				"line": 183,
+				"message": "Override \"langsmith\" duplicates a catalog entry for langsmith — set the override to \"catalog:\" or remove it",
+				"hash": "170e854b445c"
 			}
 		],
 		"packages/@n8n/workflow-sdk/package.json": [
