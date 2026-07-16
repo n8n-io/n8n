@@ -85,10 +85,6 @@ const catalog: ProviderCatalog = {
 
 function buildPrompt(modelRecommendationsSection: string | null) {
 	return buildBuilderPrompt({
-		configJson: '(no config yet)',
-		configHash: null,
-		configUpdatedAt: null,
-		toolList: '(none)',
 		agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
 		modelRecommendationsSection,
 		enabledModules: [],

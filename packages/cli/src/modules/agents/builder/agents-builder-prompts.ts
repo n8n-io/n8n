@@ -3,32 +3,6 @@ import { getLlmSelectionPrompt } from './prompts/llm-selection.prompt';
 import { MEMORY_PROMPT } from './prompts/memory.prompt';
 import { TOOLS_PROMPT } from './prompts/tools.prompt';
 
-export function getAgentStateSection(
-	configJson: string,
-	configHash: string | null,
-	configUpdatedAt: string | null,
-	toolList: string,
-): string {
-	return `\
-## Current Agent Config
-
-configHash: \`${configHash ?? 'null'}\`
-updatedAt: \`${configUpdatedAt ?? 'null'}\`
-
-\`\`\`json
-${configJson}
-\`\`\`
-
-Treat this config as a starting snapshot only. Before any \`write_config\` or
-\`patch_config\` call, call \`read_config\` in the same turn and use the returned
-\`config\` plus \`configHash\` as the write base. Do not pass the prompt
-\`configHash\` to a write tool.
-
-## Custom Tools
-
-${toolList}`;
-}
-
 export const TARGET_AGENT_SECTION = `\
 ## Builder vs Target Agent
 
@@ -293,29 +267,17 @@ export const FEW_SHOT_FLOWS_SECTION = `\
    mutation.`;
 
 export interface BuilderPromptContext {
-	configJson: string;
-	configHash: string | null;
-	configUpdatedAt: string | null;
-	toolList: string;
 	agentPreviewPath: string;
 	modelRecommendationsSection: string | null;
 	enabledModules: string[];
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
-	const {
-		configJson,
-		configHash,
-		configUpdatedAt,
-		toolList,
-		agentPreviewPath,
-		modelRecommendationsSection,
-	} = ctx;
+	const { agentPreviewPath, modelRecommendationsSection } = ctx;
 
 	const sections = [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
 		TARGET_AGENT_SECTION,
-		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
 		getConversationModeSection(agentPreviewPath),
 		getConfigMutationPrompt(),
 		getLlmSelectionPrompt(modelRecommendationsSection),

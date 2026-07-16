@@ -27,6 +27,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 	const instructionsCalls: string[] = [];
 	const registeredToolNames: string[] = [];
 	const modelCalls: unknown[] = [];
+	const promptCachingCalls: unknown[] = [];
 	const skillsCalls: unknown[] = [];
 	const telemetryCalls: unknown[] = [];
 	const memoryTaskObserverCalls: unknown[] = [];
@@ -47,6 +48,10 @@ const agentsSdkMocks = vi.hoisted(() => {
 		constructor(_name: string) {}
 		model(config: unknown) {
 			modelCalls.push(config);
+			return this;
+		}
+		promptCaching(config?: unknown) {
+			promptCachingCalls.push(config);
 			return this;
 		}
 		instructions(text: string) {
@@ -112,6 +117,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		instructionsCalls,
 		registeredToolNames,
 		modelCalls,
+		promptCachingCalls,
 		skillsCalls,
 		telemetryCalls,
 		memoryTaskObserverCalls,
@@ -216,6 +222,7 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.instructionsCalls.length = 0;
 		agentsSdkMocks.registeredToolNames.length = 0;
 		agentsSdkMocks.modelCalls.length = 0;
+		agentsSdkMocks.promptCachingCalls.length = 0;
 		agentsSdkMocks.skillsCalls.length = 0;
 		agentsSdkMocks.telemetryCalls.length = 0;
 		agentsSdkMocks.memoryTaskObserverCalls.length = 0;
@@ -303,6 +310,16 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.modelCalls).toEqual(['anthropic/claude-sonnet-host-resolved']);
+	});
+
+	it('enables prompt caching for the builder agent', async () => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+		);
+
+		expect(agentsSdkMocks.promptCachingCalls).toEqual([undefined]);
 	});
 
 	it('attaches session.telemetry when provided, and omits it otherwise', async () => {

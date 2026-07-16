@@ -4,8 +4,25 @@ import {
 	IMPORTANT_SECTION,
 	INTERACTIVE_TOOLS_SECTION,
 	WORKFLOW_SECTION,
+	buildBuilderPrompt,
 } from '../agents-builder-prompts';
 import { getBuilderRuntimeSkills } from '../skills';
+
+describe('builder prompt stability', () => {
+	it('omits stale agent state while retaining config freshness guidance', () => {
+		const prompt = buildBuilderPrompt({
+			agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
+			modelRecommendationsSection: null,
+			enabledModules: [],
+		});
+
+		expect(prompt).not.toContain('## Current Agent Config');
+		expect(prompt).not.toContain('\n## Custom Tools\n');
+		expect(prompt).toContain(
+			'Always call `read_config` first whenever a request touches the config',
+		);
+	});
+});
 
 describe('agents builder integrations prompt', () => {
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
