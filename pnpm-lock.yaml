@@ -6482,10 +6482,10 @@ importers:
         version: 2.0.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@memlab/api':
         specifier: 2.0.0
-        version: 2.0.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
+        version: 2.0.0(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       '@memlab/heap-analysis':
         specifier: 2.0.0
-        version: 2.0.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
+        version: 2.0.0(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../@n8n/api-types
@@ -6577,8 +6577,8 @@ importers:
         specifier: 'catalog:'
         version: 4.19.3
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -26691,17 +26691,17 @@ snapshots:
       '@types/react': 18.0.27
       react: 18.2.0
 
-  '@memlab/api@2.0.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)':
+  '@memlab/api@2.0.0(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)':
     dependencies:
-      '@memlab/core': 2.0.1(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
-      '@memlab/e2e': 2.0.1(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
-      '@memlab/heap-analysis': 2.0.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
+      '@memlab/core': 2.0.1(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
+      '@memlab/e2e': 2.0.1(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
+      '@memlab/heap-analysis': 2.0.0(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       ansi: 0.3.1
       babar: 0.2.3
       chalk: 4.1.2
       fs-extra: 4.0.3
       minimist: 1.2.8
-      puppeteer: 24.41.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
+      puppeteer: 24.41.0(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       puppeteer-core: 24.41.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       string-width: 4.2.3
       util.promisify: 1.1.3
@@ -26712,14 +26712,14 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@memlab/core@2.0.1(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)':
+  '@memlab/core@2.0.1(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)':
     dependencies:
       ansi: 0.3.1
       babar: 0.2.3
       chalk: 4.1.2
       fs-extra: 4.0.3
       minimist: 1.2.8
-      puppeteer: 24.41.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
+      puppeteer: 24.41.0(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       puppeteer-core: 24.41.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       string-width: 4.2.3
       util.promisify: 1.1.3
@@ -26730,20 +26730,20 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@memlab/e2e@2.0.1(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)':
+  '@memlab/e2e@2.0.1(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@babel/generator': 7.29.1
       '@babel/parser': 7.29.2
       '@babel/template': 7.28.6
       '@babel/traverse': 7.29.0
-      '@memlab/core': 2.0.1(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
+      '@memlab/core': 2.0.1(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       '@memlab/lens': 2.0.1
       ansi: 0.3.1
       babar: 0.2.3
       chalk: 4.1.2
       fs-extra: 4.0.3
       minimist: 1.2.8
-      puppeteer: 24.41.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
+      puppeteer: 24.41.0(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       puppeteer-core: 24.41.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       string-width: 4.2.3
       util.promisify: 1.1.3
@@ -26754,16 +26754,16 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@memlab/heap-analysis@2.0.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)':
+  '@memlab/heap-analysis@2.0.0(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)':
     dependencies:
-      '@memlab/core': 2.0.1(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
-      '@memlab/e2e': 2.0.1(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
+      '@memlab/core': 2.0.1(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
+      '@memlab/e2e': 2.0.1(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       ansi: 0.3.1
       babar: 0.2.3
       chalk: 4.1.2
       fs-extra: 4.0.3
       minimist: 1.2.8
-      puppeteer: 24.41.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
+      puppeteer: 24.41.0(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       puppeteer-core: 24.41.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       string-width: 4.2.3
       util.promisify: 1.1.3
@@ -38794,20 +38794,6 @@ snapshots:
       - utf-8-validate
     optional: true
 
-  puppeteer@24.41.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10):
-    dependencies:
-      '@puppeteer/browsers': 2.13.0
-      chromium-bidi: 14.0.0(devtools-protocol@0.0.1595872)
-      cosmiconfig: 9.0.0(typescript@6.0.2)
-      devtools-protocol: 0.0.1595872
-      puppeteer-core: 24.41.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-      typed-query-selector: 2.12.1
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - typescript
-      - utf-8-validate
-
   puppeteer@24.41.0(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10):
     dependencies:
       '@puppeteer/browsers': 2.13.0
@@ -38821,7 +38807,6 @@ snapshots:
       - supports-color
       - typescript
       - utf-8-validate
-    optional: true
 
   pure-rand@6.1.0: {}
 
