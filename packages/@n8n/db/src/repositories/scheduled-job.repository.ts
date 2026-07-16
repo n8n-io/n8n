@@ -6,7 +6,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import { UnexpectedError } from 'n8n-workflow';
 
 import { ScheduledJob } from '../entities/scheduled-job';
-import { dbNowLiteral, parseDbTime } from '../utils/dialect-time';
+import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
 
 /** The new clock values for one advanced job. */
 export interface JobAdvance {
@@ -63,21 +63,25 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * materialization skips them and claims different jobs.
 	 * SQLite can't lock rows, but its transactions are `BEGIN IMMEDIATE`, which serializes them to the same effect.
 	 *
+	 * @param lookaheadMs claim a job up to this far before its `nextRunAt`, not only once
+	 * it's already due, so a fixed-interval poll doesn't notice it a whole tick late.
 	 * @returns `undefined` when nothing is due.
 	 *
 	 */
 	async claimDue(
 		manager: EntityManager,
 		limit: number,
+		lookaheadMs = 0,
 	): Promise<{ now: Date; jobs: ScheduledJob[] } | undefined> {
 		const nowExpression = dbNowLiteral(this.isPostgres);
+		const dueExpression = dbNowPlusMsLiteral(this.isPostgres, lookaheadMs);
 
 		const query = manager
 			.createQueryBuilder(ScheduledJob, 'job')
 			.addSelect(nowExpression, 'db_now')
 			.where('job.enabled = :enabled', { enabled: true })
 			.andWhere('job.nextRunAt IS NOT NULL')
-			.andWhere(`job.nextRunAt <= ${nowExpression}`)
+			.andWhere(`job.nextRunAt <= ${dueExpression}`)
 			.orderBy('job.nextRunAt', 'ASC')
 			.limit(limit);
 

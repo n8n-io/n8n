@@ -1,6 +1,7 @@
 import type { TelemetrySettings } from 'ai';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
+import { buildExperimentalTelemetry } from './telemetry-options';
 import { Telemetry } from '../../sdk/telemetry';
 import type { AttributeValue, BuiltProviderTool, BuiltTelemetry, BuiltTool } from '../../types';
 import type { ExecutionOptions } from '../../types/sdk/agent';
@@ -101,9 +102,17 @@ function buildAgentRootInputAttributes(config: AgentRuntimeConfig): Record<strin
 export class RuntimeTelemetry {
 	constructor(private readonly config: AgentRuntimeConfig) {}
 
-	/** Resolve telemetry: own config wins, then inherited from options, then nothing. */
+	/**
+	 * Resolve telemetry: own config wins, then inherited from options, then nothing.
+	 * Own telemetry without an explicit `functionId` is stamped with the runtime's
+	 * name, so auxiliary calls scheduled off this runtime (e.g. memory tasks) can
+	 * suffix under the same base instead of falling back to a generic label.
+	 */
 	resolve(options?: ExecutionOptions): BuiltTelemetry | undefined {
-		if (this.config.telemetry) return this.config.telemetry;
+		const own = this.config.telemetry;
+		if (own) {
+			return own.functionId ? own : { ...own, functionId: this.config.name };
+		}
 		const inherited = options?.telemetry;
 		if (!inherited) return undefined;
 		return { ...inherited, functionId: this.config.name };
@@ -118,21 +127,9 @@ export class RuntimeTelemetry {
 	buildTelemetryOptions(options?: ExecutionOptions): {
 		experimental_telemetry?: TelemetrySettings;
 	} {
-		const t = this.resolve(options);
-		if (!t?.enabled) return {};
-
-		return {
-			experimental_telemetry: {
-				isEnabled: true,
-				functionId: t.functionId ?? this.config.name,
-				metadata: t.metadata,
-				recordInputs: t.recordInputs,
-				recordOutputs: t.recordOutputs,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-				tracer: t.tracer as any,
-				integrations: t.integrations.length > 0 ? t.integrations : undefined,
-			},
-		};
+		return buildExperimentalTelemetry(this.resolve(options), {
+			fallbackFunctionId: this.config.name,
+		});
 	}
 
 	async withRootSpan<T>(

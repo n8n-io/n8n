@@ -91,7 +91,8 @@ export async function materialize(
 ): Promise<MaterializerSummary> {
 	signal?.throwIfAborted();
 	return await runInTransaction<MaterializerSummary>(async (tx) => {
-		const claimed = await tx.claimDueJobs(options.batchSize);
+		const lookaheadMs = options.lookaheadSeconds * Time.seconds.toMilliseconds;
+		const claimed = await tx.claimDueJobs(options.batchSize, lookaheadMs);
 		signal?.throwIfAborted();
 		if (claimed === undefined) {
 			return { claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 };
