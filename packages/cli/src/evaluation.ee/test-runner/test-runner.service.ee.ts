@@ -53,8 +53,10 @@ import {
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee';
@@ -102,6 +104,7 @@ export class TestRunnerService {
 		private readonly evaluationCollectionRepository: EvaluationCollectionRepository,
 		private readonly evaluationConfigRepository: EvaluationConfigRepository,
 		private readonly workflowCompiler: WorkflowCompilerService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/**
@@ -317,11 +320,18 @@ export class TestRunnerService {
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
 
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflow.id,
+		);
+
 		this.eventService.emit('workflow-executed', {
 			user: metadata.userId ? { id: metadata.userId } : undefined,
 			workflowId: workflow.id,
 			workflowName: workflow.name,
 			executionId,
+			projectId,
+			projectName,
 			source: 'evaluation',
 		});
 
@@ -566,6 +576,7 @@ export class TestRunnerService {
 			evaluationConfigSnapshot?: IDataObject;
 			compileFromConfig?: boolean;
 			via?: 'ui' | 'public-api';
+			rowIndices?: number[];
 		},
 	): Promise<{ testRun: TestRun; finished: Promise<void> }> {
 		const requestedConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
@@ -666,6 +677,7 @@ export class TestRunnerService {
 			concurrencyLimitedByConfig,
 			runType,
 			via: options?.via,
+			rowIndices: options?.rowIndices,
 		});
 
 		return { testRun, finished };
@@ -680,6 +692,7 @@ export class TestRunnerService {
 		concurrencyLimitedByConfig,
 		runType,
 		via = 'ui',
+		rowIndices,
 	}: {
 		user: User;
 		workflowId: string;
@@ -689,6 +702,7 @@ export class TestRunnerService {
 		concurrencyLimitedByConfig: boolean;
 		runType: 'config' | 'direct';
 		via?: 'ui' | 'public-api';
+		rowIndices?: number[];
 	}): Promise<void> {
 		// Initialize telemetry metadata
 		const telemetryMeta = {
@@ -758,17 +772,30 @@ export class TestRunnerService {
 				workflow,
 			);
 
-			const testCases = datasetTriggerOutput.map((items) => ({ json: items.json }));
+			const allTestCases = datasetTriggerOutput.map((items) => ({ json: items.json }));
+
+			// Determine which dataset rows to run. When `rowIndices` is provided
+			// and non-empty, only those rows are executed; otherwise all rows run.
+			// Out-of-range indices are silently dropped.
+			const indicesToRun =
+				rowIndices && rowIndices.length > 0
+					? rowIndices.filter((i) => i >= 0 && i < allTestCases.length)
+					: allTestCases.map((_, i) => i);
+
+			const testCases = indicesToRun.map((i) => allTestCases[i]);
 			telemetryMeta.test_case_count = testCases.length;
 
-			this.logger.debug('Found test cases', { count: testCases.length });
+			this.logger.debug('Found test cases', {
+				total: allTestCases.length,
+				running: testCases.length,
+			});
 
-			// Seed one TestCaseExecution row per dataset entry so the FE can
-			// render placeholder cards while the run is in progress and the
-			// user can pre-emptively cancel pending cases (TRUST-70).
+			// Seed one TestCaseExecution row per case to run. Each row's `runIndex`
+			// equals the original dataset index so the FE can map results back even
+			// when only a subset of rows is executed.
 			const seededCases = await this.testCaseExecutionRepository.createPendingBatch(
 				testRun.id,
-				testCases.length,
+				indicesToRun,
 			);
 
 			// Initialize object to collect the results of the evaluation workflow executions
