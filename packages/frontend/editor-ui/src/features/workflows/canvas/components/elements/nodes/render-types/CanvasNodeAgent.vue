@@ -15,6 +15,7 @@ import {
 } from '@/features/agents/model-providers';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import AgentSelectorParameterInput from '@/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue';
+import { AGENT_NODE_WIDTH } from '@/app/utils/nodeViewUtils';
 import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
@@ -27,6 +28,8 @@ const emit = defineEmits<{
 }>();
 
 const $style = useCssModule();
+// New-node placement math relies on this width — keep it bound to the shared constant
+const cardWidth = `${AGENT_NODE_WIDTH}px`;
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const nav = useAgentNavigation();
@@ -260,7 +263,7 @@ watch(
 	// Own stacking context so the header/body/glow z-indexes below stay local and
 	// never compete with the connection handles (which must stay on top).
 	isolation: isolate;
-	width: 384px;
+	width: v-bind(cardWidth);
 	border-radius: var(--agent-card--radius);
 }
 
