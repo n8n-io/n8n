@@ -83,6 +83,10 @@ describe('SAML SSO configuration in Public API', () => {
 			expect(response.body.metadata).toBe(CREDENTIAL_BLANKING_VALUE);
 			expect(response.body.metadata).not.toContain('BEGIN CERTIFICATE');
 			expect(response.body.signingCertificate).not.toContain('BEGIN CERTIFICATE');
+			expect(response.body.mapping).toMatchObject({
+				n8nInstanceRole: expect.any(String),
+				n8nProjectRoles: expect.any(Array),
+			});
 		});
 
 		it('rejects with 403 when not licensed', async () => {
@@ -121,13 +125,13 @@ describe('SAML SSO configuration in Public API', () => {
 		});
 	});
 
-	describe('PATCH /settings/sso/saml', () => {
+	describe('PUT /settings/sso/saml', () => {
 		it('sets the SAML configuration and returns the updated values', async () => {
 			testServer.license.enable('feat:saml');
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.patch('/settings/sso/saml')
+				.put('/settings/sso/saml')
 				.send({
 					...sampleConfig,
 					loginLabel: 'Updated SAML Label',
@@ -146,13 +150,63 @@ describe('SAML SSO configuration in Public API', () => {
 			expect(readResponse.body.loginLabel).toBe('Updated SAML Label');
 		});
 
+		it('accepts a GET response body as a PUT body and preserves redacted secrets', async () => {
+			testServer.license.enable('feat:saml');
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			await testServer
+				.authAgentFor(owner)
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				});
+
+			const getResponse = await testServer.publicApiAgentFor(owner).get('/settings/sso/saml');
+			expect(getResponse.status).toBe(200);
+
+			const putResponse = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/saml')
+				.send({
+					...getResponse.body,
+					loginLabel: 'Round-tripped Label',
+				});
+
+			expect(putResponse.status).toBe(200);
+			expect(putResponse.body.loginLabel).toBe('Round-tripped Label');
+			expect(putResponse.body.signingPrivateKey).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(putResponse.body.signingCertificate).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(putResponse.body.metadata).toBe(CREDENTIAL_BLANKING_VALUE);
+
+			const samlService = Container.get(SamlService);
+			expect(samlService.samlPreferences.signingPrivateKey).toBeTruthy();
+			expect(samlService.samlPreferences.signingCertificate).toBe(RSA_TEST_CERTIFICATE);
+			expect(samlService.samlPreferences.metadata).toContain('EntityDescriptor');
+		});
+
+		it('rejects a partial request body with 400', async () => {
+			testServer.license.enable('feat:saml');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/saml')
+				.send({ loginLabel: 'SAML' });
+
+			expect(response.status).toBe(400);
+		});
+
 		it('rejects a malformed request body with 400', async () => {
 			testServer.license.enable('feat:saml');
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.patch('/settings/sso/saml')
-				.send({ ignoreSSL: 'not-a-boolean' });
+				.put('/settings/sso/saml')
+				.send({
+					...sampleConfig,
+					ignoreSSL: 'not-a-boolean',
+				});
 
 			expect(response.status).toBe(400);
 		});
@@ -168,8 +222,11 @@ describe('SAML SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.patch('/settings/sso/saml')
-				.send({ authnRequestsSigned: true });
+				.put('/settings/sso/saml')
+				.send({
+					...sampleConfig,
+					authnRequestsSigned: true,
+				});
 
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty('message');
@@ -180,8 +237,8 @@ describe('SAML SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentWithoutApiKey()
-				.patch('/settings/sso/saml')
-				.send({ loginLabel: 'SAML' });
+				.put('/settings/sso/saml')
+				.send(sampleConfig);
 
 			expect(response.status).toBe(401);
 		});
@@ -189,8 +246,8 @@ describe('SAML SSO configuration in Public API', () => {
 		it('rejects with 403 when not licensed', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.patch('/settings/sso/saml')
-				.send({ loginLabel: 'SAML' });
+				.put('/settings/sso/saml')
+				.send(sampleConfig);
 
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', licenseErrorMessage);
@@ -202,8 +259,8 @@ describe('SAML SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(scopedOwner)
-				.patch('/settings/sso/saml')
-				.send({ loginLabel: 'SAML' });
+				.put('/settings/sso/saml')
+				.send(sampleConfig);
 
 			expect(response.status).toBe(403);
 		});
@@ -214,8 +271,11 @@ describe('SAML SSO configuration in Public API', () => {
 
 			const writeResponse = await testServer
 				.publicApiAgentFor(owner)
-				.patch('/settings/sso/saml')
-				.send({ loginLabel: 'Blocked Label' });
+				.put('/settings/sso/saml')
+				.send({
+					...sampleConfig,
+					loginLabel: 'Blocked Label',
+				});
 
 			expect(writeResponse.status).toBe(409);
 			expect(writeResponse.body).toMatchObject({

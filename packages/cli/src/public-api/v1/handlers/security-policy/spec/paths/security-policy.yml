@@ -20,21 +20,23 @@ get:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '403':
       $ref: '../../../../shared/spec/responses/forbidden.yml'
-patch:
+put:
   x-eov-operation-id: updateSecurityPolicy
   x-required-scope: securitySettings:manage
   x-eov-operation-handler: v1/handlers/security-policy/security-policy.handler
   tags:
     - SecurityPolicy
-  summary: Update the security policy
+  summary: Set the security policy
   description: >
-    Update the instance security policy. Only the provided fields are changed and the update
-    takes effect exactly as it would from the UI, using the same validation. Requires the
-    `securitySettings:manage` scope and the Personal Space Policy feature to be licensed.
-    When the group is managed via environment variables, the write is rejected with 409 and no
-    changes are made; a read still returns the current values.
+    Replace the instance security policy with the provided full object. Every writable
+    field must be sent. Read-only usage counts from GET are ignored if included, so a GET
+    response can be sent back as a PUT body. The update takes effect exactly as it would
+    from the UI, using the same validation. Requires the `securitySettings:manage` scope
+    and the Personal Space Policy feature to be licensed. When the group is managed via
+    environment variables, the write is rejected with 409 and no changes are made; a read
+    still returns the current values.
   requestBody:
-    description: The security policy fields to update.
+    description: The full security policy to set.
     required: true
     content:
       application/json:

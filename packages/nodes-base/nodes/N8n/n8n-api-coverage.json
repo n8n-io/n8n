@@ -178,13 +178,13 @@
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},
-		"PATCH /settings/security-policy": {
+		"PUT /settings/security-policy": {
 			"status": "gap"
 		},
 		"GET /settings/sso/saml": {
 			"status": "gap"
 		},
-		"PATCH /settings/sso/saml": {
+		"PUT /settings/sso/saml": {
 			"status": "gap"
 		},
 		"GET /settings/log-streaming/event-types": {

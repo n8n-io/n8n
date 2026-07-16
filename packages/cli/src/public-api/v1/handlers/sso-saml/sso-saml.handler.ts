@@ -6,7 +6,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 
-import { toSamlConfigurationResponse } from './sso-saml.mapper';
+import { toSamlConfigurationResponse, toSamlPreferencesUpdate } from './sso-saml.mapper';
 import type { SsoSamlRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
@@ -47,7 +47,7 @@ const ssoSamlHandlers: SsoSamlHandlers = {
 			}
 
 			const samlService = Container.get(SamlService);
-			await samlService.setSamlPreferences(payload.data);
+			await samlService.setSamlPreferences(toSamlPreferencesUpdate(payload.data));
 
 			return res.json(toSamlConfigurationResponse(samlService.samlPreferences));
 		},
