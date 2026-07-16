@@ -1417,7 +1417,7 @@ erDiagram
   varchar_36_ id
   varchar_36_ projectId FK
   varchar_16_ state
-  varchar_512_ title
+  varchar_255_ title
   timestamp_3__with_time_zone updatedAt
   uuid updatedById FK
 }
