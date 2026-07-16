@@ -184,7 +184,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<N8nSettingsLayout full-width :class="$style.layout">
+	<N8nSettingsLayout :class="$style.layout">
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.mcp.page.title')"
 			:description="i18n.baseText('settings.mcp.page.description')"
@@ -346,9 +346,6 @@ onMounted(async () => {
    header starts at the layout's own 24px inset, like the prototype. */
 .layout {
 	margin-top: -70.5px;
-	/* Fill the settings shell width (like the OpenTelemetry page) instead of the
-	   default 720px column; also un-caps the page header, which self-caps to this. */
-	--settings-content--max-width: none;
 }
 
 /* No-clients state: same dashed-card language as the disabled-MCP empty state. */

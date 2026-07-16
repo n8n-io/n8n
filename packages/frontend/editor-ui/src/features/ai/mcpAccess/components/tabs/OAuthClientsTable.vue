@@ -410,15 +410,13 @@ function onRevoke(item: OAuthClientResponseDto) {
 	color: var(--color--neutral-black);
 }
 
-/* Access summary stays on one line; capped + ellipsised so a long grant can't
-   overflow the column into "Connected on". The whole row opens the details modal. */
+/* Access summary stays on one line and truncates within its column (the fixed
+   table layout below gives the cell a real width). The row opens the details modal. */
 .access {
-	display: inline-block;
-	max-width: 22rem;
+	display: block;
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
-	vertical-align: middle;
 }
 
 .access:hover {
@@ -440,6 +438,12 @@ function onRevoke(item: OAuthClientResponseDto) {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg) 0;
 	min-height: 250px;
+}
+
+/* Fixed layout so the flexible access column gets a real width, fills the row,
+   and truncates its summary instead of overflowing into "Connected on". */
+.table :global(table) {
+	table-layout: fixed;
 }
 
 /* The whole row opens the details modal, so hint it with a pointer... */
