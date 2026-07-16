@@ -504,6 +504,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 			data-test-id="canvas-node-group-selection-ring"
 		/>
 
+		<!-- The gap below the card keeps the selection ring from overlapping the panel border. -->
 		<div
 			v-if="showCollapsedDescription"
 			:class="[
@@ -511,7 +512,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 				$style.descriptionPanel,
 				{ [$style.descriptionPanelEditing]: isEditingDescription },
 			]"
-			:style="{ top: `${HEADER_HEIGHT + 4}px` }"
+			:style="{ top: `calc(${HEADER_HEIGHT}px + var(--spacing--2xs))` }"
 			data-test-id="canvas-node-group-description-panel"
 			@mouseenter="onDescriptionMouseEnter"
 			@mouseleave="onDescriptionMouseLeave"
