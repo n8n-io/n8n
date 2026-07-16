@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/naming-convention -- item keys are pinned to the legacy ScheduleTrigger emit shape */
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { ExecutionEntity, ExecutionRepository } from '@n8n/db';
+import type { ExecutionEntity, ExecutionRepository, Project } from '@n8n/db';
 import type { ClaimedTask } from '@n8n/scheduler';
 import type { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { EventService } from '@/events/event.service';
+import type { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
@@ -24,6 +25,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 	const eventService = mock<EventService>();
 	const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
 	const workflowExecutionService = mock<WorkflowExecutionService>();
+	const ownershipService = mock<OwnershipService>();
 	const globalConfig = mock<GlobalConfig>({ generic: { timezone: 'America/New_York' } });
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
@@ -38,6 +40,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		eventService,
 		triggerExecutionContextFactory,
 		workflowExecutionService,
+		ownershipService,
 	);
 
 	// The executor's dispatch-marker callback; cleared each test by vi.clearAllMocks().
@@ -81,6 +84,9 @@ describe('ScheduleTriggerTaskHandler', () => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 		triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(buildWorkflowData());
 		workflowExecutionService.runWorkflow.mockResolvedValue('exec-1');
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'My Project' }),
+		);
 	});
 
 	describe('task type', () => {
@@ -158,10 +164,13 @@ describe('ScheduleTriggerTaskHandler', () => {
 		test('emits workflow-executed for the new execution', async () => {
 			await handler.execute(buildTask(), onDispatch);
 
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
 			expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
 				workflowId: 'wf-1',
 				workflowName: 'My Scheduled Workflow',
 				executionId: 'exec-1',
+				projectId: 'project-1',
+				projectName: 'My Project',
 				source: 'trigger',
 			});
 		});

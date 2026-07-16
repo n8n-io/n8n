@@ -67,6 +67,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
@@ -318,11 +319,19 @@ export async function executeWorkflow(
 
 	const executionId = await activeExecutions.add(runData);
 
+	const { OwnershipService } = await import('@/services/ownership.service.js');
+	const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+		Container.get(OwnershipService),
+		workflowData.id,
+	);
+
 	Container.get(EventService).emit('workflow-executed', {
 		user: additionalData.userId ? { id: additionalData.userId } : undefined,
 		workflowId: workflowData.id,
 		workflowName: workflowData.name,
 		executionId,
+		projectId,
+		projectName,
 		source: 'integrated',
 	});
 
