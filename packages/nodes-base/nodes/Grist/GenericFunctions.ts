@@ -15,12 +15,18 @@ import type {
 	GristSortProperties,
 } from './types';
 
+// A trailing slash or a trailing `/api` are both easy to paste in from a browser or the
+// API docs. Request paths append `/api` themselves, so the base URL needs neither.
+function normalizeBaseUrl(url: string): string {
+	return url.replace(/\/$/, '').replace(/\/api$/, '');
+}
+
 // Fallback for API-key credentials created before the single `url` field: self-hosted
 // instances stored a full URL, teams stored a subdomain. Defaults to the SaaS API host,
 // which serves every hosted account.
 function gristLegacyBaseUrl(credentials: GristCredentials): string {
 	if (credentials.selfHostedUrl) {
-		return credentials.selfHostedUrl.replace(/\/$/, '');
+		return normalizeBaseUrl(credentials.selfHostedUrl);
 	}
 	if (credentials.customSubdomain) {
 		return `https://${credentials.customSubdomain}.getgrist.com`;
@@ -32,7 +38,7 @@ function gristLegacyBaseUrl(credentials: GristCredentials): string {
 // back to their legacy fields.
 export function gristBaseUrl(credentials: GristCredentials): string {
 	if (credentials.url) {
-		return credentials.url.replace(/\/$/, '');
+		return normalizeBaseUrl(credentials.url);
 	}
 	return gristLegacyBaseUrl(credentials);
 }
