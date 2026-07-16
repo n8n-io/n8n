@@ -40,6 +40,9 @@ describe('ScheduleTriggerTaskHandler', () => {
 		workflowExecutionService,
 	);
 
+	// The executor's dispatch-marker callback; cleared each test by vi.clearAllMocks().
+	const onDispatch = vi.fn();
+
 	const triggerNode = mock<INode>({ id: 'node-1', name: 'Schedule Trigger', disabled: false });
 
 	// Plain data objects, not mock proxies: the handler reads them as values.
@@ -88,7 +91,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 
 	describe('handoff', () => {
 		test('creates a trigger execution with the occurrence-derived dedup key', async () => {
-			await handler.execute(buildTask());
+			await handler.execute(buildTask(), onDispatch);
 
 			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).toHaveBeenCalledWith('wf-1');
 			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
@@ -104,7 +107,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		});
 
 		test('stamps the trigger item from the occurrence instant in the workflow timezone', async () => {
-			await handler.execute(buildTask());
+			await handler.execute(buildTask(), onDispatch);
 
 			const [, , data] = workflowExecutionService.runWorkflow.mock.calls[0];
 			expect(data[0][0].json).toMatchObject({
@@ -118,7 +121,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 				buildWorkflowData({ settings: {} }),
 			);
 
-			await handler.execute(buildTask());
+			await handler.execute(buildTask(), onDispatch);
 
 			const [, , data] = workflowExecutionService.runWorkflow.mock.calls[0];
 			expect(data[0][0].json).toMatchObject({
@@ -132,7 +135,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 				buildWorkflowData({ settings: { timezone: 'DEFAULT' } }),
 			);
 
-			await handler.execute(buildTask());
+			await handler.execute(buildTask(), onDispatch);
 
 			const [, , data] = workflowExecutionService.runWorkflow.mock.calls[0];
 			// 'DEFAULT' is a sentinel, not a Moment zone: it must not leak into the
@@ -144,7 +147,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		});
 
 		test('builds additional data for the published workflow like the activation path', async () => {
-			await handler.execute(buildTask());
+			await handler.execute(buildTask(), onDispatch);
 
 			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
 				workflowId: 'wf-1',
@@ -153,7 +156,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		});
 
 		test('emits workflow-executed for the new execution', async () => {
-			await handler.execute(buildTask());
+			await handler.execute(buildTask(), onDispatch);
 
 			expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
 				workflowId: 'wf-1',
@@ -161,6 +164,21 @@ describe('ScheduleTriggerTaskHandler', () => {
 				executionId: 'exec-1',
 				source: 'trigger',
 			});
+		});
+
+		test('reports the dispatch once the run is initiated, not before', async () => {
+			// Report only after runWorkflow resolves: no dispatch is claimed if the
+			// handoff throws first.
+			let reportedAt: 'before' | 'after' | undefined;
+			workflowExecutionService.runWorkflow.mockImplementation(async () => {
+				reportedAt = onDispatch.mock.calls.length === 0 ? 'before' : 'after';
+				return await Promise.resolve('exec-1');
+			});
+
+			await handler.execute(buildTask(), onDispatch);
+
+			expect(onDispatch).toHaveBeenCalledTimes(1);
+			expect(reportedAt).toBe('before'); // not yet called while runWorkflow is in flight
 		});
 	});
 
@@ -172,7 +190,9 @@ describe('ScheduleTriggerTaskHandler', () => {
 				mock<ExecutionEntity>({ id: 'exec-0', status: 'running' }),
 			);
 
-			await expect(handler.execute(buildTask({ attempts: 1 }))).resolves.toBeUndefined();
+			await expect(
+				handler.execute(buildTask({ attempts: 1 }), onDispatch),
+			).resolves.toBeUndefined();
 
 			expect(executionRepository.findOne).toHaveBeenCalledWith({
 				where: { deduplicationKey: '7:2026-07-06T07:30:00.000Z' },
@@ -188,6 +208,8 @@ describe('ScheduleTriggerTaskHandler', () => {
 				shouldBeLogged: false,
 			});
 			expect(eventService.emit).not.toHaveBeenCalled();
+			// A redelivery that finds the effect already exists must not report a dispatch.
+			expect(onDispatch).not.toHaveBeenCalled();
 		});
 	});
 
@@ -195,7 +217,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		test('rejects a task whose payload is missing workflowId or nodeId', async () => {
 			const task = buildTask({ payload: { nodeId: 'node-1' } });
 
-			await expect(handler.execute(task)).rejects.toThrow(UnexpectedError);
+			await expect(handler.execute(task, onDispatch)).rejects.toThrow(UnexpectedError);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
 
@@ -203,7 +225,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 			const error = new UnexpectedError('Published version not found for workflow');
 			triggerExecutionContextFactory.loadPublishedWorkflowData.mockRejectedValue(error);
 
-			await expect(handler.execute(buildTask())).rejects.toThrow(error);
+			await expect(handler.execute(buildTask(), onDispatch)).rejects.toThrow(error);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
 
@@ -212,7 +234,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 				buildWorkflowData({ nodes: [] }),
 			);
 
-			await expect(handler.execute(buildTask())).rejects.toThrow(
+			await expect(handler.execute(buildTask(), onDispatch)).rejects.toThrow(
 				'missing or disabled in the published workflow',
 			);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
@@ -223,7 +245,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 				buildWorkflowData({ nodes: [mock<INode>({ id: 'node-1', disabled: true })] }),
 			);
 
-			await expect(handler.execute(buildTask())).rejects.toThrow(
+			await expect(handler.execute(buildTask(), onDispatch)).rejects.toThrow(
 				'missing or disabled in the published workflow',
 			);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
@@ -233,7 +255,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 			const error = new Error('db unavailable');
 			workflowExecutionService.runWorkflow.mockRejectedValue(error);
 
-			await expect(handler.execute(buildTask())).rejects.toThrow(error);
+			await expect(handler.execute(buildTask(), onDispatch)).rejects.toThrow(error);
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});

@@ -11,7 +11,6 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
-import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import { ABOUT_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/app/constants';
 
@@ -31,7 +30,6 @@ let usersStore: MockedStore<typeof useUsersStore>;
 let templatesStore: MockedStore<typeof useTemplatesStore>;
 let personalizedTemplatesV2Store: MockedStore<typeof usePersonalizedTemplatesV2Store>;
 let personalizedTemplatesV3Store: MockedStore<typeof usePersonalizedTemplatesV3Store>;
-let recommendedTemplatesStore: MockedStore<typeof useRecommendedTemplatesStore>;
 
 const mockVersion: Version = {
 	name: '1.2.0',
@@ -57,7 +55,6 @@ describe('MainSidebar', () => {
 		templatesStore = mockedStore(useTemplatesStore);
 		personalizedTemplatesV2Store = mockedStore(usePersonalizedTemplatesV2Store);
 		personalizedTemplatesV3Store = mockedStore(usePersonalizedTemplatesV3Store);
-		recommendedTemplatesStore = mockedStore(useRecommendedTemplatesStore);
 
 		settingsStore.settings = defaultSettings;
 
@@ -73,7 +70,6 @@ describe('MainSidebar', () => {
 		// Default experiment store values
 		personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
 		personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => false);
-		recommendedTemplatesStore.isFeatureEnabled = false;
 	});
 
 	it('renders the sidebar without error', () => {
@@ -123,7 +119,6 @@ describe('MainSidebar', () => {
 			templatesStore.hasCustomTemplatesHost = false;
 			personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
 			personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => false);
-			recommendedTemplatesStore.isFeatureEnabled = false;
 
 			const { getAllByTestId } = renderComponent();
 
@@ -136,7 +131,6 @@ describe('MainSidebar', () => {
 			settingsStore.isTemplatesEnabled = true;
 			personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => true);
 			personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
-			recommendedTemplatesStore.isFeatureEnabled = false;
 
 			const { getAllByTestId } = renderComponent();
 

@@ -69,7 +69,7 @@ export async function resolveCredentialForApply(
 			if (!supported) {
 				return {
 					resolved: false,
-					error: `Credential type "${credType}" is not supported by AI Gateway`,
+					error: `Credential type "${credType}" is not supported by n8n Connect`,
 				};
 			}
 		}

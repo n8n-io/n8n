@@ -268,7 +268,9 @@ describe('useWizardHydration', () => {
 		});
 	});
 
-	it('drops a non-canned LLM judge metric — those are no longer surfaced in the wizard', async () => {
+	it('surfaces an LLM judge metric by its preset regardless of its display name', async () => {
+		// A config created outside the wizard (agent/API) names the judge freely
+		// ("My LLM check"); it must still hydrate as its canned preset.
 		mocks.listEvaluationConfigs.mockResolvedValue([
 			makeConfig({
 				metrics: [
@@ -295,7 +297,12 @@ describe('useWizardHydration', () => {
 		await hydrate();
 
 		expect(store.customChecks).toEqual([]);
-		expect(store.selectedMetricKeys).toEqual([]);
+		expect(store.selectedMetricKeys).toEqual(['helpfulness']);
+		expect(store.judgeSelectionByMetric.helpfulness).toEqual({
+			provider: 'anthropic',
+			credentialId: 'cred-anthropic',
+			model: 'claude-opus',
+		});
 	});
 
 	it('uses single-AI-node mode when endNodeName matches an AI root node', async () => {

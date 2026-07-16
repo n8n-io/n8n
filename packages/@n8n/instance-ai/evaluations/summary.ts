@@ -15,11 +15,14 @@ export interface ScoredCounts {
 
 export type AggregatedCaseUnit = ExecutionScenarioAggregation | BuildExpectationAggregation;
 
+/**
+ * Whether a case is graded on a built workflow. Keyed off execution scenarios only:
+ * outcome expectations are judged from the rendered build context (workflow AND any
+ * agent/config-eval artifact), so a case that produces an agent instead of a workflow
+ * still grades cleanly rather than reporting a missing-workflow build failure.
+ */
 export function requiresWorkflowOutput(testCase: WorkflowTestCase): boolean {
-	return (
-		(testCase.executionScenarios?.length ?? 0) > 0 ||
-		(testCase.outcomeExpectations?.length ?? 0) > 0
-	);
+	return (testCase.executionScenarios?.length ?? 0) > 0;
 }
 
 export function getAggregatedCaseUnits(tc: TestCaseAggregation): AggregatedCaseUnit[] {
@@ -40,6 +43,8 @@ export function countAggregatedUnitTrials(units: AggregatedCaseUnit[]): ScoredCo
 export function getCheckedRunCount(tc: TestCaseAggregation): number {
 	if (requiresWorkflowOutput(tc.testCase)) return tc.buildSuccessCount;
 
+	// A scenario-less case is "checked" on any run that produced a scoreable unit — a judged
+	// process/outcome expectation (which covers the workflow and any agent/config-eval artifact).
 	return tc.runs.filter((run) => (run.buildExpectationResults?.length ?? 0) > 0).length;
 }
 
@@ -57,6 +62,9 @@ export function getRunScoredCounts(result: WorkflowTestCaseResult): ScoredCounts
 }
 
 export function getCaseRunStatus(result: WorkflowTestCaseResult): CaseRunStatus {
+	// A scenario-less case (e.g. an agent/config-eval build) produces no workflow to score by
+	// design; treat it as checked (not build-failed) once it has any scoreable unit — a judged
+	// process/outcome expectation.
 	const checkedWithoutWorkflow =
 		!requiresWorkflowOutput(result.testCase) && (result.buildExpectationResults?.length ?? 0) > 0;
 

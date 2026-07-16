@@ -62,7 +62,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [insights_raw](insights_raw.md) | 5 |  | table |
 | [installed_nodes](installed_nodes.md) | 4 |  | table |
 | [installed_packages](installed_packages.md) | 6 |  | table |
-| [instance_ai_checkpoints](instance_ai_checkpoints.md) | 8 |  | table |
+| [instance_ai_checkpoints](instance_ai_checkpoints.md) | 9 |  | table |
 | [instance_ai_events](instance_ai_events.md) | 7 |  | table |
 | [instance_ai_iteration_logs](instance_ai_iteration_logs.md) | 6 |  | table |
 | [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) | 7 |  | table |
@@ -94,7 +94,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
 | [scheduled_job](scheduled_job.md) | 19 |  | table |
-| [scheduled_task](scheduled_task.md) | 16 |  | table |
+| [scheduled_task](scheduled_task.md) | 17 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
 | [settings](settings.md) | 3 |  | table |
@@ -821,6 +821,7 @@ erDiagram
 "instance_ai_checkpoints" {
   datetime_3_ createdAt
   datetime_3_ expiredAt
+  VARCHAR_64_ hostRunId
   varchar_255_ key PK
   varchar_255_ resourceId
   varchar_255_ runId
@@ -1134,6 +1135,7 @@ erDiagram
   INTEGER attempts
   varchar_255_ claimedBy
   datetime_3_ createdAt
+  datetime_3_ dispatchedAt
   TEXT errorMessage
   datetime_3_ finishedAt
   INTEGER id
@@ -1393,7 +1395,7 @@ erDiagram
   varchar_36_ id PK
   varchar_36_ projectId FK
   varchar_16_ state
-  varchar_512_ title
+  varchar_255_ title
   datetime_3_ updatedAt
   varchar updatedById FK
 }

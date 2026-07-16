@@ -24,14 +24,6 @@ import { stringifyValue } from '../../evaluation.utils';
 // hydrates the same set of rows the run iterates over.
 const MAX_DATASET_ROWS = 1000;
 
-const CANNED_METRIC_KEYS = new Set<CannedMetricKey>([
-	'correctness',
-	'helpfulness',
-	'stringSimilarity',
-	'categorization',
-	'toolsUsed',
-]);
-
 export function useWizardHydration() {
 	const wizardStore = useEvaluationsWizardSidepanelStore();
 	const evaluationStore = useEvaluationStore();
@@ -182,18 +174,17 @@ function splitDatasetRow(row: Record<string, unknown>): {
 type CannedDecode = { key: CannedMetricKey; judge?: JudgeSelection };
 
 function decodeCannedMetric(metric: EvaluationMetric): CannedDecode | undefined {
-	// Discriminate on `name` rather than `type` — `llm_judge` covers both
-	// canned presets and user-defined judges.
-	const name = metric.name;
-	if (!isCannedMetricKey(name)) return undefined;
-
-	if (metric.type === 'llm_judge' && (name === 'correctness' || name === 'helpfulness')) {
+	// Classify by the metric's own discriminator (llm_judge preset / metric type),
+	// not by `metric.name`. `name` is a free-form human label — a config created
+	// outside the wizard (by the agent or the API) may name a helpfulness judge
+	// "Valid Markdown", so it can't identify the canned metric.
+	if (metric.type === 'llm_judge') {
 		const preset: LlmJudgeMetricPreset = metric.config.preset;
-		if (preset !== name) return undefined;
+		if (preset !== 'correctness' && preset !== 'helpfulness') return undefined;
 		const provider = LM_SUBNODE_TYPE_TO_CHATHUB_PROVIDER[metric.config.provider];
-		if (!provider) return { key: name };
+		if (!provider) return { key: preset };
 		return {
-			key: name,
+			key: preset,
 			judge: {
 				provider,
 				credentialId: metric.config.credentialId,
@@ -201,9 +192,9 @@ function decodeCannedMetric(metric: EvaluationMetric): CannedDecode | undefined 
 			},
 		};
 	}
-	if (metric.type === 'string_similarity' && name === 'stringSimilarity') return { key: name };
-	if (metric.type === 'categorization' && name === 'categorization') return { key: name };
-	if (metric.type === 'tools_used' && name === 'toolsUsed') return { key: name };
+	if (metric.type === 'string_similarity') return { key: 'stringSimilarity' };
+	if (metric.type === 'categorization') return { key: 'categorization' };
+	if (metric.type === 'tools_used') return { key: 'toolsUsed' };
 	return undefined;
 }
 
@@ -215,8 +206,4 @@ function decodeCustomCheck(metric: EvaluationMetric): Omit<CustomCheck, 'id'> | 
 		};
 	}
 	return undefined;
-}
-
-function isCannedMetricKey(name: string): name is CannedMetricKey {
-	return CANNED_METRIC_KEYS.has(name as CannedMetricKey);
 }

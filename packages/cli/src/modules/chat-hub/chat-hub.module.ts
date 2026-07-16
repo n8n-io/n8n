@@ -7,9 +7,9 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'chat-hub' })
 export class ChatHubModule implements ModuleInterface {
 	async init() {
-		await import('./chat-hub.controller');
-		await import('./chat-hub.settings.controller');
-		const { ChatHubEventRelay } = await import('./chat-hub-event-relay.service');
+		await import('./chat-hub.controller.js');
+		await import('./chat-hub.settings.controller.js');
+		const { ChatHubEventRelay } = await import('./chat-hub-event-relay.service.js');
 
 		Container.get(ChatHubEventRelay);
 
@@ -18,12 +18,12 @@ export class ChatHubModule implements ModuleInterface {
 		const isQueueMode = Container.get(ExecutionsConfig).mode === 'queue';
 		const isWorker = Container.get(InstanceSettings).isWorker;
 		if (!isQueueMode || isWorker) {
-			await import('./chat-hub-execution-watcher.service');
+			await import('./chat-hub-execution-watcher.service.js');
 		}
 	}
 
 	async settings() {
-		const { ChatHubSettingsService } = await import('./chat-hub.settings.service');
+		const { ChatHubSettingsService } = await import('./chat-hub.settings.service.js');
 		const service = Container.get(ChatHubSettingsService);
 		const [enabled, providers, semanticSearch] = await Promise.all([
 			service.getEnabled(),
@@ -40,10 +40,10 @@ export class ChatHubModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { ChatHubSession } = await import('./chat-hub-session.entity');
-		const { ChatHubMessage } = await import('./chat-hub-message.entity');
-		const { ChatHubAgent } = await import('./chat-hub-agent.entity');
-		const { ChatHubTool } = await import('./chat-hub-tool.entity');
+		const { ChatHubSession } = await import('./chat-hub-session.entity.js');
+		const { ChatHubMessage } = await import('./chat-hub-message.entity.js');
+		const { ChatHubAgent } = await import('./chat-hub-agent.entity.js');
+		const { ChatHubTool } = await import('./chat-hub-tool.entity.js');
 
 		return [ChatHubSession, ChatHubMessage, ChatHubAgent, ChatHubTool];
 	}

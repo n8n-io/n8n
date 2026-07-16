@@ -25,6 +25,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_workflow_review_request_workflow_workflow_request | CREATE INDEX "IDX_workflow_review_request_workflow_workflow_request" ON public.workflow_review_request_workflow USING btree ("workflowId", "workflowReviewRequestId") |
 | PK_be3bf4facb054cf2b2b116b3b9c | CREATE UNIQUE INDEX "PK_be3bf4facb054cf2b2b116b3b9c" ON public.workflow_review_request_workflow USING btree (id) |
 | UQ_workflow_review_request_workflow_request_workflow | CREATE UNIQUE INDEX "UQ_workflow_review_request_workflow_request_workflow" ON public.workflow_review_request_workflow USING btree ("workflowReviewRequestId", "workflowId") |
 
@@ -75,7 +76,7 @@ erDiagram
   varchar_36_ id
   varchar_36_ projectId FK
   varchar_16_ state
-  varchar_512_ title
+  varchar_255_ title
   timestamp_3__with_time_zone updatedAt
   uuid updatedById FK
 }

@@ -1,3 +1,4 @@
+import type { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -14,7 +15,7 @@ const user = mock<User>({ id: 'user-1' });
 
 function makeDataTable(overrides: Partial<DataTable> = {}): DataTable {
 	return {
-		id: 'dt-1',
+		id: 'dt1',
 		name: 'Customers',
 		projectId: 'proj-1',
 		columns: [{ id: 'col-1', name: 'email', type: 'string', index: 0 }],
@@ -29,15 +30,21 @@ function makeRequirement(
 ): WorkflowDataTableRequirement {
 	return {
 		workflowId: 'wf-1',
-		dataTableId: 'dt-1',
+		dataTableId: 'dt1',
 		...overrides,
 	};
 }
 
 function makeExporter() {
 	const dataTableService = mock<DataTableService>();
-	const exporter = new DataTableExporter(dataTableService, new DataTableSerializer());
-	return { exporter, dataTableService };
+	const moduleRegistry = mock<ModuleRegistry>();
+	moduleRegistry.isActive.mockReturnValue(true);
+	const exporter = new DataTableExporter(
+		dataTableService,
+		new DataTableSerializer(),
+		moduleRegistry,
+	);
+	return { exporter, dataTableService, moduleRegistry };
 }
 
 describe('DataTableExporter', () => {
@@ -55,6 +62,21 @@ describe('DataTableExporter', () => {
 		});
 	});
 
+	describe('module guard', () => {
+		it('throws when tables are required but the data-table module is disabled', async () => {
+			const { exporter, dataTableService, moduleRegistry } = makeExporter();
+			moduleRegistry.isActive.mockReturnValue(false);
+			const writer = new CapturingWriter();
+
+			await expect(
+				exporter.export({ user, requirements: [makeRequirement()], writer }),
+			).rejects.toThrowError(/data-table module is disabled/);
+
+			expect(dataTableService.findDataTablesByIdsForUser).not.toHaveBeenCalled();
+			expect(writer.files).toEqual([]);
+		});
+	});
+
 	describe('happy path', () => {
 		it('writes one accessible table to its slugged folder and emits matching entry + requirement', async () => {
 			const { exporter, dataTableService } = makeExporter();
@@ -67,16 +89,16 @@ describe('DataTableExporter', () => {
 				writer,
 			});
 
-			expect(dataTableService.findDataTablesByIdsForUser).toHaveBeenCalledWith(['dt-1'], user, [
+			expect(dataTableService.findDataTablesByIdsForUser).toHaveBeenCalledWith(['dt1'], user, [
 				'dataTable:read',
 			]);
 
 			expect(result.entries).toEqual([
-				{ id: 'dt-1', name: 'Customers', target: 'data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers' },
 			]);
 			expect(result.requirements).toEqual([
 				{
-					id: 'dt-1',
+					id: 'dt1',
 					name: 'Customers',
 					sourceProjectId: 'proj-1',
 					usedByWorkflows: ['wf-1'],
@@ -89,7 +111,7 @@ describe('DataTableExporter', () => {
 
 			const parsed = jsonParse<Record<string, unknown>>(writer.files[0].content);
 			expect(parsed).toEqual({
-				id: 'dt-1',
+				id: 'dt1',
 				name: 'Customers',
 				columns: [{ name: 'email', type: 'string', index: 0 }],
 			});
@@ -109,15 +131,15 @@ describe('DataTableExporter', () => {
 				writer,
 			});
 
-			expect(dataTableService.findDataTablesByIdsForUser).toHaveBeenCalledWith(['dt-1'], user, [
+			expect(dataTableService.findDataTablesByIdsForUser).toHaveBeenCalledWith(['dt1'], user, [
 				'dataTable:read',
 			]);
 			expect(result.entries).toEqual([
-				{ id: 'dt-1', name: 'Customers', target: 'data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers' },
 			]);
 			expect(result.requirements).toEqual([
 				{
-					id: 'dt-1',
+					id: 'dt1',
 					name: 'Customers',
 					sourceProjectId: 'proj-1',
 					usedByWorkflows: ['wf-a', 'wf-b'],
@@ -129,16 +151,16 @@ describe('DataTableExporter', () => {
 		it('disambiguates targets when two tables share a name', async () => {
 			const { exporter, dataTableService } = makeExporter();
 			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([
-				makeDataTable({ id: 'dt-a', name: 'Same Name' }),
-				makeDataTable({ id: 'dt-b', name: 'Same Name' }),
+				makeDataTable({ id: 'dta', name: 'Same Name' }),
+				makeDataTable({ id: 'dtb', name: 'Same Name' }),
 			]);
 			const writer = new CapturingWriter();
 
 			const result = await exporter.export({
 				user,
 				requirements: [
-					makeRequirement({ dataTableId: 'dt-a' }),
-					makeRequirement({ dataTableId: 'dt-b' }),
+					makeRequirement({ dataTableId: 'dta' }),
+					makeRequirement({ dataTableId: 'dtb' }),
 				],
 				writer,
 			});
@@ -154,7 +176,7 @@ describe('DataTableExporter', () => {
 		it('namespaces a table under its owner project when that project is part of the export', async () => {
 			const { exporter, dataTableService } = makeExporter();
 			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([
-				makeDataTable({ id: 'dt-1', projectId: 'proj-sales' }),
+				makeDataTable({ id: 'dt1', projectId: 'proj-sales' }),
 			]);
 			const writer = new CapturingWriter();
 
@@ -166,7 +188,7 @@ describe('DataTableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'dt-1', name: 'Customers', target: 'projects/sales/data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'projects/sales/data-tables/customers' },
 			]);
 			expect(writer.files.map((f) => f.path)).toContain(
 				'projects/sales/data-tables/customers/data-table.json',
@@ -176,7 +198,7 @@ describe('DataTableExporter', () => {
 		it('keeps a table top-level when its owner project is not part of the export', async () => {
 			const { exporter, dataTableService } = makeExporter();
 			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([
-				makeDataTable({ id: 'dt-1', projectId: 'proj-other' }),
+				makeDataTable({ id: 'dt1', projectId: 'proj-other' }),
 			]);
 			const writer = new CapturingWriter();
 
@@ -188,23 +210,23 @@ describe('DataTableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'dt-1', name: 'Customers', target: 'data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers' },
 			]);
 		});
 
 		it('disambiguates same-named tables owned by different exported projects independently of the top-level dir', async () => {
 			const { exporter, dataTableService } = makeExporter();
 			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([
-				makeDataTable({ id: 'dt-a', name: 'Users', projectId: 'proj-a' }),
-				makeDataTable({ id: 'dt-b', name: 'Users', projectId: 'proj-b' }),
+				makeDataTable({ id: 'dta', name: 'Users', projectId: 'proj-a' }),
+				makeDataTable({ id: 'dtb', name: 'Users', projectId: 'proj-b' }),
 			]);
 			const writer = new CapturingWriter();
 
 			const result = await exporter.export({
 				user,
 				requirements: [
-					makeRequirement({ dataTableId: 'dt-a' }),
-					makeRequirement({ dataTableId: 'dt-b' }),
+					makeRequirement({ dataTableId: 'dta' }),
+					makeRequirement({ dataTableId: 'dtb' }),
 				],
 				writer,
 				projectTargetsById: new Map([
@@ -241,17 +263,15 @@ describe('DataTableExporter', () => {
 
 		it('throws when only some of several referenced tables are accessible', async () => {
 			const { exporter, dataTableService } = makeExporter();
-			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([
-				makeDataTable({ id: 'dt-1' }),
-			]);
+			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([makeDataTable({ id: 'dt1' })]);
 			const writer = new CapturingWriter();
 
 			await expect(
 				exporter.export({
 					user,
 					requirements: [
-						makeRequirement({ dataTableId: 'dt-1' }),
-						makeRequirement({ dataTableId: 'dt-2' }),
+						makeRequirement({ dataTableId: 'dt1' }),
+						makeRequirement({ dataTableId: 'dt2' }),
 					],
 					writer,
 				}),
