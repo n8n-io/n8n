@@ -127,6 +127,7 @@ describe('Send and Wait utils tests', () => {
 						label: 'Approve',
 						style: 'primary',
 						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+						approved: true,
 					},
 				],
 			});
@@ -164,11 +165,13 @@ describe('Send and Wait utils tests', () => {
 						label: 'Reject',
 						style: 'secondary',
 						url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+						approved: false,
 					},
 					{
 						label: 'Approve',
 						style: 'primary',
 						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+						approved: true,
 					},
 				]),
 			);

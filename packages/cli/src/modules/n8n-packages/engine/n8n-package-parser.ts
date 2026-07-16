@@ -6,7 +6,7 @@ import { ZodError } from 'zod';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { topLevelFolders, topLevelWorkflows } from './package-layout';
+import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
@@ -14,7 +14,7 @@ import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
-import { serializedFolderSchema } from '../spec/serialized/folder.schema';
+import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
 import { serializedProjectSchema } from '../spec/serialized/project.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
@@ -39,23 +39,23 @@ export class N8nPackageParser {
 		}
 	}
 
-	/** Reads the package's top-level workflows; those nested in a folder or project are skipped. */
-	async getWorkflows(reader: PackageReader): Promise<PreparedWorkflow[]> {
+	async getWorkflows(reader: PackageReader, basePrefix = ''): Promise<PreparedWorkflow[]> {
 		const manifest = await this.getManifest(reader);
+		const folderTargetToId = new Map((manifest.folders ?? []).map((f) => [f.target, f.id]));
 
 		const workflows: PreparedWorkflow[] = [];
-		for (const entry of topLevelWorkflows(manifest.workflows)) {
-			workflows.push(await this.readWorkflow(reader, entry));
+		for (const entry of workflowsInScope(manifest.workflows, basePrefix)) {
+			const parentFolderId = deriveParentFolderId(entry.target, folderTargetToId);
+			workflows.push(await this.readWorkflow(reader, entry, parentFolderId));
 		}
 		return workflows;
 	}
 
-	/** Reads the package's top-level folder shells (project-nested folders are skipped). */
-	async getFolders(reader: PackageReader): Promise<PreparedFolder[]> {
+	async getFolders(reader: PackageReader, basePrefix = ''): Promise<PreparedFolder[]> {
 		const manifest = await this.getManifest(reader);
 
 		const folders: PreparedFolder[] = [];
-		for (const entry of topLevelFolders(manifest.folders)) {
+		for (const entry of foldersInScope(manifest.folders, basePrefix)) {
 			folders.push(await this.readFolder(reader, entry));
 		}
 		return folders;
@@ -75,6 +75,7 @@ export class N8nPackageParser {
 	private async readWorkflow(
 		reader: PackageReader,
 		entry: ManifestEntry,
+		parentFolderId: string | null,
 	): Promise<PreparedWorkflow> {
 		const path = `${entry.target}/workflow.json`;
 		const wire = await this.readJson<SerializedWorkflow>(reader, path, 'workflow');
@@ -94,26 +95,41 @@ export class N8nPackageParser {
 
 		WorkflowHelpers.validateWorkflowStructure(entity);
 
-		return { entity, sourceWorkflowId: entry.id, sourcePublished: wire.isPublished };
+		return {
+			entity,
+			sourceWorkflowId: entry.id,
+			sourcePublished: wire.isPublished,
+			parentFolderId,
+		};
 	}
 
 	private async readFolder(reader: PackageReader, entry: ManifestEntry): Promise<PreparedFolder> {
 		const path = `${entry.target}/folder.json`;
 		const wire = await this.readJson(reader, path, 'folder');
 
+		let folder: SerializedFolder;
 		try {
-			const folder = serializedFolderSchema.parse(wire);
-			return {
-				sourceFolderId: folder.id,
-				name: folder.name,
-				parentFolderId: folder.parentFolderId,
-			};
+			folder = serializedFolderSchema.parse(wire);
 		} catch (cause) {
 			if (cause instanceof ZodError) {
 				throw new UserError(`Package folder file at ${path} failed schema validation.`, { cause });
 			}
 			throw cause;
 		}
+
+		// Nested workflows route to folders by manifest id, but folders are created
+		// under folder.json's id — a mismatch would place a workflow in the wrong folder.
+		if (folder.id !== entry.id) {
+			throw new UserError(
+				`Package folder at ${path} declares id "${folder.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		return {
+			sourceFolderId: folder.id,
+			name: folder.name,
+			parentFolderId: folder.parentFolderId,
+		};
 	}
 
 	private async readProject(reader: PackageReader, entry: ManifestEntry): Promise<PreparedProject> {

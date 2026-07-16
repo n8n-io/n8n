@@ -52,6 +52,8 @@ pnpm build > build.log 2>&1  # Always redirect
 pnpm typecheck               # Before commit
 pnpm lint                    # Before commit
 ```
+> Secrets: pnpm command lines may be recorded verbatim (opt-in dev metrics) —
+> pass sensitive values via env vars, never inline on the command line.
 
 ## Key Packages
 

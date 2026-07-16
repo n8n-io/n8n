@@ -1,5 +1,5 @@
 export type { Scheduler, SchedulerPasses } from './scheduler';
-export { createScheduler } from './factory';
+export { createScheduler, DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS } from './factory';
 export type {
 	SchedulerDeps,
 	SchedulerEvent,
@@ -18,7 +18,15 @@ export type {
 export { computeFirstRunAt, computeNextRunAt } from './recurrence/next-run';
 export { validateSchedule } from './recurrence/validate';
 
-export { provision, deprovision, createJobProvisioner } from './provisioning';
+export {
+	CLOCK_SKEW_WARN_THRESHOLD_MS,
+	DEFAULT_CLOCK_SKEW_OPTIONS,
+	isClockSkewSignificant,
+	measureClockSkew,
+} from './clock-skew';
+export type { ClockSkew, ClockSkewOptions } from './clock-skew';
+
+export { provision, deprovision, createJobProvisioner, scheduleFingerprint } from './provisioning';
 export type {
 	JobProvisioner,
 	JobProvisionerDeps,

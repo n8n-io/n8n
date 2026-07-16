@@ -47,6 +47,7 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -91,6 +92,7 @@ export class WorkflowService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
+		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 	) {}
 
 	async getMany(
@@ -230,7 +232,7 @@ export class WorkflowService {
 		T extends ListQueryDb.Workflow.Plain | ListQueryDb.Workflow.WithSharing,
 	>(workflows: T[]): Promise<Array<T & { hasResolvableCredentials: boolean }>> {
 		// Use lazy import to avoid circular dependency
-		const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
+		const { EnterpriseWorkflowService } = await import('./workflow.service.ee.js');
 		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
 
 		const workflowIds = workflows.map((w) => w.id);
@@ -390,7 +392,7 @@ export class WorkflowService {
 		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
 		// folder/project services which import this module).
 		if (this.licenseState.isSharingLicensed()) {
-			const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
+			const { EnterpriseWorkflowService } = await import('./workflow.service.ee.js');
 			await Container.get(EnterpriseWorkflowService).preventTampering(
 				workflowUpdateData,
 				workflowId,
@@ -1247,6 +1249,10 @@ export class WorkflowService {
 				role: sw.role,
 			})),
 		);
+
+		// Caller must invalidate the workflow-project cache for these IDs after the
+		// surrounding transaction commits, since their owner project has changed.
+		return ownedWorkflowIds;
 	}
 
 	async getWorkflowsWithNodesIncluded(user: User, nodeTypes: string[], includeNodes = false) {
@@ -1478,6 +1484,11 @@ export class WorkflowService {
 			);
 
 			await this.outboxRepository.enqueue(workflowId, deactivatedVersionId, trx);
+
+			// Durable jobs are DB state, so their removal commits here rather than
+			// waiting on the leader's outbox handler: a lost hand-off would otherwise
+			// leave them firing a workflow already marked inactive.
+			await this.scheduleTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without

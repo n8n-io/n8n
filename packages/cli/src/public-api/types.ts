@@ -95,6 +95,8 @@ export declare namespace TestRunRequest {
 			lastId?: string;
 		}
 	>;
+	type Create = AuthenticatedRequest<{ id: string }>;
+	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
 }
 
 export declare namespace TagRequest {
@@ -387,4 +389,12 @@ export declare namespace AuditRequest {
 export declare namespace SecurityPolicyRequest {
 	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateSecurityPolicyDto>;
+}
+
+// ----------------------------------
+//        /settings/sso/saml
+// ----------------------------------
+
+export declare namespace SsoSamlRequest {
+	type Get = AuthenticatedRequest;
 }

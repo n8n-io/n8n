@@ -1,6 +1,6 @@
 import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
-import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
-import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth';
+import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
+import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { UserRepository, withTransaction } from '@n8n/db';
@@ -10,19 +10,19 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { AccessToken } from './database/entities/oauth-access-token.entity';
-import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
-import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
-import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
-
 import { JwtService } from '@/services/jwt.service';
 import type {
 	OAuthTokenVerifier,
 	UserWithContext,
 } from '@/services/oauth-token-verifier-proxy.service';
+import type { ProtectedResource } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+
+import { AccessToken } from './database/entities/oauth-access-token.entity';
+import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
+import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
+import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 
 /**
  * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.
@@ -53,7 +53,8 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	generateTokenPair(
 		userId: string,
 		clientId: string,
-		resource?: string,
+		resource: string | undefined,
+		scopes: string[],
 	): { accessToken: string; refreshToken: string } {
 		// Pre-RFC-8707 clients omit the resource indicator; fall back to the
 		// registry's default resource (the instance MCP server).
@@ -71,6 +72,10 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			jti: randomUUID(),
 			iat: Math.floor(Date.now() / 1000),
 			exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY_SECONDS,
+			// RFC 9068 space-delimited scope claim. Always present on new tokens
+			// (empty string for scope-less grants), so an absent claim
+			// unambiguously identifies a token minted before scoping shipped.
+			scope: scopes.join(' '),
 			meta: {
 				isOAuth: true,
 			},
@@ -86,6 +91,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		refreshToken: string,
 		clientId: string,
 		userId: string,
+		scopes: string[],
 	): Promise<void> {
 		await this.accessTokenRepository.manager.transaction(async (transactionManager) => {
 			await transactionManager.insert(this.accessTokenRepository.target, {
@@ -99,6 +105,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				clientId,
 				userId,
 				expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
+				scope: scopes,
 			});
 		});
 	}
@@ -135,10 +142,13 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				throw new InvalidGrantError('Invalid refresh token');
 			}
 
+			const scopes = refreshTokenRecord.scope;
+
 			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
 				refreshTokenRecord.userId,
 				clientId,
 				resource,
+				scopes,
 			);
 
 			await trx.insert(AccessToken, {
@@ -152,6 +162,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				clientId,
 				userId: refreshTokenRecord.userId,
 				expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
+				scope: scopes,
 			});
 
 			this.logger.info('Refresh token rotated and new access token issued', {
@@ -164,6 +175,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				token_type: 'Bearer',
 				expires_in: this.ACCESS_TOKEN_EXPIRY_SECONDS,
 				refresh_token: newRefreshToken,
+				scope: scopes.join(' '),
 			};
 		});
 	}
@@ -204,11 +216,28 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		return {
 			token,
 			clientId,
-			scopes: [],
+			scopes: this.parseScopeClaim(decoded),
 			extra: {
 				userId,
 			},
 		};
+	}
+
+	/**
+	 * Scopes carried by an access token. Tokens always carry a `scope` claim
+	 * (empty string for scope-less grants).
+	 */
+	private parseScopeClaim(decoded: unknown): string[] {
+		const scopeClaim = this.getStringClaim(decoded, 'scope');
+
+		// Migration 1784000000047 deleted every access token minted before
+		// scoping shipped, so a claim-less token cannot legitimately occur.
+		// Fail closed rather than granting anything.
+		if (scopeClaim === null) {
+			return [];
+		}
+
+		return scopeClaim === '' ? [] : scopeClaim.split(' ');
 	}
 
 	async verifyOAuthAccessToken(token: string, expectedAudience?: string): Promise<UserWithContext> {
@@ -252,7 +281,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				return { user: null, context: { reason: 'insufficient_scope', auth_type: 'oauth' } };
 			}
 
-			return { user, authType: 'oauth' };
+			return { user, authType: 'oauth', scopes: authInfo.scopes };
 		} catch (error) {
 			const errorForSure = ensureError(error);
 			const reason =
@@ -270,6 +299,14 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				},
 			};
 		}
+	}
+
+	/** Deletes every access and refresh token a user holds for a client. */
+	async revokeAllTokensForGrant(clientId: string, userId: string): Promise<void> {
+		await Promise.all([
+			this.accessTokenRepository.delete({ clientId, userId }),
+			this.refreshTokenRepository.delete({ clientId, userId }),
+		]);
 	}
 
 	async revokeAccessToken(token: string, clientId: string): Promise<boolean> {

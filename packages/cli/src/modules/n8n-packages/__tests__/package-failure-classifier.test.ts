@@ -9,6 +9,7 @@ import { UnprocessableRequestError } from '@/errors/response-errors/unprocessabl
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
+	PackageExportBlockedError,
 } from '../entities/package-export.errors';
 import { classifyPackageFailure } from '../package-failure-classifier';
 
@@ -16,6 +17,7 @@ describe('classifyPackageFailure', () => {
 	test.each([
 		['PackageEntityAccessDeniedError', new PackageEntityAccessDeniedError('x'), 'access-denied'],
 		['PackageEntityNotFoundError', new PackageEntityNotFoundError('x'), 'entity-not-found'],
+		['PackageExportBlockedError', new PackageExportBlockedError('x'), 'blocked'],
 		['ForbiddenError', new ForbiddenError('x'), 'access-denied'],
 		['NotFoundError', new NotFoundError('x'), 'entity-not-found'],
 		['ConflictError', new ConflictError('x'), 'blocked'],

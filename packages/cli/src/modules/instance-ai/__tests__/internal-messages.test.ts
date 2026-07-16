@@ -1,15 +1,20 @@
 import {
 	cleanStoredUserMessage,
-	extractEditorContextWorkflowAttachments,
+	extractEditorContextResourceAttachments,
 	withCurrentDateTime,
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
 
+type EditorContextAttachment =
+	| { type: 'workflow'; id: string; name?: string; executionId?: string }
+	| { type: 'agent'; id: string; name?: string; projectId: string };
+
 /** Mirrors the marker the service writes in buildContextResourcesBlock. */
 function editorContextMarker(
-	workflows: Array<{ type: 'workflow'; id: string; name?: string; executionId?: string }>,
+	attachments: EditorContextAttachment[],
+	prose = 'The user opened this conversation from the workflow editor.',
 ): string {
-	return `<editor-context>\n${JSON.stringify(workflows)}\n\nThe user opened this conversation from the workflow editor.\n</editor-context>`;
+	return `<editor-context>\n${JSON.stringify(attachments)}\n\n${prose}\n</editor-context>`;
 }
 
 function credentialContextMarker(): string {
@@ -98,22 +103,46 @@ describe('cleanStoredUserMessage', () => {
 	});
 });
 
-describe('extractEditorContextWorkflowAttachments', () => {
+describe('extractEditorContextResourceAttachments', () => {
 	it('reconstructs workflow attachments from the marker', () => {
 		const stored = editorContextMarker([
 			{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
 		]);
-		expect(extractEditorContextWorkflowAttachments(stored)).toEqual([
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
 			{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
 		]);
 	});
 
+	it('reconstructs agent attachments from the marker', () => {
+		const stored = editorContextMarker(
+			[{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' }],
+			'The user opened this conversation from the agent editor.',
+		);
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+		]);
+	});
+
+	it('reconstructs mixed workflow and agent attachments from the marker', () => {
+		const stored = editorContextMarker(
+			[
+				{ type: 'workflow', id: 'wf-1', name: 'My workflow' },
+				{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+			],
+			'prose',
+		);
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'workflow', id: 'wf-1', name: 'My workflow' },
+			{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+		]);
+	});
+
 	it('returns an empty array for a message without an editor-context block', () => {
-		expect(extractEditorContextWorkflowAttachments('Just a normal message')).toEqual([]);
+		expect(extractEditorContextResourceAttachments('Just a normal message')).toEqual([]);
 	});
 
 	it('returns an empty array when the marker JSON is invalid', () => {
 		const stored = '<editor-context>\nnot json\n\nprose\n</editor-context>';
-		expect(extractEditorContextWorkflowAttachments(stored)).toEqual([]);
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([]);
 	});
 });

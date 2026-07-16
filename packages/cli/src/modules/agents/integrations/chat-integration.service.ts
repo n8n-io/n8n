@@ -89,7 +89,7 @@ interface DisconnectChannelOptions {
 async function getAgentExecutionOrchestratorService() {
 	// eslint-disable-next-line import-x/no-cycle
 	const { AgentExecutionOrchestratorService } = await import(
-		'../agent-execution-orchestrator.service'
+		'../agent-execution-orchestrator.service.js'
 	);
 	return Container.get(AgentExecutionOrchestratorService);
 }

@@ -401,6 +401,29 @@ function updateNodesIssues() {
 	nodeHelpers.updateNodesParameterIssues();
 }
 
+// End-user credential validity depends on workflow-wide state — the resolver and
+// the enabled trigger set — yet credential issues are cached per node. Recompute
+// all nodes' credential issues whenever that dependency changes so a stale message
+// can't linger after switching the resolver or changing/toggling/adding a trigger.
+watch(
+	() => {
+		const doc = workflowDocumentStore?.value;
+		const triggerSignature = (doc?.workflowTriggerNodes ?? [])
+			.filter((trigger) => !trigger.disabled)
+			.map((trigger) => `${trigger.type}:${JSON.stringify(trigger.parameters ?? {})}`)
+			.join('|');
+		return `${doc?.settings?.credentialResolverId ?? ''}#${triggerSignature}`;
+	},
+	() => {
+		// The load path already computes credential issues once after the workflow
+		// loads (updateNodesIssues). Skip while still loading so this doesn't churn
+		// node issues during the document store's transient setup window, where
+		// NDV-dependent render code can still throw.
+		if (isLoading.value) return;
+		nodeHelpers.updateNodesCredentialsIssues();
+	},
+);
+
 /**
  * Workflow
  */

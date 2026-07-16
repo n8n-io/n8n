@@ -9,7 +9,7 @@ import type {
 	OrchestratorRunHandoffReason,
 	OrchestratorRunStopSignal,
 } from './orchestrator-run-control';
-import { mapAgentChunkToEvent } from '../stream/map-chunk';
+import { isQuotaExhaustedError, mapAgentChunkToEvent } from '../stream/map-chunk';
 import { OutputRedactor } from '../stream/output-redaction';
 import { UsageAccumulator, type RunTokenUsage } from '../stream/usage-accumulator';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
@@ -346,6 +346,9 @@ async function consumeStreamPass(args: {
 	let suspension: SuspensionInfo | undefined;
 	let hasError = false;
 	let error: unknown;
+	// Once we've surfaced an out-of-credits error, drop any follow-on error chunks
+	// (e.g. the SDK's generic "no output generated") so the user sees one clear reason.
+	let quotaErrorPublished = false;
 	let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
 	let confirmationEvent: ConfirmationRequestEvent | undefined;
 	let confirmationEventPublished = false;
@@ -402,7 +405,14 @@ async function consumeStreamPass(args: {
 
 		if (isErrorChunk(chunk)) {
 			hasError = true;
+			// A quota error was already surfaced this run — swallow later error
+			// chunks (usage was still observed above) to avoid a confusing second
+			// callout. Do this before overwriting `error` so `result.error` stays the
+			// quota error the user saw, rather than the swallowed follow-on — otherwise
+			// telemetry would log a failure the user was never shown.
+			if (quotaErrorPublished) continue;
 			error = chunk.error;
+			if (isQuotaExhaustedError(chunk.error)) quotaErrorPublished = true;
 		}
 
 		const isDeltaChunk =
