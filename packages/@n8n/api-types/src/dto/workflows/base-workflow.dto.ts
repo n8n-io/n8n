@@ -1,10 +1,8 @@
+import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
 import type { IPinData, IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
 export const WORKFLOW_NAME_MAX_LENGTH = 128;
-
-/** Character cap on a node group description; keeps it within 3 lines in the collapsed panel. */
-export const GROUP_DESCRIPTION_MAX_LENGTH = 155;
 
 /** Maximum allowed size for pinned data in bytes (12 MB) */
 export const MAX_PINNED_DATA_SIZE = 1024 * 1024 * 12;

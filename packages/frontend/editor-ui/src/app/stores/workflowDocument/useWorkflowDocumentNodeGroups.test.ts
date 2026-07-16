@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
 
 import { useWorkflowDocumentNodeGroups } from './useWorkflowDocumentNodeGroups';
 
@@ -39,6 +40,20 @@ describe('useWorkflowDocumentNodeGroups', () => {
 			const group = nodeGroups.createGroup(['a', 'b'], 'A', { description: 'Copied over' });
 			expect(group.description).toBe('Copied over');
 			expect(nodeGroups.getGroupById(group.id)?.description).toBe('Copied over');
+		});
+
+		it('caps an over-long seeded description to the server limit', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'A', {
+				description: 'x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50),
+			});
+			expect(group.description).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
+		});
+
+		it('drops a non-string seeded description (untyped imported JSON)', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'A', {
+				description: 42 as unknown as string,
+			});
+			expect(group.description).toBeUndefined();
 		});
 
 		it('carries startCollapsed on the ADD event so the view can skip auto-expand', () => {
@@ -124,6 +139,14 @@ describe('useWorkflowDocumentNodeGroups', () => {
 
 		it('does nothing for an unknown group id', () => {
 			expect(() => nodeGroups.updateDescription('missing', 'X')).not.toThrow();
+		});
+
+		it('caps an over-long description to the server limit', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'G');
+			nodeGroups.updateDescription(group.id, 'x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50));
+			expect(nodeGroups.getGroupById(group.id)?.description).toHaveLength(
+				GROUP_DESCRIPTION_MAX_LENGTH,
+			);
 		});
 	});
 

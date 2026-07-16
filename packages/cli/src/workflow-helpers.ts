@@ -1,15 +1,12 @@
-import {
-	MAX_PINNED_DATA_SIZE,
-	MAX_WORKFLOW_SIZE,
-	MAX_EXPECTED_REQUEST_SIZE,
-	GROUP_DESCRIPTION_MAX_LENGTH,
-} from '@n8n/api-types';
+import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	formatWorkflowStructureIssuePath,
+	GROUP_DESCRIPTION_MAX_LENGTH,
 	isSafeObjectProperty,
+	normalizeGroupDescription,
 	resolveNodeWebhookId,
 	resolveVariables,
 	safeParseWorkflowStructure,
@@ -300,17 +297,19 @@ export function sanitizeNodeGroupDescriptions(
 	const warnings: string[] = [];
 	for (const group of workflow.nodeGroups ?? []) {
 		// Imported JSON is untyped at runtime despite the `string` contract.
-		const description: unknown = group.description;
-		if (description === undefined) continue;
+		const original: unknown = group.description;
+		if (original === undefined) continue;
 
-		if (typeof description !== 'string') {
+		const normalized = normalizeGroupDescription(original);
+		if (normalized === original) continue;
+
+		if (normalized === undefined) {
 			delete group.description;
-			warnings.push(`Group "${group.name}" description was not plain text and was removed.`);
-			continue;
-		}
-
-		if (description.length > GROUP_DESCRIPTION_MAX_LENGTH) {
-			group.description = description.slice(0, GROUP_DESCRIPTION_MAX_LENGTH);
+			if (typeof original !== 'string') {
+				warnings.push(`Group "${group.name}" description was not plain text and was removed.`);
+			}
+		} else {
+			group.description = normalized;
 			warnings.push(
 				`Group "${group.name}" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
 			);

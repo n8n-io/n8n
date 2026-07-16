@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import uniq from 'lodash/uniq';
-import type { IWorkflowGroup } from 'n8n-workflow';
+import { normalizeGroupDescription, type IWorkflowGroup } from 'n8n-workflow';
 import { CHANGE_ACTION } from './types';
 
 export type NodeGroupPayload = {
@@ -99,11 +99,12 @@ export function useWorkflowDocumentNodeGroups() {
 		name: string,
 		options: NodeGroupCreateOptions = {},
 	): IWorkflowGroup {
+		const description = normalizeGroupDescription(options.description);
 		const group: IWorkflowGroup = {
 			id: window.crypto.randomUUID(),
 			nodeIds: [...nodeIds],
 			name,
-			...(options.description ? { description: options.description } : {}),
+			...(description ? { description } : {}),
 		};
 		applyUpsertGroup(group, CHANGE_ACTION.ADD, options);
 		return group;
@@ -141,7 +142,7 @@ export function useWorkflowDocumentNodeGroups() {
 	function updateDescription(id: string, description: string) {
 		const group = groups.value.get(id);
 		if (!group) return;
-		const next = description.length > 0 ? description : undefined;
+		const next = normalizeGroupDescription(description);
 		if (group.description === next) return;
 		applyUpsertGroup({ ...group, description: next }, CHANGE_ACTION.UPDATE);
 	}

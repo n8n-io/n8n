@@ -109,7 +109,6 @@ export {
 	MAX_PINNED_DATA_SIZE,
 	MAX_WORKFLOW_SIZE,
 	MAX_EXPECTED_REQUEST_SIZE,
-	GROUP_DESCRIPTION_MAX_LENGTH,
 } from './workflows/base-workflow.dto';
 export { CreateWorkflowDto } from './workflows/create-workflow.dto';
 export { UpdateWorkflowDto } from './workflows/update-workflow.dto';

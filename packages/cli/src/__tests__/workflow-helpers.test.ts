@@ -1,12 +1,8 @@
-import {
-	MAX_PINNED_DATA_SIZE,
-	MAX_WORKFLOW_SIZE,
-	MAX_EXPECTED_REQUEST_SIZE,
-	GROUP_DESCRIPTION_MAX_LENGTH,
-} from '@n8n/api-types';
+import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
+import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
 import type {
 	DynamicCredentialsUsage,
 	ExecutionError,

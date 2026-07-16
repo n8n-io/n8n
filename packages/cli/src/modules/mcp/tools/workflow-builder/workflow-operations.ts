@@ -1,4 +1,3 @@
-import { GROUP_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { IANAZone } from 'luxon';
 import type {
 	IConnection,
@@ -10,7 +9,11 @@ import type {
 	IWorkflowSettings,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { isSafeObjectProperty, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	isSafeObjectProperty,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
