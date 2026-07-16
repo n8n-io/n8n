@@ -286,20 +286,31 @@ export function validateWorkflowNodeGroups(
 }
 
 /**
- * Clamps group descriptions to the shared length cap, mutating in place.
+ * Normalizes group descriptions on import, mutating in place.
  *
- * Authoring paths (internal REST + public API) reject over-cap descriptions via
- * their DTOs. Import paths accept arbitrary JSON, so they truncate instead of
- * rejecting — keeping the import lenient. Returns a warning per truncated group
- * so callers can surface it.
+ * Authoring paths (internal REST + public API) reject invalid or over-cap
+ * descriptions via their DTOs. Import paths accept arbitrary JSON, so instead of
+ * rejecting they drop non-string descriptions and truncate over-long ones —
+ * keeping the import lenient while honouring the plain-text, capped contract.
+ * Returns a warning per adjusted group so callers can surface it.
  */
-export function truncateNodeGroupDescriptions(
+export function sanitizeNodeGroupDescriptions(
 	workflow: Pick<IWorkflowBase, 'nodeGroups'>,
 ): string[] {
 	const warnings: string[] = [];
 	for (const group of workflow.nodeGroups ?? []) {
-		if (group.description && group.description.length > GROUP_DESCRIPTION_MAX_LENGTH) {
-			group.description = group.description.slice(0, GROUP_DESCRIPTION_MAX_LENGTH);
+		// Imported JSON is untyped at runtime despite the `string` contract.
+		const description: unknown = group.description;
+		if (description === undefined) continue;
+
+		if (typeof description !== 'string') {
+			delete group.description;
+			warnings.push(`Group "${group.name}" description was not plain text and was removed.`);
+			continue;
+		}
+
+		if (description.length > GROUP_DESCRIPTION_MAX_LENGTH) {
+			group.description = description.slice(0, GROUP_DESCRIPTION_MAX_LENGTH);
 			warnings.push(
 				`Group "${group.name}" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
 			);

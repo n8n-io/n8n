@@ -35,7 +35,7 @@ import { validateDbTypeForImportEntities } from '@/utils/validate-database-type'
 import {
 	replaceInvalidCredentials,
 	validateWorkflowStructure,
-	truncateNodeGroupDescriptions,
+	sanitizeNodeGroupDescriptions,
 } from '@/workflow-helpers';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -127,7 +127,7 @@ export class ImportService {
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
 			validateWorkflowStructure(workflow);
 
-			for (const warning of truncateNodeGroupDescriptions(workflow)) {
+			for (const warning of sanitizeNodeGroupDescriptions(workflow)) {
 				this.logger.warn(`Workflow "${workflow.name}": ${warning}`);
 			}
 

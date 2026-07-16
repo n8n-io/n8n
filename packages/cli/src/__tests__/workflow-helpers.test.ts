@@ -32,7 +32,7 @@ import {
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
 	validateWorkflowStructure,
-	truncateNodeGroupDescriptions,
+	sanitizeNodeGroupDescriptions,
 	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -624,12 +624,12 @@ describe('validateWorkflowNodeGroups', () => {
 	});
 });
 
-describe('truncateNodeGroupDescriptions', () => {
+describe('sanitizeNodeGroupDescriptions', () => {
 	it('returns no warnings and leaves descriptions within the cap untouched', () => {
 		const workflow = {
 			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [], description: 'short' }],
 		};
-		expect(truncateNodeGroupDescriptions(workflow)).toEqual([]);
+		expect(sanitizeNodeGroupDescriptions(workflow)).toEqual([]);
 		expect(workflow.nodeGroups[0].description).toBe('short');
 	});
 
@@ -644,7 +644,7 @@ describe('truncateNodeGroupDescriptions', () => {
 				},
 			],
 		};
-		const warnings = truncateNodeGroupDescriptions(workflow);
+		const warnings = sanitizeNodeGroupDescriptions(workflow);
 
 		expect(workflow.nodeGroups[0].description).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
 		expect(warnings).toEqual([
@@ -652,10 +652,24 @@ describe('truncateNodeGroupDescriptions', () => {
 		]);
 	});
 
+	it.each([
+		['a number', 123],
+		['an object', { a: 1 }],
+		['an array', Array.from({ length: GROUP_DESCRIPTION_MAX_LENGTH + 10 }, (_, i) => i)],
+	])('removes a non-string description (%s) and returns a warning', (_label, description) => {
+		const workflow = {
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [], description: description as never }],
+		};
+		const warnings = sanitizeNodeGroupDescriptions(workflow);
+
+		expect(workflow.nodeGroups[0].description).toBeUndefined();
+		expect(warnings).toEqual(['Group "Group 1" description was not plain text and was removed.']);
+	});
+
 	it('handles missing nodeGroups and groups without a description', () => {
-		expect(truncateNodeGroupDescriptions({ nodeGroups: undefined })).toEqual([]);
+		expect(sanitizeNodeGroupDescriptions({ nodeGroups: undefined })).toEqual([]);
 		expect(
-			truncateNodeGroupDescriptions({ nodeGroups: [{ id: 'g1', name: 'G', nodeIds: [] }] }),
+			sanitizeNodeGroupDescriptions({ nodeGroups: [{ id: 'g1', name: 'G', nodeIds: [] }] }),
 		).toEqual([]);
 	});
 });
