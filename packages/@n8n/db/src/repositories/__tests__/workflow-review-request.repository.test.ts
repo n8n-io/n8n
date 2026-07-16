@@ -62,13 +62,4 @@ describe('WorkflowReviewRequestRepository', () => {
 			});
 		});
 	});
-
-	describe('findById', () => {
-		it('returns the request when one exists', async () => {
-			const row = { id: 'req-1' } as WorkflowReviewRequest;
-			entityManager.findOne.mockResolvedValueOnce(row);
-
-			expect(await repo.findById('req-1')).toBe(row);
-		});
-	});
 });

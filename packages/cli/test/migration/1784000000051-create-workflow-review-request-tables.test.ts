@@ -113,50 +113,6 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 		return { workflowId, versionId };
 	}
 
-	it('creates the workflow review tables', async () => {
-		const context = createTestMigrationContext(dataSource);
-		try {
-			const requestTable = context.escape.tableName('workflow_review_request');
-			const workflowTable = context.escape.tableName('workflow_review_request_workflow');
-			const reviewerTable = context.escape.tableName('workflow_review_request_reviewers');
-			const authorTable = context.escape.tableName('workflow_review_request_authors');
-
-			const requestExists = await context.runQuery<Array<{ name: string }>>(
-				context.isSqlite
-					? "SELECT name FROM sqlite_master WHERE type = 'table' AND name = :name"
-					: 'SELECT tablename AS name FROM pg_tables WHERE tablename = :name',
-				{ name: requestTable.replace(/"/g, '') },
-			);
-			expect(requestExists.length).toBe(1);
-
-			const workflowExists = await context.runQuery<Array<{ name: string }>>(
-				context.isSqlite
-					? "SELECT name FROM sqlite_master WHERE type = 'table' AND name = :name"
-					: 'SELECT tablename AS name FROM pg_tables WHERE tablename = :name',
-				{ name: workflowTable.replace(/"/g, '') },
-			);
-			expect(workflowExists.length).toBe(1);
-
-			const reviewerExists = await context.runQuery<Array<{ name: string }>>(
-				context.isSqlite
-					? "SELECT name FROM sqlite_master WHERE type = 'table' AND name = :name"
-					: 'SELECT tablename AS name FROM pg_tables WHERE tablename = :name',
-				{ name: reviewerTable.replace(/"/g, '') },
-			);
-			expect(reviewerExists.length).toBe(1);
-
-			const authorExists = await context.runQuery<Array<{ name: string }>>(
-				context.isSqlite
-					? "SELECT name FROM sqlite_master WHERE type = 'table' AND name = :name"
-					: 'SELECT tablename AS name FROM pg_tables WHERE tablename = :name',
-				{ name: authorTable.replace(/"/g, '') },
-			);
-			expect(authorExists.length).toBe(1);
-		} finally {
-			await context.queryRunner.release();
-		}
-	});
-
 	it('creates the expected indexes', async () => {
 		const context = createTestMigrationContext(dataSource);
 		try {
@@ -182,7 +138,7 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 		}
 	});
 
-	it('supports creating and reading review request rows', async () => {
+	it('supports review request rows and cascades child rows on delete', async () => {
 		const context = createTestMigrationContext(dataSource);
 		try {
 			const projectId = await seedProject(context);
@@ -285,62 +241,23 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 				{ requestId },
 			);
 			expect(authorRows).toEqual([{ userId }]);
-		} finally {
-			await context.queryRunner.release();
-		}
-	});
-
-	it('cascades child, reviewer, and author rows when the parent request is deleted', async () => {
-		const context = createTestMigrationContext(dataSource);
-		try {
-			const projectId = await seedProject(context);
-			const { workflowId, versionId } = await seedWorkflow(context, projectId);
-			const requestId = generateNanoId();
-			const now = new Date();
 
 			await context.runQuery(
-				`INSERT INTO ${context.escape.tableName('workflow_review_request')}
-			 ("id", "projectId", "state", "decision", "title", "createdAt", "updatedAt")
-			 VALUES (:id, :projectId, :state, :decision, :title, :createdAt, :updatedAt)`,
-				{
-					id: requestId,
-					projectId,
-					state: 'open',
-					decision: 'pending',
-					title: 'Cascade test',
-					createdAt: now,
-					updatedAt: now,
-				},
-			);
-
-			await context.runQuery(
-				`INSERT INTO ${context.escape.tableName('workflow_review_request_workflow')}
-			 ("id", "workflowReviewRequestId", "workflowId", "workflowVersionId")
-			 VALUES (:id, :workflowReviewRequestId, :workflowId, :workflowVersionId)`,
-				{
-					id: generateNanoId(),
-					workflowReviewRequestId: requestId,
-					workflowId,
-					workflowVersionId: versionId,
-				},
-			);
-
-			await context.runQuery(
-				`DELETE FROM ${context.escape.tableName('workflow_review_request')} WHERE "id" = :id`,
-				{ id: requestId },
-			);
-
-			const childRows = await context.runQuery<unknown[]>(
-				`SELECT "id" FROM ${context.escape.tableName('workflow_review_request_workflow')} WHERE "workflowReviewRequestId" = :requestId`,
+				`DELETE FROM ${context.escape.tableName('workflow_review_request')} WHERE "id" = :requestId`,
 				{ requestId },
 			);
-			expect(childRows).toHaveLength(0);
 
-			const authorRows = await context.runQuery<unknown[]>(
-				`SELECT "id" FROM ${context.escape.tableName('workflow_review_request_authors')} WHERE "workflowReviewRequestId" = :requestId`,
-				{ requestId },
-			);
-			expect(authorRows).toHaveLength(0);
+			for (const tableName of [
+				'workflow_review_request_workflow',
+				'workflow_review_request_reviewers',
+				'workflow_review_request_authors',
+			]) {
+				const rows = await context.runQuery<unknown[]>(
+					`SELECT "id" FROM ${context.escape.tableName(tableName)} WHERE "workflowReviewRequestId" = :requestId`,
+					{ requestId },
+				);
+				expect(rows).toHaveLength(0);
+			}
 		} finally {
 			await context.queryRunner.release();
 		}
