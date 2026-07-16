@@ -1,5 +1,5 @@
 import { ApplicationError as ErrorsApplicationError } from '@n8n/errors';
-// @ts-expect-error - Test case
+
 import { ApplicationError } from 'n8n-workflow';
 
 // This file is the compatibility boundary, exempt from the `no-application-error` lint rule.
