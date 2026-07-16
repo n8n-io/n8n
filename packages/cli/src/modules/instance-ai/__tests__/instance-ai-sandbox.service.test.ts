@@ -170,6 +170,109 @@ describe('InstanceAiSandboxService', () => {
 		});
 	});
 
+	describe('AI service transient failures', () => {
+		function createProxyService(client: {
+			getSandboxProxyConfig: Mock;
+			getInstanceAiApiProxyToken?: Mock;
+		}) {
+			return createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+				aiService: {
+					isProxyEnabled: vi.fn(() => true),
+					getClient: vi.fn(async () => ({
+						getSandboxProxyBaseUrl: vi.fn(() => 'https://proxy.base'),
+						getInstanceAiApiProxyToken:
+							client.getInstanceAiApiProxyToken ?? vi.fn(async () => ({ accessToken: 'token-1' })),
+						getSandboxProxyConfig: client.getSandboxProxyConfig,
+					})),
+				},
+			});
+		}
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('retries the proxy config fetch on transient 5xx errors', async () => {
+			vi.useFakeTimers();
+			const transient = Object.assign(new Error('Service Unavailable'), { statusCode: 503 });
+			const getSandboxProxyConfig = vi
+				.fn()
+				.mockRejectedValueOnce(transient)
+				.mockRejectedValueOnce(transient)
+				.mockResolvedValue({ image: 'proxy-image' });
+			const { service } = createProxyService({ getSandboxProxyConfig });
+
+			const promise = service.resolveSandboxConfig(fakeUser);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toMatchObject({ image: 'proxy-image' });
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(3);
+		});
+
+		it('treats errors without a status code as transient', async () => {
+			vi.useFakeTimers();
+			const getSandboxProxyConfig = vi
+				.fn()
+				.mockRejectedValueOnce(new SyntaxError("Unexpected token '<'"))
+				.mockResolvedValue({ image: 'proxy-image' });
+			const { service } = createProxyService({ getSandboxProxyConfig });
+
+			const promise = service.resolveSandboxConfig(fakeUser);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toMatchObject({ image: 'proxy-image' });
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('surfaces an OperationalError after exhausting retries', async () => {
+			vi.useFakeTimers();
+			const transient = Object.assign(new Error('Bad Gateway'), { statusCode: 502 });
+			const getSandboxProxyConfig = vi.fn().mockRejectedValue(transient);
+			const { service } = createProxyService({ getSandboxProxyConfig });
+
+			const promise = service.resolveSandboxConfig(fakeUser);
+			const assertion = expect(promise).rejects.toThrow(
+				'The AI assistant service is temporarily unavailable',
+			);
+			await vi.runAllTimersAsync();
+
+			await assertion;
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(3);
+		});
+
+		it('does not retry definite client errors', async () => {
+			const unauthorized = Object.assign(new Error('Unauthorized'), { statusCode: 401 });
+			const getSandboxProxyConfig = vi.fn().mockRejectedValue(unauthorized);
+			const { service } = createProxyService({ getSandboxProxyConfig });
+
+			await expect(service.resolveSandboxConfig(fakeUser)).rejects.toBe(unauthorized);
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('retries transient failures when minting proxy auth tokens', async () => {
+			vi.useFakeTimers();
+			const transient = Object.assign(new Error('Service Unavailable'), { statusCode: 503 });
+			const getInstanceAiApiProxyToken = vi
+				.fn()
+				.mockRejectedValueOnce(transient)
+				.mockResolvedValue({ accessToken: 'token-2' });
+			const { service } = createProxyService({
+				getSandboxProxyConfig: vi.fn(async () => ({ image: 'proxy-image' })),
+				getInstanceAiApiProxyToken,
+			});
+
+			const config = await service.resolveSandboxConfig(fakeUser);
+			if (!config.enabled || config.provider !== 'daytona') throw new Error('unexpected config');
+
+			const tokenPromise = config.getAuthToken?.();
+			await vi.runAllTimersAsync();
+
+			await expect(tokenPromise).resolves.toBe('token-2');
+			expect(getInstanceAiApiProxyToken).toHaveBeenCalledTimes(2);
+		});
+	});
+
 	describe('getSandboxConfigFromEnv', () => {
 		const daytonaEnvConfig: Partial<InstanceAiConfig> = {
 			sandboxEnabled: true,
