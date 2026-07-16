@@ -574,14 +574,28 @@ export class ExecutionPersistence {
 	}
 
 	/**
-	 * Runaway-safeguard cap for `hardDeleteByWorkflowId`. On Postgres, scaled to
-	 * twice the table-size estimate from the system catalogs (O(1) lookup), so
-	 * large deployments never hit the cap on legitimate work. Elsewhere (or when
-	 * no estimate is available) falls back to the fixed per-run cap.
+	 * Runaway-safeguard cap for `hardDeleteByWorkflowId`: twice the table-size
+	 * estimate when one is available — no single workflow can have more
+	 * executions than the whole table, so large deployments never hit the cap
+	 * on legitimate work — floored at the fixed per-run cap, which is also the
+	 * fallback when no estimate is available.
 	 */
 	private async maxBulkDeletionBatches(): Promise<number> {
-		const fallback = ExecutionPersistence.maxBulkDeletionBatchesPerRun;
-		if (this.databaseConfig.type !== 'postgresdb') return fallback;
+		const { bulkDeletionBatchSize, maxBulkDeletionBatchesPerRun: fallback } = ExecutionPersistence;
+
+		const estimate = await this.estimateExecutionsTableSize();
+		if (estimate === null) return fallback;
+
+		return Math.max(Math.ceil((estimate * 2) / bulkDeletionBatchSize), fallback);
+	}
+
+	/**
+	 * Table-size estimate for executions from the Postgres system catalogs
+	 * (O(1) lookup). Returns null on other DBs, on never-analyzed tables
+	 * (`reltuples` is -1), or when the lookup fails — this is best-effort only.
+	 */
+	private async estimateExecutionsTableSize(): Promise<number | null> {
+		if (this.databaseConfig.type !== 'postgresdb') return null;
 
 		try {
 			const { schema, tableName } = this.executionRepository.metadata;
@@ -590,17 +604,11 @@ export class ExecutionPersistence {
 				'SELECT reltuples::bigint AS estimate FROM pg_class WHERE oid = to_regclass($1)',
 				[table],
 			)) as Array<{ estimate: string | number }>;
-			const estimate = Number(rows[0]?.estimate);
-			// reltuples is -1 for never-analyzed tables
-			if (!Number.isFinite(estimate) || estimate < 0) return fallback;
 
-			return Math.max(
-				Math.ceil((estimate * 2) / ExecutionPersistence.bulkDeletionBatchSize),
-				fallback,
-			);
+			const estimate = Number(rows[0]?.estimate);
+			return Number.isFinite(estimate) && estimate >= 0 ? estimate : null;
 		} catch {
-			// best-effort estimate; the fixed cap still guards the loop
-			return fallback;
+			return null;
 		}
 	}
 
