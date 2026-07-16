@@ -29,6 +29,11 @@ export async function execute(
 	// https://learn.microsoft.com/en-us/graph/api/worksheet-delete
 	const returnData: INodeExecutionData[] = [];
 
+	// Hoisted once for the whole run and passed into resolveWorkbookRoot below,
+	// so a pasted Workbook/Site address is resolved once, not once per item.
+	const workbookRootCache = new Map<string, string>();
+	const siteIdCache = new Map<string, string>();
+
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const worksheetId = validatePathSegment(
@@ -37,7 +42,7 @@ export async function execute(
 				this.getNodeParameter('worksheet', i, '', { extractValue: true }) as string,
 			);
 
-			const workbookRoot = await resolveWorkbookRoot.call(this, i);
+			const workbookRoot = await resolveWorkbookRoot.call(this, i, workbookRootCache, siteIdCache);
 
 			await microsoftApiRequest.call(
 				this,
