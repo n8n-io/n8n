@@ -1613,6 +1613,56 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
+		it('should remove stale sharing rows when importing an instance credential', async () => {
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'credential',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			const mockCredentialData = {
+				id: 'cred1',
+				name: 'Instance Credential',
+				type: 'oauth2Api',
+				data: {},
+				ownedBy: null,
+				availability: 'instance',
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockCredentialData));
+			credentialsRepository.find.mockResolvedValue([
+				{ id: 'cred1', name: 'Old Credential', type: 'oauth2Api', data: undefined } as any,
+			]);
+			sharedCredentialsRepository.find.mockResolvedValue([
+				{ credentialsId: 'cred1', projectId: 'project1', role: 'credential:owner' } as any,
+			]);
+			credentialsRepository.upsert.mockResolvedValue({
+				identifiers: [],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			expect(credentialsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'cred1',
+					availability: 'instance',
+				}),
+				['id'],
+			);
+			expect(sharedCredentialsRepository.delete).toHaveBeenCalledWith({
+				credentialsId: 'cred1',
+			});
+		});
+
 		it('should default resolver fields to false when absent from the stub', async () => {
 			// Arrange - a stub written before resolver fields were tracked omits them
 			const candidates: SourceControlledFile[] = [

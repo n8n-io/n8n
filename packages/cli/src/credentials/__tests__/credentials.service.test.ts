@@ -4,6 +4,7 @@ import type {
 	CredentialsRepository,
 	SharedCredentialsRepository,
 	ProjectRepository,
+	SettingsRepository,
 	UserRepository,
 	User,
 	SharedCredentials,
@@ -80,6 +81,7 @@ describe('CredentialsService', () => {
 	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
 	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
+	const settingsRepository = mock<SettingsRepository>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -100,6 +102,7 @@ describe('CredentialsService', () => {
 		externalSecretsConfig,
 		externalSecretsProviderAccessCheckService,
 		connectionStatusProxy,
+		settingsRepository,
 	);
 
 	beforeEach(() => {
@@ -110,6 +113,10 @@ describe('CredentialsService', () => {
 		credentialDependencyService.syncExternalSecretProviderDependenciesForCredential.mockResolvedValue(
 			undefined,
 		);
+		credentialDependencyService.upsertExternalSecretProviderDependenciesForCredential.mockResolvedValue(
+			undefined,
+		);
+		settingsRepository.findByKey.mockResolvedValue(null);
 		ownershipService.addOwnedByAndSharedWith.mockImplementation((credential: any) => credential);
 		// Mock the subquery method used by member users and admin users with onlySharedWithMe
 		credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
@@ -2351,6 +2358,33 @@ describe('CredentialsService', () => {
 					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
 				).toHaveBeenCalledWith('validProvider', 'WHwt9vP3keCUvmB5');
 			});
+
+			it('should check provider access when creating an instance credential', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.validProvider.bar }}',
+					},
+					availability: 'instance' as const,
+				};
+
+				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+					id: 'personal-project-id',
+				} as any);
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					true,
+				);
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+				mockTransactionManager();
+
+				await service.createUnmanagedCredential(payload, ownerUser);
+
+				expect(
+					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
+				).toHaveBeenCalledWith('validProvider', 'personal-project-id');
+			});
 		});
 	});
 
@@ -2619,6 +2653,43 @@ describe('CredentialsService', () => {
 				mockTransactionManager();
 
 				await service.prepareUpdateData(ownerUser, payload, existingCredential);
+			});
+
+			it('should prepare ownerless instance credential updates using the caller personal project', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.validProvider.bar }}',
+					},
+				};
+				const existingCredential = mockExistingCredential({
+					id: 'instance-credential-id',
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: { apiKey: 'old-key' },
+					availability: 'instance',
+					shared: [],
+				});
+
+				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+					id: 'personal-project-id',
+				} as any);
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					true,
+				);
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+
+				await service.prepareUpdateData(ownerUser, payload, existingCredential);
+
+				expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(
+					ownerUser.id,
+					undefined,
+				);
+				expect(
+					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
+				).toHaveBeenCalledWith('validProvider', 'personal-project-id');
 			});
 		});
 	});

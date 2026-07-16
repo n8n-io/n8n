@@ -709,21 +709,29 @@ export class CredentialsService {
 	): Promise<CredentialsEntity> {
 		const decryptedData = await this.decrypt(existingCredential, true);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
 		const projectOwningCredential = existingCredential.shared?.find(
 			(shared) => shared.role === 'credential:owner',
-		)!;
+		);
+		const validationProjectId =
+			projectOwningCredential?.projectId ??
+			(existingCredential.availability === 'instance'
+				? await this.resolveOwningProjectIdForNewCredential(user, undefined)
+				: undefined);
+
+		if (!validationProjectId) {
+			throw new NotFoundError(`Could not find owner for credential "${existingCredential.id}"`);
+		}
 
 		await validateExternalSecretsPermissions({
 			user,
-			projectId: projectOwningCredential.projectId,
+			projectId: validationProjectId,
 			dataToSave: data.data,
 			decryptedExistingData: decryptedData,
 		});
 
 		if (this.externalSecretsConfig.externalSecretsForProjects && data.data) {
 			await validateAccessToReferencedSecretProviders(
-				projectOwningCredential.projectId,
+				validationProjectId,
 				data.data,
 				this.externalSecretsProviderAccessCheckService,
 				'update',
@@ -1606,6 +1614,14 @@ export class CredentialsService {
 			user,
 			validationProjectId,
 		);
+		if (this.externalSecretsConfig.externalSecretsForProjects) {
+			await validateAccessToReferencedSecretProviders(
+				validationProjectId,
+				opts.data as ICredentialDataDecryptedObject,
+				this.externalSecretsProviderAccessCheckService,
+				'create',
+			);
+		}
 
 		const encryptedCredential = await this.createEncryptedData({
 			id: null,

@@ -1031,7 +1031,9 @@ export class SourceControlImportService {
 
 				// Instance credentials are ownerless — no `SharedCredentials` row is
 				// created for them.
-				if (availability !== 'instance') {
+				if (availability === 'instance') {
+					await this.sharedCredentialsRepository.delete({ credentialsId: credential.id });
+				} else {
 					const localOwner = existingSharedCredentials.find(
 						(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
 					);

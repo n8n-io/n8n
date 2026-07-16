@@ -154,13 +154,17 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 
 	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
+		const credentialsId = credential.id ?? (result.identifiers[0].id as string);
 
 		// Instance credentials are ownerless — no `SharedCredentials` row is
 		// created for them.
-		if (credential.availability === 'instance') return;
+		if (credential.availability === 'instance') {
+			await this.transactionManager.delete(SharedCredentials, { credentialsId });
+			return;
+		}
 
 		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
-			credentialsId: credential.id,
+			credentialsId,
 			role: 'credential:owner',
 		});
 
@@ -168,7 +172,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			await this.transactionManager.upsert(
 				SharedCredentials,
 				{
-					credentialsId: result.identifiers[0].id as string,
+					credentialsId,
 					role: 'credential:owner',
 					projectId: project.id,
 				},

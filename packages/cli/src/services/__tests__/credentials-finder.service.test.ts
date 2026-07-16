@@ -104,6 +104,24 @@ describe('CredentialsFinderService', () => {
 			expect(credential).toBeFalsy();
 		});
 
+		test('should ignore stale sharing rows for instance credentials', async () => {
+			const staleSharedCredential = mock<SharedCredentials>({
+				credentials: mock<CredentialsEntity>({
+					id: credentialsId,
+					availability: 'instance',
+				}),
+			});
+			sharedCredentialsRepository.findOne.mockResolvedValueOnce(staleSharedCredential);
+
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialsId,
+				member,
+				['credential:read' as const],
+			);
+
+			expect(credential).toBeNull();
+		});
+
 		test('should allow instance owner access to all credentials', async () => {
 			sharedCredentialsRepository.findOne.mockResolvedValueOnce(sharedCredential);
 			const credential = await credentialsFinderService.findCredentialForUser(

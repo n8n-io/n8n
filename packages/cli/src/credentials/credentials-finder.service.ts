@@ -179,6 +179,7 @@ export class CredentialsFinderService {
 		});
 
 		if (sharedCredential) {
+			if (sharedCredential.credentials.availability === 'instance') return null;
 			return sharedCredential.credentials;
 		}
 
