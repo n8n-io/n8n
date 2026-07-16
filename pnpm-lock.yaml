@@ -4814,6 +4814,9 @@ importers:
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
+      xss:
+        specifier: 'catalog:'
+        version: 1.0.15
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
