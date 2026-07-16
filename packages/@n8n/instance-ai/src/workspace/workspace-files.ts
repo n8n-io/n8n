@@ -1,6 +1,11 @@
 import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
-import { readFileViaSandbox, writeFileViaSandbox, type SandboxWorkspace } from './sandbox-fs';
+import {
+	readFileViaSandbox,
+	retryTransientWrite,
+	writeFileViaSandbox,
+	type SandboxWorkspace,
+} from './sandbox-fs';
 
 export interface WorkspaceFileTarget {
 	filesystem?: {
@@ -18,6 +23,8 @@ export interface WorkspaceFileOptions {
 	logger: Logger;
 	/** Used in log and error messages, e.g. "Knowledge base file". */
 	resourceLabel?: string;
+	/** Base for the exponential retry backoff on transient write errors. Default 1s. */
+	retryBackoffBaseMs?: number;
 }
 
 function resourceLabel(options?: WorkspaceFileOptions): string {
@@ -75,13 +82,18 @@ export async function writeWorkspaceFile(
 ): Promise<void> {
 	const label = resourceLabel(options);
 
-	if (workspace.filesystem) {
+	const filesystem = workspace.filesystem;
+	if (filesystem) {
 		try {
-			await workspace.filesystem.writeFile(filePath, content, { recursive: true });
+			await retryTransientWrite(
+				async () => await filesystem.writeFile(filePath, content, { recursive: true }),
+				filePath,
+				options,
+			);
 			return;
 		} catch (error) {
 			try {
-				await writeFileViaSandbox(workspace, filePath, content);
+				await writeFileViaSandbox(workspace, filePath, content, options);
 				options?.logger.warn(`${label} filesystem write failed; used command fallback`, {
 					path: filePath,
 					error: formatErrorForLog(error),
@@ -96,7 +108,7 @@ export async function writeWorkspaceFile(
 	}
 
 	try {
-		await writeFileViaSandbox(workspace, filePath, content);
+		await writeFileViaSandbox(workspace, filePath, content, options);
 	} catch (error) {
 		throw new Error(
 			`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,

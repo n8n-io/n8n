@@ -1,6 +1,14 @@
 import type { WorkspaceFileTarget } from '../workspace-files';
 import { readWorkspaceFile, writeWorkspaceFile, writeWorkspaceFileMap } from '../workspace-files';
 
+class TransientWriteError extends Error {
+	statusCode = 524;
+}
+
+function createLogger() {
+	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+}
+
 function createWorkspaceTarget(files: Map<string, string>): {
 	target: WorkspaceFileTarget;
 	writes: Map<string, string>;
@@ -93,6 +101,78 @@ describe('workspace-files', () => {
 		expect(writes.get('/tmp/a.txt')).toBe('alpha');
 		expect(writes.get('/tmp/b.txt')).toBe('beta');
 		expect(writes.get('/tmp/c.txt')).toBe('gamma');
+	});
+
+	it('retries filesystem writes on transient upstream errors', async () => {
+		const { target, writes } = createWorkspaceTarget(new Map());
+		const writeFile = vi
+			.fn()
+			.mockRejectedValueOnce(new TransientWriteError('gateway timeout'))
+			.mockRejectedValueOnce(new TransientWriteError('gateway timeout'))
+			.mockImplementation(async (path: string, content: string) => {
+				writes.set(path, content);
+				await Promise.resolve();
+			});
+		target.filesystem = { writeFile };
+
+		await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+			logger: createLogger(),
+			retryBackoffBaseMs: 1,
+		});
+
+		expect(writeFile).toHaveBeenCalledTimes(3);
+		expect(writes.get('/tmp/a.txt')).toBe('alpha');
+		expect(target.sandbox?.executeCommand).not.toHaveBeenCalled();
+	});
+
+	it('does not retry non-transient filesystem errors before falling back', async () => {
+		const { target, writes } = createWorkspaceTarget(new Map());
+		const writeFile = vi.fn(async () => await Promise.reject(new Error('permission denied')));
+		target.filesystem = { writeFile };
+
+		await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+			logger: createLogger(),
+			retryBackoffBaseMs: 1,
+		});
+
+		expect(writeFile).toHaveBeenCalledTimes(1);
+		expect(writes.size).toBe(0);
+		expect(target.sandbox?.executeCommand).toHaveBeenCalled();
+	});
+
+	it('retries sandbox command writes on transient upstream errors', async () => {
+		let calls = 0;
+		const executeCommand = vi.fn(async (command: string) => {
+			calls++;
+			if (calls === 1) throw new TransientWriteError('bad gateway');
+			return await Promise.resolve({ exitCode: 0, stdout: '', stderr: '', command });
+		});
+		const target: WorkspaceFileTarget = { sandbox: { executeCommand } };
+
+		await expect(
+			writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+				logger: createLogger(),
+				retryBackoffBaseMs: 1,
+			}),
+		).resolves.toBeUndefined();
+	});
+
+	it('surfaces the error after exhausting transient-write retries on both paths', async () => {
+		const writeFile = vi.fn(async () => await Promise.reject(new TransientWriteError('timeout')));
+		const executeCommand = vi.fn(
+			async () => await Promise.reject(new TransientWriteError('timeout')),
+		);
+		const target: WorkspaceFileTarget = { filesystem: { writeFile }, sandbox: { executeCommand } };
+
+		await expect(
+			writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+				logger: createLogger(),
+				retryBackoffBaseMs: 1,
+			}),
+		).rejects.toThrow('command fallback failed');
+
+		expect(writeFile).toHaveBeenCalledTimes(3);
+		expect(executeCommand).toHaveBeenCalledTimes(3);
 	});
 
 	it('logs successful command fallback at warn level', async () => {

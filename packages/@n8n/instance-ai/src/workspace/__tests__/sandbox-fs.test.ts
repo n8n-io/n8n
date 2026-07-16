@@ -7,6 +7,10 @@ import {
 	runInSandbox,
 } from '../sandbox-fs';
 
+class TransientWriteError extends Error {
+	statusCode = 524;
+}
+
 function createMockWorkspace(overrides?: {
 	executeCommand?: Mock;
 	processes?: { spawn: Mock };
@@ -134,6 +138,27 @@ describe('writeFileViaSandbox', () => {
 
 		await expect(writeFileViaSandbox(workspace, '/home/user/test.ts', 'content')).rejects.toThrow(
 			'Failed to write file /home/user/test.ts: permission denied',
+		);
+		expect(executeCommand).toHaveBeenCalledTimes(3);
+	});
+
+	it('retries transient provider errors while writing', async () => {
+		const logger = { warn: vi.fn() };
+		const executeCommand = vi
+			.fn()
+			.mockRejectedValueOnce(new TransientWriteError('gateway timeout'))
+			.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const workspace = createMockWorkspace({ executeCommand });
+
+		await writeFileViaSandbox(workspace, 'test.ts', 'hello', {
+			logger,
+			retryBackoffBaseMs: 1,
+		});
+
+		expect(executeCommand).toHaveBeenCalledTimes(4);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Sandbox file write hit a transient error; retrying',
+			expect.objectContaining({ path: 'test.ts', attempt: 1 }),
 		);
 	});
 
