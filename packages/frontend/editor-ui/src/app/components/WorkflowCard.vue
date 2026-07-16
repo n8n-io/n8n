@@ -791,8 +791,6 @@ const tags = computed(
 	align-items: center;
 }
 
-<<<<<<< HEAD
-=======
 .divider {
 	// Standalone flex item so the row `gap` applies evenly on both sides.
 	user-select: none;
@@ -803,7 +801,6 @@ const tags = computed(
 	align-items: center;
 }
 
->>>>>>> 65da749a (fix: Correct end-user credential validation, re-evaluation, and identity-hook recognition (#34094))
 .cardActions {
 	display: flex;
 	gap: var(--spacing--2xs);
