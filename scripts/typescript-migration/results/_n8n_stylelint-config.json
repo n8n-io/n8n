@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/stylelint-config",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T08:54:39.332Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            781,
+            793,
+            753
+          ],
+          "min": 753,
+          "median": 781,
+          "mean": 776
+        },
+        "build": {
+          "runsMs": [
+            817,
+            778,
+            790
+          ],
+          "min": 778,
+          "median": 790,
+          "mean": 795
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T08:55:38.571Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            469,
+            467,
+            480
+          ],
+          "min": 467,
+          "median": 469,
+          "mean": 472
+        },
+        "build": {
+          "runsMs": [
+            457,
+            482,
+            468
+          ],
+          "min": 457,
+          "median": 468,
+          "mean": 469
+        }
+      }
+    }
+  }
+}

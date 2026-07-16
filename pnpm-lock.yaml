@@ -3417,13 +3417,13 @@ importers:
         version: 4.0.9(postcss@8.5.10)
       stylelint:
         specifier: 'catalog:'
-        version: 16.23.0(typescript@6.0.2)
+        version: 16.23.0(typescript@7.0.2)
       stylelint-config-standard-scss:
         specifier: ^15.0.1
-        version: 15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@6.0.2))
+        version: 15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@7.0.2))
       stylelint-scss:
         specifier: ^6.12.1
-        version: 6.12.1(stylelint@16.23.0(typescript@6.0.2))
+        version: 6.12.1(stylelint@16.23.0(typescript@7.0.2))
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -3438,8 +3438,8 @@ importers:
         specifier: 'catalog:'
         version: 6.0.1
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -3448,7 +3448,7 @@ importers:
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
-        version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+        version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
 
   packages/@n8n/syslog-client:
     dependencies:
@@ -31934,7 +31934,6 @@ snapshots:
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 7.0.2
-    optional: true
 
   cpu-features@0.0.10:
     dependencies:
@@ -39680,33 +39679,33 @@ snapshots:
       stylis: 4.3.1
       tslib: 2.8.1
 
-  stylelint-config-recommended-scss@15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@6.0.2)):
+  stylelint-config-recommended-scss@15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@7.0.2)):
     dependencies:
       postcss-scss: 4.0.9(postcss@8.5.10)
-      stylelint: 16.23.0(typescript@6.0.2)
-      stylelint-config-recommended: 16.0.0(stylelint@16.23.0(typescript@6.0.2))
-      stylelint-scss: 6.12.1(stylelint@16.23.0(typescript@6.0.2))
+      stylelint: 16.23.0(typescript@7.0.2)
+      stylelint-config-recommended: 16.0.0(stylelint@16.23.0(typescript@7.0.2))
+      stylelint-scss: 6.12.1(stylelint@16.23.0(typescript@7.0.2))
     optionalDependencies:
       postcss: 8.5.10
 
-  stylelint-config-recommended@16.0.0(stylelint@16.23.0(typescript@6.0.2)):
+  stylelint-config-recommended@16.0.0(stylelint@16.23.0(typescript@7.0.2)):
     dependencies:
-      stylelint: 16.23.0(typescript@6.0.2)
+      stylelint: 16.23.0(typescript@7.0.2)
 
-  stylelint-config-standard-scss@15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@6.0.2)):
+  stylelint-config-standard-scss@15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@7.0.2)):
     dependencies:
-      stylelint: 16.23.0(typescript@6.0.2)
-      stylelint-config-recommended-scss: 15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@6.0.2))
-      stylelint-config-standard: 38.0.0(stylelint@16.23.0(typescript@6.0.2))
+      stylelint: 16.23.0(typescript@7.0.2)
+      stylelint-config-recommended-scss: 15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@7.0.2))
+      stylelint-config-standard: 38.0.0(stylelint@16.23.0(typescript@7.0.2))
     optionalDependencies:
       postcss: 8.5.10
 
-  stylelint-config-standard@38.0.0(stylelint@16.23.0(typescript@6.0.2)):
+  stylelint-config-standard@38.0.0(stylelint@16.23.0(typescript@7.0.2)):
     dependencies:
-      stylelint: 16.23.0(typescript@6.0.2)
-      stylelint-config-recommended: 16.0.0(stylelint@16.23.0(typescript@6.0.2))
+      stylelint: 16.23.0(typescript@7.0.2)
+      stylelint-config-recommended: 16.0.0(stylelint@16.23.0(typescript@7.0.2))
 
-  stylelint-scss@6.12.1(stylelint@16.23.0(typescript@6.0.2)):
+  stylelint-scss@6.12.1(stylelint@16.23.0(typescript@7.0.2)):
     dependencies:
       css-tree: 3.1.0
       is-plain-object: 5.0.0
@@ -39716,7 +39715,7 @@ snapshots:
       postcss-resolve-nested-selector: 0.1.6
       postcss-selector-parser: 7.1.0
       postcss-value-parser: 4.2.0
-      stylelint: 16.23.0(typescript@6.0.2)
+      stylelint: 16.23.0(typescript@7.0.2)
 
   stylelint@16.23.0(typescript@6.0.2):
     dependencies:
@@ -39728,6 +39727,50 @@ snapshots:
       balanced-match: 2.0.0
       colord: 2.9.3
       cosmiconfig: 9.0.0(typescript@6.0.2)
+      css-functions-list: 3.2.3
+      css-tree: 3.1.0
+      debug: 4.4.3(supports-color@8.1.1)
+      fast-glob: 3.3.3
+      fastest-levenshtein: 1.0.16
+      file-entry-cache: 10.1.3
+      global-modules: 2.0.0
+      globby: 11.1.0
+      globjoin: 0.1.4
+      html-tags: 3.3.1
+      ignore: 7.0.5
+      imurmurhash: 0.1.4
+      is-plain-object: 5.0.0
+      known-css-properties: 0.37.0
+      mathml-tag-names: 2.1.3
+      meow: 13.2.0
+      micromatch: 4.0.8
+      normalize-path: 3.0.0
+      picocolors: 1.1.1
+      postcss: 8.5.10
+      postcss-resolve-nested-selector: 0.1.6
+      postcss-safe-parser: 7.0.1(postcss@8.5.10)
+      postcss-selector-parser: 7.1.0
+      postcss-value-parser: 4.2.0
+      resolve-from: 5.0.0
+      string-width: 4.2.3
+      supports-hyperlinks: 3.2.0
+      svg-tags: 1.0.0
+      table: 6.9.0
+      write-file-atomic: 5.0.1
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
+
+  stylelint@16.23.0(typescript@7.0.2):
+    dependencies:
+      '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
+      '@csstools/css-tokenizer': 3.0.4
+      '@csstools/media-query-list-parser': 4.0.3(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)
+      '@csstools/selector-specificity': 5.0.0(postcss-selector-parser@7.1.0)
+      '@dual-bundle/import-meta-resolve': 4.1.0
+      balanced-match: 2.0.0
+      colord: 2.9.3
+      cosmiconfig: 9.0.0(typescript@7.0.2)
       css-functions-list: 3.2.3
       css-tree: 3.1.0
       debug: 4.4.3(supports-color@8.1.1)
