@@ -3,5 +3,10 @@
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.6.14",
   "base_commit_sha": "694d023cba42e9ca9416d7ae08eb812e638cc0b2",
-  "prompts": {}
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
 }
