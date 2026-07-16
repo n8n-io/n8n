@@ -1,4 +1,9 @@
-import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import type {
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodeListSearchResult,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { SERVICE_PRINCIPAL_AUTH } from '../helpers/constants';
@@ -11,59 +16,105 @@ type GraphCollectionReply<T> = {
 	value?: T[];
 };
 
+type Site = { id?: string; displayName?: string; webUrl?: string };
+type Drive = { id?: string; name?: string; webUrl?: string };
+
+/**
+ * Fetches one page of a Graph collection. An explicit `paginationToken` (a
+ * complete next-page link) is requested exactly as returned, never rebuilt;
+ * otherwise the initial request is built from `resource`/`qs`.
+ */
+async function fetchPage<T>(
+	this: ILoadOptionsFunctions,
+	resource: string,
+	qs: IDataObject,
+	paginationToken?: string,
+): Promise<GraphCollectionReply<T>> {
+	return paginationToken
+		? await (microsoftApiRequest<GraphCollectionReply<T>>).call(
+				this,
+				'GET',
+				'',
+				{},
+				{},
+				paginationToken,
+			)
+		: await (microsoftApiRequest<GraphCollectionReply<T>>).call(this, 'GET', resource, {}, qs);
+}
+
+/**
+ * Maps a page of Graph entries to dropdown items, dropping any without an ID.
+ * Kept in the API's order: the editor concatenates pages, so a per-page sort
+ * would reset at every page boundary and read as misordered.
+ */
+function toListItems<T extends { id?: string }>(
+	entries: T[] | undefined,
+	toItem: (entry: T) => INodeListSearchItems,
+): INodeListSearchItems[] {
+	return (entries ?? []).filter((entry) => entry.id).map(toItem);
+}
+
+function siteToItem(site: Site): INodeListSearchItems {
+	return {
+		name: site.displayName ?? String(site.id),
+		value: String(site.id),
+		url: site.webUrl,
+	};
+}
+
+function driveToItem(drive: Drive): INodeListSearchItems {
+	return {
+		name: drive.name ?? String(drive.id),
+		value: String(drive.id),
+		url: drive.webUrl,
+	};
+}
+
+/**
+ * An app with only per-site permissions can't list what it can't see — point
+ * at the "By URL"/"By ID" modes instead of surfacing the raw refusal.
+ * Delegated refusals keep the transport's message, which already names the
+ * missing permission, so only the Service Principal case is rewritten.
+ */
+function toSearchRefusal(this: ILoadOptionsFunctions, error: unknown): Error {
+	if (
+		error instanceof NodeApiError &&
+		error.httpCode === '403' &&
+		getExcelSharePointCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH
+	) {
+		return new NodeOperationError(this.getNode(), 'This app sign-in cannot search sites', {
+			description:
+				"An app with only per-site permissions can't list sites it hasn't been granted. Choose the site by pasting its address instead — that still works.",
+		});
+	}
+	return error as Error;
+}
+
 /**
  * Searches sites by name. Graph quirks: the parameter is literally `search`
  * (not `$search`), and a site's name lives in `displayName` (no `title`).
- * Next-page links are requested exactly as returned — never rebuilt.
  */
 export async function searchSites(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	type Site = { id?: string; displayName?: string; webUrl?: string };
 	let response: GraphCollectionReply<Site>;
 	try {
-		response = paginationToken
-			? await microsoftApiRequest.call(this, 'GET', '', {}, {}, paginationToken)
-			: await microsoftApiRequest.call(
-					this,
-					'GET',
-					'/v1.0/sites',
-					{},
-					{
-						search: filter ?? '*',
-						$select: 'id,displayName,webUrl',
-					},
-				);
+		response = await (fetchPage<Site>).call(
+			this,
+			'/v1.0/sites',
+			{ search: filter ?? '*', $select: 'id,displayName,webUrl' },
+			paginationToken,
+		);
 	} catch (error) {
-		// An app with only per-site permissions can't list what it can't see —
-		// point at the "By URL"/"By ID" modes. Delegated refusals keep the
-		// transport's message, which already names the missing permission.
-		if (
-			error instanceof NodeApiError &&
-			error.httpCode === '403' &&
-			getExcelSharePointCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH
-		) {
-			throw new NodeOperationError(this.getNode(), 'This app sign-in cannot search sites', {
-				description:
-					"An app with only per-site permissions can't list sites it hasn't been granted. Choose the site by pasting its address instead — that still works.",
-			});
-		}
-		throw error;
+		throw toSearchRefusal.call(this, error);
 	}
 
-	// Kept in the API's order: the editor concatenates pages, so a per-page
-	// sort would reset at every page boundary and read as misordered
-	const results = (response.value ?? [])
-		.filter((site) => site.id)
-		.map((site) => ({
-			name: site.displayName ?? String(site.id),
-			value: String(site.id),
-			url: site.webUrl,
-		}));
-
-	return { results, paginationToken: response['@odata.nextLink'] };
+	return {
+		results: toListItems(response.value, siteToItem),
+		paginationToken: response['@odata.nextLink'],
+	};
 }
 
 /** Lists the chosen site's document libraries — new ground, no precedent in this node. */
@@ -76,24 +127,15 @@ export async function searchLibraries(
 	// (mirrors getExcelSharePointCredentialType's use of the same 2-arg form).
 	const siteId = await resolveSiteId.call(this, 0);
 
-	type Drive = { id?: string; name?: string; webUrl?: string };
-	const response: GraphCollectionReply<Drive> = paginationToken
-		? await microsoftApiRequest.call(this, 'GET', '', {}, {}, paginationToken)
-		: await microsoftApiRequest.call(
-				this,
-				'GET',
-				`/v1.0/sites/${encodeURIComponent(siteId)}/drives`,
-				{},
-				{ $select: 'id,name,webUrl' },
-			);
+	const response = await (fetchPage<Drive>).call(
+		this,
+		`/v1.0/sites/${encodeURIComponent(siteId)}/drives`,
+		{ $select: 'id,name,webUrl' },
+		paginationToken,
+	);
 
-	const results = (response.value ?? [])
-		.filter((drive) => drive.id)
-		.map((drive) => ({
-			name: drive.name ?? String(drive.id),
-			value: String(drive.id),
-			url: drive.webUrl,
-		}));
-
-	return { results, paginationToken: response['@odata.nextLink'] };
+	return {
+		results: toListItems(response.value, driveToItem),
+		paginationToken: response['@odata.nextLink'],
+	};
 }
