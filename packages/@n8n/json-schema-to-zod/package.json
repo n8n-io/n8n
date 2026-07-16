@@ -69,7 +69,7 @@
     "zod": "catalog:",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   }
