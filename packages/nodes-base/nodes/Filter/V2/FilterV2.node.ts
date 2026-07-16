@@ -20,10 +20,10 @@ export class FilterV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3, 2.4],
+			version: [2, 2.1, 2.2, 2.3],
+			iconColor: 'sky-blue',
 			defaults: {
 				name: 'Filter',
-				color: '#229eff',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
