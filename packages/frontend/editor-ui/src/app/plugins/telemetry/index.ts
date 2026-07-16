@@ -210,6 +210,15 @@ export class Telemetry {
 					toValue: change.value,
 				});
 			}
+
+			// Advanced HITL (one-tap approval) opt-in toggles, tracked per node.
+			const advancedHitlPathMap: { [key: string]: string } = {
+				[SLACK_NODE_TYPE]: 'parameters.captureResponder',
+				[TELEGRAM_NODE_TYPE]: 'parameters.chatApproval',
+			};
+			if (change.name === advancedHitlPathMap[nodeType] && change.value === true) {
+				this.track('User enabled advanced HITL', { node_type: nodeType });
+			}
 		}
 	}
 

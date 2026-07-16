@@ -1153,6 +1153,7 @@ describe('OAuthServerService', () => {
 				urlService,
 				mock<McpSettingsService>(),
 				mcpConfig,
+				mock<GlobalConfig>(),
 			);
 			expect(mcpResource.getResourceUrl()).toBe('https://n8n-mcp.example.com/mcp-server/http');
 

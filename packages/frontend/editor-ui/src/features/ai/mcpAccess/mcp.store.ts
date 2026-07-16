@@ -39,6 +39,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const oauthClientScopeTools = ref<Record<string, string[]> | undefined>(undefined);
 	const allowedRedirectUris = ref<string[]>([]);
 	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
@@ -170,6 +171,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	async function getAllOAuthClients(): Promise<OAuthClientResponseDto[]> {
 		const response = await fetchOAuthClients(rootStore.restApiContext);
 		oauthClients.value = response.data;
+		oauthClientScopeTools.value = response.scopeTools;
 		return response.data;
 	}
 
@@ -235,6 +237,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		oauthClients,
 		instanceClientStats,
 		getAllOAuthClients,
+		oauthClientScopeTools,
 		getInstanceClientStats,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
