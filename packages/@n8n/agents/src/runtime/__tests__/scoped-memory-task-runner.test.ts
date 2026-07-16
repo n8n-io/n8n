@@ -192,4 +192,93 @@ describe('ScopedMemoryTaskRunner', () => {
 			expect.objectContaining({ taskKind: 'reflector', holderId: handle.id }),
 		);
 	});
+
+	it('renews an acquired lock while the task is running and stops before release', async () => {
+		vi.useFakeTimers();
+		try {
+			const acquire = vi.fn<
+				(
+					...args: Parameters<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>
+				) => ReturnType<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>
+			>(
+				async (observationScopeId, taskKind, opts) =>
+					await Promise.resolve(lockHandle(observationScopeId, taskKind, opts.holderId)),
+			);
+			const store = lockStore(acquire);
+			const runner = new ScopedMemoryTaskRunner({ lockStore: store, lockTtlMs: 10_000 });
+			const first = deferred();
+
+			const handle = runner.schedule(
+				{ taskKind: 'observer', observationScopeId: 'user-1' },
+				async () => {
+					await first.promise;
+					return 'done';
+				},
+			);
+
+			await vi.advanceTimersByTimeAsync(0);
+			expect(acquire).toHaveBeenCalledTimes(1);
+
+			// Half the TTL: exactly one renewal, reusing the same scope/kind/holder/TTL.
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(acquire).toHaveBeenCalledTimes(2);
+			expect(acquire).toHaveBeenNthCalledWith(2, 'user-1', 'observer', {
+				holderId: handle.id,
+				ttlMs: 10_000,
+			});
+
+			first.resolve();
+			await vi.advanceTimersByTimeAsync(0);
+			await expect(handle.done).resolves.toMatchObject({ status: 'completed', value: 'done' });
+			expect(store.releaseObservationLogTaskLock).toHaveBeenCalledTimes(1);
+
+			// No further renewal after the task settled and the lock was released.
+			await vi.advanceTimersByTimeAsync(20_000);
+			expect(acquire).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('stops lock renewal when a task fails', async () => {
+		vi.useFakeTimers();
+		try {
+			const acquire = vi.fn<
+				(
+					...args: Parameters<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>
+				) => ReturnType<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>
+			>(
+				async (observationScopeId, taskKind, opts) =>
+					await Promise.resolve(lockHandle(observationScopeId, taskKind, opts.holderId)),
+			);
+			const store = lockStore(acquire);
+			const runner = new ScopedMemoryTaskRunner({ lockStore: store, lockTtlMs: 10_000 });
+			const first = deferred();
+			const error = new Error('observer failed');
+
+			const handle = runner.schedule(
+				{ taskKind: 'observer', observationScopeId: 'user-1' },
+				async () => {
+					await first.promise;
+					throw error;
+				},
+			);
+
+			await vi.advanceTimersByTimeAsync(0);
+			expect(acquire).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(acquire).toHaveBeenCalledTimes(2);
+
+			first.resolve();
+			await vi.advanceTimersByTimeAsync(0);
+			await expect(handle.done).resolves.toMatchObject({ status: 'failed', error });
+			expect(store.releaseObservationLogTaskLock).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(20_000);
+			expect(acquire).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 });

@@ -141,12 +141,20 @@ export class ScopedMemoryTaskRunner {
 		this.emit({ type: 'started', task: this.cloneTaskInfo(info) });
 
 		let lock: ObservationLogTaskLockHandle | null = null;
+		let stopLockRenewal: (() => Promise<void>) | undefined;
 		try {
 			lock = await this.acquireLock(info);
 			if (this.lockStore && !lock) {
 				const result: ScopedMemoryTaskResult<T> = { status: 'skipped', reason: 'lock-held' };
 				this.emit({ type: 'skipped', task: this.cloneTaskInfo(info), reason: 'lock-held' });
 				return result;
+			}
+
+			// A single acquire covers only `lockTtlMs`, but the task ahead (LLM call +
+			// usage callback + persistence) can run longer — renew on the same holder
+			// so the lease covers the full task instead of expiring under it.
+			if (lock) {
+				stopLockRenewal = this.startLockRenewal(info);
 			}
 
 			const value = await task();
@@ -157,9 +165,60 @@ export class ScopedMemoryTaskRunner {
 			this.emit({ type: 'failed', task: this.cloneTaskInfo(info), error });
 			return { status: 'failed', error };
 		} finally {
+			// Stop renewal before releasing so a late-firing renewal can never
+			// recreate/extend the lock after this holder has released it.
+			if (stopLockRenewal) await stopLockRenewal();
 			if (lock) await this.releaseLock(info, lock);
 			this.inFlightTasks.delete(info.id);
 		}
+	}
+
+	/**
+	 * Keep an acquired lock alive on the same holder for as long as the task
+	 * runs, by reacquiring it at half the TTL. Uses a self-rescheduling
+	 * `setTimeout` (not `setInterval`) so renewals never overlap. Returns a
+	 * stop function that cancels any pending renewal and awaits one already
+	 * in flight before resolving.
+	 */
+	private startLockRenewal(info: ScopedMemoryTaskInfo): () => Promise<void> {
+		let stopped = false;
+		let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+		let renewalInFlight: Promise<void> = Promise.resolve();
+		const intervalMs = Math.max(1, Math.floor(this.lockTtlMs / 2));
+
+		const renew = async (): Promise<void> => {
+			try {
+				const renewed = await this.acquireLock(info);
+				if (stopped) return;
+				if (!renewed) {
+					// Another holder may now own this scope's lock; stop renewing
+					// rather than fight over it. The task itself still runs to
+					// completion — this only affects lock-based mutual exclusion.
+					this.captureError(info, new Error('Observation log task lock renewal lost ownership'));
+					stopped = true;
+					return;
+				}
+				scheduleNext();
+			} catch (error) {
+				this.captureError(info, error);
+				if (!stopped) scheduleNext();
+			}
+		};
+
+		const scheduleNext = (): void => {
+			if (stopped) return;
+			timeoutHandle = setTimeout(() => {
+				renewalInFlight = renew();
+			}, intervalMs);
+		};
+
+		scheduleNext();
+
+		return async () => {
+			stopped = true;
+			if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+			await renewalInFlight;
+		};
 	}
 
 	private async acquireLock(
