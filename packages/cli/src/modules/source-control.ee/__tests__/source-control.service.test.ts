@@ -588,6 +588,45 @@ describe('SourceControlService', () => {
 			);
 		});
 
+		it('still restores the default branch when preparing the branch fails', async () => {
+			const prepareError = new Error('checkout failed');
+			gitService.checkoutExistingBranch
+				.mockRejectedValueOnce(prepareError) // checking out the requested branch fails
+				.mockResolvedValueOnce(undefined); // restoring the default branch afterwards succeeds
+
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [],
+					branch: 'develop',
+					commitMessage: 'msg',
+				}),
+			).rejects.toThrow(prepareError);
+
+			// Even though branch preparation failed (and no commit/push was attempted), cleanup
+			// still restores the default branch so pull and the next push find HEAD on default.
+			expect(gitService.push).not.toHaveBeenCalled();
+			expect(gitService.checkoutExistingBranch).toHaveBeenCalledWith('main');
+		});
+
+		it('propagates a failure to restore the default branch after a successful push', async () => {
+			const restoreError = new Error('checkout failed');
+			gitService.checkoutExistingBranch
+				.mockResolvedValueOnce(undefined) // checking out 'develop' succeeds
+				.mockRejectedValueOnce(restoreError); // restoring 'main' afterwards fails
+
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [],
+					branch: 'develop',
+					commitMessage: 'msg',
+				}),
+			).rejects.toThrow(/restore the default branch/);
+
+			// The push itself went through; only the post-push restore failed. The error from
+			// that failure must still surface instead of returning a false success.
+			expect(gitService.push).toHaveBeenCalled();
+		});
+
 		it('falls back to the default branch when none given', async () => {
 			await sourceControlService.pushWorkfolder(user, { fileNames: [], commitMessage: 'msg' });
 
