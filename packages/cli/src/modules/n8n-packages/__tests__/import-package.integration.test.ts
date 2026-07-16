@@ -37,6 +37,9 @@ import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
 import {
 	FolderConflictPolicy,
+	DataTableMatchingMode,
+	DataTableMissingMode,
+	DataTableSchemaConflictPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
@@ -63,6 +66,9 @@ type ImportPackageParams = Omit<
 	| 'workflowPublishingPolicy'
 	| 'workflowIdPolicy'
 	| 'folderConflictPolicy'
+	| 'dataTableMatchingMode'
+	| 'dataTableMissingMode'
+	| 'dataTableSchemaConflictPolicy'
 > &
 	Partial<
 		Pick<
@@ -74,6 +80,9 @@ type ImportPackageParams = Omit<
 			| 'workflowPublishingPolicy'
 			| 'workflowIdPolicy'
 			| 'folderConflictPolicy'
+			| 'dataTableMatchingMode'
+			| 'dataTableMissingMode'
+			| 'dataTableSchemaConflictPolicy'
 		>
 	>;
 
@@ -85,6 +94,9 @@ async function importPackage(params: ImportPackageParams) {
 		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		workflowIdPolicy: WorkflowIdPolicy.New,
 		folderConflictPolicy: FolderConflictPolicy.Merge,
+		dataTableMatchingMode: DataTableMatchingMode.ById,
+		dataTableMissingMode: DataTableMissingMode.Create,
+		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
 		...params,
 	});
 }
@@ -1165,6 +1177,9 @@ describe('Package import event emission', () => {
 			expect(importedPayload.options.workflowPublishingPolicy).toBe(
 				WorkflowPublishingPolicy.PreservePublishedState,
 			);
+			expect(importedPayload.options.dataTableMatchingMode).toBe('by-id');
+			expect(importedPayload.options.dataTableMissingMode).toBe('create');
+			expect(importedPayload.options.dataTableSchemaConflictPolicy).toBe('keep-existing');
 			expect(importedPayload.packageSourceId).toBeDefined();
 			expect(importedPayload.packageVersion).toBe(FORMAT_VERSION);
 			expect(importedPayload.counts).toEqual({
@@ -1174,6 +1189,11 @@ describe('Package import event emission', () => {
 					skipped: 0,
 				},
 				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
+				dataTables: {
 					matched: 0,
 					created: 0,
 					requirements: 0,
@@ -1252,6 +1272,11 @@ describe('Package import event emission', () => {
 					created: 1,
 					requirements: 3,
 				},
+				dataTables: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();
@@ -1291,6 +1316,11 @@ describe('Package import event emission', () => {
 					skipped: 1,
 				},
 				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
+				dataTables: {
 					matched: 0,
 					created: 0,
 					requirements: 0,
@@ -1336,6 +1366,11 @@ describe('Package import event emission', () => {
 					skipped: 0,
 				},
 				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
+				dataTables: {
 					matched: 0,
 					created: 0,
 					requirements: 0,

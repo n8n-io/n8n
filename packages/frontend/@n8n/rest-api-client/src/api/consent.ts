@@ -13,6 +13,8 @@ export interface ConsentDetails {
 	scopes: string[];
 	/** Scopes this user granted to this client last time, used to preselect the picker. */
 	previousScopes?: string[];
+	/** Tool names each scope unlocks, shown per scope group in the picker. */
+	scopeTools?: Record<string, string[]>;
 }
 
 export interface ConsentApprovalResponse {

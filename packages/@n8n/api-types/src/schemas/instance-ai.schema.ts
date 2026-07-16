@@ -104,6 +104,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'reasoning-delta',
 	'text-block',
 	'reasoning-block',
+	'tool-input-start',
 	'tool-call',
 	'tool-result',
 	'tool-error',
@@ -261,6 +262,14 @@ export const toolCallPayloadSchema = z.object({
 	toolCallId: z.string(),
 	toolName: z.string(),
 	args: z.record(z.unknown()),
+});
+
+/** Emitted when a tool call's arguments BEGIN streaming — args arrive later
+ *  via the `tool-call` event. Lets the UI surface the pending call while
+ *  large arguments (e.g. generated workflow code) are still streaming. */
+export const toolInputStartPayloadSchema = z.object({
+	toolCallId: z.string(),
+	toolName: z.string(),
 });
 
 export const toolResultPayloadSchema = z.object({
@@ -777,6 +786,9 @@ const eventBase = {
 	userId: z.string().optional(),
 	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
 	responseId: z.string().optional(),
+	/** Epoch ms stamped once at publish — replays (SSE reconnect, snapshot
+	 *  rebuilds) use it to reconstruct real timing instead of "now". */
+	ts: z.number().optional(),
 };
 
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
@@ -793,6 +805,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		type: z.literal('reasoning-delta'),
 		...eventBase,
 		payload: reasoningDeltaPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('tool-input-start'),
+		...eventBase,
+		payload: toolInputStartPayloadSchema,
 	}),
 	// Coalesced full text/reasoning of one streamed segment, produced by the
 	// durable event log (deltas are live-only and never persisted). On replay the
@@ -848,6 +865,7 @@ export type InstanceAiAgentSpawnedEvent = Extract<InstanceAiEvent, { type: 'agen
 export type InstanceAiAgentCompletedEvent = Extract<InstanceAiEvent, { type: 'agent-completed' }>;
 export type InstanceAiTextDeltaEvent = Extract<InstanceAiEvent, { type: 'text-delta' }>;
 export type InstanceAiReasoningDeltaEvent = Extract<InstanceAiEvent, { type: 'reasoning-delta' }>;
+export type InstanceAiToolInputStartEvent = Extract<InstanceAiEvent, { type: 'tool-input-start' }>;
 export type InstanceAiToolCallEvent = Extract<InstanceAiEvent, { type: 'tool-call' }>;
 export type InstanceAiToolResultEvent = Extract<InstanceAiEvent, { type: 'tool-result' }>;
 export type InstanceAiToolErrorEvent = Extract<InstanceAiEvent, { type: 'tool-error' }>;
@@ -940,8 +958,19 @@ export type InstanceAiCredentialHandoffContext = z.infer<
 	typeof instanceAiCredentialHandoffContextSchema
 >;
 
+export const instanceAiAgentPreviewHandoffContextSchema = z.object({
+	source: z.literal('agent-preview'),
+	agentId: z.string().min(1).max(128),
+	threadId: z.string().min(1).max(128),
+	executionId: z.string().min(1).max(64).optional(),
+});
+export type InstanceAiAgentPreviewHandoffContext = z.infer<
+	typeof instanceAiAgentPreviewHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
+	instanceAiAgentPreviewHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
@@ -1139,6 +1168,8 @@ export interface InstanceAiMessage {
 	isStreaming: boolean;
 	agentTree?: InstanceAiAgentNode;
 	attachments?: InstanceAiAttachment[];
+	/** Structured handoff context reconstructed from a stored user message. */
+	context?: InstanceAiHandoffContext;
 }
 
 export interface InstanceAiThreadSummary {

@@ -243,17 +243,6 @@ function moveResource() {
 				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
-				<span
-					v-if="isPrivateCredentialsEnabled && data.isResolvable"
-					class="ml-3xs"
-					data-test-id="credential-card-dynamic"
-				>
-					<PrivateCredentialIcon
-						:tooltip-title="locale.baseText('credentials.private.tooltipTitle')"
-						:tooltip-text="locale.baseText('credentials.private.tooltip')"
-						size="small"
-					/>
-				</span>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -266,6 +255,17 @@ function moveResource() {
 					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 			</N8nText>
+			<span
+				v-if="isPrivateCredentialsEnabled && data.isResolvable"
+				:class="$style.privateCredentialIndicator"
+				data-test-id="credential-card-dynamic"
+			>
+				<PrivateCredentialIcon
+					:tooltip-title="locale.baseText('credentials.private.tooltipTitle')"
+					:tooltip-text="locale.baseText('credentials.private.tooltip')"
+					size="small"
+				/>
+			</span>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
@@ -335,6 +335,12 @@ function moveResource() {
 	display: flex;
 	align-items: center;
 	padding: 0 0 var(--spacing--sm);
+}
+
+.privateCredentialIndicator {
+	display: inline-flex;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
 }
 
 .cardActions {

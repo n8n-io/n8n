@@ -1040,12 +1040,18 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_matching_mode: options.credentialMatchingMode,
 			credential_missing_mode: options.credentialMissingMode,
 			workflow_publishing_policy: options.workflowPublishingPolicy,
+			data_table_matching_mode: options.dataTableMatchingMode,
+			data_table_missing_mode: options.dataTableMissingMode,
+			data_table_schema_conflict_policy: options.dataTableSchemaConflictPolicy,
 			workflows_created: counts.workflows.created,
 			workflows_updated: counts.workflows.updated,
 			workflows_skipped: counts.workflows.skipped,
 			credentials_matched: counts.credentials.matched,
 			credentials_created: counts.credentials.created,
 			credentials_required: counts.credentials.requirements,
+			data_tables_matched: counts.dataTables.matched,
+			data_tables_created: counts.dataTables.created,
+			data_tables_required: counts.dataTables.requirements,
 		});
 	}
 

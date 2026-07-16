@@ -36,7 +36,11 @@ const isCredentialOnlySection = computed(
 
 const displayName = computed(() => {
 	const credentialTypeName = credentialType.value;
-	if (!isCredentialOnlySection.value || !credentialTypeName) return props.section.node.name;
+	if (!isCredentialOnlySection.value || !credentialTypeName) {
+		return i18n.baseText('instanceAi.workflowSetup.configureNode', {
+			interpolate: { name: props.section.node.name },
+		});
+	}
 	// An agent-supplied recipe names the credential after the service ("fal.ai
 	// API Key") — a friendlier title than the generic type ("Header Auth"). It's
 	// already human-authored, so it skips the type-name keyword filtering.
