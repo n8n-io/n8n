@@ -92,6 +92,7 @@ export const API_KEY_RESOURCES = {
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
 	saml: ['manage'] as const,
+	oidc: ['manage'] as const,
 	project: ['create', 'update', 'delete', 'list', 'export'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,

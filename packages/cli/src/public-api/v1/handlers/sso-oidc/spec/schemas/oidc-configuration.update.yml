@@ -1,0 +1,51 @@
+type: object
+additionalProperties: false
+description: >
+  OIDC SSO configuration to set. This is a full replacement using the same validation as the UI:
+  `clientId`, `clientSecret` and `discoveryEndpoint` are required, and omitted optional fields
+  fall back to their defaults.
+required:
+  - clientId
+  - clientSecret
+  - discoveryEndpoint
+properties:
+  clientId:
+    type: string
+    minLength: 1
+    description: The client ID issued when registering n8n with the OIDC provider.
+    example: n8n-client
+  clientSecret:
+    type: string
+    minLength: 1
+    description: >
+      The client secret issued when registering n8n with the OIDC provider. Submit the redacted
+      sentinel value returned on read to keep the stored secret unchanged.
+    example: my-client-secret
+  discoveryEndpoint:
+    type: string
+    format: uri
+    description: The OIDC provider's well-known discovery endpoint.
+    example: https://accounts.google.com/.well-known/openid-configuration
+  loginEnabled:
+    type: boolean
+    description: Whether OIDC single sign-on is enabled. Defaults to false.
+    example: false
+  prompt:
+    type: string
+    enum: [none, login, consent, select_account, create]
+    description: The prompt parameter to use when authenticating. Defaults to select_account.
+    example: select_account
+  authenticationContextClassReference:
+    type: array
+    items:
+      type: string
+    description: >
+      ACR values to include in the authorization request (acr_values parameter), in order of
+      preference. Defaults to an empty list.
+    example: [mfa, pwd]
+  additionalScopes:
+    type: string
+    description: >
+      Additional scopes to request, space separated. n8n always requests `openid`, `profile`
+      and `email`. Defaults to an empty string.
+    example: groups roles

@@ -205,6 +205,12 @@
 		"POST /settings/log-streaming/destinations/{id}/test": {
 			"status": "gap"
 		},
+		"GET /settings/sso/oidc": {
+			"status": "gap"
+		},
+		"POST /settings/sso/oidc": {
+			"status": "gap"
+		},
 		"POST /variables": {
 			"status": "gap"
 		},
