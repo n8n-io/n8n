@@ -1216,7 +1216,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 				{
 					nodeName: 'geocode_city',
 					message:
-						'The node "@n8n/n8n-nodes-langchain.toolHttpRequest" has a "supplyData" method but no "execute" method.',
+						'The node "@n8n/n8n-nodes-langchain.toolCalculator" has a "supplyData" method but no "execute" method.',
 				},
 			],
 			lastNodeExecuted: 'Return Brief',

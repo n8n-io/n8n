@@ -1016,7 +1016,7 @@ describe('WorkflowBuilder plugin integration', () => {
 
 			// Language model connected to agent via ai_languageModel
 			nodesMap.set('OpenAI', {
-				instance: { name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmOpenAi' },
+				instance: { name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' },
 				connections: new Map([['ai_languageModel', new Map([[0, [{ node: 'Agent' }]]])]]),
 			});
 
