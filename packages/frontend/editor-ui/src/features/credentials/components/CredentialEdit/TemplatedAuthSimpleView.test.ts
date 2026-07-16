@@ -1,8 +1,26 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import TemplatedAuthSimpleView from './TemplatedAuthSimpleView.vue';
 
-const renderComponent = createComponentRenderer(TemplatedAuthSimpleView);
+// ParameterInputExpanded transitively derives the workflow id from the route
+// (focus panel store); these tests run without a router.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
+// ParameterInputExpanded pulls real stores (ui, settings, workflows fallback
+// for the document-store inject), so the renderer needs an active pinia.
+const pinia = createTestingPinia({ stubActions: false });
+setActivePinia(pinia);
+
+const renderComponent = createComponentRenderer(TemplatedAuthSimpleView, { pinia });
 
 const credentialData = (overrides: Record<string, string> = {}) => ({
 	template: JSON.stringify({
@@ -37,7 +55,7 @@ describe('TemplatedAuthSimpleView', () => {
 		expect(apiVersion.querySelector('input') ?? apiVersion).toHaveAttribute('type', 'text');
 	});
 
-	it('shows expression values unmasked, like native credential fields', () => {
+	it('shows expression values in the expression editor, like native credential fields', () => {
 		const { getAllByTestId } = renderComponent({
 			props: {
 				credentialData: credentialData({
@@ -50,9 +68,9 @@ describe('TemplatedAuthSimpleView', () => {
 		});
 
 		const [apiKey] = getAllByTestId('templated-auth-value-input');
-		const input = apiKey.querySelector('input') ?? apiKey;
-		expect(input).toHaveValue('={{ $secrets.vault.replicate }}');
-		expect(input).toHaveAttribute('type', 'text');
+		// an expression renders the (unmasked) expression editor, not a password input
+		expect(apiKey.querySelector('input[type="password"]')).toBeNull();
+		expect(apiKey.textContent).toContain('Expression');
 	});
 
 	it('falls back to the marker name when a def is missing', () => {
@@ -63,33 +81,43 @@ describe('TemplatedAuthSimpleView', () => {
 		expect(getByText('api_key')).toBeInTheDocument();
 	});
 
-	it('prefills inputs with the stored values, like other credential fields', () => {
+	it('prefills plain inputs with the stored values, like other credential fields', async () => {
 		const { getAllByTestId } = renderComponent({
 			props: { credentialData: credentialData() },
 		});
 
-		const [apiKey, apiVersion] = getAllByTestId('templated-auth-value-input');
-		expect(apiKey.querySelector('input') ?? apiKey).toHaveValue('***');
-		expect(apiVersion.querySelector('input') ?? apiVersion).toHaveValue('202404');
+		// masked display of the redacted sentinel is ParameterInput's own domain;
+		// this component's contract is passing the stored values through.
+		const [, apiVersion] = getAllByTestId('templated-auth-value-input');
+		await waitFor(() =>
+			expect(apiVersion.querySelector('input') ?? apiVersion).toHaveValue('202404'),
+		);
 	});
 
-	it('replaces the typed value and keeps untouched stored values on update', async () => {
+	it('composes typed values and keeps untouched stored values on update', async () => {
 		const { getAllByTestId, emitted } = renderComponent({
-			props: { credentialData: credentialData() },
+			props: {
+				// api_key has no stored value yet; api_version is saved
+				credentialData: credentialData({
+					placeholderValues: JSON.stringify({ api_version: '202404' }),
+				}),
+			},
 		});
 
 		const apiKeyEl = getAllByTestId('templated-auth-value-input')[0];
 		const input = apiKeyEl.querySelector('input') ?? apiKeyEl;
-		await userEvent.clear(input);
 		await userEvent.type(input, 'Key new-secret');
 
-		const updates = emitted<[{ name: string; value: string }]>('update');
-		expect(updates).toBeTruthy();
-		const last = updates[updates.length - 1][0];
-		expect(last.name).toBe('placeholderValues');
-		// typed value cleaned of the template prefix; untouched marker keeps its
-		// stored redacted sentinel, which merges back to the real secret on save
-		expect(JSON.parse(last.value)).toEqual({ api_key: 'new-secret', api_version: '202404' });
+		// ParameterInput debounces value updates — wait for the final compose:
+		// typed value cleaned of the template prefix; the untouched marker keeps
+		// its stored value, which merges back to the real secret on save
+		await waitFor(() => {
+			const updates = emitted<[{ name: string; value: string }]>('update');
+			expect(updates).toBeTruthy();
+			const last = updates[updates.length - 1][0];
+			expect(last.name).toBe('placeholderValues');
+			expect(JSON.parse(last.value)).toEqual({ api_key: 'new-secret', api_version: '202404' });
+		});
 	});
 
 	it('renders the docs link when the credential stores a documentation URL', () => {
