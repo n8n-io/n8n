@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nActionBox, N8nButton, N8nHeading, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 import { useI18n } from '@n8n/i18n';
 import McpClientLogoCards from '@/features/ai/mcpAccess/components/McpClientLogoCards.vue';
@@ -28,47 +28,46 @@ const buttonDisabled = computed(() => props.disabled || props.loading);
 
 <template>
 	<div :class="$style.container" data-test-id="mcp-empty-state-container">
-		<N8nActionBox description="-">
-			<template #description>
-				<McpClientLogoCards :class="$style.cards" />
-				<N8nHeading tag="h2" size="medium" align="center" class="mb-2xs">
-					{{ i18n.baseText('settings.mcp.actionBox.heading') }}
-				</N8nHeading>
-				<div>
-					{{ i18n.baseText('settings.mcp.emptyState.description') }}
-				</div>
-			</template>
-			<template #additionalContent>
+		<McpClientLogoCards :class="$style.cards" />
+		<div :class="$style.copy">
+			<N8nText bold size="large" color="text-dark">
+				{{ i18n.baseText('settings.mcp.actionBox.heading') }}
+			</N8nText>
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('settings.mcp.emptyState.description') }}
+			</N8nText>
+		</div>
+		<div :class="$style.actions">
+			<N8nButton
+				variant="ghost"
+				size="medium"
+				:href="MCP_DOCS_PAGE_URL"
+				target="_blank"
+				data-test-id="mcp-empty-state-learn-more"
+			>
+				{{ i18n.baseText('generic.learnMore') }} <N8nIcon icon="arrow-up-right" size="small" />
+			</N8nButton>
+			<N8nTooltip :disabled="!buttonDisabled">
+				<template #content>
+					<span v-if="props.loading">{{ i18n.baseText('generic.loading') }}...</span>
+					<span v-else-if="props.managedByEnv">
+						{{ i18n.baseText('settings.mcp.managedByEnv.tooltip') }}
+					</span>
+					<span v-else>
+						{{ i18n.baseText('settings.mcp.toggle.disabled.tooltip') }}
+					</span>
+				</template>
 				<N8nButton
-					variant="ghost"
-					class="mr-2xs n8n-button--highlight"
-					:href="MCP_DOCS_PAGE_URL"
-					target="_blank"
-					data-test-id="mcp-empty-state-learn-more"
+					variant="solid"
+					size="medium"
+					:disabled="buttonDisabled"
+					data-test-id="enable-mcp-access-button"
+					@click="emit('turnOnMcp')"
 				>
-					{{ i18n.baseText('generic.learnMore') }} <N8nIcon icon="arrow-up-right" />
+					{{ i18n.baseText('settings.mcp.actionBox.button.label') }}
 				</N8nButton>
-				<N8nTooltip :disabled="!buttonDisabled">
-					<template #content>
-						<span v-if="props.loading">{{ i18n.baseText('generic.loading') }}...</span>
-						<span v-else-if="props.managedByEnv">
-							{{ i18n.baseText('settings.mcp.managedByEnv.tooltip') }}
-						</span>
-						<span v-else>
-							{{ i18n.baseText('settings.mcp.toggle.disabled.tooltip') }}
-						</span>
-					</template>
-					<N8nButton
-						variant="solid"
-						:disabled="buttonDisabled"
-						data-test-id="enable-mcp-access-button"
-						@click="emit('turnOnMcp')"
-					>
-						{{ i18n.baseText('settings.mcp.actionBox.button.label') }}
-					</N8nButton>
-				</N8nTooltip>
-			</template>
-		</N8nActionBox>
+			</N8nTooltip>
+		</div>
 	</div>
 </template>
 
@@ -76,7 +75,14 @@ const buttonDisabled = computed(() => props.disabled || props.loading);
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+	align-items: center;
+	text-align: center;
+	gap: var(--spacing--sm);
+	margin-top: var(--spacing--xl);
+	padding: var(--spacing--2xl) var(--spacing--xl);
+	border: var(--border-width) dashed var(--border-color);
+	border-radius: var(--radius--lg);
+	background: var(--color--background--light-1);
 	/* Gentle entrance for the enable/disable swap, matching the prototype. */
 	animation: mcp-reveal-in var(--duration--base, 240ms) var(--easing--ease-out, ease-out);
 }
@@ -100,6 +106,20 @@ const buttonDisabled = computed(() => props.disabled || props.loading);
 }
 
 .cards {
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--sm);
+}
+
+.copy {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	max-width: 32rem;
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--2xs);
 }
 </style>
