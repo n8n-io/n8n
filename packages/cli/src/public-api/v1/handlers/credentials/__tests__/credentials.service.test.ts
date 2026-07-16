@@ -135,7 +135,7 @@ describe('CredentialsService', () => {
 				updatedAt: new Date(),
 				scopes: [],
 			} as never);
-			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(null);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
 			const payload = {
 				type: 'testApi',
 				name: 'Credential',
