@@ -179,12 +179,12 @@ export function useContextMenuItems(
 		// worded for the group as a whole, plus the group's own actions on top.
 		const isGroupTarget = targetGroupId?.value !== undefined;
 
-		// Pinning descriptions is a view preference, so these stay enabled in
-		// read-only mode. Without a canvas-provided group view the pin state is
-		// unknown, so the items are dropped. Offer show when any group's
-		// description is unpinned, hide when any is pinned.
+		// Workflow-wide show/hide of every group description. A view preference,
+		// so it stays enabled in read-only mode; dropped without a canvas-provided
+		// group view. Offered both on a group target and on the empty-canvas menu.
+		// Show appears when any description is hidden, hide when any is shown.
 		const descriptionActions: Item[] = (() => {
-			if (!isGroupTarget || groupView === undefined) return [];
+			if (groupView === undefined) return [];
 
 			const groupsWithDescription = (workflowDocumentStore?.value?.allGroups ?? []).filter(
 				(group) => !!group.description?.trim(),
@@ -203,14 +203,14 @@ export function useContextMenuItems(
 				items.push({
 					id: 'show_all_descriptions',
 					divided: true,
-					label: i18n.baseText('contextMenu.showAllDescriptions'),
+					label: i18n.baseText('contextMenu.showGroupDescriptions'),
 				});
 			}
 			if (anyDisplayed) {
 				items.push({
 					id: 'hide_all_descriptions',
 					divided: !anyHidden,
-					label: i18n.baseText('contextMenu.hideAllDescriptions'),
+					label: i18n.baseText('contextMenu.hideGroupDescriptions'),
 				});
 			}
 			return items;
@@ -407,6 +407,8 @@ export function useContextMenuItems(
 				},
 				...layoutActions,
 				...groupViewActions,
+				// Join the group-view section
+				...descriptionActions.map((item) => ({ ...item, divided: false })),
 				...selectionActions,
 			];
 		} else {

@@ -516,6 +516,66 @@ describe('useContextMenu', () => {
 			expect(byId.expand_all_groups?.disabled).toBe(false);
 			expect(byId.collapse_all_groups?.disabled).toBe(false);
 		});
+	});
+
+	describe('show/hide all descriptions (empty selection menu)', () => {
+		function openPaneMenuActionIds(): string[] {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+			return actions.value.map((action) => action.id);
+		}
+
+		it('offers "show all" from the empty-canvas menu when a description is hidden', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'A', { description: 'Docs' });
+			fakeGroupView([], []); // nothing pinned
+
+			const ids = openPaneMenuActionIds();
+
+			expect(ids).toContain('show_all_descriptions');
+			expect(ids).not.toContain('hide_all_descriptions');
+		});
+
+		it('offers "hide all" from the empty-canvas menu when a description is shown', () => {
+			const group = workflowDocumentStore.createGroup([nodes[0].id], 'A', { description: 'Docs' });
+			fakeGroupView([], [group.id]); // pinned
+
+			const ids = openPaneMenuActionIds();
+
+			expect(ids).toContain('hide_all_descriptions');
+			expect(ids).not.toContain('show_all_descriptions');
+		});
+
+		it('places the descriptions action in the group-view section, not a new one', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'A', { description: 'Docs' });
+			fakeGroupView([], []);
+
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const ids = actions.value.map((action) => action.id);
+			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+
+			// Follows the expand/collapse-all-groups items without opening a new
+			// section, and sits before the selection items.
+			expect(ids.slice(ids.indexOf('expand_all_groups'))).toEqual([
+				'expand_all_groups',
+				'collapse_all_groups',
+				'show_all_descriptions',
+				'select_all',
+				'deselect_all',
+			]);
+			expect(byId.show_all_descriptions?.divided).toBeFalsy();
+		});
+
+		it('offers neither when no group has a description', () => {
+			workflowDocumentStore.createGroup([nodes[0].id], 'A');
+			fakeGroupView([], []);
+
+			const ids = openPaneMenuActionIds();
+
+			expect(ids).not.toContain('show_all_descriptions');
+			expect(ids).not.toContain('hide_all_descriptions');
+		});
 
 		it('does not add the actions to node selection menus', () => {
 			workflowDocumentStore.createGroup([nodes[0].id], 'My group');
