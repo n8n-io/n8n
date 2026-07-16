@@ -64,6 +64,9 @@ describe('GET /rest/consent/details', () => {
 			clientId: 'test-client-id',
 			redirectUri: 'https://example.com/callback',
 			scopes: [...MCP_INSTANCE_SCOPES],
+			scopeTools: expect.objectContaining({
+				'workflow:read': expect.arrayContaining(['search_workflows']),
+			}),
 		});
 	});
 
