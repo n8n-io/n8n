@@ -5,6 +5,13 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '@utils/utilities';
+
+import { libraryRLC, siteRLC, workbookRLC } from '../../descriptions/common.descriptions';
+import { withWorkbookSession } from '../../helpers/sessions';
+import { resolveWorkbookRoot } from '../../helpers/utils';
+import { microsoftApiRequest } from '../../transport';
+
 // https://learn.microsoft.com/en-us/graph/api/resources/workbookworksheet
 type AddWorksheetResponse = {
 	id: string;
@@ -12,13 +19,6 @@ type AddWorksheetResponse = {
 	position: number;
 	visibility: string;
 };
-
-import { updateDisplayOptions } from '@utils/utilities';
-
-import { libraryRLC, siteRLC, workbookRLC } from '../../descriptions/common.descriptions';
-import { withWorkbookSession } from '../../helpers/sessions';
-import { resolveWorkbookRoot } from '../../helpers/utils';
-import { microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	workbookRLC,
@@ -72,6 +72,10 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	// https://learn.microsoft.com/en-us/graph/api/worksheetcollection-add
 	const returnData: INodeExecutionData[] = [];
+	// Hoisted once for the whole run and passed into resolveWorkbookRoot below,
+	// so a multi-item run resolves each distinct address/site only once.
+	const workbookRootCache = new Map<string, string>();
+	const siteIdCache = new Map<string, string>();
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -81,7 +85,7 @@ export async function execute(
 				body.name = settings.name;
 			}
 
-			const workbookRoot = await resolveWorkbookRoot.call(this, i);
+			const workbookRoot = await resolveWorkbookRoot.call(this, i, workbookRootCache, siteIdCache);
 			// Typed here instead of cast at the call site below. Parens are required:
 			// a generic instantiation can't be followed directly by a property access.
 			const responseData = await (withWorkbookSession<AddWorksheetResponse>).call(

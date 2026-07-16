@@ -23,12 +23,16 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	// https://learn.microsoft.com/en-us/graph/api/driveitem-delete
 	const returnData: INodeExecutionData[] = [];
+	// Hoisted once for the whole run and passed into resolveWorkbookRoot below,
+	// so a multi-item run resolves each distinct address/site only once.
+	const workbookRootCache = new Map<string, string>();
+	const siteIdCache = new Map<string, string>();
 
 	for (let i = 0; i < items.length; i++) {
 		try {
 			// The file itself, not a `/workbook` subpath — deleting the item removes
 			// the workbook whole, so no session is opened for this operation.
-			const workbookRoot = await resolveWorkbookRoot.call(this, i);
+			const workbookRoot = await resolveWorkbookRoot.call(this, i, workbookRootCache, siteIdCache);
 			await microsoftApiRequest.call(this, 'DELETE', workbookRoot);
 
 			const executionData = this.helpers.constructExecutionMetaData(
