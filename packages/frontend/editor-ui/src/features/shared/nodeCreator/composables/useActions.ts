@@ -279,13 +279,13 @@ export const useActions = () => {
 		if (!isCompatibleNode) return false;
 		const allNodes = workflowDocumentStore.value.allNodes;
 
-		const COMPATIBLE_WITH_MANUAL_NODES = [AGENT_NODE_TYPE];
-		const canConnectWithManual = addedNodes.some((node) =>
-			COMPATIBLE_WITH_MANUAL_NODES.includes(node.type),
+		const SHOULD_CONNECT_WITH_MANUAL_NODES = [AGENT_NODE_TYPE];
+		const shouldSkipChatTrigger = addedNodes.some((node) =>
+			SHOULD_CONNECT_WITH_MANUAL_NODES.includes(node.type),
 		);
 		const hasManualTrigger = allNodes.some((node) => node.type === MANUAL_TRIGGER_NODE_TYPE);
 
-		if (canConnectWithManual && hasManualTrigger) return false;
+		if (shouldSkipChatTrigger && hasManualTrigger) return false;
 
 		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
