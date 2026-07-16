@@ -48,8 +48,10 @@ export type ContextMenuAction =
 	| 'collapse_all_groups'
 	| 'expand_selected_groups'
 	| 'collapse_selected_groups'
-	| 'show_all_descriptions'
-	| 'hide_all_descriptions'
+	| 'show_all_group_descriptions'
+	| 'hide_all_group_descriptions'
+	| 'show_group_description'
+	| 'hide_group_description'
 	| 'focus_ai_on_selected';
 
 /**
@@ -179,11 +181,9 @@ export function useContextMenuItems(
 		// worded for the group as a whole, plus the group's own actions on top.
 		const isGroupTarget = targetGroupId?.value !== undefined;
 
-		// Workflow-wide show/hide of every group description. A view preference,
-		// so it stays enabled in read-only mode; dropped without a canvas-provided
-		// group view. Offered both on a group target and on the empty-canvas menu.
-		// Show appears when any description is hidden, hide when any is shown.
-		const descriptionActions: Item[] = (() => {
+		// Workflow-wide show/hide, for the empty-canvas menu only. A view
+		// preference, so it stays enabled in read-only mode.
+		const allGroupsDescriptionActions: Item[] = (() => {
 			if (groupView === undefined) return [];
 
 			const groupsWithDescription = (workflowDocumentStore?.value?.allGroups ?? []).filter(
@@ -201,19 +201,40 @@ export function useContextMenuItems(
 			const items: Item[] = [];
 			if (anyHidden) {
 				items.push({
-					id: 'show_all_descriptions',
+					id: 'show_all_group_descriptions',
 					divided: true,
-					label: i18n.baseText('contextMenu.showGroupDescriptions'),
+					label: i18n.baseText('contextMenu.showAllGroupDescriptions'),
 				});
 			}
 			if (anyDisplayed) {
 				items.push({
-					id: 'hide_all_descriptions',
+					id: 'hide_all_group_descriptions',
 					divided: !anyHidden,
-					label: i18n.baseText('contextMenu.hideGroupDescriptions'),
+					label: i18n.baseText('contextMenu.hideAllGroupDescriptions'),
 				});
 			}
 			return items;
+		})();
+
+		// Show/hide the targeted group's own description. Collapsed only — the
+		// pinned panel it toggles exists only then.
+		const groupDescriptionActions: Item[] = (() => {
+			const groupId = targetGroupId?.value;
+			if (groupView === undefined || groupId === undefined) return [];
+
+			const group = workflowDocumentStore?.value?.allGroups.find((g) => g.id === groupId);
+			if (!group?.description?.trim() || !groupView.isGroupCollapsed(groupId)) return [];
+
+			const visible = groupView.isDescriptionVisible(groupId);
+			return [
+				{
+					id: visible ? 'hide_group_description' : 'show_group_description',
+					divided: true,
+					label: visible
+						? i18n.baseText('contextMenu.hideGroupDescription')
+						: i18n.baseText('contextMenu.showGroupDescription'),
+				},
+			];
 		})();
 
 		const groupActions: Item[] = isGroupTarget
@@ -229,7 +250,7 @@ export function useContextMenuItems(
 						shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
 						disabled: isReadOnly.value,
 					},
-					...descriptionActions,
+					...groupDescriptionActions,
 				]
 			: [];
 
@@ -408,7 +429,7 @@ export function useContextMenuItems(
 				...layoutActions,
 				...groupViewActions,
 				// Join the group-view section
-				...descriptionActions.map((item) => ({ ...item, divided: false })),
+				...allGroupsDescriptionActions.map((item) => ({ ...item, divided: false })),
 				...selectionActions,
 			];
 		} else {
