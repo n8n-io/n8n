@@ -1828,10 +1828,10 @@ describe('ExecutionPersistence', () => {
 
 		it('should succeed when the deletion converges exactly on the last allowed batch', async () => {
 			const sqlitePersistence = createPersistenceService('db', 'sqlite');
-			let calls = 0;
-			executionRepository.find.mockImplementation(() =>
-				Promise.resolve(++calls <= 20_000 ? [executionRow('exec-1')] : []),
-			);
+			for (let i = 0; i < 20_000; i++) {
+				executionRepository.find.mockResolvedValueOnce([executionRow('exec-1')]);
+			}
+			executionRepository.find.mockResolvedValue([]); // final probe finds none left
 
 			await expect(sqlitePersistence.hardDeleteByWorkflowId('wf-1')).resolves.toBeUndefined();
 
