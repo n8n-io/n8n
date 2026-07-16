@@ -53,6 +53,8 @@ describe('chat-channel credential guidance', () => {
 			(skill) => skill.id === 'agent-builder-integrations',
 		);
 
+		expect(integrationsSkill?.recommendedTools).toContain('ask_questions');
+		expect(integrationsSkill?.allowedTools).toContain('ask_questions');
 		expect(integrationsSkill?.instructions).toContain('To remove an existing chat integration');
 		expect(integrationsSkill?.instructions).toContain('config.integrations');
 		expect(integrationsSkill?.instructions).toContain(

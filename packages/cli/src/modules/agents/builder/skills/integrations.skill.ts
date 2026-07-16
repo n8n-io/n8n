@@ -9,12 +9,14 @@ export function integrationsSkill(): RuntimeSkill {
 		recommendedTools: [
 			'list_integration_types',
 			'configure_channel',
+			'ask_questions',
 			'read_config',
 			'patch_config',
 		],
 		allowedTools: [
 			'list_integration_types',
 			'configure_channel',
+			'ask_questions',
 			'read_config',
 			'patch_config',
 			'write_config',
