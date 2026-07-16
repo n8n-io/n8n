@@ -72,7 +72,7 @@ describe('WorkflowReviewRequestService', () => {
 			expect(dbLockService.withLock).not.toHaveBeenCalled();
 		});
 
-		it('creates parent, child and author rows inside the lock transaction', async () => {
+		it('creates the review request, workflow reference, and author in one transaction', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				mock<WorkflowEntity>({ isArchived: false }),
 			);
@@ -111,7 +111,7 @@ describe('WorkflowReviewRequestService', () => {
 			);
 		});
 
-		it('throws NotFoundError and never takes the lock when the finder returns null', async () => {
+		it('throws NotFoundError without acquiring a lock when the workflow cannot be found', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
 			await expect(service.create(user, dto)).rejects.toThrow(NotFoundError);

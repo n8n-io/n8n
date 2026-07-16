@@ -16,7 +16,6 @@ import {
 import { Container } from '@n8n/di';
 
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
-
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -79,7 +78,7 @@ async function createReviewableWorkflow(versionId = 'version-1') {
 }
 
 describe('POST /workflow-review-requests', () => {
-	test('creates a review request with parent, child and author rows', async () => {
+	test('creates a review request with its workflow reference and author', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
 		const response = await ownerAgent
