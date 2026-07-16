@@ -13,6 +13,7 @@ import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClie
 import RevokeOAuthClientConfirmModal from '@/features/ai/mcpAccess/components/RevokeOAuthClientConfirmModal.vue';
 import {
 	LOADING_INDICATOR_TIMEOUT,
+	MCP_DOCS_PAGE_URL,
 	MCP_SETTINGS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
@@ -125,7 +126,7 @@ onMounted(async () => {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.mcp.connectedClients.title')"
 			:description="i18n.baseText('settings.mcp.connectedClients.description')"
-			:show-docs-link="false"
+			:docs-url="MCP_DOCS_PAGE_URL"
 		/>
 		<div data-test-id="mcp-clients-view">
 			<OAuthClientsTable
