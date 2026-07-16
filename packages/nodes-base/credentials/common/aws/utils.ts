@@ -79,6 +79,14 @@ function getAwsSigningService(service: string): string {
 		case 'bedrock-data-automation':
 		case 'bedrock-data-automation-runtime':
 			return 'bedrock';
+		// Legacy region-first SQS endpoints (`<region>.queue.amazonaws.com`).
+		case 'queue':
+			return 'sqs';
+		// SES (v1 and v2) endpoints are `email.<region>.amazonaws.com` but sign
+		// under `ses`. aws4 remapped this inside its RequestSigner; smithy signs
+		// the name it is given, so the mapping must live here.
+		case 'email':
+			return 'ses';
 		default:
 			return service;
 	}
