@@ -70,20 +70,20 @@ catalog:
   '@testcontainers/mysql': ^11.13.0
   '@testcontainers/postgresql': ^11.13.0
   '@testcontainers/redis': ^11.13.0
-  '@tiptap/core': 3.22.5
-  '@tiptap/pm': 3.22.5
-  '@tiptap/extension-link': 3.22.5
-  '@tiptap/extension-placeholder': 3.22.5
-  '@tiptap/extension-strike': 3.22.5
-  '@tiptap/extension-table': 3.22.5
-  '@tiptap/extension-table-cell': 3.22.5
-  '@tiptap/extension-table-header': 3.22.5
-  '@tiptap/extension-table-row': 3.22.5
-  '@tiptap/extension-task-item': 3.22.5
-  '@tiptap/extension-task-list': 3.22.5
-  '@tiptap/markdown': 3.22.5
-  '@tiptap/starter-kit': 3.22.5
-  '@tiptap/vue-3': 3.22.5
+  '@tiptap/core': 3.27.0
+  '@tiptap/pm': 3.27.0
+  '@tiptap/extension-link': 3.27.0
+  '@tiptap/extension-placeholder': 3.27.0
+  '@tiptap/extension-strike': 3.27.0
+  '@tiptap/extension-table': 3.27.0
+  '@tiptap/extension-table-cell': 3.27.0
+  '@tiptap/extension-table-header': 3.27.0
+  '@tiptap/extension-table-row': 3.27.0
+  '@tiptap/extension-task-item': 3.27.0
+  '@tiptap/extension-task-list': 3.27.0
+  '@tiptap/markdown': 3.27.0
+  '@tiptap/starter-kit': 3.27.0
+  '@tiptap/vue-3': 3.27.0
   '@types/basic-auth': ^1.1.3
   '@types/estree': ^1.0.8
   '@types/express': ^5.0.1
@@ -111,6 +111,7 @@ catalog:
   '@types/xml2js': ^0.4.14
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
+  '@e965/xlsx': 0.20.3
   agent-browser: 0.26.0
   ai: ^6.0.197
   axios: 1.18.0
@@ -126,7 +127,7 @@ catalog:
   cross-env: ^7.0.3
   csv-parse: 6.2.1
   dotenv: 17.2.3
-  electron: ^41.7.2
+  electron: 41.9.1
   esbuild: ^0.28.1
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
@@ -137,7 +138,7 @@ catalog:
   fast-json-patch: ^3.1.1
   fastest-levenshtein: 1.0.16
   fflate: 0.8.3
-  file-type: 21.3.2
+  file-type: 21.3.3
   flatted: 3.4.2
   form-data: 4.0.6
   get-tsconfig: ^4.13.0
@@ -174,7 +175,7 @@ catalog:
   oxlint-tsgolint: ^0.21.1
   pdf-parse: 2.4.5
   pdfjs-dist: 5.4.296
-  pg: 8.17.0
+  pg: 8.21.0
   picocolors: 1.0.1
   playwright-core: 1.60.0
   posthog-node: 5.33.4
@@ -191,7 +192,7 @@ catalog:
   ssh2: 1.15.0
   stream-json: 1.9.1
   stylelint: ^16.23.0
-  tar: ^7.5.16
+  tar: 7.5.17
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
@@ -216,6 +217,13 @@ catalogMode: strict
 catalogs:
   typescript:
     typescript: 7.0.2
+  # Side-by-side TS7: tsgo `tsc` for typecheck/build, plus the real TS6 JS API
+  # (as `typescript`) for tooling that needs the programmatic compiler API —
+  # e.g. @typescript-eslint/typescript-estree, which TS7 does not yet provide.
+  # See scripts/typescript-migration/README.md "Choosing the TypeScript catalog".
+  typescript-tooling:
+    '@typescript/native': 'npm:typescript@7.0.2'
+    typescript: 'npm:@typescript/typescript6@6.0.2'
   e2e:
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
@@ -260,7 +268,7 @@ catalogs:
     eslint-plugin-storybook: ^10.1.11
     storybook: ^10.1.11
   undici-v6:
-    undici: ^6.24.0
+    undici: ^6.27.0
   undici-v7:
     undici: ^7.28.0
 

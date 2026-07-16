@@ -13,13 +13,10 @@ defineProps<{
 	localConfig: AgentJsonConfig | null;
 	connectedTriggers: string[];
 	effectiveSessionId?: string;
-	initialPrompt?: string;
 }>();
 
 const emit = defineEmits<{
-	'config-updated': [];
 	'continue-loaded': [count: number];
-	'open-build': [];
 }>();
 
 const inputDraft = ref('');
@@ -35,15 +32,11 @@ const inputDraft = ref('');
 				:project-id="projectId"
 				:agent-id="agentId"
 				mode="inline"
-				endpoint="chat"
-				:initial-message="initialPrompt"
 				:continue-session-id="effectiveSessionId"
 				:agent-config="localConfig"
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
-				@config-updated="emit('config-updated')"
 				@continue-loaded="emit('continue-loaded', $event)"
-				@open-build="emit('open-build')"
 			/>
 		</div>
 	</main>

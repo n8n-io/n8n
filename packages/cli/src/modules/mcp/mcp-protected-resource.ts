@@ -1,5 +1,8 @@
+import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
+import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
@@ -9,13 +12,10 @@ import type { User } from '@n8n/db';
 export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
 
 /**
- * Reserved for future granular per-tool delegation. Today MCP OAuth tokens are
- * user-delegations: a successful consent authorizes the client to act on
- * behalf of the user with the user's full permission set, equivalent to a
- * Personal API Key. Advertising scopes we don't enforce would misrepresent
- * that contract, so this stays empty until per-tool enforcement ships.
+ * Scopes a user can grant on the consent screen. Enforced per-tool via the
+ * mapping in `mcp-scopes.ts` when the MCP server registers tools.
  */
-export const SUPPORTED_SCOPES: string[] = [];
+export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -49,7 +49,27 @@ export class McpProtectedResource implements ProtectedResource {
 		private readonly urlService: UrlService,
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly mcpConfig: McpConfig,
+		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	/**
+	 * Filtered to the tools this instance actually exposes, so the consent
+	 * screen never advertises tools a grant cannot deliver.
+	 */
+	getScopeTools(): Record<string, string[]> {
+		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
+		const tagsDisabled = this.globalConfig.tags.disabled;
+
+		return Object.fromEntries(
+			Object.entries(TOOLS_BY_SCOPE).map(([scope, tools]) => [
+				scope,
+				tools.filter(
+					(tool) =>
+						(builderEnabled || !BUILDER_TOOLS.has(tool)) && (!tagsDisabled || tool !== 'list_tags'),
+				),
+			]),
+		);
+	}
 
 	getResourceUrl(): string {
 		// A dedicated MCP base URL (split-hostname deployments) takes precedence

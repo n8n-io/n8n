@@ -203,6 +203,7 @@ export {
 	dataTableColumnNameSchema,
 	dataTableColumnTypeSchema,
 	dataTableIdSchema,
+	dataTableNameSchema,
 } from './schemas/data-table.schema';
 
 export type {
@@ -342,8 +343,10 @@ export {
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
+	instanceAiAgentAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
+	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
@@ -397,6 +400,7 @@ export type {
 	McpToolCallRequest,
 	McpToolCallResult,
 	InstanceAiEvent,
+	InstanceAiAgentAttachment,
 	InstanceAiAttachment,
 	InstanceAiSendMessageResponse,
 	InstanceAiToolCallState,
@@ -432,6 +436,7 @@ export type {
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
 	InstanceAiFileAttachment,
+	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
 	DomainAccessAction,
 	DomainAccessGrants,
@@ -502,6 +507,8 @@ export {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
+	MCP_INSTANCE_SCOPES,
+	type McpScope,
 } from './schemas/mcp.schema';
 
 export {

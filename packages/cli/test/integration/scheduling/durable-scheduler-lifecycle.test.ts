@@ -55,7 +55,7 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 	const buildScheduler = (opts: { enabled: boolean; instanceType?: 'main' | 'worker' }) => {
 		const globalConfig = Container.get(GlobalConfig);
 		globalConfig.scheduler.enabled = opts.enabled;
-		globalConfig.scheduler.sweepIntervalSeconds = 1;
+		globalConfig.scheduler.materializationIntervalSeconds = 1;
 		globalConfig.scheduler.executorIntervalSeconds = 1;
 		globalConfig.scheduler.reaperIntervalSeconds = 1;
 		globalConfig.scheduler.retentionIntervalSeconds = 1;

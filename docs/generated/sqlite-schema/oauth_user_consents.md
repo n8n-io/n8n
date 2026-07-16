@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "oauth_user_consents" ("id" integer PRIMARY KEY NOT NULL, "userId" varchar NOT NULL, "clientId" varchar NOT NULL, "grantedAt" bigint NOT NULL, CONSTRAINT "UQ_083721d99ce8db4033e2958ebb4" UNIQUE ("userId", "clientId"), CONSTRAINT "FK_a651acea2f6c97f8c4514935486" FOREIGN KEY ("clientId") REFERENCES "oauth_clients" ("id") ON DELETE CASCADE, CONSTRAINT "FK_21e6c3c2d78a097478fae6aaefa" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE)
+CREATE TABLE "oauth_user_consents" ("id" integer PRIMARY KEY NOT NULL, "userId" varchar NOT NULL, "clientId" varchar NOT NULL, "grantedAt" bigint NOT NULL, "scope" text NOT NULL, CONSTRAINT "UQ_083721d99ce8db4033e2958ebb4" UNIQUE ("userId", "clientId"), CONSTRAINT "FK_a651acea2f6c97f8c4514935486" FOREIGN KEY ("clientId") REFERENCES "oauth_clients" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_21e6c3c2d78a097478fae6aaefa" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -18,6 +18,7 @@ CREATE TABLE "oauth_user_consents" ("id" integer PRIMARY KEY NOT NULL, "userId" 
 | clientId | varchar |  | false |  | [oauth_clients](oauth_clients.md) |  |
 | grantedAt | bigint |  | false |  |  |  |
 | id | INTEGER |  | false |  |  |  |
+| scope | TEXT |  | false |  |  |  |
 | userId | varchar |  | false |  | [user](user.md) |  |
 
 ## Constraints
@@ -47,6 +48,7 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   INTEGER id
+  TEXT scope
   varchar userId FK
 }
 "oauth_clients" {

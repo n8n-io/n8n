@@ -1,6 +1,11 @@
 {
 	"globalEnv": ["CI", "BUILD_WITH_COVERAGE"],
 	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
+	"boundaries": {
+		// `~icons/*` is a vite virtual module injected by unplugin-icons (design-system
+		// icon barrel), not a real package — declare it so boundaries doesn't flag it.
+		"implicitDependencies": ["~icons"]
+	},
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {

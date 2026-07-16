@@ -2113,14 +2113,38 @@ export interface ExecuteWorkflowData extends DynamicCredentialsUsage {
 	waitTill?: Date | null;
 }
 
-export interface ExecuteAgentInfo {
-	/** The agent ID to execute. */
-	agentId: string;
+/**
+ * Inline agent definition embedded in the calling node's parameters. Kept
+ * structurally loose here (this package cannot depend on `@n8n/api-types`);
+ * the execution layer validates it against `InlineAgentConfigSchema`.
+ */
+export interface InlineAgentPayload {
+	config: {
+		name?: string;
+		model?: string;
+		credential?: string;
+		instructions?: string;
+		tools?: IDataObject[];
+		mcpServers?: IDataObject[];
+		skills?: Array<{ type?: string; id?: string }>;
+	};
+	/** Skill bodies keyed by the ids `config.skills` references. */
+	skills?: Record<string, IDataObject>;
+}
+
+/** Which agent to execute: a saved agent by id, or an inline definition. */
+export type ExecuteAgentSource =
+	| { agentId: string; inlineAgent?: never }
+	| { agentId?: never; inlineAgent: InlineAgentPayload };
+
+export type ExecuteAgentInfo = ExecuteAgentSource & {
 	/**
 	 * Optional caller-supplied session id. When set, this becomes the agent
 	 * thread id, letting workflows continue the same conversation (and reuse
 	 * memory) across executions. When omitted, a per-call thread is derived
-	 * from the workflow execution id and item index.
+	 * from the workflow execution id and item index. Applies to inline agents
+	 * too: their conversation threads persist, even though their runs don't
+	 * appear in the sessions UI.
 	 */
 	sessionId?: string;
 	/**
@@ -2141,7 +2165,7 @@ export interface ExecuteAgentInfo {
 	 * which can read any executed node's output. Off by default.
 	 */
 	exposeWorkflowData?: boolean;
-}
+};
 
 /**
  * Context about the calling workflow execution, passed to the agent runtime so
@@ -2160,6 +2184,13 @@ export interface ExecuteAgentWorkflowContext {
 	inputDataScope?: 'item' | 'all';
 	/** Whether to attach the `fetch_workflow_context` tool. */
 	exposeWorkflowData?: boolean;
+	/**
+	 * Whether the caller supplied an explicit session id (vs the derived
+	 * per-call thread id). Inline agents persist conversation memory only when
+	 * true — a derived thread is never continued, so persisting it would only
+	 * accumulate unreachable rows.
+	 */
+	hasCallerSessionId?: boolean;
 	/** Name and type of every node in the calling workflow. */
 	nodes: Array<{ name: string; type: string }>;
 	/** The calling execution's run data (read-only by convention). */
@@ -2195,14 +2226,21 @@ export interface ExecuteAgentData {
 	/**
 	 * Identifiers of the agent session this call wrote to. Surfaced so the
 	 * caller (e.g. the MessageAnAgent node) can link from a workflow execution
-	 * back to the agent session detail view.
+	 * back to the agent session detail view. `null` for inline agents, whose
+	 * runs are not recorded as sessions.
 	 */
 	session: {
 		agentId: string;
 		projectId: string;
-		/** The threadId persisted to the agent session. May be a caller-provided override. */
+		/**
+		 * Caller-facing session id: the override the caller supplied, or the
+		 * derived per-call id. Safe to feed back into the node's Session ID
+		 * parameter to continue the conversation.
+		 */
 		sessionId: string;
-	};
+		/** The internally scoped thread id the session was persisted under (deep-link key). */
+		threadId: string;
+	} | null;
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -3446,7 +3484,7 @@ export interface IWorkflowExecuteAdditionalData {
 		options: ExecuteWorkflowOptions,
 	) => Promise<ExecuteWorkflowData>;
 	executeAgent?: (
-		agentId: string,
+		source: ExecuteAgentSource,
 		message: string,
 		executionId: string,
 		threadId: string,
