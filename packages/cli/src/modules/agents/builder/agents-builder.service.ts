@@ -12,7 +12,6 @@ import type {
 } from '@n8n/agents';
 import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
@@ -83,7 +82,6 @@ export class AgentsBuilderService {
 		private readonly instanceAiCreditService: InstanceAiCreditService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
-		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	// ---------------------------------------------------------------------------
@@ -215,11 +213,9 @@ export class AgentsBuilderService {
 		const modelConfig = session.modelConfig;
 
 		const modelRecommendationsSection = await getModelRecommendationsSection();
-		const enabledModules = this.agentsConfig.modules;
 		const instructions = buildBuilderPrompt({
 			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 			modelRecommendationsSection,
-			enabledModules,
 		});
 		const finalInstructions = session.instructionsAddendum
 			? `${instructions}\n\n${session.instructionsAddendum}`
@@ -266,7 +262,7 @@ export class AgentsBuilderService {
 
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
-			.promptCaching()
+			.promptCaching({ anthropic: { ttl: '5m' } })
 			.instructions(finalInstructions)
 			.skills(runtimeSkills)
 			.memory(builderMemory)

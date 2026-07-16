@@ -1,6 +1,5 @@
 import type { BuiltTelemetry, BuiltTool, CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
-import type { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -164,7 +163,6 @@ function setup(
 	const instanceAiCreditService = mock<InstanceAiCreditService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 	const agentCheckpointRepository = mock<AgentCheckpointRepository>();
-	const agentsConfig = mock<AgentsConfig>();
 
 	nodeCatalogService.initialize.mockResolvedValue(undefined);
 	agentsBuilderToolsService.getTools.mockReturnValue(standardTools);
@@ -191,7 +189,6 @@ function setup(
 		instanceAiCreditService,
 		n8nCheckpointStorage,
 		agentCheckpointRepository,
-		agentsConfig,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -312,14 +309,14 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.modelCalls).toEqual(['anthropic/claude-sonnet-host-resolved']);
 	});
 
-	it('enables prompt caching for the builder agent', async () => {
+	it('enables prompt caching with a 5m Anthropic TTL for the builder agent', async () => {
 		const { service, user, credentialProvider } = setup();
 
 		await drain(
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
 		);
 
-		expect(agentsSdkMocks.promptCachingCalls).toEqual([undefined]);
+		expect(agentsSdkMocks.promptCachingCalls).toEqual([{ anthropic: { ttl: '5m' } }]);
 	});
 
 	it('attaches session.telemetry when provided, and omits it otherwise', async () => {
