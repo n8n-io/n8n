@@ -83,6 +83,8 @@ describe('McpAgentToolsService', () => {
 	const agentTaskService = mockInstance(AgentTaskService);
 	const agentCustomToolsService = mockInstance(AgentCustomToolsService);
 	const agentSecureRuntime = mockInstance(AgentSecureRuntime);
+	const integrationPersistenceService = mockInstance(AgentIntegrationPersistenceService);
+	const chatIntegrationService = mockInstance(ChatIntegrationService);
 	const urlService = mockInstance(UrlService);
 
 	const service = new McpAgentToolsService(
@@ -96,8 +98,8 @@ describe('McpAgentToolsService', () => {
 		agentTaskService,
 		agentCustomToolsService,
 		agentSecureRuntime,
-		mockInstance(AgentIntegrationPersistenceService),
-		mockInstance(ChatIntegrationService),
+		integrationPersistenceService,
+		chatIntegrationService,
 		mockInstance(ChatIntegrationRegistry),
 		mockInstance(AgentModelCatalogService),
 		mockInstance(AttachableWorkflowsService),
@@ -705,6 +707,63 @@ describe('McpAgentToolsService', () => {
 
 			expect(result.isError).toBe(true);
 			expect(result.structuredContent).toMatchObject({ error: 'Agent "nope" not found' });
+		});
+	});
+
+	describe('update_agent_integration disconnect', () => {
+		const input = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			action: 'disconnect',
+			type: 'slack',
+			credentialId: 'cred-1',
+		};
+
+		beforeEach(() => {
+			agentConfigService.getConfig.mockResolvedValue(baseConfig);
+		});
+
+		it('disconnects a persisted integration and removes its record', async () => {
+			const persisted = { type: 'slack', credentialId: 'cred-1' };
+			agentsService.findById.mockResolvedValue(agentEntity({ integrations: [persisted] }));
+
+			const result = await callTool('update_agent_integration', input);
+
+			expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith('agent-1', persisted);
+			expect(chatIntegrationService.disconnect).not.toHaveBeenCalled();
+			expect(integrationPersistenceService.removeCredentialIntegration).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'agent-1' }),
+				'slack',
+				'cred-1',
+				{ broadcast: false },
+			);
+			expect(result.structuredContent).toMatchObject({ ok: true, connected: false });
+		});
+
+		it('still tears down the runtime channel when no persisted integration matches', async () => {
+			agentsService.findById.mockResolvedValue(agentEntity({ integrations: [] }));
+
+			const result = await callTool('update_agent_integration', input);
+
+			expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith('agent-1', {
+				type: 'slack',
+				credentialId: 'cred-1',
+			});
+			expect(integrationPersistenceService.removeCredentialIntegration).toHaveBeenCalled();
+			expect(result.structuredContent).toMatchObject({ ok: true, connected: false });
+		});
+
+		it('falls back to a plain disconnect for an unknown integration type', async () => {
+			agentsService.findById.mockResolvedValue(agentEntity({ integrations: [] }));
+
+			await callTool('update_agent_integration', { ...input, type: 'bogus' });
+
+			expect(chatIntegrationService.disconnectChannel).not.toHaveBeenCalled();
+			expect(chatIntegrationService.disconnect).toHaveBeenCalledWith('agent-1', {
+				type: 'bogus',
+				credentialId: 'cred-1',
+			});
+			expect(integrationPersistenceService.removeCredentialIntegration).toHaveBeenCalled();
 		});
 	});
 

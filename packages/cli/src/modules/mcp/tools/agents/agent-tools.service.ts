@@ -1018,18 +1018,31 @@ export class McpAgentToolsService {
 	}
 
 	private async disconnectIntegration(input: UpdateIntegrationInput, agent: Agent) {
-		const integration = (agent.integrations ?? []).find(
+		const persisted = (agent.integrations ?? []).find(
 			(item) => item.type === input.type && item.credentialId === input.credentialId,
 		);
+		// Mirrors AgentIntegrationsController.disconnectIntegration: tear down
+		// the runtime channel even when persistence has no matching record
+		// (e.g. the integration was removed via a config mutation).
+		const parsed = AgentIntegrationSchema.safeParse({
+			type: input.type,
+			credentialId: input.credentialId,
+		});
+		const integration = persisted ?? (parsed.success ? parsed.data : undefined);
 		if (integration) {
 			await this.chatIntegrationService.disconnectChannel(input.agentId, integration);
-			await this.integrationPersistenceService.removeCredentialIntegration(
-				agent,
-				input.type,
-				input.credentialId,
-				{ broadcast: false },
-			);
+		} else {
+			await this.chatIntegrationService.disconnect(input.agentId, {
+				type: input.type,
+				credentialId: input.credentialId,
+			});
 		}
+		await this.integrationPersistenceService.removeCredentialIntegration(
+			agent,
+			input.type,
+			input.credentialId,
+			{ broadcast: false },
+		);
 		return {
 			ok: true,
 			agentId: input.agentId,
