@@ -234,6 +234,10 @@ export class SourceControlPreferencesService {
 		return this._sourceControlPreferences.branchReadOnly;
 	}
 
+	isBranchSelectionEnabled(): boolean {
+		return this.sourceControlConfig.branchSelectionEnabled;
+	}
+
 	isSourceControlConnected(): boolean {
 		return this.sourceControlPreferences.connected;
 	}

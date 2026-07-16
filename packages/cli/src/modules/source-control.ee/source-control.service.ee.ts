@@ -294,7 +294,11 @@ export class SourceControlService {
 		const defaultBranch = this.sourceControlPreferencesService.getBranchName();
 		const requested = options.branch?.trim();
 
-		if (!requested || requested === defaultBranch) {
+		if (
+			!requested ||
+			requested === defaultBranch ||
+			!this.sourceControlPreferencesService.isBranchSelectionEnabled()
+		) {
 			return { targetBranch: defaultBranch, isNewBranch: false, defaultBranch };
 		}
 
@@ -567,9 +571,12 @@ export class SourceControlService {
 		await this.sanityCheck();
 
 		// Pull always targets the default branch; a prior feature-branch commit
-		// may have left HEAD elsewhere, so switch back first.
-		const defaultBranch = this.sourceControlPreferencesService.getBranchName();
-		await this.gitService.checkoutExistingBranch(defaultBranch);
+		// may have left HEAD elsewhere, so switch back first. Only relevant when
+		// branch selection is enabled - otherwise HEAD never moves off default.
+		if (this.sourceControlPreferencesService.isBranchSelectionEnabled()) {
+			const defaultBranch = this.sourceControlPreferencesService.getBranchName();
+			await this.gitService.checkoutExistingBranch(defaultBranch);
+		}
 
 		const statusResult = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'pull',

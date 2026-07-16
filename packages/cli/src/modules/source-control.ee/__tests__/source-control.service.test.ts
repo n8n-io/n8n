@@ -16,6 +16,7 @@ import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
+import type { SourceControlConfig } from '../source-control.config';
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
 	SOURCE_CONTROL_DEFAULT_EMAIL,
@@ -48,12 +49,15 @@ const globalMemberUser = mock<User>({ role: GLOBAL_MEMBER_ROLE });
 const globalMemberUserWithId = mock<User>({ id: 'user-id', role: GLOBAL_MEMBER_ROLE });
 
 describe('SourceControlService', () => {
+	// Defaults to enabled here since most of this suite exercises the branch-selection
+	// feature; tests for the disabled path explicitly flip this to false.
+	const mockSourceControlConfig = mock<SourceControlConfig>({ branchSelectionEnabled: true });
 	const preferencesService = new SourceControlPreferencesService(
 		Container.get(InstanceSettings),
 		mock(),
 		mock(),
 		mock(),
-		mock(),
+		mockSourceControlConfig,
 	);
 	const sourceControlImportService = mock<SourceControlImportService>();
 	const sourceControlExportService = mock<SourceControlExportService>();
@@ -78,6 +82,7 @@ describe('SourceControlService', () => {
 		vi.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
 		// Reset mock implementations
 		mockStatusService.getStatus.mockReset();
+		mockSourceControlConfig.branchSelectionEnabled = true;
 	});
 
 	describe('pushWorkfolder', () => {
@@ -592,6 +597,37 @@ describe('SourceControlService', () => {
 			expect(gitService.fetch).not.toHaveBeenCalled();
 			expect(gitService.push).toHaveBeenCalledWith(expect.objectContaining({ branch: 'main' }));
 		});
+
+		describe('when branch selection is disabled', () => {
+			beforeEach(() => {
+				mockSourceControlConfig.branchSelectionEnabled = false;
+			});
+
+			it('ignores a requested branch and pushes the default branch', async () => {
+				await sourceControlService.pushWorkfolder(user, {
+					fileNames: [],
+					branch: 'develop',
+					commitMessage: 'msg',
+				});
+
+				expect(gitService.checkoutExistingBranch).not.toHaveBeenCalled();
+				expect(gitService.fetch).not.toHaveBeenCalled();
+				expect(gitService.push).toHaveBeenCalledWith(expect.objectContaining({ branch: 'main' }));
+			});
+
+			it('ignores a branch-creation request and pushes the default branch', async () => {
+				await sourceControlService.pushWorkfolder(user, {
+					fileNames: [],
+					branch: 'feat/x',
+					createBranch: true,
+					commitMessage: 'msg',
+				});
+
+				expect(gitService.createBranchFrom).not.toHaveBeenCalled();
+				expect(gitService.fetch).not.toHaveBeenCalled();
+				expect(gitService.push).toHaveBeenCalledWith(expect.objectContaining({ branch: 'main' }));
+			});
+		});
 	});
 
 	describe('pullWorkfolder', () => {
@@ -734,6 +770,20 @@ describe('SourceControlService', () => {
 
 			// ASSERT
 			expect(gitService.checkoutExistingBranch).toHaveBeenCalledWith('main');
+		});
+
+		it('does not check out the default branch when branch selection is disabled', async () => {
+			// ARRANGE
+			mockSourceControlConfig.branchSelectionEnabled = false;
+			const user = mock<User>();
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			// ACT
+			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
+
+			// ASSERT
+			expect(gitService.checkoutExistingBranch).not.toHaveBeenCalled();
 		});
 	});
 

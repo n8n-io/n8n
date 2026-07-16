@@ -249,6 +249,7 @@ describe('SourceControlController', () => {
 
 		beforeEach(() => {
 			(sourceControlPreferencesService.getPreferences as Mock).mockReturnValue(fullPreferences);
+			(sourceControlPreferencesService.isBranchSelectionEnabled as Mock).mockReturnValue(true);
 		});
 
 		it('should return full preferences (including public key) for users with sourceControl:manage', async () => {
@@ -260,7 +261,11 @@ describe('SourceControlController', () => {
 			const result = await controller.getPreferences(req);
 
 			expect(permissions.hasGlobalScope).toHaveBeenCalledWith(req.user, 'sourceControl:manage');
-			expect(result).toEqual({ ...fullPreferences, publicKey: mockPublicKey });
+			expect(result).toEqual({
+				...fullPreferences,
+				publicKey: mockPublicKey,
+				branchSelectionEnabled: true,
+			});
 			expect(sourceControlContextFactory.createContext).not.toHaveBeenCalled();
 		});
 
@@ -278,11 +283,12 @@ describe('SourceControlController', () => {
 				branchReadOnly: fullPreferences.branchReadOnly,
 				branchName: fullPreferences.branchName,
 				branchColor: fullPreferences.branchColor,
+				branchSelectionEnabled: true,
 			});
 			expect(sourceControlPreferencesService.getPublicKey).not.toHaveBeenCalled();
 		});
 
-		it('should return only branchReadOnly for users with no source-control access', async () => {
+		it('should return only branchReadOnly and branchSelectionEnabled for users with no source-control access', async () => {
 			(permissions.hasGlobalScope as Mock).mockReturnValue(false);
 			const user = mock<User>({ id: 'user-1' });
 			(sourceControlContextFactory.createContext as Mock).mockResolvedValue(
@@ -293,6 +299,7 @@ describe('SourceControlController', () => {
 
 			expect(result).toEqual({
 				branchReadOnly: fullPreferences.branchReadOnly,
+				branchSelectionEnabled: true,
 			});
 			expect(sourceControlPreferencesService.getPublicKey).not.toHaveBeenCalled();
 		});
