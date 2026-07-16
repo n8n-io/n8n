@@ -289,6 +289,18 @@ export const OpenAiAssistantRemovedRule = createNodeReplacementRule({
 	],
 });
 
+export const OpenAiRemovedRule = createNodeReplacementRule({
+	id: 'openai-removed',
+	removedNodeName: 'OpenAI',
+	removedNodeType: 'n8n-nodes-base.openAi',
+	recommendations: [
+		{
+			action: 'Replace with OpenAI',
+			description: 'Replace this node with the new OpenAI node and recreate its settings.',
+		},
+	],
+});
+
 export const OpenAiModelRemovedRule = createNodeReplacementRule({
 	id: 'openai-model-removed',
 	removedNodeName: 'OpenAI Model',
@@ -460,6 +472,7 @@ export const directNodeReplacementRules = [
 		removedNodeType: '@n8n/n8n-nodes-langchain.manualChatTrigger',
 	},
 	{ rule: OpenAiAssistantRemovedRule, removedNodeType: '@n8n/n8n-nodes-langchain.openAiAssistant' },
+	{ rule: OpenAiRemovedRule, removedNodeType: 'n8n-nodes-base.openAi' },
 	{ rule: OpenAiModelRemovedRule, removedNodeType: '@n8n/n8n-nodes-langchain.lmOpenAi' },
 	{
 		rule: PineconeInsertRemovedRule,
