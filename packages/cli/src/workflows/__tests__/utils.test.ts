@@ -1,3 +1,5 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -34,6 +36,8 @@ describe('dropRedactionPolicy', () => {
 });
 
 describe('getWorkflowProjectDetailsSafe', () => {
+	const logger = mockInstance(Logger);
+
 	it('returns the project id and name when the lookup succeeds', async () => {
 		const ownershipService = mock<OwnershipService>();
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
@@ -53,5 +57,6 @@ describe('getWorkflowProjectDetailsSafe', () => {
 		const result = await getWorkflowProjectDetailsSafe(ownershipService, 'workflow-id');
 
 		expect(result).toEqual({ projectId: '', projectName: '' });
+		expect(logger.warn).toHaveBeenCalled();
 	});
 });

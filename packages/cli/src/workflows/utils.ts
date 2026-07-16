@@ -1,4 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { NodeApiError, NodeError, WorkflowActivationError } from 'n8n-workflow';
 import type { WorkflowSettings } from 'n8n-workflow';
@@ -58,7 +60,11 @@ export async function getWorkflowProjectDetailsSafe(
 	try {
 		const project = await ownershipService.getWorkflowProjectCached(workflowId);
 		return { projectId: project.id, projectName: project.name };
-	} catch {
+	} catch (error) {
+		Container.get(Logger).warn('Failed to resolve owning project for workflow', {
+			workflowId,
+			error,
+		});
 		return { projectId: '', projectName: '' };
 	}
 }
