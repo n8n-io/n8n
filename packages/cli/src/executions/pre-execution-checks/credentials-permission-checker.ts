@@ -3,7 +3,7 @@ import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { In, Not } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { displayParameter, UserError } from 'n8n-workflow';
 
@@ -54,9 +54,7 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return;
 
-		// Instance credentials are never usable in workflows, regardless of who
-		// owns the workflow — so this check runs before the owner bypass below.
-		await this.ensureNoInstanceCredentials(workflowCredIds, credIdsToNodes, homeProject);
+		await this.ensureOnlyWorkflowCredentials(workflowCredIds, credIdsToNodes, homeProject);
 
 		const homeProjectOwner = await this.ownershipService.getPersonalProjectOwnerCached(
 			homeProject.id,
@@ -87,22 +85,17 @@ export class CredentialsPermissionChecker {
 		}
 	}
 
-	/**
-	 * Rejects the execution if any node references an instance credential
-	 * (`availability: 'instance'`). Those power instance-level features only and
-	 * must never resolve inside a workflow, even one owned by an instance admin.
-	 */
-	private async ensureNoInstanceCredentials(
+	private async ensureOnlyWorkflowCredentials(
 		workflowCredIds: string[],
 		credIdsToNodes: { [credentialId: string]: INode[] },
 		homeProject: Project,
 	) {
-		const instanceCredentials = await this.credentialsRepository.find({
-			where: { id: In(workflowCredIds), availability: 'instance' },
+		const unavailableCredentials = await this.credentialsRepository.find({
+			where: { id: In(workflowCredIds), availability: Not('workflow') },
 			select: ['id'],
 		});
-		if (instanceCredentials.length > 0) {
-			const nodeToFlag = credIdsToNodes[instanceCredentials[0].id][0];
+		if (unavailableCredentials.length > 0) {
+			const nodeToFlag = credIdsToNodes[unavailableCredentials[0].id][0];
 			throw new InaccessibleCredentialError(nodeToFlag, homeProject);
 		}
 	}
@@ -115,7 +108,7 @@ export class CredentialsPermissionChecker {
 	): Promise<Set<string>> {
 		const accessibleSet = new Set(accessibleCredentialIds);
 		const globalCredentials = await this.credentialsRepository.find({
-			where: { isGlobal: true },
+			where: { isGlobal: true, availability: 'workflow' },
 			select: ['id'],
 		});
 		for (const globalCred of globalCredentials) {

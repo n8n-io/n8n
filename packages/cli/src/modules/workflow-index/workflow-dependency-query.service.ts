@@ -93,7 +93,7 @@ export class WorkflowDependencyQueryService {
 		const [credentials, workflows, dataTables] = await Promise.all([
 			maps.allCredIds.size > 0
 				? this.credentialsRepository.find({
-						where: { id: In([...maps.allCredIds]) },
+						where: { id: In([...maps.allCredIds]), availability: 'workflow' },
 						select: ['id', 'name'],
 					})
 				: [],

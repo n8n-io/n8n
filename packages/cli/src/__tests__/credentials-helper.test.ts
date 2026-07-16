@@ -101,6 +101,21 @@ describe('CredentialsHelper', () => {
 				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
 			).rejects.toThrow(errorMessage);
 		});
+
+		test('rejects credentials that are not available to workflows', async () => {
+			credentialsRepository.findOneByOrFail.mockResolvedValueOnce(
+				mock<CredentialsEntity>({
+					id: '1',
+					name: 'Instance credential',
+					type: 'bar',
+					availability: 'instance',
+				}),
+			);
+
+			await expect(
+				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
+			).rejects.toThrow('This credential cannot be used in workflows');
+		});
 	});
 
 	describe('applyDefaultsAndOverwrites', () => {

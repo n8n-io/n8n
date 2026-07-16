@@ -6,6 +6,7 @@ import {
 	type CredentialsEntity,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
+import { Not } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -54,7 +55,6 @@ describe('CredentialsPermissionChecker', () => {
 		node.credentials!.someCredential.id = credentialId;
 		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(personalProject);
 		projectService.findProjectsWorkflowIsIn.mockResolvedValueOnce([personalProject.id]);
-		// First `find` call is always the instance-credential check; default to none.
 		credentialsRepository.find.mockResolvedValue([]);
 	});
 
@@ -147,7 +147,7 @@ describe('CredentialsPermissionChecker', () => {
 
 		expect(credentialsRepository.find).toHaveBeenCalledWith({
 			select: ['id'],
-			where: { id: expect.anything(), availability: 'instance' },
+			where: { id: expect.anything(), availability: Not('workflow') },
 		});
 		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
 	});
@@ -172,7 +172,6 @@ describe('CredentialsPermissionChecker', () => {
 			id: credentialId,
 			isGlobal: true,
 		});
-		// First `find` is the instance-credential check, second is the global fetch
 		credentialsRepository.find.mockResolvedValueOnce([]).mockResolvedValueOnce([globalCredential]);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
@@ -186,6 +185,7 @@ describe('CredentialsPermissionChecker', () => {
 			select: ['id'],
 			where: {
 				isGlobal: true,
+				availability: 'workflow',
 			},
 		});
 	});
@@ -206,7 +206,6 @@ describe('CredentialsPermissionChecker', () => {
 			id: credentialId,
 			isGlobal: true,
 		});
-		// First `find` is the instance-credential check, second is the global fetch
 		credentialsRepository.find.mockResolvedValueOnce([]).mockResolvedValueOnce([globalCredential]);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
@@ -220,6 +219,7 @@ describe('CredentialsPermissionChecker', () => {
 			select: ['id'],
 			where: {
 				isGlobal: true,
+				availability: 'workflow',
 			},
 		});
 	});

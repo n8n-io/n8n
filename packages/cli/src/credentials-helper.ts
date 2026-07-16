@@ -310,13 +310,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			throw error;
 		}
 
-		// Backstop for the pre-execution permission check: instance credentials
-		// power instance-level features only and must never resolve here, since
-		// this lookup is otherwise unfiltered by design.
-		if (credential.availability === 'instance') {
-			throw new UserError(
-				`Credential "${credential.name}" is an instance credential and cannot be used in workflows`,
-			);
+		// Keep non-workflow credentials blocked even if an earlier access check is bypassed.
+		if ((credential.availability ?? 'workflow') !== 'workflow') {
+			throw new UserError('This credential cannot be used in workflows');
 		}
 
 		return credential;

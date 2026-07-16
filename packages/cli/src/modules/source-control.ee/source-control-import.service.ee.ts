@@ -24,7 +24,7 @@ import {
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
 import { In, type DataSourceOptions } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import glob from 'fast-glob';
@@ -324,10 +324,8 @@ export class SourceControlImportService {
 				if (!remote?.id) {
 					return false;
 				}
-				// Instance credentials are managed at instance level only — they sync
-				// solely for contexts with access to all projects.
 				if (remote.availability === 'instance') {
-					return context.hasAccessToAllProjects();
+					return hasGlobalScope(context.user, 'credential:manageInstance');
 				}
 				const owner = remote.ownedBy;
 				return (
@@ -1002,6 +1000,9 @@ export class SourceControlImportService {
 					availability = 'workflow',
 				} = credential;
 				const newCredentialObject = new Credentials({ id, name }, type);
+				if (availability === 'instance' && (isGlobal || isResolvable || resolvableAllowFallback)) {
+					throw new UserError('Instance credentials cannot be global or dynamically resolved');
+				}
 
 				if (existingCredential?.data) {
 					// Credential exists - merge expressions from remote while preserving local plain values
@@ -1025,12 +1026,17 @@ export class SourceControlImportService {
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
 				await this.credentialsRepository.upsert(
-					{ ...newCredentialObject, isGlobal, isResolvable, resolvableAllowFallback, availability },
+					{
+						...newCredentialObject,
+						isGlobal,
+						isResolvable,
+						resolvableAllowFallback,
+						availability,
+						...(availability === 'instance' ? { isManaged: false, resolverId: null } : {}),
+					},
 					['id'],
 				);
 
-				// Instance credentials are ownerless — no `SharedCredentials` row is
-				// created for them.
 				if (availability === 'instance') {
 					await this.sharedCredentialsRepository.delete({ credentialsId: credential.id });
 				} else {
@@ -1683,7 +1689,9 @@ export class SourceControlImportService {
 
 	async deleteCredentialsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
 		for (const candidate of candidates) {
-			await this.credentialsService.delete(user, candidate.id);
+			await this.credentialsService.delete(user, candidate.id, {
+				includeInstanceCredentials: true,
+			});
 		}
 	}
 

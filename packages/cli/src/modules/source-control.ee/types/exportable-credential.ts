@@ -33,12 +33,6 @@ export interface ExportableCredential {
 	 * resolution fails. Travels with `isResolvable`.
 	 */
 	resolvableAllowFallback?: boolean;
-
-	/**
-	 * Usage surface of the credential. Instance credentials (`'instance'`) are
-	 * ownerless and consumable only by instance-level features; they sync only
-	 * for contexts with access to all projects.
-	 */
 	availability?: CredentialAvailability;
 }
 

@@ -282,6 +282,7 @@ describe('OauthService', () => {
 				'credential-id',
 				req.user,
 				['credential:update'],
+				{ includeInstanceCredentials: true },
 			);
 		});
 
@@ -302,6 +303,7 @@ describe('OauthService', () => {
 				'credential-id',
 				req.user,
 				['credential:connect'],
+				{ includeInstanceCredentials: true },
 			);
 		});
 	});
@@ -531,6 +533,7 @@ describe('OauthService', () => {
 				'credential-id',
 				req.user,
 				['credential:update'],
+				{ includeInstanceCredentials: true },
 			);
 		});
 

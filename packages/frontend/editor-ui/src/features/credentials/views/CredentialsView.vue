@@ -195,8 +195,7 @@ const onFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean)
 const maybeCreateCredential = () => {
 	if (props.credentialId === 'create') {
 		if (projectPermissions.value.credential.create) {
-			// Reset modal data: it persists across opens, and a stale `availability`
-			// preset from the instance-credentials settings page must not leak here.
+			// Modal data persists across opens, so clear the instance-only preset.
 			uiStore.openModalWithData({ name: CREDENTIAL_SELECT_MODAL_KEY, data: {} });
 		} else {
 			void router.replace({ name: VIEWS.HOMEPAGE });

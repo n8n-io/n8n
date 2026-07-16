@@ -69,9 +69,7 @@ export function useNodeCredentialOptions(
 			);
 		});
 
-		// Instance credentials are excluded server-side already; this is a
-		// defensive filter so they can never surface in node credential pickers.
-		options = options.filter((option) => option.availability !== 'instance');
+		options = options.filter((option) => (option.availability ?? 'workflow') === 'workflow');
 
 		if (node.value?.type === HTTP_REQUEST_NODE_TYPE) {
 			options = options.filter((option) => !option.isManaged);

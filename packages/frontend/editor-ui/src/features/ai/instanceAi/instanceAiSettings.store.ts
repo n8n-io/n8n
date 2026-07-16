@@ -176,7 +176,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			const [s, p] = await Promise.all(promises);
 			settings.value = s;
 			preferences.value = p;
-			if (!isProxyEnabled.value) {
+			if (!isProxyEnabled.value && !isCloudManaged.value) {
 				const credPromises: [
 					Promise<InstanceAiModelCredential[]>,
 					Promise<InstanceAiModelCredential[]>,
@@ -610,16 +610,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		}
 	}
 
-	/** Re-fetches the instance credentials usable as the shared model credential (e.g. after creating one). */
 	async function refreshInstanceModelCredentials(): Promise<void> {
 		if (isProxyEnabled.value || !canManage.value) return;
 		try {
 			instanceModelCredentials.value = await fetchInstanceModelCredentials(
 				rootStore.restApiContext,
 			);
-		} catch {
-			// Silently fail — credentials list will refresh on next full fetch
-		}
+		} catch {}
 	}
 
 	async function refreshModuleSettings(): Promise<void> {

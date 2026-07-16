@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
-import type { SettingsRepository, User, UserRepository } from '@n8n/db';
+import type { CredentialsEntity, SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
@@ -197,6 +197,71 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('instance model credential', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		it('rejects workflow credentials', async () => {
+			credentialsFinderService.findCredentialById.mockResolvedValue(
+				mock<CredentialsEntity>({
+					id: 'cred-1',
+					type: 'openAiApi',
+					availability: 'workflow',
+				}),
+			);
+
+			await expect(service.updateAdminSettings({ modelCredentialId: 'cred-1' })).rejects.toThrow(
+				'The model credential must be an instance credential',
+			);
+		});
+
+		it('uses the admin credential before per-user credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				type: 'openAiApi',
+				availability: 'instance',
+			});
+			credentialsFinderService.findCredentialById.mockResolvedValue(credential);
+			credentialsService.decrypt.mockResolvedValue({ apiKey: 'admin-key' });
+
+			await service.updateAdminSettings({ modelCredentialId: credential.id });
+			const result = await service.resolveModelConfig(
+				mock<User>({
+					settings: {
+						instanceAi: { credentialId: 'user-credential', modelName: 'gpt-4.1' },
+					},
+				}),
+			);
+
+			expect(result).toEqual({ id: 'openai/gpt-4.1', url: '', apiKey: 'admin-key' });
+			expect(credentialsService.decrypt).toHaveBeenCalledWith(credential, true);
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ value: expect.stringContaining('"modelCredentialId":"cred-1"') }),
+				['key'],
+			);
+		});
+
+		it('ignores a configured admin credential on cloud', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				type: 'openAiApi',
+				availability: 'instance',
+			});
+			credentialsFinderService.findCredentialById.mockResolvedValue(credential);
+			await service.updateAdminSettings({ modelCredentialId: credential.id });
+			vi.clearAllMocks();
+			globalConfig.deployment.type = 'cloud';
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toBe('openai/gpt-4');
+			expect(credentialsFinderService.findCredentialById).not.toHaveBeenCalled();
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			await expect(service.listInstanceModelCredentials()).resolves.toEqual([]);
+		});
+	});
+
 	describe('executeMcpTool permission', () => {
 		beforeEach(() => {
 			aiService.isProxyEnabled.mockReturnValue(false);
@@ -325,6 +390,12 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		describe('updateAdminSettings', () => {
+			it('should reject model credentials on cloud', async () => {
+				await expect(service.updateAdminSettings({ modelCredentialId: 'cred-1' })).rejects.toThrow(
+					UnprocessableRequestError,
+				);
+			});
+
 			it('should reject advanced fields on cloud', async () => {
 				await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 					UnprocessableRequestError,

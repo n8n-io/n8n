@@ -29,9 +29,6 @@ const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 
 const searchQuery = ref('');
 
-// Availability preset by the surface that opened this modal (e.g. Settings →
-// Instance credentials). Carried into the new-credential dialog so the created
-// credential is scoped to instance-level features.
 const presetAvailability = computed<NewCredentialsModal['availability']>(() => {
 	const data = uiStore.modalsById[CREDENTIAL_SELECT_MODAL_KEY]?.data;
 	return data?.availability === 'instance' ? 'instance' : undefined;

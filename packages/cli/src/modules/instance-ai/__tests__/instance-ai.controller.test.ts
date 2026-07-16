@@ -1000,6 +1000,15 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('listInstanceModelCredentials', () => {
+		it('should require instanceAi:manage scope', () => {
+			expect(scopeOf('listInstanceModelCredentials')).toEqual({
+				scope: 'instanceAi:manage',
+				globalOnly: true,
+			});
+		});
+	});
+
 	describe('listThreads', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('listThreads')).toEqual({ scope: 'instanceAi:message', globalOnly: true });

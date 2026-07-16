@@ -104,7 +104,7 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 			"Allows creating, deleting, and changing the type of end-user credentials, which resolve to each user's own connection.",
 	},
 	'credential:manageInstance': {
-		displayName: 'Manage Instance Credential',
+		displayName: 'Manage instance credentials',
 		description:
 			'Allows creating, updating, and deleting instance credentials, which are used only by instance-level features and are not available in workflows.',
 	},

@@ -255,9 +255,6 @@ const closeOnSave = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
 });
 
-// Availability preset by the surface that opened the modal (e.g. Instance AI admin
-// settings creating an admin-managed instance credential). Only meaningful for new
-// credentials — availability is fixed after creation.
 const presetAvailability = computed<NewCredentialsModal['availability']>(() => {
 	if (props.mode !== 'new') return undefined;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
@@ -269,8 +266,6 @@ const appendToBody = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.appendToBody === true;
 });
 
-// Instance credentials are admin-managed and never shared with projects/users:
-// preset on new credentials, carried on the loaded response when editing.
 const isInstanceCredential = computed(
 	() =>
 		presetAvailability.value === 'instance' || currentCredential.value?.availability === 'instance',
@@ -1378,7 +1373,7 @@ const { width } = useElementSize(credNameRef);
 							:credential-permissions="credentialPermissions"
 							:mode="mode"
 							:selected-credential="selectedCredential"
-							:is-private-credentials-enabled="isPrivateCredentialsEnabled"
+							:is-private-credentials-enabled="isPrivateCredentialsEnabled && !isInstanceCredential"
 							:is-resolvable="isResolvable"
 							:connected-by-me="connectedByMe"
 							:is-new-credential="isNewCredential"

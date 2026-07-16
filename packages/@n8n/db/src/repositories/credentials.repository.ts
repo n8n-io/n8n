@@ -1,7 +1,7 @@
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, Like, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, Like, Repository } from '@n8n/typeorm';
 
 import { CredentialsEntity, type User } from '../entities';
 import {
@@ -39,7 +39,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
 		}
 
-		return await this.find(this.excludeInstanceCredentials(findManyOptions));
+		return await this.find(this.onlyWorkflowCredentials(findManyOptions));
 	}
 
 	async findManyAndCount(
@@ -57,18 +57,13 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
 		}
 
-		return await this.findAndCount(this.excludeInstanceCredentials(findManyOptions));
+		return await this.findAndCount(this.onlyWorkflowCredentials(findManyOptions));
 	}
 
-	/**
-	 * Instance credentials (`availability: 'instance'`) power instance-level
-	 * features only and must never surface in generic credential listings, which
-	 * back the UI and public API. They are queried explicitly where needed.
-	 */
-	private excludeInstanceCredentials(
+	private onlyWorkflowCredentials(
 		findManyOptions: FindManyOptions<CredentialsEntity>,
 	): FindManyOptions<CredentialsEntity> {
-		findManyOptions.where = { ...findManyOptions.where, availability: Not('instance') };
+		findManyOptions.where = { ...findManyOptions.where, availability: 'workflow' };
 		return findManyOptions;
 	}
 
@@ -224,6 +219,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		findManyOptions.where = {
 			...findManyOptions.where,
 			isGlobal: true,
+			availability: 'workflow',
 			...(type ? { type: Like(`%${type}%`) } : {}),
 		};
 		return await this.find(findManyOptions);
@@ -238,6 +234,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		const qb = this.createQueryBuilder('credential');
 		qb.where('credential.isGlobal = :isGlobal', { isGlobal: true });
+		qb.andWhere('credential.availability = :availability', { availability: 'workflow' });
 		if (type) {
 			qb.andWhere('credential.type LIKE :type', { type: `%${type}%` });
 		}
@@ -283,6 +280,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 */
 	async findAllCredentialsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
 		return await this.findBy({
+			availability: 'workflow',
 			shared: { project: { sharedWorkflows: { workflowId } } },
 		});
 	}
@@ -294,7 +292,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 * are part of this project.
 	 */
 	async findAllCredentialsForProject(projectId: string): Promise<CredentialsEntity[]> {
-		return await this.findBy({ shared: { projectId } });
+		return await this.findBy({ availability: 'workflow', shared: { projectId } });
 	}
 
 	/**
@@ -306,7 +304,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		type: string,
 		projectId: string,
 	): Promise<CredentialsEntity[]> {
-		return await this.findBy({ name, type, shared: { projectId } });
+		return await this.findBy({ name, type, availability: 'workflow', shared: { projectId } });
 	}
 
 	/**
@@ -372,6 +370,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		} = {},
 	): SelectQueryBuilder<CredentialsEntity> {
 		const qb = this.createQueryBuilder('credential');
+		qb.andWhere('credential.availability = :availability', { availability: 'workflow' });
 
 		if (options.filters?.dependency) {
 			addCredentialDependencyExistsFilter(qb, options.filters.dependency);

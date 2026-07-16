@@ -314,8 +314,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return credentials;
 	};
 
-	// Deliberately does not write into `state.credentials`: instance credentials are
-	// excluded from the regular credentials list and must not leak into pickers.
 	const fetchInstanceCredentials = async (): Promise<ICredentialsResponse[]> => {
 		return await credentialsApi.getInstanceCredentials(rootStore.restApiContext);
 	};

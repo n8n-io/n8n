@@ -523,8 +523,6 @@ export class SourceControlExportService {
 				'credential:owner',
 			);
 
-			// Instance credentials are ownerless, so the owner-sharing query above
-			// cannot find them — they are fetched and exported separately.
 			const instanceCredentialsToBeExported = await this.credentialsRepository.find({
 				where: { id: In(credentialIds), availability: 'instance' },
 			});

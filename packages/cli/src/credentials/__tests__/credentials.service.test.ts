@@ -843,11 +843,26 @@ describe('CredentialsService', () => {
 			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
 		});
 
+		it('does not expose instance credentials through public API testing', async () => {
+			credentialsFinderService.findCredentialById.mockResolvedValue(
+				mock<CredentialsEntity>({
+					id: 'instance-credential',
+					availability: 'instance',
+				}),
+			);
+
+			await expect(service.testById(ownerUser.id, 'instance-credential')).rejects.toThrow(
+				CredentialNotFoundError,
+			);
+			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+		});
+
 		it('decrypts stored credential and calls credentials tester', async () => {
 			const storedCredential = mock<CredentialsEntity>({
 				id: 'credential-id',
 				name: 'Test Credential',
 				type: 'githubApi',
+				availability: 'workflow',
 			});
 			const decryptedData = { accessToken: 'secret-token' } as ICredentialDataDecryptedObject;
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
@@ -871,6 +886,80 @@ describe('CredentialsService', () => {
 				},
 			);
 			expect(result).toEqual(testResult);
+		});
+	});
+
+	describe('getOne', () => {
+		const instanceCredential = mock<CredentialsEntity>({
+			id: 'instance-credential',
+			availability: 'instance',
+			data: 'encrypted-data',
+		});
+
+		it('does not return instance credentials without an explicit opt-in', async () => {
+			credentialsRepository.findOneBy.mockResolvedValue(instanceCredential);
+			sharedCredentialsRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.getOne(ownerUser, instanceCredential.id, false)).rejects.toThrow(
+				`Credential with ID "${instanceCredential.id}" could not be found.`,
+			);
+			expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
+			expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith({
+				where: {
+					credentialsId: instanceCredential.id,
+					credentials: { availability: 'workflow' },
+				},
+				relations: { credentials: true },
+			});
+		});
+
+		it('returns instance credentials to managers when explicitly requested', async () => {
+			credentialsRepository.findOneBy.mockResolvedValue(instanceCredential);
+
+			await expect(
+				service.getOne(ownerUser, instanceCredential.id, false, {
+					includeInstanceCredentials: true,
+				}),
+			).resolves.toMatchObject({ id: instanceCredential.id, availability: 'instance' });
+			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({
+				id: instanceCredential.id,
+				availability: 'instance',
+			});
+		});
+	});
+
+	describe('delete', () => {
+		it('does not opt generic callers into instance credential access', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+			await service.delete(ownerUser, 'credential-id');
+
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'credential-id',
+				ownerUser,
+				['credential:delete'],
+				{},
+			);
+			expect(credentialsRepository.remove).not.toHaveBeenCalled();
+		});
+
+		it('deletes instance credentials when management access is explicitly requested', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'instance-credential',
+				availability: 'instance',
+				isResolvable: false,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+
+			await service.delete(ownerUser, credential.id, { includeInstanceCredentials: true });
+
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				credential.id,
+				ownerUser,
+				['credential:delete'],
+				{ includeInstanceCredentials: true },
+			);
+			expect(credentialsRepository.remove).toHaveBeenCalledWith(credential);
 		});
 	});
 
@@ -919,6 +1008,7 @@ describe('CredentialsService', () => {
 				payload.id,
 				ownerUser,
 				['credential:read'],
+				{ includeInstanceCredentials: true },
 			);
 			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
 			expect(service.unredact).toHaveBeenCalledWith(payload.data, decryptedData, []);
@@ -2384,6 +2474,35 @@ describe('CredentialsService', () => {
 				expect(
 					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
 				).toHaveBeenCalledWith('validProvider', 'personal-project-id');
+			});
+
+			it('should reject instance credential creation without the global scope', async () => {
+				await expect(
+					service.createUnmanagedCredential(
+						{
+							name: 'Instance Credential',
+							type: 'apiKey',
+							data: {},
+							availability: 'instance',
+						},
+						memberUser,
+					),
+				).rejects.toThrow('You do not have permission to create instance credentials');
+			});
+
+			it('should reject contradictory instance credential flags', async () => {
+				await expect(
+					service.createUnmanagedCredential(
+						{
+							name: 'Instance Credential',
+							type: 'apiKey',
+							data: {},
+							availability: 'instance',
+							isGlobal: true,
+						},
+						ownerUser,
+					),
+				).rejects.toThrow('Instance credentials cannot be globally shared');
 			});
 		});
 	});

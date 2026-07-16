@@ -3,8 +3,6 @@ import type { CredentialsEntity } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { Not } from '@n8n/typeorm';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
@@ -70,8 +68,7 @@ const credentialsHandlers: CredentialsHandlers = {
 				select: ['id', 'name', 'type', 'createdAt', 'updatedAt'],
 				relations: ['shared', 'shared.project'],
 				order: { createdAt: 'DESC' },
-				// Instance credentials are not exposed through the public API
-				where: { availability: Not('instance') },
+				where: { availability: 'workflow' },
 			});
 
 			const data = credentials.map((credential: CredentialsEntity) => {

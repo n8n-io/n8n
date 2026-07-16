@@ -87,8 +87,6 @@ const permissionKeys: Array<{
 
 const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
 
-// LLM credential types the backend accepts as instance model credentials.
-// Labels are provider brand names, not translatable UI text.
 const INSTANCE_MODEL_CREDENTIAL_TYPES: Array<{ type: string; label: string }> = [
 	{ type: 'openAiApi', label: 'OpenAI' },
 	{ type: 'anthropicApi', label: 'Anthropic' },
@@ -102,7 +100,9 @@ const INSTANCE_MODEL_CREDENTIAL_TYPES: Array<{ type: string; label: string }> = 
 	{ type: 'cohereApi', label: 'Cohere' },
 ];
 
-const showModelCredentialSection = computed(() => isAdmin.value && !store.isProxyEnabled);
+const showModelCredentialSection = computed(
+	() => isAdmin.value && !store.isProxyEnabled && !store.isCloudManaged,
+);
 
 const selectedModelCredentialId = computed(() => {
 	if (store.draft.modelCredentialId !== undefined) return store.draft.modelCredentialId ?? '';
@@ -134,8 +134,6 @@ function handleCreateModelCredential(credentialType: string) {
 	);
 }
 
-// Re-fetch the instance model credentials when the credential edit modal closes;
-// auto-select the credential the admin just created.
 watch(
 	() => uiStore.isModalActiveById[CREDENTIAL_EDIT_MODAL_KEY],
 	async (isOpen, wasOpen) => {
@@ -477,6 +475,7 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	flex-wrap: wrap;
 	gap: var(--spacing--md);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	min-height: 64px;
@@ -501,7 +500,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	// Let the text column shrink and wrap instead of running under the controls
 	flex: 1;
 	min-width: 0;
 }
@@ -541,10 +539,13 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
+	flex-wrap: wrap;
+	max-width: 100%;
 }
 
 .modelCredentialSelect {
 	width: 240px;
+	max-width: 100%;
 }
 
 .manageInstanceCredentialsLink {

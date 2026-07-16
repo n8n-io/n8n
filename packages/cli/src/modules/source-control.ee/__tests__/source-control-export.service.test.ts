@@ -73,7 +73,6 @@ describe('SourceControlExportService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
-		// Instance credentials are fetched separately during export; none by default
 		credentialsRepository.find.mockResolvedValue([]);
 	});
 

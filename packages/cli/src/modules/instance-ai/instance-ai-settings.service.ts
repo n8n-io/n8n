@@ -114,11 +114,6 @@ export class InstanceAiSettingsService {
 
 	private adminSearchCredentialId: string | null = null;
 
-	/**
-	 * Instance credential (`availability: 'instance'`) powering the Instance AI
-	 * model for all users. Takes precedence over per-user BYOK; env vars remain
-	 * the fallback.
-	 */
 	private adminModelCredentialId: string | null = null;
 
 	constructor(
@@ -210,8 +205,6 @@ export class InstanceAiSettingsService {
 			InstanceAiSettingsService.MANAGED_ADMIN_FIELDS,
 			this.deploymentLabel(),
 		);
-		// Unlike the fields above, the model credential is admin-settable on
-		// self-hosted instances; only proxy/cloud deployments manage it externally.
 		if (this.isCloud || this.aiService.isProxyEnabled()) {
 			this.rejectManagedFields(update, ['modelCredentialId'], this.deploymentLabel());
 		}
@@ -318,12 +311,8 @@ export class InstanceAiSettingsService {
 			}));
 	}
 
-	/**
-	 * List instance credentials (`availability: 'instance'`) usable as LLM
-	 * providers, for the admin model-credential picker.
-	 */
 	async listInstanceModelCredentials(): Promise<InstanceAiModelCredential[]> {
-		if (this.aiService.isProxyEnabled()) return [];
+		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
 		const instanceCredentials = await this.credentialsFinderService.findInstanceCredentials();
 		return instanceCredentials
 			.filter((c) => SUPPORTED_CREDENTIAL_TYPES.includes(c.type))
@@ -335,9 +324,10 @@ export class InstanceAiSettingsService {
 			}));
 	}
 
-	/** Reject admin model-credential selections that are not LLM-capable instance credentials. */
 	private async ensureIsInstanceModelCredential(credentialId: string): Promise<void> {
-		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
+		const credential = await this.credentialsFinderService.findCredentialById(credentialId, {
+			includeInstanceCredentials: true,
+		});
 		if (
 			!credential ||
 			credential.availability !== 'instance' ||
@@ -511,17 +501,10 @@ export class InstanceAiSettingsService {
 		return prefs.modelName ?? this.extractModelName(this.config.model);
 	}
 
-	/**
-	 * Resolve the current model configuration for an agent run.
-	 * Precedence: admin instance credential → per-user BYOK credential → env vars.
-	 */
 	async resolveModelConfig(user: User): Promise<ModelConfig> {
 		const prefs = this.readUserPreferences(user);
 		const modelName = prefs.modelName ?? this.extractModelName(this.config.model);
 
-		// The admin-selected instance credential applies to every user; it is
-		// resolved server-side, without per-user access checks, which is safe
-		// because only instance credentials are accepted here.
 		const adminModelConfig = await this.resolveAdminModelConfig(modelName);
 		if (adminModelConfig) {
 			return adminModelConfig;
@@ -548,13 +531,14 @@ export class InstanceAiSettingsService {
 		);
 	}
 
-	/** Resolve the model config from the admin-selected instance credential, if any. */
 	private async resolveAdminModelConfig(modelName: string): Promise<ModelConfig | null> {
+		if (this.isCloud || this.aiService.isProxyEnabled()) return null;
 		const credentialId = this.adminModelCredentialId;
 		if (!credentialId) return null;
 
-		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
-		// Only instance credentials may be decrypted on behalf of all users.
+		const credential = await this.credentialsFinderService.findCredentialById(credentialId, {
+			includeInstanceCredentials: true,
+		});
 		if (!credential || credential.availability !== 'instance') return null;
 
 		return await this.buildModelConfigFromCredential(credential, modelName);

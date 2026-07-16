@@ -153,11 +153,30 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
+		if (credential.availability === 'instance') {
+			if (
+				credential.isGlobal ||
+				credential.isResolvable ||
+				credential.isManaged ||
+				credential.resolvableAllowFallback ||
+				credential.resolverId
+			) {
+				throw new UserError(
+					'Instance credentials cannot be global, managed, or dynamically resolved',
+				);
+			}
+			Object.assign(credential, {
+				isGlobal: false,
+				isResolvable: false,
+				isManaged: false,
+				resolvableAllowFallback: false,
+				resolverId: null,
+			});
+		}
+
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
 		const credentialsId = credential.id ?? (result.identifiers[0].id as string);
 
-		// Instance credentials are ownerless — no `SharedCredentials` row is
-		// created for them.
 		if (credential.availability === 'instance') {
 			await this.transactionManager.delete(SharedCredentials, { credentialsId });
 			return;

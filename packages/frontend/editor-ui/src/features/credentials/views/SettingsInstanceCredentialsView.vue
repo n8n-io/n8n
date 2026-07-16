@@ -64,7 +64,6 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.instanceCredentials'));
 	try {
 		await Promise.all([
-			// Types drive the icon and display name; a failure there shouldn't block the list.
 			credentialsStore.fetchCredentialTypes(false).catch(() => {}),
 			fetchCredentials(),
 		]);
@@ -73,7 +72,6 @@ onMounted(async () => {
 	}
 });
 
-// Re-fetch when the credential edit modal closes: it covers create, rotate and rename.
 watch(
 	() => uiStore.isModalActiveById[CREDENTIAL_EDIT_MODAL_KEY],
 	async (isOpen, wasOpen) => {
@@ -84,8 +82,6 @@ watch(
 );
 
 function addCredential() {
-	// The type-select modal reads `availability` from its modal data and presets
-	// it on the credential created from it.
 	uiStore.openModalWithData({
 		name: CREDENTIAL_SELECT_MODAL_KEY,
 		data: { availability: 'instance' },
@@ -114,8 +110,6 @@ async function deleteCredential(credential: ICredentialsResponse) {
 		await credentialsStore.deleteCredential({ id: credential.id });
 		credentials.value = credentials.value.filter((c) => c.id !== credential.id);
 	} catch (error) {
-		// The backend refuses deletion while an instance-level feature (e.g. the
-		// AI Assistant model) still references the credential; surface its message.
 		toast.showError(error, i18n.baseText('settings.instanceCredentials.showError.delete.title'));
 	}
 }
@@ -239,6 +233,7 @@ async function onAction(action: string, credential: ICredentialsResponse) {
 .cardDescription {
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: var(--spacing--4xs);
 }
 </style>

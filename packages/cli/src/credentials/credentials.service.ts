@@ -680,7 +680,10 @@ export class CredentialsService {
 		globalScopes: Scope[],
 		relations: FindOptionsRelations<SharedCredentials> = { credentials: true },
 	): Promise<SharedCredentials | null> {
-		let where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
+		let where: FindOptionsWhere<SharedCredentials> = {
+			credentialsId: credentialId,
+			credentials: { availability: 'workflow' },
+		};
 
 		if (!hasGlobalScope(user, globalScopes, { mode: 'allOf' })) {
 			where = {
@@ -930,13 +933,18 @@ export class CredentialsService {
 	 * If the user does not have permission to delete the credential this does
 	 * nothing and returns void.
 	 */
-	async delete(user: User, credentialId: string) {
+	async delete(
+		user: User,
+		credentialId: string,
+		options: { includeInstanceCredentials?: boolean } = {},
+	) {
 		await this.externalHooks.run('credentials.delete', [credentialId]);
 
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
 			['credential:delete'],
+			options,
 		);
 
 		if (!credential) {
@@ -956,13 +964,6 @@ export class CredentialsService {
 		await this.credentialsRepository.remove(credential);
 	}
 
-	/**
-	 * Blocks deleting an instance credential that instance-level features still
-	 * reference, so the feature doesn't silently break. Reads the raw settings
-	 * row rather than the owning module's service, since modules are optional
-	 * and their settings must keep protecting the credential even when the
-	 * module is disabled.
-	 */
 	private async ensureInstanceCredentialIsNotInUse(credentialId: string): Promise<void> {
 		const row = await this.settingsRepository.findByKey('instanceAi.settings');
 		if (!row) return;
@@ -983,7 +984,7 @@ export class CredentialsService {
 	async testById(userId: User['id'], credentialId: string) {
 		const storedCredential = await this.credentialsFinderService.findCredentialById(credentialId);
 
-		if (!storedCredential) {
+		if (!storedCredential || (storedCredential.availability ?? 'workflow') !== 'workflow') {
 			throw new CredentialNotFoundError(credentialId);
 		}
 
@@ -996,6 +997,7 @@ export class CredentialsService {
 			credentials.id,
 			user,
 			['credential:read'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!storedCredential) {
@@ -1228,10 +1230,13 @@ export class CredentialsService {
 		return mergedData;
 	}
 
-	async getOne(user: User, credentialId: string, includeDecryptedData: boolean) {
-		// Instance credentials are ownerless (no sharing rows); they are readable
-		// only via the global manageInstance scope.
-		if (hasGlobalScope(user, 'credential:manageInstance')) {
+	async getOne(
+		user: User,
+		credentialId: string,
+		includeDecryptedData: boolean,
+		options: { includeInstanceCredentials?: boolean } = {},
+	) {
+		if (options.includeInstanceCredentials && hasGlobalScope(user, 'credential:manageInstance')) {
 			const instanceCredential = await this.credentialsRepository.findOneBy({
 				id: credentialId,
 				availability: 'instance',
@@ -1588,12 +1593,6 @@ export class CredentialsService {
 		return { ...credential, scopes };
 	}
 
-	/**
-	 * Creates an instance credential (`availability: 'instance'`): owned by the
-	 * instance itself rather than a project (no `SharedCredentials` row), usable
-	 * only by instance-level features, and managed solely via the global
-	 * `credential:manageInstance` scope.
-	 */
 	private async createInstanceCredential(opts: CreateCredentialOptions, user: User) {
 		if (!hasGlobalScope(user, 'credential:manageInstance')) {
 			throw new ForbiddenError('You do not have permission to create instance credentials');
@@ -1605,8 +1604,7 @@ export class CredentialsService {
 			throw new BadRequestError('Instance credentials cannot be end-user or managed credentials');
 		}
 
-		// The caller's personal project is used purely to run the standard data
-		// validation (e.g. external-secrets permissions); no ownership is created.
+		// Validation still needs a project context, but instance credentials remain ownerless.
 		const validationProjectId = await this.resolveOwningProjectIdForNewCredential(user, undefined);
 		await this.checkCredentialData(
 			opts.type,

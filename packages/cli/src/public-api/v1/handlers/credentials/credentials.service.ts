@@ -2,8 +2,6 @@ import type { PublicApiCredentialResponse } from '@n8n/api-types';
 import type { User, ICredentialsDb, SharedCredentials } from '@n8n/db';
 import { CredentialsEntity, CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { Not } from '@n8n/typeorm';
 import { Credentials } from 'n8n-core';
 import {
 	BaseError,
@@ -71,9 +69,7 @@ export function buildSharedForCredential(
 
 export async function getCredential(credentialId: string): Promise<CredentialsEntity | null> {
 	return await Container.get(CredentialsRepository).findOne({
-		// Instance credentials are not exposed through the public API; they are
-		// managed in the UI only, via the global manageInstance scope.
-		where: { id: credentialId, availability: Not('instance') },
+		where: { id: credentialId, availability: 'workflow' },
 		relations: ['shared', 'shared.project'],
 	});
 }
@@ -105,7 +101,16 @@ export async function saveCredential(
 ): Promise<PublicApiCredentialResponse> {
 	const { scopes: _scopes, ...credential } = await Container.get(
 		CredentialsService,
-	).createUnmanagedCredential({ ...payload, projectId: payload.projectId ?? undefined }, user);
+	).createUnmanagedCredential(
+		{
+			type: payload.type,
+			name: payload.name,
+			data: payload.data,
+			projectId: payload.projectId,
+			availability: 'workflow',
+		},
+		user,
+	);
 
 	const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
 		credential.id,

@@ -1367,7 +1367,6 @@ export interface InstanceAiAdminSettingsResponse {
 	daytonaCredentialId: string | null;
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
-	/** Instance credential powering the Instance AI model for all users. */
 	modelCredentialId: string | null;
 	localGatewayDisabled: boolean;
 	browserUseEnabled: boolean;

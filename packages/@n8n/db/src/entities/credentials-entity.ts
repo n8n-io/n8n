@@ -5,19 +5,7 @@ import { WithTimestampsAndStringId } from './abstract-entity';
 import type { SharedCredentials } from './shared-credentials';
 import type { ICredentialsDb } from './types-db';
 
-/**
- * Usage surface: where a credential may be consumed.
- * - `workflow`: a normal credential, usable in the workflow canvas.
- * - `instance`: usable only by instance-level features (e.g. the Instance AI
- *   model); never selectable or resolvable in the canvas. Managed by global
- *   owners/admins via the `credential:manageInstance` scope and owned by the
- *   instance itself (no `SharedCredentials` row).
- *
- * Kept as a varchar rather than a DB enum so future surfaces (e.g. sandbox-only
- * credentials) don't require a table rebuild. Who manages a credential and who
- * owns it depend on the specific value, not on the column: never treat
- * `availability !== 'workflow'` as shorthand for "system credential".
- */
+/** Where a credential may be consumed. */
 export type CredentialAvailability = 'workflow' | 'instance';
 
 @Entity()
@@ -76,9 +64,6 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	@Column({ type: 'varchar', nullable: true })
 	resolverId: string | null;
 
-	/**
-	 * Usage surface: where this credential may be consumed. See {@link CredentialAvailability}.
-	 */
 	@Column({ type: 'varchar', length: 16, default: 'workflow' })
 	availability: CredentialAvailability;
 

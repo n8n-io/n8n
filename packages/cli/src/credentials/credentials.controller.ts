@@ -102,11 +102,6 @@ export class CredentialsController {
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
 	}
 
-	/**
-	 * Lists all instance credentials (`availability: 'instance'`) for the
-	 * instance-credentials management UI. Must be declared before the
-	 * `/:credentialId` route so it isn't shadowed by it.
-	 */
 	@Get('/instance')
 	@GlobalScope('credential:manageInstance')
 	async getInstanceCredentials() {
@@ -144,7 +139,9 @@ export class CredentialsController {
 					// to do so.
 					query.includeData,
 				)
-			: await this.credentialsService.getOne(req.user, credentialId, query.includeData);
+			: await this.credentialsService.getOne(req.user, credentialId, query.includeData, {
+					includeInstanceCredentials: true,
+				});
 
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
@@ -224,6 +221,7 @@ export class CredentialsController {
 			credentialId,
 			user,
 			['credential:update'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
@@ -240,12 +238,9 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
-		// Instance credentials only reach this point for holders of the global
-		// manageInstance scope (see CredentialsFinderService.findCredentialForUser);
-		// their availability, sharing, and resolvability are immutable.
 		if (
 			credential.availability === 'instance' &&
-			(body.isGlobal !== undefined || body.isResolvable !== undefined)
+			(body.isGlobal === true || body.isResolvable === true)
 		) {
 			throw new BadRequestError(
 				'Instance credentials cannot be globally shared or converted to end-user credentials',
@@ -376,6 +371,7 @@ export class CredentialsController {
 			credentialId,
 			req.user,
 			['credential:delete'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
@@ -388,7 +384,9 @@ export class CredentialsController {
 			);
 		}
 
-		await this.credentialsService.delete(req.user, credential.id);
+		await this.credentialsService.delete(req.user, credential.id, {
+			includeInstanceCredentials: true,
+		});
 
 		this.eventService.emit('credentials-deleted', {
 			user: req.user,
@@ -428,12 +426,6 @@ export class CredentialsController {
 
 		if (!credential) {
 			throw new ForbiddenError();
-		}
-
-		// Instance credentials are ownerless and consumed only by instance-level
-		// features — sharing has no meaning for them.
-		if (credential.availability === 'instance') {
-			throw new BadRequestError('Instance credentials cannot be shared');
 		}
 
 		const currentProjectIds = credential.shared
