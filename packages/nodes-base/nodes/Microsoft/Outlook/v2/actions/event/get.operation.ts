@@ -75,7 +75,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 
 	const endpoint = `/calendar/events/${eventId}`;
 
-	const responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
+	const responseData = await microsoftApiRequest.call(this, 'GET', endpoint, index, undefined, qs);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData as IDataObject[]),
