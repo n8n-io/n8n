@@ -28,7 +28,7 @@ migrate it before the others to keep downstream typechecks green.
 - [x] `@n8n/playwright-janitor` (`packages/testing/janitor`)
 - [x] `@n8n/performance` (`packages/testing/performance`)
 - [x] `n8n-playwright` (`packages/testing/playwright`)
-- [ ] `@n8n/rules-engine` (`packages/testing/rules-engine`)
+- [x] `@n8n/rules-engine` (`packages/testing/rules-engine`)
 - [ ] `@n8n/test-impact` (`packages/testing/test-impact`)
 - [ ] `n8n-containers` (`packages/testing/containers`) — no `typescript`
       devDependency today; add `catalog:typescript` if/when one is needed
