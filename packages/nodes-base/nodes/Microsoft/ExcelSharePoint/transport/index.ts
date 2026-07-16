@@ -50,18 +50,18 @@ export async function microsoftApiRequest<T extends IDataObject = IDataObject>(
  * request carries `qs`; every following page is fetched from `@odata.nextLink`
  * verbatim, exactly as Graph returned it, never rebuilt with extra params.
  */
-export async function microsoftApiRequestAllItems(
+export async function microsoftApiRequestAllItems<T extends IDataObject = IDataObject>(
 	this: AuthContext,
 	endpoint: string,
 	qs: IDataObject = {},
-): Promise<IDataObject[]> {
-	const returnData: IDataObject[] = [];
+): Promise<T[]> {
+	const returnData: T[] = [];
 	let uri: string | undefined;
 
 	do {
 		const response = uri
-			? await (microsoftApiRequest<GraphListResponse>).call(this, 'GET', '', {}, {}, uri)
-			: await (microsoftApiRequest<GraphListResponse>).call(
+			? await (microsoftApiRequest<GraphListResponse<T>>).call(this, 'GET', '', {}, {}, uri)
+			: await (microsoftApiRequest<GraphListResponse<T>>).call(
 					this,
 					'GET',
 					endpoint,

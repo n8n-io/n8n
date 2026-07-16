@@ -8,7 +8,7 @@ import type {
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { libraryRLC, siteRLC, workbookRLC } from '../../descriptions/common.descriptions';
-import type { GraphListResponse } from '../../helpers/interfaces';
+import type { GraphListResponse, GraphWorksheet } from '../../helpers/interfaces';
 import { resolveWorkbookRoot } from '../../helpers/utils';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
@@ -86,12 +86,12 @@ export async function execute(
 			const workbookRoot = await resolveWorkbookRoot.call(this, i);
 			const endpoint = `${workbookRoot}/workbook/worksheets`;
 
-			let responseData: IDataObject[];
+			let responseData: GraphWorksheet[];
 			if (returnAll) {
-				responseData = await microsoftApiRequestAllItems.call(this, endpoint, qs);
+				responseData = await (microsoftApiRequestAllItems<GraphWorksheet>).call(this, endpoint, qs);
 			} else {
 				qs.$top = this.getNodeParameter('limit', i);
-				const response = await (microsoftApiRequest<GraphListResponse>).call(
+				const response = await (microsoftApiRequest<GraphListResponse<GraphWorksheet>>).call(
 					this,
 					'GET',
 					endpoint,

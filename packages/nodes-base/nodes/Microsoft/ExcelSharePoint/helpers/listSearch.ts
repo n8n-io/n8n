@@ -1,11 +1,13 @@
-import type { IDataObject, INodeListSearchItems, INodeListSearchResult } from 'n8n-workflow';
+import type { INodeListSearchItems, INodeListSearchResult } from 'n8n-workflow';
 
-import type { AuthContext, GraphListResponse } from './interfaces';
+import type { AuthContext, GraphListResponse, NamedGraphItem } from './interfaces';
 import { microsoftApiRequest } from '../transport';
 
 const PAGE_SIZE = 100;
 
-export type ListSearchItemMapper = (item: IDataObject) => INodeListSearchItems;
+export type ListSearchItemMapper<T extends NamedGraphItem = NamedGraphItem> = (
+	item: T,
+) => INodeListSearchItems;
 
 /**
  * Lists one page of a Graph collection for a searchable resourceLocator dropdown.
@@ -14,16 +16,23 @@ export type ListSearchItemMapper = (item: IDataObject) => INodeListSearchItems;
  * `paginationToken` is always the previous page's `@odata.nextLink`, followed
  * verbatim — never rebuilt with `endpoint` or extra query params.
  */
-export async function listSearchPage(
+export async function listSearchPage<T extends NamedGraphItem = NamedGraphItem>(
 	this: AuthContext,
 	endpoint: string,
-	mapItem: ListSearchItemMapper,
+	mapItem: ListSearchItemMapper<T>,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const response = paginationToken
-		? await (microsoftApiRequest<GraphListResponse>).call(this, 'GET', '', {}, {}, paginationToken)
-		: await (microsoftApiRequest<GraphListResponse>).call(
+		? await (microsoftApiRequest<GraphListResponse<T>>).call(
+				this,
+				'GET',
+				'',
+				{},
+				{},
+				paginationToken,
+			)
+		: await (microsoftApiRequest<GraphListResponse<T>>).call(
 				this,
 				'GET',
 				endpoint,
@@ -33,11 +42,7 @@ export async function listSearchPage(
 
 	const items = response.value ?? [];
 	const filtered = filter
-		? items.filter((item) =>
-				String(item.name ?? '')
-					.toLowerCase()
-					.includes(filter.toLowerCase()),
-			)
+		? items.filter((item) => item.name.toLowerCase().includes(filter.toLowerCase()))
 		: items;
 
 	return {

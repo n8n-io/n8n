@@ -7,6 +7,7 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { SERVICE_PRINCIPAL_AUTH } from '../helpers/constants';
+import type { GraphTable, GraphWorksheet } from '../helpers/interfaces';
 import { listSearchPage } from '../helpers/listSearch';
 import { resolveSiteId, resolveWorkbookRoot, validatePathSegment } from '../helpers/utils';
 import { getExcelSharePointCredentialType, microsoftApiRequest } from '../transport';
@@ -148,10 +149,10 @@ export async function getSheets(
 ): Promise<INodeListSearchResult> {
 	const workbookRoot = await resolveWorkbookRoot.call(this);
 
-	return await listSearchPage.call(
+	return await (listSearchPage<GraphWorksheet>).call(
 		this,
 		`${workbookRoot}/workbook/worksheets`,
-		(sheet) => ({ name: String(sheet.name), value: String(sheet.id) }),
+		(sheet) => ({ name: sheet.name, value: sheet.id }),
 		filter,
 		paginationToken,
 	);
@@ -169,10 +170,10 @@ export async function getTables(
 		this.getNodeParameter('worksheet', undefined, { extractValue: true }) as string,
 	);
 
-	return await listSearchPage.call(
+	return await (listSearchPage<GraphTable>).call(
 		this,
 		`${workbookRoot}/workbook/worksheets/${encodeURIComponent(worksheetId)}/tables`,
-		(table) => ({ name: String(table.name), value: String(table.id) }),
+		(table) => ({ name: table.name, value: table.id }),
 		filter,
 		paginationToken,
 	);
