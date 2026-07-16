@@ -2823,7 +2823,7 @@ importers:
         version: link:../../frontend/@n8n/design-system
       vue:
         specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
+        version: 3.5.26(@typescript/typescript6@6.0.2)
     devDependencies:
       '@iconify-json/lucide':
         specifier: 'catalog:'
@@ -2837,15 +2837,18 @@ importers:
       '@types/chrome':
         specifier: 0.0.300
         version: 0.0.300
+      '@typescript/native':
+        specifier: catalog:typescript-tooling
+        version: typescript@7.0.2
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 5.2.4(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(@typescript/typescript6@6.0.2))
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript-tooling
+        version: '@typescript/typescript6@6.0.2'
       unplugin-icons:
         specifier: catalog:frontend
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
@@ -2854,7 +2857,7 @@ importers:
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
-        version: 5.1.0(vue@3.5.26(typescript@6.0.2))
+        version: 5.1.0(vue@3.5.26(@typescript/typescript6@6.0.2))
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -30582,6 +30585,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@vitejs/plugin-vue@5.2.4(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(@typescript/typescript6@6.0.2))':
+    dependencies:
+      vite: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
+
   '@vitejs/plugin-vue@5.2.4(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))':
     dependencies:
       vite: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -30874,7 +30882,6 @@ snapshots:
       '@vue/compiler-ssr': 3.5.26
       '@vue/shared': 3.5.26
       vue: 3.5.26(@typescript/typescript6@6.0.2)
-    optional: true
 
   '@vue/server-renderer@3.5.26(vue@3.5.26(typescript@6.0.2))':
     dependencies:
@@ -41486,6 +41493,11 @@ snapshots:
       tinyglobby: 0.2.15
       vite: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
 
+  vite-svg-loader@5.1.0(vue@3.5.26(@typescript/typescript6@6.0.2)):
+    dependencies:
+      svgo: 3.3.2
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
+
   vite-svg-loader@5.1.0(vue@3.5.26(typescript@6.0.2)):
     dependencies:
       svgo: 3.3.2
@@ -41706,7 +41718,6 @@ snapshots:
       '@vue/shared': 3.5.26
     optionalDependencies:
       typescript: '@typescript/typescript6@6.0.2'
-    optional: true
 
   vue@3.5.26(typescript@6.0.2):
     dependencies:
