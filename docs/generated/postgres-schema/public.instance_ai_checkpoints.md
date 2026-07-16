@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | expiredAt | timestamp(3) with time zone |  | true |  |  | Soft-delete timestamp: null means live; non-null marks the row as a tombstone. |
-| hostRunId | varchar(64) |  | true |  |  |  |
+| hostRunId | varchar(64) |  | true |  |  | Host (Instance AI) run id; distinct from the agent-SDK runId parsed from the checkpoint key. |
 | key | varchar(255) |  | false | [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) |  | Opaque checkpoint key from the agent runtime. |
 | resourceId | varchar(255) |  | true |  |  | Resource ID recorded by the agent runtime. |
 | runId | varchar(255) |  | true |  |  | Run ID parsed from the checkpoint key when available. |
