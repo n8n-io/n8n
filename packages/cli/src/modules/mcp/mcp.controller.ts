@@ -210,6 +210,10 @@ export class McpController {
 		const transport = new StreamableHTTPServerTransport({
 			sessionIdGenerator: undefined,
 		});
+		// Reverse proxies (e.g. the nginx ingress in front of cloud instances)
+		// buffer streamed responses by default, which would hold back progress
+		// notifications until the request completes.
+		res.setHeader('X-Accel-Buffering', 'no');
 		res.on('close', () => {
 			void transport.close();
 			void server.close();
