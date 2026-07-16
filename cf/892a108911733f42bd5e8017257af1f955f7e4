@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-requirement.exporter.test.ts
+  s_fb5671d9a4cb6a::t_23d31f0dea92a2 1-51
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_fb5671d9a4cb6a::t_23d31f0dea92a2 117,136-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cf892a108911733f42bd5e8017257af1f955f7e4",
+  "prompts": {},
+  "sessions": {
+    "s_fb5671d9a4cb6a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f69db-d265-7bf2-abe3-d168e19d9c4a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

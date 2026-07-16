@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/EvaluationsWizardSidepanel.vue
+  s_c46f71b1296adf::t_e209ef1e84fd6e 180-182,184-185
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestsPanel.vue
+  s_c46f71b1296adf::t_c26ecdb285b0c2 122-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "14face01951e91b1305c2f3845bb374002429579",
+  "prompts": {},
+  "sessions": {
+    "s_c46f71b1296adf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93ce490b-f2a8-430e-acee-587c52f383a1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
