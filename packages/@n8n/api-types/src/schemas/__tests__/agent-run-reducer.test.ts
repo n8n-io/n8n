@@ -1419,6 +1419,37 @@ describe('agent-run-reducer', () => {
 			expect(reconnected).toEqual(live);
 		});
 
+		it('text-block heals a suffix-only attacher to deep-equal the block-only state', () => {
+			// Mid-segment attach (refresh served by a main without the coalescer
+			// buffer): the client holds only the segment's tail when the block
+			// arrives, so the entry is a SUFFIX of the block, not a prefix.
+			let suffixOnly = createInitialState(AGENT);
+			suffixOnly = reduceEvent(suffixOnly, makeRunStart(RUN, AGENT));
+			suffixOnly = reduceEvent(suffixOnly, makeTextDelta(RUN, AGENT, ' 4', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeTextDelta(RUN, AGENT, ' 5', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeTextBlock('1 2 3 4 5', 'msg-open'));
+
+			let blockOnly = createInitialState(AGENT);
+			blockOnly = reduceEvent(blockOnly, makeRunStart(RUN, AGENT));
+			blockOnly = reduceEvent(blockOnly, makeTextBlock('1 2 3 4 5', 'msg-open'));
+
+			expect(suffixOnly).toEqual(blockOnly);
+		});
+
+		it('reasoning-block heals a suffix-only attacher to deep-equal the block-only state', () => {
+			let suffixOnly = createInitialState(AGENT);
+			suffixOnly = reduceEvent(suffixOnly, makeRunStart(RUN, AGENT));
+			suffixOnly = reduceEvent(suffixOnly, makeReasoningDelta(RUN, AGENT, 'oughts', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeReasoningDelta(RUN, AGENT, '...', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeReasoningBlock('deep thoughts...', 'msg-open'));
+
+			let blockOnly = createInitialState(AGENT);
+			blockOnly = reduceEvent(blockOnly, makeRunStart(RUN, AGENT));
+			blockOnly = reduceEvent(blockOnly, makeReasoningBlock('deep thoughts...', 'msg-open'));
+
+			expect(suffixOnly).toEqual(blockOnly);
+		});
+
 		it('a block with a DIFFERENT responseId appends instead of replacing', () => {
 			// Pure replay (no live deltas seen): every block appends.
 			let state = createInitialState(AGENT);
