@@ -2193,6 +2193,111 @@ describe('generate-types', () => {
 			expect(generateTypes.propertyAppliesToVersion(prop, 2.1)).toBe(false);
 			expect(generateTypes.propertyAppliesToVersion(prop, 3)).toBe(false);
 		});
+
+		it('should handle eq (equal) version condition', () => {
+			const prop: NodeProperty = {
+				name: 'modelName',
+				displayName: 'Model',
+				type: 'options',
+				default: 'models/gemini-2.5-flash',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { eq: 1 } }],
+					},
+				},
+			};
+			expect(generateTypes.propertyAppliesToVersion(prop, 1)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 1.1)).toBe(false);
+			expect(generateTypes.propertyAppliesToVersion(prop, 2)).toBe(false);
+		});
+
+		it('should handle not (not equal) version condition', () => {
+			const prop: NodeProperty = {
+				name: 'text',
+				displayName: 'Text',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { not: 2 } }],
+					},
+				},
+			};
+			expect(generateTypes.propertyAppliesToVersion(prop, 1)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 2)).toBe(false);
+			expect(generateTypes.propertyAppliesToVersion(prop, 2.1)).toBe(true);
+		});
+
+		it('should handle between version condition', () => {
+			const prop: NodeProperty = {
+				name: 'text',
+				displayName: 'Text',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { between: { from: 2, to: 3 } } }],
+					},
+				},
+			};
+			expect(generateTypes.propertyAppliesToVersion(prop, 2)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 2.5)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 3)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 1.9)).toBe(false);
+			expect(generateTypes.propertyAppliesToVersion(prop, 3.1)).toBe(false);
+		});
+	});
+
+	describe('filterPropertiesForVersion with per-version default overrides', () => {
+		// The light-versioning pattern: the same property is declared twice with
+		// version-gated defaults (e.g. LmChatGoogleGemini's modelName). An `eq`
+		// gate that isn't enforced leaks the old property into newer versions'
+		// typedefs, where the emitter keeps the first (old) duplicate.
+		const oldDefault: NodeProperty = {
+			name: 'modelName',
+			displayName: 'Model',
+			type: 'options',
+			default: 'models/old-model',
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { eq: 1 } }],
+				},
+			},
+		};
+		const newDefault: NodeProperty = {
+			...oldDefault,
+			default: 'models/new-model',
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { gte: 1.1 } }],
+				},
+			},
+		};
+
+		it('should keep only the matching duplicate for each version', () => {
+			const v1 = generateTypes.filterPropertiesForVersion([oldDefault, newDefault], 1);
+			expect(v1.map((p) => p.default)).toEqual(['models/old-model']);
+
+			const v11 = generateTypes.filterPropertiesForVersion([oldDefault, newDefault], 1.1);
+			expect(v11.map((p) => p.default)).toEqual(['models/new-model']);
+		});
+
+		it('should emit the version-correct @default in the generated type file', () => {
+			const node: NodeTypeDescription = {
+				name: '@n8n/n8n-nodes-langchain.lmChatExample',
+				displayName: 'Example Chat Model',
+				description: 'Example',
+				group: ['transform'],
+				version: [1, 1.1],
+				inputs: [],
+				outputs: ['ai_languageModel'],
+				properties: [oldDefault, newDefault],
+			};
+
+			const content = generateTypes.generateSingleVersionTypeFile(node, 1.1);
+			expect(content).toContain('@default models/new-model');
+			expect(content).not.toContain('@default models/old-model');
+		});
 	});
 
 	describe('groupVersionsByProperties', () => {

@@ -68,6 +68,7 @@ describe('TypeORMAgentCheckpointStore', () => {
 		expect(checkpointRepo.create).toHaveBeenCalledWith({
 			key: 'checkpoint:run-1',
 			runId: 'run-1',
+			hostRunId: null,
 			threadId: 'thread-1',
 			resourceId: 'user-1',
 			state,

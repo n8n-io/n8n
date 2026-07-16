@@ -512,6 +512,33 @@ describe('N8nDropdownMenu', () => {
 		});
 	});
 
+	describe('width prop', () => {
+		it('should default the content width to 24rem', async () => {
+			render(DropdownMenu, {
+				props: {
+					items: createItems(3),
+					modelValue: true,
+				},
+			});
+
+			const { dropdown } = await getDropdownContent();
+			expect(dropdown).toHaveStyle({ '--n8n--dropdown-menu-width': '24rem' });
+		});
+
+		it('should apply a custom width value', async () => {
+			render(DropdownMenu, {
+				props: {
+					items: createItems(3),
+					modelValue: true,
+					width: '10rem',
+				},
+			});
+
+			const { dropdown } = await getDropdownContent();
+			expect(dropdown).toHaveStyle({ '--n8n--dropdown-menu-width': '10rem' });
+		});
+	});
+
 	describe('teleported prop', () => {
 		it('should teleport to body by default', async () => {
 			const { container } = render(DropdownMenu, {

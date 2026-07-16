@@ -14,7 +14,7 @@ export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
-export type {
+export {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
 } from './ai/ai-gateway-config-response.dto';
@@ -156,6 +156,12 @@ export {
 } from './log-streaming/create-destination.dto';
 export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
 export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
+export {
+	PublicCreateDestinationDto,
+	PublicDestinationResponseDto,
+	type PublicCreateDestination,
+	type PublicDestinationType,
+} from './log-streaming/public-destination.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 export {

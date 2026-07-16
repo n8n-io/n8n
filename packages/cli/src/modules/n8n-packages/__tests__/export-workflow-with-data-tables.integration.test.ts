@@ -82,6 +82,11 @@ describe('workflow package export — with data tables', () => {
 				],
 			});
 
+			// The manifest also points at the schema file, so import can create the table.
+			expect(manifest.dataTables).toEqual([
+				{ id: dataTable.id, name: 'Customers', target: 'data-tables/customers' },
+			]);
+
 			const dataTableFile = entries.find((e) => e.name === 'data-tables/customers/data-table.json');
 			expect(dataTableFile).toBeDefined();
 			const parsed = jsonParse<Record<string, unknown>>(dataTableFile!.content.toString());
