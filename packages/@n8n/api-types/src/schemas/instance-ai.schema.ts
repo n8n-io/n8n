@@ -915,8 +915,19 @@ export type InstanceAiCredentialHandoffContext = z.infer<
 	typeof instanceAiCredentialHandoffContextSchema
 >;
 
+export const instanceAiAgentPreviewHandoffContextSchema = z.object({
+	source: z.literal('agent-preview'),
+	agentId: z.string().min(1).max(128),
+	threadId: z.string().min(1).max(128),
+	executionId: z.string().min(1).max(64).optional(),
+});
+export type InstanceAiAgentPreviewHandoffContext = z.infer<
+	typeof instanceAiAgentPreviewHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
+	instanceAiAgentPreviewHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
@@ -1114,6 +1125,8 @@ export interface InstanceAiMessage {
 	isStreaming: boolean;
 	agentTree?: InstanceAiAgentNode;
 	attachments?: InstanceAiAttachment[];
+	/** Structured handoff context reconstructed from a stored user message. */
+	context?: InstanceAiHandoffContext;
 }
 
 export interface InstanceAiThreadSummary {

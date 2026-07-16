@@ -53,8 +53,10 @@ import {
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee';
@@ -102,6 +104,7 @@ export class TestRunnerService {
 		private readonly evaluationCollectionRepository: EvaluationCollectionRepository,
 		private readonly evaluationConfigRepository: EvaluationConfigRepository,
 		private readonly workflowCompiler: WorkflowCompilerService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/**
@@ -317,11 +320,18 @@ export class TestRunnerService {
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
 
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflow.id,
+		);
+
 		this.eventService.emit('workflow-executed', {
 			user: metadata.userId ? { id: metadata.userId } : undefined,
 			workflowId: workflow.id,
 			workflowName: workflow.name,
 			executionId,
+			projectId,
+			projectName,
 			source: 'evaluation',
 		});
 
