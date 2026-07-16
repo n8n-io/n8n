@@ -32,6 +32,7 @@ const {
 		getGroupForNode: vi.fn(),
 		getGroupById: vi.fn(),
 		addNodesToGroup: vi.fn(),
+		deleteGroup: vi.fn(),
 	},
 	mockNodeTypesStore: {
 		getNodeType: vi.fn().mockReturnValue({
@@ -115,7 +116,7 @@ vi.mock('vue-router', () => ({
 }));
 
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
-import { UpdateNodeGroupCommand } from '@/app/models/history';
+import { RemoveNodeGroupCommand, UpdateNodeGroupCommand } from '@/app/models/history';
 
 function makeNode(name: string, position: [number, number] = [0, 0]): INodeUi {
 	return {
@@ -173,6 +174,7 @@ describe('useWorkflowExtraction', () => {
 		mockWorkflowDocumentStore.getGroupForNode.mockReset();
 		mockWorkflowDocumentStore.getGroupById.mockReset();
 		mockWorkflowDocumentStore.addNodesToGroup.mockReset();
+		mockWorkflowDocumentStore.deleteGroup.mockReset();
 		mockNodeTypesStore.getNodeType.mockClear();
 		mockHistoryStore.startRecordingUndo.mockClear();
 		mockHistoryStore.stopRecordingUndo.mockClear();
@@ -286,9 +288,18 @@ describe('useWorkflowExtraction', () => {
 		it('records the Execute Workflow node joining the group as undoable history', async () => {
 			const nodeA = makeNode('A', [0, 0]);
 			const nodeB = makeNode('B', [200, 0]);
-			const group = { id: 'g1', name: 'Group 1', nodeIds: [nodeA.id, nodeB.id] };
+			const nodeC = makeNode('C', [400, 0]); // survives, so the group is kept
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [nodeA.id, nodeB.id, nodeC.id] };
 
-			setWorkflowNodes([nodeA, nodeB]);
+			setWorkflowNodes([nodeA, nodeB, nodeC]);
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				A: {
+					[NodeConnectionTypes.Main]: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				B: {
+					[NodeConnectionTypes.Main]: [[{ node: 'C', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
 			mockWorkflowDocumentStore.getGroupForNode.mockImplementation((nodeId: string) =>
 				group.nodeIds.includes(nodeId) ? group : undefined,
 			);
@@ -300,7 +311,7 @@ describe('useWorkflowExtraction', () => {
 
 			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
 
-			await extractNodesIntoSubworkflow({ start: 'A', end: undefined }, [nodeA, nodeB], 'Sub');
+			await extractNodesIntoSubworkflow({ start: 'A', end: 'B' }, [nodeA, nodeB], 'Sub');
 
 			expect(mockWorkflowDocumentStore.addNodesToGroup).toHaveBeenCalledWith(group.id, [
 				'execute-node-id',
@@ -312,8 +323,86 @@ describe('useWorkflowExtraction', () => {
 				| UpdateNodeGroupCommand
 				| undefined;
 			expect(groupCommand).toBeInstanceOf(UpdateNodeGroupCommand);
-			expect(groupCommand?.before.nodeIds).toEqual([nodeA.id, nodeB.id]);
-			expect(groupCommand?.after.nodeIds).toEqual([nodeA.id, nodeB.id, 'execute-node-id']);
+			expect(groupCommand?.before.nodeIds).toEqual([nodeA.id, nodeB.id, nodeC.id]);
+			expect(groupCommand?.after.nodeIds).toEqual([
+				nodeA.id,
+				nodeB.id,
+				nodeC.id,
+				'execute-node-id',
+			]);
+		});
+
+		it('dissolves the group when every group member is extracted', async () => {
+			const nodeA = makeNode('A', [0, 0]);
+			const nodeB = makeNode('B', [200, 0]);
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [nodeA.id, nodeB.id] };
+
+			setWorkflowNodes([nodeA, nodeB]);
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				A: {
+					[NodeConnectionTypes.Main]: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+			mockWorkflowDocumentStore.getGroupForNode.mockImplementation((nodeId: string) =>
+				group.nodeIds.includes(nodeId) ? group : undefined,
+			);
+			mockWorkflowDocumentStore.getGroupById.mockReturnValue({
+				...group,
+				nodeIds: [...group.nodeIds],
+			});
+
+			mockSuccessfulWorkflowCreation();
+
+			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
+
+			await extractNodesIntoSubworkflow({ start: 'A', end: 'B' }, [nodeA, nodeB], 'Sub');
+
+			expect(mockWorkflowDocumentStore.deleteGroup).toHaveBeenCalledWith(group.id);
+
+			expect(mockWorkflowDocumentStore.addNodesToGroup).not.toHaveBeenCalled();
+
+			const removeCommand = mockHistoryStore.pushCommandToUndo.mock.calls
+				.map(([command]) => command)
+				.find((command) => command instanceof RemoveNodeGroupCommand) as
+				| RemoveNodeGroupCommand
+				| undefined;
+			expect(removeCommand).toBeInstanceOf(RemoveNodeGroupCommand);
+			expect(removeCommand?.group.nodeIds).toEqual([nodeA.id, nodeB.id]);
+		});
+
+		it('keeps the group when only some members are extracted', async () => {
+			const nodeA = makeNode('A', [0, 0]);
+			const nodeB = makeNode('B', [200, 0]);
+			const nodeC = makeNode('C', [400, 0]); // sobrevive: no se extrae
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [nodeA.id, nodeB.id, nodeC.id] };
+
+			setWorkflowNodes([nodeA, nodeB, nodeC]);
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				A: {
+					[NodeConnectionTypes.Main]: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				B: {
+					[NodeConnectionTypes.Main]: [[{ node: 'C', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+			mockWorkflowDocumentStore.getGroupForNode.mockImplementation((nodeId: string) =>
+				group.nodeIds.includes(nodeId) ? group : undefined,
+			);
+			mockWorkflowDocumentStore.getGroupById
+				.mockReturnValueOnce({ ...group, nodeIds: [...group.nodeIds] })
+				.mockReturnValueOnce({ ...group, nodeIds: [...group.nodeIds, 'execute-node-id'] });
+
+			mockSuccessfulWorkflowCreation();
+
+			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
+
+			await extractNodesIntoSubworkflow({ start: 'A', end: 'B' }, [nodeA, nodeB], 'Sub');
+
+			expect(mockWorkflowDocumentStore.addNodesToGroup).toHaveBeenCalledWith(group.id, [
+				'execute-node-id',
+			]);
+
+			expect(mockWorkflowDocumentStore.deleteGroup).not.toHaveBeenCalled();
 		});
 
 		it('copies shared sub-nodes into the sub-workflow but keeps them in the parent', async () => {
