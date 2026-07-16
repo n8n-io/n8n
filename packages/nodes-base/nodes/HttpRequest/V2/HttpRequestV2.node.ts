@@ -44,9 +44,9 @@ export class HttpRequestV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
+			iconColor: 'blue',
 			defaults: {
 				name: 'HTTP Request',
-				color: '#2200DD',
 			},
 			version: 2,
 			inputs: [NodeConnectionTypes.Main],

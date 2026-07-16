@@ -19,9 +19,9 @@ export class Cron implements INodeType {
 		eventTriggerDescription: '',
 		activationMessage:
 			'Your cron trigger will now trigger executions on the schedule you have defined.',
+		iconColor: 'emerald',
 		defaults: {
 			name: 'Cron',
-			color: '#29a568',
 		},
 
 		inputs: [],

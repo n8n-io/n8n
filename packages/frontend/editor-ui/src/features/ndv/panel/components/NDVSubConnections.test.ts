@@ -30,7 +30,7 @@ const nodeType: INodeTypeDescription = {
 		},
 	],
 	properties: [],
-	defaults: { color: '', name: '' },
+	defaults: { name: '' },
 	group: [],
 	description: '',
 };
@@ -153,7 +153,7 @@ describe('NDVSubConnections', () => {
 			],
 			outputs: [NodeConnectionTypes.AiLanguageModel],
 			properties: [],
-			defaults: { color: '', name: '' },
+			defaults: { name: '' },
 			group: [],
 			description: '',
 		};

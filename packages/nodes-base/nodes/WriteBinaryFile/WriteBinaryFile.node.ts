@@ -17,9 +17,9 @@ export class WriteBinaryFile implements INodeType {
 		group: ['output'],
 		version: 1,
 		description: 'Writes a binary file to disk',
+		iconColor: 'red',
 		defaults: {
 			name: 'Write Binary File',
-			color: '#CC2233',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
