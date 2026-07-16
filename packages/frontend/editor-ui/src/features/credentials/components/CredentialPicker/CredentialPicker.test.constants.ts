@@ -196,7 +196,7 @@ export const TEST_CREDENTIAL_TYPES: ICredentialTypeMap = {
 			dark: 'icons/n8n-nodes-base/dist/nodes/OpenAi/openai.dark.svg',
 		},
 		supportedNodes: [
-			'n8n-nodes-base.openAi',
+			'@n8n/n8n-nodes-langchain.openAi',
 			'@n8n/n8n-nodes-langchain.embeddingsOpenAi',
 			'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 		],

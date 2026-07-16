@@ -37,7 +37,7 @@ describe('Audio Transcribe Operation', () => {
 		mockNode = mock<INode>({
 			id: 'test-node',
 			name: 'OpenAI Audio Transcribe',
-			type: 'n8n-nodes-base.openAi',
+			type: '@n8n/n8n-nodes-langchain.openAi',
 			typeVersion: 2,
 			position: [0, 0],
 			parameters: {},

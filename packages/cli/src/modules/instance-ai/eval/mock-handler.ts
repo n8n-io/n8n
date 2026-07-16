@@ -298,7 +298,7 @@ async function generateMockResponse(
 	// A request without a URL is un-mockable and never comes from a correctly
 	// configured node. Declarative (routing) nodes emit one when the selected
 	// resource/operation doesn't exist on the node type — routing then
-	// contributes neither URL nor method (observed: n8n-nodes-base.openAi
+	// contributes neither URL nor method (observed: @n8n/n8n-nodes-langchain.openAi
 	// configured with audio/transcribe, which only the LangChain OpenAI node
 	// supports). Answer with a descriptive 400 so the node fails with a real
 	// API-shaped error the verifier can trace to the node's configuration.

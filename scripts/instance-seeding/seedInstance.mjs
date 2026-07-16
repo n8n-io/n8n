@@ -524,7 +524,7 @@ function workflowNodes({ theme, credPick, subWorkflowIds, dataTableRef, centralD
 					parameters: { resource: 'text', operation: 'message', model: 'gpt-4o-mini' },
 					id: rand(36),
 					name: 'OpenAI',
-					type: 'n8n-nodes-base.openAi',
+					type: '@n8n/n8n-nodes-langchain.openAi',
 					typeVersion: 1.3,
 					position: [680, 300],
 					credentials: { openAiApi: { id: httpCred.id, name: httpCred.name } },
