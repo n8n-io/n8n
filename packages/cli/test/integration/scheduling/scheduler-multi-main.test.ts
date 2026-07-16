@@ -42,8 +42,9 @@ describe('scheduler across two mains over one database', () => {
 			executor: { leaseSeconds: 30, lookaheadSeconds: 5, batchSize },
 		});
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (task) => {
+			execute: async (task, report) => {
 				executed.push(task);
+				return report.notDispatched();
 			},
 		});
 		return scheduler;
