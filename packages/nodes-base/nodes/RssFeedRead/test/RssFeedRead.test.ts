@@ -92,5 +92,45 @@ describe('RssFeedReadTrigger', () => {
 			expect(Parser.prototype.parseString).toHaveBeenCalledWith('<rss />');
 			expect(pollData.lastItemDate).toEqual(lastItemDate);
 		});
+
+		it('should not throw and should return null when the feed responds 429 (rate limited)', async () => {
+			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
+			pollFunctions.getWorkflowStaticData.mockReturnValue(mock({ lastItemDate }));
+			const rateLimitError = Object.assign(new Error('Too Many Requests'), {
+				httpCode: '429',
+				response: { status: 429 },
+			});
+			helpers.httpRequest.mockRejectedValue(rateLimitError);
+
+			await expect(node.poll.call(pollFunctions)).resolves.toEqual(null);
+			expect(helpers.httpRequest).toHaveBeenCalledTimes(1);
+			expect(Parser.prototype.parseString).not.toHaveBeenCalled();
+		});
+
+		it('should not throw and should return null when the feed responds 5xx (server error)', async () => {
+			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
+			pollFunctions.getWorkflowStaticData.mockReturnValue(mock({ lastItemDate }));
+			const serverError = Object.assign(new Error('Bad Gateway'), {
+				httpCode: '502',
+				response: { status: 502 },
+			});
+			helpers.httpRequest.mockRejectedValue(serverError);
+
+			await expect(node.poll.call(pollFunctions)).resolves.toEqual(null);
+			expect(helpers.httpRequest).toHaveBeenCalledTimes(1);
+		});
+
+		it('should still throw a clear error for a permanently broken feed (404)', async () => {
+			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
+			pollFunctions.getWorkflowStaticData.mockReturnValue(mock({ lastItemDate }));
+			const notFound = Object.assign(new Error('Not Found'), {
+				httpCode: '404',
+				response: { status: 404 },
+			});
+			helpers.httpRequest.mockRejectedValue(notFound);
+
+			await expect(node.poll.call(pollFunctions)).rejects.toThrowError();
+			expect(Parser.prototype.parseString).not.toHaveBeenCalled();
+		});
 	});
 });

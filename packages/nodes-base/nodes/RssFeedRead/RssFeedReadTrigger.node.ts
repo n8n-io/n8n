@@ -10,7 +10,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import type Parser from 'rss-parser';
 
-import { parseFeedUrl } from './GenericFunctions';
+import { feedFetchFailedTransiently, parseFeedUrl } from './GenericFunctions';
 
 interface PollData {
 	lastItemDate?: string;
@@ -61,6 +61,15 @@ export class RssFeedReadTrigger implements INodeType {
 		try {
 			feed = await parseFeedUrl(this.helpers, feedUrl);
 		} catch (error) {
+			// A transient feed-fetch failure (429 rate limit, 5xx server error)
+			// must not permanently block publishing a corrected version of the
+			// workflow: the operator can ship a longer poll interval and let the
+			// next scheduled poll recover. We therefore skip this poll and let the
+			// trigger register, while still surfacing genuinely broken feeds.
+			if (feedFetchFailedTransiently(error)) {
+				return null;
+			}
+
 			if (error.code === 'ECONNREFUSED') {
 				throw new NodeOperationError(
 					this.getNode(),
