@@ -916,6 +916,7 @@
     "eslint-plugin-n8n-nodes-base": "catalog:",
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
+    "nock": "catalog:",
     "reflect-metadata": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
@@ -1010,7 +1011,7 @@
     "undici": "catalog:undici-v6",
     "uuid": "catalog:",
     "vm2": "catalog:",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
+    "@e965/xlsx": "catalog:",
     "xml2js": "catalog:",
     "xmlhttprequest-ssl": "3.1.0",
     "zod": "catalog:"

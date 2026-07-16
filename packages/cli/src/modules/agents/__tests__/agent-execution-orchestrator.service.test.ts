@@ -803,8 +803,118 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(source.config).not.toHaveProperty('memory');
 		});
 
+		it('passes embedded skill bodies through to the runtime, orphans included', async () => {
+			const { service, reconstructionService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+			const triage = {
+				name: 'Triage',
+				description: 'Triage incoming requests',
+				instructions: 'Categorize the request and route it.',
+			};
+			// Orphans are forwarded wholesale, like the entity path forwards
+			// entity.skills — the runtime only attaches referenced ids.
+			const orphan = { ...triage, name: 'Orphan' };
+
+			await service.executeInlineForWorkflow(
+				{
+					config: {
+						...inlinePayload.config,
+						skills: [{ type: 'skill', id: 'skill_triage' }],
+					},
+					skills: { skill_triage: triage, skill_orphan: orphan },
+				},
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+			);
+
+			expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: expect.objectContaining({ skills: [{ type: 'skill', id: 'skill_triage' }] }),
+					skills: { skill_triage: triage, skill_orphan: orphan },
+				}),
+			);
+		});
+
+		it('strips unknown skill-body fields instead of failing the execution', async () => {
+			const { service, reconstructionService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+			const triage = {
+				name: 'Triage',
+				description: 'Triage incoming requests',
+				instructions: 'Categorize the request and route it.',
+			};
+
+			await service.executeInlineForWorkflow(
+				{
+					config: {
+						...inlinePayload.config,
+						skills: [{ type: 'skill', id: 'skill_triage' }],
+					},
+					// A body persisted by a schema version whose extra field has
+					// since been retired must still run, like config keys do.
+					skills: { skill_triage: { ...triage, retiredField: 'from an older schema' } },
+				},
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+			);
+
+			expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ skills: { skill_triage: triage } }),
+			);
+		});
+
+		it('rejects a skill ref without a body, with a pathed error', async () => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{
+						config: {
+							...inlinePayload.config,
+							skills: [{ type: 'skill', id: 'missing' }],
+						},
+					},
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow(/config\.skills.*has no body/);
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
+		it('rejects an invalid skill body, with a pathed error', async () => {
+			const { service, reconstructionService } = makeService();
+
+			await expect(
+				service.executeInlineForWorkflow(
+					{
+						config: {
+							...inlinePayload.config,
+							skills: [{ type: 'skill', id: 'skill_triage' }],
+						},
+						skills: {
+							skill_triage: { name: 'Triage', description: 'No instructions' },
+						},
+					},
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+				),
+			).rejects.toThrow(/skills\.skill_triage/);
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+		});
+
 		it.each([
-			['skills', { skills: [{ type: 'skill', id: 'triage' }] }],
 			// Memory is injected server-side; the node cannot configure it.
 			['memory', { memory: { enabled: true, storage: 'n8n' } }],
 			// Approval suspends the run, which workflow executions can't resume.

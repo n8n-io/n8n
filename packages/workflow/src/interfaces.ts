@@ -2122,7 +2122,11 @@ export interface InlineAgentPayload {
 		credential?: string;
 		instructions?: string;
 		tools?: IDataObject[];
+		mcpServers?: IDataObject[];
+		skills?: Array<{ type?: string; id?: string }>;
 	};
+	/** Skill bodies keyed by the ids `config.skills` references. */
+	skills?: Record<string, IDataObject>;
 }
 
 /** Which agent to execute: a saved agent by id, or an inline definition. */

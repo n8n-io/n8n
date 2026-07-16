@@ -484,7 +484,9 @@ describe('OAuthTokenService', () => {
 
 			expect(result).toMatchObject({ user: null });
 		});
+	});
 
+	describe('verifyOAuthAccessToken audience resolution', () => {
 		it('should deny when a resource-scoped audience cannot be resolved', async () => {
 			// Fail closed: the token carries an audience but no resource resolves for
 			// it (deleted, or a transient resolver failure the registry swallows), so

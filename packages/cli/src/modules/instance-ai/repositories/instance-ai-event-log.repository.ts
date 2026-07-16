@@ -77,4 +77,17 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 			.getMany();
 		return rows.map((r) => jsonParse<InstanceAiEvent>(r.payload));
 	}
+
+	/** Every fact of a thread in seq order, with the run and write-time context
+	 *  the fold-on-read history derivation needs. */
+	async getForThread(
+		threadId: string,
+	): Promise<Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>> {
+		const rows = await this.find({ where: { threadId }, order: { seq: 'ASC' } });
+		return rows.map((r) => ({
+			runId: r.runId,
+			createdAt: r.createdAt,
+			event: jsonParse<InstanceAiEvent>(r.payload),
+		}));
+	}
 }

@@ -26,8 +26,8 @@ let mainHandler: Record<string, Array<(...args: unknown[]) => unknown>>;
 let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
 
 beforeAll(async () => {
-	mainHandler = (await import('../data-tables.handler')) as unknown as typeof mainHandler;
-	handler = (await import('../data-tables.rows.handler')) as unknown as typeof handler;
+	mainHandler = (await import('../data-tables.handler.js')) as unknown as typeof mainHandler;
+	handler = (await import('../data-tables.rows.handler.js')) as unknown as typeof handler;
 });
 
 describe('DataTable Handler', () => {

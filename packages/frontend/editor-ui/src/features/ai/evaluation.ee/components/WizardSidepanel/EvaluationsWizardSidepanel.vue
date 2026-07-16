@@ -85,8 +85,23 @@ const moreCheckMetrics = computed(() =>
 	CANNED_METRICS.filter((m) => BUILTIN_MORE_CHECK_KEYS.includes(m.key)),
 );
 const visibleCheckMetrics = computed(() => {
-	const primary = primaryCheckMetric.value ? [primaryCheckMetric.value] : [];
-	return showMoreChecks.value ? [...primary, ...moreCheckMetrics.value] : primary;
+	// Order-preserving, de-duped by key.
+	const shown = new Map<CannedMetricKey, (typeof CANNED_METRICS)[number]>();
+	if (primaryCheckMetric.value) shown.set(primaryCheckMetric.value.key, primaryCheckMetric.value);
+	if (showMoreChecks.value) {
+		for (const m of moreCheckMetrics.value) shown.set(m.key, m);
+	}
+	// Any selected canned metric must be visible even when it is outside the
+	// curated primary/more lists — e.g. a `helpfulness` or `stringSimilarity`
+	// config created by the agent/API or hydrated from a saved eval. Without
+	// this the selection lives in the store but has no card, so the step looks
+	// unconfigured.
+	for (const key of selectedMetricKeys.value) {
+		if (shown.has(key)) continue;
+		const metric = CANNED_METRICS.find((m) => m.key === key);
+		if (metric) shown.set(key, metric);
+	}
+	return [...shown.values()];
 });
 watch(
 	[selectedMetricKeys, customChecks],

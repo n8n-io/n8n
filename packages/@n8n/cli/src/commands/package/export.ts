@@ -40,6 +40,13 @@ export default class PackageExport extends BaseCommand {
 			description: 'File to write the package to',
 			default: 'export.n8np',
 		}),
+		missingWorkflowDependencyPolicy: Flags.string({
+			options: ['fail', 'reference-only', 'include-in-package'],
+			default: 'fail',
+			description:
+				'What to do when a dependency workflow (sub-workflow) is not explicitly included in the package target',
+			aliases: ['missing-workflow-dependency-policy'],
+		}),
 	};
 
 	async run(): Promise<void> {
@@ -47,6 +54,7 @@ export default class PackageExport extends BaseCommand {
 		const workflowIds = flags.workflowId ?? [];
 		const folderIds = flags.folderId ?? [];
 		const projectIds = flags.projectId ?? [];
+		const missingWorkflowDependencyPolicy = flags.missingWorkflowDependencyPolicy;
 
 		// A package is either loose workflows/folders or whole projects, not both.
 		if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
@@ -61,7 +69,9 @@ export default class PackageExport extends BaseCommand {
 			let archive: Buffer;
 			try {
 				archive = await client.exportPackage(
-					projectIds.length > 0 ? { projectIds } : { workflowIds, folderIds },
+					projectIds.length > 0
+						? { projectIds, missingWorkflowDependencyPolicy }
+						: { workflowIds, folderIds, missingWorkflowDependencyPolicy },
 				);
 			} catch (error) {
 				throw toPackagesError(error);
