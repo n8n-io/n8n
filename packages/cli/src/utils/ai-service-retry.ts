@@ -10,6 +10,10 @@ type RetryLogger = {
 	warn: (message: string, metadata?: Record<string, unknown>) => void;
 };
 
+type RetryErrorReporter = {
+	warn: (error: Error | string) => void;
+};
+
 async function sleep(ms: number): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -27,6 +31,7 @@ export async function callAiServiceWithRetry<T>(
 	label: string,
 	call: () => Promise<T>,
 	logger?: RetryLogger,
+	errorReporter?: RetryErrorReporter,
 ): Promise<T> {
 	for (let attempt = 1; ; attempt++) {
 		try {
@@ -34,6 +39,12 @@ export async function callAiServiceWithRetry<T>(
 		} catch (error) {
 			if (!isTransientAiServiceError(error)) throw error;
 			if (attempt >= AI_SERVICE_MAX_ATTEMPTS) {
+				// Warning-level Sentry trail for user-visible exhaustion, without error-level paging.
+				errorReporter?.warn(
+					new Error(`${label} failed after ${AI_SERVICE_MAX_ATTEMPTS} attempts`, {
+						cause: error,
+					}),
+				);
 				throw new OperationalError(AI_SERVICE_UNAVAILABLE_MESSAGE, { cause: error });
 			}
 			logger?.warn(`${label} hit a transient AI assistant service error; retrying`, {

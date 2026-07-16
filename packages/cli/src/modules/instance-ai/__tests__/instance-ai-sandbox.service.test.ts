@@ -38,7 +38,7 @@ type Overrides = {
 
 function createSandboxService(overrides: Overrides = {}) {
 	const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-	const errorReporter = { error: vi.fn() } as unknown as ErrorReporter;
+	const errorReporter = { error: vi.fn(), warn: vi.fn() } as unknown as ErrorReporter;
 	const runState: InstanceAiSandboxRunState = {
 		getActiveRunId: vi.fn(() => undefined),
 		hasSuspendedRun: vi.fn(() => false),
@@ -68,7 +68,7 @@ function createSandboxService(overrides: Overrides = {}) {
 		aiService,
 	};
 	const service = new InstanceAiSandboxService(options);
-	return { service, logger, runState, backgroundTasks, settingsService, aiService };
+	return { service, logger, errorReporter, runState, backgroundTasks, settingsService, aiService };
 }
 
 describe('InstanceAiSandboxService', () => {
@@ -229,7 +229,7 @@ describe('InstanceAiSandboxService', () => {
 			vi.useFakeTimers();
 			const transient = Object.assign(new Error('Bad Gateway'), { statusCode: 502 });
 			const getSandboxProxyConfig = vi.fn().mockRejectedValue(transient);
-			const { service } = createProxyService({ getSandboxProxyConfig });
+			const { service, errorReporter } = createProxyService({ getSandboxProxyConfig });
 
 			const promise = service.resolveSandboxConfig(fakeUser);
 			const assertion = expect(promise).rejects.toThrow(
@@ -239,6 +239,13 @@ describe('InstanceAiSandboxService', () => {
 
 			await assertion;
 			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(3);
+			expect(errorReporter.warn).toHaveBeenCalledTimes(1);
+			expect(errorReporter.warn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Sandbox proxy config fetch failed after 3 attempts',
+					cause: transient,
+				}),
+			);
 		});
 
 		it('does not retry definite client errors', async () => {

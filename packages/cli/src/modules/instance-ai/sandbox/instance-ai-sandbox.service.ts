@@ -234,6 +234,7 @@ export class InstanceAiSandboxService {
 					'Sandbox proxy config fetch',
 					async () => await client.getSandboxProxyConfig(),
 					this.logger,
+					this.options.errorReporter,
 				);
 				return {
 					...base,
@@ -249,6 +250,7 @@ export class InstanceAiSandboxService {
 									{ userMessageId: nanoid() },
 								),
 							this.logger,
+							this.options.errorReporter,
 						);
 
 						return token.accessToken;
