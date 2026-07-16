@@ -387,7 +387,7 @@ describe('useSelectionValidation', () => {
 			);
 		});
 
-		it('returns null for sticky-only selections (creating requires a connectable node)', () => {
+		it('returns null for sticky-only selections (creating requires connectable nodes)', () => {
 			// Sticky-only groups remain valid data (a group can degenerate to one
 			// when its last connectable node is deleted), but creating one from
 			// the canvas is not offered.
@@ -403,6 +403,48 @@ describe('useSelectionValidation', () => {
 
 			expect(resolveGroupableNodeIds(['sticky'])).toBeNull();
 			expect(resolveGroupableNodeIds(['sticky', 'sticky2'])).toBeNull();
+		});
+
+		it('returns null for selections with fewer than two connectable members', () => {
+			// Single-member groups are pointless, so creating one is not offered.
+			// A sticky does not count toward the minimum: a lone node plus its
+			// annotation sticky is still a "one-node group". Creation-only rule —
+			// deletion can still degenerate an existing group below the minimum.
+			const graph = makeLinearGraph();
+			graph.nodes.sticky = makeNode({ id: 'sticky', name: 'Sticky', type: STICKY_NODE_TYPE });
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+				[STICKY_NODE_TYPE]: makeNodeType({ name: STICKY_NODE_TYPE, group: ['input'] }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['a'])).toBeNull();
+			expect(resolveGroupableNodeIds(['a', 'sticky'])).toBeNull();
+		});
+
+		it('counts connectable members after sub-node expansion for the minimum', () => {
+			// A lone AI parent node expands with its sub-nodes, so the resulting
+			// group has multiple connectable members and grouping stays offered.
+			const graph = makeLinearGraph();
+			const memory = makeNode({ id: 'memory', name: 'Memory' });
+			graph.nodes.memory = memory;
+			graph.connections.Memory = { ai_memory: [[{ node: 'B', type: 'ai_memory', index: 0 }]] };
+
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
+			vi.mocked(workflowDocumentStore.getParentNodes).mockImplementation((nodeName, type) => {
+				if (type !== 'ALL_NON_MAIN') return [];
+				if (nodeName === 'B') return ['Memory'];
+				return [];
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['b'])?.sort()).toEqual(['b', 'memory'].sort());
 		});
 	});
 

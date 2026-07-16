@@ -81,11 +81,13 @@ export function useSelectionValidation() {
 	 * node, expands the rest with their attached sub-nodes, and validates the
 	 * result. Returns the expanded member ids when groupable, null otherwise.
 	 *
-	 * Creating a group additionally requires at least one connectable
-	 * (non-sticky) node. This is a creation-only rule: sticky-only groups stay
-	 * valid *data* (a group can degenerate to one when its last connectable
-	 * node is deleted), so the shared validator tolerates them and the check
-	 * lives here instead.
+	 * Creating a group additionally requires at least two connectable
+	 * (non-sticky) members, counted after sub-node expansion — so a lone AI
+	 * parent node whose sub-nodes join the group still qualifies, while
+	 * single-node and sticky-only groups are not offered. This is a
+	 * creation-only rule: groups can degenerate below it through node deletion
+	 * and must keep saving, so the shared validator tolerates such groups as
+	 * data and the check lives here instead.
 	 *
 	 * Group creation eligibility and execution must both go through this so the
 	 * checked selection and the created group can't diverge (e.g. stale ids
@@ -96,12 +98,12 @@ export function useSelectionValidation() {
 		const resolvedIds = nodeIds.filter((id) => store?.getNodeById(id));
 		if (resolvedIds.length === 0) return null;
 
-		const hasConnectableNode = resolvedIds.some(
-			(id) => store?.getNodeById(id)?.type !== STICKY_NODE_TYPE,
-		);
-		if (!hasConnectableNode) return null;
-
 		const expandedIds = expandSelectionWithSubNodes(resolvedIds);
+		const connectableCount = expandedIds.filter(
+			(id) => store?.getNodeById(id)?.type !== STICKY_NODE_TYPE,
+		).length;
+		if (connectableCount < 2) return null;
+
 		return isSelectionGroupable(expandedIds).valid ? expandedIds : null;
 	}
 

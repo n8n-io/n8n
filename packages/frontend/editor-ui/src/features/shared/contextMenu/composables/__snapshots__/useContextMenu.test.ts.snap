@@ -356,7 +356,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
     },
   },
   {
-    "disabled": false,
+    "disabled": true,
     "divided": false,
     "id": "group_nodes",
     "label": "Group node",
@@ -502,7 +502,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     },
   },
   {
-    "disabled": false,
+    "disabled": true,
     "divided": false,
     "id": "group_nodes",
     "label": "Group node",
@@ -766,7 +766,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
-    "disabled": false,
+    "disabled": true,
     "divided": false,
     "id": "group_nodes",
     "label": "Group node",
@@ -924,7 +924,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
-    "disabled": false,
+    "disabled": true,
     "divided": false,
     "id": "group_nodes",
     "label": "Group node",
@@ -1082,7 +1082,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     },
   },
   {
-    "disabled": false,
+    "disabled": true,
     "divided": false,
     "id": "group_nodes",
     "label": "Group node",
@@ -1240,7 +1240,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     },
   },
   {
-    "disabled": false,
+    "disabled": true,
     "divided": false,
     "id": "group_nodes",
     "label": "Group node",
