@@ -608,7 +608,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     },
   },
   {
-    "disabled": false,
+    "disabled": true,
     "divided": false,
     "id": "group_nodes",
     "label": "Group node",

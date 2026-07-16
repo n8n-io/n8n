@@ -13,6 +13,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { INodeUi } from '@/Interface';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 const TEST_WF_ID = 'test-wf-validation';
 const INJECTED_WF_ID = 'injected-wf-validation';
@@ -369,6 +370,39 @@ describe('useSelectionValidation', () => {
 			const { resolveGroupableNodeIds } = useSelectionValidation();
 
 			expect(resolveGroupableNodeIds(['a', 'c'])).toBeNull();
+		});
+
+		it('includes stickies when the selection also has a connectable node', () => {
+			const graph = makeLinearGraph();
+			graph.nodes.sticky = makeNode({ id: 'sticky', name: 'Sticky', type: STICKY_NODE_TYPE });
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+				[STICKY_NODE_TYPE]: makeNodeType({ name: STICKY_NODE_TYPE, group: ['input'] }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['a', 'b', 'sticky'])?.sort()).toEqual(
+				['a', 'b', 'sticky'].sort(),
+			);
+		});
+
+		it('returns null for sticky-only selections (creating requires a connectable node)', () => {
+			// Sticky-only groups remain valid data (a group can degenerate to one
+			// when its last connectable node is deleted), but creating one from
+			// the canvas is not offered.
+			const graph = makeLinearGraph();
+			graph.nodes.sticky = makeNode({ id: 'sticky', name: 'Sticky', type: STICKY_NODE_TYPE });
+			graph.nodes.sticky2 = makeNode({ id: 'sticky2', name: 'Sticky2', type: STICKY_NODE_TYPE });
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+				[STICKY_NODE_TYPE]: makeNodeType({ name: STICKY_NODE_TYPE, group: ['input'] }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['sticky'])).toBeNull();
+			expect(resolveGroupableNodeIds(['sticky', 'sticky2'])).toBeNull();
 		});
 	});
 

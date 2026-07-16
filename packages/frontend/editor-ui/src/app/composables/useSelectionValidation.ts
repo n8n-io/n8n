@@ -13,6 +13,7 @@ import {
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
 
 export type SelectionValidationResult = NodeSelectionValidationResult<INodeUi>;
@@ -80,6 +81,12 @@ export function useSelectionValidation() {
 	 * node, expands the rest with their attached sub-nodes, and validates the
 	 * result. Returns the expanded member ids when groupable, null otherwise.
 	 *
+	 * Creating a group additionally requires at least one connectable
+	 * (non-sticky) node. This is a creation-only rule: sticky-only groups stay
+	 * valid *data* (a group can degenerate to one when its last connectable
+	 * node is deleted), so the shared validator tolerates them and the check
+	 * lives here instead.
+	 *
 	 * Group creation eligibility and execution must both go through this so the
 	 * checked selection and the created group can't diverge (e.g. stale ids
 	 * being validated away but still persisted as group members).
@@ -88,6 +95,11 @@ export function useSelectionValidation() {
 		const store = workflowDocumentStore.value;
 		const resolvedIds = nodeIds.filter((id) => store?.getNodeById(id));
 		if (resolvedIds.length === 0) return null;
+
+		const hasConnectableNode = resolvedIds.some(
+			(id) => store?.getNodeById(id)?.type !== STICKY_NODE_TYPE,
+		);
+		if (!hasConnectableNode) return null;
 
 		const expandedIds = expandSelectionWithSubNodes(resolvedIds);
 		return isSelectionGroupable(expandedIds).valid ? expandedIds : null;
