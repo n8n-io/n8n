@@ -57,6 +57,8 @@ export class DurableLogMetrics {
 		runsMarkedInterrupted: 0,
 		runsCrashResumed: 0,
 		toolInterruptedFacts: 0,
+		/** Steering corrections re-queued into crash-resumed model contexts. */
+		correctionsRequeued: 0,
 	};
 
 	constructor(private readonly eventService: EventService) {}
@@ -120,9 +122,18 @@ export class DurableLogMetrics {
 		this.sweep.toolInterruptedFacts++;
 	}
 
-	recordSweepOutcome(outcome: 'interrupted' | 'crash-resumed', toolInterruptedFacts: number): void {
+	recordSweepOutcome(
+		outcome: 'interrupted' | 'crash-resumed',
+		toolInterruptedFacts: number,
+		correctionsRequeued = 0,
+	): void {
 		if (outcome === 'interrupted') this.sweep.runsMarkedInterrupted++;
 		else this.sweep.runsCrashResumed++;
-		this.eventService.emit('instance-ai-run-swept', { outcome, toolInterruptedFacts });
+		this.sweep.correctionsRequeued += correctionsRequeued;
+		this.eventService.emit('instance-ai-run-swept', {
+			outcome,
+			toolInterruptedFacts,
+			correctionsRequeued,
+		});
 	}
 }

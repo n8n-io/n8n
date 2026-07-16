@@ -229,6 +229,12 @@ describe('DurableEventLog', () => {
 			textDelta('AAA'),
 			toolCall('tc-1'),
 			{ type: 'status', runId: RUN, agentId: AGENT, payload: { message: 'working' } },
+			{
+				type: 'run-resumed',
+				runId: RUN,
+				agentId: AGENT,
+				payload: { reason: 'crash_interrupted' },
+			},
 			runFinish(),
 		]);
 
@@ -238,15 +244,18 @@ describe('DurableEventLog', () => {
 			'text-delta',
 			'tool-call',
 			'status',
+			'run-resumed',
 			'run-finish',
 		]);
-		// Deltas and status carry no id; structural facts carry the DB seq.
+		// Deltas and status carry no id; structural facts (including the
+		// crash-resume boundary) carry the DB seq.
 		expect(live[0].id).toBeUndefined();
 		expect(live[2].id).toBeUndefined();
 		expect(live[1].id).toBeDefined();
 		expect(live[3].id).toBeDefined();
+		expect(live[4].id).toBeDefined();
 		// Persisted seqs are contiguous from 1.
-		expect(repo.rows.map((r) => r.seq)).toEqual([1, 2, 3]);
+		expect(repo.rows.map((r) => r.seq)).toEqual([1, 2, 3, 4]);
 	});
 
 	it('continues the seq across a restart (fresh instance seeds from the DB)', async () => {

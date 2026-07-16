@@ -233,6 +233,38 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['root'].status).toBe('completed');
 		});
 
+		it('run-resumed re-activates the tree so the resumed stream lands on a live root', () => {
+			const state = stateWithRun('run-1', 'root');
+			// A crashed run's replay carries tool-interrupted terminal facts; the
+			// resume boundary must leave the run streamable again.
+			reduceEvent(state, {
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', toolName: 'update-workflow', args: {} },
+			});
+			reduceEvent(state, {
+				type: 'tool-interrupted',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', error: 'interrupted by restart' },
+			});
+			reduceEvent(state, {
+				type: 'run-resumed',
+				runId: 'run-1',
+				agentId: 'orchestrator-run-1',
+				payload: { reason: 'crash_interrupted' },
+			});
+
+			expect(state.status).toBe('active');
+			expect(state.agentsById['root'].status).toBe('active');
+			// The resume publishes under a per-run agentId; it aliases to the root.
+			expect(state.agentsById['orchestrator-run-1']).toBe(state.agentsById['root']);
+			// The resumed stream's terminal fact still folds normally.
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+			expect(state.status).toBe('completed');
+		});
+
 		it('run-finish(cancelled) sets status to cancelled', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));

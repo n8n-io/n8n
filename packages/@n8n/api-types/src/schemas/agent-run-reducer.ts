@@ -230,6 +230,22 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'run-resumed': {
+			// Crash-resume boundary (durable-log resilience): the run continues
+			// under its original runId after a process restart. Re-activate the
+			// root so the resumed stream's events land on a live tree; whether to
+			// surface the boundary itself is the UI's call (INS-837).
+			state.status = 'active';
+			const root = state.agentsById[state.rootAgentId];
+			if (root) {
+				root.status = 'active';
+				if (event.agentId !== state.rootAgentId && isSafeObjectKey(event.agentId)) {
+					state.agentsById[event.agentId] = root;
+				}
+			}
+			break;
+		}
+
 		case 'text-delta': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {

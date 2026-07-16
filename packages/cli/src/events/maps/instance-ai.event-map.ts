@@ -34,6 +34,8 @@ export type InstanceAiEventMap = {
 	'instance-ai-run-swept': {
 		outcome: 'interrupted' | 'crash-resumed';
 		toolInterruptedFacts: number;
+		/** Steering corrections re-queued into the crash-resumed model context. */
+		correctionsRequeued: number;
 	};
 	'instance-ai-run-finished': {
 		/** 'suspended' is a non-terminal HITL segment: usage/tool counts only; the terminal event counts the run. */

@@ -51,6 +51,7 @@ import {
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
+	crashResumeAgentRun,
 	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
@@ -1555,6 +1556,13 @@ export class InstanceAiService {
 		...args: Parameters<InstanceAiService['processResumedStream']>
 	): void {
 		this.trackInFlightExecution(this.processResumedStream(...args));
+	}
+
+	/** Same shutdown-drain contract as `startExecuteRun`, for the crash-resume path. */
+	private startProcessCrashResumedStream(
+		...args: Parameters<InstanceAiService['processCrashResumedStream']>
+	): void {
+		this.trackInFlightExecution(this.processCrashResumedStream(...args));
 	}
 
 	/**
@@ -4423,6 +4431,407 @@ export class InstanceAiService {
 	 * with `inFlightExecutions` and shutdown can drain it before the DB
 	 * closes.
 	 */
+	/**
+	 * Durable-log RFC (resilience phase): re-drive a crash-interrupted run from
+	 * a `running`-status step checkpoint found by the interrupted-run sweep.
+	 * Rebuilds the execution environment + agent (same machinery as the
+	 * suspended-orphan restorer), registers the run as active under its
+	 * original runId, and consumes the resumed stream to a terminal state.
+	 * Returns false when the run cannot be resumed — the sweeper then
+	 * finalizes it as `run-finish { interrupted }` instead.
+	 */
+	async crashResumeInterruptedRun(request: {
+		threadId: string;
+		runId: string;
+		userId: string;
+		checkpointKey: string;
+		messageGroupId?: string;
+		contextNotes?: string[];
+	}): Promise<boolean> {
+		const user = await this.revalidateActiveUser(request.userId);
+		if (!user) return false;
+
+		try {
+			const state = await this.checkpointStore.load(request.checkpointKey);
+			if (!state || state.status !== 'running') return false;
+		} catch {
+			return false;
+		}
+
+		const abortController = new AbortController();
+		let environment;
+		try {
+			environment = await this.createExecutionEnvironment(
+				user,
+				request.threadId,
+				request.runId,
+				abortController.signal,
+				request.messageGroupId,
+				this.threadPushRef.get(request.threadId),
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Cannot crash-resume run: failed to build execution environment', {
+				threadId: request.threadId,
+				runId: request.runId,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+
+		const runControl = createOrchestratorRunControl(environment.orchestrationContext);
+		let agent;
+		try {
+			agent = await this.createAgentFromEnvironment(
+				environment,
+				request.threadId,
+				request.runId,
+				user,
+				undefined,
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Cannot crash-resume run: failed to build agent', {
+				threadId: request.threadId,
+				runId: request.runId,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+
+		// Register as an active run under the ORIGINAL runId so cancel /
+		// liveness / shutdown paths see it. startRun would mint a new runId, so
+		// seed via suspendRun + activateSuspendedRun (the orphan restorer's
+		// re-seeding trick) with a synthetic requestId.
+		this.runState.suspendRun(request.threadId, {
+			runId: request.runId,
+			agentRunId: request.checkpointKey,
+			agent,
+			threadId: request.threadId,
+			user,
+			toolCallId: '',
+			requestId: `crash-resume:${request.runId}`,
+			abortController,
+			messageGroupId: request.messageGroupId,
+			createdAt: Date.now(),
+			tracing: undefined,
+			modelId: environment.modelId,
+			runHandoff: runControl.state,
+		});
+		this.runState.activateSuspendedRun(request.threadId);
+
+		// Durable resume boundary under the original runId — attributable in
+		// the live timeline and in folded history (INS-837: a structural fact,
+		// surfacing is the UI's call).
+		this.eventBus.publish(request.threadId, {
+			type: 'run-resumed',
+			runId: request.runId,
+			agentId: orchestratorAgentId(request.runId),
+			payload: { reason: 'crash_interrupted' },
+		});
+
+		this.startProcessCrashResumedStream(agent, {
+			runId: request.runId,
+			agentRunId: request.checkpointKey,
+			threadId: request.threadId,
+			user,
+			signal: abortController.signal,
+			abortController,
+			snapshotStorage: this.dbSnapshotStorage,
+			modelId: environment.modelId,
+			contextNotes: request.contextNotes,
+			messageGroupId: request.messageGroupId,
+			runHandoff: runControl.state,
+		});
+		return true;
+	}
+
+	/**
+	 * Run body for a crash-resumed orchestrator run (durable-log resilience
+	 * phase). Tracked via `trackInFlightExecution` (same shutdown-drain
+	 * contract as the other run bodies). Tracing is deliberately absent: the
+	 * trace registry that owned this run died with the crashed process, so
+	 * `messageGroupId` comes from the durable log instead of the tracing
+	 * registry. A run that re-suspends at HITL is registered exactly like the
+	 * resumed path (in-memory suspension + persisted pending confirmation), so
+	 * the confirm endpoint and a later restart both keep working.
+	 */
+	private async processCrashResumedStream(
+		agent: unknown,
+		opts: {
+			runId: string;
+			agentRunId: string;
+			threadId: string;
+			user: User;
+			signal: AbortSignal;
+			abortController: AbortController;
+			snapshotStorage: DbSnapshotStorage;
+			modelId?: ModelConfig;
+			contextNotes?: string[];
+			messageGroupId?: string;
+			runHandoff?: OrchestratorRunHandoffState;
+		},
+	): Promise<void> {
+		try {
+			this.instanceAiErrorReporter.beginRun(opts.runId);
+			const runControl = createOrchestratorRunControlForState(opts.runHandoff);
+			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
+			const result = await crashResumeAgentRun(
+				agent,
+				{
+					runId: opts.agentRunId,
+					recoverUsageOnAbort: true,
+					stepCheckpoints: true,
+					persistence: {
+						resourceId: opts.user.id,
+						threadId: opts.threadId,
+						hostRunId: opts.runId,
+					},
+					providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+					...(opts.contextNotes?.length ? { contextNotes: opts.contextNotes } : {}),
+				},
+				{
+					threadId: opts.threadId,
+					runId: opts.runId,
+					agentId: orchestratorAgentId(opts.runId),
+					signal: opts.signal,
+					eventBus: this.eventBus,
+					logger: this.logger,
+					agentRunId: opts.agentRunId,
+					onActivity: () => this.runState.touchActiveRun(opts.threadId),
+					stopSignal,
+					outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+				},
+			);
+
+			if (result.status === 'suspended') {
+				// As in the resumed path, record suspended-segment usage here.
+				this.emitRunMetrics(opts.threadId, 'suspended', {
+					modelId: opts.modelId,
+					workSummary: result.workSummary,
+					usage: result.usage,
+				});
+				if (result.suspension) {
+					this.runState.suspendRun(opts.threadId, {
+						runId: opts.runId,
+						agentRunId: result.agentRunId,
+						agent,
+						threadId: opts.threadId,
+						user: opts.user,
+						toolCallId: result.suspension.toolCallId,
+						...(result.suspension.toolName ? { toolName: result.suspension.toolName } : {}),
+						...(result.suspension.suspendPayload
+							? { suspendPayload: result.suspension.suspendPayload }
+							: {}),
+						requestId: result.suspension.requestId,
+						abortController: opts.abortController,
+						messageGroupId: opts.messageGroupId,
+						createdAt: Date.now(),
+						tracing: undefined,
+						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
+						runHandoff: runControl.state,
+					});
+					// Persisted index row so this suspension survives ANOTHER restart
+					// (the orphan-confirmation path picks it up, same as any HITL wait).
+					void this.suspendedThreads.persistPendingConfirmation({
+						requestId: result.suspension.requestId,
+						threadId: opts.threadId,
+						userId: opts.user.id,
+						runId: opts.runId,
+						messageGroupId: opts.messageGroupId,
+						kind: 'suspended',
+						toolCallId: result.suspension.toolCallId,
+						checkpointKey: result.agentRunId,
+					});
+					void this.creditService.claimRunUsage(
+						opts.user,
+						opts.threadId,
+						`${result.agentRunId || opts.runId}:${result.suspension.requestId}`,
+						result.usage?.usage ?? [],
+						'suspended',
+					);
+				}
+
+				const waitingDecision = await this.terminalOutcome.evaluateWaitingResponse(
+					opts.threadId,
+					opts.runId,
+					result.confirmationEvent,
+					{ messageGroupId: opts.messageGroupId },
+				);
+				if (waitingDecision?.reason === 'confirmation-invalid') {
+					await this.terminalOutcome.finishInvalidConfirmationRun({
+						threadId: opts.threadId,
+						runId: opts.runId,
+						abortController: opts.abortController,
+						snapshotStorage: opts.snapshotStorage,
+						tracing: undefined,
+					});
+					return;
+				}
+
+				if (result.confirmationEvent) {
+					this.trackConfirmationRequest(opts.threadId, result.confirmationEvent);
+					this.eventBus.publish(opts.threadId, result.confirmationEvent);
+				}
+				// Persist the refreshed tree so the HITL wait survives a page reload.
+				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
+				return;
+			}
+
+			if (result.status === 'cancelled' && this.shouldPreserveHitlOnShutdown(opts.runId)) {
+				return;
+			}
+
+			if (result.status === 'errored') {
+				this.instanceAiErrorReporter.report(
+					result.error ?? new Error('Instance AI crash-resumed stream errored'),
+					{
+						component: 'instance-ai-stream',
+						threadId: opts.threadId,
+						runId: opts.runId,
+						agentId: orchestratorAgentId(opts.runId),
+						userId: opts.user.id,
+						messageGroupId: opts.messageGroupId,
+					},
+				);
+			}
+			const userFacingErrorMessage =
+				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
+			const userFacingErrorCode =
+				result.status === 'errored' ? getUserFacingErrorCode(result.error) : undefined;
+			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
+				await this.terminalOutcome.evaluateTerminalResponse(
+					opts.threadId,
+					opts.runId,
+					result.status,
+					{
+						messageGroupId: opts.messageGroupId,
+						workSummary: result.workSummary,
+						errorMessage: userFacingErrorMessage,
+						errorCode: userFacingErrorCode,
+					},
+				);
+			}
+			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
+				opts.threadId,
+				opts.user,
+				undefined,
+				this.backgroundTasks.getRunningTasks(opts.threadId).length,
+			);
+			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
+				userId: opts.user.id,
+				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
+				archivedWorkflowIds,
+				workSummary: result.workSummary,
+				usage: result.usage,
+				errorReason: userFacingErrorMessage,
+				...(result.status === 'errored'
+					? {
+							errorInfo: {
+								errorMessage: result.error
+									? getErrorMessage(result.error)
+									: 'Instance AI crash-resumed stream errored',
+								errorSource: 'stream' as const,
+							},
+						}
+					: {}),
+			});
+
+			// Bill token usage for every terminal outcome, deduped per run segment.
+			await this.creditService.claimRunUsage(
+				opts.user,
+				opts.threadId,
+				result.agentRunId || opts.runId,
+				result.usage?.usage ?? [],
+				result.status,
+			);
+		} catch (error) {
+			if (opts.signal.aborted) {
+				if (this.shouldPreserveHitlOnShutdown(opts.runId)) {
+					return;
+				}
+				const runTimeout = this.liveness.consumeRunTimeout(opts.runId);
+				const cancellationReason = runTimeout.timedOut
+					? INSTANCE_AI_RUN_TIMEOUT_REASON
+					: getAbortReason(opts.signal);
+				if (cancellationReason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
+					this.liveness.publishRunTimeoutNotice(opts.threadId, opts.runId);
+				}
+				await this.terminalOutcome.evaluateTerminalResponse(
+					opts.threadId,
+					opts.runId,
+					'cancelled',
+					{
+						messageGroupId: opts.messageGroupId,
+					},
+				);
+				const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
+					opts.threadId,
+					opts.user,
+					undefined,
+					this.backgroundTasks.getRunningTasks(opts.threadId).length,
+				);
+				this.publishRunFinish(
+					opts.threadId,
+					opts.runId,
+					'cancelled',
+					cancellationReason,
+					archivedWorkflowIds,
+					opts.user.id,
+				);
+				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
+				return;
+			}
+
+			const errorMessage = getErrorMessage(error);
+			const userFacingErrorMessage = getUserFacingErrorMessage(error);
+			const userFacingErrorCode = getUserFacingErrorCode(error);
+			const errCtx: InstanceAiObservabilityContext = {
+				threadId: opts.threadId,
+				runId: opts.runId,
+				tracing: undefined,
+				agentId: orchestratorAgentId(opts.runId),
+				userId: opts.user.id,
+				messageGroupId: opts.messageGroupId,
+			};
+			this.logger.error(`Instance AI crash-resumed run error: ${errorMessage}`, {
+				error: errorMessage,
+				...buildInstanceAiObservabilityContext(errCtx),
+			});
+			this.instanceAiErrorReporter.report(error, { component: 'instance-ai-run', ...errCtx });
+			await this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
+				messageGroupId: opts.messageGroupId,
+				errorMessage: userFacingErrorMessage,
+				errorCode: userFacingErrorCode,
+			});
+			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
+				opts.threadId,
+				opts.user,
+				undefined,
+				this.backgroundTasks.getRunningTasks(opts.threadId).length,
+			);
+			this.publishRunFinish(
+				opts.threadId,
+				opts.runId,
+				'errored',
+				userFacingErrorMessage,
+				archivedWorkflowIds,
+				opts.user.id,
+				{ errorMessage, errorSource: 'exception' },
+			);
+			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
+		} finally {
+			this.runState.clearActiveRun(opts.threadId);
+			// Post-run planned-task wiring — mirror processResumedStream's finally
+			// (a background task may have settled while the run was crashed).
+			if (!this.runState.hasSuspendedRun(opts.threadId)) {
+				await this.schedulePlannedTasks(opts.user, opts.threadId);
+				await this.drainPendingCheckpointReentries(opts.user, opts.threadId);
+				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
+				await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+			}
+			this.instanceAiErrorReporter.endRun(opts.runId);
+		}
+	}
+
 	private async processResumedStream(
 		agent: unknown,
 		resumeData: Record<string, unknown>,

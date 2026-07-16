@@ -15,7 +15,7 @@ import {
 } from './resumable-stream-executor';
 import type { RunTokenUsage } from '../stream/usage-accumulator';
 import type { WorkSummary } from '../stream/work-summary-accumulator';
-import { resumeAgentStream } from '../utils/stream-helpers';
+import { crashResumeAgentStream, resumeAgentStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
 export interface StreamableAgent {
@@ -66,6 +66,22 @@ export async function resumeAgentRun(
 	options: StreamRunOptions & { agentRunId: string },
 ): Promise<StreamRunResult> {
 	const resumed = await resumeAgentStream(agent, resumeData, resumeOptions);
+	const stream = normalizeStreamSource(resumed);
+	const agentRunId = (typeof stream.runId === 'string' && stream.runId) || options.agentRunId;
+	return await consumeStream(agent, stream, { ...options, agentRunId });
+}
+
+/**
+ * Durable-log RFC (resilience phase): re-drive a crash-interrupted run from a
+ * `running`-status step checkpoint. Consumes the resumed stream through the
+ * same machinery as a fresh or HITL-resumed run.
+ */
+export async function crashResumeAgentRun(
+	agent: unknown,
+	crashResumeOptions: Record<string, unknown>,
+	options: StreamRunOptions & { agentRunId: string },
+): Promise<StreamRunResult> {
+	const resumed = await crashResumeAgentStream(agent, crashResumeOptions);
 	const stream = normalizeStreamSource(resumed);
 	const agentRunId = (typeof stream.runId === 'string' && stream.runId) || options.agentRunId;
 	return await consumeStream(agent, stream, { ...options, agentRunId });

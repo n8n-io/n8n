@@ -98,6 +98,7 @@ export type ToolCallId = string & { readonly __brand: 'ToolCallId' };
 export const instanceAiEventTypeSchema = z.enum([
 	'run-start',
 	'run-finish',
+	'run-resumed',
 	'agent-spawned',
 	'agent-completed',
 	'text-delta',
@@ -215,6 +216,13 @@ export const runFinishPayloadSchema = z.object({
 	 * entries and label them as archived.
 	 */
 	archivedWorkflowIds: z.array(z.string()).optional(),
+});
+
+// Durable-log RFC (resilience phase): appended when the interrupted-run sweep
+// re-drives a crashed run from its step checkpoint. Marks the resume boundary
+// in the durable timeline under the original runId; surfacing is the UI's call.
+export const runResumedPayloadSchema = z.object({
+	reason: z.literal('crash_interrupted'),
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
@@ -751,6 +759,7 @@ const eventBase = {
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('run-start'), ...eventBase, payload: runStartPayloadSchema }),
 	z.object({ type: z.literal('run-finish'), ...eventBase, payload: runFinishPayloadSchema }),
+	z.object({ type: z.literal('run-resumed'), ...eventBase, payload: runResumedPayloadSchema }),
 	z.object({ type: z.literal('agent-spawned'), ...eventBase, payload: agentSpawnedPayloadSchema }),
 	z.object({
 		type: z.literal('agent-completed'),

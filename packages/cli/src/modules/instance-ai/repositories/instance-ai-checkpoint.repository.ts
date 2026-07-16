@@ -38,4 +38,21 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 		});
 		return row ?? undefined;
 	}
+
+	/**
+	 * Durable-log RFC (resilience phase): atomic claim before crash-resume.
+	 * Compare-and-swap on `updatedAt` — when two mains sweep the same
+	 * interrupted run concurrently, exactly one wins the claim and re-drives
+	 * it; the loser sees 0 affected rows and leaves the run alone.
+	 */
+	async claimForCrashResume(key: string, seenUpdatedAt: Date): Promise<boolean> {
+		const result = await this.createQueryBuilder()
+			.update()
+			.set({ updatedAt: new Date() })
+			.where('key = :key', { key })
+			.andWhere('expiredAt IS NULL')
+			.andWhere('updatedAt = :seenUpdatedAt', { seenUpdatedAt })
+			.execute();
+		return (result.affected ?? 0) === 1;
+	}
 }

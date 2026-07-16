@@ -303,6 +303,20 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
+		case 'run-resumed': {
+			// Crash-resume boundary: the run continues under its original runId
+			// after a server restart — re-activate the group's tree and streaming
+			// state so the resumed stream renders live again.
+			const { msg, runState } = resolveTarget(state, event.runId);
+			if (runState) {
+				reduceRunEvent(runState, event);
+			}
+			if (msg) {
+				msg.isStreaming = true;
+			}
+			return event.runId;
+		}
+
 		case 'error': {
 			const { msg, runState } = resolveTarget(state, event.runId);
 			if (runState) {

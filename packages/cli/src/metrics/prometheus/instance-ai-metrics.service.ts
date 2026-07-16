@@ -138,6 +138,12 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 		runsSweptTotal.inc({ outcome: 'interrupted' }, 0);
 		runsSweptTotal.inc({ outcome: 'crash-resumed' }, 0);
 
+		const sweepCorrectionsRequeuedTotal = new promClient.Counter({
+			name: `${this.config.prefix}instance_ai_sweep_corrections_requeued_total`,
+			help: 'Steering corrections re-queued into crash-resumed Instance AI model contexts.',
+		});
+		sweepCorrectionsRequeuedTotal.inc(0);
+
 		this.eventService.on('instance-ai-durable-log-drained', ({ rows, bytes }) => {
 			durableLogRowsTotal.inc(rows);
 			durableLogBytesTotal.inc(bytes);
@@ -161,8 +167,9 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 		this.eventService.on('instance-ai-parser-fallback', ({ count }) => {
 			parserFallbacksTotal.inc(count);
 		});
-		this.eventService.on('instance-ai-run-swept', ({ outcome }) => {
+		this.eventService.on('instance-ai-run-swept', ({ outcome, correctionsRequeued }) => {
 			runsSweptTotal.inc({ outcome }, 1);
+			if (correctionsRequeued > 0) sweepCorrectionsRequeuedTotal.inc(correctionsRequeued);
 		});
 
 		this.eventService.on(

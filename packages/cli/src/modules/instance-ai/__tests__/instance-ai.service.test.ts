@@ -156,6 +156,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			}
 		},
 		resumeAgentRun: vi.fn(),
+		crashResumeAgentRun: vi.fn(),
 		createInstanceAiTraceContext: vi.fn(async () => ({ rootRun: { otelTraceId: undefined } })),
 		TerminalOutcomeStorage: class {
 			constructor(_memory: unknown) {}
@@ -173,6 +174,7 @@ import {
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
+	crashResumeAgentRun,
 	createOrchestratorRunControl,
 	createSandbox,
 	createWorkspace,
@@ -626,6 +628,24 @@ type TerminalGuardOrderServiceInternals = {
 			abortController: AbortController;
 			snapshotStorage: unknown;
 			tracing?: InstanceAiTraceContext;
+		},
+	) => Promise<void>;
+	trackConfirmationRequest: Mock;
+	checkpointStore: { load: Mock };
+	revalidateActiveUser: Mock;
+	crashResumeInterruptedRun: InstanceAiService['crashResumeInterruptedRun'];
+	processCrashResumedStream: (
+		agent: unknown,
+		opts: {
+			runId: string;
+			agentRunId: string;
+			threadId: string;
+			user: User;
+			signal: AbortSignal;
+			abortController: AbortController;
+			snapshotStorage: unknown;
+			messageGroupId?: string;
+			contextNotes?: string[];
 		},
 	) => Promise<void>;
 };
@@ -3807,5 +3827,121 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 			'Failed to clean up agent-builder sessions for thread',
 			expect.objectContaining({ threadId: 'thread-a' }),
 		);
+	});
+});
+
+describe('InstanceAiService — crash-resumed stream (durable-log RFC)', () => {
+	const CRASH_OPTS = {
+		runId: 'run-1',
+		agentRunId: 'agent-run-1',
+		threadId: 'thread-a',
+		signal: new AbortController().signal,
+		snapshotStorage: {},
+		messageGroupId: 'group-1',
+	};
+
+	function createCrashResumeService() {
+		const service = createTerminalGuardOrderService();
+		service.trackConfirmationRequest = vi.fn();
+		return service;
+	}
+
+	beforeEach(() => {
+		vi.mocked(crashResumeAgentRun).mockReset();
+	});
+
+	it('re-suspending at HITL registers the suspension like the resumed path and does not finalize', async () => {
+		const service = createCrashResumeService();
+		const abortController = new AbortController();
+		const confirmationEvent = {
+			type: 'confirmation-request',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { requestId: 'req-1', toolCallId: 'tc-1', message: 'Approve?' },
+		};
+		vi.mocked(crashResumeAgentRun).mockResolvedValueOnce({
+			status: 'suspended',
+			agentRunId: 'agent-run-1',
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			suspension: {
+				toolCallId: 'tc-1',
+				requestId: 'req-1',
+				toolName: 'ask-user',
+				suspendPayload: { requestId: 'req-1' },
+			},
+			confirmationEvent,
+		} as never);
+
+		await service.processCrashResumedStream({}, { ...CRASH_OPTS, user: fakeUser, abortController });
+
+		// In-memory suspension registered under the original run + checkpoint key,
+		// with the log-derived message group (the tracing registry died with the
+		// crashed process).
+		expect(service.runState.suspendRun).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				requestId: 'req-1',
+				toolCallId: 'tc-1',
+				toolName: 'ask-user',
+				messageGroupId: 'group-1',
+			}),
+		);
+		// Persisted index row so the suspension survives ANOTHER restart.
+		expect(service.suspendedThreads.persistPendingConfirmation).toHaveBeenCalledWith(
+			expect.objectContaining({
+				requestId: 'req-1',
+				threadId: 'thread-a',
+				runId: 'run-1',
+				kind: 'suspended',
+				toolCallId: 'tc-1',
+				checkpointKey: 'agent-run-1',
+			}),
+		);
+		// The confirmation card reaches the client; the run is NOT finalized.
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['confirmation-request']);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+		expect(service.eventBus.events.some((event) => event.type === 'run-finish')).toBe(false);
+	});
+
+	it('a completed crash-resumed run finalizes with a run-finish and clears the active run', async () => {
+		const service = createCrashResumeService();
+		const abortController = new AbortController();
+		vi.mocked(crashResumeAgentRun).mockResolvedValueOnce({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		} as never);
+
+		await service.processCrashResumedStream({}, { ...CRASH_OPTS, user: fakeUser, abortController });
+
+		expect(service.runState.clearActiveRun).toHaveBeenCalledWith('thread-a');
+		const finish = service.eventBus.events.find((event) => event.type === 'run-finish');
+		expect(finish?.payload).toMatchObject({ status: 'completed' });
+		// Terminal usage claim is deduped per run segment.
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'agent-run-1',
+			[],
+			'completed',
+		);
+	});
+
+	it('crashResumeInterruptedRun refuses a checkpoint that is not a running step checkpoint', async () => {
+		const service = createCrashResumeService();
+		service.revalidateActiveUser = vi.fn(async () => fakeUser);
+		service.checkpointStore = { load: vi.fn(async () => ({ status: 'suspended' })) };
+
+		const resumed = await service.crashResumeInterruptedRun({
+			threadId: 'thread-a',
+			runId: 'run-1',
+			userId: fakeUser.id,
+			checkpointKey: 'agent-run-1',
+		});
+
+		expect(resumed).toBe(false);
 	});
 });

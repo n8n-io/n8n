@@ -251,6 +251,26 @@ describe('instanceAi.reducer', () => {
 			expect(state.messages[0].agentTree!.status).toBe('error');
 		});
 
+		test('run-resumed re-activates streaming and returns the run as active', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			// A client that watched the run die (connection error, stale bootstrap)
+			// may hold terminal-looking local state; the crash-resume boundary must
+			// bring the bubble back to live streaming.
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'error'));
+			expect(state.messages[0].isStreaming).toBe(false);
+
+			const newActiveRunId = handleEvent(state, {
+				type: 'run-resumed',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { reason: 'crash_interrupted' },
+			});
+
+			expect(newActiveRunId).toBe('run-1');
+			expect(state.messages[0].isStreaming).toBe(true);
+			expect(state.messages[0].agentTree!.status).toBe('active');
+		});
+
 		test('run-finish for an older run in the group does not clear activeRunId', () => {
 			const state = stateWithRun('run-active', 'agent-root');
 			state.groupIdByRunId.set('run-old', 'run-active');

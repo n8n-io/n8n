@@ -70,6 +70,7 @@ interface Setup {
 	lastFactAt?: Date | null;
 	durableLog?: boolean;
 	host?: Partial<InterruptedRunResumeHost>;
+	claimSucceeds?: boolean;
 }
 
 function buildSweeper(setup: Setup) {
@@ -98,6 +99,7 @@ function buildSweeper(setup: Setup) {
 
 	const checkpointRepo = mock<InstanceAiCheckpointRepository>();
 	checkpointRepo.findActiveByThreadId.mockResolvedValue(setup.checkpoints ?? []);
+	checkpointRepo.claimForCrashResume.mockResolvedValue(setup.claimSucceeds ?? true);
 
 	const published: InstanceAiEvent[] = [];
 	const eventBus = {
@@ -108,8 +110,11 @@ function buildSweeper(setup: Setup) {
 	};
 
 	const metrics = new DurableLogMetrics(mock<EventService>());
+	const crashResumeInterruptedRun =
+		setup.host?.crashResumeInterruptedRun ?? vi.fn(async () => true);
 	const host: InterruptedRunResumeHost = {
 		isRunLive: setup.host?.isRunLive ?? (() => false),
+		crashResumeInterruptedRun,
 	};
 
 	const sweeper = new InterruptedRunSweeper(
@@ -122,7 +127,7 @@ function buildSweeper(setup: Setup) {
 		{ isMultiMain: setup.isMultiMain ?? false } as InstanceSettings,
 	);
 	sweeper.setResumeHost(host);
-	return { sweeper, published, metrics, eventLogRepo };
+	return { sweeper, published, metrics, eventLogRepo, checkpointRepo, crashResumeInterruptedRun };
 }
 
 describe('InterruptedRunSweeper', () => {
@@ -238,16 +243,128 @@ describe('InterruptedRunSweeper', () => {
 		expect(published.at(-1)?.type).toBe('run-finish');
 	});
 
-	it('marks a run with a running step checkpoint interrupted (crash-resume is a later phase)', async () => {
+	it('crash-resumes a run with a running step checkpoint instead of marking it interrupted', async () => {
+		const { sweeper, published, metrics, crashResumeInterruptedRun } = buildSweeper({
+			events: [runStart(), toolCall('tc-inflight', { name: 'wf' })],
+			checkpoints: [runningCheckpoint()],
+		});
+
+		await sweeper.sweep();
+
+		// The in-flight call still becomes a durable fact; the terminal event is
+		// the resumed run's to publish, not the sweeper's.
+		expect(published.map((e) => e.type)).toEqual(['tool-interrupted']);
+		expect(crashResumeInterruptedRun).toHaveBeenCalledWith({
+			threadId: THREAD,
+			runId: RUN,
+			userId: 'user-1',
+			checkpointKey: 'agent:run-sdk-1',
+			messageGroupId: 'mg-1',
+			contextNotes: [expect.stringContaining('"update-workflow" tool call')],
+		});
+		expect(metrics.sweep.runsCrashResumed).toBe(1);
+		expect(metrics.sweep.runsMarkedInterrupted).toBe(0);
+	});
+
+	it('leaves the run alone when the checkpoint claim is lost to a concurrent sweeper', async () => {
+		const { sweeper, published, metrics, crashResumeInterruptedRun } = buildSweeper({
+			events: [runStart()],
+			checkpoints: [runningCheckpoint()],
+			claimSucceeds: false,
+		});
+
+		await sweeper.sweep();
+
+		expect(crashResumeInterruptedRun).not.toHaveBeenCalled();
+		expect(published.some((e) => e.type === 'run-finish')).toBe(false);
+		expect(metrics.sweep.runsMarkedInterrupted).toBe(0);
+		expect(metrics.sweep.runsCrashResumed).toBe(0);
+	});
+
+	it('falls back to marking the run interrupted when the resume host declines', async () => {
 		const { sweeper, published, metrics } = buildSweeper({
 			events: [runStart()],
 			checkpoints: [runningCheckpoint()],
+			host: { crashResumeInterruptedRun: vi.fn(async () => false) },
 		});
 
 		await sweeper.sweep();
 
 		expect(published.at(-1)?.type).toBe('run-finish');
 		expect(metrics.sweep.runsMarkedInterrupted).toBe(1);
+		expect(metrics.sweep.runsCrashResumed).toBe(0);
+	});
+
+	it('marks the run interrupted when the log has no run-start userId to resume as', async () => {
+		const anonymousRunStart: InstanceAiEvent = {
+			type: 'run-start',
+			runId: RUN,
+			agentId: AGENT,
+			payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+		};
+		const { sweeper, published, crashResumeInterruptedRun, checkpointRepo } = buildSweeper({
+			events: [anonymousRunStart],
+			checkpoints: [runningCheckpoint()],
+		});
+
+		await sweeper.sweep();
+
+		expect(checkpointRepo.claimForCrashResume).not.toHaveBeenCalled();
+		expect(crashResumeInterruptedRun).not.toHaveBeenCalled();
+		expect(published.at(-1)?.type).toBe('run-finish');
+	});
+
+	it('re-queues steering corrections missing from the checkpoint as context notes', async () => {
+		const correctionCall: InstanceAiEvent = {
+			type: 'tool-call',
+			runId: RUN,
+			agentId: AGENT,
+			payload: {
+				toolCallId: 'tc-correct-undrained',
+				toolName: 'task-control',
+				args: { action: 'correct-task', correction: 'Use the staging URL instead' },
+			},
+		};
+		const drainedCorrection: InstanceAiEvent = {
+			type: 'tool-call',
+			runId: RUN,
+			agentId: AGENT,
+			payload: {
+				toolCallId: 'tc-correct-drained',
+				toolName: 'task-control',
+				args: { action: 'correct-task', correction: 'Already applied' },
+			},
+		};
+		const { sweeper, metrics, crashResumeInterruptedRun } = buildSweeper({
+			events: [
+				runStart(),
+				correctionCall,
+				toolResult('tc-correct-undrained'),
+				drainedCorrection,
+				toolResult('tc-correct-drained'),
+			],
+			checkpoints: [
+				runningCheckpoint({
+					state: {
+						persistence: { threadId: THREAD, resourceId: 'user-1', hostRunId: RUN },
+						status: 'running',
+						// The drained correction's toolCallId appears in the serialized
+						// message list; the undrained one does not.
+						messageList: { messages: [{ toolCallId: 'tc-correct-drained' }] },
+						pendingToolCalls: {},
+					} as never,
+				}),
+			],
+		});
+
+		await sweeper.sweep();
+
+		expect(crashResumeInterruptedRun).toHaveBeenCalledWith(
+			expect.objectContaining({
+				contextNotes: [expect.stringContaining('Use the staging URL instead')],
+			}),
+		);
+		expect(metrics.sweep.correctionsRequeued).toBe(1);
 	});
 
 	it('multi-main: recent durable activity is a liveness heartbeat and skips the run', async () => {

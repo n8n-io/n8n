@@ -40,6 +40,7 @@ export interface Resumable {
 		data: Record<string, unknown>,
 		options: Record<string, unknown>,
 	) => Promise<unknown>;
+	crashResume?: (options: Record<string, unknown>) => Promise<unknown>;
 }
 
 /** Cast an agent to Resumable for suspend/resume operations. */
@@ -63,4 +64,25 @@ export async function resumeAgentStream(
 	}
 
 	throw new Error('Agent does not support stream resume');
+}
+
+/**
+ * Durable-log RFC (resilience phase): re-drive a run from a `running`-status
+ * step checkpoint after a process crash (see Agent.crashResume).
+ */
+export async function crashResumeAgentStream(
+	agent: unknown,
+	options: Record<string, unknown>,
+): Promise<unknown> {
+	if (!isRecord(agent)) {
+		throw new Error('Agent does not support crash resume');
+	}
+
+	const resumable = asResumable(agent);
+
+	if (typeof resumable.crashResume === 'function') {
+		return await resumable.crashResume(options);
+	}
+
+	throw new Error('Agent does not support crash resume');
 }

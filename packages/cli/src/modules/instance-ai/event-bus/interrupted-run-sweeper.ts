@@ -21,13 +21,29 @@ interface InFlightToolCall {
 	args: Record<string, unknown>;
 }
 
+/** A steering correction recorded in the log (task-control correct-task call). */
+interface LoggedCorrection {
+	toolCallId: string;
+	correction: string;
+}
+
 /**
- * The narrow slice of InstanceAiService the sweeper consults. Injected at init
- * (module wiring) instead of DI to avoid a service-level dependency cycle.
+ * The narrow slice of InstanceAiService the sweeper consults and drives.
+ * Injected at init (module wiring) instead of DI to avoid a service-level
+ * dependency cycle.
  */
 export interface InterruptedRunResumeHost {
 	/** Whether this specific run is live (active or suspended) in this process. */
 	isRunLive(threadId: string, runId: string): boolean;
+	/** Re-drive a crash-interrupted run from its step checkpoint. */
+	crashResumeInterruptedRun(request: {
+		threadId: string;
+		runId: string;
+		userId: string;
+		checkpointKey: string;
+		messageGroupId?: string;
+		contextNotes?: string[];
+	}): Promise<boolean>;
 }
 
 /**
@@ -39,10 +55,12 @@ export interface InterruptedRunResumeHost {
  *
  * 1. In-flight tool calls (tool-call with no terminal fact) become durable
  *    `tool-interrupted` facts — effect unverified, never re-executed blindly.
- * 2. One `run-finish { status: 'interrupted' }` is appended — the fold renders
- *    every in-flight item as terminated; no walk-and-mutate. (A later phase of
- *    the RFC re-drives runs with a `running` step checkpoint from that
- *    checkpoint instead; until then every swept run is marked interrupted.)
+ * 2. If a `running`-status step checkpoint exists for the run, the run is
+ *    re-driven from it via the crash-resume path (the resumed run publishes
+ *    its own terminal event); steering corrections present in the log but
+ *    absent from the checkpoint are re-queued into the resumed context.
+ * 3. Otherwise one `run-finish { status: 'interrupted' }` is appended — the
+ *    fold renders every in-flight item as terminated; no walk-and-mutate.
  *
  * Runs whose own checkpoint (matched by `hostRunId`) is HITL-`suspended` are
  * skipped: the pending confirmation orphan path (SuspendedRunRestorer) owns
@@ -53,10 +71,13 @@ export interface InterruptedRunResumeHost {
  * so a run whose newest fact or checkpoint write is younger than the grace
  * window is treated as live on a sibling main and skipped. Single-main skips
  * the grace window (no siblings; an unfinished run with no local live run is
- * dead), which keeps immediate post-crash sweeps instant. Two mains booting
- * together may still both mark one dead run — accepted: the duplicate
- * terminal facts are benign (the fold is last-writer-wins per run), and a
- * per-run claim would need the lease table this design deliberately avoids.
+ * dead), which keeps immediate post-crash sweeps instant. Before a
+ * crash-resume the checkpoint is claimed with an atomic compare-and-swap, so
+ * two sweeping mains can never double-drive one run. Two mains booting
+ * together may still both MARK one checkpoint-less dead run — accepted: the
+ * duplicate terminal facts are benign (the fold is last-writer-wins per run),
+ * and a per-run claim would need the lease table this design deliberately
+ * avoids.
  */
 @Service()
 export class InterruptedRunSweeper {
@@ -154,6 +175,49 @@ export class InterruptedRunSweeper {
 			this.metrics.recordSweepToolInterruptedFact();
 		}
 
+		// Exact hostRunId match only (runCheckpoints is pre-filtered): a run
+		// with a `running` step checkpoint is re-driven instead of terminated.
+		const runningCheckpoint = runCheckpoints.find((row) => row.state?.status === 'running');
+		if (runningCheckpoint?.state && this.resumeHost) {
+			const userId = findRunUserId(events);
+			if (userId) {
+				// Atomic claim: exactly one sweeping main may re-drive this run.
+				const claimed = await this.checkpointRepo.claimForCrashResume(
+					runningCheckpoint.key,
+					runningCheckpoint.updatedAt,
+				);
+				if (!claimed) {
+					this.logger.info('Crash-resume claim lost to a concurrent sweeper, skipping run', {
+						threadId,
+						runId,
+					});
+					return;
+				}
+				const { notes, correctionsRequeued } = this.buildContextNotes(
+					inFlight,
+					events,
+					runningCheckpoint.state,
+				);
+				const resumed = await this.resumeHost.crashResumeInterruptedRun({
+					threadId,
+					runId,
+					userId,
+					checkpointKey: runningCheckpoint.key,
+					messageGroupId: findRunMessageGroupId(events),
+					contextNotes: notes,
+				});
+				if (resumed) {
+					this.metrics.recordSweepOutcome('crash-resumed', inFlight.length, correctionsRequeued);
+					this.logger.info('Crash-resumed interrupted Instance AI run from step checkpoint', {
+						threadId,
+						runId,
+						checkpointKey: runningCheckpoint.key,
+					});
+					return;
+				}
+			}
+		}
+
 		this.eventBus.publish(threadId, {
 			type: 'run-finish',
 			runId,
@@ -167,6 +231,62 @@ export class InterruptedRunSweeper {
 			inFlightToolCalls: inFlight.length,
 		});
 	}
+
+	/**
+	 * Notes appended to the crash-resumed model context: interrupted tool calls
+	 * (verify-before-retry, never blind re-execution) and steering corrections
+	 * recorded in the log but absent from the checkpoint's message list
+	 * (queued-but-undrained at crash time).
+	 */
+	private buildContextNotes(
+		inFlight: InFlightToolCall[],
+		events: InstanceAiEvent[],
+		checkpointState: { messageList?: unknown },
+	): { notes: string[]; correctionsRequeued: number } {
+		const notes: string[] = [];
+		for (const call of inFlight) {
+			notes.push(
+				`Your previous "${call.toolName}" tool call (arguments: ${JSON.stringify(call.args)}) was interrupted by a restart before its result was recorded. Its effect is unverified — check whether it took effect before retrying it, and re-request confirmation for anything destructive.`,
+			);
+		}
+
+		// Serialized message lists embed tool call ids verbatim, so a substring
+		// check is a reliable containment test without decoding the SDK format.
+		const checkpointJson = JSON.stringify(checkpointState.messageList ?? '');
+		let correctionsRequeued = 0;
+		for (const correction of collectLoggedCorrections(events)) {
+			if (checkpointJson.includes(correction.toolCallId)) continue;
+			correctionsRequeued++;
+			notes.push(
+				`Before the restart the user sent this steering correction, which was recorded but may not have been applied yet: "${correction.correction}". Make sure it is applied.`,
+			);
+		}
+		return { notes, correctionsRequeued };
+	}
+}
+
+/** Steering corrections recorded as task-control `correct-task` calls. */
+export function collectLoggedCorrections(events: InstanceAiEvent[]): LoggedCorrection[] {
+	const corrections: LoggedCorrection[] = [];
+	for (const event of events) {
+		if (event.type !== 'tool-call') continue;
+		const { action, correction } = event.payload.args;
+		if (action === 'correct-task' && typeof correction === 'string') {
+			corrections.push({ toolCallId: event.payload.toolCallId, correction });
+		}
+	}
+	return corrections;
+}
+
+function findRunUserId(events: InstanceAiEvent[]): string | undefined {
+	return events.find((e) => e.type === 'run-start')?.userId;
+}
+
+function findRunMessageGroupId(events: InstanceAiEvent[]): string | undefined {
+	for (const event of events) {
+		if (event.type === 'run-start') return event.payload.messageGroupId;
+	}
+	return undefined;
 }
 
 /** tool-call facts with no matching terminal fact (result/error/interrupted). */
