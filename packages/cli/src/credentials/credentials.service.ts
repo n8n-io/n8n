@@ -1139,6 +1139,9 @@ export class CredentialsService {
 				]),
 			);
 		}
+		// Expressions are references (e.g. external secrets), not secrets — keep
+		// them visible and editable, mirroring the field-level password rule.
+		if (typeof obj === 'string' && obj.startsWith('={{')) return obj;
 		return CUSTOM_AUTH_JSON_REDACTED_VALUE;
 	}
 

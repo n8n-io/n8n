@@ -45,6 +45,12 @@ describe('templatedAuth.utils', () => {
 		it('keeps values without the prefix intact', () => {
 			expect(cleanPlaceholderValue(template, 'api_key', 'abc123')).toBe('abc123');
 		});
+
+		it('passes expressions through untouched', () => {
+			expect(cleanPlaceholderValue(template, 'api_key', '={{ $secrets.vault.key }}')).toBe(
+				'={{ $secrets.vault.key }}',
+			);
+		});
 	});
 
 	describe('parseTemplatedAuthField', () => {

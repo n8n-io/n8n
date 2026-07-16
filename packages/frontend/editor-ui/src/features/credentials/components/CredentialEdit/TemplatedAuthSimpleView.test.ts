@@ -37,6 +37,24 @@ describe('TemplatedAuthSimpleView', () => {
 		expect(apiVersion.querySelector('input') ?? apiVersion).toHaveAttribute('type', 'text');
 	});
 
+	it('shows expression values unmasked, like native credential fields', () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				credentialData: credentialData({
+					placeholderValues: JSON.stringify({
+						api_key: '={{ $secrets.vault.replicate }}',
+						api_version: '202404',
+					}),
+				}),
+			},
+		});
+
+		const [apiKey] = getAllByTestId('templated-auth-value-input');
+		const input = apiKey.querySelector('input') ?? apiKey;
+		expect(input).toHaveValue('={{ $secrets.vault.replicate }}');
+		expect(input).toHaveAttribute('type', 'text');
+	});
+
 	it('falls back to the marker name when a def is missing', () => {
 		const { getByText } = renderComponent({
 			props: { credentialData: credentialData({ placeholderDefs: '' }) },

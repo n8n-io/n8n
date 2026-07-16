@@ -68,8 +68,15 @@ export function markerPrefix(template: unknown, name: string): string {
 	return prefix;
 }
 
-/** Trim a pasted value and strip a duplicated template prefix. */
+/** An n8n expression value (e.g. an external-secrets reference). */
+export function isExpressionValue(value: string): boolean {
+	return value.startsWith('={{');
+}
+
+/** Trim a pasted value and strip a duplicated template prefix. Expressions
+ *  (external-secrets references) pass through untouched. */
 export function cleanPlaceholderValue(template: unknown, name: string, value: string): string {
+	if (isExpressionValue(value)) return value;
 	let cleaned = value.trim();
 	const prefix = markerPrefix(template, name);
 	if (prefix && cleaned.startsWith(prefix)) cleaned = cleaned.slice(prefix.length).trim();

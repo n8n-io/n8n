@@ -3,6 +3,7 @@ import type { IUpdateInformation } from '@/Interface';
 import {
 	cleanPlaceholderValue,
 	extractTemplateMarkers,
+	isExpressionValue,
 	parsePlaceholderDefs,
 	parsePlaceholderValues,
 	parseTemplatedAuthField,
@@ -74,6 +75,9 @@ function infoFor(name: string): string | undefined {
 }
 
 function inputTypeFor(name: string): 'text' | 'password' {
+	// Expressions (e.g. external-secrets references) are never masked, matching
+	// native credential fields; real values follow the def's masking.
+	if (isExpressionValue(editedValues.value[name] ?? '')) return 'text';
 	return defsByName.value.get(name)?.type === 'plain' ? 'text' : 'password';
 }
 

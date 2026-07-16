@@ -615,6 +615,19 @@ describe('CredentialsService', () => {
 				expect(result.json).toEqual(JSON.stringify({ port: '***', timeout: '***' }, null, 2));
 			});
 
+			it('should keep expression leaf values visible', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{ json: '{"token": "={{ $secrets.vault.replicate }}", "key": "abc"}' },
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(
+					JSON.stringify({ token: '={{ $secrets.vault.replicate }}', key: '***' }, null, 2),
+				);
+			});
+
 			it('should redact boolean leaf values', () => {
 				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
 
