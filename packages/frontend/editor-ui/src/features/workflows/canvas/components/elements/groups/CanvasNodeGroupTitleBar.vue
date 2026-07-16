@@ -845,7 +845,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 .descriptionPanelEditing {
-	border-color: var(--color--secondary);
+	border-color: var(--focus--border-color);
 }
 
 .descriptionPanelContent {
