@@ -1,4 +1,5 @@
 import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
+
 import { CreateWorkflowDto } from '../create-workflow.dto';
 
 describe('CreateWorkflowDto', () => {
