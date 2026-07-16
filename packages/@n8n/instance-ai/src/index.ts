@@ -222,8 +222,8 @@ export const releaseTraceClient: typeof LangsmithTracingMod.releaseTraceClient =
 	() => loadLangsmithTracing().releaseTraceClient,
 );
 
-export const shutdownSharedProductTelemetry: typeof LangsmithTracingMod.shutdownSharedProductTelemetry =
-	lazyFunction(() => loadLangsmithTracing().shutdownSharedProductTelemetry);
+export const shutdownProductTelemetryProviders: typeof LangsmithTracingMod.shutdownProductTelemetryProviders =
+	lazyFunction(() => loadLangsmithTracing().shutdownProductTelemetryProviders);
 
 export const submitLangsmithUserFeedback: typeof LangsmithTracingMod.submitLangsmithUserFeedback =
 	lazyFunction(() => loadLangsmithTracing().submitLangsmithUserFeedback);

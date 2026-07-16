@@ -19,7 +19,7 @@ import {
 	mergeTraceRunInputs,
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
-	shutdownSharedProductTelemetry,
+	shutdownProductTelemetryProviders,
 	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } from '../langsmith-tracing';
@@ -353,10 +353,11 @@ describe('createInstanceAiTraceContext', () => {
 	const originalDiagnosticsEnabled = process.env.N8N_DIAGNOSTICS_ENABLED;
 
 	beforeEach(async () => {
-		// Release providers cached by the previous test before resetting the
-		// mock call counts, so this cleanup shutdown never contaminates the
-		// upcoming test's assertions on `provider.shutdown`.
-		await shutdownSharedProductTelemetry();
+		// Force-shut down any trace provider left outstanding by the previous
+		// test (e.g. one with an unreleased memory-task lease) before resetting
+		// the mock call counts, so it never contaminates the upcoming test's
+		// assertions on `provider.shutdown`.
+		await shutdownProductTelemetryProviders();
 		langsmithMock.reset();
 		agentsMock.reset();
 		process.env.LANGSMITH_API_KEY = 'test-key';
@@ -1048,7 +1049,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(agentsMock.getProvider().forceFlush).not.toHaveBeenCalled();
 	});
 
-	it('force-flushes product telemetry when the root run finishes, without shutting down the provider', async () => {
+	it('shuts down product telemetry once when the root run finishes, with no outstanding memory-task leases', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-shutdown',
 			messageId: 'message-shutdown',
@@ -1061,22 +1062,22 @@ describe('createInstanceAiTraceContext', () => {
 		const provider = agentsMock.getProvider();
 
 		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
-		const flushesAfterFirstFinish = provider.forceFlush.mock.calls.length;
-		expect(flushesAfterFirstFinish).toBeGreaterThan(0);
+
+		// The root trace is the only holder of this provider (no queued
+		// memory-task lease), so releasing it flushes then shuts down exactly
+		// once.
+		expect(provider.forceFlush).toHaveBeenCalledTimes(1);
+		expect(provider.shutdown).toHaveBeenCalledTimes(1);
+		expect(tracing?.isLive?.()).toBe(false);
 
 		// Finishing again is a no-op: the trace was already released, so no
-		// further flushes happen.
+		// further flushes/shutdowns happen.
 		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done again' } });
-
-		// The provider is process-lived: background tasks (memory observer/
-		// reflector) can still finish spans on it after the root run, so
-		// releasing a trace only flushes — it never shuts the provider down.
-		expect(provider.forceFlush).toHaveBeenCalledTimes(flushesAfterFirstFinish);
-		expect(provider.shutdown).not.toHaveBeenCalled();
-		expect(tracing?.isLive?.()).toBe(false);
+		expect(provider.forceFlush).toHaveBeenCalledTimes(1);
+		expect(provider.shutdown).toHaveBeenCalledTimes(1);
 	});
 
-	it('force-flushes product telemetry when releasing a trace client, without shutting down the provider', async () => {
+	it('shuts down product telemetry once when releasing a trace client, with no outstanding memory-task leases', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-release',
 			messageId: 'message-release',
@@ -1091,11 +1092,13 @@ describe('createInstanceAiTraceContext', () => {
 		releaseTraceClient(tracing!.rootRun.traceId);
 		await Promise.resolve();
 
-		expect(provider.forceFlush).toHaveBeenCalledTimes(1);
-		expect(provider.shutdown).not.toHaveBeenCalled();
+		// A direct `releaseTraceClient` call (no prior `finishRun`) has no
+		// spans to flush — only the provider shuts down.
+		expect(provider.forceFlush).not.toHaveBeenCalled();
+		expect(provider.shutdown).toHaveBeenCalledTimes(1);
 	});
 
-	it('exports a memory-task span created after the root run finishes and released its trace', async () => {
+	it('keeps the provider alive for a queued memory task until it releases, then exports its span and shuts down', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-late-memory-task',
 			messageId: 'message-late-memory-task',
@@ -1106,7 +1109,21 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 
 		// Matches RuntimeTelemetry.resolve() threading the run's telemetry into
-		// a scheduled observer job before the turn finishes.
+		// a scheduled observer job before the turn finishes. The runner emits
+		// `queued` synchronously at schedule time (see
+		// ScopedMemoryTaskRunner.schedule), before the turn's stream `finish`
+		// chunk — this retains the trace's provider before its async body starts.
+		tracing!.onMemoryTaskEvent?.({
+			type: 'queued',
+			task: {
+				id: 'memory-task-1',
+				taskKind: 'observer',
+				observationScopeId: 'thread-late-memory-task',
+				status: 'queued',
+				queuedAt: new Date(),
+			},
+		} as never);
+
 		const telemetryOrBuilder = tracing!.getTelemetry!({
 			agentRole: 'orchestrator',
 			functionId: 'instance-ai.orchestrator.memory-observer',
@@ -1116,9 +1133,9 @@ describe('createInstanceAiTraceContext', () => {
 			'build' in telemetryOrBuilder ? await telemetryOrBuilder.build() : telemetryOrBuilder;
 		const provider = agentsMock.getProvider();
 
-		// The turn finishes — and its trace is released — while the observer
-		// call built above is still pending. On master this shut down the
-		// per-trace provider, so the observer's span later exported to nothing.
+		// The turn finishes — and its trace bookkeeping is released — while the
+		// observer call built above is still pending. The queued memory-task
+		// lease keeps the provider alive past this point.
 		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
 		expect(provider.shutdown).not.toHaveBeenCalled();
 
@@ -1145,89 +1162,136 @@ describe('createInstanceAiTraceContext', () => {
 			);
 		expect(exportedObserverSpan?.ended).toBe(true);
 		expect(provider.shutdown).not.toHaveBeenCalled();
+
+		// Releasing the memory task's own lease is what finally shuts the
+		// provider down.
+		tracing!.onMemoryTaskEvent?.({
+			type: 'completed',
+			task: {
+				id: 'memory-task-1',
+				taskKind: 'observer',
+				observationScopeId: 'thread-late-memory-task',
+				status: 'running',
+				queuedAt: new Date(),
+			},
+			value: undefined,
+		} as never);
+		await Promise.resolve();
+
+		expect(provider.shutdown).toHaveBeenCalledTimes(1);
 	});
 
-	it('shuts down every cached provider on shutdownSharedProductTelemetry', async () => {
-		await createInstanceAiTraceContext({
+	it('requires every queued memory-task lease to release before shutting down the provider', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-two-memory-tasks',
+			messageId: 'message-two-memory-tasks',
+			runId: 'run-two-memory-tasks',
+			userId: 'user-two-memory-tasks',
+			input: { message: 'hello' },
+		});
+		expect(tracing).toBeDefined();
+		const provider = agentsMock.getProvider();
+
+		const scope = 'thread-two-memory-tasks';
+		const observerTask = {
+			id: 'memory-task-observer',
+			taskKind: 'observer' as const,
+			observationScopeId: scope,
+			status: 'queued' as const,
+			queuedAt: new Date(),
+		};
+		const reflectorTask = {
+			id: 'memory-task-reflector',
+			taskKind: 'reflector' as const,
+			observationScopeId: scope,
+			status: 'queued' as const,
+			queuedAt: new Date(),
+		};
+		tracing!.onMemoryTaskEvent?.({ type: 'queued', task: observerTask } as never);
+		tracing!.onMemoryTaskEvent?.({ type: 'queued', task: reflectorTask } as never);
+
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+		expect(provider.shutdown).not.toHaveBeenCalled();
+
+		tracing!.onMemoryTaskEvent?.({
+			type: 'completed',
+			task: observerTask,
+			value: undefined,
+		} as never);
+		await Promise.resolve();
+		expect(provider.shutdown).not.toHaveBeenCalled();
+
+		tracing!.onMemoryTaskEvent?.({
+			type: 'failed',
+			task: reflectorTask,
+			error: new Error('x'),
+		} as never);
+		await Promise.resolve();
+		expect(provider.shutdown).toHaveBeenCalledTimes(1);
+	});
+
+	it('releases a memory-task lease on a skipped event, and ignores a duplicate terminal event for the same task', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-skipped-memory-task',
+			messageId: 'message-skipped-memory-task',
+			runId: 'run-skipped-memory-task',
+			userId: 'user-skipped-memory-task',
+			input: { message: 'hello' },
+		});
+		expect(tracing).toBeDefined();
+		const provider = agentsMock.getProvider();
+
+		const task = {
+			id: 'memory-task-skipped',
+			taskKind: 'observer' as const,
+			observationScopeId: 'thread-skipped-memory-task',
+			status: 'queued' as const,
+			queuedAt: new Date(),
+		};
+		tracing!.onMemoryTaskEvent?.({ type: 'queued', task } as never);
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+		expect(provider.shutdown).not.toHaveBeenCalled();
+
+		tracing!.onMemoryTaskEvent?.({ type: 'skipped', task, reason: 'lock-held' } as never);
+		await Promise.resolve();
+		expect(provider.shutdown).toHaveBeenCalledTimes(1);
+
+		// A duplicate terminal event for the same (already-released) task id
+		// must not double-release the already-shut-down provider.
+		tracing!.onMemoryTaskEvent?.({
+			type: 'completed',
+			task,
+			value: undefined,
+		} as never);
+		await Promise.resolve();
+		expect(provider.shutdown).toHaveBeenCalledTimes(1);
+	});
+
+	it('shuts down a trace provider on shutdownProductTelemetryProviders even with an outstanding memory-task lease', async () => {
+		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-drain',
 			messageId: 'message-drain',
 			runId: 'run-drain',
 			userId: 'user-drain',
 			input: { message: 'hello' },
 		});
+		expect(tracing).toBeDefined();
 		const provider = agentsMock.getProvider();
 
-		await shutdownSharedProductTelemetry();
+		tracing!.onMemoryTaskEvent?.({
+			type: 'queued',
+			task: {
+				id: 'memory-task-drain',
+				taskKind: 'observer',
+				observationScopeId: 'thread-drain',
+				status: 'queued',
+				queuedAt: new Date(),
+			},
+		} as never);
+
+		await shutdownProductTelemetryProviders();
 
 		expect(provider.shutdown).toHaveBeenCalledTimes(1);
-	});
-
-	it('caches one provider per proxy identity: reused for repeats, separate across identities', async () => {
-		const buildSpy = vi.spyOn(agentsModule.LangSmithTelemetry.prototype, 'build');
-		const proxyConfigFor = (identityKey: string) => ({
-			apiUrl: 'https://proxy.test/langsmith',
-			getAuthHeaders: async () => await Promise.resolve({ Authorization: `Bearer ${identityKey}` }),
-			identityKey,
-		});
-
-		await createInstanceAiTraceContext({
-			threadId: 'thread-identity-a-1',
-			messageId: 'message-identity-a-1',
-			runId: 'run-identity-a-1',
-			userId: 'user-a',
-			input: { message: 'hello' },
-			proxyConfig: proxyConfigFor('user-a'),
-		});
-		await createInstanceAiTraceContext({
-			threadId: 'thread-identity-a-2',
-			messageId: 'message-identity-a-2',
-			runId: 'run-identity-a-2',
-			userId: 'user-a',
-			input: { message: 'hello again' },
-			proxyConfig: proxyConfigFor('user-a'),
-		});
-
-		// Same identity, repeated: the cache reuses one provider.
-		expect(buildSpy).toHaveBeenCalledTimes(1);
-
-		await createInstanceAiTraceContext({
-			threadId: 'thread-identity-b',
-			messageId: 'message-identity-b',
-			runId: 'run-identity-b',
-			userId: 'user-b',
-			input: { message: 'hello' },
-			proxyConfig: proxyConfigFor('user-b'),
-		});
-
-		// Different identity behind the same apiUrl: without the identity key,
-		// this would reuse (and leak auth headers from) user-a's provider.
-		expect(buildSpy).toHaveBeenCalledTimes(2);
-	});
-
-	it('retries the telemetry build after a failed construction', async () => {
-		const buildSpy = vi.spyOn(agentsModule.LangSmithTelemetry.prototype, 'build');
-		agentsMock.setBuildError(new Error('telemetry setup failed'));
-
-		const failedTracing = await createInstanceAiTraceContext({
-			threadId: 'thread-retry',
-			messageId: 'message-retry',
-			runId: 'run-retry',
-			userId: 'user-retry',
-			input: { message: 'hello' },
-		});
-		expect(failedTracing).toBeUndefined();
-
-		agentsMock.setBuildError(undefined);
-		const retriedTracing = await createInstanceAiTraceContext({
-			threadId: 'thread-retry',
-			messageId: 'message-retry-2',
-			runId: 'run-retry-2',
-			userId: 'user-retry',
-			input: { message: 'hello again' },
-		});
-
-		expect(retriedTracing).toBeDefined();
-		expect(buildSpy).toHaveBeenCalledTimes(2);
 	});
 
 	it('creates a new orchestrator resume root when continuing a trace', async () => {

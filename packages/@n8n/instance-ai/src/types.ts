@@ -866,6 +866,13 @@ export interface BuilderDelegateSession {
 	 * trace context so the builder's LLM/tool spans join the parent trace.
 	 */
 	telemetry?: Telemetry | BuiltTelemetry;
+	/**
+	 * Parent trace's memory-task lease hook (`InstanceAiTraceContext.onMemoryTaskEvent`).
+	 * When set, the builder forwards its own observational-memory task events
+	 * to it via `Agent.memoryTaskObserver()`, so the builder's memory LLM spans
+	 * can outlive the parent trace's root finalization.
+	 */
+	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
@@ -1282,14 +1289,6 @@ export interface ServiceProxyConfig {
 	 * transparently refreshed during long-running agent turns.
 	 */
 	getAuthHeaders: () => Promise<Record<string, string>>;
-	/**
-	 * Stable identity the proxy authenticates as (e.g. the calling user's id).
-	 * Process-lived telemetry providers are cached per proxy deployment, so
-	 * without this key every identity behind the same proxy URL would share
-	 * one provider's auth-header closure — the first identity's token would
-	 * be used for every later identity's exports.
-	 */
-	identityKey?: string;
 }
 
 // ── LangSmith tracing ────────────────────────────────────────────────────────
@@ -1384,6 +1383,14 @@ export interface InstanceAiTraceContext {
 		options?: InstanceAiToolTraceOptions,
 	) => InstanceAiToolRegistry;
 	getTelemetry?: (options: InstanceAiTelemetryOptions) => Telemetry | BuiltTelemetry;
+	/**
+	 * Forward an observational-memory task lifecycle event so its LLM span can
+	 * outlive root-trace finalization. A `queued` event retains the trace's
+	 * telemetry provider; the matching `completed`/`failed`/`skipped` event
+	 * releases it. Wire this to `Agent.memoryTaskObserver()` / `CreateInstanceAgentOptions.onMemoryTaskEvent`
+	 * for any agent (main or sub-agent) whose spans should join this trace.
+	 */
+	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */

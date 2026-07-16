@@ -1517,6 +1517,40 @@ describe('build-agent tool', () => {
 			expect(sessionArg).not.toHaveProperty('telemetry');
 		});
 
+		it('forwards the parent trace memory-task lease hook in the builder session', async () => {
+			const { context, delegate } = makeContext();
+			const { tracing } = makeTracingStub();
+			const onMemoryTaskEvent = vi.fn();
+			tracing.onMemoryTaskEvent = onMemoryTaskEvent;
+			context.tracing = tracing;
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'ok'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
+			expect(sessionArg).toEqual(
+				expect.objectContaining({ memoryTaskObserver: onMemoryTaskEvent }),
+			);
+		});
+
+		it('omits the memory-task lease hook from the builder session when tracing is unset', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'ok'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
+			expect(sessionArg).not.toHaveProperty('memoryTaskObserver');
+		});
+
 		it('starts a labeled agent-builder child run and finishes it with outputs on completion', async () => {
 			const { context, delegate } = makeContext();
 			const { tracing, traceRun } = makeTracingStub();

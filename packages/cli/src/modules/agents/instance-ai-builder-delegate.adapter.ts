@@ -85,6 +85,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 			modelConfig: session.modelConfig,
 			...(session.telemetry ? { telemetry: session.telemetry } : {}),
+			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
 		};
 	}
 

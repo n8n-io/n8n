@@ -60,7 +60,7 @@ import {
 	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
-	shutdownSharedProductTelemetry,
+	shutdownProductTelemetryProviders,
 	tokenUsageToBuilderUsageItems,
 	RunDebugBuffer,
 	buildRunDebugLabel,
@@ -680,11 +680,6 @@ export class InstanceAiService {
 					...(await tokenManager.getAuthHeaders()),
 					...featureHeaders,
 				}),
-				// Telemetry providers are process-lived and cached per proxy
-				// deployment (see shared-provider cache), so this keeps each user's
-				// exports on their own provider instead of reusing another user's
-				// auth-header closure.
-				identityKey: user.id,
 			},
 		};
 	}
@@ -763,8 +758,15 @@ export class InstanceAiService {
 		return { ...status, memoryTasks };
 	}
 
-	private memoryTaskObserverFor(threadId: string): (event: ScopedMemoryTaskEvent) => void {
+	private memoryTaskObserverFor(
+		threadId: string,
+		tracing: InstanceAiTraceContext | undefined,
+	): (event: ScopedMemoryTaskEvent) => void {
 		return (event) => {
+			// Retains/releases the trace's telemetry provider lease so the
+			// task's LLM span can still export after the root trace finalizes
+			// (see InstanceAiTraceContext.onMemoryTaskEvent).
+			tracing?.onMemoryTaskEvent?.(event);
 			this.memoryTaskRegistry.handleEvent(threadId, event);
 			const pendingTasks = this.memoryTaskRegistry.getTasks(threadId);
 			const logContext = {
@@ -1498,10 +1500,10 @@ export class InstanceAiService {
 		this.eventBus.clear();
 		await this._mcpClientManager?.disconnect();
 
-		// Final drain of the process-lived LangSmith providers so spans still
-		// sitting in the batch exporter (e.g. from late memory tasks) are not
-		// lost on shutdown. Best-effort by contract — never throws.
-		await shutdownSharedProductTelemetry();
+		// Final drain of every trace's LangSmith provider so spans still sitting
+		// in the batch exporter (e.g. from late memory tasks) are not lost on
+		// shutdown. Best-effort by contract — never throws.
+		await shutdownProductTelemetryProviders();
 		this.logger.debug('Instance AI service shut down');
 	}
 
@@ -4129,7 +4131,7 @@ export class InstanceAiService {
 			memoryConfig: this.createAgentMemoryOptions(user, threadId, runId),
 			memory: environment.memory,
 			checkpointStore: this.checkpointStore,
-			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
+			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 		});
 		this.subscribeToAgentErrors(agent, threadId, runId);

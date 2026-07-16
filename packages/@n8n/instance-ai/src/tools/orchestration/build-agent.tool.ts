@@ -131,6 +131,9 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 		runId: context.runId,
 		modelConfig: context.modelId,
 		...(telemetry ? { telemetry } : {}),
+		...(context.tracing?.onMemoryTaskEvent
+			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
+			: {}),
 	};
 }
 

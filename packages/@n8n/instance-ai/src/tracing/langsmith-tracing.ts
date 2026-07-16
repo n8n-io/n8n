@@ -5,6 +5,7 @@ import {
 	type BuiltTelemetry,
 	type BuiltTool,
 	type InterruptibleToolContext,
+	type ScopedMemoryTaskEvent,
 	type ToolContext,
 } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
@@ -77,53 +78,74 @@ const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 const otelTraceRuntimes = new Map<string, ProductOtelTraceRuntime>();
 const hostRequire = createRequire(__filename);
 
+/** Every live {@link ProductTelemetryLifetime}, until its provider has shut down. Drained on process shutdown. */
+const activeProductTelemetryLifetimes = new Set<ProductTelemetryLifetime>();
+
 /**
- * Process-lived LangSmith telemetry (tracer provider + batch exporter), shared
- * across trace contexts and keyed by project + proxy deployment + auth
- * identity. Background work (observational-memory observer/reflector) finishes
- * after its message's root run; a per-trace provider shutdown would drop those
- * spans, so providers stay alive and traces only force-flush on finish.
+ * Reference-counts how many holders (the root trace, plus any in-flight
+ * observational-memory task) still need one trace's dedicated LangSmith
+ * provider alive. The root trace holds the initial reference; a queued
+ * observer/reflector task (see `InstanceAiTraceContext.onMemoryTaskEvent`)
+ * retains its own reference before its async body starts, so the provider
+ * can't shut down mid-flight even though the root trace usually finalizes
+ * first. The provider force-flushes then shuts down exactly once, when the
+ * last reference releases.
  */
-const sharedProductTelemetries = new Map<string, Promise<BuiltTelemetry>>();
+class ProductTelemetryLifetime {
+	private refCount = 1;
+	private shutdownPromise: Promise<void> | undefined;
 
-function sharedProductTelemetryKey(projectName: string, proxyConfig?: ServiceProxyConfig): string {
-	return `${projectName}::${proxyConfig?.apiUrl ?? 'direct'}::${proxyConfig?.identityKey ?? 'shared'}`;
-}
-
-async function getSharedProductTelemetry(
-	projectName: string,
-	proxyConfig?: ServiceProxyConfig,
-): Promise<BuiltTelemetry> {
-	const key = sharedProductTelemetryKey(projectName, proxyConfig);
-	let pending = sharedProductTelemetries.get(key);
-	if (!pending) {
-		pending = createLangSmithTelemetryBuilder(projectName, proxyConfig)
-			.functionId('instance-ai.product')
-			.metadata({})
-			.recordInputs(true)
-			.recordOutputs(true)
-			.build();
-		// Drop failed builds from the cache so the next trace retries instead of
-		// permanently caching a rejection.
-		pending.catch(() => sharedProductTelemetries.delete(key));
-		sharedProductTelemetries.set(key, pending);
+	constructor(private readonly telemetry: BuiltTelemetry) {
+		activeProductTelemetryLifetimes.add(this);
 	}
-	return await pending;
+
+	/**
+	 * Add a holder and return its release function. The release function is
+	 * idempotent — calling it more than once only decrements the refcount once.
+	 */
+	retain(): () => Promise<void> {
+		this.refCount++;
+		let released = false;
+		return async () => {
+			if (released) return;
+			released = true;
+			await this.decrementAndMaybeShutdown();
+		};
+	}
+
+	/** Release the trace's own root holder. Callers are responsible for their own idempotence (the root release is already guarded by `ProductOtelTraceRuntime.shutdown`). */
+	async release(): Promise<void> {
+		await this.decrementAndMaybeShutdown();
+	}
+
+	/** Force shutdown now regardless of outstanding holders. Intended for tests and process shutdown. */
+	async shutdownNow(): Promise<void> {
+		await this.shutdown();
+	}
+
+	private async decrementAndMaybeShutdown(): Promise<void> {
+		this.refCount = Math.max(0, this.refCount - 1);
+		if (this.refCount > 0) return;
+		await this.shutdown();
+	}
+
+	private async shutdown(): Promise<void> {
+		this.shutdownPromise ??= (async () => {
+			try {
+				await Telemetry.shutdown(this.telemetry);
+			} catch {
+				// Telemetry teardown is best-effort.
+			}
+			activeProductTelemetryLifetimes.delete(this);
+		})();
+		await this.shutdownPromise;
+	}
 }
 
-/** Shut down and forget all shared product telemetry providers. Intended for tests and process shutdown. */
-export async function shutdownSharedProductTelemetry(): Promise<void> {
-	const pending = [...sharedProductTelemetries.values()];
-	sharedProductTelemetries.clear();
-	await Promise.all(
-		pending.map(async (telemetry) => {
-			try {
-				await Telemetry.shutdown(await telemetry);
-			} catch {
-				// Best-effort teardown.
-			}
-		}),
-	);
+/** Shut down every live trace's product telemetry provider. Intended for tests and process shutdown. */
+export async function shutdownProductTelemetryProviders(): Promise<void> {
+	const lifetimes = [...activeProductTelemetryLifetimes];
+	await Promise.all(lifetimes.map(async (lifetime) => await lifetime.shutdownNow()));
 }
 
 /**
@@ -159,6 +181,7 @@ interface ProductOtelTraceRuntime {
 	spans: Map<string, OtelApiSpan>;
 	contexts: Map<string, OtelContext>;
 	shutdown: boolean;
+	lifetime: ProductTelemetryLifetime;
 }
 
 interface OTelTracer {
@@ -448,9 +471,13 @@ async function finishProductSpanBestEffort(
 
 /**
  * Release a trace's OTel bookkeeping: mark it not-live, drop its span/context
- * maps, and force-flush the shared provider. The provider itself is
- * process-lived (see sharedProductTelemetries) so spans from background tasks
- * that outlive the trace still export on a later batch.
+ * maps, and release the trace's own reference on its dedicated provider (see
+ * `ProductTelemetryLifetime`). Callers that need pending spans flushed before
+ * this (e.g. the root run) pass `forceFlush: true` to their own span-finish
+ * call first — see `finishRun`. The provider shuts down once every
+ * reference — this root release plus any in-flight observational-memory task
+ * leases — has released, so spans from background tasks that outlive the
+ * trace still export.
  */
 async function releaseProductOtelRuntime(
 	runtime: ProductOtelTraceRuntime,
@@ -463,11 +490,7 @@ async function releaseProductOtelRuntime(
 	runtime.contexts.clear();
 	otelTraceRuntimes.delete(traceId);
 
-	try {
-		await Telemetry.forceFlush(runtime.telemetry);
-	} catch {
-		// Product tracing is best-effort and must not fail or mask agent execution.
-	}
+	await runtime.lifetime.release();
 }
 
 async function withProxyHeaders<T>(
@@ -1167,6 +1190,26 @@ function createTraceContext(
 ): InstanceAiTraceContext {
 	otelTraceRuntimes.set(rootRun.traceId, otelRuntime);
 
+	// Keyed by ScopedMemoryTaskInfo.id, released exactly once on whichever
+	// terminal event (`completed` | `failed` | `skipped`) arrives first for
+	// that task. A `queued` task retains the trace's provider synchronously —
+	// before its async observer/reflector body starts — so the provider can't
+	// shut down mid-flight even though the root trace usually finalizes first
+	// (see MemoryOrchestrator.saveToMemory, which schedules memory tasks
+	// before the stream's `finish` chunk).
+	const memoryTaskReleases = new Map<string, () => Promise<void>>();
+	const onMemoryTaskEvent = (event: ScopedMemoryTaskEvent): void => {
+		if (event.type === 'queued') {
+			memoryTaskReleases.set(event.task.id, otelRuntime.lifetime.retain());
+			return;
+		}
+		if (event.type === 'started') return;
+		const release = memoryTaskReleases.get(event.task.id);
+		if (!release) return;
+		memoryTaskReleases.delete(event.task.id);
+		void release();
+	};
+
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
 		init: InstanceAiTraceRunInit,
@@ -1257,6 +1300,7 @@ function createTraceContext(
 		toHeaders: () => ({}),
 		finishRun,
 		failRun,
+		onMemoryTaskEvent,
 		...(telemetryFactory ? { getTelemetry: telemetryFactory } : {}),
 		wrapTools: (tools, traceOptions) => {
 			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {
@@ -1711,13 +1755,19 @@ async function createProductOtelRuntime(
 	projectName: string,
 	proxyConfig?: ServiceProxyConfig,
 ): Promise<ProductOtelTraceRuntime> {
-	const telemetry = await getSharedProductTelemetry(projectName, proxyConfig);
+	const telemetry = await createLangSmithTelemetryBuilder(projectName, proxyConfig)
+		.functionId('instance-ai.product')
+		.metadata({})
+		.recordInputs(true)
+		.recordOutputs(true)
+		.build();
 
 	return {
 		telemetry,
 		spans: new Map(),
 		contexts: new Map(),
 		shutdown: false,
+		lifetime: new ProductTelemetryLifetime(telemetry),
 	};
 }
 

@@ -30,6 +30,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 	const modelCalls: unknown[] = [];
 	const skillsCalls: unknown[] = [];
 	const telemetryCalls: unknown[] = [];
+	const memoryTaskObserverCalls: unknown[] = [];
 	const observationalMemoryCalls: Array<{
 		observe: { model: unknown; options: { onUsage: (report: unknown) => Promise<void> } };
 		reflect: { model: unknown; options: { onUsage: (report: unknown) => Promise<void> } };
@@ -68,6 +69,10 @@ const agentsSdkMocks = vi.hoisted(() => {
 		}
 		telemetry(t: unknown) {
 			telemetryCalls.push(t);
+			return this;
+		}
+		memoryTaskObserver(observer: unknown) {
+			memoryTaskObserverCalls.push(observer);
 			return this;
 		}
 		tool(tool: BuiltTool) {
@@ -110,6 +115,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		modelCalls,
 		skillsCalls,
 		telemetryCalls,
+		memoryTaskObserverCalls,
 		observationalMemoryCalls,
 		MockAgent,
 		MockMemory,
@@ -217,6 +223,7 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.modelCalls.length = 0;
 		agentsSdkMocks.skillsCalls.length = 0;
 		agentsSdkMocks.telemetryCalls.length = 0;
+		agentsSdkMocks.memoryTaskObserverCalls.length = 0;
 		agentsSdkMocks.observationalMemoryCalls.length = 0;
 	});
 
@@ -320,6 +327,25 @@ describe('AgentsBuilderService session isolation', () => {
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
 		);
 		expect(agentsSdkMocks.telemetryCalls).toEqual([]);
+	});
+
+	it('registers session.memoryTaskObserver on the builder agent when provided, and omits it otherwise', async () => {
+		const { service, user, credentialProvider } = setup();
+		const memoryTaskObserver = vi.fn();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				memoryTaskObserver,
+			}),
+		);
+		expect(agentsSdkMocks.memoryTaskObserverCalls).toEqual([memoryTaskObserver]);
+
+		agentsSdkMocks.memoryTaskObserverCalls.length = 0;
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+		);
+		expect(agentsSdkMocks.memoryTaskObserverCalls).toEqual([]);
 	});
 
 	it('constructs Haiku-backed observer/reflector callbacks and claims usage under the host thread/run/target-agent dedupe key', async () => {

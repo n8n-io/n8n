@@ -171,14 +171,14 @@ vi.mock('@n8n/instance-ai', async () => {
 		},
 		resumeAgentRun: vi.fn(),
 		createInstanceAiTraceContext: vi.fn(async () => ({ rootRun: { otelTraceId: undefined } })),
-		shutdownSharedProductTelemetry: vi.fn(async () => {}),
+		shutdownProductTelemetryProviders: vi.fn(async () => {}),
 		TerminalOutcomeStorage: class {
 			constructor(_memory: unknown) {}
 		},
 	};
 });
 
-import type { MemoryTaskUsageReport } from '@n8n/agents';
+import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent } from '@n8n/agents';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
@@ -195,7 +195,7 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
-	shutdownSharedProductTelemetry,
+	shutdownProductTelemetryProviders,
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
@@ -527,6 +527,37 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 		warn: vi.fn(),
 	};
 	return service;
+}
+
+type MemoryTaskObserverServiceInternals = {
+	memoryTaskObserverFor: (
+		threadId: string,
+		tracing: InstanceAiTraceContext | undefined,
+	) => (event: ScopedMemoryTaskEvent) => void;
+	memoryTaskRegistry: { handleEvent: Mock; getTasks: Mock };
+	logger: { info: Mock };
+};
+
+function createMemoryTaskObserverService(): MemoryTaskObserverServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as MemoryTaskObserverServiceInternals;
+	service.memoryTaskRegistry = { handleEvent: vi.fn(), getTasks: vi.fn(() => []) };
+	service.logger = { info: vi.fn() };
+	return service;
+}
+
+function queuedMemoryTaskEvent(): ScopedMemoryTaskEvent {
+	return {
+		type: 'queued',
+		task: {
+			id: 'task-1',
+			taskKind: 'observer',
+			observationScopeId: 'thread-1',
+			status: 'queued',
+			queuedAt: new Date(),
+		},
+	};
 }
 
 const fakeUser = { id: 'user-1' } as User;
@@ -1100,13 +1131,43 @@ describe('InstanceAiService — shutdown', () => {
 			service.eventBus.clear.mock.invocationCallOrder[0],
 		);
 
-		// Shared LangSmith providers are process-lived (see langsmith-tracing.ts);
-		// only the final process shutdown drains them, after run/background
-		// cleanup has already released each trace's own bookkeeping.
-		expect(shutdownSharedProductTelemetry).toHaveBeenCalledTimes(1);
+		// Every trace's LangSmith provider is drained on final process shutdown,
+		// after run/background cleanup has already released each trace's own
+		// bookkeeping.
+		expect(shutdownProductTelemetryProviders).toHaveBeenCalledTimes(1);
 		expect(service.eventBus.clear.mock.invocationCallOrder[0]).toBeLessThan(
-			vi.mocked(shutdownSharedProductTelemetry).mock.invocationCallOrder[0],
+			vi.mocked(shutdownProductTelemetryProviders).mock.invocationCallOrder[0],
 		);
+	});
+});
+
+describe('InstanceAiService — memory task observer', () => {
+	it('forwards memory task events to the trace context lease hook before existing registry/log handling', () => {
+		const service = createMemoryTaskObserverService();
+		const tracing = { onMemoryTaskEvent: vi.fn() } as unknown as InstanceAiTraceContext;
+		const observer = service.memoryTaskObserverFor('thread-1', tracing);
+		const event = queuedMemoryTaskEvent();
+
+		observer(event);
+
+		expect(tracing.onMemoryTaskEvent).toHaveBeenCalledWith(event);
+		expect(service.memoryTaskRegistry.handleEvent).toHaveBeenCalledWith('thread-1', event);
+		expect(service.logger.info).toHaveBeenCalledWith(
+			'Observational memory task queued',
+			expect.objectContaining({ threadId: 'thread-1', taskId: 'task-1' }),
+		);
+		expect(vi.mocked(tracing.onMemoryTaskEvent).mock.invocationCallOrder[0]).toBeLessThan(
+			service.memoryTaskRegistry.handleEvent.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('still runs registry/log handling when the trace context has no lease hook', () => {
+		const service = createMemoryTaskObserverService();
+		const observer = service.memoryTaskObserverFor('thread-1', undefined);
+		const event = queuedMemoryTaskEvent();
+
+		expect(() => observer(event)).not.toThrow();
+		expect(service.memoryTaskRegistry.handleEvent).toHaveBeenCalledWith('thread-1', event);
 	});
 });
 

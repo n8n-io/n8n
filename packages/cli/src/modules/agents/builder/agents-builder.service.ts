@@ -3,6 +3,7 @@ import type {
 	CredentialProvider,
 	MemoryTaskUsageReport,
 	ModelConfig,
+	ScopedMemoryTaskEvent,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
@@ -64,6 +65,14 @@ export interface InstanceAiBuilderSessionOptions {
 	 * sub-agent spans join the host trace.
 	 */
 	telemetry?: Telemetry | BuiltTelemetry;
+	/**
+	 * Host's memory-task lease hook (`InstanceAiTraceContext.onMemoryTaskEvent`).
+	 * When set, registered on the builder agent via `Agent.memoryTaskObserver()`
+	 * so the builder's own observational-memory task events retain/release the
+	 * host trace's telemetry provider, keeping its memory LLM spans exportable
+	 * after the host trace's root finalizes.
+	 */
+	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 }
 
 @Service()
@@ -285,6 +294,7 @@ export class AgentsBuilderService {
 			.configuration({ maxIterations: 30 });
 
 		if (session.telemetry) builder.telemetry(session.telemetry);
+		if (session.memoryTaskObserver) builder.memoryTaskObserver(session.memoryTaskObserver);
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);
