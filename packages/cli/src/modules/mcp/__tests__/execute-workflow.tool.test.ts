@@ -828,7 +828,7 @@ describe('execute-workflow MCP tool', () => {
 						method: 'notifications/progress',
 						params: expect.objectContaining({
 							progressToken: 'token-1',
-							message: expect.stringContaining('started'),
+							message: expect.stringContaining('"My wf" started'),
 						}),
 					}),
 				);

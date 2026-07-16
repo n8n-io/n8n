@@ -142,7 +142,7 @@ export const createExecuteWorkflowTool = (
 			parameters: { workflowId, executionMode, inputs: getInputMetaData(inputs) },
 		};
 		try {
-			const output = await executeWorkflow(
+			const { workflowName, ...output } = await executeWorkflow(
 				user,
 				workflowFinderService,
 				workflowRunner,
@@ -166,7 +166,7 @@ export const createExecuteWorkflowTool = (
 							cancelOnTimeout: false,
 							progress: {
 								extra,
-								label: `Execution ${output.executionId} of workflow ${workflowId}`,
+								label: `Execution ${output.executionId} of "${workflowName}"`,
 							},
 						},
 					);
@@ -251,7 +251,7 @@ export const executeWorkflow = async (
 	workflowId: string,
 	inputs: z.infer<typeof inputSchema>['inputs'],
 	executionMode: z.infer<typeof inputSchema>['executionMode'],
-): Promise<ExecuteWorkflowOutput> => {
+): Promise<ExecuteWorkflowOutput & { workflowName: string }> => {
 	const workflow = await getMcpWorkflow(
 		workflowId,
 		user,
@@ -275,6 +275,7 @@ export const executeWorkflow = async (
 	return {
 		executionId,
 		status: 'started',
+		workflowName: workflow.name,
 	};
 };
 

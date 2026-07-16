@@ -243,7 +243,7 @@ export async function testWorkflow(
 	const executionId = await workflowRunner.run(runData);
 	const data = await waitForExecutionResult(executionId, activeExecutions, mcpService, {
 		cancelOnTimeout: true,
-		progress: extra && { extra, label: `Execution ${executionId} of workflow ${workflowId}` },
+		progress: extra && { extra, label: `Execution ${executionId} of "${workflow.name}"` },
 	});
 
 	return { executionId, ...getExecutionOutcome(data) };
