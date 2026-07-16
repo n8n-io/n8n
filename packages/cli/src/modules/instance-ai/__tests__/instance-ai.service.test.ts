@@ -1020,17 +1020,28 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		// An unexpected claim rejection must not reject the awaited hook, and is
-		// logged instead of breaking the builder flow.
-		service.creditService.claimRunUsage.mockRejectedValueOnce(new Error('claim failed'));
+		// reported centrally, then logged, instead of breaking the builder flow.
+		const claimError = new Error('claim failed');
+		service.creditService.claimRunUsage.mockRejectedValueOnce(claimError);
 		await expect(
 			environment.orchestrationContext.claimSubAgentUsage?.('dedupe-2', [usageItem], 'completed'),
 		).resolves.toBeUndefined();
+		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(claimError, {
+			component: 'instance-ai-agent-builder-usage',
+			threadId: 'thread-1',
+			runId: 'run-1',
+			userId: fakeUser.id,
+			projectId: 'project-1',
+		});
 		expect(service.logger.warn).toHaveBeenCalledWith('Failed to claim agent-builder usage', {
 			threadId: 'thread-1',
 			runId: 'run-1',
 			dedupeId: 'dedupe-2',
 			error: 'claim failed',
 		});
+		expect(service.instanceAiErrorReporter.report.mock.invocationCallOrder[0]).toBeLessThan(
+			service.logger.warn.mock.invocationCallOrder[0],
+		);
 
 		expect(createSandbox).not.toHaveBeenCalled();
 		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as Mock).mock.calls[0]?.[0]

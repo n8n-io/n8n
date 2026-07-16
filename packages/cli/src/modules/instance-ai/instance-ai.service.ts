@@ -2179,6 +2179,18 @@ export class InstanceAiService {
 				try {
 					await this.creditService.claimRunUsage(user, threadId, dedupeId, usage, status);
 				} catch (error) {
+					// claimRunUsage() handles ordinary claim failures (network, retries)
+					// internally and only throws for exceptional contract violations
+					// (e.g. a negative quota) — those must still reach centralized
+					// Instance AI error reporting even though billing stays best-effort.
+					this.instanceAiErrorReporter.report(error, {
+						component: 'instance-ai-agent-builder-usage',
+						threadId,
+						runId,
+						userId: user.id,
+						...(boundProjectId ? { projectId: boundProjectId } : {}),
+						...(messageGroupId ? { messageGroupId } : {}),
+					});
 					this.logger.warn('Failed to claim agent-builder usage', {
 						threadId,
 						runId,
