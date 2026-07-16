@@ -4,6 +4,7 @@ import { N8nButton, N8nCallout, N8nIconButton, N8nText, N8nTooltip } from '@n8n/
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useStorage } from '@/app/composables/useStorage';
 import { LOCAL_STORAGE_AGENT_EPISODIC_MEMORY_CALLOUT_DISMISSED } from '@/app/constants';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type { AgentJsonConfig, AgentResource } from '../types';
@@ -25,9 +26,10 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const usersStore = useUsersStore();
 const inputDraft = ref('');
 const episodicMemoryCalloutDismissed = useStorage(
-	LOCAL_STORAGE_AGENT_EPISODIC_MEMORY_CALLOUT_DISMISSED,
+	LOCAL_STORAGE_AGENT_EPISODIC_MEMORY_CALLOUT_DISMISSED(usersStore.currentUserId ?? 'anonymous'),
 );
 const episodicMemoryEnabled = computed(
 	() => props.localConfig?.memory?.episodicMemory?.enabled === true,
