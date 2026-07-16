@@ -277,52 +277,17 @@ packages/@n8n/codemirror-lang/                          @n8n-io/nodes
 packages/@n8n/codemirror-lang-html/                     @n8n-io/nodes
 packages/@n8n/codemirror-lang-sql/                      @n8n-io/nodes
 packages/nodes-base/                                    @n8n-io/nodes
-packages/nodes-base/nodes/Code/                         @n8n-io/nodes required
-packages/nodes-base/nodes/ExecuteCommand/               @n8n-io/nodes required
-packages/nodes-base/nodes/Ssh/                          @n8n-io/nodes required
-packages/nodes-base/nodes/HttpRequest/                  @n8n-io/nodes required
-packages/nodes-base/nodes/Webhook/                      @n8n-io/nodes required
-packages/nodes-base/nodes/RespondToWebhook/             @n8n-io/nodes required
-packages/nodes-base/nodes/Form/                         @n8n-io/nodes required
-packages/nodes-base/nodes/Wait/                         @n8n-io/nodes required
-packages/nodes-base/utils/sendAndWait/                  @n8n-io/nodes required
-packages/nodes-base/nodes/Git/                          @n8n-io/nodes required
-packages/node-dev/                                      @n8n-io/nodes
-packages/@n8n/imap/                                     @n8n-io/nodes
-packages/@n8n/mcp-browser/                              @n8n-io/nodes required
-packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes required
-packages/modules/quick-connect/                         @n8n-io/nodes required
-packages/@n8n/api-types/src/dto/quick-connect/          @n8n-io/nodes required
-packages/@n8n/api-types/src/quick-connect.ts            @n8n-io/nodes required
-packages/cli/src/modules/community-packages/            @n8n-io/nodes
-packages/cli/src/modules/mcp-registry/                  @n8n-io/nodes required
-packages/cli/src/modules/agents/integrations/           @n8n-io/nodes
-packages/@n8n/api-types/src/schemas/mcp-registry.schema.ts @n8n-io/nodes required
-packages/cli/templates/send-and-wait-no-action-required.handlebars @n8n-io/nodes required
-packages/@n8n/ai-node-sdk/                              @n8n-io/nodes required
-
-# Relay (AI gateway & credits)
-packages/cli/src/services/ai-gateway.service.ts         @n8n-io/relay required
-packages/cli/src/services/ai-gateway-eligibility.ts     @n8n-io/relay required
-packages/cli/src/services/free-ai-credits.service.ts    @n8n-io/relay required
-packages/@n8n/config/src/configs/ai-gateway.config.ts   @n8n-io/relay
-packages/@n8n/api-types/src/dto/ai/ai-gateway-config-response.dto.ts @n8n-io/relay
-packages/@n8n/api-types/src/dto/ai/ai-gateway-usage-response.dto.ts @n8n-io/relay
-packages/@n8n/api-types/src/dto/ai/ai-gateway-wallet-response.dto.ts @n8n-io/relay
-packages/cli/src/modules/mcp/mcp-ai-gateway.helper.ts   @n8n-io/relay
-packages/cli/src/modules/agents/json-config/node-tool-ai-gateway.service.ts @n8n-io/relay
-packages/frontend/editor-ui/src/app/stores/aiGateway.store.ts @n8n-io/relay
-packages/frontend/editor-ui/src/app/composables/useAiGateway.ts @n8n-io/relay
-packages/frontend/editor-ui/src/features/credentials/gatewayCreditsPromotion/ @n8n-io/relay
-packages/frontend/editor-ui/src/features/shared/nodeCreator/components/SectionHeaderCreditsTag.vue @n8n-io/relay
-
-# Community engineering
-.agents/skills/create-community-node-lint-rule/         @n8n-io/community-engineering
-.agents/skills/community-pr-readiness-check/            @n8n-io/community-engineering
-packages/@n8n/scan-community-package/                   @n8n-io/community-engineering
-packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/community-engineering
-packages/@n8n/node-cli/                                 @n8n-io/community-engineering
-packages/@n8n/create-node/                              @n8n-io/community-engineering
+packages/@n8n/decorators/                               @n8n-io/catalysts
+packages/@n8n/create-node/                              @n8n-io/nodes
+packages/@n8n/node-cli/                                 @n8n-io/nodes
+packages/@n8n/imap/                                     @n8n-io/iam
+packages/@n8n/syslog-client/                            @n8n-io/iam
+packages/@n8n/scan-community-package/                   @n8n-io/nodes
+packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/nodes
+packages/@n8n/computer-use/                             @n8n-io/nodes
+packages/@n8n/local-gateway/                            @n8n-io/nodes
+packages/@n8n/mcp-browser/                              @n8n-io/nodes
+packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
 
 # IAM
 
