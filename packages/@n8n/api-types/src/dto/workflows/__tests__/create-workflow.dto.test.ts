@@ -1,3 +1,4 @@
+import { GROUP_DESCRIPTION_MAX_LENGTH } from '../base-workflow.dto';
 import { CreateWorkflowDto } from '../create-workflow.dto';
 
 describe('CreateWorkflowDto', () => {
@@ -65,6 +66,22 @@ describe('CreateWorkflowDto', () => {
 					nodes: [],
 					connections: {},
 					nodeGroups: [{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'] }],
+				},
+			},
+			{
+				name: 'with a group description at the length cap',
+				request: {
+					name: 'Grouped Workflow',
+					nodes: [],
+					connections: {},
+					nodeGroups: [
+						{
+							id: 'group1',
+							name: 'Data Fetching',
+							nodeIds: ['node1'],
+							description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH),
+						},
+					],
 				},
 			},
 			{
@@ -369,6 +386,23 @@ describe('CreateWorkflowDto', () => {
 					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [''] }],
 				},
 				expectedErrorPath: ['nodeGroups', 0, 'nodeIds', 0],
+			},
+			{
+				name: 'nodeGroups with description over the length cap',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					nodeGroups: [
+						{
+							id: 'g1',
+							name: 'Group',
+							nodeIds: [],
+							description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 1),
+						},
+					],
+				},
+				expectedErrorPath: ['nodeGroups', 0, 'description'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = CreateWorkflowDto.safeParse(request);

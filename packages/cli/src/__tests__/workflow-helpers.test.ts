@@ -1,4 +1,9 @@
-import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
+import {
+	MAX_PINNED_DATA_SIZE,
+	MAX_WORKFLOW_SIZE,
+	MAX_EXPECTED_REQUEST_SIZE,
+	GROUP_DESCRIPTION_MAX_LENGTH,
+} from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -27,6 +32,7 @@ import {
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
 	validateWorkflowStructure,
+	truncateNodeGroupDescriptions,
 	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -615,6 +621,42 @@ describe('validateWorkflowNodeGroups', () => {
 				),
 			).not.toThrow();
 		});
+	});
+});
+
+describe('truncateNodeGroupDescriptions', () => {
+	it('returns no warnings and leaves descriptions within the cap untouched', () => {
+		const workflow = {
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [], description: 'short' }],
+		};
+		expect(truncateNodeGroupDescriptions(workflow)).toEqual([]);
+		expect(workflow.nodeGroups[0].description).toBe('short');
+	});
+
+	it('truncates an over-cap description and returns a warning', () => {
+		const workflow = {
+			nodeGroups: [
+				{
+					id: 'g1',
+					name: 'Group 1',
+					nodeIds: [],
+					description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 10),
+				},
+			],
+		};
+		const warnings = truncateNodeGroupDescriptions(workflow);
+
+		expect(workflow.nodeGroups[0].description).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
+		expect(warnings).toEqual([
+			`Group "Group 1" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
+		]);
+	});
+
+	it('handles missing nodeGroups and groups without a description', () => {
+		expect(truncateNodeGroupDescriptions({ nodeGroups: undefined })).toEqual([]);
+		expect(
+			truncateNodeGroupDescriptions({ nodeGroups: [{ id: 'g1', name: 'G', nodeIds: [] }] }),
+		).toEqual([]);
 	});
 });
 

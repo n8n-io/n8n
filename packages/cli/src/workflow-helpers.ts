@@ -1,4 +1,9 @@
-import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
+import {
+	MAX_PINNED_DATA_SIZE,
+	MAX_WORKFLOW_SIZE,
+	MAX_EXPECTED_REQUEST_SIZE,
+	GROUP_DESCRIPTION_MAX_LENGTH,
+} from '@n8n/api-types';
 import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -278,6 +283,29 @@ export function validateWorkflowNodeGroups(
 			throw nodeGroupValidationError(group, result);
 		}
 	}
+}
+
+/**
+ * Clamps group descriptions to the shared length cap, mutating in place.
+ *
+ * Authoring paths (internal REST + public API) reject over-cap descriptions via
+ * their DTOs. Import paths accept arbitrary JSON, so they truncate instead of
+ * rejecting — keeping the import lenient. Returns a warning per truncated group
+ * so callers can surface it.
+ */
+export function truncateNodeGroupDescriptions(
+	workflow: Pick<IWorkflowBase, 'nodeGroups'>,
+): string[] {
+	const warnings: string[] = [];
+	for (const group of workflow.nodeGroups ?? []) {
+		if (group.description && group.description.length > GROUP_DESCRIPTION_MAX_LENGTH) {
+			group.description = group.description.slice(0, GROUP_DESCRIPTION_MAX_LENGTH);
+			warnings.push(
+				`Group "${group.name}" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
+			);
+		}
+	}
+	return warnings;
 }
 
 /**

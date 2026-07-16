@@ -3,6 +3,9 @@ import { z } from 'zod';
 
 export const WORKFLOW_NAME_MAX_LENGTH = 128;
 
+/** Character cap on a node group description; keeps it within 3 lines in the collapsed panel. */
+export const GROUP_DESCRIPTION_MAX_LENGTH = 155;
+
 /** Maximum allowed size for pinned data in bytes (12 MB) */
 export const MAX_PINNED_DATA_SIZE = 1024 * 1024 * 12;
 
@@ -98,7 +101,12 @@ const workflowGroupSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	nodeIds: z.array(z.string().min(1)),
-	description: z.string().optional(),
+	description: z
+		.string()
+		.max(GROUP_DESCRIPTION_MAX_LENGTH, {
+			message: `Group description must be ${GROUP_DESCRIPTION_MAX_LENGTH} characters or less`,
+		})
+		.optional(),
 });
 
 export const workflowNodeGroupsSchema = z.array(workflowGroupSchema);
