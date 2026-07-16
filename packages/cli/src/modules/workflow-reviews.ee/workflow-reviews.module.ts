@@ -7,11 +7,6 @@ import { isWorkflowReviewsEnvFeatureFlagEnabled } from '@/constants/workflow-rev
 @BackendModule({ name: 'workflow-reviews', licenseFlag: LICENSE_FEATURES.WORKFLOW_REVIEWS })
 export class WorkflowReviewsModule implements ModuleInterface {
 	async init() {
-		/**
-		 * The license flag gates module init via ModuleRegistry; the env flag is
-		 * a second, independent switch that keeps the routes unreachable until
-		 * the feature is explicitly turned on for the instance.
-		 */
 		if (!isWorkflowReviewsEnvFeatureFlagEnabled()) return;
 
 		await import('./workflow-review-requests.controller');

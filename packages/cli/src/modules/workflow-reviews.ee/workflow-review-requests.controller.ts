@@ -9,12 +9,6 @@ import { WorkflowReviewRequestService } from './workflow-review-request.service'
 export class WorkflowReviewRequestsController {
 	constructor(private readonly workflowReviewRequestService: WorkflowReviewRequestService) {}
 
-	/**
-	 * Authorized in the service via `WorkflowFinderService` (`workflow:publish`),
-	 * not `@ProjectScope`: the workflow id is in the body (a review may bundle
-	 * several workflows), which the URL-param-based scope middleware can't
-	 * resolve — same pattern as the workflow-history controller.
-	 */
 	@Post('/')
 	@Licensed('feat:workflowReviews')
 	async create(

@@ -49,12 +49,6 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 		return await this.findOne({ where: { id } });
 	}
 
-	/**
-	 * Find the most recent open review request referencing the given workflow,
-	 * regardless of pinned version or decision. Used to enforce "at most one
-	 * open review per workflow" — an open request in any decision state
-	 * blocks a new one.
-	 */
 	async findOpenRequestForWorkflow(
 		workflowId: string,
 		trx?: EntityManager,

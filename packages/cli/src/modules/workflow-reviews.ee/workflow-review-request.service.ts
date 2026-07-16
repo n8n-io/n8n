@@ -35,20 +35,11 @@ export class WorkflowReviewRequestService {
 	async create(user: User, dto: CreateWorkflowReviewRequestDto): Promise<WorkflowReviewRequest> {
 		const { workflowId, workflowVersionId } = dto.workflows[0];
 
-		/**
-		 * 1. The admin policy toggle is the instance-level master switch: while
-		 * disabled, workflow reviews are unavailable, so reject before any work.
-		 */
 		const policy = await this.workflowReviewPolicyService.get();
 		if (!policy.enabled) {
 			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
 		}
 
-		/**
-		 * 2. Authorization + existence in one query. We require `workflow:publish`. Anyone
-		 * without it (viewer, build-only role, non-member) gets null, which we
-		 * surface as "not found" so we don't leak existence.
-		 */
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:publish',
 		]);
@@ -56,17 +47,12 @@ export class WorkflowReviewRequestService {
 			throw new NotFoundError('Could not find workflow');
 		}
 
-		/** 3. Archived workflows cannot be submitted for review. */
 		if (workflow.isArchived) {
 			throw new BadRequestError(
 				`The workflow '${workflowId}' is archived and cannot be submitted for review`,
 			);
 		}
 
-		/**
-		 * 4. The pinned version must exist for this workflow. versionId alone is a
-		 * global PK, so both ids must be checked together.
-		 */
 		const version = await this.workflowHistoryService.findVersion(workflowId, workflowVersionId);
 		if (!version) {
 			throw new BadRequestError(
@@ -74,17 +60,11 @@ export class WorkflowReviewRequestService {
 			);
 		}
 
-		/** 5. Resolve the owning project — the review request belongs to it. */
 		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
 		if (!project) {
 			throw new NotFoundError('Could not find workflow');
 		}
 
-		/**
-		 * 6. Serialize creation so "at most one open review per workflow" holds
-		 * under concurrency: the conflict check and all three inserts run in one
-		 * transaction; any throw rolls everything back and releases the lock.
-		 */
 		return await this.dbLockService.withLock(DbLock.WORKFLOW_REVIEW_REQUEST_CREATE, async (tx) => {
 			const existing = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
 				workflowId,
