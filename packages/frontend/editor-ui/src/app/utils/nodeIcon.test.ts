@@ -256,6 +256,15 @@ describe('util: Node Icon', () => {
 			});
 		});
 
+		it('should not fall back to the legacy defaults.color when iconColor is absent', () => {
+			const result = getNodeIconSource(
+				{ icon: 'icon:user', defaults: { color: '#ff0000' } } as unknown as IconNodeType,
+				null,
+				null,
+			);
+			expect(result).toEqual({ type: 'icon', name: 'user' });
+		});
+
 		it('should include badge if available', () => {
 			const result = getNodeIconSource(
 				mock<IconNodeType>({ badgeIconUrl: 'images/badge.svg', name: undefined }),

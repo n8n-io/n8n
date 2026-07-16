@@ -54,9 +54,9 @@ export class MoveBinaryData implements INodeType {
 		version: [1, 1.1],
 		subtitle: '={{$parameter["mode"]==="binaryToJson" ? "Binary to JSON" : "JSON to Binary"}}',
 		description: 'Move data between binary and JSON properties',
+		iconColor: 'purple',
 		defaults: {
 			name: 'Convert to/from binary data',
-			color: '#7722CC',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

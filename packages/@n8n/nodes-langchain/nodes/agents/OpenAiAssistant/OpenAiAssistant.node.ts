@@ -28,9 +28,9 @@ export class OpenAiAssistant implements INodeType {
 		version: [1, 1.1],
 		description: 'Utilizes Assistant API from Open AI.',
 		subtitle: 'Open AI Assistant',
+		iconColor: 'black',
 		defaults: {
 			name: 'OpenAI Assistant',
-			color: '#404040',
 		},
 		codex: {
 			alias: ['LangChain'],

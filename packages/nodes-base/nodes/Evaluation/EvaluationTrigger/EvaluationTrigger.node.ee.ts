@@ -39,9 +39,9 @@ export class EvaluationTrigger implements INodeType {
 		version: [4.6, 4.7],
 		description: 'Run a test dataset through your workflow to check performance',
 		eventTriggerDescription: '',
+		iconColor: 'neutral',
 		defaults: {
 			name: 'When fetching a dataset row',
-			color: '#c3c9d5',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],

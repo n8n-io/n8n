@@ -19,9 +19,9 @@ export class ReadPDF implements INodeType {
 		group: ['input'],
 		version: 1,
 		description: 'Reads a PDF and extracts its content',
+		iconColor: 'dark-blue',
 		defaults: {
 			name: 'Read PDF',
-			color: '#003355',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
