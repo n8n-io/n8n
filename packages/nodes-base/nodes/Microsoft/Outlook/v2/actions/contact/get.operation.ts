@@ -74,6 +74,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		this,
 		'GET',
 		`/contacts/${contactId}`,
+		index,
 		undefined,
 		qs,
 	);

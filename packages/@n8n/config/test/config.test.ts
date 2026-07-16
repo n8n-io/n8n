@@ -204,7 +204,6 @@ describe('GlobalConfig', () => {
 		templates: {
 			enabled: true,
 			host: 'https://api.n8n.io/api/',
-			dynamicTemplatesHost: 'https://dynamic-templates.n8n.io/templates',
 		},
 		versionNotifications: {
 			enabled: true,
@@ -230,6 +229,7 @@ describe('GlobalConfig', () => {
 			publicationOutboxFailedRetentionHours: 168,
 			publicationOutboxCleanupIntervalSeconds: 1200,
 			publicationOutboxCleanupBatchSize: 1000,
+			publicationReconcileIntervalSeconds: 10,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -355,6 +355,7 @@ describe('GlobalConfig', () => {
 			outputRedactionPlaceholder: '[REDACTED]',
 			runDebugEnabled: false,
 			thinkingEnabled: true,
+			durableLog: false,
 		},
 		queue: {
 			health: {
@@ -444,8 +445,8 @@ describe('GlobalConfig', () => {
 		scheduler: {
 			enabled: false,
 			materializationWindowSeconds: 60,
-			sweepIntervalSeconds: 10,
-			sweepTimeoutSeconds: 60,
+			materializationIntervalSeconds: 10,
+			materializationTimeoutSeconds: 60,
 			executorIntervalSeconds: 5,
 			executorTimeoutSeconds: 60,
 			claimBatchSize: 100,

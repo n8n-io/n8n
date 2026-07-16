@@ -295,8 +295,9 @@ export class LmChatAwsBedrock implements INodeType {
 										displayName: 'Guardrail Version',
 										name: 'guardrailVersion',
 										type: 'string',
-										default: '',
-										description: 'The version of the guardrail to apply',
+										default: 'DRAFT',
+										description:
+											'The version of the guardrail to apply, e.g. "1". Defaults to the working draft ("DRAFT").',
 									},
 									{
 										displayName: 'Trace',
@@ -381,7 +382,10 @@ export class LmChatAwsBedrock implements INodeType {
 		if (guardrail?.guardrailIdentifier) {
 			modelConfig.guardrailConfig = {
 				guardrailIdentifier: guardrail.guardrailIdentifier,
-				...(guardrail.guardrailVersion ? { guardrailVersion: guardrail.guardrailVersion } : {}),
+				// AWS requires a version whenever guardrailConfig is sent. The field may be blank,
+				// whitespace (e.g. from an expression), or absent (collection defaults only
+				// materialize on add); fall back to the working draft.
+				guardrailVersion: guardrail.guardrailVersion?.trim() || 'DRAFT',
 				...(guardrail.trace ? { trace: guardrail.trace } : {}),
 			};
 		}

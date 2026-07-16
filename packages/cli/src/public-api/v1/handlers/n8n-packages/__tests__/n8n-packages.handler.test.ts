@@ -15,6 +15,7 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
+	PackageExportBlockedError,
 } from '@/modules/n8n-packages/entities/package-export.errors';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
@@ -33,7 +34,7 @@ let exportPackage: (...args: unknown[]) => unknown;
 let importPackage: (...args: unknown[]) => unknown;
 
 beforeAll(async () => {
-	handler = (await import('../n8n-packages.handler')) as unknown as typeof handler;
+	handler = (await import('../n8n-packages.handler.js')) as unknown as typeof handler;
 	exportPackage = handler.exportPackage[1];
 	importPackage = handler.importPackage[1];
 });
@@ -43,7 +44,12 @@ describe('n8n-packages handler', () => {
 	let mockEventService: Mocked<EventService>;
 
 	function makeRequest(
-		body: { workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] },
+		body: {
+			workflowIds?: string[];
+			folderIds?: string[];
+			projectIds?: string[];
+			missingWorkflowDependencyPolicy?: string;
+		},
 		apiKeyScopes?: string[],
 	) {
 		return {
@@ -228,6 +234,18 @@ describe('n8n-packages handler', () => {
 			});
 		});
 
+		it('emits n8n-package-export-failed with reason=blocked when the service rejects a blocked export', async () => {
+			mockService.exportPackage.mockRejectedValue(new PackageExportBlockedError('Export blocked'));
+
+			await run(makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export']), makeResponse());
+
+			expect(emittedEvent('n8n-package-export-failed')).toEqual({
+				user: { id: 'user-1' },
+				reason: 'blocked',
+				workflowIds: ['wf-1'],
+			});
+		});
+
 		it.each([
 			[
 				'access-denied',
@@ -273,6 +291,7 @@ describe('n8n-packages handler', () => {
 				workflowIds: ['wf-1', 'wf-2'],
 				folderIds: [],
 				projectIds: [],
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 			expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/gzip');
 			expect(res.setHeader).toHaveBeenCalledWith(
@@ -280,6 +299,34 @@ describe('n8n-packages handler', () => {
 				'attachment; filename="export.n8np"',
 			);
 			expect(mockEventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('forwards a non-default missing workflow dependency policy', async () => {
+			const stream = new PassThrough();
+			mockService.exportPackage.mockResolvedValue(stream);
+			const res = makeResponse();
+
+			const resultPromise = run(
+				makeRequest(
+					{
+						workflowIds: ['wf-1'],
+						missingWorkflowDependencyPolicy: 'reference-only',
+					},
+					['workflow:export'],
+				),
+				res,
+			);
+			stream.end(Buffer.from('package-bytes'));
+			const caught = await resultPromise;
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				user: { id: 'user-1' },
+				workflowIds: ['wf-1'],
+				folderIds: [],
+				projectIds: [],
+				missingWorkflowDependencyPolicy: 'reference-only',
+			});
 		});
 
 		it('streams the export for a valid project request', async () => {
@@ -300,6 +347,7 @@ describe('n8n-packages handler', () => {
 				workflowIds: [],
 				folderIds: [],
 				projectIds: ['project-1'],
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 		});
 
@@ -318,6 +366,7 @@ describe('n8n-packages handler', () => {
 				workflowIds: [],
 				folderIds: ['fld-1'],
 				projectIds: [],
+				missingWorkflowDependencyPolicy: 'fail',
 			});
 		});
 	});

@@ -144,10 +144,12 @@ describe('withHandoffTracing', () => {
 		const { span, tracer } = makeTracer();
 		const handler: TaskHandler = { execute: vi.fn().mockResolvedValue(undefined) };
 		const task = claimedTask();
+		const onDispatch = vi.fn();
 
-		await withHandoffTracing(tracer, handler).execute(task);
+		await withHandoffTracing(tracer, handler).execute(task, onDispatch);
 
-		expect(handler.execute).toHaveBeenCalledWith(task);
+		// The wrapper adds a span, not semantics: the dispatch callback flows through.
+		expect(handler.execute).toHaveBeenCalledWith(task, onDispatch);
 		const options = tracer.startSpan.mock.calls[0][0];
 		expect(options.name).toBe('Scheduler handoff');
 		expect(options.op).toBe('scheduler.handoff');
@@ -163,9 +165,9 @@ describe('withHandoffTracing', () => {
 		const { span, tracer } = makeTracer();
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 
-		await expect(withHandoffTracing(tracer, handler).execute(claimedTask())).rejects.toThrow(
-			'boom',
-		);
+		await expect(
+			withHandoffTracing(tracer, handler).execute(claimedTask(), vi.fn()),
+		).rejects.toThrow('boom');
 
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.error, message: 'boom' });
 		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });

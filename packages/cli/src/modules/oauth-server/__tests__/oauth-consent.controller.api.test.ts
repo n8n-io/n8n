@@ -1,3 +1,4 @@
+import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -62,6 +63,10 @@ describe('GET /rest/consent/details', () => {
 			clientName: 'Test OAuth Client',
 			clientId: 'test-client-id',
 			redirectUri: 'https://example.com/callback',
+			scopes: [...MCP_INSTANCE_SCOPES],
+			scopeTools: expect.objectContaining({
+				'workflow:read': expect.arrayContaining(['search_workflows']),
+			}),
 		});
 	});
 
@@ -103,6 +108,7 @@ describe('GET /rest/consent/details', () => {
 			clientId: 'resource-client-id',
 			resourceName: 'My Named Workflow',
 			redirectUri: 'https://example.com/callback',
+			scopes: [],
 		});
 	});
 
@@ -267,7 +273,7 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toEqual({
@@ -305,7 +311,7 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -350,7 +356,7 @@ describe('POST /rest/consent/approve', () => {
 		const response = await testServer
 			.authAgentFor(owner)
 			.post('/consent/approve')
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 		expect(response.body).toEqual({
@@ -364,7 +370,7 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', 'n8n-oauth-session=invalid-token')
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 		expect(response.body.status).toBe('error');
@@ -375,7 +381,7 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', 'n8n-oauth-session=invalid-token')
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		const setCookieHeader = response.headers['set-cookie'];
 		expect(setCookieHeader).toBeDefined();
@@ -387,7 +393,7 @@ describe('POST /rest/consent/approve', () => {
 		const response = await testServer.authlessAgent
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -397,12 +403,12 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBe(200);
 
 		const { UserConsentRepository } = await import(
-			'../database/repositories/oauth-user-consent.repository'
+			'../database/repositories/oauth-user-consent.repository.js'
 		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({
@@ -425,7 +431,7 @@ describe('POST /rest/consent/approve', () => {
 		expect(response.statusCode).toBe(200);
 
 		const { UserConsentRepository } = await import(
-			'../database/repositories/oauth-user-consent.repository'
+			'../database/repositories/oauth-user-consent.repository.js'
 		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({
@@ -440,7 +446,7 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(ownerResponse.statusCode).toBe(200);
 		expect(ownerResponse.body.data.redirectUrl).toContain('code=');
@@ -494,7 +500,7 @@ describe('Consent Flow - End-to-End', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(approvalResponse.statusCode).toBe(200);
 		expect(approvalResponse.body.data.status).toBe('success');

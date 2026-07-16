@@ -34,6 +34,8 @@ import {
 	toMultiOptionsCsv,
 } from './GenericFunctions';
 import {
+	approversField,
+	captureResponderField,
 	channelRLC,
 	messageFields,
 	messageOperations,
@@ -42,6 +44,7 @@ import {
 	userRLC,
 } from './MessageDescription';
 import { reactionFields, reactionOperations } from './ReactionDescription';
+import { slackSendAndWaitWebhook } from './SlackHitlWebhook';
 import { starFields, starOperations } from './StarDescription';
 import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
@@ -50,7 +53,6 @@ import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descr
 import {
 	getSendAndWaitProperties,
 	SEND_AND_WAIT_WAITING_TOOLTIP,
-	sendAndWaitWebhook,
 } from '../../../utils/sendAndWait/utils';
 
 export class SlackV2 implements INodeType {
@@ -169,7 +171,7 @@ export class SlackV2 implements INodeType {
 						},
 					],
 					undefined,
-					undefined,
+					[captureResponderField, approversField],
 					{ extraOptions: [replyToMessageField] },
 				).filter((p) => p.name !== 'subject'),
 				...starOperations,
@@ -365,7 +367,7 @@ export class SlackV2 implements INodeType {
 		},
 	};
 
-	webhook = sendAndWaitWebhook;
+	webhook = slackSendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();

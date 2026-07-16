@@ -1,10 +1,12 @@
 import type { JSONSchema7 } from 'json-schema';
 import type {
+	ExecuteAgentSource,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
 	INodeTypeDescription,
+	InlineAgentPayload,
 } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import crypto from 'node:crypto';
@@ -208,13 +210,69 @@ function asPromptString(value: unknown): string {
 }
 
 /**
- * Shared execution for every version. The stored `agentId` is a resource-locator
- * value regardless of version (resourceLocator in v1, agentSelector in v2), so
- * reading `.value` works for both.
+ * Read the agent to execute: an inline definition from the hidden `inlineAgent`
+ * parameter, or the referenced agent id. The stored `agentId` is a
+ * resource-locator value regardless of version (resourceLocator in v1,
+ * agentSelector in v2), so reading `.value` works for both.
  */
+function getAgentSource(ctx: IExecuteFunctions, itemIndex: number): ExecuteAgentSource {
+	const agentSource = ctx.getNodeParameter('agentSource', itemIndex, 'referenced') as string;
+
+	if (agentSource === 'inline') {
+		// Read RAW: embedded node-tool parameters carry `$fromAI(...)` override
+		// expressions that only the agent's tool executor may resolve. Resolving
+		// them here (in the calling node's context, where `$fromAI` doesn't
+		// exist) would blank those parameters — same reason saved agents store
+		// their tool parameters unresolved.
+		const raw = ctx.getNodeParameter(
+			'inlineAgent',
+			itemIndex,
+			{},
+			{
+				rawExpressions: true,
+			},
+		) as unknown;
+		const value =
+			typeof raw === 'string'
+				? jsonParse<unknown>(raw, {
+						errorMessage: 'Inline agent configuration is not valid JSON',
+					})
+				: raw;
+		if (
+			typeof value !== 'object' ||
+			value === null ||
+			typeof (value as InlineAgentPayload).config !== 'object'
+		) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Inline agent is not configured. Open the node to set up the agent, or switch to a saved agent.',
+				{ itemIndex },
+			);
+		}
+		return { inlineAgent: value as InlineAgentPayload };
+	}
+
+	const agentIdRlc = ctx.getNodeParameter('agentId', itemIndex) as {
+		mode: string;
+		value: string;
+	};
+	return { agentId: agentIdRlc.value };
+}
+
+/**
+ * The persisted thread key is `workflow:project-<projectId>:<sessionId>` and
+ * thread id columns are varchar(128); a 36-char project id leaves 74 chars
+ * for the caller's session id. Checked at execution time because the
+ * parameter is typically an expression, invisible to edit-time validation.
+ */
+const SESSION_ID_MAX_LENGTH = 74;
+
+/** Shared execution for every version. */
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
+	// v2 renamed the primary output `response` → `text`
+	const responseKey = this.getNode().typeVersion >= 2 ? 'text' : 'response';
 	const executionId = this.getExecutionId() ?? crypto.randomUUID();
 	// `invokeMode` lives in the `advanced` collection; unset means the default.
 	const invokeMode = this.getNodeParameter('advanced.invokeMode', 0, 'allItems') as string;
@@ -223,11 +281,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	for (let i = 0; i < loopCount; i++) {
 		try {
-			const agentIdRlc = this.getNodeParameter('agentId', i) as {
-				mode: string;
-				value: string;
-			};
-			const agentId = agentIdRlc.value;
+			const source = getAgentSource(this, i);
 			const prompt = asPromptString(this.getNodeParameter('message', i, ''));
 
 			const advanced = this.getNodeParameter('advanced', i, {}) as {
@@ -236,6 +290,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			};
 			const sessionIdOverride = advanced.sessionId?.trim();
 			const allowOtherNodesData = advanced.allowOtherNodesData ?? false;
+
+			if (sessionIdOverride && sessionIdOverride.length > SESSION_ID_MAX_LENGTH) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Session ID must be at most ${SESSION_ID_MAX_LENGTH} characters (got ${sessionIdOverride.length})`,
+					{ itemIndex: i },
+				);
+			}
 
 			if (!prompt.trim()) {
 				throw new NodeOperationError(this.getNode(), 'Prompt cannot be empty', {
@@ -247,7 +309,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const result = await this.executeAgent(
 				{
-					agentId,
+					...source,
 					sessionId: sessionIdOverride || undefined,
 					outputSchema,
 					inputDataScope: runOnceForAll ? 'all' : 'item',
@@ -260,7 +322,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			returnData.push({
 				json: {
-					response: result.response,
+					[responseKey]: result.response,
 					structuredOutput: (result.structuredOutput ?? null) as IDataObject | null,
 					usage: result.usage as unknown as IDataObject,
 					toolCalls: result.toolCalls as unknown as IDataObject[],
