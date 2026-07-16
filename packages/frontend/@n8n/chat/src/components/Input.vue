@@ -168,18 +168,37 @@ function setupWebsocketConnection(executionId: string, resumeToken?: string) {
 			);
 			chatStore.ws = new WebSocket(wsUrl);
 			chatStore.ws.onmessage = (e) => {
-				if (e.data === 'n8n|heartbeat') {
-					chatStore.ws?.send('n8n|heartbeat-ack');
+				const data = e.data as string;
+
+				// Backward compatible with both protocols: legacy string sentinels
+				// (n8n < v3) and JSON frames (n8n v3+). Normalize to a frame type,
+				// remembering the legacy case so heartbeats are acked in kind.
+				const isLegacy = data === 'n8n|heartbeat' || data === 'n8n|continue';
+				let frameType: string | undefined;
+				if (isLegacy) {
+					frameType = data === 'n8n|heartbeat' ? 'heartbeat' : 'continue';
+				} else {
+					try {
+						frameType = (JSON.parse(data) as { type?: string }).type;
+					} catch {
+						frameType = undefined;
+					}
+				}
+
+				if (frameType === 'heartbeat') {
+					chatStore.ws?.send(
+						isLegacy ? 'n8n|heartbeat-ack' : JSON.stringify({ type: 'heartbeat-ack' }),
+					);
 					return;
 				}
 
-				if (e.data === 'n8n|continue') {
+				if (frameType === 'continue') {
 					waitingForChatResponse.value = false;
 					chatStore.waitingForResponse.value = true;
 					return;
 				}
 
-				const newMessage = parseBotChatMessageContent(e.data as string);
+				const newMessage = parseBotChatMessageContent(data);
 				chatStore.messages.value.push(newMessage);
 				waitingForChatResponse.value = true;
 				chatStore.waitingForResponse.value = false;
