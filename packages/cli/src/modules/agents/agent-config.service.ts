@@ -7,6 +7,7 @@ import {
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -101,11 +102,16 @@ export class AgentConfigService {
 		agentId: string,
 		projectId: string,
 		config: unknown,
+		user?: User,
 	): Promise<{ config: AgentJsonConfig; updatedAt: string; versionId: string | null }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = createAgentCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+		);
 		const accessibleCredentialIds = new Set(
 			(await credentialProvider.list()).map((credential) => credential.id),
 		);
