@@ -390,6 +390,17 @@ export async function assumeRole(
 	}
 }
 
+export function stringifyHeaders(headers: IDataObject): Record<string, string> {
+	const result: Record<string, string> = {};
+	for (const key of Object.keys(headers)) {
+		const val = headers[key];
+		if (val !== undefined && val !== null) {
+			result[key] = Array.isArray(val) ? val.map(String).join(', ') : String(val);
+		}
+	}
+	return result;
+}
+
 export function signOptions(
 	requestOptions: IHttpRequestOptions,
 	signOpts: Request,
@@ -397,6 +408,9 @@ export function signOptions(
 	url: string,
 	method?: IHttpRequestMethods,
 ) {
+	if (signOpts.headers) {
+		signOpts.headers = stringifyHeaders(signOpts.headers);
+	}
 	try {
 		sign(signOpts, securityHeaders);
 	} catch (err) {

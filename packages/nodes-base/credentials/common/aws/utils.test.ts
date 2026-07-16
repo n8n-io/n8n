@@ -40,7 +40,12 @@ vi.mock('aws4', () => ({
 	sign: vi.fn(),
 }));
 
-import { assertSupportedAwsRegion, assumeRole, awsGetSignInOptionsAndUpdateRequest } from './utils';
+import {
+	assertSupportedAwsRegion,
+	assumeRole,
+	awsGetSignInOptionsAndUpdateRequest,
+	stringifyHeaders,
+} from './utils';
 import * as systemCredentialsUtils from './system-credentials-utils';
 
 type FromTemporaryCredentialsCallArg = {
@@ -664,5 +669,29 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 				region as any,
 			),
 		).toThrow(UserError);
+	});
+});
+
+describe('stringifyHeaders', () => {
+	it('should stringify primitive numbers, booleans, and arrays, while keeping strings unchanged', () => {
+		const headers = {
+			'content-length': 5242880,
+			'x-amz-decoded-content-length': 5242880,
+			'x-custom-boolean': true,
+			'x-custom-string': 'already-string',
+			'x-custom-array': ['value1', 'value2', 123],
+			'x-custom-null': null,
+			'x-custom-undefined': undefined,
+		};
+
+		const result = stringifyHeaders(headers);
+
+		expect(result).toEqual({
+			'content-length': '5242880',
+			'x-amz-decoded-content-length': '5242880',
+			'x-custom-boolean': 'true',
+			'x-custom-string': 'already-string',
+			'x-custom-array': 'value1, value2, 123',
+		});
 	});
 });

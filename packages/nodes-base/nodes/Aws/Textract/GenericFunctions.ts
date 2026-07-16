@@ -16,7 +16,7 @@ import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
 import { URL } from 'url';
 import { parseString } from 'xml2js';
 import { getAwsCredentials } from '../GenericFunctions';
-import { assertSupportedAwsRegion } from '../../../credentials/common/aws/utils';
+import { assertSupportedAwsRegion, stringifyHeaders } from '../../../credentials/common/aws/utils';
 
 function getEndpointForService(
 	service: string,
@@ -170,6 +170,10 @@ export async function validateCredentials(
 			? `${credentials.sessionToken}`.trim()
 			: undefined,
 	};
+
+	if (signOpts.headers) {
+		signOpts.headers = stringifyHeaders(signOpts.headers);
+	}
 
 	sign(signOpts, securityHeaders);
 

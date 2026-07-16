@@ -20,7 +20,11 @@ import type {
 	AwsIamCredentialsType,
 	AwsSecurityHeaders,
 } from '../../../credentials/common/aws/types';
-import { assertSupportedAwsRegion, assumeRole } from '../../../credentials/common/aws/utils';
+import {
+	assertSupportedAwsRegion,
+	assumeRole,
+	stringifyHeaders,
+} from '../../../credentials/common/aws/utils';
 import { getAwsCredentials } from '../GenericFunctions';
 
 function getEndpointForService(service: string, credentials: AwsCredentialsTypeBase): string {
@@ -66,6 +70,10 @@ export async function awsApiRequest(
 					? `${iamCredentials.sessionToken}`.trim()
 					: undefined,
 			};
+		}
+
+		if (signOpts.headers) {
+			signOpts.headers = stringifyHeaders(signOpts.headers);
 		}
 
 		sign(signOpts, securityHeaders);
