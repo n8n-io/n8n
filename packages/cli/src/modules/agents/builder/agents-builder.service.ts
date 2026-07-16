@@ -253,9 +253,24 @@ export class AgentsBuilderService {
 
 		// Builder observational memory is summarization work, not the build
 		// itself, so it runs on Haiku 4.5 when the host is Anthropic-compatible;
-		// otherwise fall back to the run's own model.
-		const memoryModel =
-			(await this.instanceAiModelService.resolveBuilderMemoryModelConfig(user)) ?? modelConfig;
+		// otherwise fall back to the run's own model. The lookup is a best-effort
+		// optimization — a failure here (proxy setup, credential resolution, etc.)
+		// must not abort the build itself, so it falls back to the builder model.
+		let memoryModel = modelConfig;
+		try {
+			const preferredMemoryModel =
+				await this.instanceAiModelService.resolveBuilderMemoryModelConfig(user);
+			if (preferredMemoryModel) memoryModel = preferredMemoryModel;
+		} catch (error) {
+			this.logger.warn(
+				'Failed to resolve preferred agent-builder memory model; using builder model',
+				{
+					agentId,
+					runId: session.runId,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
+		}
 		const onMemoryUsage = async (report: MemoryTaskUsageReport) => {
 			try {
 				const items = tokenUsageToBuilderUsageItems(report.model, report.usage);

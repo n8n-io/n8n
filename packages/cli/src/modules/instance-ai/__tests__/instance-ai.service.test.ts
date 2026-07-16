@@ -1021,7 +1021,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		// An unexpected claim rejection must not reject the awaited hook, and is
 		// logged instead of breaking the builder flow.
-		(service.creditService.claimRunUsage as Mock).mockRejectedValueOnce(new Error('claim failed'));
+		service.creditService.claimRunUsage.mockRejectedValueOnce(new Error('claim failed'));
 		await expect(
 			environment.orchestrationContext.claimSubAgentUsage?.('dedupe-2', [usageItem], 'completed'),
 		).resolves.toBeUndefined();
@@ -1161,19 +1161,20 @@ describe('InstanceAiService — shutdown', () => {
 describe('InstanceAiService — memory task observer', () => {
 	it('forwards memory task events to the trace context lease hook before existing registry/log handling', () => {
 		const service = createMemoryTaskObserverService();
-		const tracing = { onMemoryTaskEvent: vi.fn() } as unknown as InstanceAiTraceContext;
+		const onMemoryTaskEvent = vi.fn();
+		const tracing = { onMemoryTaskEvent } as unknown as InstanceAiTraceContext;
 		const observer = service.memoryTaskObserverFor('thread-1', tracing);
 		const event = queuedMemoryTaskEvent();
 
 		observer(event);
 
-		expect(tracing.onMemoryTaskEvent).toHaveBeenCalledWith(event);
+		expect(onMemoryTaskEvent).toHaveBeenCalledWith(event);
 		expect(service.memoryTaskRegistry.handleEvent).toHaveBeenCalledWith('thread-1', event);
 		expect(service.logger.info).toHaveBeenCalledWith(
 			'Observational memory task queued',
 			expect.objectContaining({ threadId: 'thread-1', taskId: 'task-1' }),
 		);
-		expect(vi.mocked(tracing.onMemoryTaskEvent).mock.invocationCallOrder[0]).toBeLessThan(
+		expect(onMemoryTaskEvent.mock.invocationCallOrder[0]).toBeLessThan(
 			service.memoryTaskRegistry.handleEvent.mock.invocationCallOrder[0],
 		);
 	});

@@ -151,6 +151,7 @@ function fakeTool(name: string): BuiltTool {
 function setup(
 	standardTools: { json: BuiltTool[]; shared: BuiltTool[] } = { json: [], shared: [] },
 ) {
+	const logger = mock<Logger>();
 	const agentsService = mock<AgentsService>();
 	const nodeCatalogService = mock<NodeCatalogService>();
 	const agentsBuilderToolsService = mock<AgentsBuilderToolsService>();
@@ -181,7 +182,7 @@ function setup(
 	agentsService.findById.mockResolvedValue(agent);
 
 	const service = new AgentsBuilderService(
-		mock<Logger>(),
+		logger,
 		agentsService,
 		nodeCatalogService,
 		agentsBuilderToolsService,
@@ -198,6 +199,7 @@ function setup(
 
 	return {
 		service,
+		logger,
 		memoryImplementation,
 		user,
 		credentialProvider,
@@ -375,6 +377,30 @@ describe('AgentsBuilderService session isolation', () => {
 			'run-1:agent-builder:agent-1:memory:observer:report-1',
 			expect.arrayContaining([expect.objectContaining({ type: 'llmTokens' })]),
 			'completed',
+		);
+	});
+
+	it('falls back to the builder model when preferred memory-model resolution fails', async () => {
+		const { service, user, credentialProvider, instanceAiModelService, logger } = setup();
+		instanceAiModelService.resolveBuilderMemoryModelConfig.mockRejectedValue(
+			new Error('lookup failed'),
+		);
+
+		await expect(
+			drain(
+				service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+			),
+		).resolves.toBeDefined();
+
+		expect(agentsSdkMocks.observationalMemoryCalls).toHaveLength(1);
+		const { observe, reflect } = agentsSdkMocks.observationalMemoryCalls[0];
+		expect(observe.model).toBe(baseSession.modelConfig);
+		expect(reflect.model).toBe(baseSession.modelConfig);
+		expect(agentsSdkMocks.modelCalls).toEqual([baseSession.modelConfig]);
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to resolve preferred agent-builder memory model; using builder model',
+			{ agentId: 'agent-1', runId: 'run-1', error: 'lookup failed' },
 		);
 	});
 });
