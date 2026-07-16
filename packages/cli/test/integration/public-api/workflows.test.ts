@@ -1706,6 +1706,7 @@ describe('POST /workflows', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				timeSavedMode: 'dynamic',
 			},
 		};
 
@@ -2316,6 +2317,7 @@ describe('PUT /workflows/:id', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				timeSavedMode: 'dynamic',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
 			},
