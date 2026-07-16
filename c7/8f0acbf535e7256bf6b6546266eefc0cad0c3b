@@ -11,6 +11,14 @@ packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.te
   "base_commit_sha": "c78f0acbf535e7256bf6b6546266eefc0cad0c3b",
   "prompts": {},
   "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": null
+    },
     "s_934a382079a856": {
       "agent_id": {
         "tool": "claude",
