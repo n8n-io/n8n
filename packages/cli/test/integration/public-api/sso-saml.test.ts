@@ -186,6 +186,29 @@ describe('SAML SSO configuration in Public API', () => {
 			expect(samlService.samlPreferences.metadata).toContain('EntityDescriptor');
 		});
 
+		it('clears IdP metadata when metadata and metadataUrl are sent as empty strings', async () => {
+			testServer.license.enable('feat:saml');
+
+			await testServer.publicApiAgentFor(owner).put('/settings/sso/saml').send(sampleConfig);
+
+			const clearResponse = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/saml')
+				.send({
+					...sampleConfig,
+					metadata: '',
+					metadataUrl: '',
+				});
+
+			expect(clearResponse.status).toBe(200);
+			expect(clearResponse.body.metadata).toBe('');
+			expect(clearResponse.body.metadataUrl).toBe('');
+
+			const samlService = Container.get(SamlService);
+			expect(samlService.samlPreferences.metadata).toBe('');
+			expect(samlService.samlPreferences.metadataUrl).toBeUndefined();
+		});
+
 		it('rejects a partial request body with 400', async () => {
 			testServer.license.enable('feat:saml');
 

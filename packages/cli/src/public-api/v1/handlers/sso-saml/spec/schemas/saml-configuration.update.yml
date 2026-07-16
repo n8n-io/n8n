@@ -56,10 +56,14 @@ properties:
           Use an empty array when unused.
   metadata:
     type: string
-    description: Identity provider metadata in XML format. Use an empty string when unused.
+    description: >
+      Identity provider metadata in XML format. Use an empty string to clear stored metadata
+      (also clears metadataUrl when no URL is provided). Use the redaction placeholder from a
+      prior GET to leave an existing value unchanged.
   metadataUrl:
     type: string
-    description: URL to fetch identity provider metadata from. Use an empty string when unused.
+    description: >
+      URL to fetch identity provider metadata from. Use an empty string to clear a stored URL.
   ignoreSSL:
     type: boolean
     description: Whether to ignore SSL certificate errors when fetching metadata from a URL.
