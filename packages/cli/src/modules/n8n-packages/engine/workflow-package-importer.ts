@@ -11,6 +11,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
+import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type {
 	PreparedWorkflow,
 	WorkflowImportOutcome,
@@ -18,7 +19,6 @@ import type {
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
 import type { PackageReader } from '../io/package-reader';
 import type { PackageManifest } from '../spec/manifest.schema';
-import type { PackageCredentialRequirement } from '../spec/requirements.schema';
 import { ImportOrchestrator, type ImportOrchestrationResult } from './import-orchestrator';
 import {
 	assertPackageImportApiKeyScopes,
@@ -28,7 +28,7 @@ import {
 import { N8nPackageParser } from './n8n-package-parser';
 
 /**
- * Imports loose top-level workflows, their folder shells, and credential deps into a target project.
+ * Imports loose top-level workflows, their folder shells, and credential & data table deps into a target project.
  * Resolves the target scope from the request, then delegates plan/gate/apply to ImportOrchestrator.
  */
 @Service()
@@ -68,15 +68,38 @@ export class WorkflowPackageImporter {
 			credentialBindings: request.bindings?.credentials,
 		};
 
+		const dataTableRequirements = identifyRequirements(
+			manifest.requirements?.dataTables,
+			workflows,
+		);
+		if (dataTableRequirements?.length && request.dataTableMissingMode === 'create') {
+			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['dataTable:create']);
+		}
+		const dataTableRequest: DataTableImportRequest = {
+			requirements: dataTableRequirements,
+			packageDataTables: await this.packageParser.getDataTables(reader),
+			matchingMode: request.dataTableMatchingMode,
+			missingMode: request.dataTableMissingMode,
+			schemaConflictPolicy: request.dataTableSchemaConflictPolicy,
+		};
+
 		const imported = await this.importOrchestrator.import({
 			context,
 			folders,
 			workflows,
 			credentialRequest,
+			dataTableRequest,
 			options: request,
 		});
 
-		this.emitImportedEvent(request, context, manifest, imported, credentialRequest);
+		this.emitImportedEvent(
+			request,
+			context,
+			manifest,
+			imported,
+			credentialRequest,
+			dataTableRequest,
+		);
 
 		return buildImportResult({
 			package: toPackageSummary(manifest),
@@ -106,8 +129,9 @@ export class WorkflowPackageImporter {
 		manifest: PackageManifest,
 		imported: ImportOrchestrationResult,
 		credentialRequest: CredentialBindingRequest,
+		dataTableRequest: DataTableImportRequest,
 	): void {
-		const { workflowOutcomes, credentialResult } = imported;
+		const { workflowOutcomes, credentialResult, dataTablePlan } = imported;
 		const importedWorkflows = workflowOutcomes.filter(({ status }) => status !== 'skipped');
 		const countByStatus = (status: WorkflowImportOutcome['status']) =>
 			workflowOutcomes.filter((outcome) => outcome.status === status).length;
@@ -123,6 +147,9 @@ export class WorkflowPackageImporter {
 				credentialMatchingMode: request.credentialMatchingMode,
 				credentialMissingMode: request.credentialMissingMode,
 				workflowPublishingPolicy: request.workflowPublishingPolicy,
+				dataTableMatchingMode: request.dataTableMatchingMode,
+				dataTableMissingMode: request.dataTableMissingMode,
+				dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 			},
 			packageSourceId: manifest.sourceId,
 			packageVersion: manifest.packageFormatVersion,
@@ -145,6 +172,11 @@ export class WorkflowPackageImporter {
 					matched: credentialResult.matched.length,
 					created: credentialResult.stubbed.length,
 					requirements: credentialRequest.requirements?.length ?? 0,
+				},
+				dataTables: {
+					matched: dataTablePlan.matchedCount,
+					created: dataTablePlan.creations.length,
+					requirements: dataTableRequest.requirements?.length ?? 0,
 				},
 			},
 		});
@@ -205,11 +237,11 @@ export class WorkflowPackageImporter {
 	}
 }
 
-/** Keeps only the credential requirements used by the imported workflows, trimming `usedByWorkflows` to match. */
-function identifyRequirements(
-	requirements: PackageCredentialRequirement[] | undefined,
+/** Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match. */
+function identifyRequirements<T extends { usedByWorkflows: string[] }>(
+	requirements: T[] | undefined,
 	workflows: PreparedWorkflow[],
-): PackageCredentialRequirement[] | undefined {
+): T[] | undefined {
 	if (!requirements) return undefined;
 
 	const importedIds = new Set(workflows.map((workflow) => workflow.sourceWorkflowId));

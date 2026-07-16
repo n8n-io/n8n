@@ -203,6 +203,7 @@ export {
 	dataTableColumnNameSchema,
 	dataTableColumnTypeSchema,
 	dataTableIdSchema,
+	dataTableNameSchema,
 } from './schemas/data-table.schema';
 
 export type {
