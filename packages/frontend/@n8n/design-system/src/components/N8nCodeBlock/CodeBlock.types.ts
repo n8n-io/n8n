@@ -1,4 +1,4 @@
-export const CODE_BLOCK_LANGUAGES = ['json', 'typescript'] as const;
+export const CODE_BLOCK_LANGUAGES = ['json', 'python', 'typescript'] as const;
 
 export type CodeBlockLanguage = (typeof CODE_BLOCK_LANGUAGES)[number] | 'auto';
 

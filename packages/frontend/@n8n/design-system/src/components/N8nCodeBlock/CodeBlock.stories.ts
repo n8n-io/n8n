@@ -37,6 +37,17 @@ export const Json: Story = {
 	},
 };
 
+export const Python: Story = {
+	args: {
+		code: `workflow = {
+    "name": "Example workflow",
+    "active": True,
+}`,
+		language: 'python',
+		ariaLabel: 'Example Python code',
+	},
+};
+
 export const LongCode: Story = {
 	args: {
 		code: `import type { INodeType, INodeTypeDescription } from 'n8n-workflow';

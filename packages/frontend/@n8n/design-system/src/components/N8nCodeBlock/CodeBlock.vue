@@ -3,6 +3,7 @@ import { useResizeObserver } from '@vueuse/core';
 import { ElNotification as Notification } from 'element-plus';
 import hljs from 'highlight.js/lib/core';
 import json from 'highlight.js/lib/languages/json';
+import python from 'highlight.js/lib/languages/python';
 import typescript from 'highlight.js/lib/languages/typescript';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
@@ -12,6 +13,7 @@ import N8nButton from '../N8nButton';
 import N8nTooltip from '../N8nTooltip';
 
 hljs.registerLanguage('json', json);
+hljs.registerLanguage('python', python);
 hljs.registerLanguage('typescript', typescript);
 
 const props = withDefaults(defineProps<Omit<CodeBlockProps, 'collapsed'>>(), {
