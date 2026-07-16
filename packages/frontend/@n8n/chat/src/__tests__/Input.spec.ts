@@ -224,6 +224,23 @@ describe('ChatInput', () => {
 			expect(ws.send).toHaveBeenCalledWith('n8n|heartbeat-ack');
 		});
 
+		it('keeps JSON mode when a stray legacy heartbeat arrives later', () => {
+			emit(JSON.stringify({ type: 'heartbeat' })); // locks JSON mode
+			emit('n8n|heartbeat'); // stray legacy frame — must NOT flip the mode
+			emit(JSON.stringify({ type: 'continue' }));
+
+			// the stray legacy heartbeat renders as a message; JSON control still works
+			expect(wrapper.vm.chatStore.messages.value).toHaveLength(1);
+			expect(wrapper.vm.chatStore.messages.value[0]).toMatchObject({
+				sender: 'bot',
+				text: 'n8n|heartbeat',
+			});
+			expect(wrapper.vm.chatStore.waitingForResponse.value).toBe(true);
+			// only the JSON ack from the real heartbeat — no legacy ack for the stray
+			expect(ws.send).toHaveBeenCalledTimes(1);
+			expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'heartbeat-ack' }));
+		});
+
 		it('renders a JSON message frame as bot text', () => {
 			emit(JSON.stringify({ type: 'message', text: 'Hello' }));
 

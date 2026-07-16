@@ -189,9 +189,12 @@ function setupWebsocketConnection(executionId: string, resumeToken?: string) {
 					}
 				}
 
-				// A JSON heartbeat is only honored until legacy mode is locked; a legacy
-				// string heartbeat always is. Either one locks the mode for this socket.
-				if (frameType === 'heartbeat' && (isLegacy || jsonProtocol !== false)) {
+				// A control frame only counts if it matches the mode locked by the first
+				// heartbeat; either protocol is accepted until that lock happens. This
+				// keeps a stray cross-protocol frame from flipping the mode.
+				const matchesProtocol = isLegacy ? jsonProtocol !== true : jsonProtocol !== false;
+
+				if (frameType === 'heartbeat' && matchesProtocol) {
 					jsonProtocol = !isLegacy;
 					chatStore.ws?.send(
 						isLegacy ? 'n8n|heartbeat-ack' : JSON.stringify({ type: 'heartbeat-ack' }),
@@ -199,9 +202,7 @@ function setupWebsocketConnection(executionId: string, resumeToken?: string) {
 					return;
 				}
 
-				// JSON control frames only count once JSON mode is established; legacy
-				// string sentinels always count.
-				if (frameType === 'continue' && (isLegacy || jsonProtocol === true)) {
+				if (frameType === 'continue' && matchesProtocol) {
 					waitingForChatResponse.value = false;
 					chatStore.waitingForResponse.value = true;
 					return;
