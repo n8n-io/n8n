@@ -14,6 +14,7 @@ import {
 	MODAL_CONFIRM,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
+import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -419,6 +420,32 @@ const {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
 
+const { isSelectionExtractable } = useSelectionValidation();
+
+// Groups that can be extracted to sub-workflows
+const extractableGroupIds = computed(() => {
+	const ids = new Set<string>();
+	for (const group of workflowDocumentStore.value.allGroups) {
+		if (isSelectionExtractable(group.nodeIds).valid) {
+			ids.add(group.id);
+		}
+	}
+	return ids;
+});
+
+const soleSelectedGroupId = computed<string | null>(() => {
+	const selectedGroups = selectedNodesAndGroups.value.filter(isCanvasGroupNode);
+	if (selectedGroups.length !== 1) return null;
+
+	const groupId = parseCanvasGroupNodeId(selectedGroups[0].id);
+	if (!groupId) return null;
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return null;
+
+	const memberIds = new Set(group.nodeIds);
+	return selectedNodes.value.every((node) => memberIds.has(node.id)) ? groupId : null;
+});
+
 const groupTelemetry = useCanvasNodeGroupTelemetry();
 
 function handleGroupCreated(group: IWorkflowGroup, source: CanvasNodeGroupEventSource) {
@@ -757,26 +784,17 @@ function openGroupRename(groupId: string) {
 }
 
 // Space renames a selected group the same way it renames a selected node.
-// Only an unambiguous target acts: exactly one selected title bar, with any
-// selected nodes being members of that group — the state a header click
-// leaves behind after expanding. Loose nodes or multiple groups fall through
-// to node rename. Returns whether the rename was handled.
+// Only an unambiguous target acts (see soleSelectedGroupId). Loose nodes or
+// multiple groups fall through to node rename. Returns whether the rename
+// was handled.
 function renameSelectedGroup(): boolean {
 	if (disableKeyBindings.value) return false;
 
 	const activeElement = document.activeElement;
 	if (activeElement && shouldIgnoreCanvasShortcut(activeElement)) return false;
 
-	const selectedGroups = selectedNodesAndGroups.value.filter(isCanvasGroupNode);
-	if (selectedGroups.length !== 1) return false;
-
-	const groupId = parseCanvasGroupNodeId(selectedGroups[0].id);
+	const groupId = soleSelectedGroupId.value;
 	if (!groupId) return false;
-	const group = workflowDocumentStore.value.getGroupById(groupId);
-	if (!group) return false;
-
-	const memberIds = new Set(group.nodeIds);
-	if (!selectedNodes.value.every((node) => memberIds.has(node.id))) return false;
 
 	openGroupRename(groupId);
 	return true;
@@ -862,6 +880,14 @@ function onCanvasGroupUngroup(
 	if (group) {
 		groupTelemetry.trackUngrouped(group, source);
 	}
+}
+
+// Same downstream path as extracting the members through Alt+X or the
+// context menu, so collapsed and expanded groups behave identically.
+function onCanvasGroupExtract(groupId: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	emit('extract-workflow', [...group.nodeIds]);
 }
 
 // Expand or collapse groups through the same path as the single toggle so
@@ -1736,10 +1762,12 @@ defineExpose({
 				:data="nodeProps.data ?? groupNodeFallbackDataById[nodeProps.id]"
 				:autofocus-group-id="autofocusGroupTitleId"
 				:read-only="readOnly || suppressInteraction"
+				:can-extract="extractableGroupIds.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
 				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
+				@extract="onCanvasGroupExtract"
 				@open:contextmenu="onOpenGroupContextMenu"
 			/>
 		</template>
@@ -1804,8 +1832,10 @@ defineExpose({
 			<CanvasBackground :viewport="viewport" :striped="readOnly && stripedBackground" />
 		</slot>
 
+		<!-- A selection that is exactly one group acts through the group's own
+		toolbar; the selection toolbar would only duplicate it and cover it. -->
 		<CanvasSelectionToolbar
-			v-if="showNodeGroups"
+			v-if="showNodeGroups && soleSelectedGroupId === null"
 			:selected-nodes="selectedNodes"
 			:selection-bounds="selectionBoxBounds"
 			:read-only="readOnly || suppressInteraction"

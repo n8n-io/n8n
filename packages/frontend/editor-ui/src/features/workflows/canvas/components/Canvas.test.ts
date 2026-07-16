@@ -51,6 +51,9 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 const trackSpy = vi.hoisted(() => vi.fn());
 const { messagePrompt } = vi.hoisted(() => ({ messagePrompt: vi.fn() }));
 const { showToast } = vi.hoisted(() => ({ showToast: vi.fn() }));
+const { isSelectionExtractableMock } = vi.hoisted(() => ({
+	isSelectionExtractableMock: vi.fn(() => ({ valid: false })),
+}));
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ prompt: messagePrompt }),
@@ -59,6 +62,19 @@ vi.mock('@/app/composables/useMessage', () => ({
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showToast }),
 }));
+
+// Extraction validity needs node types and connections that the jsdom setup
+// doesn't provide — mock only this check, keeping grouping validation real.
+vi.mock('@/app/composables/useSelectionValidation', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/composables/useSelectionValidation')>();
+	return {
+		...actual,
+		useSelectionValidation: () => ({
+			...actual.useSelectionValidation(),
+			isSelectionExtractable: isSelectionExtractableMock,
+		}),
+	};
+});
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
@@ -695,6 +711,88 @@ describe('Canvas', () => {
 			expect(showToast).not.toHaveBeenCalled();
 			// A successful commit leaves edit mode.
 			expect(rendered.getByTestId('inline-editable-area')).not.toHaveAttribute('data-focused');
+		});
+	});
+
+	describe('group toolbar extract and selection toolbar suppression', () => {
+		beforeEach(() => {
+			isSelectionExtractableMock.mockImplementation(() => ({ valid: true }));
+		});
+
+		afterEach(() => {
+			isSelectionExtractableMock.mockImplementation(() => ({ valid: false }));
+		});
+
+		const setupExpandedGroupWithLooseNodes = async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a', name: 'Node A' }),
+				createTestNode({ id: 'b', name: 'Node B' }),
+				createTestNode({ id: 'c', name: 'Node C' }),
+				createTestNode({ id: 'd', name: 'Node D' }),
+			]);
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['a', 'b'],
+				isCollapsed: false,
+			});
+			const rendered = renderComponent({
+				props: {
+					nodes: [
+						groupNode,
+						createCanvasNodeElement({ id: 'a', position: { x: 40, y: 40 } }),
+						createCanvasNodeElement({ id: 'b', position: { x: 200, y: 40 } }),
+						createCanvasNodeElement({ id: 'c', position: { x: 400, y: 300 } }),
+						createCanvasNodeElement({ id: 'd', position: { x: 600, y: 300 } }),
+					],
+				},
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			await waitFor(() => expect(rendered.getByTestId('canvas-node-group')).toBeInTheDocument());
+			return { group, groupNode, ...rendered };
+		};
+
+		it('hides the selection toolbar when the selection is exactly one group', async () => {
+			const { groupNode, queryByTestId } = await setupExpandedGroupWithLooseNodes();
+			const vueFlow = useVueFlow(canvasId);
+
+			// Control: an extractable multi-node selection outside the group
+			// shows the selection toolbar.
+			vueFlow.addSelectedNodes([vueFlow.findNode('c')!, vueFlow.findNode('d')!]);
+			await waitFor(() => expect(queryByTestId('canvas-selection-toolbar')).toBeInTheDocument());
+
+			// The group as a unit (title bar plus only its members) acts through
+			// the group's own toolbar instead.
+			vueFlow.removeSelectedNodes(vueFlow.getSelectedNodes.value);
+			vueFlow.addSelectedNodes([
+				vueFlow.findNode(groupNode.id)!,
+				vueFlow.findNode('a')!,
+				vueFlow.findNode('b')!,
+			]);
+			await waitFor(() => expect(queryByTestId('canvas-selection-toolbar')).toBeNull());
+		});
+
+		it('emits extract-workflow with the member ids from the group toolbar convert button', async () => {
+			const rendered = await setupExpandedGroupWithLooseNodes();
+
+			await waitFor(() =>
+				expect(rendered.getByTestId('canvas-node-group-extract')).toBeInTheDocument(),
+			);
+			await fireEvent.click(rendered.getByTestId('canvas-node-group-extract'));
+
+			expect(rendered.emitted()['extract-workflow']).toEqual([[['a', 'b']]]);
+		});
+
+		it('hides the convert button when the group is not extractable', async () => {
+			isSelectionExtractableMock.mockImplementation(() => ({ valid: false }));
+			const rendered = await setupExpandedGroupWithLooseNodes();
+
+			expect(rendered.queryByTestId('canvas-node-group-extract')).toBeNull();
 		});
 	});
 

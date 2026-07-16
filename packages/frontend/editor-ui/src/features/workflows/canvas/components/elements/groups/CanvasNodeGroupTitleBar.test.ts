@@ -56,6 +56,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			dimensions: { width: number; height: number };
 			readOnly: boolean;
 			selected: boolean;
+			canExtract: boolean;
 		}> = {},
 	) {
 		return renderComponent(CanvasNodeGroupTitleBar, {
@@ -66,6 +67,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 				dimensions: props.dimensions,
 				readOnly: props.readOnly ?? false,
 				selected: props.selected ?? false,
+				canExtract: props.canExtract ?? false,
 			},
 		});
 	}
@@ -337,6 +339,28 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render();
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-ungroup'));
 			expect(wrapper.emitted().ungroup).toEqual([['g1']]);
+		});
+
+		// The toolbar offers the same actions whether the group is collapsed or
+		// expanded.
+		it.each([{ isCollapsed: true }, { isCollapsed: false }])(
+			'shows the convert-to-sub-workflow button next to Ungroup and emits extract on click (isCollapsed: $isCollapsed)',
+			async ({ isCollapsed }) => {
+				const wrapper = render({ data: makeData({ isCollapsed }), canExtract: true });
+
+				expect(wrapper.getByTestId('canvas-node-group-ungroup')).toBeInTheDocument();
+				const button = wrapper.getByTestId('canvas-node-group-extract');
+				expect(button.getAttribute('aria-label')).toBe('Convert group to sub-workflow');
+				expect(button.classList.contains('nodrag')).toBe(true);
+
+				await fireEvent.click(button);
+				expect(wrapper.emitted().extract).toEqual([['g1']]);
+			},
+		);
+
+		it('hides the convert-to-sub-workflow button when the group cannot be extracted', () => {
+			const wrapper = render({ canExtract: false });
+			expect(wrapper.queryByTestId('canvas-node-group-extract')).toBeNull();
 		});
 
 		it('hides the ungroup toolbar in read-only mode', () => {

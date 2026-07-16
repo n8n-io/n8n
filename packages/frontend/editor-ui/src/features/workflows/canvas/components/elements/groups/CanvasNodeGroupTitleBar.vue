@@ -16,6 +16,7 @@ import {
 } from '../../../canvas.types';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
+const EXTRACT_WORKFLOW_SHORTCUT = { altKey: true, keys: ['X'] };
 
 // Only declare the props this component uses.
 // Extra VueFlow slot props passed via v-bind are ignored.
@@ -28,11 +29,15 @@ const props = withDefaults(
 		dimensions?: { width: number; height: number };
 		selected?: boolean;
 		readOnly?: boolean;
+		/** Whether the group's members form a selection that can be converted
+		 * to a sub-workflow (extraction is stricter than grouping). */
+		canExtract?: boolean;
 	}>(),
 	{
 		autofocusGroupId: null,
 		readOnly: false,
 		selected: false,
+		canExtract: false,
 	},
 );
 
@@ -40,6 +45,7 @@ const emit = defineEmits<{
 	'update:name': [id: string, name: string];
 	'title:focused': [id: string];
 	ungroup: [id: string];
+	extract: [id: string];
 	toggle: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent];
 }>();
@@ -124,6 +130,19 @@ function onTitleUpdate(value: string) {
 function onUngroupClick() {
 	emit('ungroup', group.value.id);
 }
+
+function onExtractClick() {
+	emit('extract', group.value.id);
+}
+
+// Matches the context menu wording for group targets:
+// "Convert group to sub-workflow".
+const extractLabel = computed(() =>
+	i18n.baseText('contextMenu.extract', {
+		adjustToNumber: 2,
+		interpolate: { subject: i18n.baseText('contextMenu.nodeGroup') },
+	}),
+);
 
 function onToggleClick() {
 	emit('toggle', group.value.id);
@@ -262,6 +281,21 @@ function onWrapperPointerDown(event: PointerEvent) {
 							:aria-label="i18n.baseText('canvas.selection.toolbar.ungroup')"
 							data-test-id="canvas-node-group-ungroup"
 							@click.stop="onUngroupClick"
+						/>
+					</KeyboardShortcutTooltip>
+					<KeyboardShortcutTooltip
+						v-if="canExtract"
+						:label="extractLabel"
+						:shortcut="EXTRACT_WORKFLOW_SHORTCUT"
+					>
+						<N8nIconButton
+							class="nodrag"
+							variant="ghost"
+							size="small"
+							icon="workflow"
+							:aria-label="extractLabel"
+							data-test-id="canvas-node-group-extract"
+							@click.stop="onExtractClick"
 						/>
 					</KeyboardShortcutTooltip>
 				</div>
@@ -504,7 +538,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	bottom: 100%;
 	left: 50%;
 	transform: translateX(-50%);
-	padding-bottom: var(--spacing--3xs);
+	padding-bottom: var(--spacing--2xs);
 	pointer-events: auto;
 }
 
