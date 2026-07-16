@@ -1,0 +1,88 @@
+{
+	"name": "splitOut prototype pollution test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6c90bf81-0c0e-4c5f-9f0c-297f06d9668a",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-400, 400]
+		},
+		{
+			"parameters": {
+				"data": {
+					"data": [
+						{
+							"id": 1,
+							"name": "Alice"
+						}
+					]
+				}
+			},
+			"id": "2e0011d5-c6a0-4a40-ab8c-9d011cde40d5",
+			"name": "Code",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [-180, 400]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data",
+				"include": "allOtherFields",
+				"options": {
+					"destinationFieldName": "__proto__.polluted"
+				}
+			},
+			"id": "prototype-pollution-test",
+			"name": "Item Lists",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [80, 160]
+		}
+	],
+	"pinData": {
+		"Item Lists": [
+			{
+				"json": {
+					"data": {
+						"id": 1,
+						"name": "Alice"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Item Lists",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "9230f580-6f41-47c9-9949-bf258fc3fa47",
+	"id": "106",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}
