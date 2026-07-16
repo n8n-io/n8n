@@ -128,16 +128,19 @@ describe('GET /rest/mcp/oauth-clients?ownership=all', () => {
 			userId: owner.id,
 			clientId: sharedClient.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 		await userConsentRepository.save({
 			userId: member.id,
 			clientId: sharedClient.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 		await userConsentRepository.save({
 			userId: member.id,
 			clientId: memberClient.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer
@@ -192,6 +195,7 @@ describe('GET /rest/mcp/oauth-clients pagination and filters', () => {
 				userId: owner.id,
 				clientId: client.id,
 				grantedAt: now - i * 1000,
+				scope: ['workflow:read'],
 			});
 		}
 
@@ -225,11 +229,13 @@ describe('GET /rest/mcp/oauth-clients pagination and filters', () => {
 			userId: owner.id,
 			clientId: cursor.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 		await userConsentRepository.save({
 			userId: owner.id,
 			clientId: claude.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer
@@ -252,6 +258,7 @@ describe('GET /rest/mcp/oauth-clients pagination and filters', () => {
 				userId: owner.id,
 				clientId: client.id,
 				grantedAt: Date.now(),
+				scope: ['workflow:read'],
 			});
 		}
 
@@ -283,11 +290,13 @@ describe('GET /rest/mcp/oauth-clients pagination and filters', () => {
 			userId: owner.id,
 			clientId: recent.id,
 			grantedAt: now - 2 * day,
+			scope: ['workflow:read'],
 		});
 		await userConsentRepository.save({
 			userId: owner.id,
 			clientId: old.id,
 			grantedAt: now - 60 * day,
+			scope: ['workflow:read'],
 		});
 
 		const last7 = await testServer
@@ -311,11 +320,13 @@ describe('GET /rest/mcp/oauth-clients pagination and filters', () => {
 			userId: owner.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 		await userConsentRepository.save({
 			userId: member.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer
@@ -496,11 +507,13 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 			userId: owner.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 		await userConsentRepository.save({
 			userId: member.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer
@@ -533,6 +546,7 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 			userId: member.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer
@@ -557,6 +571,7 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 			userId: owner.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer
@@ -583,6 +598,7 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 			userId: member.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer
@@ -609,6 +625,7 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 			userId: owner.id,
 			clientId: client.id,
 			grantedAt: Date.now(),
+			scope: ['workflow:read'],
 		});
 
 		const response = await testServer
