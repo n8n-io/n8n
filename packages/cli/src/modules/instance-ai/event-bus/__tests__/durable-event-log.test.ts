@@ -135,6 +135,15 @@ function toolCall(toolCallId: string, agentId = AGENT): InstanceAiEvent {
 	};
 }
 
+function toolInputStart(toolCallId: string, agentId = AGENT): InstanceAiEvent {
+	return {
+		type: 'tool-input-start',
+		runId: RUN,
+		agentId,
+		payload: { toolCallId, toolName: 'search-workflows' },
+	};
+}
+
 function runFinish(): InstanceAiEvent {
 	return { type: 'run-finish', runId: RUN, agentId: AGENT, payload: { status: 'completed' } };
 }
@@ -227,6 +236,7 @@ describe('DurableEventLog', () => {
 
 		const emitted = await publishAll(log, [
 			textDelta('AAA'),
+			toolInputStart('tc-1'),
 			toolCall('tc-1'),
 			{ type: 'status', runId: RUN, agentId: AGENT, payload: { message: 'working' } },
 			runFinish(),
@@ -236,17 +246,29 @@ describe('DurableEventLog', () => {
 		const live = emitted.filter((e) => e.live);
 		expect(live.map((e) => e.event.type)).toEqual([
 			'text-delta',
+			'tool-input-start',
 			'tool-call',
 			'status',
 			'run-finish',
 		]);
 		// Deltas and status carry no id; structural facts carry the DB seq.
+		// tool-input-start is DELIBERATELY structural: ephemeral would lose the
+		// pending call on a mid-stream refresh during a long arg stream, shrink
+		// replayed durations to exclude arg streaming, and leave no trace of a
+		// call killed mid-args. It also flushes open blocks (where tool-call
+		// used to), so the segment closes at arg-stream start.
 		expect(live[0].id).toBeUndefined();
-		expect(live[2].id).toBeUndefined();
+		expect(live[3].id).toBeUndefined();
 		expect(live[1].id).toBeDefined();
-		expect(live[3].id).toBeDefined();
-		// Persisted seqs are contiguous from 1.
-		expect(repo.rows.map((r) => r.seq)).toEqual([1, 2, 3]);
+		expect(live[2].id).toBeDefined();
+		expect(live[4].id).toBeDefined();
+		// Persisted seqs are contiguous from 1, the open block flushed first.
+		expect(repo.rows.map((r) => [r.seq, r.event.type])).toEqual([
+			[1, 'text-block'],
+			[2, 'tool-input-start'],
+			[3, 'tool-call'],
+			[4, 'run-finish'],
+		]);
 	});
 
 	it('continues the seq across a restart (fresh instance seeds from the DB)', async () => {
