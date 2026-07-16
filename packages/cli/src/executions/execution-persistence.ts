@@ -61,6 +61,18 @@ type UpdatableEntityColumns = Omit<
  */
 @Service()
 export class ExecutionPersistence {
+	/** Batch size for bulk deletion: stays below SQLite's expression-tree depth limit (~1000). */
+	private static readonly bulkDeletionBatchSize = 500;
+
+	/**
+	 * Fallback runaway safeguard: caps one bulk-deletion run at 10M executions.
+	 * On Postgres the cap scales with the table-size estimate instead (see
+	 * `maxBulkDeletionBatches`). Deletion resumes on retry, so a larger history
+	 * still converges across runs — only a workflow that keeps producing
+	 * executions hits the cap repeatedly.
+	 */
+	private static readonly maxBulkDeletionBatchesPerRun = 20_000;
+
 	constructor(
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -605,6 +617,92 @@ export class ExecutionPersistence {
 		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
 
 		await this.jsonStore.delete(this.toBlobRefs(refs));
+	}
+
+	/**
+	 * Hard-delete all executions of a workflow, in batches small enough that no
+	 * single statement can exceed a DB statement timeout, no matter how large
+	 * the execution history is. Each batch commits independently, so an
+	 * interrupted deletion picks up where it left off when retried.
+	 *
+	 * Callers must deactivate the workflow first — if something keeps producing
+	 * executions for it, this throws once the per-run batch cap is exhausted,
+	 * instead of looping forever.
+	 */
+	async hardDeleteByWorkflowId(workflowId: string) {
+		const maxBatches = await this.maxBulkDeletionBatches();
+
+		for (let batch = 0; batch < maxBatches; batch++) {
+			const executions = await this.executionRepository.find({
+				select: ['id', 'workflowId', 'storedAt'],
+				where: { workflowId },
+				take: ExecutionPersistence.bulkDeletionBatchSize,
+				withDeleted: true, // sweep soft-deleted executions too, or they'd be left to the FK cascade
+			});
+
+			if (executions.length === 0) return;
+
+			await this.hardDelete(
+				executions.map((execution) => ({
+					executionId: execution.id,
+					workflowId: execution.workflowId,
+					storedAt: execution.storedAt,
+				})),
+			);
+		}
+
+		// The loop may have converged exactly on its last allowed batch - only
+		// fail if executions actually remain.
+		const remaining = await this.executionRepository.find({
+			select: ['id'],
+			where: { workflowId },
+			take: 1,
+			withDeleted: true,
+		});
+		if (remaining.length === 0) return;
+
+		throw new UnexpectedError(
+			`Failed to delete all executions of workflow ${workflowId}: executions keep being added while deleting them - is the workflow still active?`,
+		);
+	}
+
+	/**
+	 * Runaway-safeguard cap for `hardDeleteByWorkflowId`: twice the table-size
+	 * estimate when one is available — no single workflow can have more
+	 * executions than the whole table, so large deployments never hit the cap
+	 * on legitimate work — floored at the fixed per-run cap, which is also the
+	 * fallback when no estimate is available.
+	 */
+	private async maxBulkDeletionBatches(): Promise<number> {
+		const { bulkDeletionBatchSize, maxBulkDeletionBatchesPerRun: fallback } = ExecutionPersistence;
+
+		const estimate = await this.estimateExecutionsTableSize();
+		if (estimate === null) return fallback;
+
+		return Math.max(Math.ceil((estimate * 2) / bulkDeletionBatchSize), fallback);
+	}
+
+	/**
+	 * Table-size estimate for executions from the Postgres system catalogs
+	 * (O(1) lookup). Returns null on other DBs, on never-analyzed tables
+	 * (`reltuples` is -1), or when the lookup fails — this is best-effort only.
+	 */
+	private async estimateExecutionsTableSize(): Promise<number | null> {
+		if (this.databaseConfig.type !== 'postgresdb') return null;
+
+		try {
+			const { schema, tableName } = this.executionRepository.metadata;
+			const table = schema ? `"${schema}"."${tableName}"` : `"${tableName}"`;
+			const rows = (await this.executionRepository.query(
+				'SELECT reltuples::bigint AS estimate FROM pg_class WHERE oid = to_regclass($1)',
+				[table],
+			)) as Array<{ estimate: string | number }>;
+
+			const estimate = Number(rows[0]?.estimate);
+			return Number.isFinite(estimate) && estimate >= 0 ? estimate : null;
+		} catch {
+			return null;
+		}
 	}
 
 	/** Narrow deletion targets to those whose data lives in a blob store, i.e. all but `db`. */
