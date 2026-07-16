@@ -1814,13 +1814,40 @@ describe('ExecutionPersistence', () => {
 		});
 
 		it('should throw instead of looping on when executions keep being added', async () => {
+			const sqlitePersistence = createPersistenceService('db', 'sqlite');
+			executionRepository.find.mockResolvedValue([executionRow('exec-1')]);
+
+			await expect(sqlitePersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
+				'executions keep being added',
+			);
+
+			expect(executionRepository.find).toHaveBeenCalledTimes(20_000); // fixed per-run batch cap
+			expect(executionRepository.query).not.toHaveBeenCalled(); // no catalog estimate outside Postgres
+			executionRepository.find.mockReset();
+		});
+
+		it('should scale the safeguard cap with the table-size estimate on Postgres', async () => {
+			executionRepository.query.mockResolvedValueOnce([{ estimate: '10000000' }]);
 			executionRepository.find.mockResolvedValue([executionRow('exec-1')]);
 
 			await expect(executionPersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
 				'executions keep being added',
 			);
 
-			expect(executionRepository.find).toHaveBeenCalledTimes(20_000); // per-run batch cap
+			// 2 x 10M estimate / 500 per batch = 40k batches
+			expect(executionRepository.find).toHaveBeenCalledTimes(40_000);
+			executionRepository.find.mockReset();
+		});
+
+		it('should fall back to the fixed cap when the Postgres estimate is unavailable', async () => {
+			executionRepository.query.mockResolvedValueOnce([{ estimate: '-1' }]); // never-analyzed table
+			executionRepository.find.mockResolvedValue([executionRow('exec-1')]);
+
+			await expect(executionPersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
+				'executions keep being added',
+			);
+
+			expect(executionRepository.find).toHaveBeenCalledTimes(20_000);
 			executionRepository.find.mockReset();
 		});
 	});

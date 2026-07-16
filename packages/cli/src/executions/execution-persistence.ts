@@ -65,9 +65,11 @@ export class ExecutionPersistence {
 	private static readonly bulkDeletionBatchSize = 500;
 
 	/**
-	 * Runaway safeguard: caps one bulk-deletion run at 10M executions. Deletion
-	 * resumes on retry, so a larger history still converges across runs — only a
-	 * workflow that keeps producing executions hits this cap repeatedly.
+	 * Fallback runaway safeguard: caps one bulk-deletion run at 10M executions.
+	 * On Postgres the cap scales with the table-size estimate instead (see
+	 * `maxBulkDeletionBatches`). Deletion resumes on retry, so a larger history
+	 * still converges across runs — only a workflow that keeps producing
+	 * executions hits the cap repeatedly.
 	 */
 	private static readonly maxBulkDeletionBatchesPerRun = 20_000;
 
@@ -545,7 +547,9 @@ export class ExecutionPersistence {
 	 * instead of looping forever.
 	 */
 	async hardDeleteByWorkflowId(workflowId: string) {
-		for (let batch = 0; batch < ExecutionPersistence.maxBulkDeletionBatchesPerRun; batch++) {
+		const maxBatches = await this.maxBulkDeletionBatches();
+
+		for (let batch = 0; batch < maxBatches; batch++) {
 			const executions = await this.executionRepository.find({
 				select: ['id', 'workflowId', 'storedAt'],
 				where: { workflowId },
@@ -567,6 +571,37 @@ export class ExecutionPersistence {
 		throw new UnexpectedError(
 			`Failed to delete all executions of workflow ${workflowId}: executions keep being added while deleting them - is the workflow still active?`,
 		);
+	}
+
+	/**
+	 * Runaway-safeguard cap for `hardDeleteByWorkflowId`. On Postgres, scaled to
+	 * twice the table-size estimate from the system catalogs (O(1) lookup), so
+	 * large deployments never hit the cap on legitimate work. Elsewhere (or when
+	 * no estimate is available) falls back to the fixed per-run cap.
+	 */
+	private async maxBulkDeletionBatches(): Promise<number> {
+		const fallback = ExecutionPersistence.maxBulkDeletionBatchesPerRun;
+		if (this.databaseConfig.type !== 'postgresdb') return fallback;
+
+		try {
+			const { schema, tableName } = this.executionRepository.metadata;
+			const table = schema ? `"${schema}"."${tableName}"` : `"${tableName}"`;
+			const rows = (await this.executionRepository.query(
+				'SELECT reltuples::bigint AS estimate FROM pg_class WHERE oid = to_regclass($1)',
+				[table],
+			)) as Array<{ estimate: string | number }>;
+			const estimate = Number(rows[0]?.estimate);
+			// reltuples is -1 for never-analyzed tables
+			if (!Number.isFinite(estimate) || estimate < 0) return fallback;
+
+			return Math.max(
+				Math.ceil((estimate * 2) / ExecutionPersistence.bulkDeletionBatchSize),
+				fallback,
+			);
+		} catch {
+			// best-effort estimate; the fixed cap still guards the loop
+			return fallback;
+		}
 	}
 
 	/** Narrow deletion targets to those whose data lives in a blob store, i.e. all but `db`. */
