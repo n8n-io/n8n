@@ -2,6 +2,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { IWorkflowDb } from '@n8n/db';
 import {
+	CredentialsRepository,
 	FolderRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
@@ -73,6 +74,7 @@ export class SourceControlExportService {
 		private readonly tagRepository: TagRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
@@ -520,12 +522,20 @@ export class SourceControlExportService {
 				credentialIds,
 				'credential:owner',
 			);
+
+			// Instance credentials are ownerless, so the owner-sharing query above
+			// cannot find them — they are fetched and exported separately.
+			const instanceCredentialsToBeExported = await this.credentialsRepository.find({
+				where: { id: In(credentialIds), availability: 'instance' },
+			});
+
 			let missingIds: string[] = [];
-			if (credentialsToBeExported.length !== credentialIds.length) {
-				const foundCredentialIds = credentialsToBeExported.map((e) => e.credentialsId);
-				missingIds = credentialIds.filter(
-					(remote) => foundCredentialIds.findIndex((local) => local === remote) === -1,
-				);
+			const foundCredentialIds = new Set([
+				...credentialsToBeExported.map((e) => e.credentialsId),
+				...instanceCredentialsToBeExported.map((e) => e.id),
+			]);
+			if (foundCredentialIds.size !== credentialIds.length) {
+				missingIds = credentialIds.filter((remote) => !foundCredentialIds.has(remote));
 			}
 			await Promise.all(
 				credentialsToBeExported.map(async (sharing) => {
@@ -581,13 +591,45 @@ export class SourceControlExportService {
 				}),
 			);
 
-			return {
-				count: credentialsToBeExported.length,
-				folder: this.credentialExportFolder,
-				files: credentialsToBeExported.map((e) => ({
+			await Promise.all(
+				instanceCredentialsToBeExported.map(async (instanceCredential) => {
+					const { name, type, data, id } = instanceCredential;
+					const credentials = new Credentials({ id, name }, type, data);
+					const sanitizedData = sanitizeCredentialData(await credentials.getData());
+
+					const stub: ExportableCredential = {
+						id,
+						name,
+						type,
+						data: sanitizedData,
+						ownedBy: null,
+						availability: 'instance',
+					};
+
+					const filePath = this.getCredentialsPath(id);
+					this.logger.debug(
+						`Writing instance credentials stub "${name}" (ID ${id}) to: ${filePath}`,
+					);
+
+					return await fsWriteFile(filePath, JSON.stringify(stub, null, 2));
+				}),
+			);
+
+			const exportedFiles = [
+				...credentialsToBeExported.map((e) => ({
 					id: e.credentials.id,
 					name: path.join(this.credentialExportFolder, `${e.credentials.name}.json`),
 				})),
+				...instanceCredentialsToBeExported.map((e) => ({
+					id: e.id,
+					name: path.join(this.credentialExportFolder, `${e.name}.json`),
+				})),
+			];
+
+			return {
+				count: exportedFiles.length,
+				folder: this.credentialExportFolder,
+				files: exportedFiles,
 				missingIds,
 			};
 		} catch (error) {

@@ -155,6 +155,10 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
 
+		// Instance credentials are ownerless — no `SharedCredentials` row is
+		// created for them.
+		if (credential.availability === 'instance') return;
+
 		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
 			credentialsId: credential.id,
 			role: 'credential:owner',
@@ -351,6 +355,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			isResolvable: true,
 			resolvableAllowFallback: true,
 			resolverId: true,
+			availability: true,
 		} satisfies Record<ImportableCredentialProperty, true>;
 
 		return property in importableProperties;

@@ -16,6 +16,8 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	isManaged: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	/** Usage surface: 'workflow' (default) = canvas credential; 'instance' = instance-level features only. */
+	availability?: 'workflow' | 'instance';
 	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */
 	connectedByMe?: boolean;
 	/** Total number of users connected to this credential. Set on resolvable credentials only. */

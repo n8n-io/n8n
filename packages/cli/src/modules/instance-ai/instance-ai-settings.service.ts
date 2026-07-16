@@ -12,7 +12,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { SettingsRepository, UserRepository } from '@n8n/db';
-import type { User } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
 import type { IUserSettings } from 'n8n-workflow';
@@ -87,6 +87,7 @@ interface PersistedAdminSettings {
 	daytonaCredentialId?: string | null;
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
+	modelCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
 	browserUseEnabled?: boolean;
 }
@@ -112,6 +113,13 @@ export class InstanceAiSettingsService {
 	private adminN8nSandboxCredentialId: string | null = null;
 
 	private adminSearchCredentialId: string | null = null;
+
+	/**
+	 * Instance credential (`availability: 'instance'`) powering the Instance AI
+	 * model for all users. Takes precedence over per-user BYOK; env vars remain
+	 * the fallback.
+	 */
+	private adminModelCredentialId: string | null = null;
 
 	constructor(
 		globalConfig: GlobalConfig,
@@ -188,6 +196,7 @@ export class InstanceAiSettingsService {
 			daytonaCredentialId: this.adminDaytonaCredentialId,
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
+			modelCredentialId: this.adminModelCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
 			browserUseEnabled: this.isBrowserUseEnabled(),
 		};
@@ -201,6 +210,14 @@ export class InstanceAiSettingsService {
 			InstanceAiSettingsService.MANAGED_ADMIN_FIELDS,
 			this.deploymentLabel(),
 		);
+		// Unlike the fields above, the model credential is admin-settable on
+		// self-hosted instances; only proxy/cloud deployments manage it externally.
+		if (this.isCloud || this.aiService.isProxyEnabled()) {
+			this.rejectManagedFields(update, ['modelCredentialId'], this.deploymentLabel());
+		}
+		if (update.modelCredentialId !== undefined && update.modelCredentialId !== null) {
+			await this.ensureIsInstanceModelCredential(update.modelCredentialId);
+		}
 		this.validateAdminSettingsUpdate(update);
 		const c = this.config;
 		const previousMcpServers = c.mcpServers;
@@ -221,6 +238,8 @@ export class InstanceAiSettingsService {
 			this.adminN8nSandboxCredentialId = update.n8nSandboxCredentialId;
 		if (update.searchCredentialId !== undefined)
 			this.adminSearchCredentialId = update.searchCredentialId;
+		if (update.modelCredentialId !== undefined)
+			this.adminModelCredentialId = update.modelCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
 		if (update.browserUseEnabled !== undefined) c.browserUseEnabled = update.browserUseEnabled;
@@ -297,6 +316,37 @@ export class InstanceAiSettingsService {
 				type: c.type,
 				provider: CREDENTIAL_TO_MODEL_PROVIDER[c.type] ?? 'custom',
 			}));
+	}
+
+	/**
+	 * List instance credentials (`availability: 'instance'`) usable as LLM
+	 * providers, for the admin model-credential picker.
+	 */
+	async listInstanceModelCredentials(): Promise<InstanceAiModelCredential[]> {
+		if (this.aiService.isProxyEnabled()) return [];
+		const instanceCredentials = await this.credentialsFinderService.findInstanceCredentials();
+		return instanceCredentials
+			.filter((c) => SUPPORTED_CREDENTIAL_TYPES.includes(c.type))
+			.map((c) => ({
+				id: c.id,
+				name: c.name,
+				type: c.type,
+				provider: CREDENTIAL_TO_MODEL_PROVIDER[c.type] ?? 'custom',
+			}));
+	}
+
+	/** Reject admin model-credential selections that are not LLM-capable instance credentials. */
+	private async ensureIsInstanceModelCredential(credentialId: string): Promise<void> {
+		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
+		if (
+			!credential ||
+			credential.availability !== 'instance' ||
+			!SUPPORTED_CREDENTIAL_TYPES.includes(credential.type)
+		) {
+			throw new UnprocessableRequestError(
+				'The model credential must be an instance credential of a supported LLM provider type',
+			);
+		}
 	}
 
 	/** List credentials the user can access that are usable as sandbox/search services. */
@@ -461,9 +511,22 @@ export class InstanceAiSettingsService {
 		return prefs.modelName ?? this.extractModelName(this.config.model);
 	}
 
-	/** Resolve the current model configuration for an agent run. */
+	/**
+	 * Resolve the current model configuration for an agent run.
+	 * Precedence: admin instance credential → per-user BYOK credential → env vars.
+	 */
 	async resolveModelConfig(user: User): Promise<ModelConfig> {
 		const prefs = this.readUserPreferences(user);
+		const modelName = prefs.modelName ?? this.extractModelName(this.config.model);
+
+		// The admin-selected instance credential applies to every user; it is
+		// resolved server-side, without per-user access checks, which is safe
+		// because only instance credentials are accepted here.
+		const adminModelConfig = await this.resolveAdminModelConfig(modelName);
+		if (adminModelConfig) {
+			return adminModelConfig;
+		}
+
 		const credentialId = prefs.credentialId ?? null;
 
 		if (!credentialId) {
@@ -480,9 +543,30 @@ export class InstanceAiSettingsService {
 			return this.envVarModelConfig();
 		}
 
+		return (
+			(await this.buildModelConfigFromCredential(credential, modelName)) ?? this.envVarModelConfig()
+		);
+	}
+
+	/** Resolve the model config from the admin-selected instance credential, if any. */
+	private async resolveAdminModelConfig(modelName: string): Promise<ModelConfig | null> {
+		const credentialId = this.adminModelCredentialId;
+		if (!credentialId) return null;
+
+		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
+		// Only instance credentials may be decrypted on behalf of all users.
+		if (!credential || credential.availability !== 'instance') return null;
+
+		return await this.buildModelConfigFromCredential(credential, modelName);
+	}
+
+	private async buildModelConfigFromCredential(
+		credential: CredentialsEntity,
+		modelName: string,
+	): Promise<ModelConfig | null> {
 		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credential.type];
 		if (!provider) {
-			return this.envVarModelConfig();
+			return null;
 		}
 
 		const data = await this.credentialsService.decrypt(credential, true);
@@ -490,7 +574,6 @@ export class InstanceAiSettingsService {
 		const urlField = URL_FIELD_MAP[credential.type];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
-		const modelName = prefs.modelName ?? this.extractModelName(this.config.model);
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 
 		if (baseUrl) {
@@ -639,6 +722,8 @@ export class InstanceAiSettingsService {
 			this.adminN8nSandboxCredentialId = persisted.n8nSandboxCredentialId;
 		if (persisted.searchCredentialId !== undefined)
 			this.adminSearchCredentialId = persisted.searchCredentialId;
+		if (persisted.modelCredentialId !== undefined)
+			this.adminModelCredentialId = persisted.modelCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
 		if (persisted.browserUseEnabled !== undefined)
@@ -663,6 +748,7 @@ export class InstanceAiSettingsService {
 			daytonaCredentialId: this.adminDaytonaCredentialId,
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
+			modelCredentialId: this.adminModelCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
 			browserUseEnabled: c.browserUseEnabled,
 		};

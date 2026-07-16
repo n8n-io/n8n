@@ -183,6 +183,12 @@ export class EnterpriseCredentialsService {
 			`Could not find the credential with the id "${credentialId}". Make sure you have the permission to move it.`,
 		);
 
+		// Instance credentials are ownerless — there is no project to move them
+		// between.
+		if (credential.availability === 'instance') {
+			throw new TransferCredentialError('Instance credentials cannot be transferred');
+		}
+
 		// 2. get owner-sharing
 		const ownerSharing = credential.shared.find((s) => s.role === 'credential:owner');
 		NotFoundError.isDefinedAndNotNull(

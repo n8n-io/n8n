@@ -6,7 +6,7 @@ import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { In, Not } from '@n8n/typeorm';
 
 import { RoleService } from '@/services/role.service';
 
@@ -83,7 +83,12 @@ export class CredentialsFinderService {
 	 * all scopes the user has for the credential using `RoleService.addScopes`.
 	 **/
 	async findCredentialsForUser(user: User, scopes: Scope[]) {
-		let where: FindOptionsWhere<CredentialsEntity> = { isGlobal: false };
+		// Instance credentials are never part of user-facing listings; they are
+		// reachable only via `findInstanceCredentials` / `findCredentialForUser`.
+		let where: FindOptionsWhere<CredentialsEntity> = {
+			isGlobal: false,
+			availability: Not('instance'),
+		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const [projectRoles, credentialRoles] = await Promise.all([
@@ -118,12 +123,32 @@ export class CredentialsFinderService {
 		return credentials;
 	}
 
+	/**
+	 * Finds instance credentials (`availability: 'instance'`). They are ownerless
+	 * (no `SharedCredentials` rows) and reachable only by holders of the global
+	 * `credential:manageInstance` scope, plus server-side feature code.
+	 */
+	async findInstanceCredentials(trx?: EntityManager): Promise<CredentialsEntity[]> {
+		const em = trx ?? this.credentialsRepository.manager;
+		return await em.find(CredentialsEntity, { where: { availability: 'instance' } });
+	}
+
 	/** Get a credential if it has been shared with a user */
 	async findCredentialForUser(
 		credentialsId: string,
 		user: User,
 		scopes: Scope[],
 	): Promise<CredentialsEntity | null> {
+		// Instance credentials have no sharing rows; access to them is granted
+		// solely by the global manageInstance scope, which covers all operations.
+		if (hasGlobalScope(user, 'credential:manageInstance')) {
+			const instanceCredential = await this.credentialsRepository.findOneBy({
+				id: credentialsId,
+				availability: 'instance',
+			});
+			if (instanceCredential) return instanceCredential;
+		}
+
 		let where: FindOptionsWhere<SharedCredentials> = { credentialsId };
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {

@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| availability | varchar(16) | 'workflow'::character varying | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | text |  | false |  |  |  |
 | id | varchar(36) |  | false | [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.shared_credentials](public.shared_credentials.md) |  |  |
@@ -20,6 +21,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| credentials_entity_availability_not_null | n | NOT NULL availability |
 | credentials_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | credentials_entity_data_not_null | n | NOT NULL data |
 | credentials_entity_id_not_null1 | n | NOT NULL id |
@@ -57,6 +59,7 @@ erDiagram
 "public.credentials_entity" }o--o| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL"
 
 "public.credentials_entity" {
+  varchar_16_ availability
   timestamp_3__with_time_zone createdAt
   text data
   varchar_36_ id

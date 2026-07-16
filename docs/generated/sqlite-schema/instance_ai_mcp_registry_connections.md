@@ -59,6 +59,7 @@ erDiagram
   varchar userId FK
 }
 "credentials_entity" {
+  VARCHAR_16_ availability
   datetime_3_ createdAt
   TEXT data
   varchar_36_ id PK

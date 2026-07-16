@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 
-import type { IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
 
 import type {
@@ -255,6 +255,15 @@ const closeOnSave = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
 });
 
+// Availability preset by the surface that opened the modal (e.g. Instance AI admin
+// settings creating an admin-managed instance credential). Only meaningful for new
+// credentials — availability is fixed after creation.
+const presetAvailability = computed<NewCredentialsModal['availability']>(() => {
+	if (props.mode !== 'new') return undefined;
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) ? modalState.availability : undefined;
+});
+
 const appendToBody = computed<boolean>(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.appendToBody === true;
@@ -267,11 +276,16 @@ const sidebarItems = computed(() => {
 			label: i18n.baseText('credentialEdit.credentialEdit.connection'),
 			position: 'top',
 		},
-		{
-			id: 'sharing',
-			label: i18n.baseText('credentialEdit.credentialEdit.sharing'),
-			position: 'top',
-		},
+		// Instance credentials are admin-managed and never shared with projects/users.
+		...(presetAvailability.value === 'instance'
+			? []
+			: [
+					{
+						id: 'sharing',
+						label: i18n.baseText('credentialEdit.credentialEdit.sharing'),
+						position: 'top',
+					} satisfies IMenuItem,
+				]),
 		{
 			id: 'details',
 			label: i18n.baseText('credentialEdit.credentialEdit.details'),
@@ -647,6 +661,9 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
 	if (isNewCredential) {
+		if (presetAvailability.value) {
+			credentialDetails.availability = presetAvailability.value;
+		}
 		credential = await createCredential(credentialDetails, projectsStore.currentProject);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {

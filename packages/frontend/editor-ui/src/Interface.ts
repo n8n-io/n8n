@@ -660,6 +660,10 @@ export interface NewCredentialsModal extends ModalState {
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
 	appendToBody?: boolean;
+	/** Preset availability for a newly created credential. `'instance'` credentials
+	 * are admin-managed (e.g. the shared Instance AI model credential) and never
+	 * usable in the workflow canvas. Undefined keeps the default (`'workflow'`). */
+	availability?: 'workflow' | 'instance';
 	/** Behavior for the Instance AI credential setup-help button, supplied by the
 	 * surface that opened the modal (an editor capability, or the credentials list).
 	 * Resolves to whether the credential modal should close (false keeps it open for

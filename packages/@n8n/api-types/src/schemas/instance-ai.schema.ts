@@ -1367,6 +1367,8 @@ export interface InstanceAiAdminSettingsResponse {
 	daytonaCredentialId: string | null;
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
+	/** Instance credential powering the Instance AI model for all users. */
+	modelCredentialId: string | null;
 	localGatewayDisabled: boolean;
 	browserUseEnabled: boolean;
 }
@@ -1383,6 +1385,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	daytonaCredentialId: z.string().nullable().optional(),
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
+	modelCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
 	browserUseEnabled: z.boolean().optional(),
 }) {}

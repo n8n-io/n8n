@@ -45,3 +45,9 @@ export async function fetchServiceCredentials(
 ): Promise<InstanceAiModelCredential[]> {
 	return await makeRestApiRequest(context, 'GET', '/instance-ai/settings/service-credentials');
 }
+
+export async function fetchInstanceModelCredentials(
+	context: IRestApiContext,
+): Promise<InstanceAiModelCredential[]> {
+	return await makeRestApiRequest(context, 'GET', '/instance-ai/settings/model-credentials');
+}

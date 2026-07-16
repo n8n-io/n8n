@@ -227,6 +227,18 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
+		// Instance credentials only reach this point for holders of the global
+		// manageInstance scope (see CredentialsFinderService.findCredentialForUser);
+		// their availability, sharing, and resolvability are immutable.
+		if (
+			credential.availability === 'instance' &&
+			(body.isGlobal !== undefined || body.isResolvable !== undefined)
+		) {
+			throw new BadRequestError(
+				'Instance credentials cannot be globally shared or converted to end-user credentials',
+			);
+		}
+
 		// We never want to allow users to change the oauthTokenData
 		delete body.data?.oauthTokenData;
 
@@ -403,6 +415,12 @@ export class CredentialsController {
 
 		if (!credential) {
 			throw new ForbiddenError();
+		}
+
+		// Instance credentials are ownerless and consumed only by instance-level
+		// features — sharing has no meaning for them.
+		if (credential.availability === 'instance') {
+			throw new BadRequestError('Instance credentials cannot be shared');
 		}
 
 		const currentProjectIds = credential.shared

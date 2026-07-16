@@ -543,6 +543,7 @@ export function areSameCredentials(
 		Boolean(credA.isGlobal) === Boolean(credB.isGlobal) &&
 		Boolean(credA.isResolvable) === Boolean(credB.isResolvable) &&
 		Boolean(credA.resolvableAllowFallback) === Boolean(credB.resolvableAllowFallback) &&
+		(credA.availability ?? 'workflow') === (credB.availability ?? 'workflow') &&
 		!hasSynchableCredentialDataChanged(credA.data, credB.data)
 	);
 }

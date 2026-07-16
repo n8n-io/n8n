@@ -172,6 +172,8 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	sharedWithProjects?: ProjectSharingData[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	/** Usage surface: 'workflow' (default) = canvas credential; 'instance' = instance-level features only. */
+	availability?: 'workflow' | 'instance';
 }
 
 export interface ICredentialsEncrypted {

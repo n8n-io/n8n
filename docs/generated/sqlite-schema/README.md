@@ -40,7 +40,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [chat_hub_sessions](chat_hub_sessions.md) | 13 |  | table |
 | [chat_hub_tools](chat_hub_tools.md) | 9 |  | table |
 | [credential_dependency](credential_dependency.md) | 5 |  | table |
-| [credentials_entity](credentials_entity.md) | 11 |  | table |
+| [credentials_entity](credentials_entity.md) | 12 |  | table |
 | [data_table](data_table.md) | 5 |  | table |
 | [data_table_column](data_table_column.md) | 7 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
@@ -618,6 +618,7 @@ erDiagram
   INTEGER id
 }
 "credentials_entity" {
+  VARCHAR_16_ availability
   datetime_3_ createdAt
   TEXT data
   varchar_36_ id PK

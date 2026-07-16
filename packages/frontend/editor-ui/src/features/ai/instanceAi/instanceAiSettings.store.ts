@@ -11,6 +11,7 @@ import {
 	updatePreferences,
 	fetchModelCredentials,
 	fetchServiceCredentials,
+	fetchInstanceModelCredentials,
 } from './instanceAi.settings.api';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
@@ -51,6 +52,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const preferences = ref<InstanceAiUserPreferencesResponse | null>(null);
 	const credentials = ref<InstanceAiModelCredential[]>([]);
 	const serviceCredentials = ref<InstanceAiModelCredential[]>([]);
+	const instanceModelCredentials = ref<InstanceAiModelCredential[]>([]);
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
 	const preferencesDraft = reactive<InstanceAiUserPreferencesUpdateRequest>({});
 
@@ -178,13 +180,18 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				const credPromises: [
 					Promise<InstanceAiModelCredential[]>,
 					Promise<InstanceAiModelCredential[]>,
+					Promise<InstanceAiModelCredential[]>,
 				] = [
 					fetchModelCredentials(rootStore.restApiContext),
 					canManage.value ? fetchServiceCredentials(rootStore.restApiContext) : Promise.resolve([]),
+					canManage.value
+						? fetchInstanceModelCredentials(rootStore.restApiContext)
+						: Promise.resolve([]),
 				];
-				const [c, sc] = await Promise.all(credPromises);
+				const [c, sc, imc] = await Promise.all(credPromises);
 				credentials.value = c;
 				serviceCredentials.value = sc;
+				instanceModelCredentials.value = imc;
 			}
 			clearDraft();
 		} catch {
@@ -603,6 +610,18 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		}
 	}
 
+	/** Re-fetches the instance credentials usable as the shared model credential (e.g. after creating one). */
+	async function refreshInstanceModelCredentials(): Promise<void> {
+		if (isProxyEnabled.value || !canManage.value) return;
+		try {
+			instanceModelCredentials.value = await fetchInstanceModelCredentials(
+				rootStore.restApiContext,
+			);
+		} catch {
+			// Silently fail — credentials list will refresh on next full fetch
+		}
+	}
+
 	async function refreshModuleSettings(): Promise<void> {
 		const promises: Array<Promise<unknown>> = [settingsStore.getModuleSettings()];
 		if (!preferences.value) {
@@ -621,6 +640,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		preferences,
 		credentials,
 		serviceCredentials,
+		instanceModelCredentials,
 		draft,
 		preferencesDraft,
 		isLoading,
@@ -665,6 +685,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		fetchSetupCommand,
 		clearSetupCommand,
 		refreshCredentials,
+		refreshInstanceModelCredentials,
 		refreshModuleSettings,
 		// Browser Use (direct channel)
 		browserConnected,

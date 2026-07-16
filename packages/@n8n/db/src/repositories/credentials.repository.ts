@@ -1,7 +1,7 @@
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, Like, Repository } from '@n8n/typeorm';
+import { DataSource, In, Like, Not, Repository } from '@n8n/typeorm';
 
 import { CredentialsEntity, type User } from '../entities';
 import {
@@ -39,7 +39,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
 		}
 
-		return await this.find(findManyOptions);
+		return await this.find(this.excludeInstanceCredentials(findManyOptions));
 	}
 
 	async findManyAndCount(
@@ -57,7 +57,19 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
 		}
 
-		return await this.findAndCount(findManyOptions);
+		return await this.findAndCount(this.excludeInstanceCredentials(findManyOptions));
+	}
+
+	/**
+	 * Instance credentials (`availability: 'instance'`) power instance-level
+	 * features only and must never surface in generic credential listings, which
+	 * back the UI and public API. They are queried explicitly where needed.
+	 */
+	private excludeInstanceCredentials(
+		findManyOptions: FindManyOptions<CredentialsEntity>,
+	): FindManyOptions<CredentialsEntity> {
+		findManyOptions.where = { ...findManyOptions.where, availability: Not('instance') };
+		return findManyOptions;
 	}
 
 	private toFindManyOptions(

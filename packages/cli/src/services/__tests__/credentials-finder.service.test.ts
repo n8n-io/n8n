@@ -15,7 +15,7 @@ import {
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
 } from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
+import { In, Not } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -67,6 +67,42 @@ describe('CredentialsFinderService', () => {
 		sharedCredential.credentials = mock<CredentialsEntity>({ id: credentialsId });
 		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
 		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'test' });
+
+		test('should return instance credentials to holders of credential:manageInstance', async () => {
+			const instanceCredential = mock<CredentialsEntity>({
+				id: credentialsId,
+				availability: 'instance',
+			});
+			credentialsRepository.findOneBy.mockResolvedValueOnce(instanceCredential);
+
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialsId,
+				owner,
+				['credential:read' as const],
+			);
+
+			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({
+				id: credentialsId,
+				availability: 'instance',
+			});
+			expect(credential).toBe(instanceCredential);
+			expect(sharedCredentialsRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		test('should not return instance credentials to members', async () => {
+			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+			credentialsRepository.findOne.mockResolvedValueOnce(null);
+
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialsId,
+				member,
+				['credential:read' as const],
+			);
+
+			// Members never hit the instance-credential lookup
+			expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
+			expect(credential).toBeFalsy();
+		});
 
 		test('should allow instance owner access to all credentials', async () => {
 			sharedCredentialsRepository.findOne.mockResolvedValueOnce(sharedCredential);
@@ -284,7 +320,7 @@ describe('CredentialsFinderService', () => {
 			]);
 
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
-				where: { isGlobal: false },
+				where: { isGlobal: false, availability: Not('instance') },
 				relations: { shared: true },
 			});
 			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
@@ -307,6 +343,7 @@ describe('CredentialsFinderService', () => {
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
 					isGlobal: false,
+					availability: Not('instance'),
 					shared: {
 						role: In(['credential:owner', 'credential:user']),
 						project: {
@@ -418,6 +455,7 @@ describe('CredentialsFinderService', () => {
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
 					isGlobal: false,
+					availability: Not('instance'),
 					shared: {
 						role: In(['custom:cred-admin-789']),
 						project: {
@@ -944,6 +982,7 @@ describe('CredentialsFinderService', () => {
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
 					isGlobal: false,
+					availability: Not('instance'),
 					shared: {
 						role: In([]),
 						project: {
@@ -996,6 +1035,7 @@ describe('CredentialsFinderService', () => {
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
 					isGlobal: false,
+					availability: Not('instance'),
 					shared: {
 						role: In(['project:admin']), // Uses what RoleService returned for credential namespace
 						project: {

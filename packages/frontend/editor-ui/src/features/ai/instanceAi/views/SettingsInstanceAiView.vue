@@ -1,6 +1,15 @@
 <script lang="ts" setup>
-import { onMounted, computed } from 'vue';
-import { N8nButton, N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { onMounted, computed, watch } from 'vue';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -10,11 +19,14 @@ import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComp
 import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
 const store = useInstanceAiSettingsStore();
 
 const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
@@ -72,6 +84,72 @@ const permissionKeys: Array<{
 ];
 
 const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
+
+// LLM credential types the backend accepts as instance model credentials.
+// Labels are provider brand names, not translatable UI text.
+const INSTANCE_MODEL_CREDENTIAL_TYPES: Array<{ type: string; label: string }> = [
+	{ type: 'openAiApi', label: 'OpenAI' },
+	{ type: 'anthropicApi', label: 'Anthropic' },
+	{ type: 'googlePalmApi', label: 'Google Gemini' },
+	{ type: 'ollamaApi', label: 'Ollama' },
+	{ type: 'groqApi', label: 'Groq' },
+	{ type: 'deepSeekApi', label: 'DeepSeek' },
+	{ type: 'mistralCloudApi', label: 'Mistral' },
+	{ type: 'xAiApi', label: 'xAI' },
+	{ type: 'openRouterApi', label: 'OpenRouter' },
+	{ type: 'cohereApi', label: 'Cohere' },
+];
+
+const showModelCredentialSection = computed(() => isAdmin.value && !store.isProxyEnabled);
+
+const selectedModelCredentialId = computed(() => {
+	if (store.draft.modelCredentialId !== undefined) return store.draft.modelCredentialId ?? '';
+	return store.settings?.modelCredentialId ?? '';
+});
+
+const createModelCredentialItems = computed<Array<ActionDropdownItem<string>>>(() =>
+	INSTANCE_MODEL_CREDENTIAL_TYPES.map(({ type, label }) => ({ id: type, label })),
+);
+
+let creatingModelCredential = false;
+
+function handleModelCredentialChange(value: string | number | boolean | null) {
+	store.setField('modelCredentialId', value ? String(value) : null);
+	void store.save();
+}
+
+function handleCreateModelCredential(credentialType: string) {
+	creatingModelCredential = true;
+	uiStore.openNewCredential(
+		credentialType,
+		false,
+		false,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		{ availability: 'instance' },
+	);
+}
+
+// Re-fetch the instance model credentials when the credential edit modal closes;
+// auto-select the credential the admin just created.
+watch(
+	() => uiStore.isModalActiveById[CREDENTIAL_EDIT_MODAL_KEY],
+	async (isOpen, wasOpen) => {
+		if (!wasOpen || isOpen || !showModelCredentialSection.value) return;
+		const previousIds = new Set(store.instanceModelCredentials.map((c) => c.id));
+		await store.refreshInstanceModelCredentials();
+		if (creatingModelCredential) {
+			creatingModelCredential = false;
+			const newCred = store.instanceModelCredentials.find((c) => !previousIds.has(c.id));
+			if (newCred) {
+				store.setField('modelCredentialId', newCred.id);
+				void store.save();
+			}
+		}
+	},
+);
 
 const isEnabled = computed(
 	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
@@ -148,6 +226,59 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 			</template>
 
 			<template v-if="isEnabled">
+				<div v-if="showModelCredentialSection" :class="$style.card">
+					<div :class="$style.settingsRow">
+						<div :class="$style.settingsRowLeft">
+							<span :class="$style.settingsRowLabel">
+								{{ i18n.baseText('settings.n8nAgent.modelCredential.label') }}
+							</span>
+							<span :class="$style.settingsRowDescription">
+								{{ i18n.baseText('settings.n8nAgent.modelCredential.description') }}
+							</span>
+						</div>
+						<div :class="$style.modelCredentialControls">
+							<N8nSelect
+								:class="$style.modelCredentialSelect"
+								:model-value="selectedModelCredentialId"
+								size="small"
+								:disabled="store.isSaving"
+								:placeholder="i18n.baseText('settings.n8nAgent.modelCredential.placeholder')"
+								data-test-id="n8n-agent-model-credential-select"
+								@update:model-value="handleModelCredentialChange"
+							>
+								<N8nOption
+									value=""
+									:label="i18n.baseText('settings.n8nAgent.modelCredential.none')"
+								/>
+								<N8nOption
+									v-for="cred in store.instanceModelCredentials"
+									:key="cred.id"
+									:value="cred.id"
+									:label="`${cred.name} (${cred.provider})`"
+								/>
+							</N8nSelect>
+							<N8nActionDropdown
+								:items="createModelCredentialItems"
+								placement="bottom-end"
+								data-test-id="n8n-agent-model-credential-create"
+								@select="handleCreateModelCredential"
+							>
+								<template #activator>
+									<N8nButton
+										type="secondary"
+										size="small"
+										:disabled="store.isSaving"
+										data-test-id="n8n-agent-model-credential-create-button"
+									>
+										{{ i18n.baseText('settings.n8nAgent.modelCredential.createNew') }}
+										<N8nIcon icon="chevron-down" size="xsmall" />
+									</N8nButton>
+								</template>
+							</N8nActionDropdown>
+						</div>
+					</div>
+				</div>
+
 				<div v-if="isAdmin && isComputerUseExperimentEnabled" :class="$style.card">
 					<div :class="$style.settingsRow">
 						<div :class="$style.settingsRowLeft">
@@ -390,6 +521,17 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 .permissionSelect {
 	width: 178px;
 	flex-shrink: 0;
+}
+
+.modelCredentialControls {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+}
+
+.modelCredentialSelect {
+	width: 240px;
 }
 
 .enableSection {

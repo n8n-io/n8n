@@ -324,6 +324,11 @@ export class SourceControlImportService {
 				if (!remote?.id) {
 					return false;
 				}
+				// Instance credentials are managed at instance level only — they sync
+				// solely for contexts with access to all projects.
+				if (remote.availability === 'instance') {
+					return context.hasAccessToAllProjects();
+				}
 				const owner = remote.ownedBy;
 				return (
 					!owner || context.hasAccessToAllProjects() || context.findAuthorizedProjectByOwner(owner)
@@ -368,6 +373,7 @@ export class SourceControlImportService {
 				isGlobal: true,
 				isResolvable: true,
 				resolvableAllowFallback: true,
+				availability: true,
 				shared: {
 					project: {
 						id: true,
@@ -410,6 +416,7 @@ export class SourceControlImportService {
 					isGlobal: local.isGlobal,
 					isResolvable: local.isResolvable,
 					resolvableAllowFallback: local.resolvableAllowFallback,
+					availability: local.availability,
 				};
 			},
 		)) as StatusExportableCredential[];
@@ -992,6 +999,7 @@ export class SourceControlImportService {
 					isGlobal = false,
 					isResolvable = false,
 					resolvableAllowFallback = false,
+					availability = 'workflow',
 				} = credential;
 				const newCredentialObject = new Credentials({ id, name }, type);
 
@@ -1017,21 +1025,25 @@ export class SourceControlImportService {
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
 				await this.credentialsRepository.upsert(
-					{ ...newCredentialObject, isGlobal, isResolvable, resolvableAllowFallback },
+					{ ...newCredentialObject, isGlobal, isResolvable, resolvableAllowFallback, availability },
 					['id'],
 				);
 
-				const localOwner = existingSharedCredentials.find(
-					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
-				);
+				// Instance credentials are ownerless — no `SharedCredentials` row is
+				// created for them.
+				if (availability !== 'instance') {
+					const localOwner = existingSharedCredentials.find(
+						(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
+					);
 
-				await this.syncResourceOwnership({
-					resourceId: credential.id,
-					remoteOwner: credential.ownedBy,
-					localOwner,
-					fallbackProject: personalProject,
-					repository: this.sharedCredentialsRepository,
-				});
+					await this.syncResourceOwnership({
+						resourceId: credential.id,
+						remoteOwner: credential.ownedBy,
+						localOwner,
+						fallbackProject: personalProject,
+						repository: this.sharedCredentialsRepository,
+					});
+				}
 
 				return {
 					id: newCredentialObject.id as string,

@@ -6,6 +6,7 @@ import {
 	SharedCredentials,
 	CredentialsRepository,
 	ProjectRepository,
+	SettingsRepository,
 	SharedCredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
@@ -141,6 +142,7 @@ export class CredentialsService {
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
+		private readonly settingsRepository: SettingsRepository,
 	) {}
 
 	/**
@@ -939,7 +941,31 @@ export class CredentialsService {
 			await this.ensureCanManageEndUserCredential(user, owningProject?.id);
 		}
 
+		if (credential.availability === 'instance') {
+			await this.ensureInstanceCredentialIsNotInUse(credential.id);
+		}
+
 		await this.credentialsRepository.remove(credential);
+	}
+
+	/**
+	 * Blocks deleting an instance credential that instance-level features still
+	 * reference, so the feature doesn't silently break. Reads the raw settings
+	 * row rather than the owning module's service, since modules are optional
+	 * and their settings must keep protecting the credential even when the
+	 * module is disabled.
+	 */
+	private async ensureInstanceCredentialIsNotInUse(credentialId: string): Promise<void> {
+		const row = await this.settingsRepository.findByKey('instanceAi.settings');
+		if (!row) return;
+
+		const settings = jsonParse<Record<string, unknown>>(row.value, { fallbackValue: {} });
+		const isReferenced = Object.values(settings).includes(credentialId);
+		if (isReferenced) {
+			throw new BadRequestError(
+				'This credential is in use by Instance AI and cannot be deleted. Remove it from the Instance AI settings first.',
+			);
+		}
 	}
 
 	async test(userId: User['id'], credentials: ICredentialsDecrypted) {
@@ -1195,6 +1221,28 @@ export class CredentialsService {
 	}
 
 	async getOne(user: User, credentialId: string, includeDecryptedData: boolean) {
+		// Instance credentials are ownerless (no sharing rows); they are readable
+		// only via the global manageInstance scope.
+		if (hasGlobalScope(user, 'credential:manageInstance')) {
+			const instanceCredential = await this.credentialsRepository.findOneBy({
+				id: credentialId,
+				availability: 'instance',
+			});
+			if (instanceCredential) {
+				const { data: _, ...rest } = instanceCredential;
+				if (includeDecryptedData) {
+					const decryptedData = await this.decrypt(instanceCredential);
+					// We never want to expose the oauthTokenData to the frontend, but it
+					// expects it to check if the credential is already connected.
+					if (decryptedData.oauthTokenData) {
+						decryptedData.oauthTokenData = true;
+					}
+					return { data: decryptedData, ...rest };
+				}
+				return { ...rest };
+			}
+		}
+
 		let sharing: SharedCredentials | null = null;
 		let decryptedData: ICredentialDataDecryptedObject | null = null;
 
@@ -1470,6 +1518,10 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		if (opts.availability === 'instance') {
+			return await this.createInstanceCredential(opts, user);
+		}
+
 		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
 
 		if (opts.isResolvable === true) {
@@ -1523,6 +1575,74 @@ export class CredentialsService {
 			opts.data as ICredentialDataDecryptedObject,
 		);
 
+		const scopes = await this.getCredentialScopes(user, credential.id);
+
+		return { ...credential, scopes };
+	}
+
+	/**
+	 * Creates an instance credential (`availability: 'instance'`): owned by the
+	 * instance itself rather than a project (no `SharedCredentials` row), usable
+	 * only by instance-level features, and managed solely via the global
+	 * `credential:manageInstance` scope.
+	 */
+	private async createInstanceCredential(opts: CreateCredentialOptions, user: User) {
+		if (!hasGlobalScope(user, 'credential:manageInstance')) {
+			throw new ForbiddenError('You do not have permission to create instance credentials');
+		}
+		if (opts.isGlobal === true) {
+			throw new BadRequestError('Instance credentials cannot be globally shared');
+		}
+		if (opts.isResolvable === true || opts.isManaged) {
+			throw new BadRequestError('Instance credentials cannot be end-user or managed credentials');
+		}
+
+		// The caller's personal project is used purely to run the standard data
+		// validation (e.g. external-secrets permissions); no ownership is created.
+		const validationProjectId = await this.resolveOwningProjectIdForNewCredential(user, undefined);
+		await this.checkCredentialData(
+			opts.type,
+			opts.data as ICredentialDataDecryptedObject,
+			user,
+			validationProjectId,
+		);
+
+		const encryptedCredential = await this.createEncryptedData({
+			id: null,
+			name: opts.name,
+			type: opts.type,
+			data: opts.data as ICredentialDataDecryptedObject,
+		});
+
+		const credentialEntity = this.credentialsRepository.create({
+			...encryptedCredential,
+			isManaged: false,
+			isResolvable: false,
+			availability: 'instance' as const,
+		});
+
+		await this.externalHooks.run('credentials.create', [encryptedCredential]);
+
+		const savedCredential = await this.credentialsRepository.manager.transaction(
+			async (transactionManager) => {
+				const saved = await transactionManager.save<CredentialsEntity>(credentialEntity);
+				await this.credentialDependencyService.upsertExternalSecretProviderDependenciesForCredential(
+					{
+						credentialId: saved.id,
+						decryptedCredentialData: opts.data as ICredentialDataDecryptedObject,
+						entityManager: transactionManager,
+					},
+				);
+				return saved;
+			},
+		);
+
+		this.logger.debug('New instance credential created', {
+			credentialId: savedCredential.id,
+			ownerId: user.id,
+		});
+
+		const { shared, ...credential } = savedCredential;
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
 		return { ...credential, scopes };
