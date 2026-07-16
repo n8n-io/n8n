@@ -27,8 +27,6 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	// App-only Graph cannot read chats; fail before any request.
 	throwIfChatUnsupported.call(this);
 
-	// OAuth2-only path (chat is hidden + guarded under SP), so `chatId` below is
-	// interpolated raw without buildTeamsPath by design.
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	const returnAll = this.getNodeParameter('returnAll', i);
 
