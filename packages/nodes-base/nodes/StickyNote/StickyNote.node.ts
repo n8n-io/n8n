@@ -13,9 +13,9 @@ export class StickyNote implements INodeType {
 		group: ['input'],
 		version: 1,
 		description: 'Make your workflow easier to understand',
+		iconColor: 'amber',
 		defaults: {
 			name: 'Sticky Note',
-			color: '#FFD233',
 		},
 
 		inputs: [],
