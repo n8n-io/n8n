@@ -15,9 +15,11 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
-import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
+import { WorkflowAccessError } from '../mcp.errors';
 import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool';
+import { WORKFLOW_EXECUTION_TIMEOUT_MS } from '../tools/execution-utils';
 
+import { ActiveExecutions } from '@/active-executions';
 import { McpService } from '@/modules/mcp/mcp.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -27,6 +29,7 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowFinderService: WorkflowFinderService;
+	let activeExecutions: ActiveExecutions;
 	let workflowRunner: WorkflowRunner;
 	let telemetry: Telemetry;
 	let mcpService: McpService;
@@ -35,6 +38,7 @@ describe('execute-workflow MCP tool', () => {
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
+		activeExecutions = mockInstance(ActiveExecutions);
 		workflowRunner = mockInstance(WorkflowRunner);
 		telemetry = mockInstance(Telemetry, {
 			track: vi.fn(),
@@ -52,6 +56,7 @@ describe('execute-workflow MCP tool', () => {
 			const tool = createExecuteWorkflowTool(
 				user,
 				workflowFinderService,
+				activeExecutions,
 				workflowRunner,
 				telemetry,
 				mcpService,
@@ -706,6 +711,7 @@ describe('execute-workflow MCP tool', () => {
 				createExecuteWorkflowTool(
 					user,
 					workflowFinderService,
+					activeExecutions,
 					workflowRunner,
 					telemetry,
 					mcpService,
@@ -750,26 +756,26 @@ describe('execute-workflow MCP tool', () => {
 
 				const result = await callHandler(undefined);
 
-				expect(mcpService.waitForExecutionResult).not.toHaveBeenCalled();
+				expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
 				expect(result.structuredContent).toEqual({ executionId: 'exec-wait', status: 'started' });
 			});
 
 			test('returns the final status when the execution completes', async () => {
 				setupExecutableWorkflow();
-				(mcpService.waitForExecutionResult as Mock).mockResolvedValue({
+				(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
 					status: 'success',
 					data: { resultData: {} },
 				});
 
 				const result = await callHandler(true);
 
-				expect(mcpService.waitForExecutionResult).toHaveBeenCalledWith('exec-wait');
+				expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith('exec-wait');
 				expect(result.structuredContent).toEqual({ executionId: 'exec-wait', status: 'success' });
 			});
 
 			test('returns error status and message when the execution fails', async () => {
 				setupExecutableWorkflow();
-				(mcpService.waitForExecutionResult as Mock).mockResolvedValue({
+				(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
 					status: 'error',
 					data: { resultData: { error: { message: 'node exploded' } } },
 				});
@@ -783,26 +789,39 @@ describe('execute-workflow MCP tool', () => {
 				});
 			});
 
-			test('returns running status when the wait times out', async () => {
-				setupExecutableWorkflow();
-				(mcpService.waitForExecutionResult as Mock).mockRejectedValue(
-					new McpExecutionTimeoutError('exec-wait', 300_000),
-				);
+			test('returns running status and leaves the execution running when the wait times out', async () => {
+				vi.useFakeTimers();
+				try {
+					setupExecutableWorkflow();
+					(activeExecutions.getPostExecutePromise as Mock).mockReturnValue(new Promise(() => {}));
 
-				const result = await callHandler(true);
+					const resultPromise = callHandler(true);
+					await vi.advanceTimersByTimeAsync(WORKFLOW_EXECUTION_TIMEOUT_MS);
+					const result = await resultPromise;
 
-				expect(result.structuredContent).toEqual({ executionId: 'exec-wait', status: 'running' });
+					expect(result.structuredContent).toEqual({
+						executionId: 'exec-wait',
+						status: 'running',
+					});
+					expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
+				} finally {
+					vi.useRealTimers();
+				}
 			});
 
 			test('sends progress notifications when the client provides a progress token', async () => {
 				setupExecutableWorkflow();
-				(mcpService.waitForExecutionResult as Mock).mockResolvedValue({
+				(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
 					status: 'success',
 					data: { resultData: {} },
 				});
 				const sendNotification = vi.fn().mockResolvedValue(undefined);
 
-				await callHandler(true, { _meta: { progressToken: 'token-1' }, sendNotification });
+				await callHandler(true, {
+					_meta: { progressToken: 'token-1' },
+					sendNotification,
+					signal: new AbortController().signal,
+				});
 
 				expect(sendNotification).toHaveBeenCalledWith(
 					expect.objectContaining({
@@ -817,7 +836,7 @@ describe('execute-workflow MCP tool', () => {
 
 			test('sends no notifications when the client provides no progress token', async () => {
 				setupExecutableWorkflow();
-				(mcpService.waitForExecutionResult as Mock).mockResolvedValue({
+				(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
 					status: 'success',
 					data: { resultData: {} },
 				});
@@ -851,6 +870,7 @@ describe('execute-workflow MCP tool', () => {
 				const tool = createExecuteWorkflowTool(
 					user,
 					workflowFinderService,
+					activeExecutions,
 					workflowRunner,
 					telemetry,
 					mcpService,
@@ -896,6 +916,7 @@ describe('execute-workflow MCP tool', () => {
 				const tool = createExecuteWorkflowTool(
 					user,
 					workflowFinderService,
+					activeExecutions,
 					workflowRunner,
 					telemetry,
 					mcpService,
@@ -940,6 +961,7 @@ describe('execute-workflow MCP tool', () => {
 				const tool = createExecuteWorkflowTool(
 					user,
 					workflowFinderService,
+					activeExecutions,
 					workflowRunner,
 					telemetry,
 					mcpService,

@@ -33,7 +33,6 @@ vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
 	const StreamableHTTPServerTransport = vi.fn().mockImplementation(function (_opts) {
 		return {
 			handleRequest: mockHandleRequest,
-			send: vi.fn().mockResolvedValue(undefined),
 			close: vi.fn().mockResolvedValue(undefined),
 		};
 	});

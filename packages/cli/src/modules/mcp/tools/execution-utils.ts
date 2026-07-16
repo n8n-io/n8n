@@ -2,7 +2,12 @@ import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/proto
 import type { ServerNotification, ServerRequest } from '@modelcontextprotocol/sdk/types.js';
 import { Time } from '@n8n/constants';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UnexpectedError, TimeoutExecutionCancelledError, type IRun } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	TimeoutExecutionCancelledError,
+	type ExecutionStatus,
+	type IRun,
+} from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { McpService } from '@/modules/mcp/mcp.service';
@@ -13,7 +18,9 @@ export const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
 
 export const PROGRESS_HEARTBEAT_INTERVAL_MS = 3 * Time.seconds.toMilliseconds;
 
-type ToolHandlerExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
+export type ToolHandlerExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
+
+const noop = () => {};
 
 /**
  * Streams MCP progress notifications while a workflow execution is awaited.
@@ -21,35 +28,51 @@ type ToolHandlerExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
  * `total` is deliberately omitted: execution duration is unknown, and a total
  * would make clients render a meaningless completion percentage.
  */
-export const createExecutionProgressReporter = (
-	extra: ToolHandlerExtra | undefined,
-	label: string,
-) => {
-	const progressToken = extra?._meta?.progressToken;
+export const createExecutionProgressReporter = (extra: ToolHandlerExtra, label: string) => {
+	const progressToken = extra._meta?.progressToken;
+	if (progressToken === undefined) return { start: noop, stop: noop };
+
 	let elapsedSeconds = 0;
 	let heartbeat: NodeJS.Timeout | undefined;
 
 	const send = (message: string) => {
-		if (progressToken === undefined) return;
 		void extra
-			?.sendNotification({
+			.sendNotification({
 				method: 'notifications/progress',
 				params: { progressToken, progress: elapsedSeconds, message },
 			})
 			.catch(() => {}); // Client may have disconnected — progress is best-effort
 	};
 
+	const stop = () => clearInterval(heartbeat);
+
 	return {
 		start: () => {
-			if (progressToken === undefined) return;
 			send(`${label} started`);
 			heartbeat = setInterval(() => {
 				elapsedSeconds += PROGRESS_HEARTBEAT_INTERVAL_MS * Time.milliseconds.toSeconds;
 				send(`${label} running — ${elapsedSeconds}s elapsed`);
 			}, PROGRESS_HEARTBEAT_INTERVAL_MS);
+			// Progress is best-effort: never keep the process alive, and stop as
+			// soon as the client disconnects or cancels the request.
+			heartbeat.unref();
+			extra.signal.addEventListener('abort', stop, { once: true });
 		},
-		update: send,
-		stop: () => clearInterval(heartbeat),
+		stop,
+	};
+};
+
+/**
+ * Derive the tool-facing outcome of a finished execution.
+ * Shared between execute_workflow and test_workflow tools.
+ */
+export const getExecutionOutcome = (data: IRun): { status: ExecutionStatus; error?: string } => {
+	const hasError = data.status === 'error' || data.data.resultData?.error;
+	return {
+		status: hasError ? 'error' : data.status,
+		error: hasError
+			? (data.data.resultData?.error?.message ?? 'Execution completed with errors')
+			: undefined,
 	};
 };
 
@@ -59,13 +82,26 @@ export const createExecutionProgressReporter = (
  * `cancelOnTimeout: false` leaves the execution running when the wait times
  * out — used by execute_workflow, where the wait is a convenience and must not
  * kill a (possibly production) run as a side effect.
+ * When `progress` is given, heartbeat progress notifications are streamed to
+ * the client for the duration of the wait.
  */
 export const waitForExecutionResult = async (
 	executionId: string,
 	activeExecutions: ActiveExecutions,
 	mcpService: McpService,
-	{ cancelOnTimeout = true }: { cancelOnTimeout?: boolean } = {},
+	{
+		cancelOnTimeout,
+		progress,
+	}: {
+		cancelOnTimeout: boolean;
+		progress?: { extra: ToolHandlerExtra; label: string };
+	},
 ): Promise<IRun> => {
+	const reporter = progress
+		? createExecutionProgressReporter(progress.extra, progress.label)
+		: undefined;
+	reporter?.start();
+
 	let timeoutId: NodeJS.Timeout | undefined;
 	const timeoutPromise = new Promise<never>((_, reject) => {
 		timeoutId = setTimeout(() => {
@@ -114,5 +150,7 @@ export const waitForExecutionResult = async (
 			}
 		}
 		throw error;
+	} finally {
+		reporter?.stop();
 	}
 };

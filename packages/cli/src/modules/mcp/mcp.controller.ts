@@ -210,22 +210,12 @@ export class McpController {
 		const transport = new StreamableHTTPServerTransport({
 			sessionIdGenerator: undefined,
 		});
-		// The global compression() middleware buffers writes, so mid-request
-		// messages (e.g. progress notifications) would only arrive with the final
-		// response. Flush after every message so they stream in real time — same
-		// approach as the McpTrigger node's StreamableHttpTransport.
-		const originalSend = transport.send.bind(transport);
-		transport.send = async (...args: Parameters<typeof transport.send>) => {
-			await originalSend(...args);
-			res.flush?.();
-		};
 		res.on('close', () => {
 			void transport.close();
 			void server.close();
 		});
 		await server.connect(transport);
 		await transport.handleRequest(req, res, body);
-		res.flush?.();
 	}
 
 	private trackConnectionEvent(payload: UserConnectedToMCPEventPayload) {

@@ -24,6 +24,7 @@ describe('createExecutionProgressReporter', () => {
 		({
 			_meta: progressToken === undefined ? undefined : { progressToken },
 			sendNotification: vi.fn().mockResolvedValue(undefined),
+			signal: new AbortController().signal,
 		}) as unknown as Parameters<typeof createExecutionProgressReporter>[0] & {
 			sendNotification: ReturnType<typeof vi.fn>;
 		};
@@ -59,12 +60,24 @@ describe('createExecutionProgressReporter', () => {
 		expect(extra.sendNotification).toHaveBeenCalledTimes(3);
 	});
 
+	test('stops heartbeats when the request is aborted', () => {
+		const abortController = new AbortController();
+		const extra = createExtra('token-1');
+		Object.defineProperty(extra, 'signal', { value: abortController.signal });
+		const reporter = createExecutionProgressReporter(extra, 'Execution 1');
+
+		reporter.start();
+		abortController.abort();
+		vi.advanceTimersByTime(PROGRESS_HEARTBEAT_INTERVAL_MS * 2);
+
+		expect(extra.sendNotification).toHaveBeenCalledTimes(1); // only the start message
+	});
+
 	test('is a no-op when the client sent no progress token', () => {
 		const extra = createExtra();
 		const reporter = createExecutionProgressReporter(extra, 'Execution 1');
 
 		reporter.start();
-		reporter.update('some update');
 		vi.advanceTimersByTime(PROGRESS_HEARTBEAT_INTERVAL_MS * 2);
 		reporter.stop();
 
@@ -89,10 +102,12 @@ describe('waitForExecutionResult timeout behavior', () => {
 		return { activeExecutions, mcpService };
 	};
 
-	test('cancels the execution on timeout by default', async () => {
+	test('cancels the execution on timeout when cancelOnTimeout is true', async () => {
 		const { activeExecutions, mcpService } = createMocks();
 
-		const waitPromise = waitForExecutionResult('exec-1', activeExecutions, mcpService);
+		const waitPromise = waitForExecutionResult('exec-1', activeExecutions, mcpService, {
+			cancelOnTimeout: true,
+		});
 		const assertion = expect(waitPromise).rejects.toThrow(McpExecutionTimeoutError);
 		await vi.advanceTimersByTimeAsync(WORKFLOW_EXECUTION_TIMEOUT_MS);
 		await assertion;

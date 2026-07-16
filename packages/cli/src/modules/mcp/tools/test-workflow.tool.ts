@@ -24,9 +24,10 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import {
-	createExecutionProgressReporter,
+	getExecutionOutcome,
 	waitForExecutionResult,
 	WORKFLOW_EXECUTION_TIMEOUT_MS,
+	type ToolHandlerExtra,
 } from './execution-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -93,9 +94,6 @@ export const createTestWorkflowTool = (
 			},
 		};
 
-		const progress = createExecutionProgressReporter(extra, `Test of workflow ${workflowId}`);
-		progress.start();
-
 		try {
 			const output = await testWorkflow(
 				user,
@@ -107,7 +105,7 @@ export const createTestWorkflowTool = (
 				workflowId,
 				pinData as IPinData,
 				triggerNodeName,
-				(executionId) => progress.update(`Execution ${executionId} running`),
+				extra,
 			);
 
 			telemetryPayload.results = {
@@ -147,8 +145,6 @@ export const createTestWorkflowTool = (
 				content: [{ type: 'text', text: jsonStringify(output) }],
 				structuredContent: output,
 			};
-		} finally {
-			progress.stop();
 		}
 	},
 });
@@ -167,7 +163,7 @@ export async function testWorkflow(
 	workflowId: string,
 	pinData: IPinData,
 	triggerNodeName?: string,
-	onExecutionStarted?: (executionId: string) => void,
+	extra?: ToolHandlerExtra,
 ): Promise<TestWorkflowOutput> {
 	const workflow = await getMcpWorkflow(
 		workflowId,
@@ -245,17 +241,12 @@ export async function testWorkflow(
 	};
 
 	const executionId = await workflowRunner.run(runData);
-	onExecutionStarted?.(executionId);
-	const data = await waitForExecutionResult(executionId, activeExecutions, mcpService);
-	const hasError = data.status === 'error' || data.data.resultData?.error;
+	const data = await waitForExecutionResult(executionId, activeExecutions, mcpService, {
+		cancelOnTimeout: true,
+		progress: extra && { extra, label: `Execution ${executionId} of workflow ${workflowId}` },
+	});
 
-	return {
-		executionId,
-		status: hasError ? 'error' : data.status,
-		error: hasError
-			? (data.data.resultData?.error?.message ?? 'Execution completed with errors')
-			: undefined,
-	};
+	return { executionId, ...getExecutionOutcome(data) };
 }
 
 /**

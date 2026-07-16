@@ -3,6 +3,7 @@ import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	ExecutionStatusList,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
@@ -28,9 +29,10 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import { findMcpSupportedTrigger } from '../mcp.utils';
-import { createExecutionProgressReporter } from './execution-utils';
+import { getExecutionOutcome, waitForExecutionResult } from './execution-utils';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
+import type { ActiveExecutions } from '@/active-executions';
 import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -88,17 +90,7 @@ const inputSchema = z.object({
 		),
 });
 
-const EXECUTION_STATUS_VALUES = [
-	'started',
-	'success',
-	'error',
-	'running',
-	'waiting',
-	'canceled',
-	'crashed',
-	'new',
-	'unknown',
-] as const;
+const EXECUTION_STATUS_VALUES = ['started', ...ExecutionStatusList] as const;
 
 type ExecuteWorkflowOutput = {
 	executionId: string | null;
@@ -119,6 +111,7 @@ const outputSchema = {
 export const createExecuteWorkflowTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
+	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
 	telemetry: Telemetry,
 	mcpService: McpService,
@@ -162,19 +155,24 @@ export const createExecuteWorkflowTool = (
 			);
 
 			if (waitForCompletion && output.executionId) {
-				const progress = createExecutionProgressReporter(
-					extra,
-					`Execution ${output.executionId} of workflow ${workflowId}`,
-				);
-				progress.start();
 				try {
-					const data = await mcpService.waitForExecutionResult(output.executionId);
-					const hasError = data.status === 'error' || data.data.resultData?.error;
-					output.status = hasError ? 'error' : data.status;
-					if (hasError) {
-						output.error =
-							data.data.resultData?.error?.message ?? 'Execution completed with errors';
-					}
+					const data = await waitForExecutionResult(
+						output.executionId,
+						activeExecutions,
+						mcpService,
+						{
+							// The wait is a convenience and must not cancel a (possibly
+							// production) run as a side effect of timing out.
+							cancelOnTimeout: false,
+							progress: {
+								extra,
+								label: `Execution ${output.executionId} of workflow ${workflowId}`,
+							},
+						},
+					);
+					const { status, error } = getExecutionOutcome(data);
+					output.status = status;
+					output.error = error;
 				} catch (waitError) {
 					if (waitError instanceof McpExecutionTimeoutError) {
 						// The execution keeps running — only the wait timed out.
@@ -183,8 +181,6 @@ export const createExecuteWorkflowTool = (
 						output.status = 'error';
 						output.error = ensureError(waitError).message;
 					}
-				} finally {
-					progress.stop();
 				}
 			}
 
