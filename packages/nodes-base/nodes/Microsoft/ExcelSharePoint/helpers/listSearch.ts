@@ -1,6 +1,6 @@
 import type { IDataObject, INodeListSearchItems, INodeListSearchResult } from 'n8n-workflow';
 
-import type { AuthContext } from './interfaces';
+import type { AuthContext, GraphListResponse } from './interfaces';
 import { microsoftApiRequest } from '../transport';
 
 const PAGE_SIZE = 100;
@@ -22,10 +22,16 @@ export async function listSearchPage(
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const response = paginationToken
-		? await microsoftApiRequest.call(this, 'GET', '', {}, {}, paginationToken)
-		: await microsoftApiRequest.call(this, 'GET', endpoint, {}, { $top: PAGE_SIZE });
+		? await (microsoftApiRequest<GraphListResponse>).call(this, 'GET', '', {}, {}, paginationToken)
+		: await (microsoftApiRequest<GraphListResponse>).call(
+				this,
+				'GET',
+				endpoint,
+				{},
+				{ $top: PAGE_SIZE },
+			);
 
-	const items = (response.value as IDataObject[]) ?? [];
+	const items = response.value ?? [];
 	const filtered = filter
 		? items.filter((item) =>
 				String(item.name ?? '')
@@ -36,6 +42,6 @@ export async function listSearchPage(
 
 	return {
 		results: filtered.map(mapItem),
-		paginationToken: response['@odata.nextLink'] as string | undefined,
+		paginationToken: response['@odata.nextLink'],
 	};
 }

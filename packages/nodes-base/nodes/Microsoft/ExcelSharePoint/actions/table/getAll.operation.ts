@@ -8,6 +8,7 @@ import type {
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { libraryRLC, siteRLC, workbookRLC } from '../../descriptions/common.descriptions';
+import type { GraphListResponse } from '../../helpers/interfaces';
 import { resolveWorkbookRoot } from '../../helpers/utils';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
@@ -90,8 +91,14 @@ export async function execute(
 				responseData = await microsoftApiRequestAllItems.call(this, endpoint, qs);
 			} else {
 				qs.$top = this.getNodeParameter('limit', i);
-				const response = await microsoftApiRequest.call(this, 'GET', endpoint, {}, qs);
-				responseData = (response.value as IDataObject[]) ?? [];
+				const response = await (microsoftApiRequest<GraphListResponse>).call(
+					this,
+					'GET',
+					endpoint,
+					{},
+					qs,
+				);
+				responseData = response.value ?? [];
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
