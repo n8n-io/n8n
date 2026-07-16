@@ -375,10 +375,10 @@ export async function executeAgent(
 		);
 	}
 
-	const { AgentExecutionOrchestratorService } = await import(
-		'@/modules/agents/agent-execution-orchestrator.service.js'
+	const { AgentWorkflowExecutionService } = await import(
+		'@/modules/agents/agent-workflow-execution.service.js'
 	);
-	const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
+	const agentWorkflowExecutionService = Container.get(AgentWorkflowExecutionService);
 
 	if (!additionalData.workflowId) {
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
@@ -388,7 +388,7 @@ export async function executeAgent(
 	const scopedThreadId = `wf:${additionalData.workflowId}:${threadId}`;
 
 	if (source.inlineAgent) {
-		return await agentExecutionOrchestratorService.executeInlineForWorkflow(
+		return await agentWorkflowExecutionService.executeInlineForWorkflow(
 			source.inlineAgent,
 			message,
 			executionId,
@@ -403,7 +403,7 @@ export async function executeAgent(
 
 	const useDraftVersion = isManualOrChatExecution(executionMode);
 
-	const result = await agentExecutionOrchestratorService.executeForWorkflow(
+	const result = await agentWorkflowExecutionService.executeForWorkflow(
 		source.agentId,
 		message,
 		executionId,
