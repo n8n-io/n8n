@@ -6,6 +6,7 @@ import { SCHEDULER_ATTRIBUTES, SCHEDULER_FIRE_OUTCOME } from '../../observabilit
 import type { SchedulerMetrics } from '../../observability/metrics';
 import { SpanStatus, type Span, type Tracer } from '../../observability/tracer';
 import { InvalidLifecycleOptionsError } from '../errors';
+import { DEFAULT_EXECUTOR_OPTIONS } from '../executor';
 import { createScheduler, DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS } from '../factory';
 import type { SchedulerDeps, SchedulerEvent, SchedulerTaskStore } from '../factory';
 import { DEFAULT_LIFECYCLE_OPTIONS, PASS_TIMED_OUT, pollLookaheadSeconds } from '../lifecycle';
@@ -181,33 +182,48 @@ describe('createScheduler executor config', () => {
 	});
 });
 
+// The lookahead createScheduler derives for the materializer: the poll's own
+// worst-case tick gap plus the executor's lookahead (defaults: 10s·1.2 + 5s = 17s).
+const DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS =
+	pollLookaheadSeconds(
+		DEFAULT_LIFECYCLE_OPTIONS.materializerIntervalSeconds,
+		DEFAULT_LIFECYCLE_OPTIONS.jitterRatio,
+	) + DEFAULT_EXECUTOR_OPTIONS.lookaheadSeconds;
+
+const MATERIALIZER_WINDOW_WARNING =
+	'Scheduler materializer lookahead exceeds the window; jobs may be reclaimed with nothing to plan';
+
 describe('createScheduler materializer config', () => {
-	it('emits a warn event at composition when the derived lookahead reaches the window', () => {
-		// A short window against the default 10s ±0.1 poll: the derived 12s lookahead
-		// exceeds it, so materialization degrades to reclaiming with nothing to plan.
+	it('emits a warn event at composition when the derived lookahead exceeds the window', () => {
+		// A window shorter than the derived lookahead: materialization degrades to
+		// reclaiming a job every poll with nothing new to plan.
 		const { onEvent } = makeScheduler({ materializer: { windowSeconds: 5 } });
 
-		const lookaheadSeconds = pollLookaheadSeconds(
-			DEFAULT_LIFECYCLE_OPTIONS.materializerIntervalSeconds,
-			DEFAULT_LIFECYCLE_OPTIONS.jitterRatio,
-		);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'warn',
-			message:
-				'Scheduler materializer lookahead reaches or exceeds the window; jobs may be reclaimed with nothing to plan',
-			context: { lookaheadSeconds, windowSeconds: 5 },
+			message: MATERIALIZER_WINDOW_WARNING,
+			context: { lookaheadSeconds: DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS, windowSeconds: 5 },
 		});
 	});
 
+	it('stays silent at the boundary where the window exactly equals the lookahead', () => {
+		// A job claimed at `now + lookahead == windowEnd` still records its own
+		// occurrence, so equality is not yet degenerate: warn only past the window.
+		const { onEvent } = makeScheduler({
+			materializer: { windowSeconds: DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS },
+		});
+
+		expect(onEvent).not.toHaveBeenCalledWith(
+			expect.objectContaining({ message: MATERIALIZER_WINDOW_WARNING }),
+		);
+	});
+
 	it('stays silent when the window comfortably covers the lookahead', () => {
-		// The default 60s window against the derived 12s lookahead: no warning.
+		// The default 60s window against the ~17s derived lookahead: no warning.
 		const { onEvent } = makeScheduler();
 
 		expect(onEvent).not.toHaveBeenCalledWith(
-			expect.objectContaining({
-				message:
-					'Scheduler materializer lookahead reaches or exceeds the window; jobs may be reclaimed with nothing to plan',
-			}),
+			expect.objectContaining({ message: MATERIALIZER_WINDOW_WARNING }),
 		);
 	});
 });
@@ -387,11 +403,12 @@ describe('createScheduler materialize', () => {
 		});
 	});
 
-	it("claims jobs ahead of due by the materializer loop's own worst-case tick gap", async () => {
+	it('claims jobs ahead of due by the materializer tick gap plus the executor lookahead', async () => {
 		// Regression guard for window-boundary dispatch lag: the materializer polls on a
 		// fixed, jittered tick, so claiming strictly at `nextRunAt <= now` would notice a
-		// boundary job a whole tick late. createScheduler must derive the claim lookahead
-		// from the loop's own cadence (the same formula the executor uses), not leave it 0.
+		// boundary job a whole tick late. createScheduler must derive the claim lookahead,
+		// wide enough that the recorded row also reaches the executor before it fires, not
+		// leave it 0.
 		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue(undefined);
 		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
@@ -399,11 +416,7 @@ describe('createScheduler materialize', () => {
 
 		await scheduler.materialize();
 
-		const expectedLookaheadMs =
-			pollLookaheadSeconds(
-				DEFAULT_LIFECYCLE_OPTIONS.materializerIntervalSeconds,
-				DEFAULT_LIFECYCLE_OPTIONS.jitterRatio,
-			) * 1000;
+		const expectedLookaheadMs = DERIVED_MATERIALIZER_LOOKAHEAD_SECONDS * 1000;
 		expect(expectedLookaheadMs).toBeGreaterThan(0);
 		expect(tx.claimDueJobs).toHaveBeenCalledWith(
 			DEFAULT_MATERIALIZER_OPTIONS.batchSize,

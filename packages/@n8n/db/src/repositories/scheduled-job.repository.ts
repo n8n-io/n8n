@@ -63,6 +63,8 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * materialization skips them and claims different jobs.
 	 * SQLite can't lock rows, but its transactions are `BEGIN IMMEDIATE`, which serializes them to the same effect.
 	 *
+	 * @param lookaheadMs claim a job up to this far before its `nextRunAt`, not only once
+	 * it's already due, so a fixed-interval poll doesn't notice it a whole tick late.
 	 * @returns `undefined` when nothing is due.
 	 *
 	 */
@@ -75,8 +77,8 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		// Claim a job whose `nextRunAt` falls within `lookaheadMs` of now, not only
 		// once it's already due: a fixed-interval poll only wakes on its own tick,
 		// so a strict `<= now` comparison claims (and therefore materializes new
-		// occurrences for) a job a whole tick late. Mirrors the executor, which
-		// claims ahead of due and then fires on a precise timer (see `pollLookaheadSeconds`).
+		// occurrences for) a job a whole tick late. Same claim-ahead the executor
+		// uses against its own tick (see `pollLookaheadSeconds`).
 		const dueExpression = dbNowPlusMsLiteral(this.isPostgres, lookaheadMs);
 
 		const query = manager

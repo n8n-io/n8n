@@ -16,9 +16,9 @@ export interface MaterializerOptions {
 	 * seconds. Without it, `claimDue` only claims once `nextRunAt <= now`, so a
 	 * job already due waits for the next materializer poll tick to be noticed:
 	 * up to one poll interval of dispatch lag on top of the job's own schedule.
-	 * The host derives it from the poll's own cadence
-	 * (`pollLookaheadSeconds(materializerIntervalSeconds, jitterRatio)`), so it
-	 * is not a caller-chosen constant.
+	 * The host derives it, not a caller-chosen constant: the materializer poll's
+	 * own worst-case tick gap plus the executor's lookahead, so a job's
+	 * occurrences are recorded early enough for the executor to fire them on time.
 	 */
 	lookaheadSeconds: number;
 
