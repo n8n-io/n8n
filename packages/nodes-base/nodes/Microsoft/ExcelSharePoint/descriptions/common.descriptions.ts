@@ -38,10 +38,36 @@ export const siteRLC: INodeProperties = {
 	displayName: 'Site',
 	name: 'site',
 	type: 'resourceLocator',
-	default: { mode: 'id', value: '' },
+	default: { mode: 'list', value: '' },
 	description:
 		'The SharePoint site the workbook lives in. Only needed when the workbook is chosen by ID.',
+	// Field-shape-compatible with the site-selection component SharePoint 2.0
+	// is building (ENT-182), so the two can converge later.
 	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'searchSites',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://contoso.sharepoint.com/sites/mysite',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: 'https://.+',
+						errorMessage: 'The URL must start with https://',
+					},
+				},
+			],
+		},
 		{
 			displayName: 'By ID',
 			name: 'id',
@@ -55,10 +81,22 @@ export const libraryRLC: INodeProperties = {
 	displayName: 'Document Library',
 	name: 'library',
 	type: 'resourceLocator',
-	default: { mode: 'id', value: '' },
+	default: { mode: 'list', value: '' },
 	description:
 		'The document library the workbook lives in. Only needed when the workbook is chosen by ID.',
+	typeOptions: {
+		// So the editor re-fetches the library list whenever the chosen site changes.
+		loadOptionsDependsOn: ['site.value'],
+	},
 	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'searchLibraries',
+			},
+		},
 		{
 			displayName: 'By ID',
 			name: 'id',

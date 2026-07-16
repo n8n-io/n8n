@@ -56,6 +56,20 @@ vi.mock('@n8n/instance-ai', async () => {
 			}),
 		),
 		createInstanceAgent: vi.fn(),
+		tokenUsageToBuilderUsageItems: (
+			model: string,
+			usage: {
+				completionTokens?: number;
+				inputTokenDetails?: { noCache?: number; cacheRead?: number; cacheWrite?: number };
+			},
+		) => {
+			const uncachedInput = usage.inputTokenDetails?.noCache ?? 0;
+			const cacheRead = usage.inputTokenDetails?.cacheRead ?? 0;
+			const cacheWrite = usage.inputTokenDetails?.cacheWrite ?? 0;
+			const output = usage.completionTokens ?? 0;
+			if (uncachedInput + cacheRead + cacheWrite + output === 0) return [];
+			return [{ type: 'llmTokens', model, uncachedInput, cacheRead, cacheWrite, output }];
+		},
 		createAllTools: vi.fn(),
 		createOrchestratorRunControl: vi.fn(function () {
 			return {
@@ -157,6 +171,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		},
 		resumeAgentRun: vi.fn(),
 		createInstanceAiTraceContext: vi.fn(async () => ({ rootRun: { otelTraceId: undefined } })),
+		shutdownProductTelemetryProviders: vi.fn(async () => {}),
 		TerminalOutcomeStorage: class {
 			constructor(_memory: unknown) {}
 		},
@@ -167,6 +182,7 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
+import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent } from '@n8n/agents';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
@@ -183,6 +199,7 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
+	shutdownProductTelemetryProviders,
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
@@ -517,6 +534,37 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 	return service;
 }
 
+type MemoryTaskObserverServiceInternals = {
+	memoryTaskObserverFor: (
+		threadId: string,
+		tracing: InstanceAiTraceContext | undefined,
+	) => (event: ScopedMemoryTaskEvent) => void;
+	memoryTaskRegistry: { handleEvent: Mock; getTasks: Mock };
+	logger: { info: Mock };
+};
+
+function createMemoryTaskObserverService(): MemoryTaskObserverServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as MemoryTaskObserverServiceInternals;
+	service.memoryTaskRegistry = { handleEvent: vi.fn(), getTasks: vi.fn(() => []) };
+	service.logger = { info: vi.fn() };
+	return service;
+}
+
+function queuedMemoryTaskEvent(): ScopedMemoryTaskEvent {
+	return {
+		type: 'queued',
+		task: {
+			id: 'task-1',
+			taskKind: 'observer',
+			observationScopeId: 'thread-1',
+			status: 'queued',
+			queuedAt: new Date(),
+		},
+	};
+}
+
 const fakeUser = { id: 'user-1' } as User;
 
 function createInstanceAiErrorReporterMock() {
@@ -812,7 +860,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 						dedupeId: string,
 						usage: BuilderUsageItem[],
 						status: TraceStatus,
-					) => void;
+					) => Promise<void>;
 				};
 			}>;
 			settingsService: {
@@ -838,7 +886,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			instanceAiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
-			logger: unknown;
+			logger: { warn: Mock };
 			telemetry: { track: Mock };
 			oauth2CallbackUrl: string;
 			webhookBaseUrl: string;
@@ -890,7 +938,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.instanceAiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
-		service.logger = {};
+		service.logger = { warn: vi.fn() };
 		service.telemetry = { track: vi.fn() };
 		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
 		service.webhookBaseUrl = 'http://localhost/webhook';
@@ -963,13 +1011,41 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			cacheWrite: 0,
 			output: 20,
 		};
-		environment.orchestrationContext.claimSubAgentUsage?.('dedupe-1', [usageItem], 'completed');
+		await environment.orchestrationContext.claimSubAgentUsage?.(
+			'dedupe-1',
+			[usageItem],
+			'completed',
+		);
 		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
 			fakeUser,
 			'thread-1',
 			'dedupe-1',
 			[usageItem],
 			'completed',
+		);
+
+		// An unexpected claim rejection must not reject the awaited hook, and is
+		// reported centrally, then logged, instead of breaking the builder flow.
+		const claimError = new Error('claim failed');
+		service.creditService.claimRunUsage.mockRejectedValueOnce(claimError);
+		await expect(
+			environment.orchestrationContext.claimSubAgentUsage?.('dedupe-2', [usageItem], 'completed'),
+		).resolves.toBeUndefined();
+		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(claimError, {
+			component: 'instance-ai-agent-builder-usage',
+			threadId: 'thread-1',
+			runId: 'run-1',
+			userId: fakeUser.id,
+			projectId: 'project-1',
+		});
+		expect(service.logger.warn).toHaveBeenCalledWith('Failed to claim agent-builder usage', {
+			threadId: 'thread-1',
+			runId: 'run-1',
+			dedupeId: 'dedupe-2',
+			error: 'claim failed',
+		});
+		expect(service.instanceAiErrorReporter.report.mock.invocationCallOrder[0]).toBeLessThan(
+			service.logger.warn.mock.invocationCallOrder[0],
 		);
 
 		expect(createSandbox).not.toHaveBeenCalled();
@@ -1087,6 +1163,45 @@ describe('InstanceAiService — shutdown', () => {
 		expect(service.eventLog.flushAll.mock.invocationCallOrder[0]).toBeLessThan(
 			service.eventBus.clear.mock.invocationCallOrder[0],
 		);
+
+		// Every trace's LangSmith provider is drained on final process shutdown,
+		// after run/background cleanup has already released each trace's own
+		// bookkeeping.
+		expect(shutdownProductTelemetryProviders).toHaveBeenCalledTimes(1);
+		expect(service.eventBus.clear.mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(shutdownProductTelemetryProviders).mock.invocationCallOrder[0],
+		);
+	});
+});
+
+describe('InstanceAiService — memory task observer', () => {
+	it('forwards memory task events to the trace context lease hook before existing registry/log handling', () => {
+		const service = createMemoryTaskObserverService();
+		const onMemoryTaskEvent = vi.fn();
+		const tracing = { onMemoryTaskEvent } as unknown as InstanceAiTraceContext;
+		const observer = service.memoryTaskObserverFor('thread-1', tracing);
+		const event = queuedMemoryTaskEvent();
+
+		observer(event);
+
+		expect(onMemoryTaskEvent).toHaveBeenCalledWith(event);
+		expect(service.memoryTaskRegistry.handleEvent).toHaveBeenCalledWith('thread-1', event);
+		expect(service.logger.info).toHaveBeenCalledWith(
+			'Observational memory task queued',
+			expect.objectContaining({ threadId: 'thread-1', taskId: 'task-1' }),
+		);
+		expect(onMemoryTaskEvent.mock.invocationCallOrder[0]).toBeLessThan(
+			service.memoryTaskRegistry.handleEvent.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('still runs registry/log handling when the trace context has no lease hook', () => {
+		const service = createMemoryTaskObserverService();
+		const observer = service.memoryTaskObserverFor('thread-1', undefined);
+		const event = queuedMemoryTaskEvent();
+
+		expect(() => observer(event)).not.toThrow();
+		expect(service.memoryTaskRegistry.handleEvent).toHaveBeenCalledWith('thread-1', event);
 	});
 });
 
@@ -3881,5 +3996,72 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 			'Failed to clean up agent-builder sessions for thread',
 			expect.objectContaining({ threadId: 'thread-a' }),
 		);
+	});
+});
+
+describe('createAgentMemoryOptions', () => {
+	type MemoryOptionsInternals = {
+		createAgentMemoryOptions: (
+			user: User,
+			threadId: string,
+			runId: string,
+		) => { observationalMemory: { onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void> } };
+		instanceAiConfig: Pick<
+			InstanceAiConfig,
+			'observerMessageTokens' | 'reflectorObservationTokens'
+		>;
+		creditService: { claimRunUsage: Mock };
+		logger: { warn: Mock };
+	};
+
+	function buildService(): MemoryOptionsInternals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as MemoryOptionsInternals;
+		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
+		service.creditService = { claimRunUsage: vi.fn(async () => {}) };
+		service.logger = { warn: vi.fn() };
+		return service;
+	}
+
+	it('claims converted usage under the orchestrator dedupe key, and skips claiming when usage is zero', async () => {
+		const service = buildService();
+		const user = { id: 'user-1' } as User;
+		const { onTaskUsage } = service.createAgentMemoryOptions(
+			user,
+			'thread-1',
+			'run-1',
+		).observationalMemory;
+
+		await onTaskUsage({
+			task: 'observer',
+			model: 'anthropic/claude-sonnet-4-5',
+			usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+			reportId: 'report-1',
+		});
+
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
+			user,
+			'thread-1',
+			'run-1:memory:observer:report-1',
+			[
+				{
+					type: 'llmTokens',
+					model: 'anthropic/claude-sonnet-4-5',
+					uncachedInput: 0,
+					cacheRead: 0,
+					cacheWrite: 0,
+					output: 20,
+				},
+			],
+			'completed',
+		);
+
+		await onTaskUsage({
+			task: 'reflector',
+			model: 'anthropic/claude-sonnet-4-5',
+			usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+			reportId: 'report-2',
+		});
+
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
 });

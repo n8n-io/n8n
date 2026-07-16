@@ -22,6 +22,7 @@ import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-
 import type * as RuntimeSkillsMod from './skills/runtime-skills';
 import type * as StorageMod from './storage';
 import type * as MapChunkMod from './stream/map-chunk';
+import type * as UsageAccumulatorMod from './stream/usage-accumulator';
 import type * as ToolsMod from './tools';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
@@ -109,6 +110,9 @@ const loadStreamHelpers = lazyModule(
 );
 const loadStorage = lazyModule(() => require('./storage') as typeof StorageMod);
 const loadMapChunk = lazyModule(() => require('./stream/map-chunk') as typeof MapChunkMod);
+const loadUsageAccumulator = lazyModule(
+	() => require('./stream/usage-accumulator') as typeof UsageAccumulatorMod,
+);
 const loadRuntimeSkills = lazyModule(
 	() => require('./skills/runtime-skills') as typeof RuntimeSkillsMod,
 );
@@ -223,6 +227,9 @@ export const continueInstanceAiTraceContext: typeof LangsmithTracingMod.continue
 export const releaseTraceClient: typeof LangsmithTracingMod.releaseTraceClient = lazyFunction(
 	() => loadLangsmithTracing().releaseTraceClient,
 );
+
+export const shutdownProductTelemetryProviders: typeof LangsmithTracingMod.shutdownProductTelemetryProviders =
+	lazyFunction(() => loadLangsmithTracing().shutdownProductTelemetryProviders);
 
 export const submitLangsmithUserFeedback: typeof LangsmithTracingMod.submitLangsmithUserFeedback =
 	lazyFunction(() => loadLangsmithTracing().submitLangsmithUserFeedback);
@@ -502,6 +509,8 @@ export type {
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
 export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator';
+export const tokenUsageToBuilderUsageItems: typeof UsageAccumulatorMod.tokenUsageToBuilderUsageItems =
+	lazyFunction(() => loadUsageAccumulator().tokenUsageToBuilderUsageItems);
 export const resumeAgentRun: typeof StreamRunnerMod.resumeAgentRun = lazyFunction(
 	() => loadStreamRunner().resumeAgentRun,
 );

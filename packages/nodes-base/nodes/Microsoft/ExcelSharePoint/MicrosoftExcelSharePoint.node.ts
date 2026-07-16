@@ -7,6 +7,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import * as readRows from './actions/worksheet/readRows.operation';
+import { listSearch } from './methods';
 
 // Shell for the Excel-on-SharePoint build. Registered but hidden: workflows
 // using it always work; the launch ticket removes the `hidden` flag.
@@ -105,6 +106,10 @@ export class MicrosoftExcelSharePoint implements INodeType {
 
 			...readRows.description,
 		],
+	};
+
+	methods = {
+		listSearch,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
