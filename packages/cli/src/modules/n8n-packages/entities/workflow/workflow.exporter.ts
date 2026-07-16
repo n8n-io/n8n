@@ -61,6 +61,7 @@ export class WorkflowExporter {
 			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
 			'workflow',
 		);
+
 		for (const target of request.reservedTargets ?? []) {
 			fileNames.reservePath(target);
 		}
