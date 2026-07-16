@@ -1,14 +1,6 @@
 # TypeScript 6 → 7 migration benchmarks
 
-<<<<<<< typescript-migrations-5
-Generated 2026-07-15T11:18:12.512Z from `scripts/typescript-migration/results/`.
-=======
-<<<<<<< typescript-cli
-Generated 2026-07-14T13:18:27.416Z from `scripts/typescript-migration/results/`.
-=======
-Generated 2026-07-15T09:07:07.705Z from `scripts/typescript-migration/results/`.
->>>>>>> master
->>>>>>> master
+Generated 2026-07-16T06:54:52.709Z from `scripts/typescript-migration/results/`.
 
 | Package | typecheck Δ | build Δ |
 | --- | --- | --- |
@@ -41,6 +33,7 @@ Generated 2026-07-15T09:07:07.705Z from `scripts/typescript-migration/results/`.
 | `@n8n/local-gateway` | -46.1% | -42.1% |
 | `@n8n/mcp-browser` | -57.6% | -55.6% |
 | `@n8n/n8n-benchmark` | -49.2% | -39.0% |
+| `@n8n/n8n-nodes-langchain` | -74.2% | -21.6% |
 | `@n8n/node-cli` | -55.3% | -48.3% |
 | `@n8n/typeorm` | -37.9% | -68.7% |
 | `n8n` | -75.5% | -71.3% |
@@ -387,6 +380,18 @@ typecheck:
 build:
   before               948ms
   after                578ms  -370ms (-39.0%)
+```
+
+```
+=== @n8n/n8n-nodes-langchain — median times (Δ vs "before") ===
+
+typecheck:
+  before               8.30s
+  after                2.14s  -6163ms (-74.2%)
+
+build:
+  before              25.79s
+  after               20.23s  -5560ms (-21.6%)
 ```
 
 ```

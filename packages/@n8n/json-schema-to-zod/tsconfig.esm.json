@@ -1,8 +1,8 @@
 {
 	"compilerOptions": {
 		"target": "es2020",
-		"module": "NodeNext",
-		"moduleResolution": "NodeNext",
+		"module": "esnext",
+		"moduleResolution": "bundler",
 		"rootDir": "src",
 		"outDir": "dist/esm",
 		"strict": true,
