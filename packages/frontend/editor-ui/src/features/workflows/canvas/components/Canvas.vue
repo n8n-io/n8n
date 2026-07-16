@@ -14,6 +14,7 @@ import {
 	MODAL_CONFIRM,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -204,6 +205,7 @@ const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const message = useMessage();
+const toast = useToast();
 const i18n = useI18n();
 
 const renderData = toRef(props, 'renderData');
@@ -724,7 +726,23 @@ function onCanvasGroupToggle(
 	}
 }
 
+function isGroupNameTaken(groupId: string, name: string): boolean {
+	return workflowDocumentStore.value.allGroups.some(
+		(other) => other.id !== groupId && other.name === name,
+	);
+}
+
 function onCanvasGroupNameUpdate(groupId: string, name: string) {
+	if (isGroupNameTaken(groupId, name)) {
+		toast.showToast({
+			title: i18n.baseText('canvas.nodeGroup.renameBlocked.title'),
+			message: i18n.baseText('canvas.nodeGroup.duplicateName'),
+			type: 'error',
+			duration: 5000,
+		});
+		autofocusGroupTitleId.value = groupId;
+		return;
+	}
 	renameGroup(groupId, name);
 }
 
@@ -787,14 +805,8 @@ async function onOpenGroupRenameModal(groupId: string) {
 					if (!trimmed) {
 						return i18n.baseText('nodeView.prompt.invalidName');
 					}
-					// The store silently uniquifies clashing names on rename
-					// (exact match against another group) — surface that as an
-					// inline error instead. Keeping the current name is valid.
-					const isTaken = workflowDocumentStore.value.allGroups.some(
-						(other) => other.id !== groupId && other.name === trimmed,
-					);
-					if (isTaken) {
-						return i18n.baseText('canvas.nodeGroup.prompt.duplicateName');
+					if (isGroupNameTaken(groupId, trimmed)) {
+						return i18n.baseText('canvas.nodeGroup.duplicateName');
 					}
 					return true;
 				},

@@ -50,9 +50,14 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 
 const trackSpy = vi.hoisted(() => vi.fn());
 const { messagePrompt } = vi.hoisted(() => ({ messagePrompt: vi.fn() }));
+const { showToast } = vi.hoisted(() => ({ showToast: vi.fn() }));
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ prompt: messagePrompt }),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showToast }),
 }));
 
 vi.mock('@/app/composables/useTelemetry', () => ({
@@ -606,6 +611,90 @@ describe('Canvas', () => {
 			await waitFor(() =>
 				expect(workflowDocumentStore.getGroupById(group.id)?.name).toBe('Menu name'),
 			);
+		});
+	});
+
+	describe('inline group rename', () => {
+		const setupExpandedGroup = async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+			workflowDocumentStore.setNodes([
+				createTestNode({ id: 'a', name: 'Node A' }),
+				createTestNode({ id: 'b', name: 'Node B' }),
+			]);
+			const group = workflowDocumentStore.createGroup(['a', 'b'], 'My Group');
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['a', 'b'],
+				isCollapsed: false,
+			});
+			const rendered = renderComponent({
+				props: { nodes: [groupNode] },
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			await waitFor(() => expect(rendered.getByTestId('canvas-node-group')).toBeInTheDocument());
+
+			// jsdom never measures the node, but the title bar waits for VueFlow
+			// dimensions before autofocusing the inline editor. Replace (not
+			// mutate) the object so the reactive dimensions prop updates.
+			const vueFlow = useVueFlow(canvasId);
+			const graphNode = vueFlow.findNode(groupNode.id)!;
+			graphNode.dimensions = { width: 300, height: 40 };
+
+			return { group, ...rendered };
+		};
+
+		const commitInlineRename = async (
+			rendered: Awaited<ReturnType<typeof setupExpandedGroup>>,
+			name: string,
+		) => {
+			await fireEvent.click(rendered.getByTestId('inline-edit-preview'));
+			const input = rendered.getByTestId('inline-edit-input') as HTMLInputElement;
+			await fireEvent.update(input, name);
+			await fireEvent.keyDown(input, { key: 'Enter' });
+			return input;
+		};
+
+		it("rejects an inline rename to another group's name", async () => {
+			const rendered = await setupExpandedGroup();
+			// Another group whose name the rename could collide with.
+			workflowDocumentStore.createGroup(['x'], 'Taken');
+
+			const input = await commitInlineRename(rendered, 'Taken');
+
+			expect(showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'error',
+					title: 'Group not renamed',
+					message: 'A group with this name already exists',
+				}),
+			);
+			// Neither renamed nor silently uniquified.
+			expect(workflowDocumentStore.getGroupById(rendered.group.id)?.name).toBe('My Group');
+			// The editor re-opens (data-focused mirrors reka's edit mode, which a
+			// plain commit exits — see the fresh-name test) holding the rejected
+			// value so the user can correct it.
+			await waitFor(() =>
+				expect(rendered.getByTestId('inline-editable-area')).toHaveAttribute('data-focused'),
+			);
+			expect(input).toHaveValue('Taken');
+			expect(input).toHaveFocus();
+		});
+
+		it('applies an inline rename to a fresh name without a toast', async () => {
+			const rendered = await setupExpandedGroup();
+
+			await commitInlineRename(rendered, 'Fresh name');
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.getGroupById(rendered.group.id)?.name).toBe('Fresh name'),
+			);
+			expect(showToast).not.toHaveBeenCalled();
+			// A successful commit leaves edit mode.
+			expect(rendered.getByTestId('inline-editable-area')).not.toHaveAttribute('data-focused');
 		});
 	});
 
