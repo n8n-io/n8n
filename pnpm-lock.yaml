@@ -2381,12 +2381,15 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@typescript/native':
+        specifier: catalog:typescript-tooling
+        version: typescript@7.0.2
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 5.2.4(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(@typescript/typescript6@6.0.2))
       '@vue/tsconfig':
         specifier: catalog:frontend
-        version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+        version: 0.7.0(@typescript/typescript6@6.0.2)(vue@3.5.26(@typescript/typescript6@6.0.2))
       prettier:
         specifier: 'catalog:'
         version: 3.6.2
@@ -2395,25 +2398,25 @@ importers:
         version: 6.0.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(@typescript/typescript6@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2))
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript-tooling
+        version: '@typescript/typescript6@6.0.2'
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vue:
         specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
+        version: 3.5.26(@typescript/typescript6@6.0.2)
       vue-router:
         specifier: catalog:frontend
-        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
+        version: 4.5.0(vue@3.5.26(@typescript/typescript6@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)
       zod-to-json-schema:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.67)
@@ -3334,7 +3337,7 @@ importers:
         version: link:../eslint-plugin-community-nodes
       '@typescript-eslint/parser':
         specifier: ^8.35.0
-        version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
+        version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)
       axios:
         specifier: 1.18.0
         version: 1.18.0(debug@4.4.3)
@@ -3343,7 +3346,7 @@ importers:
         version: 9.29.0(jiti@2.6.1)
       eslint-plugin-n8n-nodes-base:
         specifier: 'catalog:'
-        version: 1.16.7(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
+        version: 1.16.7(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -3354,8 +3357,8 @@ importers:
         specifier: 0.2.7
         version: 0.2.7
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
     devDependencies:
       '@n8n/vitest-config':
         specifier: workspace:*
@@ -30215,15 +30218,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)':
+  '@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)':
     dependencies:
       '@typescript-eslint/scope-manager': 8.35.0
       '@typescript-eslint/types': 8.35.0
-      '@typescript-eslint/typescript-estree': 8.35.0(typescript@6.0.2)
+      '@typescript-eslint/typescript-estree': 8.35.0(typescript@7.0.2)
       '@typescript-eslint/visitor-keys': 8.35.0
       debug: 4.4.3(supports-color@8.1.1)
       eslint: 9.29.0(jiti@2.6.1)
-      typescript: 6.0.2
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -30416,6 +30419,17 @@ snapshots:
       '@typescript-eslint/typescript-estree': 8.35.0(typescript@6.0.2)
       eslint: 9.29.0(jiti@2.6.1)
       typescript: 6.0.2
+    transitivePeerDependencies:
+      - supports-color
+
+  '@typescript-eslint/utils@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)':
+    dependencies:
+      '@eslint-community/eslint-utils': 4.7.0(eslint@9.29.0(jiti@2.6.1))
+      '@typescript-eslint/scope-manager': 8.35.0
+      '@typescript-eslint/types': 8.35.0
+      '@typescript-eslint/typescript-estree': 8.35.0(typescript@7.0.2)
+      eslint: 9.29.0(jiti@2.6.1)
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -30834,6 +30848,19 @@ snapshots:
     optionalDependencies:
       typescript: 6.0.2
 
+  '@vue/language-core@2.2.8(@typescript/typescript6@6.0.2)':
+    dependencies:
+      '@volar/language-core': 2.4.12
+      '@vue/compiler-dom': 3.5.26
+      '@vue/compiler-vue2': 2.7.16
+      '@vue/shared': 3.5.26
+      alien-signals: 1.0.4
+      minimatch: 9.0.9
+      muggle-string: 0.4.1
+      path-browserify: 1.0.1
+    optionalDependencies:
+      typescript: '@typescript/typescript6@6.0.2'
+
   '@vue/language-core@2.2.8(typescript@6.0.2)':
     dependencies:
       '@volar/language-core': 2.4.12
@@ -30902,6 +30929,11 @@ snapshots:
     dependencies:
       js-beautify: 1.14.9
       vue-component-type-helpers: 2.2.12
+
+  '@vue/tsconfig@0.7.0(@typescript/typescript6@6.0.2)(vue@3.5.26(@typescript/typescript6@6.0.2))':
+    optionalDependencies:
+      typescript: '@typescript/typescript6@6.0.2'
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
 
   '@vue/tsconfig@0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))':
     optionalDependencies:
@@ -33716,6 +33748,20 @@ snapshots:
   eslint-plugin-n8n-nodes-base@1.16.7(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2):
     dependencies:
       '@typescript-eslint/utils': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
+      camel-case: 4.1.2
+      indefinite: 2.5.1
+      pascal-case: 3.1.2
+      pluralize: 8.0.0
+      sentence-case: 3.0.4
+      title-case: 3.0.3
+    transitivePeerDependencies:
+      - eslint
+      - supports-color
+      - typescript
+
+  eslint-plugin-n8n-nodes-base@1.16.7(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2):
+    dependencies:
+      '@typescript-eslint/utils': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)
       camel-case: 4.1.2
       indefinite: 2.5.1
       pascal-case: 3.1.2
@@ -39265,6 +39311,24 @@ snapshots:
       sprintf-js: 1.1.3
     optional: true
 
+  rolldown-plugin-dts@0.17.8(@typescript/typescript6@6.0.2)(rolldown@1.0.0-beta.50)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)):
+    dependencies:
+      '@babel/generator': 7.29.1
+      '@babel/parser': 7.29.2
+      '@babel/types': 7.29.0
+      ast-kit: 2.2.0
+      birpc: 2.8.0
+      dts-resolver: 2.1.3
+      get-tsconfig: 4.13.0
+      magic-string: 0.30.21
+      obug: 2.1.1
+      rolldown: 1.0.0-beta.50
+    optionalDependencies:
+      typescript: '@typescript/typescript6@6.0.2'
+      vue-tsc: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)
+    transitivePeerDependencies:
+      - oxc-resolver
+
   rolldown-plugin-dts@0.17.8(rolldown@1.0.0-beta.50)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)):
     dependencies:
       '@babel/generator': 7.29.1
@@ -40934,6 +40998,32 @@ snapshots:
       minimist: 1.2.8
       strip-bom: 3.0.0
 
+  tsdown@0.16.5(@typescript/typescript6@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)):
+    dependencies:
+      ansis: 4.2.0
+      cac: 6.7.14
+      chokidar: 4.0.3
+      diff: 8.0.3
+      empathic: 2.0.0
+      hookable: 5.5.3
+      obug: 2.1.1
+      rolldown: 1.0.0-beta.50
+      rolldown-plugin-dts: 0.17.8(@typescript/typescript6@6.0.2)(rolldown@1.0.0-beta.50)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2))
+      semver: 7.7.3
+      tinyexec: 1.0.2
+      tinyglobby: 0.2.15
+      tree-kill: 1.2.2
+      unconfig-core: 7.4.1
+      unrun: 0.2.10
+    optionalDependencies:
+      typescript: '@typescript/typescript6@6.0.2'
+    transitivePeerDependencies:
+      - '@ts-macro/tsc'
+      - '@typescript/native-preview'
+      - oxc-resolver
+      - synckit
+      - vue-tsc
+
   tsdown@0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)):
     dependencies:
       ansis: 4.2.0
@@ -41682,10 +41772,21 @@ snapshots:
     dependencies:
       vue: 3.5.26(typescript@6.0.2)
 
+  vue-router@4.5.0(vue@3.5.26(@typescript/typescript6@6.0.2)):
+    dependencies:
+      '@vue/devtools-api': 6.6.4
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
+
   vue-router@4.5.0(vue@3.5.26(typescript@6.0.2)):
     dependencies:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.26(typescript@6.0.2)
+
+  vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2):
+    dependencies:
+      '@volar/typescript': 2.4.12
+      '@vue/language-core': 2.2.8(@typescript/typescript6@6.0.2)
+      typescript: '@typescript/typescript6@6.0.2'
 
   vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2):
     dependencies:
