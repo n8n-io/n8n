@@ -169,6 +169,24 @@ export class DynamicCredentialApiHelper {
 		return result.data ?? result; // The OAuth2 provider authorization URL
 	}
 
+	async startAuthorizationFromIntentUrl(intentUrl: string): Promise<string> {
+		const parsed = new URL(intentUrl);
+		const response = await this.api.request.get(parsed.pathname + parsed.search, {
+			maxRedirects: 0,
+		});
+
+		if (response.status() !== 302) {
+			throw new TestError(
+				`Failed to start authorization: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const authorizationUrl = response.headers().location;
+		if (!authorizationUrl) throw new TestError('Authorization redirect is missing a location');
+
+		return authorizationUrl;
+	}
+
 	/**
 	 * POSTs to the `authorizationUrl` returned by the execution-status endpoint.
 	 *

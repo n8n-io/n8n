@@ -208,13 +208,8 @@ test.describe(
 				const authorizationUrl = gateText.split('\n').find((line) => line.startsWith('http'));
 				expect(authorizationUrl).toBeTruthy();
 
-				const intentUrl = new URL(authorizationUrl!);
-				const authorizeResponse = await mainApi.request.get(intentUrl.pathname + intentUrl.search, {
-					maxRedirects: 0,
-				});
-				expect(authorizeResponse.status()).toBe(302);
-				const keycloakAuthorizationUrl = authorizeResponse.headers().location;
-				expect(keycloakAuthorizationUrl).toBeTruthy();
+				const keycloakAuthorizationUrl =
+					await mainApi.dynamicCredentials.startAuthorizationFromIntentUrl(authorizationUrl!);
 
 				const n8nCallbackUrl =
 					await services.keycloak.completeAuthorizationCodeFlow(keycloakAuthorizationUrl);
