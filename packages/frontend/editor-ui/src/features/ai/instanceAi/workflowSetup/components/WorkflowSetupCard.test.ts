@@ -158,6 +158,25 @@ describe('WorkflowSetupCard', () => {
 		);
 	});
 
+	it('derives the docs-page favicon when the hint has no icon URL', () => {
+		const section = makeWorkflowSetupSection({
+			credentialType: 'httpTemplatedCustomAuth',
+			setupHint: {
+				template: { headers: { Authorization: 'Key {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+				docsUrl: 'https://fal.ai/dashboard/keys',
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		const { getByTestId } = renderComponent({ props: { section } });
+
+		expect(getByTestId('credential-hint-icon')).toHaveAttribute(
+			'src',
+			'https://fal.ai/favicon.ico',
+		);
+	});
+
 	it('shows the credential app name when the section only needs credentials', () => {
 		const section = makeWorkflowSetupSection({
 			credentialType: 'httpHeaderAuth',

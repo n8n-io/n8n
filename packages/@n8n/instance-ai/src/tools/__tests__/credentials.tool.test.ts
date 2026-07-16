@@ -812,6 +812,39 @@ describe('credentials tool', () => {
 			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
 		});
 
+		it('should reject a setupHint whose placeholder info contains a URL', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpTemplatedCustomAuth',
+							setupHint: {
+								template: { headers: { Authorization: 'Key {{api_key}}' } },
+								placeholders: [
+									{
+										name: 'api_key',
+										title: 'API key',
+										info: 'Find it at https://example.com/tokens',
+									},
+								],
+							},
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
+		});
+
 		it('should reject a setupHint on a credential type other than Templated Custom Auth', async () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue([]);

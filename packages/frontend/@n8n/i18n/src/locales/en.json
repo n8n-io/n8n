@@ -1084,7 +1084,6 @@
 	"credentialEdit.credentialEdit.connection": "Connection",
 	"credentialEdit.templatedAuth.advancedView": "Advanced view",
 	"credentialEdit.templatedAuth.simpleView": "Back to simple view",
-	"credentialEdit.templatedAuth.savedValue": "Saved \u2014 type to replace",
 	"credentialEdit.credentialEdit.sharing": "Sharing",
 	"credentialEdit.credentialEdit.couldNotFindCredentialOfType": "Could not find credential of type",
 	"credentialEdit.credentialEdit.couldNotFindCredentialWithId": "Could not find credential with ID",

@@ -1,10 +1,11 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import { deriveServiceIconUrl } from '@/features/credentials/templatedAuth.utils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
@@ -49,11 +50,14 @@ const displayName = computed(() => {
 	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name } });
 });
 
-/** Agent-supplied service logo (https-only), shown instead of the generic type icon. */
-const hintIconUrl = computed(() => {
-	const url = props.section.setupHint?.iconUrl;
-	return url && /^https:\/\//.test(url) ? url : undefined;
-});
+/** Service logo: explicit https icon, else the docs page's favicon; hidden
+ *  again (generic icon fallback) if the image fails to load. */
+const iconFailed = ref(false);
+const hintIconUrl = computed(() =>
+	iconFailed.value
+		? undefined
+		: deriveServiceIconUrl(props.section.setupHint?.iconUrl, props.section.setupHint?.docsUrl),
+);
 </script>
 
 <template>
@@ -65,6 +69,7 @@ const hintIconUrl = computed(() => {
 				:alt="displayName"
 				:class="$style.serviceIcon"
 				data-test-id="credential-hint-icon"
+				@error="iconFailed = true"
 			/>
 			<CredentialIcon
 				v-else-if="isCredentialOnlySection"

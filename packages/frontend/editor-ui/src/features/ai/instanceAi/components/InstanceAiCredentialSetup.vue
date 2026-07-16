@@ -6,6 +6,7 @@ import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/ins
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import { deriveServiceIconUrl } from '@/features/credentials/templatedAuth.utils';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
@@ -271,10 +272,19 @@ const hasTemplatedHint = computed(
 		!!currentRequest.value?.setupHint,
 );
 
-/** Agent-supplied service logo (https-only), shown instead of the generic type icon. */
-const hintIconUrl = computed(() => {
-	const url = currentRequest.value?.setupHint?.iconUrl;
-	return url && /^https:\/\//.test(url) ? url : undefined;
+/** Service logo: explicit https icon, else the docs page's favicon; hidden
+ *  again (generic icon fallback) if the image fails to load. */
+const iconFailed = ref(false);
+const hintIconUrl = computed(() =>
+	iconFailed.value
+		? undefined
+		: deriveServiceIconUrl(
+				currentRequest.value?.setupHint?.iconUrl,
+				currentRequest.value?.setupHint?.docsUrl,
+			),
+);
+watch(currentStepIndex, () => {
+	iconFailed.value = false;
 });
 
 function openNewCredentialModal() {
@@ -535,6 +545,7 @@ async function handleSetupAutomatically() {
 						:alt="getDisplayName(currentRequest)"
 						:class="$style.serviceIcon"
 						data-test-id="credential-hint-icon"
+						@error="iconFailed = true"
 					/>
 					<CredentialIcon v-else :credential-type-name="currentRequest.credentialType" :size="16" />
 					<N8nText :class="$style.title" size="medium" color="text-dark" bold>

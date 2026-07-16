@@ -147,6 +147,13 @@ export function findSetupHintProblems(hint: InstanceAiCredentialSetupHint): stri
 	if (markers.size === 0) {
 		problems.push('the template contains no {{placeholder}} marker');
 	}
+	for (const placeholder of hint.placeholders) {
+		if (/https?:\/\//.test(placeholder.info ?? '')) {
+			problems.push(
+				`placeholder "${placeholder.name}" has a URL in its info — put the obtain-URL in docsUrl (rendered as a clickable link) and keep info as plain text`,
+			);
+		}
+	}
 	const defined = new Set(hint.placeholders.map((placeholder) => placeholder.name));
 	for (const marker of markers) {
 		if (!defined.has(marker)) problems.push(`marker {{${marker}}} has no placeholders entry`);

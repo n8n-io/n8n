@@ -96,3 +96,20 @@ export function parsePlaceholderValues(raw: unknown): Record<string, string> {
 	}
 	return values;
 }
+
+/**
+ * Best-effort service icon: an explicit https icon URL wins; otherwise derive
+ * the favicon of the docs page's host. Consumers must fall back to the generic
+ * credential icon when the image fails to load.
+ */
+export function deriveServiceIconUrl(iconUrl: unknown, docsUrl: unknown): string | undefined {
+	if (typeof iconUrl === 'string' && /^https:\/\//.test(iconUrl)) return iconUrl;
+	if (typeof docsUrl === 'string' && /^https:\/\//.test(docsUrl)) {
+		try {
+			return `${new URL(docsUrl).origin}/favicon.ico`;
+		} catch {
+			return undefined;
+		}
+	}
+	return undefined;
+}

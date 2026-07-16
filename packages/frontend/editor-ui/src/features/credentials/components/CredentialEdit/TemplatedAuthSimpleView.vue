@@ -8,7 +8,7 @@ import {
 	parseTemplatedAuthField,
 } from '@/features/credentials/templatedAuth.utils';
 import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
-import { N8nInput, N8nInputLabel } from '@n8n/design-system';
+import { N8nInput, N8nInputLabel, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, ref } from 'vue';
@@ -45,8 +45,25 @@ const defsByName = computed(() => {
 
 const savedValues = computed(() => parsePlaceholderValues(props.credentialData.placeholderValues));
 
-/** Staged replacements; a marker absent here keeps its stored value. */
-const editedValues = ref<Record<string, string>>({});
+// Inputs start from the stored values (redacted `***` sentinels render as
+// masked characters, same as other credential fields); typing over one stages
+// a replacement, while an untouched `***` merges back to the stored secret
+// server-side on save.
+const editedValues = ref<Record<string, string>>({ ...savedValues.value });
+
+const docsUrl = computed(() => {
+	const url = props.credentialData.docsUrl;
+	return typeof url === 'string' && /^https?:\/\//.test(url) ? url : undefined;
+});
+
+const docsHost = computed(() => {
+	if (!docsUrl.value) return undefined;
+	try {
+		return new URL(docsUrl.value).host;
+	} catch {
+		return undefined;
+	}
+});
 
 function labelFor(name: string): string {
 	return defsByName.value.get(name)?.title ?? name;
@@ -60,21 +77,12 @@ function inputTypeFor(name: string): 'text' | 'password' {
 	return defsByName.value.get(name)?.type === 'plain' ? 'text' : 'password';
 }
 
-function placeholderFor(name: string): string {
-	return (savedValues.value[name] ?? '') !== ''
-		? i18n.baseText('credentialEdit.templatedAuth.savedValue')
-		: labelFor(name);
-}
-
 function onInput(name: string, value: string) {
 	editedValues.value[name] = value;
 	const composed: Record<string, string> = {};
 	for (const marker of markers.value) {
-		const edited = editedValues.value[marker];
-		composed[marker] =
-			edited !== undefined && edited.trim() !== ''
-				? cleanPlaceholderValue(template.value, marker, edited)
-				: (savedValues.value[marker] ?? '');
+		const edited = editedValues.value[marker] ?? savedValues.value[marker] ?? '';
+		composed[marker] = cleanPlaceholderValue(template.value, marker, edited);
 	}
 	emit('update', { name: 'placeholderValues', value: JSON.stringify(composed, null, 2) });
 }
@@ -93,11 +101,24 @@ function onInput(name: string, value: string) {
 			<N8nInput
 				:type="inputTypeFor(name)"
 				:model-value="editedValues[name] ?? ''"
-				:placeholder="placeholderFor(name)"
+				:placeholder="labelFor(name)"
 				data-test-id="templated-auth-value-input"
 				@update:model-value="onInput(name, String($event))"
 			/>
 		</N8nInputLabel>
+		<N8nLink
+			v-if="docsUrl"
+			:to="docsUrl"
+			new-window
+			size="small"
+			data-test-id="templated-auth-docs-link"
+		>
+			{{
+				i18n.baseText('instanceAi.credential.hint.docsLink', {
+					interpolate: { host: docsHost ?? docsUrl },
+				})
+			}}
+		</N8nLink>
 	</div>
 </template>
 

@@ -1,5 +1,6 @@
 import {
 	cleanPlaceholderValue,
+	deriveServiceIconUrl,
 	extractTemplateMarkers,
 	markerPrefix,
 	parsePlaceholderDefs,
@@ -70,6 +71,25 @@ describe('templatedAuth.utils', () => {
 		it('keeps only string values', () => {
 			const raw = JSON.stringify({ api_key: '***', nested: { no: true }, count: 2 });
 			expect(parsePlaceholderValues(raw)).toEqual({ api_key: '***' });
+		});
+	});
+
+	describe('deriveServiceIconUrl', () => {
+		it('prefers an explicit https icon URL', () => {
+			expect(deriveServiceIconUrl('https://fal.ai/logo.png', 'https://fal.ai/docs')).toBe(
+				'https://fal.ai/logo.png',
+			);
+		});
+
+		it('derives the docs-page favicon when no icon is given', () => {
+			expect(deriveServiceIconUrl(undefined, 'https://replicate.com/account/api-tokens')).toBe(
+				'https://replicate.com/favicon.ico',
+			);
+		});
+
+		it('rejects non-https values', () => {
+			expect(deriveServiceIconUrl('http://x.com/a.png', 'not a url')).toBeUndefined();
+			expect(deriveServiceIconUrl(undefined, undefined)).toBeUndefined();
 		});
 	});
 });

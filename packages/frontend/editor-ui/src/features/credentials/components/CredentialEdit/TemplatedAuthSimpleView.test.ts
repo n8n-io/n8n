@@ -45,19 +45,46 @@ describe('TemplatedAuthSimpleView', () => {
 		expect(getByText('api_key')).toBeInTheDocument();
 	});
 
+	it('prefills inputs with the stored values, like other credential fields', () => {
+		const { getAllByTestId } = renderComponent({
+			props: { credentialData: credentialData() },
+		});
+
+		const [apiKey, apiVersion] = getAllByTestId('templated-auth-value-input');
+		expect(apiKey.querySelector('input') ?? apiKey).toHaveValue('***');
+		expect(apiVersion.querySelector('input') ?? apiVersion).toHaveValue('202404');
+	});
+
 	it('replaces the typed value and keeps untouched stored values on update', async () => {
 		const { getAllByTestId, emitted } = renderComponent({
 			props: { credentialData: credentialData() },
 		});
 
 		const apiKeyEl = getAllByTestId('templated-auth-value-input')[0];
-		await userEvent.type(apiKeyEl.querySelector('input') ?? apiKeyEl, 'Key new-secret');
+		const input = apiKeyEl.querySelector('input') ?? apiKeyEl;
+		await userEvent.clear(input);
+		await userEvent.type(input, 'Key new-secret');
 
 		const updates = emitted<[{ name: string; value: string }]>('update');
 		expect(updates).toBeTruthy();
 		const last = updates[updates.length - 1][0];
 		expect(last.name).toBe('placeholderValues');
-		// typed value cleaned of the template prefix; untouched marker keeps ***
+		// typed value cleaned of the template prefix; untouched marker keeps its
+		// stored redacted sentinel, which merges back to the real secret on save
 		expect(JSON.parse(last.value)).toEqual({ api_key: 'new-secret', api_version: '202404' });
+	});
+
+	it('renders the docs link when the credential stores a documentation URL', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				credentialData: credentialData({ docsUrl: 'https://replicate.com/account/api-tokens' }),
+			},
+		});
+
+		expect(getByTestId('templated-auth-docs-link')).toBeInTheDocument();
+		expect(
+			queryByTestId('templated-auth-docs-link')?.closest('a')?.getAttribute('href') ??
+				getByTestId('templated-auth-docs-link').getAttribute('href'),
+		).toContain('replicate.com/account/api-tokens');
 	});
 });

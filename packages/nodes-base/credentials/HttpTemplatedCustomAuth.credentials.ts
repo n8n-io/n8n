@@ -33,11 +33,13 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			default: '',
 		},
 		{
-			// Agent-authored UI metadata (input titles, help text, masking) driving
-			// the guided setup form — not user-editable, so hidden in the modal.
 			displayName: 'Placeholders',
 			name: 'placeholderDefs',
-			type: 'hidden',
+			type: 'json',
+			description:
+				'Describes the input shown for each {{placeholder}}: name, user-facing title, help text, and type ("password" masks the input, "plain" does not)',
+			placeholder:
+				'[ { "name": "api_key", "title": "API key", "info": "Found on the API keys page", "type": "password" } ]',
 			default: '',
 		},
 		{
@@ -61,10 +63,19 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			default: '',
 		},
 		{
-			// Shown on AI Assistant setup surfaces; not runtime-relevant.
+			displayName: 'Documentation URL',
+			name: 'docsUrl',
+			type: 'string',
+			description:
+				'Page where the user obtains the secret (e.g. the provider\'s API-keys dashboard) — shown as the "Get it from" link on setup surfaces',
+			default: '',
+		},
+		{
 			displayName: 'Icon URL',
 			name: 'iconUrl',
-			type: 'hidden',
+			type: 'string',
+			description:
+				"The service's logo or favicon (https), shown on setup surfaces. Falls back to the documentation URL's favicon when empty.",
 			default: '',
 		},
 		{
