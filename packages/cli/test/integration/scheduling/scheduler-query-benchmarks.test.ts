@@ -45,6 +45,10 @@ const TASK_TYPE = 'scheduleTrigger';
 const TASK_ROWS = envInt('N8N_SCHEDULER_QUERY_TASK_ROWS', 100_000);
 const JOB_ROWS = envInt('N8N_SCHEDULER_QUERY_JOB_ROWS', 50_000);
 const READ_ITERS = envInt('N8N_SCHEDULER_QUERY_ITERS', 50);
+// Writes mutate the table, so each iteration uses a fresh, conflict-free batch and
+// fewer iterations than reads. 25 keeps p95/p99 distinct without growing the table
+// enough to skew later iterations.
+const WRITE_ITERS = envInt('N8N_SCHEDULER_QUERY_WRITE_ITERS', 25);
 const BATCH = envInt('N8N_SCHEDULER_QUERY_BATCH', 100);
 const WRITE_BATCH = envInt('N8N_SCHEDULER_QUERY_WRITE_BATCH', 10_000);
 
@@ -222,6 +226,33 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 		return percentiles(samples);
 	}
 
+	/**
+	 * Per-batch latency of a write over WRITE_ITERS runs (iteration 0 is a discarded
+	 * warmup). `fn` receives the iteration index so callers can namespace keys and
+	 * keep every batch conflict-free.
+	 */
+	async function measureWrite(fn: (iter: number) => Promise<void>) {
+		await fn(0);
+		const samples: number[] = [];
+		for (let i = 1; i <= WRITE_ITERS; i++) {
+			const t0 = performance.now();
+			await fn(i);
+			samples.push(performance.now() - t0);
+		}
+		return percentiles(samples);
+	}
+
+	/** Report a write like a read: per-batch latency percentiles + throughput at p50. */
+	function reportWrite(label: string, batch: number, latency: ReturnType<typeof percentiles>) {
+		const rpsAtP50 = Math.round(batch / (latency.p50 / 1000));
+		report(`WRITE · ${label}`, {
+			'batch size (rows)': commas(batch),
+			'latency p50/p95/p99 (ms)': `${latency.p50.toFixed(2)} / ${latency.p95.toFixed(2)} / ${latency.p99.toFixed(2)}`,
+			'throughput @ p50 (rows/sec)': commas(rpsAtP50),
+		});
+		return rpsAtP50;
+	}
+
 	/** Run EXPLAIN for `sql`, return the plan text and whether it uses an index. */
 	async function explain(
 		sql: string,
@@ -384,73 +415,94 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 	);
 
 	it(
-		'measures the write hot paths (throughput)',
+		'measures the write hot paths (latency + throughput)',
 		async () => {
-			// ScheduledTaskRepository.insertIgnoringDuplicates — materializer insert.
 			const anchor = await jobRepository.findOneByOrFail({ name: 'query-bench-anchor' });
-			const insertBase = secondsFromNow(10).getTime();
-			const occurrences = Array.from({ length: WRITE_BATCH }, (_, i) => {
-				const when = new Date(insertBase + i * 1000);
-				return {
-					jobId: anchor.id,
-					taskType: TASK_TYPE,
-					payload: {},
-					scheduledFor: when,
-					runAt: when,
-					maxAttempts: 1,
-				};
+
+			// ScheduledTaskRepository.insertIgnoringDuplicates — materializer insert.
+			// Each iteration inserts into a disjoint time window so no `(jobId, scheduledFor)`
+			// collides and every row is recorded.
+			let lastRecorded = 0;
+			const insertLatency = await measureWrite(async (iter) => {
+				const base = secondsFromNow(10 + iter * (WRITE_BATCH + 10)).getTime();
+				const occurrences = Array.from({ length: WRITE_BATCH }, (_, i) => {
+					const when = new Date(base + i * 1000);
+					return {
+						jobId: anchor.id,
+						taskType: TASK_TYPE,
+						payload: {},
+						scheduledFor: when,
+						runAt: when,
+						maxAttempts: 1,
+					};
+				});
+				const inserted = await dataSource.transaction(
+					async (trx) => await taskRepository.insertIgnoringDuplicates(trx, occurrences),
+				);
+				lastRecorded = inserted.recorded;
 			});
-			let t0 = performance.now();
-			const inserted = await dataSource.transaction(
-				async (trx) => await taskRepository.insertIgnoringDuplicates(trx, occurrences),
+			const taskInsertRps = reportWrite(
+				'ScheduledTask.insertIgnoringDuplicates',
+				WRITE_BATCH,
+				insertLatency,
 			);
-			const taskInsertRps = Math.round(WRITE_BATCH / ((performance.now() - t0) / 1000));
 
 			// ScheduledJobRepository.insertMany — provisioning insert + read-back by name.
-			const newJobs = Array.from({ length: WRITE_JOB_BATCH }, (_, i) => ({
-				name: `write-bench-job-${i}`,
-				workflowId: null,
-				nodeId: null,
-				taskType: TASK_TYPE,
-				payload: {},
-				kind: 'interval' as const,
-				cronExpression: null,
-				timezone: null,
-				recurrenceUnit: null,
-				recurrenceSize: null,
-				intervalSeconds: 60,
-				fireAt: null,
-				nextRunAt: secondsFromNow(3600),
-			}));
-			t0 = performance.now();
-			const ids = await dataSource.transaction(
-				async (trx) => await jobRepository.insertMany(trx, newJobs),
+			// Names are namespaced per iteration to stay unique; ids are kept for advanceMany.
+			const jobIdBatches = new Map<number, number[]>();
+			let lastIds: number[] = [];
+			const insertManyLatency = await measureWrite(async (iter) => {
+				const newJobs = Array.from({ length: WRITE_JOB_BATCH }, (_, i) => ({
+					name: `write-bench-job-${iter}-${i}`,
+					workflowId: null,
+					nodeId: null,
+					taskType: TASK_TYPE,
+					payload: {},
+					kind: 'interval' as const,
+					cronExpression: null,
+					timezone: null,
+					recurrenceUnit: null,
+					recurrenceSize: null,
+					intervalSeconds: 60,
+					fireAt: null,
+					nextRunAt: secondsFromNow(3600),
+				}));
+				const ids = await dataSource.transaction(
+					async (trx) => await jobRepository.insertMany(trx, newJobs),
+				);
+				jobIdBatches.set(iter, ids);
+				lastIds = ids;
+			});
+			const jobInsertRps = reportWrite(
+				'ScheduledJob.insertMany (+read-back)',
+				WRITE_JOB_BATCH,
+				insertManyLatency,
 			);
-			const jobInsertRps = Math.round(WRITE_JOB_BATCH / ((performance.now() - t0) / 1000));
 
 			// ScheduledJobRepository.advanceMany — materializer clock advance (CASE update).
 			// Chunked per dialect (see ADVANCE_CHUNK) so SQLite's expression-depth cap
-			// isn't hit, which is how a caller advancing many jobs must call it.
-			const advances = ids.map((id) => ({
-				id,
-				nextRunAt: secondsFromNow(7200),
-				lastFiredAt: secondsAgo(1),
-			}));
-			t0 = performance.now();
-			await dataSource.transaction(
-				async (trx) => await jobRepository.advanceMany(trx, advances, ADVANCE_CHUNK),
-			);
-			const advanceRps = Math.round(WRITE_JOB_BATCH / ((performance.now() - t0) / 1000));
-
-			report('WRITE · throughput (rows/sec)', {
-				'ScheduledTask.insertIgnoringDuplicates': commas(taskInsertRps),
-				'ScheduledJob.insertMany (+read-back)': commas(jobInsertRps),
-				'ScheduledJob.advanceMany (CASE update)': commas(advanceRps),
-				'advanceMany chunk (dialect-safe)': ADVANCE_CHUNK,
+			// isn't hit, which is how a caller advancing many jobs must call it. Advances the
+			// ids inserted by the matching insertMany iteration.
+			const advanceLatency = await measureWrite(async (iter) => {
+				const ids = jobIdBatches.get(iter) ?? lastIds;
+				const advances = ids.map((id) => ({
+					id,
+					nextRunAt: secondsFromNow(7200),
+					lastFiredAt: secondsAgo(1),
+				}));
+				await dataSource.transaction(
+					async (trx) => await jobRepository.advanceMany(trx, advances, ADVANCE_CHUNK),
+				);
 			});
+			const advanceRps = reportWrite(
+				'ScheduledJob.advanceMany (CASE update)',
+				WRITE_JOB_BATCH,
+				advanceLatency,
+			);
+			report('WRITE · notes', { 'advanceMany chunk (dialect-safe)': ADVANCE_CHUNK });
 
-			expect(inserted.recorded).toBe(WRITE_BATCH);
-			expect(ids).toHaveLength(WRITE_JOB_BATCH);
+			expect(lastRecorded).toBe(WRITE_BATCH);
+			expect(lastIds).toHaveLength(WRITE_JOB_BATCH);
 			expect(taskInsertRps).toBeGreaterThanOrEqual(WRITE_MIN_RPS);
 			expect(jobInsertRps).toBeGreaterThanOrEqual(WRITE_MIN_RPS);
 			expect(advanceRps).toBeGreaterThanOrEqual(WRITE_MIN_RPS);
