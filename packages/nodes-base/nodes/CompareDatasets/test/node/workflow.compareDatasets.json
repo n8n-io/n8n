@@ -35,68 +35,65 @@
 		},
 		{
 			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const data = [\n  {\n    id: 1,\n    text: 'foo',\n    data: 'A',\n    data2: 555,\n    memo: 'test',\n  },\n  {\n    id: 2,\n    text: 'bar bar',\n    data: 'E',\n  },\n  {\n    id: 3,\n    text: 'spam',\n    data: 'C',\n  },\n    {\n    id: 4,\n    text: 'not matched',\n    data: 'Y',\n  },\n];\n\nreturn data;"
+				"data": [
+					{ "id": 1, "text": "foo", "data": "A", "data2": 555, "memo": "test" },
+					{ "id": 2, "text": "bar bar", "data": "E" },
+					{ "id": 3, "text": "spam", "data": "C" },
+					{ "id": 4, "text": "not matched", "data": "Y" }
+				]
 			},
 			"id": "3f4b329b-9d7f-475b-815a-5bb7abfae247",
-			"name": "Function",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "First Input 1",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-100, 600]
 		},
 		{
 			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const data = [\n  {\n    id: 1,\n    text: 'foo',\n    data: 'D',\n    data3: 111,\n    memo: 'test'\n  },\n    {\n    id: 1,\n    text: 'foo',\n    data: 'DD',\n  },\n  {\n    id: 2,\n    text: 'bar bar',\n    data: 'E',\n  },\n  {\n    id: 3,\n    text: 'spam',\n    data: 'F',\n  },\n  {\n    id: 5,\n    text: 'spam',\n    data: 'X',\n  },\n];\n\nreturn data;"
+				"data": [
+					{ "id": 1, "text": "foo", "data": "D", "data3": 111, "memo": "test" },
+					{ "id": 1, "text": "foo", "data": "DD" },
+					{ "id": 2, "text": "bar bar", "data": "E" },
+					{ "id": 3, "text": "spam", "data": "F" },
+					{ "id": 5, "text": "spam", "data": "X" }
+				]
 			},
 			"id": "a91e7fe8-b9fb-417f-a434-c15623246c99",
-			"name": "Function1",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "First Input 2",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-100, 760]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (!(items.length === 2) && items.filter(({json}) => json.text === 'foo' || 'spam').length !== 2) {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "bef942a0-21f4-469d-b019-e528140d9686",
-			"name": "Function2",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "First Unmatched Input 2",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [440, 900]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (!(items.length === 1) && items[0].json.data !== 'Y') {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "29b9aa7a-4d1f-442d-9487-7f46e0cba1fe",
-			"name": "Function3",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "First Unmatched Input 1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [440, 440]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (!(items.length === 1) && items[0].json.data !== 'E') {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "5669e2d2-6cfe-4df2-9513-3871df1fb7f1",
-			"name": "Function4",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "First Same",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [440, 580]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (!(items.length === 2) && items.filter(({json}) => json.text === 'foo' || 'spam').length !== 2) {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "4f7c534d-da1d-4947-8deb-9736c83e8956",
-			"name": "Function5",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "First Different",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [440, 740]
 		},
 		{
@@ -130,46 +127,46 @@
 		},
 		{
 			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const data = [\n  {\n    id: 1,\n    data: 'A',\n  },\n  {\n    id: 2,\n    data: 'B',\n  },\n  {\n    id: 3,\n    data: 'C',\n  },\n];\n\nreturn data;"
+				"data": [{ "id": 1, "data": "A" }, { "id": 2, "data": "B" }, { "id": 3, "data": "C" }]
 			},
 			"id": "d218a3b7-1f10-42d8-be27-155f15682855",
-			"name": "Function6",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "All Matches Input 1",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-120, 1260]
 		},
 		{
 			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const data = [\n  {\n    id: 1,\n    data: 'D',\n  },\n  {\n    id: 1,\n    data: 'DD',\n  },\n  {\n    id: 2,\n    data: 'E',\n  },\n  {\n    id: 2,\n    data: 'EE',\n  },\n  {\n    id: 3,\n    data: 'F',\n  },\n    {\n    id: 3,\n    data: 'FF',\n  },\n  {\n    id: 5,\n    data: 'X',\n  },\n];\n\nreturn data;"
+				"data": [
+					{ "id": 1, "data": "D" },
+					{ "id": 1, "data": "DD" },
+					{ "id": 2, "data": "E" },
+					{ "id": 2, "data": "EE" },
+					{ "id": 3, "data": "F" },
+					{ "id": 3, "data": "FF" },
+					{ "id": 5, "data": "X" }
+				]
 			},
 			"id": "7d8e9189-b8e7-4893-96ac-05533d846503",
-			"name": "Function7",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "All Matches Input 2",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-120, 1420]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (\n  items.filter(({json}) => json.id === 5).length !== 1 \n) {\n  throw new Error('Incorrect data');\n}\n\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "d030711e-4627-456d-936a-5fa433719b77",
-			"name": "Function8",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "All Matches Unmatched Input 2",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [540, 1440]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (\n  items.filter(({json}) => json.keys.id === 1).length !== 2 &&\n  items.filter(({json}) => json.keys.id === 2).length !== 2 &&\n  items.filter(({json}) => json.keys.id === 3).length !== 2\n) {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "c2033b2a-7046-411a-8a8f-8ed8b46a97e3",
-			"name": "Function11",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "All Matches Different",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [540, 1280]
 		},
 		{
@@ -204,24 +201,32 @@
 		},
 		{
 			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const data = [\n  {\n    id: {code: 1},\n    data: 'A',\n  },\n  {\n    id: {code: 2},\n    data: 'B',\n  },\n  {\n    id: {code: 3},\n    data: 'C',\n  },\n  {\n    id: {code: 4},\n    data: 'AA',\n  },\n];\n\nreturn data;"
+				"data": [
+					{ "id": { "code": 1 }, "data": "A" },
+					{ "id": { "code": 2 }, "data": "B" },
+					{ "id": { "code": 3 }, "data": "C" },
+					{ "id": { "code": 4 }, "data": "AA" }
+				]
 			},
 			"id": "e70cc695-01f5-456c-bdef-bcd85f4c90db",
-			"name": "Function12",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Mixed Input 1",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-120, 1900]
 		},
 		{
 			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const data = [\n  {\n    id: {code: 1},\n    data: 'A',\n  },\n  {\n    id: {code: 2},\n    data: 'E',\n  },\n  {\n    id: {code: 3},\n    data: 'F',\n  },\n    {\n    id: {code: 5},\n    data: 'EE',\n  },\n];\n\nreturn data;"
+				"data": [
+					{ "id": { "code": 1 }, "data": "A" },
+					{ "id": { "code": 2 }, "data": "E" },
+					{ "id": { "code": 3 }, "data": "F" },
+					{ "id": { "code": 5 }, "data": "EE" }
+				]
 			},
 			"id": "ae9aea77-57b4-4b5a-bb1f-cedda223a357",
-			"name": "Function13",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Mixed Input 2",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-120, 2060]
 		},
 		{
@@ -246,79 +251,72 @@
 		},
 		{
 			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const data = [\n  {\n    id: {code: 1},\n    data: 'A',\n  },\n  {\n    id: {code: 2},\n    data: 'B',\n  },\n  {\n    id: {code: 3},\n    data: 'C',\n  },\n   {\n    'id.code': 'AAA',\n  },\n];\n\nreturn data;"
+				"data": [
+					{ "id": { "code": 1 }, "data": "A" },
+					{ "id": { "code": 2 }, "data": "B" },
+					{ "id": { "code": 3 }, "data": "C" },
+					{ "id.code": "AAA" }
+				]
 			},
 			"id": "91d3256e-dda8-4d8f-9796-f2ab5c5e6372",
-			"name": "Function18",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Dot Notation Input 1",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-100, 2400]
 		},
 		{
 			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const data = [\n  {\n    id: {code: 1},\n    data: 'D',\n  },\n  {\n    id: {code: 2},\n    data: 'E',\n  },\n  {\n    id: {code: 3},\n    data: 'F',\n  },\n  {\n    'id.code': 'AAA',\n  },\n];\n\nreturn data;"
+				"data": [
+					{ "id": { "code": 1 }, "data": "D" },
+					{ "id": { "code": 2 }, "data": "E" },
+					{ "id": { "code": 3 }, "data": "F" },
+					{ "id.code": "AAA" }
+				]
 			},
 			"id": "36651bfd-6835-429a-b6f6-eb2cf4ab0178",
-			"name": "Function19",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Dot Notation Input 2",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-100, 2560]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (items[0].json.data !== 'EE') {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "b1929edc-cecb-4e0e-9698-e2210df4d839",
-			"name": "Function14",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Mixed Unmatched Input 2",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [420, 2240]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (items[0].json.data !== 'AA') {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "ffa2e4be-a352-466d-90fd-6be7be8df2c4",
-			"name": "Function15",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Mixed Unmatched Input 1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [420, 1780]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (items[0].json.data !== 'A') {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "3f1d1ed6-06ac-43d8-85f8-e290fd3ffbca",
-			"name": "Function16",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Mixed Same",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [420, 1920]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (items.filter(({json}) => json.data === 'E').length !== 1 && items.filter(({json}) => json.data === 'F').length !== 1) {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "6a0501c1-922f-48a4-813b-64106da3c988",
-			"name": "Function17",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Mixed Different",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [420, 2080]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (!(items.length === 3)) {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "10ce1673-eb0d-4794-a104-05abf0240a8e",
-			"name": "Function20",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Dot Notation Different",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [440, 2560]
 		},
 		{
@@ -338,14 +336,11 @@
 			"position": [-360, 1980]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (items[0].json['id.code'] !== 'AAA') {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "55362767-c887-4f31-9a23-fd171869e19f",
-			"name": "Function21",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Dot Notation Same",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [440, 2420]
 		},
 		{
@@ -372,57 +367,56 @@
 		},
 		{
 			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const data = [\n  {\n    id: {code: 1},\n    data: 'A',\n  },\n  {\n    id: {code: 2},\n    data: 'B',\n  },\n  {\n    id: {code: 3},\n    data: 'C',\n  },\n   {\n    'id.code': 'AAA',\n  },\n];\n\nreturn data;"
+				"data": [
+					{ "id": { "code": 1 }, "data": "A" },
+					{ "id": { "code": 2 }, "data": "B" },
+					{ "id": { "code": 3 }, "data": "C" },
+					{ "id.code": "AAA" }
+				]
 			},
 			"id": "8563aa7c-3e6c-47ba-999b-1fee0489a647",
-			"name": "Function22",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Literal Dot Input 1",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-80, 2780]
 		},
 		{
 			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const data = [\n  {\n    id: {code: 1},\n    data: 'D',\n  },\n  {\n    id: {code: 2},\n    data: 'E',\n  },\n  {\n    id: {code: 3},\n    data: 'F',\n  },\n  {\n    'id.code': 'AAA',\n  },\n];\n\nreturn data;"
+				"data": [
+					{ "id": { "code": 1 }, "data": "D" },
+					{ "id": { "code": 2 }, "data": "E" },
+					{ "id": { "code": 3 }, "data": "F" },
+					{ "id.code": "AAA" }
+				]
 			},
 			"id": "e5dc38cb-c5c3-4ae2-8bb4-5b1ef74c0a3f",
-			"name": "Function23",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Literal Dot Input 2",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-80, 2940]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (items.length !== 3) {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "7739d61b-f62b-47ad-81b5-5fb38b919e01",
-			"name": "Function24",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Literal Dot Unmatched Input 2",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [460, 3020]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (items[0].json['id.code'] !== 'AAA') {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "805f2f3d-51e7-45ad-94d3-ebb9a1c47964",
-			"name": "Function25",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Literal Dot Same",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [460, 2880]
 		},
 		{
-			"parameters": {
-				"mode": "runOnceForAllItems",
-				"jsCode": "const items = $input.all();\n\nif (items.length !== 3) {\n  throw new Error('Incorrect data');\n}\n\nreturn {success: true};"
-			},
+			"parameters": {},
 			"id": "b82d6133-783d-4777-818d-dbcbe3a82042",
-			"name": "Function26",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"name": "Literal Dot Unmatched Input 1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
 			"position": [460, 2740]
 		},
 		{
@@ -435,114 +429,106 @@
 		}
 	],
 	"pinData": {
-		"Function3": [
+		"First Unmatched Input 1": [{ "json": { "id": 4, "text": "not matched", "data": "Y" } }],
+		"First Same": [{ "json": { "id": 2, "text": "bar bar", "data": "E" } }],
+		"First Different": [
+			{ "json": { "id": 1, "text": "foo", "data": "D", "data3": 111, "memo": "test" } },
+			{ "json": { "id": 3, "text": "spam", "data": "F" } }
+		],
+		"First Unmatched Input 2": [
+			{ "json": { "id": 1, "text": "foo", "data": "DD" } },
+			{ "json": { "id": 5, "text": "spam", "data": "X" } }
+		],
+		"All Matches Different": [
 			{
 				"json": {
-					"success": true
+					"keys": { "id": 1 },
+					"same": { "id": 1 },
+					"different": { "data": { "input1": "A", "input2": "D" } }
+				}
+			},
+			{
+				"json": {
+					"keys": { "id": 1 },
+					"same": { "id": 1 },
+					"different": { "data": { "input1": "A", "input2": "DD" } }
+				}
+			},
+			{
+				"json": {
+					"keys": { "id": 2 },
+					"same": { "id": 2 },
+					"different": { "data": { "input1": "B", "input2": "E" } }
+				}
+			},
+			{
+				"json": {
+					"keys": { "id": 2 },
+					"same": { "id": 2 },
+					"different": { "data": { "input1": "B", "input2": "EE" } }
+				}
+			},
+			{
+				"json": {
+					"keys": { "id": 3 },
+					"same": { "id": 3 },
+					"different": { "data": { "input1": "C", "input2": "F" } }
+				}
+			},
+			{
+				"json": {
+					"keys": { "id": 3 },
+					"same": { "id": 3 },
+					"different": { "data": { "input1": "C", "input2": "FF" } }
 				}
 			}
 		],
-		"Function4": [
+		"All Matches Unmatched Input 2": [{ "json": { "id": 5, "data": "X" } }],
+		"Mixed Unmatched Input 1": [{ "json": { "id": { "code": 4 }, "data": "AA" } }],
+		"Mixed Same": [{ "json": { "id": { "code": 1 }, "data": "A" } }],
+		"Mixed Different": [
+			{ "json": { "id": { "code": 2 }, "data": "E" } },
+			{ "json": { "id": { "code": 3 }, "data": "F" } }
+		],
+		"Mixed Unmatched Input 2": [{ "json": { "id": { "code": 5 }, "data": "EE" } }],
+		"Dot Notation Same": [{ "json": { "id.code": "AAA" } }],
+		"Dot Notation Different": [
 			{
 				"json": {
-					"success": true
+					"keys": {},
+					"same": { "id": { "code": 1 } },
+					"different": { "data": { "input1": "A", "input2": "D" } }
+				}
+			},
+			{
+				"json": {
+					"keys": {},
+					"same": { "id": { "code": 2 } },
+					"different": { "data": { "input1": "B", "input2": "E" } }
+				}
+			},
+			{
+				"json": {
+					"keys": {},
+					"same": { "id": { "code": 3 } },
+					"different": { "data": { "input1": "C", "input2": "F" } }
 				}
 			}
 		],
-		"Function5": [
-			{
-				"json": {
-					"success": true
-				}
-			}
+		"Literal Dot Unmatched Input 1": [
+			{ "json": { "id": { "code": 1 }, "data": "A" } },
+			{ "json": { "id": { "code": 2 }, "data": "B" } },
+			{ "json": { "id": { "code": 3 }, "data": "C" } }
 		],
-		"Function2": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		],
-		"Function11": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		],
-		"Function8": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		],
-		"Function15": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		],
-		"Function16": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		],
-		"Function17": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		],
-		"Function14": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		],
-		"Function21": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		],
-		"Function20": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		],
-		"Function26": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		],
-		"Function25": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		],
-		"Function24": [
-			{
-				"json": {
-					"success": true
-				}
-			}
+		"Literal Dot Same": [{ "json": { "id.code": "AAA" } }],
+		"Literal Dot Unmatched Input 2": [
+			{ "json": { "id": { "code": 1 }, "data": "D" } },
+			{ "json": { "id": { "code": 2 }, "data": "E" } },
+			{ "json": { "id": { "code": 3 }, "data": "F" } }
 		]
 	},
 	"connections": {
-		"Function": {
+		"First Input 1": {
 			"main": [
 				[
 					{
@@ -553,7 +539,7 @@
 				]
 			]
 		},
-		"Function1": {
+		"First Input 2": {
 			"main": [
 				[
 					{
@@ -568,28 +554,28 @@
 			"main": [
 				[
 					{
-						"node": "Function3",
+						"node": "First Unmatched Input 1",
 						"type": "main",
 						"index": 0
 					}
 				],
 				[
 					{
-						"node": "Function4",
+						"node": "First Same",
 						"type": "main",
 						"index": 0
 					}
 				],
 				[
 					{
-						"node": "Function5",
+						"node": "First Different",
 						"type": "main",
 						"index": 0
 					}
 				],
 				[
 					{
-						"node": "Function2",
+						"node": "First Unmatched Input 2",
 						"type": "main",
 						"index": 0
 					}
@@ -600,12 +586,12 @@
 			"main": [
 				[
 					{
-						"node": "Function",
+						"node": "First Input 1",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "Function1",
+						"node": "First Input 2",
 						"type": "main",
 						"index": 0
 					}
@@ -618,21 +604,21 @@
 				[],
 				[
 					{
-						"node": "Function11",
+						"node": "All Matches Different",
 						"type": "main",
 						"index": 0
 					}
 				],
 				[
 					{
-						"node": "Function8",
+						"node": "All Matches Unmatched Input 2",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"Function6": {
+		"All Matches Input 1": {
 			"main": [
 				[
 					{
@@ -643,7 +629,7 @@
 				]
 			]
 		},
-		"Function7": {
+		"All Matches Input 2": {
 			"main": [
 				[
 					{
@@ -658,12 +644,12 @@
 			"main": [
 				[
 					{
-						"node": "Function6",
+						"node": "All Matches Input 1",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "Function7",
+						"node": "All Matches Input 2",
 						"type": "main",
 						"index": 0
 					}
@@ -674,35 +660,35 @@
 			"main": [
 				[
 					{
-						"node": "Function15",
+						"node": "Mixed Unmatched Input 1",
 						"type": "main",
 						"index": 0
 					}
 				],
 				[
 					{
-						"node": "Function16",
+						"node": "Mixed Same",
 						"type": "main",
 						"index": 0
 					}
 				],
 				[
 					{
-						"node": "Function17",
+						"node": "Mixed Different",
 						"type": "main",
 						"index": 0
 					}
 				],
 				[
 					{
-						"node": "Function14",
+						"node": "Mixed Unmatched Input 2",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"Function12": {
+		"Mixed Input 1": {
 			"main": [
 				[
 					{
@@ -713,7 +699,7 @@
 				]
 			]
 		},
-		"Function13": {
+		"Mixed Input 2": {
 			"main": [
 				[
 					{
@@ -724,7 +710,7 @@
 				]
 			]
 		},
-		"Function18": {
+		"Dot Notation Input 1": {
 			"main": [
 				[
 					{
@@ -735,7 +721,7 @@
 				]
 			]
 		},
-		"Function19": {
+		"Dot Notation Input 2": {
 			"main": [
 				[
 					{
@@ -751,14 +737,14 @@
 				[],
 				[
 					{
-						"node": "Function21",
+						"node": "Dot Notation Same",
 						"type": "main",
 						"index": 0
 					}
 				],
 				[
 					{
-						"node": "Function20",
+						"node": "Dot Notation Different",
 						"type": "main",
 						"index": 0
 					}
@@ -800,12 +786,12 @@
 			"main": [
 				[
 					{
-						"node": "Function18",
+						"node": "Dot Notation Input 1",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "Function19",
+						"node": "Dot Notation Input 2",
 						"type": "main",
 						"index": 0
 					}
@@ -816,12 +802,12 @@
 			"main": [
 				[
 					{
-						"node": "Function12",
+						"node": "Mixed Input 1",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "Function13",
+						"node": "Mixed Input 2",
 						"type": "main",
 						"index": 0
 					}
@@ -832,14 +818,14 @@
 			"main": [
 				[
 					{
-						"node": "Function26",
+						"node": "Literal Dot Unmatched Input 1",
 						"type": "main",
 						"index": 0
 					}
 				],
 				[
 					{
-						"node": "Function25",
+						"node": "Literal Dot Same",
 						"type": "main",
 						"index": 0
 					}
@@ -847,14 +833,14 @@
 				[],
 				[
 					{
-						"node": "Function24",
+						"node": "Literal Dot Unmatched Input 2",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"Function22": {
+		"Literal Dot Input 1": {
 			"main": [
 				[
 					{
@@ -865,7 +851,7 @@
 				]
 			]
 		},
-		"Function23": {
+		"Literal Dot Input 2": {
 			"main": [
 				[
 					{
@@ -880,12 +866,12 @@
 			"main": [
 				[
 					{
-						"node": "Function22",
+						"node": "Literal Dot Input 1",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "Function23",
+						"node": "Literal Dot Input 2",
 						"type": "main",
 						"index": 0
 					}
