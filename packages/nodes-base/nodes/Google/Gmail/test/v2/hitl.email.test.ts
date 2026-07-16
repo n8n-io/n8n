@@ -137,13 +137,29 @@ describe('Gmail sendAndWait email builder', () => {
 
 		expect(threadId).toBe('thread123');
 		expect(email.inReplyTo).toBe('<mid@mail.example.com>');
-		expect(email.references).toBe('<mid@mail.example.com>');
+		expect(email.reference).toBe('<mid@mail.example.com>');
 		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/gmail/v1/users/me/threads/thread123',
 			{},
 			{ format: 'metadata', metadataHeaders: ['Message-ID', 'Subject'] },
 		);
+	});
+
+	it('should serialize the thread reply headers into the MIME message', async () => {
+		setupParameters({ advancedEmailOptions: { threadId: 'thread123' } });
+		(genericFunctions.googleApiRequest as Mock).mockResolvedValueOnce({
+			messages: [
+				{ payload: { headers: [{ name: 'Message-ID', value: '<mid@mail.example.com>' }] } },
+			],
+		});
+
+		const { email } = await createSendAndWaitEmail(mockExecuteFunctions);
+		const raw = await genericFunctions.encodeEmail(email);
+		const mime = Buffer.from(raw, 'base64url').toString('utf8');
+
+		expect(mime).toContain('In-Reply-To: <mid@mail.example.com>');
+		expect(mime).toContain('References: <mid@mail.example.com>');
 	});
 
 	it('should take the subject from the thread when replying in a thread', async () => {

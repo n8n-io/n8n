@@ -38,7 +38,9 @@ async function applyThreadToEmail(
 
 	if (messageId) {
 		email.inReplyTo = messageId;
-		email.references = messageId;
+		// IEmail has both `reference` and `references`; encodeEmail() only
+		// serializes the singular one into the References header.
+		email.reference = messageId;
 	}
 	if (threadSubject) {
 		email.subject = /^re:/i.test(threadSubject) ? threadSubject : `Re: ${threadSubject}`;
