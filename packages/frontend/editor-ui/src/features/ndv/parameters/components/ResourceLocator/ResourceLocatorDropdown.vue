@@ -6,7 +6,8 @@ import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
+import { ResourceLocatorDropdownTeleportedKey } from '@/app/constants';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
@@ -64,6 +65,8 @@ const debouncedLoadMore = debounce(
 
 const i18n = useI18n();
 const $style = useCssModule();
+
+const teleported = inject(ResourceLocatorDropdownTeleportedKey, false);
 
 const hoverIndex = ref(0);
 const showHoverUrl = ref(false);
@@ -269,7 +272,7 @@ watch(
 		:width="props.width ? `${props.width}px` : undefined"
 		:content-class="$style.popover"
 		:open="props.show"
-		:teleported="false"
+		:teleported="teleported"
 		:enable-scrolling="false"
 		data-test-id="resource-locator-dropdown"
 	>

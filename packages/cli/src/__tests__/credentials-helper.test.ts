@@ -1281,7 +1281,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 
 			const { CredentialResolutionError } = await import(
-				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error'
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error.js'
 			);
 
 			const resolvableCredentialEntity = {
@@ -1293,7 +1293,7 @@ describe('CredentialsHelper', () => {
 			credentialsRepository.findOneByOrFail.mockResolvedValue(resolvableCredentialEntity);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
 				new CredentialResolutionError(
-					'Cannot resolve dynamic credentials without execution context for "Test Credentials"',
+					"This node uses an end-user credential, but no user could be identified for this run, so the credential for it couldn't be resolved",
 				),
 			);
 
@@ -1315,7 +1315,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 
 			const { CredentialResolutionError } = await import(
-				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error'
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error.js'
 			);
 
 			const resolvableCredentialEntity = {
@@ -1327,7 +1327,7 @@ describe('CredentialsHelper', () => {
 			credentialsRepository.findOneByOrFail.mockResolvedValue(resolvableCredentialEntity);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
 				new CredentialResolutionError(
-					'Cannot resolve dynamic credentials without execution context for "Test Credentials"',
+					"This node uses an end-user credential, but no user could be identified for this run, so the credential for it couldn't be resolved",
 				),
 			);
 

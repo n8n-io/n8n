@@ -253,13 +253,10 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
-			agentRepository,
 			n8nCheckpointStorage,
 			agentExecutionService,
 			telemetry,
 			runtimeCacheService,
-			credentialsService,
-			agentRuntimeReconstructionService,
 			mock<IntegrationMessageContextService>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
