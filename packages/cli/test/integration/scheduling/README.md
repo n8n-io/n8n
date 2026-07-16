@@ -58,6 +58,28 @@ N8N_SCHEDULER_BENCHMARK=1 pnpm --filter n8n test:postgres scheduler-benchmarks
 At the default workload a full run is ~50s on SQLite and ~110s on Postgres
 (local, laptop-class). Scale via env for a bigger host.
 
+Without `N8N_SCHEDULER_BENCHMARK=1` both suites are skipped
+(`describe.runIf(...)`), so you get no output at all — that's the usual reason
+a run seems to produce "no results".
+
+### Where the results go
+
+The suites don't write any file or artifact — every KPI is printed to **stdout**
+via `console.log`, one block per benchmark, prefixed with
+`[scheduler-benchmark · <dialect>]` (capacity/punctuality/recovery/health) or
+`[scheduler-query · <dialect>]` (per-query profiling). Because Vitest buffers
+per-test logs, the reliable way to capture them is to redirect the run and grep
+the prefix:
+
+```sh
+N8N_SCHEDULER_BENCHMARK=1 pnpm --filter n8n test:sqlite scheduler-benchmarks > bench.log 2>&1
+grep -A20 'scheduler-benchmark ·' bench.log
+```
+
+The tables in [Observed numbers](#observed-numbers-local-laptop-class-default-workload)
+and `benchmark-baseline.md` are **hand-captured** from that stdout — nothing
+regenerates them automatically.
+
 ### Tuning the workload
 
 | Env var | Default | Meaning |
