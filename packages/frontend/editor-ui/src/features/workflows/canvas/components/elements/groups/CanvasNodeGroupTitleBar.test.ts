@@ -105,8 +105,15 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('emits open:contextmenu when right-clicking the title preview', async () => {
-			const wrapper = render();
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			await fireEvent.contextMenu(wrapper.getByTestId('inline-edit-preview'));
+
+			expect(wrapper.emitted()['open:contextmenu']).toHaveLength(1);
+		});
+
+		it('emits open:contextmenu when right-clicking the collapsed title', async () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			await fireEvent.contextMenu(wrapper.getByTestId('canvas-node-group-collapsed-title'));
 
 			expect(wrapper.emitted()['open:contextmenu']).toHaveLength(1);
 		});
@@ -159,7 +166,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
 			const outsideListener = vi.fn();
 			wrapper.container.addEventListener('click', outsideListener);
-			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-collapsed-title'));
 			expect(outsideListener).toHaveBeenCalled();
 		});
 
@@ -381,15 +388,17 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		// Collapsed groups rename through the modal (Canvas.onOpenGroupRenameModal),
-		// so the inline editor is inert while collapsed.
-		it('does not enter edit mode on title click when collapsed', async () => {
+		// so the inline editor is replaced by a plain, wrappable title while collapsed.
+		it('renders a plain non-editable title instead of the inline editor when collapsed', async () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
-			const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
 
-			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
+			expect(wrapper.queryByTestId('inline-edit-input')).toBeNull();
+			const title = wrapper.getByTestId('canvas-node-group-collapsed-title');
+			expect(title).toHaveTextContent('My group');
+
+			await fireEvent.click(title);
 			await flushPromises();
 
-			expect(input).not.toHaveFocus();
 			expect(wrapper.emitted()['update:name']).toBeUndefined();
 		});
 
@@ -401,7 +410,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 
 			await flushPromises();
 
-			expect(wrapper.getByTestId('inline-edit-input')).not.toHaveFocus();
+			expect(wrapper.queryByTestId('inline-edit-input')).toBeNull();
 			expect(wrapper.emitted()['title:focused']).toBeUndefined();
 		});
 	});

@@ -48,6 +48,7 @@ const i18n = useI18n();
 const $style = useCssModule();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 const titleText = useTemplateRef<HTMLElement>('titleText');
+const collapsedTitle = useTemplateRef<HTMLElement>('collapsedTitle');
 
 const group = computed(() => props.data.group);
 const isAutofocusReady = computed(
@@ -94,6 +95,11 @@ const selectionRingStyle = computed(() => {
 const isTitleTruncated = ref(false);
 
 function updateTruncated() {
+	if (isCollapsed.value) {
+		const el = collapsedTitle.value;
+		isTitleTruncated.value = el ? el.scrollHeight > el.clientHeight + 1 : false;
+		return;
+	}
 	const el = titleText.value;
 	if (!el) {
 		isTitleTruncated.value = false;
@@ -271,15 +277,24 @@ function onWrapperPointerDown(event: PointerEvent) {
 					>
 						<div ref="titleText" :class="$style.titleText">
 							<N8nInlineTextEdit
+								v-if="!isCollapsed"
 								ref="titleEdit"
-								:class="[{ nodrag: !isCollapsed }, $style.inlineEdit]"
+								:class="['nodrag', $style.inlineEdit]"
 								:model-value="group.name"
-								:read-only="readOnly || isCollapsed"
+								:read-only="readOnly"
 								:min-width="0"
 								max-width="100%"
 								:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
 								@update:model-value="onTitleUpdate"
 							/>
+							<div
+								v-else
+								ref="collapsedTitle"
+								:class="$style.collapsedTitle"
+								data-test-id="canvas-node-group-collapsed-title"
+							>
+								{{ group.name }}
+							</div>
 							<div
 								v-if="allNodesDisabled"
 								:class="$style.deactivatedLabel"
@@ -449,6 +464,19 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 .inlineEdit {
 	width: fit-content;
+	max-width: 100%;
+}
+
+.collapsedTitle {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+	// Names without break opportunities still wrap instead of overflowing
+	overflow-wrap: anywhere;
+	line-height: var(--line-height--md);
+	min-width: 0;
 	max-width: 100%;
 }
 

@@ -414,7 +414,7 @@ describe('Canvas', () => {
 			// plain header surface, so clicking it toggles like the rest.
 			const { getByTestId, nodeGroupView } = await setupGroup({ collapsed: true });
 
-			await fireEvent.click(getByTestId('inline-edit-preview'));
+			await fireEvent.click(getByTestId('canvas-node-group-collapsed-title'));
 
 			await waitFor(() => expect(nodeGroupView.isGroupCollapsed('g1')).toBe(false));
 		});
