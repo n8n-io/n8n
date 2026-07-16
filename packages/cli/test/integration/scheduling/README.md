@@ -1,14 +1,20 @@
 # Durable scheduler benchmarks (CAT-3623)
 
-Performance benchmarks for the durable scheduler, run against **both** SQLite
+Two opt-in benchmark suites for the durable scheduler, run against **both** SQLite
 (single-writer) and Postgres (SKIP LOCKED, dead-tuple churn) so the two can be
 compared on the same numbers. They inform the
 [minimum-interval policy and conservative SQLite cadences](https://linear.app/n8n/issue/CAT-3623)
 decision.
 
-They live here — `scheduler-benchmarks.test.ts`, next to the other scheduling
-integration tests — rather than in `@n8n/performance` or `@n8n/benchmark`, on
-purpose (see below).
+- **`scheduler-benchmarks.test.ts`** — operator-facing KPIs (capacity,
+  punctuality, recovery, health). "Is throughput enough?" See below.
+- **`scheduler-query-benchmarks.test.ts`** — per-query profiling of
+  `ScheduledJobRepository` / `ScheduledTaskRepository`: latency KPIs and `EXPLAIN`
+  plans to surface index/query/config optimizations. See
+  [Query-level profiling](#query-level-profiling).
+
+Both live here, next to the other scheduling integration tests, rather than in
+`@n8n/performance` or `@n8n/benchmark`, on purpose (see below).
 
 ## The KPIs
 
@@ -110,3 +116,80 @@ Indicative only — hardware-dependent. Captured for orientation, not as thresho
 Postgres capacity is lower here because each fire is three sequential write
 round-trips (claim, mark started, complete) to a container over the loopback;
 the point is the per-dialect *shape*, not the absolute number.
+
+---
+
+## Query-level profiling
+
+`scheduler-query-benchmarks.test.ts` profiles the individual repository queries
+against a large, realistically-mixed corpus (default 100k `scheduled_task`, 50k
+`scheduled_job` rows: mostly terminal history, a slice of pending/due, some
+running/expired). For each hot query it reports **latency p50/p95/p99** (via the
+real repository method) and the **`EXPLAIN` plan**, flagged INDEX vs FULL SCAN.
+
+A FULL SCAN line is an optimization candidate? It is reported (and listed under
+"OPTIMIZATION CANDIDATES"), not asserted, since the fix is a judgement call. Hard
+assertions cover only correctness and a loose latency ceiling / throughput floor.
+
+### Running
+
+```sh
+N8N_SCHEDULER_BENCHMARK=1 pnpm --filter n8n test:sqlite scheduler-query-benchmarks
+N8N_SCHEDULER_BENCHMARK=1 pnpm --filter n8n test:postgres:integration:tc scheduler-query-benchmarks
+```
+
+Sizes are overridable: `N8N_SCHEDULER_QUERY_TASK_ROWS`, `_JOB_ROWS`, `_ITERS`,
+`_BATCH`, `_WRITE_BATCH`, `_WRITE_JOB_BATCH`.
+
+### Observed (local, laptop-class, 100k tasks / 50k jobs)
+
+Reads — latency p99 (ms) and plan:
+
+| Query | SQLite | Postgres | Plan |
+|-------|--------|----------|------|
+| `ScheduledTask.getMetricSnapshot` | ~9 | ~12 | **FULL / Seq Scan** |
+| `ScheduledTask.claimDueTasks` (select) | ~5 | ~6 | index (runAt partial) |
+| `ScheduledTask.findExpiredLeases` | <1 | ~1 | index (leaseExpiresAt partial) |
+| `ScheduledTask.deleteFinishedOlderThan` (select) | ~1.5 | ~15 | index (finishedAt partial) + status filter |
+| `ScheduledJob.claimDue` | ~1.5 | ~3.5 | index (nextRunAt partial) |
+
+Writes — throughput (rows/sec): task `insertIgnoringDuplicates` ~100k / ~34k,
+job `insertMany` ~33k / ~17k, `advanceMany` ~127k / ~49k (SQLite / Postgres).
+
+### Optimization findings
+
+1. **`getMetricSnapshot` does a full table scan on both dialects.** There is no
+   index supporting `WHERE status IN ('pending','running')`, so the Prometheus
+   scrape scans the whole table, and its cost grows with total history (dead
+   tuples on Postgres), not just the working set. It's still fast at 100k (~10ms)
+   but scales linearly — at 1M rows expect ~100ms per scrape. Options:
+   - split into two `COUNT(*)` reads, each hitting a partial index
+     (`WHERE status = 'pending'` / `= 'running'`) for index-only counts; or
+   - add a partial/covering index keyed on `status` (the `due` count and
+     `oldestPendingAgeMs` still need `runAt`, so a `(status, runAt)` partial index
+     on the live statuses is the strongest single change); or
+   - accept the scan but keep retention aggressive so the table stays small.
+
+2. **`advanceMany`'s CASE update is unusable at its default chunk on SQLite.** It
+   builds one `WHEN id = ? THEN ?` branch per row; SQLite caps expression depth at
+   1000, so even a few hundred branches error (`Expression tree is too large`).
+   The method's default `chunkSize` is 1000 — fine on Postgres, but callers must
+   pass a small chunk (~200) on SQLite. Options: make the default dialect-aware,
+   or rewrite the bulk advance as an `UPDATE ... FROM (VALUES ...)` join.
+
+3. **`insertMany` is not safe for large batches on SQLite.** It neither chunks the
+   insert (bounded by the ~32k bind-parameter ceiling) nor the read-back
+   `name IN (...)` (an IN list past ~1000 terms hits the same expression-depth
+   cap). Provisioning normally inserts few jobs, so this is latent, but a bulk
+   activation would break on SQLite. Option: chunk both the insert and the
+   read-back inside `insertMany`.
+
+4. **Minor:** `deleteFinishedOlderThan` on Postgres applies the terminal-`status`
+   `IN` as a post-index Filter on top of the `finishedAt` index (p99 ~15ms). A
+   `(finishedAt)` index already covers ordering; a `(status, finishedAt)` partial
+   index would let retention avoid the recheck, if it ever becomes hot.
+
+Config levers worth testing alongside the above: SQLite already runs WAL; larger
+`cache_size` / `mmap_size` mainly help the scan in finding (1). On Postgres,
+keeping autovacuum aggressive on this high-churn table bounds the dead tuples that
+inflate the finding-(1) scan.
