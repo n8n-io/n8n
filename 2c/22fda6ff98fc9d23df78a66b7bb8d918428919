@@ -1,0 +1,14 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirement.exporter.ts
+  h_9b272a633435fb 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2c22fda6ff98fc9d23df78a66b7bb8d918428919",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
