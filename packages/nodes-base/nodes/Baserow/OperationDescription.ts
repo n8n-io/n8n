@@ -507,7 +507,8 @@ export const operationFields: INodeProperties[] = [
 									{
 										name: 'Date Equals Day Of Month',
 										value: 'date_equals_day_of_month',
-										description: 'Day of month matches the given number (1-31).',
+										description:
+											'Day of month matches the given number (1-31); pass a raw number, not a formatted date',
 									},
 									{
 										name: 'Date Equal (Deprecated)',
@@ -729,7 +730,7 @@ export const operationFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to compare to. For date filters, enter a date as YYYY-MM-DD',
+								description: 'Value to compare to. For date filters, enter a date as YYYY-MM-DD.',
 								placeholder: 'e.g. 2026-06-17',
 							},
 						],

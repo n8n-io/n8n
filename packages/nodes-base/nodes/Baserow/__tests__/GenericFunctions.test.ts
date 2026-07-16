@@ -178,6 +178,12 @@ describe('Baserow > GenericFunctions', () => {
 		it('should pass number only for deprecated date_after_days_ago', () => {
 			expect(formatBaserowFilterValue('date_after_days_ago', '20')).toBe('20');
 		});
+
+		// date_equals_day_of_month expects a raw day number (1-31), not a multi-step value
+		it('should pass date_equals_day_of_month as a raw number', () => {
+			expect(formatBaserowFilterValue('date_equals_day_of_month', '15')).toBe('15');
+		});
+
 		it('should leave non-date operators unchanged', () => {
 			expect(formatBaserowFilterValue('equal', 'foo')).toBe('foo');
 		});

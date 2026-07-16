@@ -20,15 +20,6 @@ export const MULTI_STEP_DATE_OPERATORS = new Set([
 	'date_is_within',
 ]);
 
-export const LEGACY_PLAIN_ISO_DATE_OPERATORS = new Set([
-	'date_equal',
-	'date_not_equal',
-	'date_before',
-	'date_before_or_equal',
-	'date_after',
-	'date_after_or_equal',
-]);
-
 export const DEPRECATED_TIMEZONE_NUMBER_OPERATORS = new Set([
 	'date_within_days',
 	'date_within_weeks',
@@ -38,8 +29,6 @@ export const DEPRECATED_TIMEZONE_NUMBER_OPERATORS = new Set([
 	'date_equals_years_ago',
 ]);
 
-export const DEPRECATED_NUMBER_ONLY_OPERATORS = new Set(['date_after_days_ago']);
-
 export const DEPRECATED_TIMEZONE_ONLY_OPERATORS = new Set([
 	'date_equals_today',
 	'date_before_today',
@@ -48,15 +37,6 @@ export const DEPRECATED_TIMEZONE_ONLY_OPERATORS = new Set([
 	'date_equals_month',
 	'date_equals_year',
 ]);
-
-export const DATE_FILTER_OPERATORS = [
-	...MULTI_STEP_DATE_OPERATORS,
-	'date_equals_day_of_month',
-	...LEGACY_PLAIN_ISO_DATE_OPERATORS,
-	...DEPRECATED_TIMEZONE_NUMBER_OPERATORS,
-	...DEPRECATED_NUMBER_ONLY_OPERATORS,
-	...DEPRECATED_TIMEZONE_ONLY_OPERATORS,
-] as const;
 
 const RELATIVE_DATE_OPERATORS = new Set([
 	'today',
@@ -90,6 +70,7 @@ function isFullyFormattedMultiStepValue(value: string): boolean {
 /**
  * Formats filter values for Baserow date operators.
  * Multi-step operators require `{timezone}?{value}?{operator}` (e.g. `UTC?2026-06-17?exact_date`).
+ * `date_equals_day_of_month` is not multi-step — pass the day number as-is (e.g. `15`).
  */
 export function formatBaserowFilterValue(
 	operator: string,
