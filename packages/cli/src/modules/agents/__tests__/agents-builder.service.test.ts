@@ -1,6 +1,5 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
-import type { AgentsConfig } from '@n8n/config';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -47,7 +46,6 @@ function makeService(agentCheckpointRepository: Mocked<AgentCheckpointRepository
 		mock<InstanceAiCreditService>(),
 		mock<N8NCheckpointStorage>(),
 		agentCheckpointRepository,
-		mock<AgentsConfig>(),
 	);
 }
 
