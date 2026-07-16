@@ -100,10 +100,17 @@ export class UsageAccumulator {
 			output: 0,
 		};
 		// uncachedInput comes straight from the SDK's noCache figure (never derived by
-		// subtraction). output already includes reasoning tokens (AI SDK semantics).
-		entry.uncachedInput += Math.max(0, inputTokenDetails?.noCache ?? 0);
-		entry.cacheRead += Math.max(0, inputTokenDetails?.cacheRead ?? 0);
-		entry.cacheWrite += Math.max(0, inputTokenDetails?.cacheWrite ?? 0);
+		// subtraction) when the provider supplied a usable cache breakdown. When it
+		// didn't (e.g. uncached OpenAI usage, which reports only an aggregate prompt
+		// count), fall back to promptTokens so input tokens are still billed instead
+		// of silently dropped. output already includes reasoning tokens (AI SDK semantics).
+		const noCache = Math.max(0, inputTokenDetails?.noCache ?? 0);
+		const cacheRead = Math.max(0, inputTokenDetails?.cacheRead ?? 0);
+		const cacheWrite = Math.max(0, inputTokenDetails?.cacheWrite ?? 0);
+		const hasUsableBreakdown = noCache + cacheRead + cacheWrite > 0;
+		entry.uncachedInput += hasUsableBreakdown ? noCache : Math.max(0, promptTokens ?? 0);
+		entry.cacheRead += cacheRead;
+		entry.cacheWrite += cacheWrite;
 		entry.output += Math.max(0, completionTokens ?? 0);
 		this.perModel.set(model, entry);
 	}
