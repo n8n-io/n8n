@@ -241,6 +241,10 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			seedExecution.value = null;
 		}
 
+		// Opens the case detail AND seeds the form for it: for an existing row it
+		// loads that row's inputs/expected/name; for a new case (index null) it
+		// clears them. Also resets `activeRowId`/`seedExecution`. This is where
+		// `inputs`/`expectedValues`/`caseName` get reassigned on navigation.
 		function openDetail(index: number | null) {
 			viewMode.value = 'detail';
 			activeRowIndex.value = index;

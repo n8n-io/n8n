@@ -329,6 +329,20 @@ export function numericRowId(id: unknown): number | undefined {
 	return undefined;
 }
 
+// Build the string-typed columns a data table needs from a list of names,
+// deduped in order (an input and an expected column can share a name). Callers
+// decide which names to include (e.g. the per-case name column).
+export function buildRequiredColumns(columnNames: string[]): DataTableColumnCreatePayload[] {
+	const seen = new Set<string>();
+	const columns: DataTableColumnCreatePayload[] = [];
+	for (const name of columnNames) {
+		if (seen.has(name)) continue;
+		seen.add(name);
+		columns.push({ name, type: 'string' });
+	}
+	return columns;
+}
+
 // Bookkeeping columns (id/createdAt/updatedAt) are rejected by the update API.
 export function stripBookkeeping(row: DataTableRow): DataTableRow {
 	const out: DataTableRow = {};

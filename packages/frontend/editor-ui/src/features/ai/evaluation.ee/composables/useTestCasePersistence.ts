@@ -12,10 +12,7 @@ import {
 	insertDataTableRowApi,
 	updateDataTableRowsApi,
 } from '@/features/core/dataTable/dataTable.api';
-import type {
-	DataTableColumnCreatePayload,
-	DataTableRow,
-} from '@/features/core/dataTable/dataTable.types';
+import type { DataTableRow } from '@/features/core/dataTable/dataTable.types';
 import { listEvaluationConfigs } from '../evaluation.api';
 import type { UpsertEvaluationConfigDto } from '@n8n/api-types';
 import { useEvaluationStore } from '../evaluation.store';
@@ -27,6 +24,7 @@ import {
 } from '../evaluation.constants';
 import { buildEvaluationConfigDto } from './buildEvaluationConfigDto';
 import {
+	buildRequiredColumns,
 	numericRowId,
 	stripBookkeeping,
 	useEvaluationPersistenceHelpers,
@@ -67,8 +65,9 @@ export function useTestCasePersistence() {
 		activeOps += 1;
 		isPersisting.value = true;
 		// `run` and the queue reassignment happen synchronously (before the await),
-		// so ops are ordered by call order.
-		const run = persistenceQueue.then(op, op);
+		// so ops are ordered by call order. `persistenceQueue` only ever holds
+		// `settled` (which never rejects), so a plain `.then(op)` always fires.
+		const run = persistenceQueue.then(op);
 		const settled = run.then(
 			() => undefined,
 			() => undefined,
@@ -104,20 +103,13 @@ export function useTestCasePersistence() {
 
 		const inputNames = sliceInputs.value.fieldNames;
 		const expectedFields = getExpectedFieldsForMetrics(wizardStore.selectedMetricKeys);
-		// Dedupe: an input column and an expected column can share a name.
-		const seenColumns = new Set<string>();
-		const requiredColumns: DataTableColumnCreatePayload[] = [];
 		// `TEST_CASE_NAME_COLUMN` holds the per-case name; kept out of the config's
 		// input/expected mapping so runs ignore it.
-		for (const name of [
+		const requiredColumns = buildRequiredColumns([
 			...inputNames,
 			...expectedFields.map((f) => f.name),
 			TEST_CASE_NAME_COLUMN,
-		]) {
-			if (seenColumns.has(name)) continue;
-			seenColumns.add(name);
-			requiredColumns.push({ name, type: 'string' as const });
-		}
+		]);
 
 		// Dry-run before any API calls so shape errors don't leave half-state.
 		const dryRun = buildEvaluationConfigDto({
@@ -177,7 +169,8 @@ export function useTestCasePersistence() {
 			} else {
 				// EDIT path: update the row at activeRowIndex. One fetch yields both
 				// the row id (when not already known) and the prior data for rollback.
-				const n = wizardStore.activeRowIndex as number;
+				const n = wizardStore.activeRowIndex;
+				if (n === null) throw new Error('Cannot resolve active row index for edit');
 				const priorFetch = await getDataTableRowsApi(
 					rootStore.restApiContext,
 					ensured.id,
@@ -260,7 +253,10 @@ export function useTestCasePersistence() {
 		}
 
 		const wf = workflowDocumentStore.value;
-		const workflowId = wf?.workflowId as string;
+		const workflowId = wf?.workflowId;
+		// persistCase only succeeds with a workflow id present; guard rather than
+		// assert so a missing id can't slip a bad dispatch through.
+		if (!workflowId) return false;
 		const { configId, resolvedIndex, isNewCase } = result;
 
 		// Don't roll back on dispatch failure — config is intact, retry is safe.
@@ -311,19 +307,13 @@ export function useTestCasePersistence() {
 
 		const inputNames = sliceInputs.value.fieldNames;
 		const expectedFields = getExpectedFieldsForMetrics(wizardStore.selectedMetricKeys);
-		const seenColumns = new Set<string>();
-		const requiredColumns: DataTableColumnCreatePayload[] = [];
 		// `TEST_CASE_NAME_COLUMN` holds the per-case name; kept out of the config's
 		// input/expected mapping so runs ignore it.
-		for (const name of [
+		const requiredColumns = buildRequiredColumns([
 			...inputNames,
 			...expectedFields.map((f) => f.name),
 			TEST_CASE_NAME_COLUMN,
-		]) {
-			if (seenColumns.has(name)) continue;
-			seenColumns.add(name);
-			requiredColumns.push({ name, type: 'string' as const });
-		}
+		]);
 
 		const tableName = getCanonicalEvaluationName(wf.name);
 		try {

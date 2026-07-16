@@ -50,7 +50,7 @@ export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<Sli
 		const exec = pickUserExecution([
 			// A user-chosen seed execution (from the Tests list) wins so the detail
 			// form prefills from exactly the execution they picked.
-			wizardStore.seedExecution as ExecutionLike | null,
+			wizardStore.seedExecution,
 			workflowExecutionStateStore.value.activeExecution,
 			workflowExecutionStateStore.value.lastSuccessfulExecution,
 			toValue(options?.fallbackExecution),

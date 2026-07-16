@@ -11,10 +11,7 @@ import {
 	insertDataTableRowApi,
 	updateDataTableRowsApi,
 } from '@/features/core/dataTable/dataTable.api';
-import type {
-	DataTableColumnCreatePayload,
-	DataTableRow,
-} from '@/features/core/dataTable/dataTable.types';
+import type { DataTableRow } from '@/features/core/dataTable/dataTable.types';
 import type { UpsertEvaluationConfigDto } from '@n8n/api-types';
 import { useEvaluationStore } from '../../evaluation.store';
 import { useSliceInputs } from '../../composables/useSliceInputs';
@@ -24,6 +21,7 @@ import {
 } from '../../evaluation.constants';
 import { buildEvaluationConfigDto } from '../../composables/buildEvaluationConfigDto';
 import {
+	buildRequiredColumns,
 	numericRowId,
 	stripBookkeeping,
 	useEvaluationPersistenceHelpers,
@@ -69,16 +67,10 @@ export function useWizardPersistence() {
 
 		const inputNames = sliceInputs.value.fieldNames;
 		const expectedFields = getExpectedFieldsForMetrics(wizardStore.selectedMetricKeys);
-		// Dedupe by name — an input column and an expected column can share a
-		// name, which would otherwise send a duplicate column and fail the
-		// data-table create.
-		const seenColumns = new Set<string>();
-		const requiredColumns: DataTableColumnCreatePayload[] = [];
-		for (const name of [...inputNames, ...expectedFields.map((f) => f.name)]) {
-			if (seenColumns.has(name)) continue;
-			seenColumns.add(name);
-			requiredColumns.push({ name, type: 'string' as const });
-		}
+		const requiredColumns = buildRequiredColumns([
+			...inputNames,
+			...expectedFields.map((f) => f.name),
+		]);
 
 		// Dry-run before any API calls so shape errors don't leave half-state.
 		const dryRun = buildEvaluationConfigDto({
