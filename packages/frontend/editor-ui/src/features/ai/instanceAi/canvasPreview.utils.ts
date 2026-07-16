@@ -53,7 +53,7 @@ type AgentArtifactTarget = Pick<AgentArtifactResult, 'agentId' | 'projectId'>;
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * and toolCallId from the latest successful build-workflow / submit-workflow tool result.
+ * and toolCallId from the latest successful build-workflow tool result.
  */
 export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
@@ -63,7 +63,7 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		if (
-			(tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') &&
+			tc.toolName === 'build-workflow' &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
@@ -227,7 +227,7 @@ const WORKFLOW_LOCKING_TOOLS = new Set([
  *      This covers short gaps between tool calls while the agent run is still
  *      ongoing.
  *   2. An active workflow-builder sub-agent targeting the workflow (covers the
- *      whole build window: read file → edit → submit-workflow → verify).
+ *      whole build window: read file → edit → build-workflow → verify).
  *   3. An in-flight workflow-affecting tool call targeting the workflow — the
  *      build/setup/verify tools, `executions.run`, or a `workflows` update /
  *      restore-version / setup action. Read-only `workflows` actions (get-json,

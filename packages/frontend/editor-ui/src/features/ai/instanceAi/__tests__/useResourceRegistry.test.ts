@@ -364,7 +364,7 @@ describe('useResourceRegistry', () => {
 								targetResource: { type: 'workflow', id: 'wf-edit' },
 								toolCalls: [
 									makeToolCall({
-										toolName: 'submit-workflow',
+										toolName: 'build-workflow',
 										result: { workflowId: 'wf-edit', workflowName: 'Renamed' },
 									}),
 								],
@@ -396,7 +396,7 @@ describe('useResourceRegistry', () => {
 							}),
 							makeToolCall({
 								toolCallId: 'tc-2',
-								toolName: 'submit-workflow',
+								toolName: 'build-workflow',
 								result: { workflowId: 'wf-1', workflowName: 'Renamed' },
 							}),
 						],

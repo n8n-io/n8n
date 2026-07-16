@@ -90,22 +90,6 @@ describe('getLatestBuildResult', () => {
 		});
 	});
 
-	test('returns workflowId from successful submit-workflow call', () => {
-		const node = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-submit-1',
-					toolName: 'submit-workflow',
-					result: { success: true, workflowId: 'wf-456' },
-				}),
-			],
-		});
-		expect(getLatestBuildResult(node)).toEqual({
-			workflowId: 'wf-456',
-			toolCallId: 'tc-submit-1',
-		});
-	});
-
 	test('returns the latest result when multiple builds exist', () => {
 		const node = makeAgentNode({
 			toolCalls: [

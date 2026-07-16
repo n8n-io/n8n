@@ -114,11 +114,7 @@ export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'filesystem') return 'file-text';
 	if (toolName === 'workspace' || toolName.startsWith('workspace_')) return 'folder';
 	if (toolName.includes('data-table')) return 'table';
-	if (
-		toolName.includes('workflow') ||
-		toolName === 'submit-workflow' ||
-		toolName === 'materialize-node-type'
-	) {
+	if (toolName.includes('workflow') || toolName === 'materialize-node-type') {
 		return 'workflow';
 	}
 	if (toolName.includes('credential')) return 'key-round';

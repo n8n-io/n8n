@@ -17,12 +17,8 @@ import { COMPILED_WORKFLOW_TRACE_RUN_NAME, DOMAIN_TOOL_IDS } from '../../src/too
 const DEFAULT_SOURCE_PROJECT = 'instance-ai';
 
 // Reference the live tool-id so a rename there follows here (or breaks the import).
-// patch/submit-workflow were removed in #32545 but stay for older traces.
-const WORKFLOW_BUILD_TOOLS = new Set<string>([
-	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-	'patch-workflow',
-	'submit-workflow',
-]);
+// patch-workflow was removed in #32545 but stays for older traces.
+const WORKFLOW_BUILD_TOOLS = new Set<string>([DOMAIN_TOOL_IDS.BUILD_WORKFLOW, 'patch-workflow']);
 
 // Workspace tools (@n8n/agents) whose ops mutate file content we replay. The names
 // live here only; a contract test pins them — and the arg keys below — against the

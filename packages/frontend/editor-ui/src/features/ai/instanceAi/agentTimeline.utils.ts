@@ -248,9 +248,9 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 		if (!tc.result || typeof tc.result !== 'object') continue;
 		const result = tc.result as Record<string, unknown>;
 
-		// Workflow artifacts from build-workflow / submit-workflow
+		// Workflow artifacts from build-workflow
 		if (
-			(tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') &&
+			tc.toolName === 'build-workflow' &&
 			typeof result.workflowId === 'string' &&
 			!seenIds.has(result.workflowId)
 		) {
