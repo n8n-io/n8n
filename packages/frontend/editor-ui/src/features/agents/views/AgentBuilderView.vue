@@ -411,22 +411,31 @@ async function refreshAgentAfterIntegrationChange(
 	]);
 }
 
-function sessionIdForPreview(): string {
-	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id ?? crypto.randomUUID();
+/**
+ * Prefer an already-active / continued session, else the most recent thread.
+ * Returns undefined when there is no history so the preview page can mint via
+ * `bindPreviewSession`. Do not invent a UUID here — putting a brand-new id into
+ * `continueSessionId` across a route change makes `onContinueLoaded` treat it as
+ * a stale deep-link and can leave the chat blank on the destination page.
+ */
+function sessionIdForPreview(): string | undefined {
+	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id;
 }
 
 async function openPreview(preferredSessionId?: string) {
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
-	activeChatSessionId.value = sessionId;
+	activeChatSessionId.value = sessionId ?? null;
+
+	const query = { ...route.query, prompt: undefined };
+	delete query[CONTINUE_SESSION_ID_PARAM];
+	if (sessionId) {
+		query[CONTINUE_SESSION_ID_PARAM] = sessionId;
+	}
 
 	await router.push({
 		name: AGENT_PREVIEW_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
-		query: {
-			...route.query,
-			prompt: undefined,
-			[CONTINUE_SESSION_ID_PARAM]: sessionId,
-		},
+		query,
 	});
 }
 
@@ -436,17 +445,6 @@ async function onOpenPreview() {
 	try {
 		await flushAutosave();
 	} catch {
-		return;
-	}
-	if (isArtifactMode.value) {
-		window.open(
-			router.resolve({
-				name: AGENT_PREVIEW_VIEW,
-				params: { projectId: projectId.value, agentId: agentId.value },
-			}).href,
-			'_blank',
-		);
-		telemetry.track('User opened agent preview', { agent_id: agentId.value });
 		return;
 	}
 	await openPreview();
@@ -1127,14 +1125,18 @@ function onContinueLoaded(count: number) {
 		: false;
 
 	if (count === 0 && requestedSessionId && !knownThread) {
-		exitContinueMode();
-		// `exitContinueMode` only drops the query param; the chat panel would
-		// otherwise sit blank waiting for a session to bind. Once the route
-		// update lands, latch onto an existing thread (or mint a fresh
-		// ephemeral one) so the test pane has something to render.
-		void nextTick(() => {
-			if (isPreviewMode.value) bindPreviewSession();
-		});
+		// Same-tab "New chat" already owns this ephemeral id via
+		// `activeChatSessionId` — drop the shareable URL param only.
+		if (activeChatSessionId.value === requestedSessionId) {
+			exitContinueMode();
+			return;
+		}
+		// Stale deep-link (or a cross-page navigation that left an unknown id
+		// in the URL): bind immediately so we never wait on a raced
+		// `router.replace` + `nextTick` that can leave the chat blank.
+		if (!isPreviewMode.value) return;
+		const latest = sessionsStore.threads?.[0];
+		setSessionInUrl(latest?.id ?? crypto.randomUUID());
 	}
 }
 
