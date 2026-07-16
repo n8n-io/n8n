@@ -1576,8 +1576,8 @@ importers:
         specifier: ^0.52.0
         version: 0.52.0
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
 
   packages/@n8n/chat-hub:
     dependencies:
@@ -1595,8 +1595,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1617,8 +1617,8 @@ importers:
         specifier: ^20.17.50
         version: 20.19.41
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1645,8 +1645,8 @@ importers:
         specifier: 'catalog:'
         version: 14.0.14
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -1655,7 +1655,7 @@ importers:
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
-        version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+        version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
 
   packages/@n8n/codemirror-lang:
     dependencies:
@@ -1853,8 +1853,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -1887,8 +1887,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -1897,7 +1897,7 @@ importers:
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
-        version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+        version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
 
   packages/@n8n/constants:
     devDependencies:
@@ -1905,8 +1905,8 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
 
   packages/@n8n/crdt:
     dependencies:
@@ -1924,8 +1924,8 @@ importers:
         specifier: workspace:*
         version: link:../vitest-config
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -2033,6 +2033,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
+      typescript6:
+        specifier: npm:@typescript/typescript6@6.0.2
+        version: '@typescript/typescript6@6.0.2'
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -3980,7 +3983,7 @@ importers:
         version: 5.1.2
       '@qdrant/js-client-rest':
         specifier: 'catalog:'
-        version: 1.16.2(typescript@6.0.2)
+        version: 1.16.2(typescript@7.0.2)
       '@rudderstack/rudder-sdk-node':
         specifier: 'catalog:'
         version: 3.0.5
@@ -4425,13 +4428,16 @@ importers:
         version: 7.1.1
       ts-essentials:
         specifier: ^7.0.3
-        version: 7.0.3(typescript@6.0.2)
+        version: 7.0.3(typescript@7.0.2)
       tsconfig-paths:
         specifier: ^4.2.0
         version: 4.2.0
       typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
+        specifier: catalog:typescript
+        version: 7.0.2
+      typescript6:
+        specifier: npm:@typescript/typescript6@6.0.2
+        version: '@typescript/typescript6@6.0.2'
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -4440,7 +4446,7 @@ importers:
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
-        version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+        version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
 
   packages/core:
     dependencies:
@@ -4783,6 +4789,9 @@ importers:
       '@vueuse/core':
         specifier: catalog:frontend
         version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -4808,6 +4817,9 @@ importers:
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 5.2.4(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
@@ -12712,6 +12724,10 @@ packages:
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [win32]
+
+  '@typescript/typescript6@6.0.2':
+    resolution: {integrity: sha512-mbCddXd+jm7hfx7w2YU64/Av4/NqqeG3GoRZgxPcgoTxYjhrcfJRw9ULch71SS4G+Q3bOXFhRvPqjguN0Hyp5w==}
+    hasBin: true
 
   '@typescript/vfs@1.6.0':
     resolution: {integrity: sha512-hvJUjNVeBMp77qPINuUvYXj4FyWeeMMKZkxEATEU3hqBAQ7qdTBCUFT7Sp0Zu0faeEtFf+ldXxMEDr/bk73ISg==}
@@ -29939,6 +29955,10 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
+  '@typescript/typescript6@6.0.2':
+    dependencies:
+      '@typescript/old': typescript@6.0.2
+
   '@typescript/vfs@1.6.0(typescript@6.0.2)':
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
@@ -40036,9 +40056,9 @@ snapshots:
     optionalDependencies:
       typescript: 7.0.2
 
-  ts-essentials@7.0.3(typescript@6.0.2):
+  ts-essentials@7.0.3(typescript@7.0.2):
     dependencies:
-      typescript: 6.0.2
+      typescript: 7.0.2
 
   ts-graphviz@2.1.6:
     dependencies:

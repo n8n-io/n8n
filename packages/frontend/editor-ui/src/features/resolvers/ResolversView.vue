@@ -30,8 +30,7 @@ const {
 	openEditModal,
 } = useCredentialResolvers();
 
-// TODO: use actual docs link when available
-const docsUrl = 'https://docs.n8n.io/';
+const docsUrl = 'https://docs.n8n.io/administer/manage-credentials/end-users-credentials';
 
 const RESOLVER_LIST_ITEM_ACTIONS = {
 	EDIT: 'edit',

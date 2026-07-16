@@ -9,10 +9,9 @@
 //
 // A "unit" is an execution scenario or an evaluated build expectation (the
 // same units the pass rate is computed over). Always-failing scenarios are
-// deleted from the curated tier rather than flagged; units with no verdict
-// (evaluatedCount 0 — judge never returned for expectations, verifier
-// exhausted for scenarios) are excluded automatically since there's nothing
-// to judge.
+// deleted from the curated tier rather than flagged; build expectations with
+// no verdict (evaluatedCount 0) are excluded automatically since there's
+// nothing to judge.
 // ---------------------------------------------------------------------------
 
 import type { MultiRunEvaluation, WorkflowTestCase } from '../types';

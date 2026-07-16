@@ -164,8 +164,10 @@ vi.mock('@n8n/instance-ai', async () => {
 });
 
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import {
 	buildAgentTreeFromEvents,
 	createAllTools,
@@ -189,6 +191,8 @@ import {
 import type { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
+
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
@@ -3740,5 +3744,101 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 				expect.objectContaining({ threadId: 'thread-a', action: 'clear-thread' }),
 			);
 		});
+	});
+});
+
+describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
+	type Internals = {
+		threadPushRef: Map<string, string>;
+		planRequestsByThread: Map<string, number>;
+		runState: { clearThread: Mock };
+		backgroundTasks: { cancelThread: Mock };
+		schedulerLocks: Map<string, unknown>;
+		liveness: { clearThreadState: Mock };
+		domainAccessTrackersByThread: Map<string, unknown>;
+		evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
+		eventBus: { clearThread: Mock };
+		tracing: {
+			finalizeRunTracing: Mock;
+			finalizeBackgroundTaskTracing: Mock;
+			finalizeRemainingMessageTraceRoots: Mock;
+			deleteTraceContextsForThread: Mock;
+			getTrackedThreadIds: Mock;
+			clear: Mock;
+		};
+		memoryTaskRegistry: { clearThread: Mock };
+		sandboxService: { destroySandbox: Mock };
+		temporaryWorkflowService: { reapForThreadCleanup: Mock };
+		suspendedThreads: { dropPendingConfirmationsForThread: Mock };
+		logger: { warn: Mock };
+		clearThreadState: (threadId: string) => Promise<void>;
+	};
+
+	function buildService(): Internals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
+
+		service.threadPushRef = new Map();
+		service.planRequestsByThread = new Map();
+		service.runState = { clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })) };
+		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
+		service.schedulerLocks = new Map();
+		service.liveness = { clearThreadState: vi.fn() };
+		service.domainAccessTrackersByThread = new Map();
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+		service.eventBus = { clearThread: vi.fn() };
+		service.tracing = {
+			finalizeRunTracing: vi.fn(async () => {}),
+			finalizeBackgroundTaskTracing: vi.fn(async () => {}),
+			finalizeRemainingMessageTraceRoots: vi.fn(async () => {}),
+			deleteTraceContextsForThread: vi.fn(),
+			getTrackedThreadIds: vi.fn(() => []),
+			clear: vi.fn(),
+		};
+		service.memoryTaskRegistry = { clearThread: vi.fn() };
+		service.sandboxService = { destroySandbox: vi.fn(async () => {}) };
+		service.temporaryWorkflowService = { reapForThreadCleanup: vi.fn(async () => {}) };
+		service.suspendedThreads = { dropPendingConfirmationsForThread: vi.fn(async () => {}) };
+		service.logger = { warn: vi.fn() };
+
+		return service;
+	}
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('clearThreadState deletes agent-builder sessions when the agents module is active', async () => {
+		const service = buildService();
+		const deleteBuilderSessions = vi.fn().mockResolvedValue(undefined);
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return { isActive: () => true };
+			if (token === InstanceAiBuilderDelegateAdapterService) {
+				return { deleteBuilderSessions };
+			}
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+
+		await service.clearThreadState('thread-a');
+
+		expect(deleteBuilderSessions).toHaveBeenCalledWith('thread-a');
+	});
+
+	it('clearThreadState swallows agent-builder cleanup failures', async () => {
+		const service = buildService();
+		const deleteBuilderSessions = vi.fn().mockRejectedValue(new Error('cleanup failed'));
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return { isActive: () => true };
+			if (token === InstanceAiBuilderDelegateAdapterService) {
+				return { deleteBuilderSessions };
+			}
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+
+		await expect(service.clearThreadState('thread-a')).resolves.toBeUndefined();
+
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Failed to clean up agent-builder sessions for thread',
+			expect.objectContaining({ threadId: 'thread-a' }),
+		);
 	});
 });

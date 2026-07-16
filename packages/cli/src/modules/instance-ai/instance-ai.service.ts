@@ -95,6 +95,7 @@ import {
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
+import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
@@ -102,6 +103,7 @@ import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -1366,10 +1368,26 @@ export class InstanceAiService {
 		this.planRequestsByThread.delete(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
 		this.tracing.deleteTraceContextsForThread(threadId);
+		await this.deleteAgentBuilderSessions(threadId);
 		await this.sandboxService.destroySandbox(threadId);
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
 		await this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
+	}
+
+	/** Builder sub-agent sessions (`ia-builder:<threadId>:*`) live in the agents
+	 *  module's memory tables; instance-AI storage cleanup does not cover them.
+	 *  Best-effort: a failure here must never block thread deletion. */
+	private async deleteAgentBuilderSessions(threadId: string): Promise<void> {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return;
+		try {
+			await Container.get(InstanceAiBuilderDelegateAdapterService).deleteBuilderSessions(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to clean up agent-builder sessions for thread', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	async shutdown(): Promise<void> {
@@ -2941,6 +2959,7 @@ export class InstanceAiService {
 	 * `startExecuteRun` so the promise is registered with `inFlightExecutions`
 	 * and shutdown can drain it before the DB closes.
 	 */
+	// eslint-disable-next-line complexity
 	private async executeRun(
 		user: User,
 		threadId: string,
@@ -3150,7 +3169,9 @@ export class InstanceAiService {
 			// When trace replay is enabled but LangSmith isn't configured,
 			// create a minimal context that only supports replay/record wrapping.
 			if (!tracing && process.env.E2E_TESTS === 'true') {
-				const { createTraceReplayOnlyContext } = await import('@n8n/instance-ai');
+				const { createTraceReplayOnlyContext } = await lazyImport<
+					typeof import('@n8n/instance-ai')
+				>(async () => await import('@n8n/instance-ai'));
 				tracing = createTraceReplayOnlyContext();
 			}
 
