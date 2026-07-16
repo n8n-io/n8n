@@ -50,9 +50,23 @@ export type ScheduledJobDefinitionUpdate = Pick<
 export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	private readonly isPostgres: boolean;
 
+	// Largest chunk each statement can take before overflowing the driver's limits. SQLite's
+	// expression-depth cap (1000) bites first — the advance builds a CASE per chunk, the insert a
+	// multi-row VALUES, both nesting with size — so it caps far below Postgres's bind-parameter
+	// ceiling (65535). Each doubles as the method's default and the hard cap on a caller's size.
+	private readonly maxAdvanceChunkSize: number;
+	private readonly maxInsertChunkSize: number;
+
 	constructor(dataSource: DataSource, config: DatabaseConfig) {
 		super(ScheduledJob, dataSource.manager);
 		this.isPostgres = config.type === 'postgresdb';
+		this.maxAdvanceChunkSize = this.isPostgres ? 1000 : 200;
+		this.maxInsertChunkSize = this.isPostgres ? 1000 : 500;
+	}
+
+	/** Clamp a caller-supplied chunk size to [1, max]; a larger chunk overflows the driver's limits. */
+	private clampChunkSize(chunkSize: number, max: number): number {
+		return Math.min(Math.max(1, chunkSize), max);
 	}
 
 	/**
@@ -122,27 +136,40 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * once the insert returns (ours, or the concurrent writer's), so the read-back
 	 * yields exactly one id per job.
 	 */
-	async insertMany(manager: EntityManager, jobs: NewScheduledJob[]): Promise<number[]> {
+	async insertMany(
+		manager: EntityManager,
+		jobs: NewScheduledJob[],
+		chunkSize = this.maxInsertChunkSize,
+	): Promise<number[]> {
 		if (manager.queryRunner === undefined) {
 			throw new UnexpectedError('insertMany must run within a transaction');
 		}
 		if (jobs.length === 0) {
 			return [];
 		}
+		const size = this.clampChunkSize(chunkSize, this.maxInsertChunkSize);
 		// `payload` is a free-form JSON column, which TypeORM's QueryDeepPartialEntity can't express,
 		// so the well-typed rows are cast at this boundary.
-		await manager
-			.createQueryBuilder()
-			.insert()
-			.into(ScheduledJob)
-			.values(jobs as Array<QueryDeepPartialEntity<ScheduledJob>>)
-			.orIgnore()
-			.execute();
+		for (let start = 0; start < jobs.length; start += size) {
+			const jobChunk = jobs.slice(start, start + size);
+			await manager
+				.createQueryBuilder()
+				.insert()
+				.into(ScheduledJob)
+				.values(jobChunk as Array<QueryDeepPartialEntity<ScheduledJob>>)
+				.orIgnore()
+				.execute();
+		}
 
-		const rows = await manager.find(ScheduledJob, {
-			where: { name: In(jobs.map((job) => job.name)) },
-			select: { id: true, name: true },
-		});
+		const names = jobs.map((job) => job.name);
+		const rows: ScheduledJob[] = [];
+		for (let start = 0; start < names.length; start += size) {
+			const found = await manager.find(ScheduledJob, {
+				where: { name: In(names.slice(start, start + size)) },
+				select: { id: true, name: true },
+			});
+			rows.push(...found);
+		}
 		return orderIdsByName(rows, jobs);
 	}
 
@@ -197,12 +224,11 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	async advanceMany(
 		manager: EntityManager,
 		advances: JobAdvance[],
-		// Chunked so a large batch stays under the driver's bind-parameter ceiling
-		// (Postgres 65535, SQLite 32766); each advance binds four parameters.
-		chunkSize = 1000,
+		chunkSize = this.maxAdvanceChunkSize,
 	): Promise<void> {
-		for (let start = 0; start < advances.length; start += chunkSize) {
-			await this.advanceChunk(manager, advances.slice(start, start + chunkSize));
+		const size = this.clampChunkSize(chunkSize, this.maxAdvanceChunkSize);
+		for (let start = 0; start < advances.length; start += size) {
+			await this.advanceChunk(manager, advances.slice(start, start + size));
 		}
 	}
 
