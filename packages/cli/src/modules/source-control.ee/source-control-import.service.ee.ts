@@ -1801,8 +1801,14 @@ export class SourceControlImportService {
 		candidates: SourceControlledFile[],
 		error: unknown,
 	) {
-		const resources = candidates.map((c) => `"${c.name}" (${c.id})`).join(', ');
-		const message = `Failed to delete ${type}(s) ${resources} while pulling from source control: ${ensureError(error).message}`;
+		const maxListed = 10; // keep the message readable when a pull deletes many resources
+		const resources = candidates
+			.slice(0, maxListed)
+			.map((c) => `"${c.name}" (${c.id})`)
+			.join(', ');
+		const overflow =
+			candidates.length > maxListed ? ` and ${candidates.length - maxListed} more` : '';
+		const message = `Failed to delete ${type}(s) ${resources}${overflow} while pulling from source control: ${ensureError(error).message}`;
 		// report centrally: the controller rewraps this as a 4xx, which would
 		// otherwise hide an unexpected server-side failure from monitoring
 		this.errorReporter.error(ensureError(error), { extra: { message } });

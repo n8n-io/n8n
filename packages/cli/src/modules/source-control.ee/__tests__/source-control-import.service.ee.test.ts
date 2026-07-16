@@ -2486,6 +2486,19 @@ describe('SourceControlImportService', () => {
 			});
 		});
 
+		describe('deletionError resource listing', () => {
+			it('should cap the number of resources listed in the error message', async () => {
+				const candidates = Array.from({ length: 12 }, (_, i) =>
+					mock<SourceControlledFile>({ id: `project-${i}`, name: `Project ${i}` }),
+				);
+				sharedWorkflowRepository.find.mockRejectedValueOnce(new Error('boom'));
+
+				await expect(service.deleteTeamProjectsNotInWorkfolder(candidates)).rejects.toThrow(
+					'"Project 9" (project-9) and 2 more while pulling from source control: boom',
+				);
+			});
+		});
+
 		describe('deleteFoldersNotInWorkfolder', () => {
 			it('should call folderRepository.delete with correct ids', async () => {
 				const candidates = [
