@@ -568,6 +568,16 @@ export class ExecutionPersistence {
 			);
 		}
 
+		// The loop may have converged exactly on its last allowed batch - only
+		// fail if executions actually remain.
+		const remaining = await this.executionRepository.find({
+			select: ['id'],
+			where: { workflowId },
+			take: 1,
+			withDeleted: true,
+		});
+		if (remaining.length === 0) return;
+
 		throw new UnexpectedError(
 			`Failed to delete all executions of workflow ${workflowId}: executions keep being added while deleting them - is the workflow still active?`,
 		);

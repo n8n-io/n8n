@@ -1821,8 +1821,21 @@ describe('ExecutionPersistence', () => {
 				'executions keep being added',
 			);
 
-			expect(executionRepository.find).toHaveBeenCalledTimes(20_000); // fixed per-run batch cap
+			expect(executionRepository.find).toHaveBeenCalledTimes(20_001); // fixed per-run batch cap + final probe
 			expect(executionRepository.query).not.toHaveBeenCalled(); // no catalog estimate outside Postgres
+			executionRepository.find.mockReset();
+		});
+
+		it('should succeed when the deletion converges exactly on the last allowed batch', async () => {
+			const sqlitePersistence = createPersistenceService('db', 'sqlite');
+			let calls = 0;
+			executionRepository.find.mockImplementation(async () =>
+				++calls <= 20_000 ? [executionRow('exec-1')] : [],
+			);
+
+			await expect(sqlitePersistence.hardDeleteByWorkflowId('wf-1')).resolves.toBeUndefined();
+
+			expect(executionRepository.find).toHaveBeenCalledTimes(20_001); // 20k full batches + final probe
 			executionRepository.find.mockReset();
 		});
 
@@ -1834,8 +1847,8 @@ describe('ExecutionPersistence', () => {
 				'executions keep being added',
 			);
 
-			// 2 x 10M estimate / 500 per batch = 40k batches
-			expect(executionRepository.find).toHaveBeenCalledTimes(40_000);
+			// 2 x 10M estimate / 500 per batch = 40k batches, + final probe
+			expect(executionRepository.find).toHaveBeenCalledTimes(40_001);
 			executionRepository.find.mockReset();
 		});
 
@@ -1847,7 +1860,7 @@ describe('ExecutionPersistence', () => {
 				'executions keep being added',
 			);
 
-			expect(executionRepository.find).toHaveBeenCalledTimes(20_000);
+			expect(executionRepository.find).toHaveBeenCalledTimes(20_001);
 			executionRepository.find.mockReset();
 		});
 	});
