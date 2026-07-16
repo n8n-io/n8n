@@ -22,9 +22,9 @@ export class Function implements INodeType {
 		version: 1,
 		description:
 			'Run custom function code which gets executed once and allows you to add, remove, change and replace items',
+		iconColor: 'amber',
 		defaults: {
 			name: 'Function',
-			color: '#FF9922',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

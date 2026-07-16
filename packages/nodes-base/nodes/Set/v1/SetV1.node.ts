@@ -16,9 +16,9 @@ const versionDescription: INodeTypeDescription = {
 	group: ['input'],
 	version: [1, 2],
 	description: 'Sets values on items and optionally remove other values',
+	iconColor: 'blue',
 	defaults: {
 		name: 'Set',
-		color: '#0000FF',
 	},
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],

@@ -57,9 +57,9 @@ export class HtmlExtract implements INodeType {
 		hidden: true,
 		subtitle: '={{$parameter["sourceData"] + ": " + $parameter["dataPropertyName"]}}',
 		description: 'Extracts data from HTML',
+		iconColor: 'dark-blue',
 		defaults: {
 			name: 'HTML Extract',
-			color: '#333377',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

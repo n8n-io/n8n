@@ -18,9 +18,9 @@ export class ReadBinaryFiles implements INodeType {
 		group: ['input'],
 		version: 1,
 		description: 'Reads binary files from disk',
+		iconColor: 'forest-green',
 		defaults: {
 			name: 'Read Binary Files',
-			color: '#44AA44',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
