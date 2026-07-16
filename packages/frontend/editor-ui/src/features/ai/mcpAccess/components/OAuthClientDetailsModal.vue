@@ -20,7 +20,7 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { classifyScope } from '@/app/components/scopes/scopes.utils';
+import { classifyScope, groupScopes } from '@/app/components/scopes/scopes.utils';
 import type { ScopeAccess } from '@/app/components/scopes/scopes.utils';
 import { getClientBrand, isFullAccessGrant } from '../clients.utils';
 import { MCP_SCOPE_RESOURCE_ICONS } from '../mcp.constants';
@@ -80,19 +80,13 @@ const accessGroups = computed<AccessGroup[]>(() => {
 	const granted = props.client?.scopes;
 	if (!granted) return [];
 
-	const byResource = new Map<string, string[]>();
-	for (const scope of granted) {
-		const resource = scope.split(':')[0];
-		const scopes = byResource.get(resource) ?? [];
-		scopes.push(scope);
-		byResource.set(resource, scopes);
-	}
-
-	return [...byResource.entries()].map(([resource, scopes]) => ({
-		resource,
-		label: resourceLabel(resource),
-		icon: MCP_SCOPE_RESOURCE_ICONS[resource] ?? 'mcp',
-		scopes: scopes.map((scope) => ({
+	// Empty group definitions => every resource falls through to its own group,
+	// keyed and ordered by first-seen resource prefix (see groupScopes).
+	return groupScopes(granted, []).map((group) => ({
+		resource: group.key,
+		label: resourceLabel(group.key),
+		icon: MCP_SCOPE_RESOURCE_ICONS[group.key] ?? 'mcp',
+		scopes: group.scopes.map((scope) => ({
 			scope,
 			access: classifyScope(scope),
 			tools: props.scopeTools?.[scope] ?? [],

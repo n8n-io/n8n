@@ -194,27 +194,32 @@ function toggleGroupExpanded(group: ScopeGroup<S>) {
 	expandedGroups.value = expanded;
 }
 
-function groupTools(group: ScopeGroup<S>): string[] {
-	if (!props.scopeTools) return [];
-	const tools = new Set<string>();
-	for (const scope of group.scopes) {
-		for (const tool of props.scopeTools[scope] ?? []) {
-			tools.add(tool);
+// Per-group tool data: every tool the group unlocks plus which of those the
+// current selection enables. Computed once per reactive change and read via
+// O(1) lookups in the template, rather than rebuilding a Set on every call.
+const groupToolData = computed(() => {
+	const data = new Map<string, { tools: string[]; enabled: Set<string> }>();
+	if (!props.scopeTools) return data;
+	for (const group of groupedScopes.value) {
+		const tools = new Set<string>();
+		const enabled = new Set<string>();
+		for (const scope of group.scopes) {
+			for (const tool of props.scopeTools[scope] ?? []) {
+				tools.add(tool);
+				if (selectedSet.value.has(scope)) enabled.add(tool);
+			}
 		}
+		data.set(group.key, { tools: [...tools], enabled });
 	}
-	return [...tools];
+	return data;
+});
+
+function groupTools(group: ScopeGroup<S>): string[] {
+	return groupToolData.value.get(group.key)?.tools ?? [];
 }
 
 function groupEnabledTools(group: ScopeGroup<S>): Set<string> {
-	const enabled = new Set<string>();
-	if (!props.scopeTools) return enabled;
-	for (const scope of group.scopes) {
-		if (!selectedSet.value.has(scope)) continue;
-		for (const tool of props.scopeTools[scope] ?? []) {
-			enabled.add(tool);
-		}
-	}
-	return enabled;
+	return groupToolData.value.get(group.key)?.enabled ?? new Set();
 }
 
 function isGroupChecked(group: ScopeGroup<S>): boolean {

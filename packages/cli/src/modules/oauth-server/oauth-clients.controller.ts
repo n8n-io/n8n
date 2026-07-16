@@ -10,7 +10,6 @@ import { Delete, Get, GlobalScope, Param, RestController } from '@n8n/decorators
 import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 import { OAuthServerService } from './oauth-server.service';
 
@@ -19,7 +18,6 @@ export class OAuthClientsController {
 	constructor(
 		private readonly oauthServerService: OAuthServerService,
 		private readonly logger: Logger,
-		private readonly protectedResourceRegistry: ProtectedResourceRegistry,
 	) {}
 
 	/**
@@ -52,7 +50,7 @@ export class OAuthClientsController {
 		return {
 			data: clientDtos,
 			count: clients.length,
-			scopeTools: this.protectedResourceRegistry.getDefaultResource()?.getScopeTools?.(),
+			scopeTools: this.oauthServerService.getInstanceScopeTools(),
 		};
 	}
 
