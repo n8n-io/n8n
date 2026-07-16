@@ -266,7 +266,8 @@ throttledWatch(
 			filteredParameters = filterSlackHitlParameters(parameters);
 		} else if (
 			node.value &&
-			node.value.type === GOOGLE_GMAIL_NODE_TYPE &&
+			(node.value.type === GOOGLE_GMAIL_NODE_TYPE ||
+				node.value.type === `${GOOGLE_GMAIL_NODE_TYPE}Tool`) &&
 			!isEnhancedHitlGmailEnabled.value
 		) {
 			filteredParameters = filterGmailHitlParameters(parameters);

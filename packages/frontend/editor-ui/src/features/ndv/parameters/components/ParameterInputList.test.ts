@@ -2546,6 +2546,37 @@ describe('ParameterInputList', () => {
 			expect(container.querySelector('[path="confirmationPage"]')).not.toBeInTheDocument();
 		});
 
+		it('hides the advanced HITL parameters on the tool variant when the experiment is off', async () => {
+			ndvStore.activeNode = { ...gmailNode, type: `${GOOGLE_GMAIL_NODE_TYPE}Tool` };
+			const { container } = renderComponent({
+				props: {
+					parameters: gmailParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="sendTo"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="advancedEmail"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="advancedEmailOptions"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="confirmationPage"]')).not.toBeInTheDocument();
+		});
+
+		it('shows the advanced HITL parameters on the tool variant when the experiment is on', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			ndvStore.activeNode = { ...gmailNode, type: `${GOOGLE_GMAIL_NODE_TYPE}Tool` };
+			const { container } = renderComponent({
+				props: {
+					parameters: gmailParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="advancedEmail"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="confirmationPage"]')).toBeInTheDocument();
+		});
+
 		it('shows the advanced HITL parameters when the experiment is on', async () => {
 			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 			ndvStore.activeNode = gmailNode;
