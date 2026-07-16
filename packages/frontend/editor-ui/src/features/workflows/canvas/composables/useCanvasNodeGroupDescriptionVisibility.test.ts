@@ -96,6 +96,38 @@ describe('useCanvasNodeGroupDescriptionVisibility', () => {
 		expect(visibility.isVisible('g1')).toBe(true);
 	});
 
+	it('unpins a group whose description is cleared to empty', () => {
+		let handler: ((event: NodeGroupChangeEvent) => void) | undefined;
+		const visibility = makeVisibility({
+			onNodeGroupsChange: (h) => {
+				handler = h;
+				return { off: () => {} };
+			},
+		});
+		visibility.setVisible('g1', true);
+
+		const group: IWorkflowGroup = { id: 'g1', name: 'G', nodeIds: [], description: '   ' };
+		handler?.({ action: CHANGE_ACTION.UPDATE, payload: { group } });
+
+		expect(visibility.isVisible('g1')).toBe(false);
+	});
+
+	it('keeps a group pinned when its description is updated but still present', () => {
+		let handler: ((event: NodeGroupChangeEvent) => void) | undefined;
+		const visibility = makeVisibility({
+			onNodeGroupsChange: (h) => {
+				handler = h;
+				return { off: () => {} };
+			},
+		});
+		visibility.setVisible('g1', true);
+
+		const group: IWorkflowGroup = { id: 'g1', name: 'G', nodeIds: [], description: 'still here' };
+		handler?.({ action: CHANGE_ACTION.UPDATE, payload: { group } });
+
+		expect(visibility.isVisible('g1')).toBe(true);
+	});
+
 	it('unsubscribes and resubscribes on reinitialize', () => {
 		const off = vi.fn();
 		const onNodeGroupsChange = vi.fn(() => ({ off }));

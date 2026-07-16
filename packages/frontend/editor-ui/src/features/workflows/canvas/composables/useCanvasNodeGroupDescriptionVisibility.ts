@@ -68,6 +68,11 @@ export function useCanvasNodeGroupDescriptionVisibility(
 	function handleNodeGroupsChange(event: NodeGroupChangeEvent) {
 		if (event.action === CHANGE_ACTION.SET) {
 			restore(new Set(event.payload.groups.map((group) => group.id)));
+		} else if (event.action === CHANGE_ACTION.UPDATE) {
+			// A description cleared to empty has nothing left to pin open.
+			if (!event.payload.group.description?.trim()) {
+				removeDeleted(event.payload.group.id);
+			}
 		} else if (event.action === CHANGE_ACTION.DELETE) {
 			removeDeleted(event.payload.id);
 		}
