@@ -211,6 +211,26 @@ describe('AWS signing (integration, real signer)', () => {
 		expect(result.body).toBe(buf);
 	});
 
+	it('normalizes numeric headers before signing an S3 multipart upload part', async () => {
+		const buf = Buffer.from('binary content');
+		const result = await aws.authenticate(credentials, {
+			...baseRequest,
+			method: 'PUT',
+			body: buf,
+			headers: { 'Content-Length': buf.length },
+			qs: {
+				service: 's3',
+				path: '/my-bucket/binary.json?partNumber=1&uploadId=test-upload',
+			},
+		});
+
+		const headers = result.headers as Record<string, string>;
+		const authorization = headers.authorization ?? headers.Authorization;
+
+		expect(headers['content-length']).toBe(String(buf.length));
+		expect(signedHeadersFrom(authorization)).toContain('content-length');
+	});
+
 	describe('SES email endpoints', () => {
 		// SES endpoints are `email.<region>.amazonaws.com` but sign under `ses`
 		// (botocore: endpointPrefix 'email', signingName 'ses'). aws4 remapped this
