@@ -308,6 +308,40 @@ describe('replyToEmail', () => {
 		);
 	});
 
+	test('should handle multiple Reply-To email addresses', async () => {
+		const messageWithMultipleReplyTo = {
+			...mockMessageMetadata,
+			payload: {
+				...mockMessageMetadata.payload,
+				headers: [
+					{ name: 'Subject', value: 'Original Subject' },
+					{ name: 'Message-ID', value: '<original@example.com>' },
+					{ name: 'From', value: 'John Doe <john@example.com>' },
+					{ name: 'To', value: 'recipient@example.com' },
+					{
+						name: 'Reply-To',
+						value: 'reply1@example.com, reply2@example.com',
+					},
+				],
+			},
+		};
+
+		mockedGoogleApiRequest
+			.mockResolvedValueOnce(messageWithMultipleReplyTo)
+			.mockResolvedValueOnce(mockUserProfile)
+			.mockResolvedValueOnce(mockSentMessage);
+
+		const options: IDataObject = {};
+
+		await replyToEmail.call(mockExecuteFunctions, 'message123', options, 0, 2.2);
+
+		const email = mockedEncodeEmail.mock.calls[0][0];
+
+		expect(email.to).toContain('<reply1@example.com>');
+		expect(email.to).toContain('<reply2@example.com>');
+		expect(email.to).toContain('<recipient@example.com>');
+	});
+
 	test('should use custom sender name when provided', async () => {
 		mockedGoogleApiRequest
 			.mockResolvedValueOnce(mockMessageMetadata)
