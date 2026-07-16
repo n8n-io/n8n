@@ -313,7 +313,11 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('emits update:description when Enter is pressed', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility();
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroupIds: () => ['g1'],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
 			visibility.setVisible('g1', true);
 
 			const wrapper = render({ data: withDescription('Before') }, visibility);
@@ -327,7 +331,11 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('keeps editing and does not commit on Shift+Enter', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility();
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroupIds: () => ['g1'],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
 			visibility.setVisible('g1', true);
 
 			const wrapper = render({ data: withDescription('Before') }, visibility);
