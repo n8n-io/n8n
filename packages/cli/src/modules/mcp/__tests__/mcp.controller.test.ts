@@ -41,6 +41,7 @@ vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
 
 type AuthenticatedMcpRequest = AuthenticatedRequest & {
 	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];
+	mcpClientId?: string;
 };
 
 const createReq = (overrides: Partial<AuthenticatedMcpRequest> = {}): AuthenticatedMcpRequest =>

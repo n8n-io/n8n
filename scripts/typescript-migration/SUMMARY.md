@@ -1,10 +1,6 @@
 # TypeScript 6 → 7 migration benchmarks
 
-<<<<<<< typescript-cli
-Generated 2026-07-14T13:18:27.416Z from `scripts/typescript-migration/results/`.
-=======
-Generated 2026-07-15T09:07:07.705Z from `scripts/typescript-migration/results/`.
->>>>>>> master
+Generated 2026-07-16T06:54:52.709Z from `scripts/typescript-migration/results/`.
 
 | Package | typecheck Δ | build Δ |
 | --- | --- | --- |
@@ -26,8 +22,19 @@ Generated 2026-07-15T09:07:07.705Z from `scripts/typescript-migration/results/`.
 | `@n8n/config` | -48.2% | -37.9% |
 | `@n8n/constants` | -35.8% | -36.6% |
 | `@n8n/crdt` | -40.8% | -41.0% |
+| `@n8n/engine` | -37.2% | -40.8% |
+| `@n8n/errors` | -39.0% | -40.6% |
+| `@n8n/eslint-config` | -71.1% | -61.5% |
+| `@n8n/eslint-plugin-community-nodes` | -50.6% | -47.1% |
+| `@n8n/expression-runtime` | -57.1% | -42.4% |
+| `@n8n/imap` | -48.6% | -36.7% |
 | `@n8n/instance-ai` | -70.0% | -40.3% |
+| `@n8n/json-schema-to-zod` | -43.9% | -34.7% |
+| `@n8n/local-gateway` | -46.1% | -42.1% |
+| `@n8n/mcp-browser` | -57.6% | -55.6% |
 | `@n8n/n8n-benchmark` | -49.2% | -39.0% |
+| `@n8n/n8n-nodes-langchain` | -74.2% | -21.6% |
+| `@n8n/node-cli` | -55.3% | -48.3% |
 | `@n8n/typeorm` | -37.9% | -68.7% |
 | `n8n` | -75.5% | -71.3% |
 
@@ -244,6 +251,78 @@ build:
 ```
 
 ```
+=== @n8n/engine — median times (Δ vs "before") ===
+
+typecheck:
+  before               749ms
+  after                470ms  -279ms (-37.2%)
+
+build:
+  before               785ms
+  after                465ms  -320ms (-40.8%)
+```
+
+```
+=== @n8n/errors — median times (Δ vs "before") ===
+
+typecheck:
+  before               807ms
+  after                492ms  -315ms (-39.0%)
+
+build:
+  before               834ms
+  after                495ms  -339ms (-40.6%)
+```
+
+```
+=== @n8n/eslint-config — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.73s
+  after                501ms  -1231ms (-71.1%)
+
+build:
+  before               1.32s
+  after                508ms  -810ms (-61.5%)
+```
+
+```
+=== @n8n/eslint-plugin-community-nodes — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.17s
+  after                579ms  -594ms (-50.6%)
+
+build:
+  before               1.13s
+  after                597ms  -531ms (-47.1%)
+```
+
+```
+=== @n8n/expression-runtime — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.44s
+  after                619ms  -824ms (-57.1%)
+
+build:
+  before               2.89s
+  after                1.66s  -1225ms (-42.4%)
+```
+
+```
+=== @n8n/imap — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.04s
+  after                537ms  -507ms (-48.6%)
+
+build:
+  before               780ms
+  after                494ms  -286ms (-36.7%)
+```
+
+```
 === @n8n/instance-ai — median times (Δ vs "before") ===
 
 typecheck:
@@ -256,6 +335,42 @@ build:
 ```
 
 ```
+=== @n8n/json-schema-to-zod — median times (Δ vs "before") ===
+
+typecheck:
+  before               955ms
+  after                536ms  -419ms (-43.9%)
+
+build:
+  before               2.33s
+  after                1.52s  -807ms (-34.7%)
+```
+
+```
+=== @n8n/local-gateway — median times (Δ vs "before") ===
+
+typecheck:
+  before               952ms
+  after                513ms  -439ms (-46.1%)
+
+build:
+  before               2.00s
+  after                1.16s  -844ms (-42.1%)
+```
+
+```
+=== @n8n/mcp-browser — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.44s
+  after                609ms  -827ms (-57.6%)
+
+build:
+  before               1.35s
+  after                597ms  -749ms (-55.6%)
+```
+
+```
 === @n8n/n8n-benchmark — median times (Δ vs "before") ===
 
 typecheck:
@@ -265,6 +380,30 @@ typecheck:
 build:
   before               948ms
   after                578ms  -370ms (-39.0%)
+```
+
+```
+=== @n8n/n8n-nodes-langchain — median times (Δ vs "before") ===
+
+typecheck:
+  before               8.30s
+  after                2.14s  -6163ms (-74.2%)
+
+build:
+  before              25.79s
+  after               20.23s  -5560ms (-21.6%)
+```
+
+```
+=== @n8n/node-cli — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.42s
+  after                634ms  -785ms (-55.3%)
+
+build:
+  before               1.76s
+  after                911ms  -851ms (-48.3%)
 ```
 
 ```
