@@ -3,6 +3,7 @@ import { OperationalError } from 'n8n-workflow';
 const AI_SERVICE_MAX_ATTEMPTS = 3;
 const AI_SERVICE_RETRY_BACKOFF_BASE_MS = 1_000;
 const AI_SERVICE_RETRY_BACKOFF_CAP_MS = 5_000;
+// Small control-plane JSON calls only; 3 attempts + backoff stays inside Cloudflare's ~100s budget.
 const AI_SERVICE_CALL_TIMEOUT_MS = 30_000;
 const AI_SERVICE_UNAVAILABLE_MESSAGE =
 	'The AI assistant service is temporarily unavailable. Please try again in a few minutes.';
