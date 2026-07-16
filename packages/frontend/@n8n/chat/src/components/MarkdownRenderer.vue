@@ -28,7 +28,24 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	});
 };
 
+// Explicit markdown-it options.
+//
+// The external web chat previously constructed markdown-it with no options, so it
+// inherited library defaults (`html: true`, `linkify: false`, `breaks: false`).
+// That combination let workflow/agent responses that interleave prose with
+// list-like lines (e.g. lines beginning with "-", "*" or "+") be rendered as
+// bulleted lists on nearly every line instead of staying in paragraph form.
+//
+// We pin the options explicitly:
+//   - html: false     -> raw HTML in a model response is escaped, never injected
+//   - linkify: false  -> only explicit links are turned into anchors
+//   - breaks: false   -> a single newline is NOT turned into a hard <br>, so a
+//                        paragraph that wraps across lines is kept as one block
+//                        and only real markdown lists become <ul>/<ol>.
 const markdownOptions = {
+	html: false,
+	linkify: false,
+	breaks: false,
 	highlight(str: string, lang: string) {
 		if (lang && hljs.getLanguage(lang)) {
 			try {
