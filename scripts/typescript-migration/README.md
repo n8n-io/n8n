@@ -4,6 +4,65 @@ Support scripts for migrating the monorepo from TypeScript `6.0.2` to the
 TypeScript 7 line, and for moving legacy packages off `moduleResolution: node`
 onto **NodeNext**. Migration is done **per package**.
 
+## Choosing the TypeScript catalog
+
+TypeScript 7 is the native (Go) compiler, "tsgo". The `typescript@7.0.2`
+package is just a launcher for the native `tsc` binary — **TS 7.0 ships no
+programmatic compiler API** (`ts.createProgram`, `ts.Extension`, the `ts.*`
+namespace); that lands in **TS 7.1**. Any tool that calls the compiler API at
+runtime therefore cannot run against tsgo yet.
+
+Each migrated package picks **one** of two catalogs for its `typescript`
+devDependency (both give a tsgo `tsc`, so both get the full typecheck/build
+speed-up):
+
+### `catalog:typescript` — plain upgrade (the default)
+
+```jsonc
+"typescript": "catalog:typescript"   // → tsgo (typescript@7.0.2)
+```
+
+For packages that only *compile* with TypeScript — no code path that imports
+the compiler API at runtime. This is the target for the overwhelming majority
+of packages.
+
+### `catalog:typescript-tooling` — needs the compiler API at runtime
+
+```jsonc
+"@typescript/native": "catalog:typescript-tooling",  // → tsgo: provides the `tsc` bin
+"typescript": "catalog:typescript-tooling"           // → @typescript/typescript6: the real TS 6 API + `tsc6` bin
+```
+
+This is the official **side-by-side install** ([TS 7.0 announcement →
+"Running side-by-side with TypeScript 6.0"](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0)).
+The two packages expose non-colliding binaries (`tsc` from tsgo, `tsc6` from
+TS 6), so `tsc`/`build`/`typecheck` still run on tsgo, while `require('typescript')`
+resolves to the real TS 6 JS API that the tooling needs.
+
+**A package needs `typescript-tooling` when it (or its tests) does any of:**
+
+- value-imports `@typescript-eslint/*` or `typescript-eslint` (e.g.
+  `typescript-estree` `parse`, `@typescript-eslint/rule-tester`);
+- runs ESLint programmatically (`new ESLint(...)`) with a typescript-eslint
+  parser;
+- value-imports the `typescript` module for its API (`import ts from
+  'typescript'`, `ts.createProgram`, …) — **not** type-only imports.
+
+First-party code in these packages must `import ts from 'typescript'` — the
+catalog points that specifier at the TS6 API. Do **not** add a separately-named
+alias dependency (e.g. `"typescript6": "npm:@typescript/typescript6@…"`); keep
+the single `typescript-tooling` convention so the 7.1 cleanup is one catalog flip.
+
+Currently on `typescript-tooling`: `@n8n/eslint-config`,
+`@n8n/eslint-plugin-community-nodes`, `@n8n/node-cli`, `@n8n/nodes-langchain`.
+
+> **Forward-looking (TS 7.1):** once the native compiler ships its own
+> programmatic API, `typescript-tooling` packages can drop the side-by-side
+> dance — remove `@typescript/native`, point `typescript` back at
+> `catalog:typescript`, and let the tooling use the native API directly. The
+> `catalog:typescript` vs `catalog:typescript-tooling` split is exactly the
+> list of packages to revisit when that lands.
+
 ## Scripts
 
 ### `benchmark.mjs` — build/typecheck timing
@@ -42,44 +101,23 @@ Results land in `results/<pkg>.json` (gitignored). The label is compiler-
 agnostic: this script never installs or selects TypeScript — wire that up
 separately and just re-run with a new `--label`.
 
-### `add-import-extensions.mjs` — NodeNext import codemod
-
-Adds explicit `.js` / `.json` / `/index.js` extensions to **relative** import,
-re-export, and dynamic-`import()` specifiers, which NodeNext (and ESM) require.
-
-```bash
-# dry-run: prints every rewrite it would make
-node scripts/typescript-migration/add-import-extensions.mjs packages/workflow
-
-# apply
-node scripts/typescript-migration/add-import-extensions.mjs packages/workflow --write
-```
-
-- Uses `ts-morph` (already a catalog dep) and the package's `tsconfig.json` to
-  find source files.
-- **Rewrites alias specifiers** that match a `paths` mapping in the tsconfig
-  (`@/foo` → `@/foo.js`, `@/widgets` → `@/widgets/index.js`), resolving the
-  extension against the mapped target dir. Typecheck (`tsc --noEmit`) doesn't run
-  `tsc-alias`, so aliases need the extension too; `resolveFullPaths` still handles
-  the already-suffixed alias in emit. Packages with no `paths` skip this step.
-- **Skips** bare specifiers (package names — they never match a `@/*`-style
-  `paths` prefix) and specifiers that already carry a known extension.
-- Reports any relative specifier it can't resolve on disk for manual review;
-  it does not guess.
-
 ## Per-package migration loop
 
 1. **Baseline:** `benchmark.mjs <pkg> --label=before`.
 2. **Config:** point the package's tsconfig at NodeNext — extend
-   `@n8n/typescript-config/modern`, or set `module: NodeNext` +
+   `@n8n/typescript-config/modern`, or the `config.go.json` variant, or set `module: NodeNext` +
    `moduleResolution: NodeNext` locally.
-3. **Codemod:** run `add-import-extensions.mjs <pkg>` (review), then `--write`.
-   This adds extensions to both relative and `paths`-alias specifiers in source.
+3. **Migrate dynamic imports:** Run typechecks and build and fix any lingering issues
+		most likely related to the dynamic imports not having file extensions.
 4. **Aliases:** if the package keeps path aliases, enable `tsc-alias`
-   `resolveFullPaths` so the alias prefix is rewritten to a relative path in
-   emit (the codemod already added the extension in source).
-5. **Verify:** `pnpm --filter <pkg> run build && pnpm --filter <pkg> run typecheck && pnpm --filter <pkg> test`.
-6. **After:** `benchmark.mjs <pkg> --label=after` → confirm the delta table.
+   `resolveFullPaths` so alias tails also get extensions in emit.
+5. **Compiler:** swap the `typescript` devDependency from `catalog:` onto the
+   right TS 7 catalog — `catalog:typescript`, or `catalog:typescript-tooling`
+   if the package uses the compiler API at runtime (see
+   [Choosing the TypeScript catalog](#choosing-the-typescript-catalog)), then
+   `pnpm install`.
+6. **Verify:** `pnpm --filter <pkg> run build && pnpm --filter <pkg> run typecheck && pnpm --filter <pkg> test`.
+7. **After:** `benchmark.mjs <pkg> --label=after` → confirm the delta table.
 
 Migrate leaf/low-dependency packages first (`workflow`, `@n8n/config`,
 `@n8n/di`) so downstream typechecks stay green, then work up toward `cli`.
