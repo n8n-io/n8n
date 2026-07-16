@@ -3,6 +3,7 @@ import { OperationalError } from 'n8n-workflow';
 const AI_SERVICE_MAX_ATTEMPTS = 3;
 const AI_SERVICE_RETRY_BACKOFF_BASE_MS = 1_000;
 const AI_SERVICE_RETRY_BACKOFF_CAP_MS = 5_000;
+const AI_SERVICE_CALL_TIMEOUT_MS = 30_000;
 const AI_SERVICE_UNAVAILABLE_MESSAGE =
 	'The AI assistant service is temporarily unavailable. Please try again in a few minutes.';
 
@@ -16,6 +17,29 @@ type RetryErrorReporter = {
 
 async function sleep(ms: number): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// The SDK's fetch calls carry no timeout, so a stalled connection would hang the caller
+// forever and never reach the retry loop; the race unblocks the caller (the underlying
+// request cannot be aborted without SDK AbortSignal support).
+async function callWithTimeout<T>(call: () => Promise<T>, label: string): Promise<T> {
+	let timer: NodeJS.Timeout | undefined;
+	const pending = call();
+	// Keep a handler attached so a late rejection after losing the race stays handled.
+	pending.catch(() => {});
+	try {
+		return await Promise.race([
+			pending,
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(
+					() => reject(new Error(`${label} timed out after ${AI_SERVICE_CALL_TIMEOUT_MS}ms`)),
+					AI_SERVICE_CALL_TIMEOUT_MS,
+				);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
 }
 
 // The AI assistant service SDK carries upstream HTTP status as numeric statusCode;
@@ -35,7 +59,7 @@ export async function callAiServiceWithRetry<T>(
 ): Promise<T> {
 	for (let attempt = 1; ; attempt++) {
 		try {
-			return await call();
+			return await callWithTimeout(call, label);
 		} catch (error) {
 			if (!isTransientAiServiceError(error)) throw error;
 			if (attempt >= AI_SERVICE_MAX_ATTEMPTS) {
