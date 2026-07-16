@@ -121,7 +121,9 @@ export function formatOdooDateFields(fields: IDataObject, schema: OdooFieldSchem
 				.replace('T', ' ')
 				.replace(/\.\d+Z$/, '');
 		} else if (odooType === 'date') {
-			result[key] = date.toISOString().split('T')[0];
+			// Preserve the date from the original input — no UTC conversion needed.
+			// `toISOString()` would shift to UTC first, causing a day-off for positive offsets.
+			result[key] = value.slice(0, 10);
 		}
 	}
 	return result;
