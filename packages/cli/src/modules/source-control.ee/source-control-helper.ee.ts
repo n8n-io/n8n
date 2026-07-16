@@ -283,7 +283,10 @@ export function isSourceControlLicensed() {
 }
 
 export async function generateSshKeyPair(keyType: KeyPairType) {
-	const sshpk = await import('sshpk');
+	// sshpk is CommonJS (`export =`): under nodenext, a native dynamic import only
+	// hoists some named exports onto the namespace (parsePrivateKey is missed), so
+	// read the real module.exports off `.default`.
+	const { default: sshpk } = await import('sshpk');
 	const keyPair: KeyPair = {
 		publicKey: '',
 		privateKey: '',

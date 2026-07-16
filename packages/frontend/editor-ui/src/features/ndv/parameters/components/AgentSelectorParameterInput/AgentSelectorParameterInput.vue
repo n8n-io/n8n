@@ -249,7 +249,10 @@ watch(
 	},
 );
 
-onClickOutside(dropdown, () => {
+onClickOutside(dropdown, (event) => {
+	if (event.target instanceof HTMLElement && dropdown.value?.isWithinDropdown(event.target)) {
+		return;
+	}
 	isDropdownVisible.value = false;
 });
 

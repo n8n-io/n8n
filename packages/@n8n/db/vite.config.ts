@@ -1,7 +1,9 @@
 import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decorators';
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+// Uses the legacy JS compiler via the `typescript6` alias: tsgo (typescript 7)
+// ships no programmatic API for this LanguageService-based entity transform.
+import ts from 'typescript6';
 import { mergeConfig, type Plugin } from 'vite';
 import { configDefaults } from 'vitest/config';
 

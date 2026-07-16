@@ -8,7 +8,7 @@ const scenario: ExecutionScenario = {
 	successCriteria: 'works',
 };
 
-const testCase: WorkflowTestCase = {
+const incompleteTestCase: WorkflowTestCase = {
 	conversation: [{ role: 'user', text: 'build it' }],
 	complexity: 'simple',
 	tags: [],
@@ -22,7 +22,7 @@ function makeRunResult(run: {
 	failureCategory?: string;
 }): WorkflowTestCaseResult {
 	return {
-		testCase,
+		testCase: incompleteTestCase,
 		workflowBuildSuccess: true,
 		executionScenarioResults: [
 			{
@@ -99,7 +99,7 @@ describe('aggregateResults — verifier-incomplete scenario runs', () => {
 
 describe('aggregateResults — build expectations as units', () => {
 	const expectationCase: WorkflowTestCase = {
-		...testCase,
+		...incompleteTestCase,
 		executionScenarios: undefined,
 		processExpectations: ['asks before building'],
 		outcomeExpectations: ['workflow has a trigger'],

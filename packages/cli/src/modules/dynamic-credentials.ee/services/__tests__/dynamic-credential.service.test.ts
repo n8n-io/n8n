@@ -425,7 +425,7 @@ describe('DynamicCredentialService', () => {
 				await expect(
 					service.resolveIfNeeded(credentialsEntity, staticData, undefined),
 				).rejects.toThrow(
-					'Cannot resolve dynamic credentials without execution context for "Test Credential"',
+					"This node uses an end-user credential, but no user could be identified for this run, so the credential for it couldn't be resolved",
 				);
 			});
 

@@ -13,6 +13,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { resolveArtifactContext } from './artifacts/artifact-context';
 import { captureThreadRunDebug } from './capture-run-debug';
 import {
 	SSE_SETTLE_DELAY_MS,
@@ -55,7 +56,9 @@ import {
 } from '../outcome/event-parser';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
+import { requiresWorkflowOutput } from '../summary';
 import type {
+	ArtifactRef,
 	BuildTrace,
 	ChecklistItem,
 	ChecklistResult,
@@ -340,24 +343,50 @@ export async function runWorkflowTestCase(
 			isPrebuilt,
 			logger,
 		});
-	const expectationsPromise: Promise<BuildExpectationResult[]> =
+	// Render non-workflow artifacts (agent, config-eval) into judge context, so outcome
+	// expectations can assert their existence/absence/content. Independent of whether a
+	// workflow was built — those artifacts save outside the workflow path. Discovery uses the
+	// refs captured from the SSE stream during the build (no thread-message re-fetch); only
+	// needed when there are expectations to judge.
+	const artifactContextPromise: Promise<string | undefined> =
 		expectationsToJudge.length > 0
-			? verifyBuildExpectations(expectationsToJudge, {
-					transcript: expectationsTranscript,
-					workflowJson: build.workflowJsons[0],
-					metrics: build.conversationMetrics,
+			? resolveArtifactContext({
+					artifactRefs: build.artifactRefs ?? [],
+					client,
+					logger,
 				}).catch((error: unknown) => {
 					logger.warn(
-						`  Author expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
+						`  Artifact context resolution failed: ${error instanceof Error ? error.message : String(error)}`,
 					);
-					return allFailVerdicts(expectationsToJudge, 'judge error');
+					return undefined;
 				})
+			: Promise.resolve<string | undefined>(undefined);
+
+	const expectationsPromise: Promise<BuildExpectationResult[]> =
+		expectationsToJudge.length > 0
+			? artifactContextPromise
+					.then(
+						async (artifactContext) =>
+							await verifyBuildExpectations(expectationsToJudge, {
+								transcript: expectationsTranscript,
+								workflowJson: build.workflowJsons[0],
+								metrics: build.conversationMetrics,
+								artifactContext,
+							}),
+					)
+					.catch((error: unknown) => {
+						logger.warn(
+							`  Author expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
+						);
+						return allFailVerdicts(expectationsToJudge, 'judge error');
+					})
 			: Promise.resolve<BuildExpectationResult[]>([]);
 
 	// Answer-only cases (workflowExpectedForCase === false) legitimately end
 	// without a saved workflow — buildWorkflow reports them as a successful
-	// no-workflow build. Grade them on the conversation via the author
-	// expectations below; there are no scenarios to execute.
+	// no-workflow build. This also covers agent/config-eval builds: they produce
+	// no workflow by design and are graded on the rendered artifact context via
+	// the author expectations below (there are no scenarios to execute).
 	if (build.success && !build.workflowId) {
 		result.workflowBuildSuccess = true;
 		result.buildTrace = build.buildTrace;
@@ -366,12 +395,16 @@ export async function runWorkflowTestCase(
 		return result;
 	}
 
+	// Build failed. A missing workflow is only a build failure when the case actually
+	// expects one (i.e. it has execution scenarios) and the conversation didn't finish;
+	// an artifact/answer case that completed is graded on its expectations instead.
 	if (!build.success || !build.workflowId) {
-		result.buildError = build.error;
 		const expectationResults = await expectationsPromise;
-		const buildExpectationResults = expectationResults;
-		if (buildExpectationResults.length > 0)
-			result.buildExpectationResults = buildExpectationResults;
+		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+
+		const artifactOnlyCompleted =
+			!requiresWorkflowOutput(testCase) && build.transcript !== undefined;
+		if (!artifactOnlyCompleted) result.buildError = build.error;
 		return result;
 	}
 
@@ -425,13 +458,13 @@ export async function runWorkflowTestCase(
 		},
 		MAX_CONCURRENT_SCENARIOS,
 	);
+
 	const [scenarioResults, expectationResults] = await Promise.all([
 		scenariosPromise,
 		expectationsPromise,
 	]);
 	result.executionScenarioResults = scenarioResults;
-	const buildExpectationResults = expectationResults;
-	if (buildExpectationResults.length > 0) result.buildExpectationResults = buildExpectationResults;
+	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
@@ -517,6 +550,9 @@ export interface BuildResult {
 	/** IDs to pass to cleanupBuild() */
 	createdWorkflowIds: string[];
 	createdDataTableIds: string[];
+	/** Non-workflow artifact refs (agent, config-eval) captured from the SSE stream,
+	 *  fed to the build-expectations judge context. Empty/undefined for prebuilt runs. */
+	artifactRefs?: ArtifactRef[];
 	/** Per-turn deterministic counters extracted from the captured event stream. */
 	conversationMetrics?: ConversationMetrics;
 	/** Captured SSE events from the build run. */
@@ -830,6 +866,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				buildTrace,
 				createdWorkflowIds: restoredWorkflowIds,
 				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+				artifactRefs: eventOutcome.artifactRefs,
 				conversationMetrics,
 				events,
 				threadId,
@@ -863,6 +900,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			buildTrace,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
 			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+			artifactRefs: eventOutcome.artifactRefs,
 			conversationMetrics,
 			events,
 			threadId,

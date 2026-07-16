@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+// tsgo (typescript 7) ships no programmatic API, so this LanguageService-based
+// transform imports the legacy JS compiler via the `typescript6` alias.
+import ts from 'typescript6';
 import type { Plugin } from 'vite';
 
 /**
