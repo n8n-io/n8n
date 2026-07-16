@@ -344,8 +344,12 @@ export class InstanceAiSettingsService {
 			}));
 	}
 
-	isModelCredentialInUse(credentialId: string): boolean {
-		return this.adminModelCredentialId === credentialId;
+	async isModelCredentialInUse(credentialId: string): Promise<boolean> {
+		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
+		if (!row) return false;
+
+		const settings = jsonParse<PersistedAdminSettings>(row.value, { fallbackValue: {} });
+		return settings.modelCredentialId === credentialId;
 	}
 
 	/** Resolve sandbox (Daytona) config from the admin-selected credential. */

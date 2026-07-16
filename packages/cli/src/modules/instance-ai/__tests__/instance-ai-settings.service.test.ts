@@ -250,11 +250,21 @@ describe('InstanceAiSettingsService', () => {
 				'cred-1',
 			);
 			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
-			expect(service.isModelCredentialInUse('cred-1')).toBe(true);
 			expect(settingsRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({ value: expect.stringContaining('"modelCredentialId":"cred-1"') }),
 				['key'],
 			);
+		});
+
+		it('checks persisted settings when protecting a configured credential', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ modelCredentialId: 'cred-1' }),
+				loadOnStartup: true,
+			} as never);
+
+			await expect(service.isModelCredentialInUse('cred-1')).resolves.toBe(true);
+			await expect(service.isModelCredentialInUse('other-credential')).resolves.toBe(false);
 		});
 
 		it('ignores a configured admin credential on cloud', async () => {
