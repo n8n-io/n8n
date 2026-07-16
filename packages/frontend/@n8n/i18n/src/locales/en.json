@@ -5975,6 +5975,8 @@
 	"evaluations.tests.detail.expected.heading": "Expected output",
 	"evaluations.tests.detail.run": "Run",
 	"evaluations.tests.detail.runAgain": "Run again",
+	"evaluations.tests.detail.config": "Config",
+	"evaluations.tests.detail.latestRun": "Latest run",
 	"evaluations.tests.detail.when": "When",
 	"evaluations.tests.detail.receivesInput": "receives input",
 	"evaluations.tests.detail.output": "Output",

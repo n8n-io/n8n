@@ -6,6 +6,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	N8nActionDropdown,
 	N8nButton,
+	N8nCollapsiblePanel,
 	N8nIcon,
 	N8nInlineTextEdit,
 	N8nInput,
@@ -25,7 +26,7 @@ import {
 	CANNED_METRIC_EXPECTED_FIELDS,
 	type CannedMetricKey,
 } from '../../evaluation.constants';
-import TestCaseResultCard from './TestCaseResultCard.vue';
+import TestCaseRunResult from './TestCaseRunResult.vue';
 
 // Each metric renders as a sentence under "Output".
 const METRIC_SENTENCE_KEY: Record<CannedMetricKey, BaseTextKey> = {
@@ -193,15 +194,25 @@ function toggleTool(name: string) {
 
 // ─── Run / result ────────────────────────────────────────────────────────────
 
-// Once a run has been triggered for this case, show its outcome with the same
-// result card used on the overview list, keyed by the row's index (which equals
-// the case's runIndex). `persistAndRunCase` sets both before the run dispatches.
-const resultCardIndex = computed<number | null>(() =>
+// The two panes: config and the latest run. Both open on entry; starting a run
+// collapses config and opens the run pane, so focus shifts to the result.
+const configOpen = ref(true);
+const runOpen = ref(true);
+
+// Once a run has been triggered for this case, show its outcome keyed by the
+// row's index (which equals the case's runIndex). `persistAndRunCase` sets both
+// before the run dispatches.
+const runResultIndex = computed<number | null>(() =>
 	activeRunId.value !== null ? activeRowIndex.value : null,
 );
 
 async function handleRun() {
-	await persistAndRunCase(activeRunId.value ? 'run_again' : 'initial');
+	configOpen.value = false;
+	runOpen.value = true;
+	const ok = await persistAndRunCase(activeRunId.value ? 'run_again' : 'initial');
+	// If the run never dispatched there's no result pane to show — reopen Config
+	// so the user isn't left staring at a collapsed pane with no feedback.
+	if (!ok) configOpen.value = true;
 }
 </script>
 
@@ -258,117 +269,130 @@ async function handleRun() {
 		</header>
 
 		<div :class="$style.body">
-			<!-- When <node> receives input -->
-			<div :class="$style.block">
-				<!-- Node under test is configured at the suite level; read-only here. -->
-				<div :class="$style.sentence">
-					<N8nText size="small" color="text-dark">
-						{{ locale.baseText('evaluations.tests.detail.when') }}
-					</N8nText>
-					<N8nText size="small" color="text-dark" bold data-test-id="tests-detail-ai-node">
-						{{ aiNodeName }}
-					</N8nText>
-					<N8nText size="small" color="text-dark">
-						{{ locale.baseText('evaluations.tests.detail.receivesInput') }}
-					</N8nText>
-				</div>
-
-				<div :class="$style.indented">
-					<div
-						v-for="name in sliceInputs.fieldNames"
-						:key="`input-${name}`"
-						:class="$style.field"
-						:data-test-id="`tests-detail-input-${name}`"
-					>
-						<N8nText size="small" color="text-dark">{{ name }}</N8nText>
-						<N8nInput
-							:model-value="inputs[name] ?? ''"
-							type="textarea"
-							:rows="2"
-							size="small"
-							@update:model-value="onInputEdit(name, $event)"
-						/>
-					</div>
-				</div>
-			</div>
-
-			<!-- Output: one sentence per metric -->
-			<div :class="$style.block">
-				<N8nText size="small" color="text-dark" bold>
-					{{ locale.baseText('evaluations.tests.detail.output') }}
-				</N8nText>
-
-				<div :class="$style.indented">
-					<div
-						v-for="metric in selectedCannedMetrics"
-						:key="metric.key"
-						:class="$style.metric"
-						:data-test-id="`tests-detail-metric-${metric.key}`"
-					>
-						<N8nText size="small" color="text-dark">{{ metricSentence(metric.key) }}</N8nText>
-
-						<!-- Tool-usage: pick from the node's connected tools (per-case expected) -->
-						<div v-if="metric.key === 'toolsUsed'" :class="$style.tools">
-							<button
-								v-for="tool in connectedTools"
-								:key="tool"
-								type="button"
-								:class="$style.toolItem"
-								:data-test-id="`tests-detail-tool-${tool}`"
-								@click="toggleTool(tool)"
-							>
-								<span :class="[$style.box, selectedTools.has(tool) ? $style.boxChecked : null]">
-									<N8nIcon v-if="selectedTools.has(tool)" icon="check" size="xsmall" />
-								</span>
-								<N8nText size="small" color="text-dark">{{ tool }}</N8nText>
-							</button>
-							<N8nText v-if="connectedTools.length === 0" size="small" color="text-light">
-								{{ locale.baseText('evaluations.tests.detail.tools.empty') }}
+			<!-- Config: the trigger, its inputs and the expected output -->
+			<N8nCollapsiblePanel
+				v-model="configOpen"
+				:title="locale.baseText('evaluations.tests.detail.config')"
+			>
+				<div :class="$style.paneContent" data-test-id="tests-detail-config">
+					<!-- When <node> receives input -->
+					<div :class="$style.block">
+						<!-- Node under test is configured at the suite level; read-only here. -->
+						<div :class="$style.sentence">
+							<N8nText size="small" color="text-dark">
+								{{ locale.baseText('evaluations.tests.detail.when') }}
+							</N8nText>
+							<N8nText size="small" color="text-dark" bold data-test-id="tests-detail-ai-node">
+								{{ aiNodeName }}
+							</N8nText>
+							<N8nText size="small" color="text-dark">
+								{{ locale.baseText('evaluations.tests.detail.receivesInput') }}
 							</N8nText>
 						</div>
 
-						<!-- Metrics with an expected value (similarity / categorization) -->
-						<N8nInput
-							v-else-if="expectedFieldFor(metric.key)"
-							:model-value="expectedValues[expectedFieldFor(metric.key)!.name] ?? ''"
-							type="textarea"
-							:rows="3"
-							size="small"
-							:data-test-id="`tests-detail-expected-${expectedFieldFor(metric.key)!.name}`"
-							@update:model-value="onExpectedEdit(expectedFieldFor(metric.key)!.name, $event)"
-						/>
+						<div :class="$style.indented">
+							<div
+								v-for="name in sliceInputs.fieldNames"
+								:key="`input-${name}`"
+								:class="$style.field"
+								:data-test-id="`tests-detail-input-${name}`"
+							>
+								<N8nText size="small" color="text-dark">{{ name }}</N8nText>
+								<N8nInput
+									:model-value="inputs[name] ?? ''"
+									type="textarea"
+									:rows="2"
+									size="small"
+									@update:model-value="onInputEdit(name, $event)"
+								/>
+							</div>
+						</div>
 					</div>
 
-					<!-- Custom checks (expression based) — defined at the suite level, read-only here -->
-					<div
-						v-for="check in customChecks"
-						:key="check.id"
-						:class="$style.metric"
-						:data-test-id="`tests-detail-custom-${check.id}`"
-					>
-						<N8nText size="small" color="text-dark">
-							{{ locale.baseText('evaluations.tests.metric.custom.sentence') }}
+					<!-- Output: one sentence per metric -->
+					<div :class="$style.block">
+						<N8nText size="small" color="text-dark" bold>
+							{{ locale.baseText('evaluations.tests.detail.output') }}
 						</N8nText>
-						<N8nText
-							size="small"
-							color="text-dark"
-							:class="$style.expression"
-							:data-test-id="`tests-detail-custom-expression-${check.id}`"
-						>
-							{{ check.expression }}
-						</N8nText>
+
+						<div :class="$style.indented">
+							<div
+								v-for="metric in selectedCannedMetrics"
+								:key="metric.key"
+								:class="$style.metric"
+								:data-test-id="`tests-detail-metric-${metric.key}`"
+							>
+								<N8nText size="small" color="text-dark">{{ metricSentence(metric.key) }}</N8nText>
+
+								<!-- Tool-usage: pick from the node's connected tools (per-case expected) -->
+								<div v-if="metric.key === 'toolsUsed'" :class="$style.tools">
+									<button
+										v-for="tool in connectedTools"
+										:key="tool"
+										type="button"
+										:class="$style.toolItem"
+										:data-test-id="`tests-detail-tool-${tool}`"
+										@click="toggleTool(tool)"
+									>
+										<span :class="[$style.box, selectedTools.has(tool) ? $style.boxChecked : null]">
+											<N8nIcon v-if="selectedTools.has(tool)" icon="check" size="xsmall" />
+										</span>
+										<N8nText size="small" color="text-dark">{{ tool }}</N8nText>
+									</button>
+									<N8nText v-if="connectedTools.length === 0" size="small" color="text-light">
+										{{ locale.baseText('evaluations.tests.detail.tools.empty') }}
+									</N8nText>
+								</div>
+
+								<!-- Metrics with an expected value (similarity / categorization) -->
+								<N8nInput
+									v-else-if="expectedFieldFor(metric.key)"
+									:model-value="expectedValues[expectedFieldFor(metric.key)!.name] ?? ''"
+									type="textarea"
+									:rows="3"
+									size="small"
+									:data-test-id="`tests-detail-expected-${expectedFieldFor(metric.key)!.name}`"
+									@update:model-value="onExpectedEdit(expectedFieldFor(metric.key)!.name, $event)"
+								/>
+							</div>
+
+							<!-- Custom checks (expression based) — defined at the suite level, read-only here -->
+							<div
+								v-for="check in customChecks"
+								:key="check.id"
+								:class="$style.metric"
+								:data-test-id="`tests-detail-custom-${check.id}`"
+							>
+								<N8nText size="small" color="text-dark">
+									{{ locale.baseText('evaluations.tests.metric.custom.sentence') }}
+								</N8nText>
+								<N8nText
+									size="small"
+									color="text-dark"
+									:class="$style.expression"
+									:data-test-id="`tests-detail-custom-expression-${check.id}`"
+								>
+									{{ check.expression }}
+								</N8nText>
+							</div>
+						</div>
 					</div>
 				</div>
-			</div>
+			</N8nCollapsiblePanel>
 
-			<!-- Result: same card as the overview list, for a consistent look. -->
-			<div
-				v-if="resultCardIndex !== null"
-				:class="$style.block"
-				data-test-id="tests-detail-results"
+			<!-- Latest run: the outcome of the most recent run for this case -->
+			<N8nCollapsiblePanel
+				v-if="runResultIndex !== null"
+				v-model="runOpen"
+				:title="locale.baseText('evaluations.tests.detail.latestRun')"
 			>
-				<TestCaseResultCard :index="resultCardIndex" />
-			</div>
+				<div :class="$style.paneContent" data-test-id="tests-detail-results">
+					<!-- Only fetch/show the full run output while the pane is open.
+					     `pending` keeps the pane from flashing empty in the window between
+					     dispatch and the run appearing in the store. -->
+					<TestCaseRunResult :index="runResultIndex" :expanded="runOpen" pending />
+				</div>
+			</N8nCollapsiblePanel>
 		</div>
 	</div>
 </template>
@@ -424,7 +448,14 @@ async function handleRun() {
 	padding: var(--spacing--sm) var(--spacing--md) var(--spacing--md);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+	gap: var(--spacing--sm);
+}
+
+// Inner layout of a collapsible pane: its blocks stacked vertically.
+.paneContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
 }
 
 .block {
