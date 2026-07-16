@@ -47,6 +47,24 @@ describe('callAiServiceWithRetry', () => {
 		expect(errorReporter.warn).toHaveBeenCalledTimes(1);
 	});
 
+	it('does not retry timed-out calls when timeout retries are disabled', async () => {
+		vi.useFakeTimers();
+		const errorReporter = { warn: vi.fn() };
+		const call = vi.fn(async () => await new Promise<never>(() => {}));
+
+		const promise = callAiServiceWithRetry('Test call', call, undefined, errorReporter, {
+			retryOnTimeout: false,
+		});
+		const assertion = expect(promise).rejects.toThrow(
+			'The AI assistant service is temporarily unavailable',
+		);
+		await vi.runAllTimersAsync();
+
+		await assertion;
+		expect(call).toHaveBeenCalledTimes(1);
+		expect(errorReporter.warn).toHaveBeenCalledTimes(1);
+	});
+
 	it('does not retry definite client errors', async () => {
 		const unauthorized = Object.assign(new Error('Unauthorized'), { statusCode: 401 });
 		const call = vi.fn(async () => await Promise.reject(unauthorized));

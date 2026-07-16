@@ -16,6 +16,12 @@ type RetryErrorReporter = {
 	warn: (error: Error | string) => void;
 };
 
+type RetryOptions = {
+	retryOnTimeout?: boolean;
+};
+
+class AiServiceCallTimeoutError extends Error {}
+
 async function sleep(ms: number): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -33,7 +39,12 @@ async function callWithTimeout<T>(call: () => Promise<T>, label: string): Promis
 			pending,
 			new Promise<never>((_, reject) => {
 				timer = setTimeout(
-					() => reject(new Error(`${label} timed out after ${AI_SERVICE_CALL_TIMEOUT_MS}ms`)),
+					() =>
+						reject(
+							new AiServiceCallTimeoutError(
+								`${label} timed out after ${AI_SERVICE_CALL_TIMEOUT_MS}ms`,
+							),
+						),
 					AI_SERVICE_CALL_TIMEOUT_MS,
 				);
 			}),
@@ -57,11 +68,20 @@ export async function callAiServiceWithRetry<T>(
 	call: () => Promise<T>,
 	logger?: RetryLogger,
 	errorReporter?: RetryErrorReporter,
+	options: RetryOptions = {},
 ): Promise<T> {
 	for (let attempt = 1; ; attempt++) {
 		try {
 			return await callWithTimeout(call, label);
 		} catch (error) {
+			if (error instanceof AiServiceCallTimeoutError && options.retryOnTimeout === false) {
+				errorReporter?.warn(
+					new Error(`${label} failed after ${attempt} ${attempt === 1 ? 'attempt' : 'attempts'}`, {
+						cause: error,
+					}),
+				);
+				throw new OperationalError(AI_SERVICE_UNAVAILABLE_MESSAGE, { cause: error });
+			}
 			if (!isTransientAiServiceError(error)) throw error;
 			if (attempt >= AI_SERVICE_MAX_ATTEMPTS) {
 				// Warning-level Sentry trail for user-visible exhaustion, without error-level paging.
