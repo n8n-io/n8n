@@ -181,6 +181,7 @@ export {
 	STORED_PLANNED_TASK_KINDS,
 } from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export type {
 	AgentDbMessage,
@@ -637,6 +638,7 @@ export type {
 	InstanceAiBuilderDelegate,
 	BuilderDelegateSession,
 	BuilderTurnStream,
+	BuilderOpenSuspension,
 	SessionWorkflowRef,
 } from './types';
 export type {

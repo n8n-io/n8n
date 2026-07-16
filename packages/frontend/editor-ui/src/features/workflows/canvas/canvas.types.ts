@@ -15,6 +15,7 @@ import type {
 	OnConnectStartParams,
 	ViewportTransform,
 } from '@vue-flow/core';
+import type { AgentCapabilitySummary } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ComputedRef, Ref } from 'vue';
@@ -106,9 +107,18 @@ export type CanvasNodeStickyNoteRender = {
 export type CanvasNodeAgentRender = {
 	type: CanvasNodeRenderType.Agent;
 	options: Partial<{
-		// The node's `agentId` resource-locator. Empty `value` => unconfigured
-		// card (shows the agent picker); set => rich card keyed by this agent.
+		// The node's `agentId` resource-locator — referenced mode only (ignored
+		// in inline mode). Empty `value` => unconfigured card (shows the agent
+		// picker); set => rich card keyed by this agent.
 		agentId: INodeParameterResourceLocator;
+		// 'inline' renders the card from `inlineSummary` below instead of
+		// fetching the referenced agent's capability summary.
+		agentSource: 'referenced' | 'inline';
+		// Pre-projected summary of the node's embedded agent definition (when
+		// agentSource is 'inline'). The card renders only name/model/tools, so
+		// the full inline config (instructions, embedded tool parameters) stays
+		// out of the render options.
+		inlineSummary: AgentCapabilitySummary;
 	}>;
 };
 

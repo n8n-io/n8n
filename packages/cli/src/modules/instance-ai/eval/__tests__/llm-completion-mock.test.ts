@@ -170,6 +170,70 @@ describe('createLlmCompletionMockHandler', () => {
 		expect(mockLogger.warn).toHaveBeenCalled();
 	});
 
+	it('unwraps a chat.completion envelope the model wrongly returns as content', async () => {
+		const envelope = JSON.stringify({
+			id: 'chatcmpl-x',
+			object: 'chat.completion',
+			created: 1,
+			model: 'gpt',
+			choices: [
+				{ index: 0, message: { role: 'assistant', content: '{"image_prompt":"a red bike"}' } },
+			],
+		});
+		submitQueue.push({ kind: 'final', content: envelope });
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(res?.body).toEqual({ content: '{"image_prompt":"a red bike"}' });
+	});
+
+	it('unwraps a responses-API envelope the model wrongly returns as content', async () => {
+		const envelope = JSON.stringify({
+			id: 'resp_x',
+			object: 'response',
+			status: 'completed',
+			output: [
+				{
+					type: 'message',
+					role: 'assistant',
+					content: [{ type: 'output_text', text: 'the answer' }],
+				},
+			],
+		});
+		submitQueue.push({ kind: 'final', content: envelope });
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(res?.body).toEqual({ content: 'the answer' });
+	});
+
+	it('unwraps a provider envelope in the raw-text fallback too', async () => {
+		const envelope = JSON.stringify({
+			object: 'chat.completion',
+			choices: [{ message: { role: 'assistant', content: 'fb answer' } }],
+		});
+		mockGenerate.mockImplementation(async (prompt: string) => {
+			promptCapture.prompt = prompt;
+			return { messages: [], _text: envelope };
+		});
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(res?.body).toEqual({ content: 'fb answer' });
+	});
+
+	it('leaves a plain structured-JSON answer unchanged (no false-positive unwrap)', async () => {
+		submitQueue.push({ kind: 'final', content: '{"image_prompt":"a red bike"}' });
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(chatRequest({ messages: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(res?.body).toEqual({ content: '{"image_prompt":"a red bike"}' });
+	});
+
 	it('feeds the available tools and conversation (incl. tool-result state) into the prompt', async () => {
 		submitQueue.push({ kind: 'final', content: 'ok' });
 		const handler = createLlmCompletionMockHandler();

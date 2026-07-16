@@ -6,11 +6,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
 /**
- * `ChannelSetupCard` owns the body + orchestration that used to be
- * duplicated between `ConfigureChannelCard.vue` (agents chat) and
- * `InstanceAiChannelSetup.vue` (instance AI) — see those files' own tests
- * for how each surface maps the `resolve` event emitted here onto its own
- * transport.
+ * `ChannelSetupCard` owns the body + orchestration for the `configure_channel`
+ * builder tool — see `InstanceAiChannelSetup.vue`'s own tests for how it maps
+ * the `resolve` event emitted here onto its own transport.
  */
 const mocks = vi.hoisted(() => {
 	const slackIntegration = {

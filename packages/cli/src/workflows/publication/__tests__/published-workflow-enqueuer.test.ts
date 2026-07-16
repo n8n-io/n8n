@@ -25,17 +25,17 @@ describe('PublishedWorkflowEnqueuer', () => {
 		enqueuer = createEnqueuer();
 	});
 
-	test('delegates to the outbox repository to enqueue all active workflows', async () => {
+	test('delegates to the outbox repository to enqueue active workflows requiring leader publication', async () => {
 		await enqueuer.enqueueActiveWorkflows();
 
-		expect(outboxRepository.enqueueAllActiveWorkflows).toHaveBeenCalledTimes(1);
+		expect(outboxRepository.enqueueForLeaderHandoff).toHaveBeenCalledTimes(1);
 	});
 
 	describe('enqueueOnLeaderTakeover', () => {
 		test('enqueues active workflows and drains immediately when the publication service is enabled', async () => {
 			await createEnqueuer(true).enqueueOnLeaderTakeover();
 
-			expect(outboxRepository.enqueueAllActiveWorkflows).toHaveBeenCalledTimes(1);
+			expect(outboxRepository.enqueueForLeaderHandoff).toHaveBeenCalledTimes(1);
 			expect(outboxConsumer.startPolling).toHaveBeenCalledTimes(1);
 			expect(outboxConsumer.drainPending).toHaveBeenCalledTimes(1);
 		});
@@ -43,7 +43,7 @@ describe('PublishedWorkflowEnqueuer', () => {
 		test('does nothing when the publication service is disabled', async () => {
 			await createEnqueuer(false).enqueueOnLeaderTakeover();
 
-			expect(outboxRepository.enqueueAllActiveWorkflows).not.toHaveBeenCalled();
+			expect(outboxRepository.enqueueForLeaderHandoff).not.toHaveBeenCalled();
 			expect(outboxConsumer.startPolling).not.toHaveBeenCalled();
 			expect(outboxConsumer.drainPending).not.toHaveBeenCalled();
 		});

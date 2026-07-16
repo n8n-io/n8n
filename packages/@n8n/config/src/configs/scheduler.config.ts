@@ -58,8 +58,8 @@ export class SchedulerConfig {
 	 * upcoming runs (those falling within the window above). Defaults to 10 seconds.
 	 * Must be greater than 0.
 	 */
-	@Env('N8N_SCHEDULER_SWEEP_INTERVAL', positiveIntSchema)
-	sweepIntervalSeconds: number = 10;
+	@Env('N8N_SCHEDULER_MATERIALIZATION_INTERVAL', positiveIntSchema)
+	materializationIntervalSeconds: number = 10;
 
 	/**
 	 * How long, in seconds, a single scan for upcoming runs may take before it is
@@ -68,8 +68,8 @@ export class SchedulerConfig {
 	 * Defaults to 60 seconds.
 	 * Must be greater than 0.
 	 */
-	@Env('N8N_SCHEDULER_SWEEP_TIMEOUT', positiveIntSchema)
-	sweepTimeoutSeconds: number = Time.minutes.toSeconds;
+	@Env('N8N_SCHEDULER_MATERIALIZATION_TIMEOUT', positiveIntSchema)
+	materializationTimeoutSeconds: number = Time.minutes.toSeconds;
 
 	/**
 	 * How often, in seconds, the scheduler checks for recorded runs whose time has

@@ -1,6 +1,7 @@
 import type { WorkflowTaskService } from './types';
 import type { OrchestrationContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
+import { CREDENTIALLESS_AI_ROOT_SIMULATION_REASON } from '../../workflows/plan-verification-simulation';
 import { reconcileSimulationPlan } from '../../workflows/reconcile-simulation-plan';
 import { buildCredentialMap } from '../../workflows/resolve-credentials';
 
@@ -19,7 +20,14 @@ export async function reconcileStaleCredentialPlan(args: {
 	logger: OrchestrationContext['logger'];
 }): Promise<WorkflowBuildOutcome> {
 	const { buildOutcome, workflowId, domainContext, workflowTaskService, logger } = args;
-	if (Object.keys(buildOutcome.mockedCredentialsByNode ?? {}).length === 0) return buildOutcome;
+	// Reconciliation can change something only when the outcome holds mocked
+	// credentials or an AI root simulated for missing model credentials.
+	const hasMockedCredentials = Object.keys(buildOutcome.mockedCredentialsByNode ?? {}).length > 0;
+	const hasCredentiallessAiRoots = (buildOutcome.nodeSimulationPlan ?? []).some(
+		(verdict) =>
+			verdict.verdict === 'simulate' && verdict.reason === CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
+	);
+	if (!hasMockedCredentials && !hasCredentiallessAiRoots) return buildOutcome;
 
 	try {
 		const workflow = await domainContext.workflowService.getAsWorkflowJSON(workflowId);
