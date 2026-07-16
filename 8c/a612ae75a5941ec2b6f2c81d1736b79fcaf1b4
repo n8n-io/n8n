@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvalCollectionsListView.vue
+  s_5d6be4e6bc70a6::t_a4d5b802218e6b 123-126
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.test.ts
+  s_5d6be4e6bc70a6::t_181c13e6718484 161-192
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.ts
+  s_5d6be4e6bc70a6::t_bc660e892b071a 181-184,186-188
+  s_5d6be4e6bc70a6::t_26567eea4477ba 142-154,156-158,170-172,176-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8ca612ae75a5941ec2b6f2c81d1736b79fcaf1b4",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

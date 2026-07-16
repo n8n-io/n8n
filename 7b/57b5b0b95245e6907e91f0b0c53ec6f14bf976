@@ -1,0 +1,30 @@
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  h_32d8cd6a0d6aad 387-388
+  s_07e6e9dae07dde::t_1eb50aefb7e7fa 383,399-402,405
+packages/cli/test/integration/scheduling/README.md
+  s_07e6e9dae07dde::t_8dfba80fb28c61 183,185-195
+  s_07e6e9dae07dde::t_ef9b6693f51073 172
+packages/cli/test/integration/scheduling/scheduler-query-benchmarks.test.ts
+  s_07e6e9dae07dde::t_9c8f69ed070fae 302-305,307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b57b5b0b95245e6907e91f0b0c53ec6f14bf976",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_07e6e9dae07dde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1ef3290-bd35-49a5-9d95-749d9af799b4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
+  s_2a235a6e9347be::t_5791dc7a463a1a 12
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_2a235a6e9347be::t_493341e5e43666 346
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e849509c19aa6ade55a47387633b45f473389c27",
+  "prompts": {},
+  "sessions": {
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

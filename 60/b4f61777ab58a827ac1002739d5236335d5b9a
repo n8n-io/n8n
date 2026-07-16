@@ -1,0 +1,270 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_08237d1656b328::t_00d4c30bfb0f3d 1523
+  s_08237d1656b328::t_026187213e0329 2-8
+  s_08237d1656b328::t_b6601672146bd9 4217
+  s_08237d1656b328::t_518d0ce76cb918 64
+  s_08237d1656b328::t_724295e82a19e2 1714,1719-1741
+  s_8df1f1b34b9d13::t_3e6c5ec91ae6c5 779-782,784-787
+  s_8df1f1b34b9d13::t_43dbc891502c9d 4220
+  s_8df1f1b34b9d13::t_31a8fc60a9f468 63
+  s_8df1f1b34b9d13::t_66ada663e9ff07 1524-1527
+  s_8df1f1b34b9d13::t_3a6a1f61feaaaa 2196-2202,2215-2221
+  s_8df1f1b34b9d13::t_59d282a27a8940 2203-2214
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  h_b48525a15b2d62 22,27-28
+  s_08237d1656b328::t_c04fe86d6f3e3c 321
+  s_08237d1656b328::t_bddfe7cb243771 574
+  s_08237d1656b328::t_5a70982c654950 16,18-21,24-26
+  s_08237d1656b328::t_5d803dd24cb878 570,578-588
+  s_08237d1656b328::t_b331fadcece7b7 10,12,15
+  s_08237d1656b328::t_bf455fb5a9020b 317,325-335
+  s_08237d1656b328::t_f74dc362a747b0 293-294
+  s_08237d1656b328::t_d9699dbb2422f6 549-550
+  s_08237d1656b328::t_2fc1f4db8f62ce 336
+  s_08237d1656b328::t_1f9ec37581d731 589
+packages/@n8n/agents/src/__tests__/langsmith-telemetry.test.ts
+  s_08237d1656b328::t_c4817bd8bb9398 293-326
+packages/@n8n/agents/src/runtime/telemetry/telemetry-options.ts
+  s_08237d1656b328::t_5d015e16eadac8 1-34
+packages/@n8n/agents/src/integrations/langsmith.ts
+  s_08237d1656b328::t_b6278f9ba727f6 128-136,143,149,163-172
+  s_08237d1656b328::t_bc870ce3be2181 211,213-220,224
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-observational.test.ts
+  s_08237d1656b328::t_4092bf61f2863f 148-149
+  s_08237d1656b328::t_fb99195e5744d4 68-69
+packages/cli/src/modules/agents/__tests__/observation-log-observer.test.ts
+  s_08237d1656b328::t_0ac50ed2b27403 10
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_08237d1656b328::t_c602082b5527d7 76
+  s_08237d1656b328::t_7032d20d38b5ed 202
+  s_08237d1656b328::t_f87944e83102cf 15
+packages/@n8n/agents/src/types/sdk/observation-log.ts
+  s_08237d1656b328::t_2198556a9aeeb1 84,97
+  s_08237d1656b328::t_dbd3c1b4142064 3
+  s_08237d1656b328::t_1719cf73cc0058 1
+  s_08237d1656b328::t_0afad9b9246754 102-111
+packages/@n8n/agents/src/runtime/telemetry/runtime-telemetry.ts
+  s_08237d1656b328::t_49af2a820f90e7 105-110,112-115,130-132
+  s_08237d1656b328::t_c12955c18035a3 4
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_08237d1656b328::t_bdae4a416f0d44 21,33
+  s_08237d1656b328::t_7ed9d446cbdb4e 72
+  s_08237d1656b328::t_315a2dc0655ace 261,265,273,302,323
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-history.test.ts
+  s_08237d1656b328::t_86e5e3fcd3a567 7
+  s_08237d1656b328::t_4eb2e36a6a4cab 28-33
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_08237d1656b328::t_1e27fcca215725 1166,1171,1195
+  s_08237d1656b328::t_1691cc3d3fb8ff 59-72
+  s_08237d1656b328::t_d932b545e7fa77 4001-4008,4013-4027,4033-4044,4055-4065
+  s_08237d1656b328::t_45b8f8bee96494 4009-4012,4028-4032,4045-4054
+  s_08237d1656b328::t_20198658542818 4066-4067
+  s_8df1f1b34b9d13::t_63b8092f7df159 185
+  s_8df1f1b34b9d13::t_016897d20f999b 202
+  s_8df1f1b34b9d13::t_b75d4223cffa72 537-567
+  s_8df1f1b34b9d13::t_3423dfd734b62a 1177-1179,1182-1186,1188-1192,1194-1207
+  s_8df1f1b34b9d13::t_36012bbccd5e1f 1167-1170,1172
+  s_8df1f1b34b9d13::t_746e43017bcbf9 174
+  s_8df1f1b34b9d13::t_2a72f093311cef 1018,1027,1031
+  s_8df1f1b34b9d13::t_fc7d05ffe8cd4b 863,889,941,1014-1017,1032-1033,1041-1046,1050
+  s_8df1f1b34b9d13::t_ec5fb6073fd4f4 1180-1181,1187,1193
+  s_8df1f1b34b9d13::t_31062bc0d6aae0 1028-1030,1034-1040,1047-1049
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_08237d1656b328::t_5524a72734a066 11
+  s_08237d1656b328::t_4b37e32e0f7d41 30
+  s_08237d1656b328::t_a3eb26cf5945cb 31-35
+packages/@n8n/agents/src/runtime/__tests__/runtime-telemetry.test.ts
+  s_08237d1656b328::t_44e0334ae77511 16,21
+  s_08237d1656b328::t_b0681b3232a991 1-15,17-20,22-23,27-37
+  s_08237d1656b328::t_eb493dd48a005c 24-26
+  s_08237d1656b328::t_20318bb40e3b0e 38-40
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  s_08237d1656b328::t_2441e53f5bbadd 110,112-120,130-132,144
+  s_08237d1656b328::t_fcd53cfec60214 4
+  s_08237d1656b328::t_9cda14fb582aa5 109,111,121-129,133-143,145
+  s_08237d1656b328::t_bbf5ff5d61a90c 58
+  s_08237d1656b328::t_63db2287eb5eea 20-23
+  s_08237d1656b328::t_0ac91267152f9b 146-170
+packages/@n8n/agents/src/runtime/memory/observation-log-reflector.ts
+  s_08237d1656b328::t_7240932fda9906 49
+  s_08237d1656b328::t_0ec8b6e1c80e7a 189
+  s_08237d1656b328::t_72b62c023ed77f 17
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_08237d1656b328::t_1d99d5816128f4 5
+  s_08237d1656b328::t_205adfbac41c92 69
+  s_08237d1656b328::t_42aa930d9a2731 125,127,138-146,150-158,160,162
+  s_08237d1656b328::t_ff764f38704be3 126,128-137,147-149,161
+  s_08237d1656b328::t_c4604a923352e2 159
+  s_08237d1656b328::t_e01493a24c8c8c 4,21-34
+  s_08237d1656b328::t_79d40fe89c70f4 163-218
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  s_08237d1656b328::t_70116f1de29bb2 828-838
+packages/@n8n/instance-ai/src/tracing/langsmith-tracing.ts
+  s_08237d1656b328::t_91d41be86e1dd9 84,472-473,481-482
+  s_08237d1656b328::t_6978264cba9731 93,97,101,119,120,134,136,138,149-150
+  s_08237d1656b328::t_21d2e2e89e7bf2 820,1260,1283
+  s_8df1f1b34b9d13::t_fbfb9fcb065755 1303
+  s_8df1f1b34b9d13::t_0aa346861cf761 493
+  s_8df1f1b34b9d13::t_8fc53520a77384 474-480
+  s_8df1f1b34b9d13::t_471af3379b1e6b 184
+  s_8df1f1b34b9d13::t_0d26be18c06191 1758-1763,1770
+  s_8df1f1b34b9d13::t_2b4fd6f3db0d78 81-83,85-92,94-96,98-100,102-118,121-133,135,137,139-148
+  s_8df1f1b34b9d13::t_0909299a9cf72a 1193-1212
+  s_8df1f1b34b9d13::t_1a3aa813097ef9 8
+packages/@n8n/instance-ai/src/index.ts
+  s_08237d1656b328::t_79cbd88786a7b8 228
+  s_08237d1656b328::t_dff2918e67434c 507-508
+  s_08237d1656b328::t_2e7da9c1ae535e 25
+  s_08237d1656b328::t_8d185c2740a58d 113-115
+  s_8df1f1b34b9d13::t_5e03b8accb6d7f 226-227
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_08237d1656b328::t_08878b622c31fa 186
+  s_08237d1656b328::t_57eb5ac78edfea 187-191
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_08237d1656b328::t_1f99c2f933f352 1102-1111,1127-1135,1139-1163,1295
+  s_08237d1656b328::t_21a9362eeff168 1072-1073,1099-1100,1164,1182-1183,1190-1191
+  s_08237d1656b328::t_17667d2c2014b3 355
+  s_08237d1656b328::t_874fd98d4840e8 1239,1254,1258,1268-1269,1276-1277,1280
+  s_08237d1656b328::t_220a3e8dc71b5e 1240,1243
+  s_08237d1656b328::t_b08b92ba5ed808 907-931
+  s_08237d1656b328::t_f27e2a210212f6 1193-1194,1223,1296
+  s_8df1f1b34b9d13::t_79cdb57cf60017 22
+  s_8df1f1b34b9d13::t_26090d7524d08a 356-360
+  s_8df1f1b34b9d13::t_38deed857ee669 1052,1065-1071,1074,1076-1077,1080,1098,1101,1112-1126,1136-1138,1165-1181,1184-1189,1192,1195-1222,1224-1229,1233-1238,1241-1242,1244-1253,1255-1257,1259-1267,1270-1275,1278-1279,1281-1290,1294
+  s_8df1f1b34b9d13::t_914fa338785488 1095-1097
+  s_8df1f1b34b9d13::t_538c8c3c2f3377 1291-1293
+packages/cli/src/modules/agents/__tests__/observation-log-reflector.test.ts
+  s_08237d1656b328::t_9b2427ebbba941 9
+packages/@n8n/agents/src/index.ts
+  s_08237d1656b328::t_1bb0eab51ecfd1 73
+  s_08237d1656b328::t_3950fa7348e47c 85
+packages/@n8n/agents/src/types/index.ts
+  s_08237d1656b328::t_c14742ed0ed956 126
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_08237d1656b328::t_9f08fdfa6b6459 18
+  s_08237d1656b328::t_43c75da6b043a0 80,83-84
+  s_8df1f1b34b9d13::t_18ef84263c7fcb 88
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_08237d1656b328::t_60733e43e1fdfb 1-6
+  s_08237d1656b328::t_aaaa3623cef295 201,206-211
+packages/cli/src/modules/agents/__tests__/agents-builder.service.test.ts
+  s_08237d1656b328::t_905add42530c00 47
+  s_08237d1656b328::t_583735a62c0e0d 9
+  s_08237d1656b328::t_a7b4aadcebc6df 4,10,12-16
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_08237d1656b328::t_9364d30d865d5e 213-215
+  s_08237d1656b328::t_9a7c3b44843a90 99,138,197
+  s_08237d1656b328::t_40a8f4ba73aa6b 238-259,262,265,276
+  s_08237d1656b328::t_0cb10b081ec5aa 4,13,18,25,42-49,51-54,57-58,83
+  s_08237d1656b328::t_a7b4aadcebc6df 28,33-34,35-36
+  s_8df1f1b34b9d13::t_0246359db63160 65-72
+  s_8df1f1b34b9d13::t_e50aeb662368e3 277
+  s_8df1f1b34b9d13::t_fce5ab5b5d4ef9 6
+  s_942a7266faab25::t_ef7ef27392578d 269
+  s_942a7266faab25::t_a72c7fbd1cf44e 30
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_08237d1656b328::t_f9539cb2f1e3eb 1003-1008,1053-1058,1086-1091
+  s_08237d1656b328::t_aebc2ab389af46 273-274,450-451,665-666,714-715,778-779,810-811,844-845,996-997,1046-1047
+  s_8df1f1b34b9d13::t_725a24350b5344 1569-1588,1590-1602
+  s_8df1f1b34b9d13::t_59d861885209d3 1589
+  s_8df1f1b34b9d13::t_648cf1feecb68a 126-134
+  s_8df1f1b34b9d13::t_9c3075e0408ec8 1340,1394,1468,1515
+  s_8df1f1b34b9d13::t_3a331710f04a46 1361-1391
+  s_8df1f1b34b9d13::t_b5db74c29b8bfb 1418-1419,1441,1447-1453,1460
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_08237d1656b328::t_a708b3e572ae05 256-258,278-280,297-299,310-315
+  s_08237d1656b328::t_310dd18f6d2c00 89,97-98,111-112,125-130,141-146
+  s_08237d1656b328::t_b5d80516cde66b 166-171,189-190,205-210
+  s_08237d1656b328::t_90f5dd25997b99 77-79
+  s_08237d1656b328::t_a7b4aadcebc6df 17
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_08237d1656b328::t_4b9a390bf376a3 103
+  s_08237d1656b328::t_b0305365f189f7 18-21,34-37,102,108-114,124,127-128,135-136,164,191,207,212-217,229,305-306,312,325,336-341,370,374-376,378-388
+  s_08237d1656b328::t_a7b4aadcebc6df 7-9,16
+  s_08237d1656b328::t_183d1d9d67e35f 371
+  s_8df1f1b34b9d13::t_4b944569c6d5ac 123
+  s_8df1f1b34b9d13::t_bc2e97b1854b47 228
+  s_8df1f1b34b9d13::t_5564e5df2a4849 344-362
+  s_8df1f1b34b9d13::t_9c689665e8f08a 33
+  s_8df1f1b34b9d13::t_2675e523fd57d3 78-81
+  s_8df1f1b34b9d13::t_f6d09741f79b7f 186
+  s_8df1f1b34b9d13::t_8f83c54665199f 202
+  s_8df1f1b34b9d13::t_3b81b483e33eb2 159
+  s_942a7266faab25::t_b6c29b89c4a21a 30,53-56,120,225,315-322
+  s_942a7266faab25::t_a7c603b38ab441 323-324
+packages/@n8n/instance-ai/src/stream/usage-accumulator.ts
+  s_08237d1656b328::t_c6d83c9bf71596 143-156
+  s_08237d1656b328::t_3fa2e40d41c3b0 1
+  s_08237d1656b328::t_9fb98dcaeb7d83 157
+  s_8df1f1b34b9d13::t_2c36635796edc8 103-113
+packages/@n8n/instance-ai/src/types.ts
+  s_08237d1656b328::t_14595fe0a124c0 7
+  s_08237d1656b328::t_bd1c13f1939b43 1260-1261
+  s_08237d1656b328::t_e690dae4b6ae4e 854-857,861,863
+  s_8df1f1b34b9d13::t_b14836c8d24595 869-875
+  s_8df1f1b34b9d13::t_36a3ef8e794813 1386-1393
+  s_8df1f1b34b9d13::t_9e6c1c4a1a157f 1498-1511
+packages/cli/src/modules/agents/builder/agents-builder-settings.service.ts
+  s_08237d1656b328::t_5a258f341e5e3a 43-45
+  s_08237d1656b328::t_a7b4aadcebc6df 18
+  s_08237d1656b328::t_5dd5ee1a9acea5 46-47
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_08237d1656b328::t_b4e7598bb39abf 130-131
+  s_8df1f1b34b9d13::t_f3a401b09a7066 134-136
+  s_8df1f1b34b9d13::t_e33ea521bdb085 458
+  s_8df1f1b34b9d13::t_a21c732d0d2574 417
+  s_8df1f1b34b9d13::t_b5a4ecfa40298b 442-446
+packages/@n8n/instance-ai/src/stream/__tests__/usage-accumulator.test.ts
+  s_8df1f1b34b9d13::t_14d29319586fd6 69-111
+packages/@n8n/agents/src/runtime/memory/scoped-memory-task-runner.ts
+  s_8df1f1b34b9d13::t_011ada32c79d6f 153-159,179-182,188,190-191,192-196,201-218,220-224,226-227,228-230
+  s_8df1f1b34b9d13::t_16d93c33585356 144,168-173,183-187,189,197-200,219,225
+packages/@n8n/agents/src/runtime/__tests__/scoped-memory-task-runner.test.ts
+  s_8df1f1b34b9d13::t_7c2df956047d14 203-291
+  s_8df1f1b34b9d13::t_e6d7f9f82e0bd5 296-299,308-309,311
+  s_8df1f1b34b9d13::t_22280d478512fc 292-295,300-307,310,312-418
+  s_8df1f1b34b9d13::t_40aa6f5c14de2a 16-23
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_942a7266faab25::t_e3a3fdd8278163 276
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_942a7266faab25::t_e118269a3f463f 20
+  s_942a7266faab25::t_b4d1802b5e2e59 7,11-19,21-23
+  s_942a7266faab25::t_b2d3d25ded9cdf 24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "60b4f61777ab58a827ac1002739d5236335d5b9a",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_08237d1656b328": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3bcf71c2-0f7d-4d53-b679-4278e8a609ff",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_8df1f1b34b9d13": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c0ae6241-b92b-4d09-952e-b606baf77ef3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_942a7266faab25": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fa5778a4-0aee-43f6-9912-acb247821e57",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}

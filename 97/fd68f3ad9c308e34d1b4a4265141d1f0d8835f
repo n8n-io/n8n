@@ -1,0 +1,165 @@
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_942a7266faab25::t_e8c60afca88d42 1115
+  s_942a7266faab25::t_e7d0d48c989566 1327,1345-1348
+  s_942a7266faab25::t_cbb07e485afef7 1162,1191-1192
+  s_942a7266faab25::t_facab5c61337e1 369
+  s_f62ff1619f9af7::t_96e6c4a8e459f7 659
+  s_942a7266faab25::t_060e6aaa95455e 1090-1091,1094-1102,1105,1108,1111,1113-1114,1116,1135,1140,1143,1145-1148,1164-1177,1179-1180,1184-1187,1190,1193-1210,1214-1225,1230,1234-1240,1247-1248,1251,1254,1259-1263,1265,1268,1271,1278,1281-1282,1284,1300,1305,1308,1310-1313,1328-1332,1334-1337,1339-1344,1352-1353,1355-1359,1361,1368,1371,1376-1378,1380,1386-1387,1389,1391
+  s_942a7266faab25::t_8080a49a7d60f5 1050,1085
+  s_15aa0b4a1a26e0::t_64ea50d860e461 1275,1285-1299,1301-1302
+  s_15aa0b4a1a26e0::t_a68a6eb267ee77 1117-1130,1132,1134,1136-1137
+  s_f62ff1619f9af7::t_ed37ae5ddfb0b6 735
+  s_942a7266faab25::t_df699243947e83 279,292-293,1038-1039
+  s_942a7266faab25::t_cca81ccccf7978 833
+  s_f62ff1619f9af7::t_7738e32d999a6f 366
+  s_942a7266faab25::t_945b04669d3c08 52,60,67
+  s_942a7266faab25::t_f97d1f175cc636 248
+  s_f62ff1619f9af7::t_8b3066cec4e523 458
+  s_f62ff1619f9af7::t_c341b17caa4327 616
+  s_f62ff1619f9af7::t_58f69ff1156258 696
+  s_942a7266faab25::t_5584d1412a030e 1283
+packages/cli/src/modules/agents/builder/skills/custom-tools.skill.ts
+  s_942a7266faab25::t_2a77ff4fcd6d36 1-54
+  s_942a7266faab25::t_017102f881f56b 55-60
+packages/cli/src/modules/agents/builder/builder-tool-names.ts
+  s_942a7266faab25::t_c21318642dc1b7 17-18
+packages/cli/src/modules/agents/builder/task-objective-template.ts
+  s_942a7266faab25::t_7d8f087b09321d 12
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_f62ff1619f9af7::t_38060395d0d473 232-233,319
+  s_942a7266faab25::t_a07182af7f21cd 211
+  s_942a7266faab25::t_cd13903c705b04 600
+  s_15aa0b4a1a26e0::t_8437bc1407e0df 565-572,575-582
+  s_15aa0b4a1a26e0::t_311e0e9f191e06 615-622,625-632
+  s_942a7266faab25::t_df2ccead499791 234-235,322
+  s_942a7266faab25::t_3810e0cd753ea5 668-671
+  s_942a7266faab25::t_1257d153d1bf32 323
+  s_f62ff1619f9af7::t_87e996d152988e 320
+  s_942a7266faab25::t_34566d5e57e8a8 237,326,441,535,563,584,586-596,599,601-603,613,634,638-650,655,657,659,662-667
+  s_942a7266faab25::t_2994710d2b4770 69,98,124,212-213,236,267,302-303,325,363,420-421,440,553,583,633,672-673,707-708,733
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_942a7266faab25::t_c678b0ed7fd058 287
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_942a7266faab25::t_0d9633ed8992b8 45-46
+packages/cli/src/modules/agents/builder/skills/target-skills.skill.ts
+  s_942a7266faab25::t_771ce4169c1202 48,60-73
+  s_942a7266faab25::t_d191268fa6299a 90,100,104,108-109,113-116
+  s_942a7266faab25::t_d999e6a1d4f7e1 14-16
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_942a7266faab25::t_3feccf830fde2f 319,326
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_942a7266faab25::t_ecaf9f6b39d590 112-138,144-145,156-193
+  s_942a7266faab25::t_2cc36853cad2c5 139-143
+  s_cb4962ba8b8d61::t_5d2a63eca01feb 146-155
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_cb4962ba8b8d61::t_447824e8a539ac 80-82,84,86-88,95-102,104-113,118-120,144
+  s_942a7266faab25::t_2bffaaca509f0f 103
+  s_942a7266faab25::t_afa1ee3ab8d3f1 85,89-94,114-117,124-136,142-143,148-152
+packages/cli/src/modules/agents/builder/skill-body-template.ts
+  s_942a7266faab25::t_71d76f2392fa69 12
+packages/cli/src/modules/agents/builder/skills/memory.skill.ts
+  s_942a7266faab25::t_7cb4922f970cdf 1-69
+packages/cli/src/modules/agents/builder/skills/integrations.skill.ts
+  s_942a7266faab25::t_92681a4389f929 79
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_942a7266faab25::t_5d3b7077ec20e0 32-33,37-38
+  s_942a7266faab25::t_f3b1bacd11a5a8 14-19,23-24
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_942a7266faab25::t_e09b2ebc72b62e 14-19,139
+  s_5706d141fbd3a7::t_39febcff61b499 70-71
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_5706d141fbd3a7::t_b6c05ca2ae9502 116-132,166
+  s_942a7266faab25::t_244d456df4d3cb 5,9
+  s_942a7266faab25::t_a549dc457cccd4 50-55,57-58,63-68,70-71,73,77-78,80-81,164
+  s_f62ff1619f9af7::t_2ad69ad615767a 99,101,107-112,165
+  s_942a7266faab25::t_1f613f601f012f 21-22,93-94,105
+  s_942a7266faab25::t_2afe79e5eb38a7 29-49,56,59-62,69,72,74-76,79,82-85
+  s_942a7266faab25::t_665d1c97c4983f 86-92,95-98,100,102-104,106,113-115
+  s_942a7266faab25::t_cb4e7d2bc023f5 133-134
+packages/cli/src/modules/agents/builder/prompts/memory.prompt.ts
+  s_942a7266faab25::t_1550f10fdf8342 25-28,34,39
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_942a7266faab25::t_6f516ce3ff5278 50-53,75,111
+  s_942a7266faab25::t_dc9e825f2ece5d 70,218-232
+  s_cb4962ba8b8d61::t_65c34bc318aef6 45-47,49,54-60,68-69,73-74,77,81,83-86,89,97-99,105
+  s_942a7266faab25::t_2511b552708d65 72,76,78-80,82,91-94,96,106-109
+  s_942a7266faab25::t_39a89cbb38221e 71
+packages/cli/src/modules/agents/builder/skills/target-tasks.skill.ts
+  s_942a7266faab25::t_27d7b687db4c7d 10-11,13
+  s_942a7266faab25::t_f30fc237f5b0b0 51,62-63,67-69,73,75-77,79,83-86,90-93,96-99
+  s_942a7266faab25::t_4d0fd0e3866741 26-30
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_942a7266faab25::t_c398a4a0d32921 116-122
+  s_942a7266faab25::t_3d574e9bd3e4e8 123-125
+  s_942a7266faab25::t_f8bd876d78b136 128-130
+  s_942a7266faab25::t_3a518694ae5f5d 200,207-209,211
+  s_942a7266faab25::t_d3308df65870b0 223,226-227,234-239
+  s_942a7266faab25::t_92354592e01172 170,172-182
+  s_942a7266faab25::t_9027d2c2fbac72 204-205
+  s_942a7266faab25::t_c82f07e9cd1593 131-132,147,151-152,183-186,198,212-215,240-243
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_942a7266faab25::t_9384d58bd5ebdb 1-78
+packages/cli/src/modules/agents/builder/skills/index.ts
+  s_942a7266faab25::t_b9c4d31f8401fa 3,6-7,15,18-19
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_942a7266faab25::t_d2672cc01d659c 82-83,89
+  s_f62ff1619f9af7::t_9e110220b61ef5 90-96
+  s_942a7266faab25::t_499b73732639bf 108-116
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_942a7266faab25::t_dfbc55e779a086 228
+  s_942a7266faab25::t_5933a70105cbfa 307-308,320-321,331-332,344-345
+  s_942a7266faab25::t_5814640de2a878 261-306,309-319,322-330,333-343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "97fd68f3ad9c308e34d1b4a4265141d1f0d8835f",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_15aa0b4a1a26e0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "67c1cfad-8183-4458-afd2-7be8c9c24020",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5706d141fbd3a7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "09fe1251-9bef-4d14-b960-4b7f30daa752",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_942a7266faab25": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fa5778a4-0aee-43f6-9912-acb247821e57",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_cb4962ba8b8d61": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cf4e1a4a-4811-416d-9727-ad1ea11aef26",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f62ff1619f9af7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "32a4d0c9-dea1-4830-8d36-c8383b73eac6",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
