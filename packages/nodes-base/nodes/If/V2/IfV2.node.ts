@@ -20,10 +20,10 @@ export class IfV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3, 2.4],
+			version: [2, 2.1, 2.2, 2.3],
+			iconColor: 'green',
 			defaults: {
 				name: 'If',
-				color: '#408000',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
