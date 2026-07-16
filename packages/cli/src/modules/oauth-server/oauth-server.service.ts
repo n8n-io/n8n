@@ -68,34 +68,15 @@ export type ListConnectedClientsOptions = {
 	connected?: McpClientConnectedPeriod;
 };
 
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
-
-function filterConnectedClients(
-	rows: ConnectedOAuthClient[],
-	filters: Pick<ListConnectedClientsOptions, 'name' | 'ownerId' | 'type' | 'connected'>,
-	now: number,
-): ConnectedOAuthClient[] {
-	const needle = filters.name?.trim().toLowerCase();
-	return rows.filter((row) => {
-		if (needle && !row.name.toLowerCase().includes(needle)) return false;
-		if (filters.type) {
-			const type = getMcpClientType(row.name);
-			if (!type || !MCP_CLIENT_TYPE_FILTER_BUCKETS[filters.type].includes(type)) return false;
-		}
-		if (filters.ownerId && row.owner?.id !== filters.ownerId) return false;
-		if (filters.connected === 'last7' && row.grantedAt < now - 7 * DAY_IN_MS) return false;
-		if (filters.connected === 'last30' && row.grantedAt < now - 30 * DAY_IN_MS) return false;
-		if (filters.connected === 'older' && row.grantedAt >= now - 30 * DAY_IN_MS) return false;
-		return true;
-	});
+/** Whether a client's derived brand type falls in the requested filter bucket. */
+function matchesTypeFilter(name: string, type: McpClientTypeFilter): boolean {
+	const clientType = getMcpClientType(name);
+	return clientType !== null && MCP_CLIENT_TYPE_FILTER_BUCKETS[type].includes(clientType);
 }
 
-function distinctOwners(rows: ConnectedOAuthClient[]): ConnectedOAuthClientOwner[] {
-	const byId = new Map<string, ConnectedOAuthClientOwner>();
-	for (const row of rows) {
-		if (row.owner) byId.set(row.owner.id, row.owner);
-	}
-	return [...byId.values()].sort((a, b) => {
+/** Sort owners by display name so the "Connected by" dropdown reads naturally. */
+function sortOwners(owners: ConnectedOAuthClientOwner[]): ConnectedOAuthClientOwner[] {
+	return [...owners].sort((a, b) => {
 		const nameA = [a.firstName, a.lastName].filter(Boolean).join(' ') || a.email;
 		const nameB = [b.firstName, b.lastName].filter(Boolean).join(' ') || b.email;
 		return nameA.localeCompare(nameB);
@@ -518,11 +499,23 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new ForbiddenError('You are not allowed to list connected clients of other users');
 		}
 
-		const consents = listAll
-			? await this.userConsentRepository.findAllWithClientAndUser()
-			: await this.userConsentRepository.findByUserWithClient(user.id);
+		// `type` is a regex over the client name that SQL can't express, so its
+		// presence defers paging and counting to JS; every other filter and the
+		// pagination itself run in the DB query.
+		const typeFilter = options.type;
 
-		const rows = consents.map((consent) => {
+		const { rows: consents, total } = await this.userConsentRepository.findConnectedClients({
+			userId: listAll ? undefined : user.id,
+			withOwner: listAll,
+			name: options.name,
+			ownerId: listAll ? options.ownerId : undefined,
+			connected: options.connected,
+			now: Date.now(),
+			skip: typeFilter ? undefined : options.skip,
+			take: typeFilter ? undefined : options.take,
+		});
+
+		let clients: ConnectedOAuthClient[] = consents.map((consent) => {
 			const { clientSecret, clientSecretExpiresAt, ...sanitizedClient } = consent.client;
 			return {
 				...sanitizedClient,
@@ -541,24 +534,29 @@ export class OAuthServerService implements OAuthServerProvider {
 					: {}),
 			};
 		});
+		let count = total;
 
-		// Owners feed the "Connected by" filter, so they reflect the unfiltered set.
-		const owners = listAll ? distinctOwners(rows) : undefined;
-
-		const filtered = filterConnectedClients(rows, options, Date.now());
-		const skip = options.skip ?? 0;
-		const take = options.take;
-		const page = take === undefined ? filtered.slice(skip) : filtered.slice(skip, skip + take);
-
-		// In the `all` view every consent is already loaded with its owner, so
-		// the caller's own count is derivable without a separate query.
-		const mine = listAll ? rows.filter((row) => row.owner?.id === user.id).length : rows.length;
-		const totals: ConnectedOAuthClientTotals = { mine };
-		if (canSeeAll) {
-			totals.all = listAll ? rows.length : await this.userConsentRepository.count();
+		if (typeFilter) {
+			clients = clients.filter((client) => matchesTypeFilter(client.name, typeFilter));
+			count = clients.length;
+			const skip = options.skip ?? 0;
+			clients =
+				options.take === undefined ? clients.slice(skip) : clients.slice(skip, skip + options.take);
 		}
 
-		return { clients: page, count: filtered.length, totals, owners };
+		// Owners and the tab totals reflect the unfiltered set, so they come from
+		// dedicated counts rather than the filtered page above.
+		const owners = listAll
+			? sortOwners(await this.userConsentRepository.findConsentOwners())
+			: undefined;
+		const totals: ConnectedOAuthClientTotals = {
+			mine: await this.userConsentRepository.countBy({ userId: user.id }),
+		};
+		if (canSeeAll) {
+			totals.all = await this.userConsentRepository.count();
+		}
+
+		return { clients, count, totals, owners };
 	}
 
 	/** Tool names each scope unlocks on this instance, for the clients list UI. */
