@@ -33,6 +33,20 @@
 			"position": [600, 400]
 		},
 		{
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{}",
+				"options": {
+					"includeBinary": true
+				}
+			},
+			"id": "11c4e7ea-0538-4200-9f74-a4f4d2b8f573",
+			"name": "Clear File Metadata",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [700, 400]
+		},
+		{
 			"parameters": {},
 			"id": "959fa107-f3e6-444e-8fd4-1c893b8942db",
 			"name": "Compression1",
@@ -55,6 +69,17 @@
 			]
 		},
 		"Read Binary File": {
+			"main": [
+				[
+					{
+						"node": "Clear File Metadata",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clear File Metadata": {
 			"main": [
 				[
 					{

@@ -1,0 +1,53 @@
+{
+	"name": "Vector store retrieve mode wired via main edges",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {},
+			"id": "embeddings",
+			"name": "Embeddings",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"typeVersion": 1.2,
+			"position": [200, 240]
+		},
+		{
+			"parameters": {
+				"mode": "retrieve",
+				"topK": 8
+			},
+			"id": "vector-store",
+			"name": "Retrieve Relevant Regulations",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+			"typeVersion": 1,
+			"position": [200, 0]
+		},
+		{
+			"parameters": {},
+			"id": "format-results",
+			"name": "Format Retrieved Regulations",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, 0]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "Retrieve Relevant Regulations", "type": "main", "index": 0 }]]
+		},
+		"Embeddings": {
+			"ai_embedding": [
+				[{ "node": "Retrieve Relevant Regulations", "type": "ai_embedding", "index": 0 }]
+			]
+		},
+		"Retrieve Relevant Regulations": {
+			"main": [[{ "node": "Format Retrieved Regulations", "type": "main", "index": 0 }]]
+		}
+	}
+}
