@@ -82,9 +82,7 @@ const buttonDisabled = computed(() => props.disabled || props.loading);
 	padding: var(--spacing--2xl) var(--spacing--xl);
 	border: var(--border-width) dashed var(--border-color);
 	border-radius: var(--radius--lg);
-	/* Match the page surface (white in light theme) so only the dashed border
-	   frames the state, like the prototype. */
-	background: transparent;
+	background: var(--background--surface);
 	/* Gentle entrance for the enable/disable swap, matching the prototype. */
 	animation: mcp-reveal-in var(--duration--base, 240ms) var(--easing--ease-out, ease-out);
 }
