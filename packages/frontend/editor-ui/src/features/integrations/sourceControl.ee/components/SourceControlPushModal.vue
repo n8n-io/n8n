@@ -478,11 +478,15 @@ const branchOptions = computed(() =>
 );
 const defaultBranch = computed(() => sourceControlStore.preferences.branchName);
 
-const isBranchValid = computed(() =>
-	isCreatingBranch.value
+const isBranchValid = computed(() => {
+	if (!sourceControlStore.preferences.branchSelectionEnabled) {
+		return true;
+	}
+
+	return isCreatingBranch.value
 		? isValidGitBranchName(newBranchName.value.trim())
-		: selectedBranch.value.length > 0,
-);
+		: selectedBranch.value.length > 0;
+});
 
 const showBranchNameError = computed(
 	() =>
@@ -640,8 +644,14 @@ async function commitAndPush() {
 			force: true,
 			commitMessage: commitMessage.value,
 			fileNames: files,
-			branch: isCreatingBranch.value ? newBranchName.value.trim() : selectedBranch.value,
-			createBranch: isCreatingBranch.value,
+			branch: sourceControlStore.preferences.branchSelectionEnabled
+				? isCreatingBranch.value
+					? newBranchName.value.trim()
+					: selectedBranch.value
+				: undefined,
+			createBranch: sourceControlStore.preferences.branchSelectionEnabled
+				? isCreatingBranch.value
+				: undefined,
 		});
 
 		toast.showToast({
@@ -918,12 +928,14 @@ onMounted(async () => {
 	// Always load fresh data to ensure workflow names are populated
 	await loadSourceControlStatus();
 
-	try {
-		await sourceControlStore.getBranches();
-	} catch {
-		// non-fatal: fall back to the default branch already in preferences
+	if (sourceControlStore.preferences.branchSelectionEnabled) {
+		try {
+			await sourceControlStore.getBranches();
+		} catch {
+			// non-fatal: fall back to the default branch already in preferences
+		}
+		selectedBranch.value = sourceControlStore.preferences.branchName;
 	}
-	selectedBranch.value = sourceControlStore.preferences.branchName;
 });
 </script>
 
@@ -1314,52 +1326,54 @@ onMounted(async () => {
 				</N8nText>
 			</N8nNotice>
 
-			<div :class="$style.branchRow">
-				<N8nSelect
-					v-if="!isCreatingBranch"
-					v-model="selectedBranch"
-					data-test-id="source-control-push-modal-branch-select"
-					:placeholder="i18n.baseText('settings.sourceControl.modals.push.branch')"
-					filterable
-					:teleported="false"
-				>
-					<N8nOption
-						v-for="option in branchOptions"
-						:key="option.value"
-						:label="option.label"
-						:value="option.value"
+			<template v-if="sourceControlStore.preferences.branchSelectionEnabled">
+				<div :class="$style.branchRow">
+					<N8nSelect
+						v-if="!isCreatingBranch"
+						v-model="selectedBranch"
+						data-test-id="source-control-push-modal-branch-select"
+						:placeholder="i18n.baseText('settings.sourceControl.modals.push.branch')"
+						filterable
+						:teleported="false"
+					>
+						<N8nOption
+							v-for="option in branchOptions"
+							:key="option.value"
+							:label="option.label"
+							:value="option.value"
+						/>
+					</N8nSelect>
+					<N8nInput
+						v-else
+						v-model="newBranchName"
+						data-test-id="source-control-push-modal-branch-new"
+						:placeholder="
+							i18n.baseText('settings.sourceControl.modals.push.branch.newBranchPlaceholder')
+						"
 					/>
-				</N8nSelect>
-				<N8nInput
-					v-else
-					v-model="newBranchName"
-					data-test-id="source-control-push-modal-branch-new"
-					:placeholder="
-						i18n.baseText('settings.sourceControl.modals.push.branch.newBranchPlaceholder')
-					"
-				/>
-				<N8nCheckbox
-					v-model="isCreatingBranch"
-					data-test-id="source-control-push-modal-branch-new-toggle"
-					:label="i18n.baseText('settings.sourceControl.modals.push.branch.newBranch')"
-				/>
-			</div>
-			<N8nText
-				v-if="showBranchNameError"
-				data-test-id="source-control-push-modal-branch-error"
-				size="small"
-				color="danger"
-				class="mb-2xs"
-			>
-				{{ i18n.baseText('settings.sourceControl.modals.push.branch.invalid') }}
-			</N8nText>
-			<N8nText v-if="isCreatingBranch" size="small" color="text-light">
-				{{
-					i18n.baseText('settings.sourceControl.modals.push.branch.base', {
-						interpolate: { branch: defaultBranch },
-					})
-				}}
-			</N8nText>
+					<N8nCheckbox
+						v-model="isCreatingBranch"
+						data-test-id="source-control-push-modal-branch-new-toggle"
+						:label="i18n.baseText('settings.sourceControl.modals.push.branch.newBranch')"
+					/>
+				</div>
+				<N8nText
+					v-if="showBranchNameError"
+					data-test-id="source-control-push-modal-branch-error"
+					size="small"
+					color="danger"
+					class="mb-2xs"
+				>
+					{{ i18n.baseText('settings.sourceControl.modals.push.branch.invalid') }}
+				</N8nText>
+				<N8nText v-if="isCreatingBranch" size="small" color="text-light">
+					{{
+						i18n.baseText('settings.sourceControl.modals.push.branch.base', {
+							interpolate: { branch: defaultBranch },
+						})
+					}}
+				</N8nText>
+			</template>
 
 			<N8nText bold tag="p">
 				{{ i18n.baseText('settings.sourceControl.modals.push.commitMessage') }}

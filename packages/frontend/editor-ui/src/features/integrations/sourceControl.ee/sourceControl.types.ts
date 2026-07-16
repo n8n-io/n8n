@@ -9,6 +9,7 @@ export type SshKeyTypes = ['ed25519', 'rsa'];
 // - Global admin (sourceControl:manage): SourceControlPreferences (full)
 export type SourceControlPublicPreferences = {
 	branchReadOnly: boolean;
+	branchSelectionEnabled: boolean;
 };
 
 export type SourceControlProjectPreferences = SourceControlPublicPreferences & {

@@ -29,6 +29,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		branches: [],
 		repositoryUrl: '',
 		branchReadOnly: false,
+		branchSelectionEnabled: false,
 		branchColor: DEFAULT_BRANCH_COLOR,
 		connected: false,
 		publicKey: '',

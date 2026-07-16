@@ -473,10 +473,11 @@ watch(connectionType, () => {
 					<N8nHeading size="xlarge" tag="h2" class="mb-s">{{
 						locale.baseText('settings.sourceControl.instanceSettings')
 					}}</N8nHeading>
-					<label>
+					<label v-if="sourceControlStore.preferences.branchSelectionEnabled">
 						{{ locale.baseText('settings.sourceControl.branches') }}
 						<small>({{ locale.baseText('settings.sourceControl.branches.caption') }})</small>
 					</label>
+					<label v-else>{{ locale.baseText('settings.sourceControl.branches.legacy') }}</label>
 					<div :class="$style.branchSelection">
 						<N8nFormInput
 							id="branchName"

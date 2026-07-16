@@ -95,6 +95,7 @@ describe('useSourceControlStore', () => {
 				connected: true,
 				branchColor: '#4f46e5',
 				branchReadOnly: false,
+				branchSelectionEnabled: false,
 				branches: ['main', 'develop'],
 			};
 
@@ -124,6 +125,7 @@ describe('useSourceControlStore', () => {
 					connected: false,
 					repositoryUrl: '',
 					branchReadOnly: false,
+					branchSelectionEnabled: false,
 					branchColor: '#000000',
 					branches: [],
 					branchName: '',

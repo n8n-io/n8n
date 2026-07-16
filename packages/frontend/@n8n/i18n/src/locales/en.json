@@ -3769,6 +3769,7 @@
 	"settings.sourceControl.instanceSettings": "Instance settings",
 	"settings.sourceControl.branches": "Default branch",
 	"settings.sourceControl.branches.caption": "Used for pull. Choose or create the branch for each commit in the push dialog.",
+	"settings.sourceControl.branches.legacy": "Branch connected to this n8n instance",
 	"settings.sourceControl.protected": "{bold}: prevent editing workflows (recommended for production environments).",
 	"settings.sourceControl.protected.bold": "Protected instance",
 	"settings.sourceControl.color": "Color",
