@@ -17,7 +17,7 @@ import { useToast } from './useToast';
 import { useRouter } from 'vue-router';
 import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { UpdateNodeGroupCommand } from '@/app/models/history';
+import { RemoveNodeGroupCommand, UpdateNodeGroupCommand } from '@/app/models/history';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useSelectionValidation } from './useSelectionValidation';
 
@@ -390,7 +390,7 @@ export function useWorkflowExtraction() {
 			})
 		)[0];
 
-		addReplacementNodeToSelectionGroup(
+		addReplacementNodeToCanvasGroup(
 			nodesToRemoveFromParent.map((node) => node.id),
 			executeWorkflowNode.id,
 		);
@@ -431,9 +431,9 @@ export function useWorkflowExtraction() {
 		historyStore.stopRecordingUndo();
 	}
 
-	function addReplacementNodeToSelectionGroup(selectionIds: string[], replacementNodeId: string) {
+	function addReplacementNodeToCanvasGroup(removableNodeIds: string[], replacementNodeId: string) {
 		const affectedGroupIds = uniq(
-			selectionIds
+			removableNodeIds
 				.map((nodeId) => workflowDocumentStore.value.getGroupForNode(nodeId)?.id)
 				.filter((id): id is string => id !== undefined),
 		);
@@ -441,14 +441,34 @@ export function useWorkflowExtraction() {
 		if (affectedGroupIds.length !== 1) return;
 
 		const groupId = affectedGroupIds[0];
-		const groupBefore = workflowDocumentStore.value.getGroupById(groupId);
+		const groupBeforeReplacements = workflowDocumentStore.value.getGroupById(groupId);
+		if (!groupBeforeReplacements) return;
+
+		const remainingGroupMembers = groupBeforeReplacements.nodeIds.filter(
+			(id) => !removableNodeIds.includes(id),
+		);
+
+		// Whole group extracted: the only node left would be the Execute node. In this case, a single-node
+		// group is invalid, so dissolve the group and leave the Execute node ungrouped.
+		if (remainingGroupMembers.length === 0) {
+			const snapshot = {
+				...groupBeforeReplacements,
+				nodeIds: [...groupBeforeReplacements.nodeIds],
+			};
+			workflowDocumentStore.value.deleteGroup(groupId);
+			historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(snapshot, Date.now()));
+			return;
+		}
+
+		// Some group members survived aside the Subworkflow, and the Subworkflow would not be the single
+		// remaining node, so keep the group and add the Execute node.
 		workflowDocumentStore.value.addNodesToGroup(groupId, [replacementNodeId]);
-		const groupAfter = workflowDocumentStore.value.getGroupById(groupId);
-		if (groupBefore && groupAfter) {
+		const groupAfterReplacements = workflowDocumentStore.value.getGroupById(groupId);
+		if (groupAfterReplacements) {
 			historyStore.pushCommandToUndo(
 				new UpdateNodeGroupCommand(
-					{ ...groupBefore, nodeIds: [...groupBefore.nodeIds] },
-					{ ...groupAfter, nodeIds: [...groupAfter.nodeIds] },
+					{ ...groupBeforeReplacements, nodeIds: [...groupBeforeReplacements.nodeIds] },
+					{ ...groupAfterReplacements, nodeIds: [...groupAfterReplacements.nodeIds] },
 					Date.now(),
 				),
 			);
