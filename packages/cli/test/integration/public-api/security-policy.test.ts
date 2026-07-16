@@ -105,13 +105,13 @@ describe('Security policy in Public API', () => {
 		});
 	});
 
-	describe('PUT /settings/security-policy', () => {
+	describe('PATCH /settings/security-policy', () => {
 		it('updates the policy and returns the new values', async () => {
 			testServer.license.enable('feat:personalSpacePolicy');
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put('/settings/security-policy')
+				.patch('/settings/security-policy')
 				.send({ personalSpacePublishing: false, redactionEnforcement: { floor: 'production' } });
 
 			expect(response.status).toBe(200);
@@ -136,7 +136,7 @@ describe('Security policy in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put('/settings/security-policy')
+				.patch('/settings/security-policy')
 				.send({ personalSpacePublishing: 'not-a-boolean', redactionEnforcement: 'nope' });
 
 			expect(response.status).toBe(400);
@@ -147,7 +147,7 @@ describe('Security policy in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put('/settings/security-policy')
+				.patch('/settings/security-policy')
 				.send({ redactionEnforcement: { floor: 'bogus' } });
 
 			expect(response.status).toBe(400);
@@ -159,7 +159,7 @@ describe('Security policy in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentWithoutApiKey()
-				.put('/settings/security-policy')
+				.patch('/settings/security-policy')
 				.send({ personalSpacePublishing: false });
 
 			expect(response.status).toBe(401);
@@ -168,7 +168,7 @@ describe('Security policy in Public API', () => {
 		it('rejects with 403 when not licensed', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put('/settings/security-policy')
+				.patch('/settings/security-policy')
 				.send({ personalSpacePublishing: false });
 
 			expect(response.status).toBe(403);
@@ -181,7 +181,7 @@ describe('Security policy in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(scopedOwner)
-				.put('/settings/security-policy')
+				.patch('/settings/security-policy')
 				.send({ personalSpacePublishing: false });
 
 			expect(response.status).toBe(403);
@@ -193,7 +193,7 @@ describe('Security policy in Public API', () => {
 
 			const writeResponse = await testServer
 				.publicApiAgentFor(owner)
-				.put('/settings/security-policy')
+				.patch('/settings/security-policy')
 				.send({ personalSpacePublishing: false });
 
 			expect(writeResponse.status).toBe(409);

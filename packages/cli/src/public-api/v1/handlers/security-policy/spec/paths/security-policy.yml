@@ -20,7 +20,7 @@ get:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '403':
       $ref: '../../../../shared/spec/responses/forbidden.yml'
-put:
+patch:
   x-eov-operation-id: updateSecurityPolicy
   x-required-scope: securitySettings:manage
   x-eov-operation-handler: v1/handlers/security-policy/security-policy.handler

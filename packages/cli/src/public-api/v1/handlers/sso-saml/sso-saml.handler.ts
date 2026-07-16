@@ -1,4 +1,4 @@
-import { SamlPreferences } from '@n8n/api-types';
+import { UpdateSamlConfigurationDto } from '@n8n/api-types';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
@@ -16,7 +16,7 @@ import {
 
 type SsoSamlHandlers = {
 	getSamlConfiguration: PublicAPIEndpoint<SsoSamlRequest.Get>;
-	setSamlConfiguration: PublicAPIEndpoint<SsoSamlRequest.Set>;
+	updateSamlConfiguration: PublicAPIEndpoint<SsoSamlRequest.Update>;
 };
 
 const ssoSamlHandlers: SsoSamlHandlers = {
@@ -30,11 +30,11 @@ const ssoSamlHandlers: SsoSamlHandlers = {
 		},
 	],
 
-	setSamlConfiguration: [
+	updateSamlConfiguration: [
 		isLicensed('feat:saml'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'saml:manage' }),
 		async (req, res) => {
-			const payload = SamlPreferences.safeParse(req.body);
+			const payload = UpdateSamlConfigurationDto.safeParse(req.body);
 			if (!payload.success) {
 				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
 			}

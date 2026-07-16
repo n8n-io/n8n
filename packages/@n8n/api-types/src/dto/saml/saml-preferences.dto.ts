@@ -62,3 +62,22 @@ export class SamlPreferences extends Z.class({
 
 	relayState: z.string().default(''),
 }) {}
+
+/** Public API PATCH body for SAML configuration. Omitted fields are left unchanged. */
+export class UpdateSamlConfigurationDto extends Z.class({
+	mapping: SamlPreferencesAttributeMapping.schema.optional(),
+	metadata: z.string().optional(),
+	metadataUrl: z.string().optional(),
+	ignoreSSL: z.boolean().optional(),
+	loginBinding: SamlLoginBindingSchema.optional(),
+	loginEnabled: z.boolean().optional(),
+	loginLabel: z.string().optional(),
+	authnRequestsSigned: z.boolean().optional(),
+	wantAssertionsSigned: z.boolean().optional(),
+	wantMessageSigned: z.boolean().optional(),
+	signingPrivateKey: z.string().optional(),
+	signingCertificate: z.string().optional(),
+	acsBinding: SamlLoginBindingSchema.optional(),
+	signatureConfig: SignatureConfigSchema.optional(),
+	relayState: z.string().optional(),
+}) {}

@@ -121,13 +121,13 @@ describe('SAML SSO configuration in Public API', () => {
 		});
 	});
 
-	describe('POST /settings/sso/saml', () => {
+	describe('PATCH /settings/sso/saml', () => {
 		it('sets the SAML configuration and returns the updated values', async () => {
 			testServer.license.enable('feat:saml');
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/saml')
+				.patch('/settings/sso/saml')
 				.send({
 					...sampleConfig,
 					loginLabel: 'Updated SAML Label',
@@ -151,7 +151,7 @@ describe('SAML SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/saml')
+				.patch('/settings/sso/saml')
 				.send({ ignoreSSL: 'not-a-boolean' });
 
 			expect(response.status).toBe(400);
@@ -168,7 +168,7 @@ describe('SAML SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/saml')
+				.patch('/settings/sso/saml')
 				.send({ authnRequestsSigned: true });
 
 			expect(response.status).toBe(400);
@@ -180,7 +180,7 @@ describe('SAML SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentWithoutApiKey()
-				.post('/settings/sso/saml')
+				.patch('/settings/sso/saml')
 				.send({ loginLabel: 'SAML' });
 
 			expect(response.status).toBe(401);
@@ -189,7 +189,7 @@ describe('SAML SSO configuration in Public API', () => {
 		it('rejects with 403 when not licensed', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/saml')
+				.patch('/settings/sso/saml')
 				.send({ loginLabel: 'SAML' });
 
 			expect(response.status).toBe(403);
@@ -202,7 +202,7 @@ describe('SAML SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(scopedOwner)
-				.post('/settings/sso/saml')
+				.patch('/settings/sso/saml')
 				.send({ loginLabel: 'SAML' });
 
 			expect(response.status).toBe(403);
@@ -214,7 +214,7 @@ describe('SAML SSO configuration in Public API', () => {
 
 			const writeResponse = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/saml')
+				.patch('/settings/sso/saml')
 				.send({ loginLabel: 'Blocked Label' });
 
 			expect(writeResponse.status).toBe(409);
