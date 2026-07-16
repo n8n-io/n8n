@@ -44,11 +44,11 @@ export const FolderConflictPolicy = {
 } as const;
 
 export const MissingWorkflowDependencyPolicy = {
-	/** Fails the export when a static sub-workflow dependency is not included. */
+	/** Fails the export when a workflow dependency is not included. */
 	Fail: 'fail',
-	/** Reserved for exporting missing static sub-workflows as requirements only. */
+	/** Reserved for exporting missing workflow dependencies as requirements only. */
 	ReferenceOnly: 'reference-only',
-	/** Reserved for automatically adding missing static sub-workflows to the package. */
+	/** Reserved for automatically adding missing workflow dependencies to the package. */
 	IncludeInPackage: 'include-in-package',
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */

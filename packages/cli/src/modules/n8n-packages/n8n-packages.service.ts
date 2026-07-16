@@ -14,7 +14,7 @@ import { FolderExporter } from './entities/folder/folder.exporter';
 import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
-import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
+import { assertWorkflowDependenciesIncluded } from './entities/workflow/workflow-dependencies';
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
@@ -123,7 +123,7 @@ export class N8nPackagesService {
 			workflowIds: allWorkflowsInPackage.map(({ id }) => id),
 		});
 
-		assertStaticSubWorkflowsIncluded(
+		assertWorkflowDependenciesIncluded(
 			workflowRequirements,
 			new Set(allWorkflowsInPackage.map(({ id }) => id)),
 		);

@@ -100,6 +100,31 @@ export async function buildWorkflowCallingSubWorkflow({
 	);
 }
 
+interface BuildWorkflowUsingErrorWorkflowOptions {
+	name: string;
+	project: Project;
+	errorWorkflowId: string;
+	parentFolder?: Folder;
+}
+
+export async function buildWorkflowUsingErrorWorkflow({
+	name,
+	project,
+	errorWorkflowId,
+	parentFolder,
+}: BuildWorkflowUsingErrorWorkflowOptions): Promise<WorkflowEntity> {
+	return await createWorkflow(
+		{
+			name,
+			nodes: [],
+			connections: {},
+			settings: { errorWorkflow: errorWorkflowId },
+			parentFolder,
+		},
+		project,
+	);
+}
+
 interface BuildWorkflowReferencingDataTablesOptions {
 	name: string;
 	project: Project;
