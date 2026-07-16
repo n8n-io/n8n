@@ -315,9 +315,7 @@ describe('getFileSystemHelperFunctions', () => {
 			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
-			).rejects.toThrow(
-				'Access to the file is not allowed. The file is outside of the allowed paths.',
-			);
+			).rejects.toThrow('Access to the file is not allowed.');
 		});
 
 		it('should not reveal if a blocked file exists', async () => {
@@ -326,9 +324,7 @@ describe('getFileSystemHelperFunctions', () => {
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
-			).rejects.toThrow(
-				'Access to the file is not allowed. The file is outside of the allowed paths.',
-			);
+			).rejects.toThrow('Access to the file is not allowed.');
 		});
 
 		it('should omit allowed paths from blocked access errors when none are configured', async () => {
@@ -423,9 +419,7 @@ describe('getFileSystemHelperFunctions', () => {
 					'content',
 					constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC,
 				),
-			).rejects.toThrow(
-				'Access to the file is not allowed. The file is outside of the allowed paths.',
-			);
+			).rejects.toThrow('Access to the file is not allowed.');
 		});
 
 		it('should reject symlinks with ELOOP error', async () => {
