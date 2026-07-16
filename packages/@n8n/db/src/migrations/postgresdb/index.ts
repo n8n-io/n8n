@@ -232,6 +232,9 @@ import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/17840
 import { CreateWorkflowReviewRequestTables1784000000048 } from '../common/1784000000048-CreateWorkflowReviewRequestTables';
 import { AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048 } from '../common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus';
 import { CreateWorkflowReviewRequestTables1784000000049 } from '../common/1784000000049-CreateWorkflowReviewRequestTables';
+import { AddScheduledTaskDispatchedAt1784000000049 } from '../common/1784000000049-AddScheduledTaskDispatchedAt';
+import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784000000050-AddHostRunIdToInstanceAiCheckpoints';
+import { CreateWorkflowReviewRequestTables1784000000051 } from '../common/1784000000051-CreateWorkflowReviewRequestTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -466,5 +469,7 @@ export const postgresMigrations: Migration[] = [
 	CreateInstanceAiEventsTable1784000000046,
 	BackfillPreScopingOAuthGrantScopes1784000000047,
 	AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048,
-	CreateWorkflowReviewRequestTables1784000000049,
+	AddScheduledTaskDispatchedAt1784000000049,
+	AddHostRunIdToInstanceAiCheckpoints1784000000050,
+	CreateWorkflowReviewRequestTables1784000000051,
 ];

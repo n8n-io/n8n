@@ -10,7 +10,7 @@ import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateWorkflowReviewRequestTables1784000000049';
+const MIGRATION_NAME = 'CreateWorkflowReviewRequestTables1784000000051';
 
 describe('CreateWorkflowReviewRequestTables Migration', () => {
 	let dataSource: DataSource;
