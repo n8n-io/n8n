@@ -1495,8 +1495,20 @@ export interface OrchestrationContext {
 	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */
 	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
-	/** Claim AI credits for a sub-agent stream segment. Wired by the host (cli); absent when billing doesn't apply. */
-	claimSubAgentUsage?: (dedupeId: string, usage: BuilderUsageItem[], status: TraceStatus) => void;
+	/**
+	 * Claim AI credits for a sub-agent stream segment. Wired by the host (cli);
+	 * absent when billing doesn't apply. Callers await this before returning or
+	 * cascading a terminal segment outcome (completed/errored/suspended), so a
+	 * result or suspension is never observed while its claim is still in
+	 * flight. The host decides whether a billing failure is fatal — it is
+	 * expected to catch and log rather than reject, so a billing hiccup never
+	 * breaks the builder flow.
+	 */
+	claimSubAgentUsage?: (
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+		status: TraceStatus,
+	) => Promise<void>;
 	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;

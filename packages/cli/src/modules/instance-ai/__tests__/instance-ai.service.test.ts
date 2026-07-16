@@ -855,7 +855,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 						dedupeId: string,
 						usage: BuilderUsageItem[],
 						status: TraceStatus,
-					) => void;
+					) => Promise<void>;
 				};
 			}>;
 			settingsService: {
@@ -881,7 +881,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			instanceAiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
-			logger: unknown;
+			logger: { warn: Mock };
 			telemetry: { track: Mock };
 			oauth2CallbackUrl: string;
 			webhookBaseUrl: string;
@@ -933,7 +933,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.instanceAiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
-		service.logger = {};
+		service.logger = { warn: vi.fn() };
 		service.telemetry = { track: vi.fn() };
 		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
 		service.webhookBaseUrl = 'http://localhost/webhook';
@@ -1006,7 +1006,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			cacheWrite: 0,
 			output: 20,
 		};
-		environment.orchestrationContext.claimSubAgentUsage?.('dedupe-1', [usageItem], 'completed');
+		await environment.orchestrationContext.claimSubAgentUsage?.(
+			'dedupe-1',
+			[usageItem],
+			'completed',
+		);
 		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
 			fakeUser,
 			'thread-1',
@@ -1014,6 +1018,19 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			[usageItem],
 			'completed',
 		);
+
+		// An unexpected claim rejection must not reject the awaited hook, and is
+		// logged instead of breaking the builder flow.
+		(service.creditService.claimRunUsage as Mock).mockRejectedValueOnce(new Error('claim failed'));
+		await expect(
+			environment.orchestrationContext.claimSubAgentUsage?.('dedupe-2', [usageItem], 'completed'),
+		).resolves.toBeUndefined();
+		expect(service.logger.warn).toHaveBeenCalledWith('Failed to claim agent-builder usage', {
+			threadId: 'thread-1',
+			runId: 'run-1',
+			dedupeId: 'dedupe-2',
+			error: 'claim failed',
+		});
 
 		expect(createSandbox).not.toHaveBeenCalled();
 		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as Mock).mock.calls[0]?.[0]

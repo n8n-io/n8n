@@ -123,6 +123,15 @@ const expectedUsageItem = {
 	output: 20,
 };
 
+/** A manually-resolvable promise, for proving the tool awaits `claimSubAgentUsage`. */
+function deferredClaim(): { promise: Promise<void>; resolve: () => void } {
+	let resolve!: () => void;
+	const promise = new Promise<void>((r) => {
+		resolve = r;
+	});
+	return { promise, resolve };
+}
+
 function askQuestionsSuspendPayload() {
 	return {
 		requestId: 'builder-req-1',
@@ -1328,7 +1337,7 @@ describe('build-agent tool', () => {
 	describe('credit metering', () => {
 		it('claims usage once for a completed leg', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1349,9 +1358,40 @@ describe('build-agent tool', () => {
 			);
 		});
 
+		it('waits for the usage claim before returning a completed leg', async () => {
+			const { context, delegate } = makeContext();
+			const claim = deferredClaim();
+			context.claimSubAgentUsage = vi.fn().mockReturnValue(claim.promise);
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([finishChunk()], 'ok'));
+
+			const resultPromise = runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{ toolCallId: 'orch-call-1' },
+			);
+
+			// The tool call must not settle while its usage claim is still pending.
+			const timeoutSentinel = Symbol('timeout');
+			const raceBeforeResolve = await Promise.race([
+				resultPromise,
+				new Promise((resolve) => setTimeout(() => resolve(timeoutSentinel), 20)),
+			]);
+			expect(raceBeforeResolve).toBe(timeoutSentinel);
+
+			claim.resolve();
+			const result = await resultPromise;
+
+			expect(result.ok).toBe(true);
+			expect(context.claimSubAgentUsage).toHaveBeenCalledTimes(1);
+		});
+
 		it('claims usage with status errored for an errored leg', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1375,7 +1415,8 @@ describe('build-agent tool', () => {
 
 		it('claims usage with a suspension-suffixed dedupe id before cascading the suspension', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			const claim = deferredClaim();
+			context.claimSubAgentUsage = vi.fn().mockReturnValue(claim.promise);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1397,11 +1438,18 @@ describe('build-agent tool', () => {
 			);
 			const suspend: Mock = vi.fn().mockResolvedValue(undefined);
 
-			await runToolWithCtx(
+			const resultPromise = runToolWithCtx(
 				context,
 				{ message: 'Build it', name: 'New Agent' },
 				{ toolCallId: 'orch-call-1', suspend },
 			);
+
+			// The suspension must not be cascaded while its usage claim is still pending.
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			expect(suspend).not.toHaveBeenCalled();
+
+			claim.resolve();
+			await resultPromise;
 
 			expect(context.claimSubAgentUsage).toHaveBeenCalledTimes(1);
 			expect(context.claimSubAgentUsage).toHaveBeenCalledWith(
@@ -1409,6 +1457,7 @@ describe('build-agent tool', () => {
 				[expectedUsageItem],
 				'suspended',
 			);
+			expect(suspend).toHaveBeenCalledTimes(1);
 			const claimOrder = (context.claimSubAgentUsage as Mock).mock.invocationCallOrder[0];
 			const suspendOrder = suspend.mock.invocationCallOrder[0];
 			expect(claimOrder).toBeLessThan(suspendOrder);
@@ -1416,7 +1465,7 @@ describe('build-agent tool', () => {
 
 		it('claims usage with the ref-suffixed dedupe base on the resume leg', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
 			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
@@ -1463,7 +1512,7 @@ describe('build-agent tool', () => {
 
 		it('still calls the hook with an empty array when the stream carried no usage', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',

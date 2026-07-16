@@ -2172,9 +2172,20 @@ export class InstanceAiService {
 			},
 			// Aggregate on the instance-AI thread (not the `ia-builder:` session
 			// thread) so the credit service's per-thread display total and FE push
-			// attribute builder tokens to the conversation the user sees.
-			claimSubAgentUsage: (dedupeId, usage, status) => {
-				void this.creditService.claimRunUsage(user, threadId, dedupeId, usage, status);
+			// attribute builder tokens to the conversation the user sees. The tool
+			// awaits this before returning/cascading a terminal segment outcome, so
+			// a billing failure must never propagate — best-effort by contract.
+			claimSubAgentUsage: async (dedupeId, usage, status) => {
+				try {
+					await this.creditService.claimRunUsage(user, threadId, dedupeId, usage, status);
+				} catch (error) {
+					this.logger.warn('Failed to claim agent-builder usage', {
+						threadId,
+						runId,
+						dedupeId,
+						error: getErrorMessage(error),
+					});
+				}
 			},
 			domainTools,
 			abortSignal,
