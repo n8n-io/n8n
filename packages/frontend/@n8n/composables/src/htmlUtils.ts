@@ -1,7 +1,7 @@
 import { toValue, type MaybeRef } from 'vue';
 import xss, { escapeAttrValue } from 'xss';
 
-import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from './sanitization';
+import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from './constants/sanitization';
 
 /*
 	Constants and utility functions that help in HTML, CSS and DOM manipulation

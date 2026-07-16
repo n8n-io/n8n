@@ -1,5 +1,5 @@
+import { ALLOWED_HTML_TAGS } from './constants/sanitization';
 import { openSafeUrl, sanitizeHtml } from './htmlUtils';
-import { ALLOWED_HTML_TAGS } from './sanitization';
 
 describe('sanitizeHtml', () => {
 	test.each(ALLOWED_HTML_TAGS)('should allow allowed HTML tag %s', (tag) => {
