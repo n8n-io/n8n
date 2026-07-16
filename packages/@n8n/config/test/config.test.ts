@@ -355,7 +355,7 @@ describe('GlobalConfig', () => {
 			outputRedactionPlaceholder: '[REDACTED]',
 			runDebugEnabled: false,
 			thinkingEnabled: true,
-			durableLog: false,
+			durableLog: true,
 		},
 		queue: {
 			health: {
