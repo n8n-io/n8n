@@ -154,6 +154,7 @@ import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.ut
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
+import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import {
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
@@ -197,6 +198,7 @@ export function useCanvasOperations() {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const canvasStore = useCanvasStore();
+	const agentNodeCanvasGeometryStore = useAgentNodeCanvasGeometryStore();
 	const settingsStore = useSettingsStore();
 	const tagsStore = useTagsStore();
 	const nodeCreatorStore = useNodeCreatorStore();
@@ -1066,6 +1068,13 @@ export function useCanvasOperations() {
 		if (!nodeData) {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
 		}
+		if (isAgentNodeV2(nodeData) && !options.keepPristine) {
+			agentNodeCanvasGeometryStore.setPendingCenterY(
+				workflowDocumentStore.value.workflowId,
+				nodeData.id,
+				nodeData.position[1] + AGENT_NODE_SIZE[1] / 2,
+			);
+		}
 
 		workflowDocumentStore.value.addNode(nodeData);
 		if (options.trackHistory) {
@@ -1606,15 +1615,27 @@ export function useCanvasOperations() {
 						pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
 					}
 
+					const measuredSourceHeight = isAgentNodeV2(lastInteractedWithNodeObject)
+						? agentNodeCanvasGeometryStore.getNodeHeight(
+								workflowDocumentStore.value.workflowId,
+								lastInteractedWithNodeObject.id,
+							)
+						: undefined;
+					const sourceNodeHeight =
+						measuredSourceHeight ??
+						(isAgentNodeV2(lastInteractedWithNodeObject)
+							? AGENT_NODE_SIZE[1]
+							: DEFAULT_NODE_SIZE[1]);
+					const targetNodeHeight = isAgentNodeV2(node) ? AGENT_NODE_SIZE[1] : nodeSize[1];
+					const centeredY =
+						lastInteractedWithNode.value.position[1] + (sourceNodeHeight - targetNodeHeight) / 2;
+
 					// If a node is active then add the new node directly after the current one
-					position = [
-						lastInteractedWithNode.value.position[0] + pushOffset,
-						lastInteractedWithNode.value.position[1] + yOffset,
-					];
+					position = [lastInteractedWithNode.value.position[0] + pushOffset, centeredY + yOffset];
 
 					// When inserting via edge plus button, keep Y aligned to preserve vertical line
 					if (lastInteractedWithNodeConnection) {
-						position = [position[0], lastInteractedWithNode.value.position[1]];
+						position = [position[0], centeredY];
 					}
 				}
 			}

@@ -89,6 +89,7 @@ import { type ContextMenuAction } from '@/features/shared/contextMenu/composable
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
 
 const $style = useCssModule();
 
@@ -228,6 +229,7 @@ const {
 	nodes: graphNodes,
 	onPaneReady,
 	onNodesInitialized,
+	onNodesChange,
 	findNode,
 	viewport,
 	dimensions,
@@ -241,6 +243,14 @@ const {
 	onNodeMouseEnter,
 	onNodeMouseLeave,
 } = vueFlow;
+
+const agentNodeGeometry = useCanvasAgentNodeGeometry({
+	canvasId: props.id,
+	getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
+	setNodePosition: (id, position) =>
+		workflowDocumentStore.value.setNodePositionById(id, [position.x, position.y]),
+	onNodesChange,
+});
 const {
 	getIncomingNodes,
 	getOutgoingNodes,
@@ -661,7 +671,10 @@ function onNodeDrag(event: NodeDragEvent) {
 }
 
 function onNodeDragStop(event: NodeDragEvent) {
-	const moves = groupDrag.processNodeDragStop(event);
+	const moves = agentNodeGeometry.snapDraggedNodeMoves(
+		event.node,
+		groupDrag.processNodeDragStop(event),
+	);
 	if (moves.length > 0) commitManualNodePositions(moves);
 }
 

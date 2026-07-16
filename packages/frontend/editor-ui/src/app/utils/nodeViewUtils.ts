@@ -186,6 +186,17 @@ export function snapPositionToGrid(position: XYPosition): XYPosition {
 	];
 }
 
+export function snapPositionToGridByCenter(
+	position: XYPosition,
+	[nodeWidth, nodeHeight]: [number, number],
+): XYPosition {
+	const snappedCenter: XYPosition = [
+		Math.round((position[0] + nodeWidth / 2) / GRID_SIZE) * GRID_SIZE,
+		Math.round((position[1] + nodeHeight / 2) / GRID_SIZE) * GRID_SIZE,
+	];
+	return [snappedCenter[0] - nodeWidth / 2, snappedCenter[1] - nodeHeight / 2];
+}
+
 /**
  * Returns the new position for a node based on the given position and the nodes in the workflow
  */

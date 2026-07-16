@@ -11,7 +11,12 @@ import {
 	type CanvasNodeData,
 } from '../canvas.types';
 import { isPresent } from '@/app/utils/typesUtils';
-import { AGENT_NODE_SIZE, DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import {
+	AGENT_NODE_SIZE,
+	DEFAULT_NODE_SIZE,
+	GRID_SIZE,
+	snapPositionToGridByCenter,
+} from '@/app/utils/nodeViewUtils';
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
@@ -628,15 +633,16 @@ export function useCanvasLayout(
 		// (e.g. the content-sized agent card) off the shared axis, leaving its
 		// connections slightly inclined. For default-size nodes the two are
 		// equivalent, since half their extent is already grid-aligned.
-		const snapByCenter = (value: number, extent: number) =>
-			snapToGrid(value + extent / 2) - extent / 2;
-
 		const finalNodes = positionedNodes
 			.map(({ id, boundingBox }) => {
+				const [x, y] = snapPositionToGridByCenter(
+					[boundingBox.x - anchor.x, boundingBox.y - anchor.y],
+					[boundingBox.width, boundingBox.height],
+				);
 				return {
 					id,
-					x: snapByCenter(boundingBox.x - anchor.x, boundingBox.width),
-					y: snapByCenter(boundingBox.y - anchor.y, boundingBox.height),
+					x,
+					y,
 				};
 			})
 			// Stickies have no connections to keep straight, so their top-left
