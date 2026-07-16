@@ -1,3 +1,12 @@
+## [2.31.2](https://github.com/n8n-io/n8n/compare/n8n@2.31.1...n8n@2.31.2) (2026-07-16)
+
+
+### Bug Fixes
+
+* **core:** Fix change in width of all dropdowns in UI ([#34266](https://github.com/n8n-io/n8n/issues/34266)) ([953bbe5](https://github.com/n8n-io/n8n/commit/953bbe5b06e6948f5365ec45d9e440e540774c38))
+* **core:** Require execution mode for MCP workflow executions ([#34280](https://github.com/n8n-io/n8n/issues/34280)) ([9aced71](https://github.com/n8n-io/n8n/commit/9aced71e1131c3e85233560b079bc1fdd89d9de0))
+
+
 ## [2.31.1](https://github.com/n8n-io/n8n/compare/n8n@2.31.0...n8n@2.31.1) (2026-07-15)
 
 
