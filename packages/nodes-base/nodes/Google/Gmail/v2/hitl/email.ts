@@ -8,7 +8,42 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import type { GmailHitlEmailOptions } from './descriptions';
 import { googleApiRequest, prepareEmailsInput } from '../../GenericFunctions';
-import { addThreadHeadersToEmail } from '../utils/draft';
+
+interface GmailThreadMetadata {
+	messages?: Array<{ payload: { headers: Array<{ name: string; value: string }> } }>;
+}
+
+/**
+ * Gmail files a message into an existing conversation only when its Subject
+ * matches the thread's, so the reply headers and the subject both come from
+ * the thread's last message — the node's Subject parameter is not used.
+ */
+async function applyThreadToEmail(
+	context: IExecuteFunctions,
+	email: IEmail,
+	threadId: string,
+): Promise<void> {
+	const thread: GmailThreadMetadata = await googleApiRequest.call(
+		context,
+		'GET',
+		`/gmail/v1/users/me/threads/${threadId}`,
+		{},
+		{ format: 'metadata', metadataHeaders: ['Message-ID', 'Subject'] },
+	);
+
+	const messages = thread.messages ?? [];
+	const headers = messages[messages.length - 1]?.payload.headers ?? [];
+	const messageId = headers.find((header) => header.name.toLowerCase() === 'message-id')?.value;
+	const threadSubject = headers.find((header) => header.name.toLowerCase() === 'subject')?.value;
+
+	if (messageId) {
+		email.inReplyTo = messageId;
+		email.references = messageId;
+	}
+	if (threadSubject) {
+		email.subject = /^re:/i.test(threadSubject) ? threadSubject : `Re: ${threadSubject}`;
+	}
+}
 
 /**
  * Builds the Send and Wait email. With the advanced section off, delegates to
@@ -66,7 +101,7 @@ export async function createSendAndWaitEmail(
 	}
 
 	if (options.threadId) {
-		await addThreadHeadersToEmail.call(context, email, options.threadId);
+		await applyThreadToEmail(context, email, options.threadId);
 		return { email, threadId: options.threadId };
 	}
 

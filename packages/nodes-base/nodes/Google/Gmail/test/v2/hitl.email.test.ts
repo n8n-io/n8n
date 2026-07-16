@@ -138,6 +138,52 @@ describe('Gmail sendAndWait email builder', () => {
 		expect(threadId).toBe('thread123');
 		expect(email.inReplyTo).toBe('<mid@mail.example.com>');
 		expect(email.references).toBe('<mid@mail.example.com>');
+		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/gmail/v1/users/me/threads/thread123',
+			{},
+			{ format: 'metadata', metadataHeaders: ['Message-ID', 'Subject'] },
+		);
+	});
+
+	it('should take the subject from the thread when replying in a thread', async () => {
+		setupParameters({ advancedEmailOptions: { threadId: 'thread123' } });
+		(genericFunctions.googleApiRequest as Mock).mockResolvedValueOnce({
+			messages: [
+				{
+					payload: {
+						headers: [
+							{ name: 'Message-ID', value: '<mid@mail.example.com>' },
+							{ name: 'Subject', value: 'Original conversation' },
+						],
+					},
+				},
+			],
+		});
+
+		const { email } = await createSendAndWaitEmail(mockExecuteFunctions);
+
+		expect(email.subject).toBe('Re: Original conversation');
+	});
+
+	it('should not duplicate the Re: prefix when the thread subject already has one', async () => {
+		setupParameters({ advancedEmailOptions: { threadId: 'thread123' } });
+		(genericFunctions.googleApiRequest as Mock).mockResolvedValueOnce({
+			messages: [
+				{
+					payload: {
+						headers: [
+							{ name: 'Message-ID', value: '<mid@mail.example.com>' },
+							{ name: 'Subject', value: 'Re: Original conversation' },
+						],
+					},
+				},
+			],
+		});
+
+		const { email } = await createSendAndWaitEmail(mockExecuteFunctions);
+
+		expect(email.subject).toBe('Re: Original conversation');
 	});
 
 	it('should render the approval buttons in the email body', async () => {

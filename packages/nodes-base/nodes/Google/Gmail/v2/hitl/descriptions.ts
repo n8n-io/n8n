@@ -65,7 +65,7 @@ export const gmailHitlProperties: INodeProperties[] = [
 				default: '',
 				placeholder: 'e.g. 172ce2c4a72cc243',
 				description:
-					'The ID of the Gmail thread to send this message in, instead of starting a new one. The subject should match the thread for Gmail to group the messages.',
+					'The ID of the Gmail thread to send this message in, instead of starting a new one. The subject is taken from the thread, so the Subject field is ignored.',
 			},
 			{
 				displayName: 'Send Replies To',
