@@ -1715,8 +1715,6 @@ export type NodePropertyTypes =
 	| 'workflowSelector'
 	| 'agentSelector';
 
-export type CodeAutocompleteTypes = 'function' | 'functionItem';
-
 export type EditorType = 'codeNodeEditor' | 'jsEditor' | 'htmlEditor' | 'sqlEditor' | 'cssEditor';
 export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
 export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
@@ -1768,7 +1766,6 @@ export interface INodePropertyTypeOptions {
 	};
 	containerClass?: string; // Supported by: notice
 	alwaysOpenEditWindow?: boolean; // Supported by: json
-	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
 	editorIsReadOnly?: boolean; // Supported by: string
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
