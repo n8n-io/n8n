@@ -16,7 +16,7 @@
 		{
 			"parameters": {
 				"mode": "runOnceForEachItem",
-				"jsCode": "// interact with item JSON attributes\n\n// array\n$input.item.json.arr = [1,2,3,4,5,6,7,8,9,10]\n// string\n$input.item.json.str= \"Testing Function Item node\"\n// number\n$input.item.json.num = 1337 \n// object\n$input.item.json.obj = {\n  attr1: \"Testing\",\n  attr2: [1,2,3,4,5],\n  attr3: 7331,\n  attr4: {\n    subattr1: \"Test\",\n    subattr2: [1,2,3],\n    subattr3: 8,\n    subattr4: {\n    }\n  }\n};\n\nreturn $input.item;"
+				"jsCode": "// interact with item JSON attributes\n\n// array\n$input.item.json.arr = [1,2,3,4,5,6,7,8,9,10]\n// string\n$input.item.json.str= \"Testing Code node\"\n// number\n$input.item.json.num = 1337 \n// object\n$input.item.json.obj = {\n  attr1: \"Testing\",\n  attr2: [1,2,3,4,5],\n  attr3: 7331,\n  attr4: {\n    subattr1: \"Test\",\n    subattr2: [1,2,3],\n    subattr3: 8,\n    subattr4: {\n    }\n  }\n};\n\nreturn $input.item;"
 			},
 			"name": "Handle JSON data",
 			"type": "n8n-nodes-base.code",
