@@ -46,9 +46,11 @@
 
 	@include mixins.e(title) {
 		padding-left: 0;
+		padding-right: var(--spacing--lg);
+		overflow-wrap: anywhere;
 		margin-bottom: 0;
 		font-size: var.$messagebox-font-size;
-		line-height: 1;
+		line-height: var(--line-height--md);
 		color: var.$messagebox-title-color;
 	}
 
