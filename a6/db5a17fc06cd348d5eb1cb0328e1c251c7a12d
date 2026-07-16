@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.test.ts
+  s_2f64531d4927ce::t_26230305d791c5 2549-2579
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_2f64531d4927ce::t_e22dbbbf66ffa1 269-270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6db5a17fc06cd348d5eb1cb0328e1c251c7a12d",
+  "prompts": {},
+  "sessions": {
+    "s_2f64531d4927ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ebc7f5c-6cc6-415c-a9e3-59aec8d97ec5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
