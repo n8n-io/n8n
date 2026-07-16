@@ -29,9 +29,9 @@ export class AgentV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: [3, 3.1],
+			iconColor: 'black',
 			defaults: {
 				name: 'AI Agent',
-				color: '#404040',
 			},
 			inputs: `={{
 				((hasOutputParser, needsFallback) => {

@@ -27,8 +27,6 @@ export class VectorStorePineconeInsert implements INodeType {
 		description: 'Insert data into Pinecone Vector Store index',
 		defaults: {
 			name: 'Pinecone: Insert',
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],
