@@ -313,10 +313,10 @@ describe.runIf(runBenchmarks)('durable scheduler benchmarks', () => {
 		return { perWorker, claimed };
 	}
 
-	/** Process one claimed task the way a fire does: mark started, then complete. */
+	/** Process one claimed task the way a fire does: mark dispatched, then complete. */
 	async function fireTask(repo: ScheduledTaskRepository, row: ScheduledTask): Promise<number> {
 		const ref = { id: row.id, host: row.claimedBy!, claimedEpoch: row.leaseEpoch };
-		await repo.markStarted(ref);
+		await repo.markDispatched(ref);
 		return await repo.completeTask(ref);
 	}
 
