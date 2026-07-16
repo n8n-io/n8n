@@ -65,3 +65,57 @@ describe('SplitOut', () => {
 		);
 	});
 });
+
+describe('SplitOut - Destination Field Name dot notation (issue #34053)', () => {
+	const executeWithOptions = async (
+		fieldToSplitOut: string,
+		options: Record<string, unknown>,
+		include: string = 'noOtherFields',
+	) => {
+		const executeFunctions = mock<IExecuteFunctions>();
+		executeFunctions.getInputData.mockReturnValue([
+			{
+				json: {
+					myarraydata: [{ id: 1 }, { id: 2 }],
+				},
+			},
+		]);
+		executeFunctions.getNodeParameter.mockImplementation(((
+			parameterName: string,
+			_itemIndex?: number,
+			fallback?: unknown,
+		) => {
+			if (parameterName === 'fieldToSplitOut') return fieldToSplitOut;
+			if (parameterName === 'options') return options;
+			if (parameterName === 'include') return include;
+			return fallback;
+		}) as IExecuteFunctions['getNodeParameter']);
+
+		return await new SplitOut().execute.call(executeFunctions);
+	};
+
+	it('should place split contents under a nested path when destination uses dot notation', async () => {
+		await expect(
+			executeWithOptions('myarraydata', { destinationFieldName: 'data.foo' }),
+		).resolves.toEqual([
+			[
+				{ json: { data: { foo: { id: 1 } } }, pairedItem: { item: 0 } },
+				{ json: { data: { foo: { id: 2 } } }, pairedItem: { item: 0 } },
+			],
+		]);
+	});
+
+	it('should treat destination dots literally when dot notation is disabled', async () => {
+		await expect(
+			executeWithOptions('myarraydata', {
+				destinationFieldName: 'data.foo',
+				disableDotNotation: true,
+			}),
+		).resolves.toEqual([
+			[
+				{ json: { 'data.foo': { id: 1 } }, pairedItem: { item: 0 } },
+				{ json: { 'data.foo': { id: 2 } }, pairedItem: { item: 0 } },
+			],
+		]);
+	});
+});

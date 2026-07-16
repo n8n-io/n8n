@@ -1,4 +1,5 @@
 import get from 'lodash/get';
+import set from 'lodash/set';
 import unset from 'lodash/unset';
 import { NodeOperationError, deepCopy, NodeConnectionTypes } from 'n8n-workflow';
 import type {
@@ -157,6 +158,17 @@ export class SplitOut implements INodeType {
 
 			const multiSplit = fieldsToSplitOut.length > 1;
 
+			// Assign a value under the destination field name, honoring dot notation
+			// (e.g. "data.foo" creates a nested { data: { foo: ... } }) unless dot
+			// notation has been disabled, in which case the key is treated literally.
+			const assignToDestination = (target: IDataObject, fieldName: string, value: IDataObject) => {
+				if (!disableDotNotation && fieldName.includes('.')) {
+					set(target, fieldName, value);
+				} else {
+					target[fieldName] = value;
+				}
+			};
+
 			const item = { ...items[i].json };
 			const splited: INodeExecutionData[] = [];
 			for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
@@ -219,10 +231,10 @@ export class SplitOut implements INodeType {
 								pairedItem: { item: i },
 							};
 						} else {
-							splited[elementIndex].json[fieldName] = element;
+							assignToDestination(splited[elementIndex].json, fieldName, element);
 						}
 					} else {
-						splited[elementIndex].json[fieldName] = element;
+						assignToDestination(splited[elementIndex].json, fieldName, element);
 					}
 				}
 			}
