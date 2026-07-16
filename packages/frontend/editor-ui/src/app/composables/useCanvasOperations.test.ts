@@ -54,6 +54,7 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -525,6 +526,35 @@ describe('useCanvasOperations', () => {
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
 			expect(position).toEqual([320, 112]);
+		});
+
+		it('should place the node clear of the agent card when added after a message an agent node', () => {
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+
+			const lastInteracted = createTestNode({
+				position: [112, 112],
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+			});
+			uiStore.lastInteractedWithNodeId = lastInteracted.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			// The agent card renders 384px wide, so the new node keeps the standard
+			// gap to its right edge: 112 + 384 + (208 - 96) = 608
+			expect(position).toEqual([608, 112]);
 		});
 
 		it('should place the node below the last interacted with node if it has non-main outputs', () => {

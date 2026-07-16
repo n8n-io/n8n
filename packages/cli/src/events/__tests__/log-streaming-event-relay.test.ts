@@ -72,6 +72,9 @@ describe('LogStreamingEventRelay', () => {
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
+					dataTableMatchingMode: 'by-id',
+					dataTableMissingMode: 'create',
+					dataTableSchemaConflictPolicy: 'keep-existing',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -90,6 +93,11 @@ describe('LogStreamingEventRelay', () => {
 					credentials: {
 						matched: 1,
 						created: 0,
+						requirements: 1,
+					},
+					dataTables: {
+						matched: 0,
+						created: 1,
 						requirements: 1,
 					},
 				},
@@ -114,6 +122,9 @@ describe('LogStreamingEventRelay', () => {
 						credentialMatchingMode: 'id-only',
 						credentialMissingMode: 'must-preexist',
 						workflowPublishingPolicy: 'preserve-published-state',
+						dataTableMatchingMode: 'by-id',
+						dataTableMissingMode: 'create',
+						dataTableSchemaConflictPolicy: 'keep-existing',
 					},
 					packageSourceId: 'source-instance-1',
 					packageVersion: '1',
@@ -2072,6 +2083,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-manual',
 				workflowName: 'Manual Test Workflow',
 				executionId: 'exec-manual-123',
+				projectId: 'project-manual',
+				projectName: 'Manual Project',
 				source: 'user-manual',
 			};
 
@@ -2088,6 +2101,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-manual',
 					workflowName: 'Manual Test Workflow',
 					executionId: 'exec-manual-123',
+					projectId: 'project-manual',
+					projectName: 'Manual Project',
 					source: 'user-manual',
 				},
 			});
@@ -2144,6 +2159,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-retry',
 				workflowName: 'Retry Test Workflow',
 				executionId: 'exec-retry-456',
+				projectId: 'project-retry',
+				projectName: 'Retry Project',
 				source: 'user-retry',
 			};
 
@@ -2160,6 +2177,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-retry',
 					workflowName: 'Retry Test Workflow',
 					executionId: 'exec-retry-456',
+					projectId: 'project-retry',
+					projectName: 'Retry Project',
 					source: 'user-retry',
 				},
 			});
@@ -2170,6 +2189,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-webhook',
 				workflowName: 'Webhook Test Workflow',
 				executionId: 'exec-webhook-123',
+				projectId: 'project-webhook',
+				projectName: 'Webhook Project',
 				source: 'webhook',
 			};
 
@@ -2181,6 +2202,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-webhook',
 					workflowName: 'Webhook Test Workflow',
 					executionId: 'exec-webhook-123',
+					projectId: 'project-webhook',
+					projectName: 'Webhook Project',
 					source: 'webhook',
 				},
 			});
@@ -2191,6 +2214,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-trigger',
 				workflowName: 'Trigger Test Workflow',
 				executionId: 'exec-trigger-123',
+				projectId: 'project-trigger',
+				projectName: 'Trigger Project',
 				source: 'trigger',
 			};
 
@@ -2202,6 +2227,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-trigger',
 					workflowName: 'Trigger Test Workflow',
 					executionId: 'exec-trigger-123',
+					projectId: 'project-trigger',
+					projectName: 'Trigger Project',
 					source: 'trigger',
 				},
 			});
@@ -2212,6 +2239,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-error',
 				workflowName: 'Error Test Workflow',
 				executionId: 'exec-error-123',
+				projectId: 'project-error',
+				projectName: 'Error Project',
 				source: 'error',
 			};
 
@@ -2223,6 +2252,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-error',
 					workflowName: 'Error Test Workflow',
 					executionId: 'exec-error-123',
+					projectId: 'project-error',
+					projectName: 'Error Project',
 					source: 'error',
 				},
 			});
@@ -2236,6 +2267,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-cli',
 				workflowName: 'CLI Test Workflow',
 				executionId: 'exec-cli-123',
+				projectId: 'project-cli',
+				projectName: 'CLI Project',
 				source: 'cli',
 			};
 
@@ -2248,6 +2281,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-cli',
 					workflowName: 'CLI Test Workflow',
 					executionId: 'exec-cli-123',
+					projectId: 'project-cli',
+					projectName: 'CLI Project',
 					source: 'cli',
 				},
 			});
@@ -2261,6 +2296,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-integrated',
 				workflowName: 'Integrated Test Workflow',
 				executionId: 'exec-integrated-123',
+				projectId: 'project-integrated',
+				projectName: 'Integrated Project',
 				source: 'integrated',
 			};
 
@@ -2273,6 +2310,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-integrated',
 					workflowName: 'Integrated Test Workflow',
 					executionId: 'exec-integrated-123',
+					projectId: 'project-integrated',
+					projectName: 'Integrated Project',
 					source: 'integrated',
 				},
 			});
@@ -2286,6 +2325,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-evaluation',
 				workflowName: 'Evaluation Test Workflow',
 				executionId: 'exec-evaluation-123',
+				projectId: 'project-evaluation',
+				projectName: 'Evaluation Project',
 				source: 'evaluation',
 			};
 
@@ -2298,6 +2339,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-evaluation',
 					workflowName: 'Evaluation Test Workflow',
 					executionId: 'exec-evaluation-123',
+					projectId: 'project-evaluation',
+					projectName: 'Evaluation Project',
 					source: 'evaluation',
 				},
 			});
@@ -2311,6 +2354,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-chat',
 				workflowName: 'Chat Test Workflow',
 				executionId: 'exec-chat-123',
+				projectId: 'project-chat',
+				projectName: 'Chat Project',
 				source: 'chat',
 			};
 
@@ -2323,6 +2368,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-chat',
 					workflowName: 'Chat Test Workflow',
 					executionId: 'exec-chat-123',
+					projectId: 'project-chat',
+					projectName: 'Chat Project',
 					source: 'chat',
 				},
 			});
