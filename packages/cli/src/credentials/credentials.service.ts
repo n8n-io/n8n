@@ -6,7 +6,6 @@ import {
 	SharedCredentials,
 	CredentialsRepository,
 	ProjectRepository,
-	SettingsRepository,
 	SharedCredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
@@ -66,6 +65,8 @@ import {
 	type CredentialDependencyFilter,
 } from './credential-dependency.service';
 import { CredentialsFinderService } from './credentials-finder.service';
+import { getExternalSecretExpressionPaths } from './external-secrets.utils';
+import { InstanceCredentialConsumerRegistry } from './instance-credential-consumer.registry';
 import {
 	validateAccessToReferencedSecretProviders,
 	validateExternalSecretsPermissions,
@@ -142,7 +143,7 @@ export class CredentialsService {
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
-		private readonly settingsRepository: SettingsRepository,
+		private readonly instanceCredentialConsumerRegistry: InstanceCredentialConsumerRegistry,
 	) {}
 
 	/**
@@ -712,35 +713,6 @@ export class CredentialsService {
 	): Promise<CredentialsEntity> {
 		const decryptedData = await this.decrypt(existingCredential, true);
 
-		const projectOwningCredential = existingCredential.shared?.find(
-			(shared) => shared.role === 'credential:owner',
-		);
-		const validationProjectId =
-			projectOwningCredential?.projectId ??
-			(existingCredential.availability === 'instance'
-				? await this.resolveOwningProjectIdForNewCredential(user, undefined)
-				: undefined);
-
-		if (!validationProjectId) {
-			throw new NotFoundError(`Could not find owner for credential "${existingCredential.id}"`);
-		}
-
-		await validateExternalSecretsPermissions({
-			user,
-			projectId: validationProjectId,
-			dataToSave: data.data,
-			decryptedExistingData: decryptedData,
-		});
-
-		if (this.externalSecretsConfig.externalSecretsForProjects && data.data) {
-			await validateAccessToReferencedSecretProviders(
-				validationProjectId,
-				data.data,
-				this.externalSecretsProviderAccessCheckService,
-				'update',
-			);
-		}
-
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
 			mergedData.data = this.unredact(
@@ -748,6 +720,32 @@ export class CredentialsService {
 				decryptedData,
 				this.getCredentialTypeProperties(existingCredential.type),
 			);
+		}
+		if (existingCredential.availability === 'instance') {
+			this.ensureInstanceCredentialDataIsSelfContained(mergedData.data ?? decryptedData);
+		} else {
+			const projectOwningCredential = existingCredential.shared?.find(
+				(shared) => shared.role === 'credential:owner',
+			);
+			if (!projectOwningCredential) {
+				throw new NotFoundError(`Could not find owner for credential "${existingCredential.id}"`);
+			}
+
+			await validateExternalSecretsPermissions({
+				user,
+				projectId: projectOwningCredential.projectId,
+				dataToSave: data.data,
+				decryptedExistingData: decryptedData,
+			});
+
+			if (this.externalSecretsConfig.externalSecretsForProjects && data.data) {
+				await validateAccessToReferencedSecretProviders(
+					projectOwningCredential.projectId,
+					data.data,
+					this.externalSecretsProviderAccessCheckService,
+					'update',
+				);
+			}
 		}
 
 		// This saves us a merge but requires some type casting. These
@@ -965,14 +963,11 @@ export class CredentialsService {
 	}
 
 	private async ensureInstanceCredentialIsNotInUse(credentialId: string): Promise<void> {
-		const row = await this.settingsRepository.findByKey('instanceAi.settings');
-		if (!row) return;
-
-		const settings = jsonParse<Record<string, unknown>>(row.value, { fallbackValue: {} });
-		const isReferenced = Object.values(settings).includes(credentialId);
-		if (isReferenced) {
+		const consumer =
+			await this.instanceCredentialConsumerRegistry.findConsumerUsingCredential(credentialId);
+		if (consumer) {
 			throw new BadRequestError(
-				'This credential is in use by Instance AI and cannot be deleted. Remove it from the Instance AI settings first.',
+				`This credential is in use by instance feature "${consumer.id}" and cannot be deleted`,
 			);
 		}
 	}
@@ -1447,6 +1442,11 @@ export class CredentialsService {
 		user: User,
 		projectId: string,
 	): Promise<void> {
+		this.validateCredentialData(type, data);
+		await validateExternalSecretsPermissions({ user, projectId, dataToSave: data });
+	}
+
+	private validateCredentialData(type: string, data: ICredentialDataDecryptedObject): void {
 		// check mandatory fields are present
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
@@ -1471,7 +1471,6 @@ export class CredentialsService {
 				}
 			}
 		}
-		await validateExternalSecretsPermissions({ user, projectId, dataToSave: data });
 		this.validateOAuthCredentialUrls(type, data);
 	}
 
@@ -1603,23 +1602,9 @@ export class CredentialsService {
 		if (opts.isResolvable === true || opts.isManaged) {
 			throw new BadRequestError('Instance credentials cannot be end-user or managed credentials');
 		}
+		this.ensureInstanceCredentialDataIsSelfContained(opts.data as ICredentialDataDecryptedObject);
 
-		// Validation still needs a project context, but instance credentials remain ownerless.
-		const validationProjectId = await this.resolveOwningProjectIdForNewCredential(user, undefined);
-		await this.checkCredentialData(
-			opts.type,
-			opts.data as ICredentialDataDecryptedObject,
-			user,
-			validationProjectId,
-		);
-		if (this.externalSecretsConfig.externalSecretsForProjects) {
-			await validateAccessToReferencedSecretProviders(
-				validationProjectId,
-				opts.data as ICredentialDataDecryptedObject,
-				this.externalSecretsProviderAccessCheckService,
-				'create',
-			);
-		}
+		this.validateCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject);
 
 		const encryptedCredential = await this.createEncryptedData({
 			id: null,
@@ -1637,19 +1622,7 @@ export class CredentialsService {
 
 		await this.externalHooks.run('credentials.create', [encryptedCredential]);
 
-		const savedCredential = await this.credentialsRepository.manager.transaction(
-			async (transactionManager) => {
-				const saved = await transactionManager.save<CredentialsEntity>(credentialEntity);
-				await this.credentialDependencyService.upsertExternalSecretProviderDependenciesForCredential(
-					{
-						credentialId: saved.id,
-						decryptedCredentialData: opts.data as ICredentialDataDecryptedObject,
-						entityManager: transactionManager,
-					},
-				);
-				return saved;
-			},
-		);
+		const savedCredential = await this.credentialsRepository.save(credentialEntity);
 
 		this.logger.debug('New instance credential created', {
 			credentialId: savedCredential.id,
@@ -1660,6 +1633,14 @@ export class CredentialsService {
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
 		return { ...credential, scopes };
+	}
+
+	private ensureInstanceCredentialDataIsSelfContained(data: ICredentialDataDecryptedObject): void {
+		if (getExternalSecretExpressionPaths(data).length > 0) {
+			throw new BadRequestError(
+				'Instance credentials cannot reference project-scoped external secrets',
+			);
+		}
 	}
 
 	/**

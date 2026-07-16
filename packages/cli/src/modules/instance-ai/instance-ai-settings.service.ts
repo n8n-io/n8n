@@ -15,11 +15,12 @@ import { SettingsRepository, UserRepository } from '@n8n/db';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
-import type { IUserSettings } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
@@ -55,7 +56,10 @@ const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	cohereApi: 'cohere',
 };
 
-const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MODEL_PROVIDER);
+export const INSTANCE_AI_MODEL_CREDENTIAL_CONSUMER = {
+	id: 'instance-ai:model',
+	credentialTypes: Object.keys(CREDENTIAL_TO_MODEL_PROVIDER),
+};
 
 /** Fields that contain the base URL per credential type. */
 const URL_FIELD_MAP: Record<string, string> = {
@@ -124,6 +128,7 @@ export class InstanceAiSettingsService {
 		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly eventService: EventService,
 	) {
 		this.config = globalConfig.instanceAi;
@@ -155,7 +160,6 @@ export class InstanceAiSettingsService {
 			});
 			this.applyAdminSettings(persisted);
 		}
-
 		// Surface the effective sandbox config so operators (and CI) can tell whether env vars
 		// or a persisted DB setting are in effect — these can silently disagree.
 		const c = this.config;
@@ -208,10 +212,10 @@ export class InstanceAiSettingsService {
 		if (this.isCloud || this.aiService.isProxyEnabled()) {
 			this.rejectManagedFields(update, ['modelCredentialId'], this.deploymentLabel());
 		}
-		if (update.modelCredentialId !== undefined && update.modelCredentialId !== null) {
-			await this.ensureIsInstanceModelCredential(update.modelCredentialId);
-		}
 		this.validateAdminSettingsUpdate(update);
+		if (update.modelCredentialId !== undefined && update.modelCredentialId !== null) {
+			await this.resolveModelCredential(update.modelCredentialId);
+		}
 		const c = this.config;
 		const previousMcpServers = c.mcpServers;
 		const previousMcpAccessEnabled = this.mcpAccessEnabled;
@@ -302,7 +306,7 @@ export class InstanceAiSettingsService {
 			'credential:read',
 		]);
 		return allCredentials
-			.filter((c) => SUPPORTED_CREDENTIAL_TYPES.includes(c.type))
+			.filter((c) => INSTANCE_AI_MODEL_CREDENTIAL_CONSUMER.credentialTypes.includes(c.type))
 			.map((c) => ({
 				id: c.id,
 				name: c.name,
@@ -313,30 +317,15 @@ export class InstanceAiSettingsService {
 
 	async listInstanceModelCredentials(): Promise<InstanceAiModelCredential[]> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
-		const instanceCredentials = await this.credentialsFinderService.findInstanceCredentials();
-		return instanceCredentials
-			.filter((c) => SUPPORTED_CREDENTIAL_TYPES.includes(c.type))
-			.map((c) => ({
-				id: c.id,
-				name: c.name,
-				type: c.type,
-				provider: CREDENTIAL_TO_MODEL_PROVIDER[c.type] ?? 'custom',
-			}));
-	}
-
-	private async ensureIsInstanceModelCredential(credentialId: string): Promise<void> {
-		const credential = await this.credentialsFinderService.findCredentialById(credentialId, {
-			includeInstanceCredentials: true,
-		});
-		if (
-			!credential ||
-			credential.availability !== 'instance' ||
-			!SUPPORTED_CREDENTIAL_TYPES.includes(credential.type)
-		) {
-			throw new UnprocessableRequestError(
-				'The model credential must be an instance credential of a supported LLM provider type',
-			);
-		}
+		const instanceCredentials = await this.instanceCredentialBroker.listForConsumer(
+			INSTANCE_AI_MODEL_CREDENTIAL_CONSUMER.id,
+		);
+		return instanceCredentials.map((c) => ({
+			id: c.id,
+			name: c.name,
+			type: c.type,
+			provider: CREDENTIAL_TO_MODEL_PROVIDER[c.type] ?? 'custom',
+		}));
 	}
 
 	/** List credentials the user can access that are usable as sandbox/search services. */
@@ -353,6 +342,10 @@ export class InstanceAiSettingsService {
 				type: c.type,
 				provider: c.type,
 			}));
+	}
+
+	isModelCredentialInUse(credentialId: string): boolean {
+		return this.adminModelCredentialId === credentialId;
 	}
 
 	/** Resolve sandbox (Daytona) config from the admin-selected credential. */
@@ -533,29 +526,39 @@ export class InstanceAiSettingsService {
 
 	private async resolveAdminModelConfig(modelName: string): Promise<ModelConfig | null> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return null;
-		const credentialId = this.adminModelCredentialId;
-		if (!credentialId) return null;
+		if (!this.adminModelCredentialId) return null;
+		const resolved = await this.resolveModelCredential(this.adminModelCredentialId);
 
-		const credential = await this.credentialsFinderService.findCredentialById(credentialId, {
-			includeInstanceCredentials: true,
-		});
-		if (!credential || credential.availability !== 'instance') return null;
+		return this.buildModelConfig(resolved.type, resolved.data, modelName);
+	}
 
-		return await this.buildModelConfigFromCredential(credential, modelName);
+	private async resolveModelCredential(credentialId: string) {
+		return await this.instanceCredentialBroker.resolveForConsumer(
+			INSTANCE_AI_MODEL_CREDENTIAL_CONSUMER.id,
+			credentialId,
+		);
 	}
 
 	private async buildModelConfigFromCredential(
 		credential: CredentialsEntity,
 		modelName: string,
 	): Promise<ModelConfig | null> {
-		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credential.type];
+		const data = await this.credentialsService.decrypt(credential, true);
+		return this.buildModelConfig(credential.type, data, modelName);
+	}
+
+	private buildModelConfig(
+		credentialType: string,
+		data: ICredentialDataDecryptedObject,
+		modelName: string,
+	): ModelConfig | null {
+		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
 		if (!provider) {
 			return null;
 		}
 
-		const data = await this.credentialsService.decrypt(credential, true);
 		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : '';
-		const urlField = URL_FIELD_MAP[credential.type];
+		const urlField = URL_FIELD_MAP[credentialType];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
 		const id: `${string}/${string}` = `${provider}/${modelName}`;

@@ -16,8 +16,18 @@ export class InstanceAiModule implements ModuleInterface {
 		const logger = Container.get(Logger).scoped('instance-ai');
 		logger.warn(`${YELLOW}${WARNING_MESSAGE}${CLEAR}`);
 
-		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service.js');
-		await Container.get(InstanceAiSettingsService).loadFromDb();
+		const { InstanceCredentialConsumerRegistry } = await import(
+			'@/credentials/instance-credential-consumer.registry.js'
+		);
+		const { InstanceAiSettingsService, INSTANCE_AI_MODEL_CREDENTIAL_CONSUMER } = await import(
+			'./instance-ai-settings.service.js'
+		);
+		const settingsService = Container.get(InstanceAiSettingsService);
+		Container.get(InstanceCredentialConsumerRegistry).register({
+			...INSTANCE_AI_MODEL_CREDENTIAL_CONSUMER,
+			isCredentialInUse: (credentialId) => settingsService.isModelCredentialInUse(credentialId),
+		});
+		await settingsService.loadFromDb();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 

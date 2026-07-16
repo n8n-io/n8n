@@ -564,7 +564,7 @@ describe('CredentialsService', () => {
 			mock(), // externalSecretsConfig
 			mock(), // externalSecretsProviderAccessCheckService
 			mock(), // connectionStatusProxy
-			mock(), // settingsRepository
+			mock(), // instanceCredentialConsumerRegistry
 		);
 
 		beforeEach(() => {
