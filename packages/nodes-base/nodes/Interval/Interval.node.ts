@@ -18,9 +18,9 @@ export class Interval implements INodeType {
 		eventTriggerDescription: '',
 		activationMessage:
 			'Your interval trigger will now trigger executions on the schedule you have defined.',
+		iconColor: 'lime',
 		defaults: {
 			name: 'Interval',
-			color: '#00FF00',
 		},
 
 		inputs: [],
