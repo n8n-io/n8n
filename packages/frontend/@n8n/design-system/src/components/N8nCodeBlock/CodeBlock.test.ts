@@ -1,10 +1,11 @@
 import { fireEvent, render, waitFor } from '@testing-library/vue';
+import type * as ElementPlus from 'element-plus';
 import { ElNotification } from 'element-plus';
 
 import CodeBlock from './CodeBlock.vue';
 
 vi.mock('element-plus', async (importOriginal) => {
-	const elementPlus = await importOriginal<typeof import('element-plus')>();
+	const elementPlus = await importOriginal<typeof ElementPlus>();
 	return { ...elementPlus, ElNotification: vi.fn() };
 });
 

@@ -36,3 +36,43 @@ export const Json: Story = {
 		language: 'json',
 	},
 };
+
+export const LongCode: Story = {
+	args: {
+		code: `import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class Example implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Example',
+		name: 'example',
+		group: ['transform'],
+		version: 1,
+		description: 'Transforms incoming workflow data',
+		defaults: {
+			name: 'Example',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+					},
+				],
+				default: 'create',
+			},
+		],
+	};
+}`,
+		ariaLabel: 'Long TypeScript code example',
+	},
+};
