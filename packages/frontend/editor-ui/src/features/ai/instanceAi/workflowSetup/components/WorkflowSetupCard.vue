@@ -35,7 +35,11 @@ const isCredentialOnlySection = computed(
 
 const displayName = computed(() => {
 	const credentialTypeName = credentialType.value;
-	if (!isCredentialOnlySection.value || !credentialTypeName) return props.section.node.name;
+	if (!isCredentialOnlySection.value || !credentialTypeName) {
+		return i18n.baseText('instanceAi.workflowSetup.configureNode', {
+			interpolate: { name: props.section.node.name },
+		});
+	}
 	const raw =
 		credentialsStore.getCredentialTypeByName(credentialTypeName)?.displayName ?? credentialTypeName;
 	const appName = getAppNameFromCredType(raw);

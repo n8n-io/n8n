@@ -27,6 +27,8 @@ export class OAuthClientResponseDto extends Z.class(oauthClientShape) {}
 export class ListOAuthClientsResponseDto extends Z.class({
 	data: z.array(z.object(oauthClientShape)),
 	count: z.number(),
+	/** Tool names each grantable scope unlocks on this instance, for the client details view. */
+	scopeTools: z.record(z.array(z.string())).optional(),
 }) {}
 
 /**

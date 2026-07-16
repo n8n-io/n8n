@@ -865,6 +865,27 @@ describe('credentials tool', () => {
 			expect(result).toEqual({
 				success: true,
 				credentials: { slackApi: 'cred-123' },
+				message: expect.stringContaining('Credential setup is complete'),
+			});
+		});
+
+		it('should not claim credentials are ready when approved with no selections', async () => {
+			const context = createMockContext();
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				resumeCtx({ approved: true, credentials: {} }),
+			);
+
+			expect(result).toEqual({
+				success: true,
+				credentials: {},
+				message: expect.stringContaining('without any credential selected'),
 			});
 		});
 

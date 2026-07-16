@@ -71,7 +71,9 @@ const prefersReducedMotion = () =>
 //
 // Cursor — rendered in the brand near-black (`#26251e`) like the original mark (no `currentColor`),
 // so it reads as the Cursor logo everywhere it appears (the Connect menu, the main page preview,
-// and the Connected clients table cell). Source SVG: the official Cursor logomark.
+// and the Connected clients table cell). The monochrome fill flips to white in dark mode via
+// `light-dark()` (the official dark-surface variant of the mark), since near-black would vanish on
+// dark backgrounds. Source SVG: the official Cursor logomark.
 const CursorLogo: Component = {
 	name: 'CursorLogo',
 	template: `
@@ -82,7 +84,7 @@ const CursorLogo: Component = {
 			style="width: 1em; height: 1em; flex: 0 0 auto;"
 		>
 			<path
-				fill="#26251e"
+				style="fill: light-dark(#26251e, #ffffff);"
 				d="M457.43,125.94L244.42,2.96c-6.84-3.95-15.28-3.95-22.12,0L9.3,125.94c-5.75,3.32-9.3,9.46-9.3,16.11v247.99c0,6.65,3.55,12.79,9.3,16.11l213.01,122.98c6.84,3.95,15.28,3.95,22.12,0l213.01-122.98c5.75-3.32,9.3-9.46,9.3-16.11v-247.99c0-6.65-3.55-12.79-9.3-16.11h-.01ZM444.05,151.99l-205.63,356.16c-1.39,2.4-5.06,1.42-5.06-1.36v-233.21c0-4.66-2.49-8.97-6.53-11.31L24.87,145.67c-2.4-1.39-1.42-5.06,1.36-5.06h411.26c5.84,0,9.49,6.33,6.57,11.39h-.01Z"
 			/>
 		</svg>
@@ -207,7 +209,9 @@ const VsCodeLogo: Component = {
 };
 
 // OpenAI — the official "blossom" logomark in brand black, used for any ChatGPT / OpenAI client.
-// Source path/viewBox: simple-icons \`openai.svg\`.
+// The monochrome fill flips to white in dark mode via `light-dark()` (OpenAI's own dark-surface
+// variant), since brand black would vanish on dark backgrounds. Source path/viewBox: simple-icons
+// \`openai.svg\`.
 const OpenAiLogo: Component = {
 	name: 'OpenAiLogo',
 	template: `
@@ -218,7 +222,7 @@ const OpenAiLogo: Component = {
 			style="width: 1em; height: 1em; flex: 0 0 auto;"
 		>
 			<path
-				fill="#000000"
+				style="fill: light-dark(#000000, #ffffff);"
 				d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"
 			/>
 		</svg>
@@ -494,11 +498,15 @@ const CopyInput = defineComponent({
 // Branded "Add to <client>" one-click button used by the Web Clients (Add to ChatGPT / Claude.ai)
 // and IDE (Add to Cursor / VS Code) setups. Modelled on the reference's black branded button: a
 // dark pill with the client's brand mark + label that links out (a deep link for IDEs, a connector
-// URL for web clients). The leading slot receives the client's colored brand mark; on the dark pill
-// it is flattened to white via `filter: brightness(0) invert(1)` so a single mark works on black
-// without shipping a separate white asset. The brand black + white are intentional brand colours
-// (like the inlined logos), with everything else token-driven. The hover rule is injected once
-// (story render templates can't carry scoped CSS), mirroring the StatusDot keyframe injection.
+// URL for web clients). The pill inverts in dark mode via `light-dark()` — near-black/white in
+// light, white/near-black in dark, the standard dark-surface variant of these brand buttons — so it
+// never dissolves into a dark page. The leading slot receives the client's colored brand mark and
+// is flattened to match the label: `brightness(0) invert(1)` → white on the light-mode black pill,
+// `brightness(0)` → black on the dark-mode white pill (the theme override follows the design
+// system's `body[data-theme]` + `prefers-color-scheme` convention, since `filter` can't carry
+// `light-dark()`). The brand black + white are intentional brand colours (like the inlined logos),
+// with everything else token-driven. The rules are injected once (story render templates can't
+// carry scoped CSS), mirroring the StatusDot keyframe injection.
 const BRAND_BUTTON_STYLE_ID = 'mcp-brand-button-styles';
 const BrandButton = defineComponent({
 	name: 'BrandButton',
@@ -511,9 +519,12 @@ const BrandButton = defineComponent({
 			const style = document.createElement('style');
 			style.id = BRAND_BUTTON_STYLE_ID;
 			style.textContent =
-				'.mcp-brand-button { transition: opacity 0.15s ease-in-out; }' +
+				'.mcp-brand-button { background: light-dark(#0d0d0d, #ffffff); color: light-dark(#ffffff, #0d0d0d); transition: opacity 0.15s ease-in-out; }' +
 				'.mcp-brand-button:hover { opacity: 0.88; }' +
-				'.mcp-brand-button:focus-visible { outline: var(--focus--border-width, 2px) solid var(--focus--border-color); outline-offset: 2px; }';
+				'.mcp-brand-button:focus-visible { outline: var(--focus--border-width, 2px) solid var(--focus--border-color); outline-offset: 2px; }' +
+				'.mcp-brand-button__leading { display: inline-flex; align-items: center; justify-content: center; font-size: var(--font-size--md); filter: brightness(0) invert(1); }' +
+				"body[data-theme='dark'] .mcp-brand-button__leading { filter: brightness(0); }" +
+				'@media (prefers-color-scheme: dark) { body:not([data-theme]) .mcp-brand-button__leading { filter: brightness(0); } }';
 			document.head.appendChild(style);
 		}
 	},
@@ -523,9 +534,9 @@ const BrandButton = defineComponent({
 			:href="href"
 			target="_blank"
 			rel="noopener noreferrer"
-			style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); width: fit-content; padding: var(--spacing--2xs) var(--spacing--sm); border-radius: var(--radius); background: #0d0d0d; color: #ffffff; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
+			style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); width: fit-content; padding: var(--spacing--2xs) var(--spacing--sm); border-radius: var(--radius); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
 		>
-			<span style="display: inline-flex; align-items: center; justify-content: center; font-size: var(--font-size--md); filter: brightness(0) invert(1);">
+			<span class="mcp-brand-button__leading">
 				<slot name="leading" />
 			</span>
 			<span>{{ label }}</span>
@@ -653,13 +664,14 @@ const components = {
 };
 
 // Wrapper style shared by every full-page story so each reads as a real, full-height scrollable
-// settings page (no windowed box) on the app's subtle background. The flex column is part of the
+// settings page (no windowed box). It deliberately paints no background of its own, so wrapped
+// stories sit on the same theme background as the unwrapped ones. The flex column is part of the
 // floating save bar contract: the bar (last child, `margin-top: auto`) gets pushed to the bottom
 // of the scrollport even when the page content is shorter than the viewport, where its sticky
 // offset gives the usual 24px gap; on long pages the auto margin has no free space to absorb, so
 // scrolling behavior is unchanged.
 const fullPageViewportStyle =
-	'height: 100vh; overflow-y: auto; display: flex; flex-direction: column; background: var(--background--subtle);';
+	'height: 100vh; overflow-y: auto; display: flex; flex-direction: column;';
 
 // Bordered, rounded metrics card mirroring the Settings Row `Custom` story: three equal columns
 // (tiles) separated by vertical dividers, built from DS border/radius/spacing tokens. Each tile
