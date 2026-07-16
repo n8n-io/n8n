@@ -158,7 +158,7 @@ describe('workflow package export', () => {
 			});
 			await expect(missingDependencyExport).rejects.toThrow(PackageExportBlockedError);
 			await expect(missingDependencyExport).rejects.toThrow(
-				'sub-workflow dependency not included in the package',
+				'2 sub-workflow dependencies not included in the package',
 			);
 
 			const stream = await service.exportPackage({

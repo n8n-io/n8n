@@ -15,6 +15,7 @@ import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
+import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { TarPackageReader } from './io/tar/tar-package-reader';
@@ -43,6 +44,7 @@ export class N8nPackagesService {
 		private readonly credentialExporter: CredentialExporter,
 		private readonly dataTableExporter: DataTableExporter,
 		private readonly workflowRequirementExporter: WorkflowRequirementExporter,
+		private readonly workflowDependencyResolver: WorkflowDependencyResolver,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly packageParser: N8nPackageParser,
 		private readonly packageImportConfig: PackageImportConfig,
@@ -116,8 +118,13 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
+		const workflowRequirements = await this.workflowDependencyResolver.resolve({
+			user: request.user,
+			workflowIds: allWorkflowsInPackage.map(({ id }) => id),
+		});
+
 		assertStaticSubWorkflowsIncluded(
-			requirements.workflows,
+			workflowRequirements,
 			new Set(allWorkflowsInPackage.map(({ id }) => id)),
 		);
 
@@ -138,7 +145,7 @@ export class N8nPackagesService {
 		});
 
 		const workflowRequirementExportResult = this.workflowRequirementExporter.export({
-			requirements: requirements.workflows,
+			requirements: workflowRequirements,
 			workflows: allWorkflowsInPackage,
 		});
 
