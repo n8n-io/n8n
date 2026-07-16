@@ -11,14 +11,38 @@
 	margin: var(--spacing--5xs);
 }
 
-body {
+body,
+body.sb-show-main {
 	padding: 0 !important;
+	background: var(--color--neutral-100) !important;
+	background-color: var(--color--neutral-100) !important;
+}
+
+#storybook-root {
+	background: transparent !important;
 }
 
 .story {
 	padding: 2rem;
 	display: flex;
 	gap: 1rem;
+}
+
+.theme-side-by-side {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+}
+
+.theme-side-by-side__panel {
+	padding: var(--spacing--md);
+	background: var(--background--surface);
+	color: var(--text-color);
+	border-radius: var(--radius--lg);
+
+	&[data-theme='light'] {
+		border: var(--border);
+	}
 }
 
 .sbdocs .sbdocs-content table:not(.sbdocs-preview table, .docs-story table) {
