@@ -3,8 +3,8 @@ import { ExecutionsConfig } from '@n8n/config';
 import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
 	ExecutionStatus,
@@ -13,7 +13,6 @@ import type {
 	WebhookResponseMode,
 } from 'n8n-workflow';
 import {
-	createDeferredPromise,
 	ExecutionCancelledError,
 	sleep,
 	SystemShutdownExecutionCancelledError,
@@ -21,15 +20,15 @@ import {
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
-import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
+import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import { EventService } from './events/event.service';
-import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 
 @Service()
 export class ActiveExecutions {
@@ -124,7 +123,7 @@ export class ActiveExecutions {
 					// this is resuming, so keep `startedAt` as it was
 				};
 
-				const updateSucceeded = await this.executionRepository.updateExistingExecution(
+				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
 					maybeExecutionId,
 					execution,
 					{ requireStatus: 'waiting' }, // Only update if status is 'waiting'

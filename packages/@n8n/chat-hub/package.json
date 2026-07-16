@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat-hub",
-  "version": "1.18.0",
+  "version": "1.24.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -26,9 +26,11 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },
   "dependencies": {
     "@n8n/api-types": "workspace:*"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

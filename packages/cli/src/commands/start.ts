@@ -24,28 +24,30 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
+import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
+import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { DeprecationService } from '@/deprecation/deprecation.service';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
-import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -257,12 +259,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.logger.debug('Instance settings loader init complete');
 		}
 
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
-		await this.initBinaryDataService();
-		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
@@ -282,16 +284,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// Initialize auth handler registry after modules are loaded
-		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry');
+		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry.js');
 		await Container.get(AuthHandlerRegistry).init();
 
 		if (this.instanceSettings.isMultiMain) {
-			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
-			if (this.globalConfig.endpoints.metrics.enable) {
-				const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
-				Container.get(PrometheusMetricsService);
-			}
-
 			Container.get(MultiMainSetup).registerEventHandlers();
 		}
 
@@ -301,7 +297,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	private async initInstanceSettingsLoader(): Promise<void> {
 		const { InstanceSettingsLoaderService } = await import(
-			'@/instance-settings-loader/instance-settings-loader.service'
+			'@/instance-settings-loader/instance-settings-loader.service.js'
 		);
 		await Container.get(InstanceSettingsLoaderService).init();
 	}
@@ -404,14 +400,57 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
+		Container.get(WorkflowStatisticsRollupService).init();
 		Container.get(N8NCheckpointStorage).init();
+		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();
 		}
 
 		// Start to get active workflows and run their triggers
-		await this.activeWorkflowManager.init();
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const { PublishedWorkflowEnqueuer } = await import(
+				'@/workflows/publication/published-workflow-enqueuer.js'
+			);
+			const { WorkflowPublicationOutboxConsumer } = await import(
+				'@/workflows/publication/workflow-publication-outbox-consumer.js'
+			);
+			const { WorkflowPublicationOutboxCleanupService } = await import(
+				'@/workflows/publication/workflow-publication-outbox-cleanup.service.js'
+			);
+			const { WorkflowPublicationReconciler } = await import(
+				'@/workflows/publication/workflow-publication-reconciler.service.js'
+			);
+
+			// Import for its side effect: registering the trigger deactivator's
+			// @OnLeaderStepdown and @OnShutdown handlers. Nothing else loads this module.
+			await import('@/workflows/publication/published-workflow-trigger-deactivator.js');
+
+			// The modules above register @OnPubSubEvent handlers (e.g. the outbox
+			// wake-up) after the earlier PubSubRegistry.init() calls already wired
+			// listeners, so rewire to pick them up.
+			Container.get(PubSubRegistry).init();
+
+			// Enqueue needs to happen before outbox consumer init, so it can activate
+			// everything on the first drain
+			if (this.instanceSettings.isLeader) {
+				await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
+			}
+
+			// Don't await: the immediate drain activates every trigger and can take a
+			// while, so let it run in the background instead of blocking startup.
+			void Container.get(WorkflowPublicationOutboxConsumer)
+				.init()
+				.catch((error) => {
+					this.errorReporter.error(error, { shouldBeLogged: true });
+				});
+
+			Container.get(WorkflowPublicationOutboxCleanupService).init();
+			Container.get(WorkflowPublicationReconciler).init();
+		} else {
+			await this.activeWorkflowManager.init();
+		}
 
 		Container.get(LoadNodesAndCredentials).releaseTypes();
 

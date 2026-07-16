@@ -17,9 +17,9 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Reset } from '@/commands/ldap/reset';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { getLdapSynchronizations, saveLdapSynchronization } from '@/modules/ldap.ee/helpers.ee';
 import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';

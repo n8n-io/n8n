@@ -1,24 +1,24 @@
-import { mock } from 'jest-mock-extended';
-import type { IBinaryData, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING } from 'n8n-workflow';
-import { type WorkSheet, utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
-
+import { type WorkSheet, utils as xlsxUtils, write as xlsxWrite } from '@e965/xlsx';
 import {
 	convertJsonToSpreadsheetBinary,
 	extractDataFromPDF,
 	prepareBinariesDataList,
 } from '@utils/binary';
+import type { IBinaryData, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-jest.mock('xlsx', () => ({
+vi.mock('@e965/xlsx', () => ({
 	utils: {
-		json_to_sheet: jest.fn(),
+		json_to_sheet: vi.fn(),
 	},
-	write: jest.fn(),
+	write: vi.fn(),
 }));
 
-jest.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
-	getDocument: jest.fn(),
-	version: '5.3.31',
+vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
+	getDocument: vi.fn(),
+	version: '5.4.296',
 }));
 
 describe('convertJsonToSpreadsheetBinary', () => {
@@ -39,9 +39,9 @@ describe('convertJsonToSpreadsheetBinary', () => {
 	const mockBinaryData = mock<IBinaryData>({ id: 'binaryId' });
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		(xlsxUtils.json_to_sheet as jest.Mock).mockReturnValue(mockSheet);
-		(xlsxWrite as jest.Mock).mockReturnValue(mockBuffer);
+		vi.clearAllMocks();
+		(xlsxUtils.json_to_sheet as Mock).mockReturnValue(mockSheet);
+		(xlsxWrite as Mock).mockReturnValue(mockBuffer);
 		helpers.prepareBinaryData.mockResolvedValue(mockBinaryData);
 	});
 
@@ -108,7 +108,7 @@ describe('extractDataFromPDF', () => {
 	const originalDOMMatrix = globalThis.DOMMatrix;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
@@ -127,15 +127,15 @@ describe('extractDataFromPDF', () => {
 			expect(globalThis.DOMMatrix).toBeUndefined();
 
 			const mockPage = {
-				getTextContent: jest.fn().mockResolvedValue({ items: [] }),
+				getTextContent: vi.fn().mockResolvedValue({ items: [] }),
 			};
 			const mockDocument = {
 				numPages: 1,
-				getMetadata: jest.fn().mockResolvedValue({ info: {}, metadata: null }),
-				getPage: jest.fn().mockResolvedValue(mockPage),
+				getMetadata: vi.fn().mockResolvedValue({ info: {}, metadata: null }),
+				getPage: vi.fn().mockResolvedValue(mockPage),
 			};
 			const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
-			(getDocument as jest.Mock).mockReturnValue({
+			(getDocument as Mock).mockReturnValue({
 				promise: Promise.resolve(mockDocument),
 			});
 
@@ -155,15 +155,15 @@ describe('extractDataFromPDF', () => {
 			globalThis.DOMMatrix = mockDOMMatrix as unknown as typeof DOMMatrix;
 
 			const mockPage = {
-				getTextContent: jest.fn().mockResolvedValue({ items: [] }),
+				getTextContent: vi.fn().mockResolvedValue({ items: [] }),
 			};
 			const mockDocument = {
 				numPages: 1,
-				getMetadata: jest.fn().mockResolvedValue({ info: {}, metadata: null }),
-				getPage: jest.fn().mockResolvedValue(mockPage),
+				getMetadata: vi.fn().mockResolvedValue({ info: {}, metadata: null }),
+				getPage: vi.fn().mockResolvedValue(mockPage),
 			};
 			const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
-			(getDocument as jest.Mock).mockReturnValue({
+			(getDocument as Mock).mockReturnValue({
 				promise: Promise.resolve(mockDocument),
 			});
 

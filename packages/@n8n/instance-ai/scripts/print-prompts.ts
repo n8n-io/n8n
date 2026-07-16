@@ -2,9 +2,9 @@
 // ---------------------------------------------------------------------------
 // Print Prompts CLI
 //
-// Renders the final system prompt for the main Instance Agent and every
-// orchestration sub-agent, then writes one markdown file per agent variant
-// into `.output/prompts/<agent>/<variant>.md` (gitignored). Useful for
+// Renders the final system prompt for the main Instance Agent and the eval-setup
+// sub-agent prompt template, then writes one markdown file per agent variant into
+// `.output/prompts/<agent>/<variant>.md` (gitignored). Useful for
 // auditing the full prompt verbatim, diffing prompts across branches, or
 // sharing them outside the codebase.
 // ---------------------------------------------------------------------------
@@ -14,7 +14,6 @@ import { join, resolve } from 'path';
 
 import { buildSubAgentPrompt } from '../src/agent/sub-agent-factory';
 import { getSystemPrompt } from '../src/agent/system-prompt';
-import { PLANNER_AGENT_PROMPT } from '../src/tools/orchestration/plan-agent-prompt';
 
 interface Variant {
 	/** File name (without extension) inside the agent's folder. */
@@ -111,25 +110,14 @@ function collectAgents(): AgentEntry[] {
 			],
 		},
 		{
-			folder: 'planner',
-			displayName: 'Sub-Agent — Workflow Planner',
-			source: 'src/tools/orchestration/plan-agent-prompt.ts → PLANNER_AGENT_PROMPT',
-			variants: [{ file: 'prompt', body: PLANNER_AGENT_PROMPT }],
-		},
-		{
-			folder: 'delegate',
-			displayName: 'Sub-Agent — Generic Delegate (template)',
+			folder: 'sub-agent-template',
+			displayName: 'Sub-Agent Prompt Template',
 			source: 'src/agent/sub-agent-factory.ts → buildSubAgentPrompt',
 			variants: [
 				{
 					file: 'template',
-					label:
-						'placeholder role/instructions — orchestrator fills these per delegation at runtime',
-					body: buildSubAgentPrompt(
-						'<example-role>',
-						'<example task instructions — orchestrator fills this in per delegation>',
-						'UTC',
-					),
+					label: 'placeholder role/instructions used by specialized background agents',
+					body: buildSubAgentPrompt('<example-role>', '<example task instructions>', 'UTC'),
 				},
 			],
 		},

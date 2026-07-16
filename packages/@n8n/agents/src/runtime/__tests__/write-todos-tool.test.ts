@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { isZodSchema } from '../../utils/zod';
-import { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from '../write-todos-tool';
+import { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from '../tools/write-todos-tool';
 
 const sampleTodos = [
 	{
 		id: 'research',
 		content: 'Research API authentication options',
 		status: 'in_progress' as const,
+		difficulty: 'high' as const,
 		delegateHint: {
 			subAgentId: 'inline',
 			expectedOutput: 'Short comparison of auth methods',
@@ -17,6 +19,7 @@ const sampleTodos = [
 		id: 'synthesize',
 		content: 'Synthesize findings into a recommendation',
 		status: 'pending' as const,
+		difficulty: 'medium' as const,
 	},
 ];
 
@@ -29,6 +32,25 @@ describe('createWriteTodosTool', () => {
 		expect(tool.description).toContain('delegate_subagent');
 		expect(tool.inputSchema).toBeDefined();
 		expect(tool.outputSchema).toBeDefined();
+		expect(tool.systemInstruction).toContain('low');
+		expect(tool.systemInstruction).toContain('medium');
+		expect(tool.systemInstruction).toContain('high');
+		expect(tool.systemInstruction).toContain('delegate_subagent');
+		expect(tool.systemInstruction).toContain('same difficulty');
+	});
+
+	it('references a renamed delegate tool in the planner guidance', () => {
+		const tool = createWriteTodosTool({ delegateToolName: 'agent' });
+
+		expect(tool.description).toContain('handled separately with agent.');
+		expect(tool.description).not.toContain('delegate_subagent');
+		expect(tool.systemInstruction).toContain('good candidates for agent.');
+		expect(tool.systemInstruction).toContain('then call agent separately for that task');
+		expect(tool.systemInstruction).not.toContain('delegate_subagent');
+
+		expect(isZodSchema(tool.inputSchema)).toBe(true);
+		if (!isZodSchema(tool.inputSchema)) return;
+		expect(JSON.stringify(zodToJsonSchema(tool.inputSchema))).not.toContain('delegate_subagent');
 	});
 
 	it('returns the provided todo list with a count', async () => {
@@ -46,6 +68,34 @@ describe('createWriteTodosTool', () => {
 		});
 	});
 
+	it('requires difficulty on every todo item', () => {
+		const tool = createWriteTodosTool();
+		expect(isZodSchema(tool.inputSchema)).toBe(true);
+		if (!isZodSchema(tool.inputSchema)) {
+			throw new Error('Expected Zod input schema');
+		}
+
+		expect(
+			tool.inputSchema.safeParse({
+				todos: [{ id: 'a', content: 'Task', status: 'pending' }],
+			}).success,
+		).toBe(false);
+	});
+
+	it('rejects invalid todo difficulty values', () => {
+		const tool = createWriteTodosTool();
+		expect(isZodSchema(tool.inputSchema)).toBe(true);
+		if (!isZodSchema(tool.inputSchema)) {
+			throw new Error('Expected Zod input schema');
+		}
+
+		expect(
+			tool.inputSchema.safeParse({
+				todos: [{ id: 'a', content: 'Task', status: 'pending', difficulty: 'extreme' }],
+			}).success,
+		).toBe(false);
+	});
+
 	it('rejects duplicate todo ids in a single update', () => {
 		const tool = createWriteTodosTool();
 		expect(tool.inputSchema).toBeDefined();
@@ -56,8 +106,8 @@ describe('createWriteTodosTool', () => {
 
 		const result = tool.inputSchema.safeParse({
 			todos: [
-				{ id: 'dup', content: 'First', status: 'pending' },
-				{ id: 'dup', content: 'Second', status: 'pending' },
+				{ id: 'dup', content: 'First', status: 'pending', difficulty: 'low' },
+				{ id: 'dup', content: 'Second', status: 'pending', difficulty: 'medium' },
 			],
 		});
 

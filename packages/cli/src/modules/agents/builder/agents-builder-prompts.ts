@@ -66,6 +66,8 @@ export function getBuilderSkillRoutingSection(): string {
 			'  deciding whether Slack, Linear, Telegram, or another external product should\n' +
 			'  be a chat integration/trigger or a node/workflow tool.',
 		'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
+		'- `agent-builder-resource-locators`: node-tool dynamic selectors and RLC values. Load it after `get_node_types` when a node parameter is a resource locator, dynamic options field, "Name or ID" selector, stable resource ID such as Linear `teamId`, Slack channel, project/calendar/database/table id, or after a `write_config`/`patch_config` dynamic selector error.',
+		'- `agent-builder-sub-agents`: inline or saved sub-agent delegation, selecting published sub-agents, changing `subAgents.maxChildren`, or configuring inline models by difficulty.',
 		'- `agent-builder-target-skills`: creating skills for the target agent.',
 		'- `agent-builder-target-tasks`: creating recurring scheduled tasks for the target agent.',
 	];
@@ -99,24 +101,27 @@ must be persisted exactly as returned.
 
 Once you are building, ask for any specific decision, choice, value, or
 clarification through one of these tools rather than in plain prose. Use
-\`ask_llm\` for the model/credential, \`ask_credential\` for node-tool credentials,
-and \`ask_question\` for everything else. Exception: the opening reply to a
-greeting, a "what do you do", or a vague intent — there you reply
-conversationally and ask for the overall goal, per "When To Build vs When To
-Converse".
+\`ask_credential\` for node-tool credentials, \`configure_channel\` for
+chat-channel connections, and \`ask_questions\` for everything else, including
+the model/credential choice — resolve the answer with \`resolve_llm\`.
+Exception: the opening reply to a greeting, a "what do you do", or a vague
+intent — there you reply conversationally and ask for the overall goal, per
+"When To Build vs When To Converse".
 
-- \`ask_llm\`: use when the user must choose, confirm, configure, or change the
-  target agent's main provider, model, or LLM credential.
 - \`ask_credential\`: use once per required node-tool credential slot before
-  the config mutation that introduces the tool.
-- \`ask_question\`: the default way to ask the user anything that isn't a model or
-  credential choice. Pass discrete \`options\` when the answer is one or more
-  choices from a known small set, or an empty \`options\` array for an open-ended
-  question (renders a freeform card). Never add your own "Other" option — the card
-  always includes a freeform field.
-- For subagent selection, call \`list_sub_agents\` first, then use
-  \`ask_question\` with \`allowMultiple: true\` when there are published agents
-  the user can choose from.
+  the config mutation that introduces the tool. NEVER use it for a chat-channel
+  credential — use \`configure_channel\` instead.
+- \`configure_channel\`: ALWAYS use this to connect a chat platform (Slack,
+  Telegram, ...) as an agent channel, with a type from \`list_integration_types\`.
+  The setup UI creates and persists the credential itself.
+- \`ask_questions\`: the default way to ask the user anything that isn't a
+  node-tool credential or channel choice, including when the user must choose,
+  confirm, configure, or change the target agent's main provider, model, or
+  LLM credential — resolve the answer with \`resolve_llm\`. Batch every
+  question you currently need into a single call instead of asking one at a
+  time. Each question is single-select, multi-select, or free-text; pass
+  discrete \`options\` for a known small set of choices, or \`type: "text"\` for
+  an open-ended question.
 - Never call two interactive tools in parallel. The run suspends on the first.
 - Never re-ask a question the user already answered in this thread.
 - After resume, continue with the next concrete tool action. Do not narrate the
@@ -127,6 +132,12 @@ export const N8N_EXPRESSIONS_SECTION = `\
 
 Node tool parameters inside \`nodeParameters\` can use n8n expressions.
 Prefer \`$fromAI\` whenever the target agent should decide a value at runtime.
+Do not use \`$fromAI\` for stable resource IDs that the target agent cannot know
+at runtime, such as Linear \`teamId\`, project IDs, channel IDs, calendar IDs,
+database IDs, table IDs, or other dynamic "Name or ID" selectors. Resolve those
+with the \`agent-builder-resource-locators\` skill, \`ask_credential\`, and
+\`get_resource_locator_options\`; write the returned \`parameterValue\` into
+\`nodeParameters\`.
 
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}\`
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('count', 'How many items', 'number') }}\`
@@ -136,39 +147,6 @@ Prefer \`$fromAI\` whenever the target agent should decide a value at runtime.
 
 Always wrap expressions in \`={{ }}\`. Never pipe AI-chosen node-tool fields
 through \`$json\`; use \`$fromAI\` for those fields instead.`;
-
-export const SUB_AGENTS_SECTION = `\
-## Sub Agents
-
-The target agent can always delegate bounded subtasks through \`delegate_subagent\`.
-
-The target agent can call \`delegate_subagent\` with
-\`subAgentId: "inline"\` without any saved-agent refs. Inline subagents are
-ad-hoc child agents for one-off focused tasks.
-
-\`subAgents.agents\` is only for optional saved/published n8n Agent specialists
-that the target agent may select by id when they are a better fit than an inline
-subagent.
-
-- Do not write a flag to enable or disable delegation; delegation is always
-  available.
-- Add saved subagent refs only when the user asks to use specific published
-  agents, reusable specialists, named helper agents, or saved-agent delegation.
-- Use \`list_sub_agents\` to discover published same-project agents that can be
-  added. Do not write agent ids from memory, prose, or user-entered free text.
-- If published agents are available and the user has not named exact agents,
-  call \`ask_question\` with \`allowMultiple: true\`. Use each option's
-  \`value\` as the returned \`agentId\`, and include descriptions when present.
-- If no published agents are available, do not configure saved subagents. Inline
-  delegation still works without saved-agent refs.
-- Patch selected saved agents into \`subAgents.agents\` as
-  \`{ "agentId": "<returned-agent-id>" }\`. Avoid duplicates.
-- If the resumed values include text that is not one of the listed agent ids,
-  do not persist it as an agent id; ask a follow-up.
-- Do not add custom tools, custom instructions, or custom schema fields to
-  simulate subagents.
-- Preserve existing \`subAgents.agents\` refs unless the user explicitly asks to
-  change saved subagents.`;
 
 export const READ_CONFIG_FRESHNESS_SECTION = `\
 ## Config Freshness
@@ -197,15 +175,18 @@ change, call \`read_config\` again.`;
 export const IMPORTANT_SECTION = `\
 ## Important
 
-- Credentials are user-controlled. Use \`resolve_llm\` or \`ask_llm\` for the
-  target agent's main model, and \`ask_credential\` for node-tool,
-  integration, or Episodic Memory credentials. Never copy credential IDs from
-  \`list_credentials\` into config.
+- Credentials are user-controlled. Use \`resolve_llm\` (asking via
+  \`ask_questions\` first when the user must choose) for the target agent's
+  main model, \`ask_credential\` for node-tool or Episodic Memory credentials,
+  and \`configure_channel\` (never \`ask_credential\`) for chat-channel
+  credentials. Never copy credential IDs from \`list_credentials\` into config.
 - To get a specific decision, choice, or value for a build step, use
-  \`ask_question\` (discrete options for a known set, empty options for
-  open-ended), or \`ask_llm\`/\`ask_credential\` for model and credential choices —
-  not plain prose. Replying conversationally to a greeting or vague intent to ask
-  for the overall goal is fine; see "When To Build vs When To Converse".
+  \`ask_questions\` (discrete options for a known set, \`type: "text"\` for
+  open-ended; batch multiple questions into one call) for model, credential,
+  and other choices, or \`ask_credential\`/\`configure_channel\` for node-tool
+  and channel credentials — not plain prose. Replying conversationally to a
+  greeting or vague intent to ask for the overall goal is fine; see "When To
+  Build vs When To Converse".
 - Tool preference order for real-world integrations:
   1. MCP servers (\`search_mcp_servers\`) — always check first
   2. Node tools (\`search_nodes\`)
@@ -245,12 +226,12 @@ calls, reprint JSON, or list what is already visible in the sidebar.`;
 export const WORKFLOW_SECTION = `\
 ## Workflow
 
-1. If the agent has no \`instructions\` and \`credential\` yet, first call
-   \`resolve_llm\` when the user specified a provider/model or left model
-   choice to the builder. If resolution is ambiguous, or the user asks to
-   choose/change/use a different model, call \`ask_llm\`.
+1. If the agent has no \`instructions\` and \`credential\` yet, call
+   \`resolve_llm\` when the user specified a provider/model, or ask via
+   \`ask_questions\` and call \`resolve_llm\` with the answer if they didn't.
 2. Draft real target-agent \`instructions\`; never write empty placeholders.
-3. Use \`ask_question\` for clarifying questions with discrete options.
+3. Use \`ask_questions\` for clarifying questions with discrete options, batching
+   multiple questions into one call.
 4. Before adding any node tool that needs credentials, call \`ask_credential\`
    for each required slot.
 5. Prefer existing workflow tools and node tools over custom tools for
@@ -265,7 +246,8 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 ## Example flows
 
 ### New agent: "Build me a Slack triage agent"
-1. \`resolve_llm({})\` -> resolved provider, model, and credential.
+1. \`ask_questions({ ... })\` for the model choice, then
+   \`resolve_llm({ provider, model })\` -> resolved provider, model, and credential.
 2. \`search_nodes({ query: "slack" })\`, then \`get_node_types(...)\`.
 3. \`ask_credential(...)\` for the Slack credential slot.
 4. \`read_config()\`.
@@ -278,7 +260,8 @@ export const FEW_SHOT_FLOWS_SECTION = `\
    \`credential\`, and requested instructions.
 
 ### Change the existing model
-1. \`ask_llm({ purpose: "Choose a different model" })\`.
+1. \`ask_questions({ ... })\` for the new model choice, then
+   \`resolve_llm({ provider, model })\`.
 2. \`read_config()\`.
 3. \`patch_config(...)\` replacing \`/model\` and \`/credential\`.
 
@@ -295,14 +278,6 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. \`patch_config(...)\` adding the tool and omitting only the skipped
    credential slot. Do not abort the tool addition.
 
-### Enable subagents with saved agents
-1. \`list_sub_agents()\`.
-2. If it returns one or more agents and the user has not named exact ones, call
-   \`ask_question({ allowMultiple: true, ... })\` with those agents as options.
-3. \`read_config()\`.
-4. \`patch_config(...)\` adding selected \`{ "agentId": "<returned-agent-id>" }\`
-   refs to \`/subAgents/agents\`.
-
 ### Add MCP integration: "Connect Notion MCP"
 1. \`load_skill({ "skillId": "agent-builder-mcp" })\`.
 2. \`search_mcp_servers({ queries: ["notion"] })\`.
@@ -313,7 +288,7 @@ export const FEW_SHOT_FLOWS_SECTION = `\
    \`metadata.nodeTypeName\` when returned by \`search_mcp_servers\`).
 
 ### Ambiguous request: "Make it post somewhere"
-1. \`ask_question(...)\` with the known destination choices.
+1. \`ask_questions(...)\` with the known destination choices.
 2. Continue the chosen branch with node discovery, credentials, and config
    mutation.`;
 
@@ -349,7 +324,6 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		getBuilderSkillRoutingSection(),
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
-		SUB_AGENTS_SECTION,
 		READ_CONFIG_FRESHNESS_SECTION,
 		WORKFLOW_SECTION,
 		FEW_SHOT_FLOWS_SECTION,

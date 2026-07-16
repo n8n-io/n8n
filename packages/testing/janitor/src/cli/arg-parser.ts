@@ -14,13 +14,13 @@ export type Command =
 	| 'baseline'
 	| 'rules'
 	| 'discover'
-	| 'orchestrate'
+	| 'distribute'
 	| 'affected-packages'
 	| 'scope'
 	| 'test-scoped'
 	| 'filter-shard'
 	| 'merge-coverage'
-	| 'select-e2e';
+	| 'select';
 
 export interface CliOptions {
 	command: Command;
@@ -56,19 +56,19 @@ export interface CliOptions {
 	impact: boolean;
 	// Affected-packages / scope options
 	changedFiles?: string;
-	runner?: 'jest' | 'vitest';
-	jestVariant?: 'unit' | 'integration';
 	packageDir?: string;
 	/** Anything after `--` — forwarded to the test runner by `test-scoped`. */
 	passthroughArgs: string[];
 	// filter-shard-specific options
 	url?: string;
-	// coverage map options (merge-coverage / select-e2e)
+	// coverage map options (merge-coverage / select)
 	inputsDir?: string;
 	outLcov?: string;
 	outMap?: string;
 	mapFile?: string;
 	allSpecsFile?: string;
+	/** Path to a newline-separated allowlist of spec paths (distribute). */
+	includeSpecsFile?: string;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -79,13 +79,13 @@ const SUBCOMMANDS: Record<string, Command> = {
 	baseline: 'baseline',
 	rules: 'rules',
 	discover: 'discover',
-	orchestrate: 'orchestrate',
+	distribute: 'distribute',
 	'affected-packages': 'affected-packages',
 	scope: 'scope',
 	'test-scoped': 'test-scoped',
 	'filter-shard': 'filter-shard',
 	'merge-coverage': 'merge-coverage',
-	'select-e2e': 'select-e2e',
+	select: 'select',
 };
 
 interface FlagHandler {
@@ -189,20 +189,6 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	'--changed-files=': (opts, value) => {
 		opts.changedFiles = value;
 	},
-	'--runner=': (opts, value) => {
-		if (value === 'jest' || value === 'vitest') {
-			opts.runner = value;
-		} else {
-			throw new Error(`Unknown --runner=${value}. Expected 'jest' or 'vitest'.`);
-		}
-	},
-	'--jest-variant=': (opts, value) => {
-		if (value === 'unit' || value === 'integration') {
-			opts.jestVariant = value;
-		} else {
-			throw new Error(`Unknown --jest-variant=${value}. Expected 'unit' or 'integration'.`);
-		}
-	},
 	'--package-dir=': (opts, value) => {
 		opts.packageDir = value;
 	},
@@ -223,6 +209,9 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	},
 	'--all-specs=': (opts, value) => {
 		opts.allSpecsFile = value;
+	},
+	'--include-specs-file=': (opts, value) => {
+		opts.includeSpecsFile = value;
 	},
 };
 
@@ -253,8 +242,6 @@ function createDefaultOptions(): CliOptions {
 		shardIndex: undefined,
 		impact: false,
 		changedFiles: undefined,
-		runner: undefined,
-		jestVariant: undefined,
 		packageDir: undefined,
 		passthroughArgs: [],
 		url: undefined,
@@ -273,7 +260,7 @@ function parseSubcommand(args: string[]): { command: Command; startIdx: number }
 
 /**
  * For test-scoped, unrecognised flags must forward to the underlying runner
- * (jest/vitest) — they can't be silently dropped because consumers compose
+ * (vitest) — they can't be silently dropped because consumers compose
  * extra flags via turbo + npm script chains. For all other subcommands the
  * passthrough list stays empty and unused.
  */

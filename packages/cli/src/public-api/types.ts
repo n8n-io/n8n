@@ -2,10 +2,13 @@ import type {
 	AddDataTableColumnDto,
 	AddDataTableRowsDto,
 	PublicApiCreateDataTableDto,
+	PublicTestRunStatus,
 	UpdateDataTableDto,
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
+	UpdateSecurityPolicyDto,
+	PublicCreateDestination,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -35,6 +38,7 @@ export declare namespace ExecutionRequest {
 			cursor?: string;
 			offset?: number;
 			includeData?: boolean;
+			ignoreDataSizeLimit?: boolean;
 			redactExecutionData?: boolean;
 			workflowId?: string;
 			lastId?: string;
@@ -46,7 +50,7 @@ export declare namespace ExecutionRequest {
 		{ id: string },
 		{},
 		{},
-		{ includeData?: boolean; redactExecutionData?: boolean }
+		{ includeData?: boolean; ignoreDataSizeLimit?: boolean; redactExecutionData?: boolean }
 	>;
 	type Delete = Get;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
@@ -63,6 +67,37 @@ export declare namespace ExecutionRequest {
 	>;
 	type GetTags = AuthenticatedRequest<{ id: string }>;
 	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, Array<{ id: string }>>;
+}
+
+export declare namespace TestRunRequest {
+	// `id` is the workflow id (named `id` so `projectScope(..., 'workflow')`
+	// resolves it from `req.params.id`); `runId` is the test run id.
+	type GetMany = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{},
+		{
+			status?: PublicTestRunStatus;
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			lastId?: string;
+		}
+	>;
+	type GetOne = AuthenticatedRequest<{ id: string; runId: string }>;
+	type GetCases = AuthenticatedRequest<
+		{ id: string; runId: string },
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			lastId?: string;
+		}
+	>;
+	type Create = AuthenticatedRequest<{ id: string }>;
+	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
 }
 
 export declare namespace TagRequest {
@@ -238,12 +273,10 @@ export type OffsetPagination = PaginationBase & { offset: number; numberOfTotalR
 export type CursorPagination = PaginationBase & { lastId: string; numberOfNextRecords: number };
 export interface IRequired {
 	required?: string[];
-	not?: { required?: string[] };
 }
 export interface IDependency {
-	if?: { properties: {} };
+	if?: { properties: {}; required?: string[] };
 	then?: { allOf: IRequired[] };
-	else?: { allOf: IRequired[] };
 }
 
 export interface IJsonSchema {
@@ -300,6 +333,8 @@ export declare namespace DataTableRequest {
 
 	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
 
+	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
 	type DeleteRows = AuthenticatedRequest<
 		{ dataTableId: string },
 		{},
@@ -346,4 +381,31 @@ export declare namespace AuditRequest {
 		{},
 		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
 	>;
+}
+
+// ----------------------------------
+//        /settings/security-policy
+// ----------------------------------
+
+export declare namespace SecurityPolicyRequest {
+	type Get = AuthenticatedRequest;
+	type Update = AuthenticatedRequest<{}, {}, UpdateSecurityPolicyDto>;
+}
+
+export declare namespace LogStreamingRequest {
+	type GetEventTypes = AuthenticatedRequest;
+	type GetDestinations = AuthenticatedRequest;
+	type GetDestination = AuthenticatedRequest<{ id: string }>;
+	type CreateDestination = AuthenticatedRequest<{}, {}, PublicCreateDestination>;
+	type UpdateDestination = AuthenticatedRequest<{ id: string }, {}, PublicCreateDestination>;
+	type TestDestination = AuthenticatedRequest<{ id: string }>;
+	type DeleteDestination = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//        /settings/sso/saml
+// ----------------------------------
+
+export declare namespace SsoSamlRequest {
+	type Get = AuthenticatedRequest;
 }

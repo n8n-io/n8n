@@ -14,7 +14,7 @@ import type { SDKFunctions } from './interpreter';
 import { interpretSDKCode } from './interpreter';
 import { parseSDKCode } from './parser';
 
-/** Helper to get the first call argument from a Jest mock with proper typing */
+/** Helper to get the first call argument from a Vitest mock with proper typing */
 function getFirstCallArg<T>(mockFn: Mock): T {
 	const calls = mockFn.mock.calls as unknown[][];
 	return calls[0][0] as T;
@@ -804,6 +804,28 @@ describe('AST Interpreter', () => {
 		it('should reject slice() on strings', () => {
 			const code = 'export default "hello".slice(0, 2);';
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('reports an actionable, non-double-wrapped message for disallowed methods', () => {
+			const code = `
+				const wf = workflow('id', 'name');
+				export default wf.join(', ');
+			`;
+			let caught: unknown;
+			try {
+				interpretSDKCode(code, sdkFunctions);
+			} catch (error) {
+				caught = error;
+			}
+			expect(caught).toBeInstanceOf(SecurityError);
+			const message = (caught as SecurityError).message;
+			expect(message).toContain("Method 'join' is not an allowed SDK method");
+			expect(message).toContain('Allowed methods:');
+			expect(message).toContain('add');
+			// No double-wrap: the sentence must not be quoted inside "Security violation: '...'".
+			expect(message).not.toContain("Security violation: 'Method");
+			// Internal methods are not advertised as allowed.
+			expect(message).not.toContain('toJSON');
 		});
 
 		it('should allow connect() method on workflow builder', () => {

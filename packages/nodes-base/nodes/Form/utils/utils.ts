@@ -406,7 +406,7 @@ export function addFormResponseDataToReturnItem(
 		if (field.fieldType === 'number') {
 			value = Number(value);
 		}
-		if (field.fieldType === 'text') {
+		if (field.fieldType === 'text' || field.fieldType === 'email') {
 			value = String(value).trim();
 		}
 		if (
@@ -518,6 +518,10 @@ export async function prepareFormReturnItem(
 	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
 
 	returnItem.json.formMode = mode;
+
+	if (context.getNodeParameter('options.showHeaders', false)) {
+		returnItem.json.headers = context.getHeaderData();
+	}
 
 	if (
 		context.getNode().type === FORM_TRIGGER_NODE_TYPE &&
@@ -793,7 +797,7 @@ export async function formWebhook(
 		return { noWebhookResponse: true };
 	}
 
-	const authentication = (context.getNodeParameter(authProperty) as string) ?? 'none';
+	const authentication = context.getNodeParameter(authProperty, 'none') as string;
 	let authedUser: IUser | undefined;
 	if (node.typeVersion > 1) {
 		if (authentication === 'n8nUserAuth') {
@@ -930,6 +934,8 @@ export async function formWebhook(
 }
 
 export function resolveRawData(context: IWebhookFunctions, rawData: string) {
+	if (!rawData) return rawData;
+
 	const resolvables = getResolvables(rawData);
 	let returnData: string = rawData;
 

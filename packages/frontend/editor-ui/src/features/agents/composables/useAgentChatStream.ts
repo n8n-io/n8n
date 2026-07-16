@@ -8,23 +8,22 @@ import type {
 	CancellationResumeData,
 } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
-import {
-	getBuilderMessages,
-	clearBuilderMessages,
-	getChatMessages,
-	getTestChatMessages,
-	clearTestChatMessages,
-} from './useAgentApi';
+import { getChatMessages, getTestChatMessages, clearTestChatMessages } from './useAgentApi';
 
 import {
 	applyOpenSuspensions,
 	convertDbMessages,
+	findOpenInteractive,
+	getMessageInteractive,
+	getMessageInteractives,
+	isApprovalSuspendInput,
 	rebuildInteractiveFromHistory,
-	type ChatMessage,
-	type ToolCall,
-} from './agentChatMessages';
+	setMessageInteractives,
+	upsertMessageInteractive,
+} from '@/features/ai/shared/agentsChat/messageMappers';
+import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
-import { summariseToolCall } from '../utils/interactive-summary';
+import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 
 export interface FatalAgentError {
@@ -35,16 +34,12 @@ export interface FatalAgentError {
 export interface UseAgentChatStreamParams {
 	projectId: Ref<string>;
 	agentId: Ref<string>;
-	endpoint: Ref<'build' | 'chat'>;
 	/**
 	 * When provided, chat mode runs in session-continuation: history is fetched
 	 * per-thread and the id is propagated to the backend so further messages
 	 * extend the same session.
 	 */
 	continueSessionId?: Ref<string | undefined>;
-	onCodeUpdated?: () => void;
-	onCodeDelta?: (delta: string) => void;
-	onConfigUpdated?: () => void;
 	onHistoryLoaded?: (count: number) => void;
 }
 
@@ -90,27 +85,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
 			let openSuspensions: AgentBuilderOpenSuspension[] = [];
-			if (params.endpoint.value === 'build') {
-				const envelope = await getBuilderMessages(
+			if (continueId) {
+				const envelope = await getChatMessages(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+					continueId,
+				);
+				dbMessages = envelope.messages;
+				openSuspensions = envelope.openSuspensions;
+			} else {
+				const envelope = await getTestChatMessages(
 					rootStore.restApiContext,
 					params.projectId.value,
 					params.agentId.value,
 				);
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
-			} else if (continueId) {
-				dbMessages = await getChatMessages(
-					rootStore.restApiContext,
-					params.projectId.value,
-					params.agentId.value,
-					continueId,
-				);
-			} else {
-				dbMessages = await getTestChatMessages(
-					rootStore.restApiContext,
-					params.projectId.value,
-					params.agentId.value,
-				);
 			}
 			if (dbMessages.length > 0) {
 				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
@@ -132,10 +123,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	async function clearHistory(): Promise<void> {
-		const clearRemote =
-			params.endpoint.value === 'build' ? clearBuilderMessages : clearTestChatMessages;
 		try {
-			await clearRemote(rootStore.restApiContext, params.projectId.value, params.agentId.value);
+			await clearTestChatMessages(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+			);
 			messages.value = [];
 		} catch (error) {
 			showError(error, locale.baseText('agents.chat.clearHistory.error'));
@@ -147,7 +140,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	// -------------------------------------------------------------------------
 
 	interface StreamSession {
-		builderMutated: boolean;
 		/**
 		 * Set when the stream emitted an `error` event. Callers (notably
 		 * `resume`) inspect this so they can roll back optimistic UI state
@@ -201,6 +193,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return null;
 	}
 
+	function markMessageSuccessIfSettled(msg: ChatMessage): void {
+		if (msg.status !== CHAT_MESSAGE_STATUS.AWAITING_USER) return;
+		const hasOpenInteractive = getMessageInteractives(msg).some(
+			(payload) => payload.resolvedAt === undefined,
+		);
+		if (!hasOpenInteractive) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+	}
+
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (!msg.content && (msg.toolCalls?.length ?? 0) === 0) {
@@ -252,8 +252,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'tool-input-delta':
-				// Streaming tool input — `code-delta` handles the build-tool case.
-				// No ToolCall state mutation here.
+				// Streaming tool input isn't rendered incrementally; the full
+				// input arrives on `tool-call`. No ToolCall state mutation here.
 				break;
 			case 'tool-call': {
 				// LLM finalized the call. Update input on the existing entry,
@@ -335,34 +335,43 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					// If this was an interactive tool call, the result IS the user's
-					// resume payload — refresh the card so it flips to its resolved
-					// (disabled) state immediately. No separate "resumed" event needed.
-					if (found.msg.interactive) {
-						const updated = rebuildInteractiveFromHistory(found.tc);
-						if (updated) found.msg.interactive = updated;
-					}
-					if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
-						found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+					// resume payload — refresh the matching card so it flips to its
+					// resolved (disabled) state immediately. Display-only n8n chat
+					// cards never suspend, so they are also born here when the tool
+					// settles.
+					const updated = rebuildInteractiveFromHistory(found.tc);
+					if (updated) upsertMessageInteractive(found.msg, updated);
+					markMessageSuccessIfSettled(found.msg);
 				}
 				break;
 			}
 			case 'tool-call-suspended': {
 				const { payload } = event;
 				const found = findToolCallById(payload.toolCallId);
+				// The approval tool suspends with its renderable input; integration
+				// actions suspend with a sidecar — keep the card-bearing tool input
+				// and store the sidecar separately.
+				const suspendIsRenderableInput = isApprovalSuspendInput(payload.input);
 				let msg: ChatMessage;
 				let tc: ToolCall;
 				if (found) {
 					msg = found.msg;
 					tc = found.tc;
 					tc.state = TOOL_CALL_STATE.SUSPENDED;
-					tc.input = payload.input;
+					if (suspendIsRenderableInput) {
+						tc.input = payload.input;
+					} else {
+						tc.suspendPayload = payload.input;
+					}
 				} else {
 					msg = ensureCurrent(session);
 					tc = {
 						tool: payload.toolName,
 						toolCallId: payload.toolCallId,
-						input: payload.input,
 						state: TOOL_CALL_STATE.SUSPENDED,
+						...(suspendIsRenderableInput
+							? { input: payload.input }
+							: { suspendPayload: payload.input }),
 					};
 					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
 				}
@@ -372,7 +381,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				});
 				if (interactive) {
 					interactive.runId = payload.runId;
-					msg.interactive = interactive;
+					upsertMessageInteractive(msg, interactive);
 					msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
 				break;
@@ -381,16 +390,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
-			case 'code-delta': {
-				params.onCodeDelta?.(event.delta);
-				break;
-			}
-			case 'config-updated':
-			case 'tool-updated': {
-				session.builderMutated = true;
-				params.onConfigUpdated?.();
-				break;
-			}
 			case 'error': {
 				session.errorEmitted = true;
 				dropOrphanMintedBubbles(session);
@@ -442,7 +441,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						continue;
 					}
 					const result = handleEvent(event, session);
-					if (result?.done) break readerLoop;
+					if (result?.done) {
+						break readerLoop;
+					}
 				}
 			}
 		} finally {
@@ -454,9 +455,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		for (const msg of session.minted) {
 			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 		}
-		if (params.endpoint.value === 'build' && session.builderMutated) {
-			params.onConfigUpdated?.();
-		}
 	}
 
 	async function postAndConsume(
@@ -464,7 +462,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		body: Record<string, unknown>,
 	): Promise<{ ok: boolean }> {
 		const session: StreamSession = {
-			builderMutated: false,
 			errorEmitted: false,
 			minted: new Set(),
 		};
@@ -522,16 +519,25 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return { ok: !transportFailed && !session.errorEmitted };
 	}
 
-	async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string): Promise<void> {
+	async function streamChat(message: string): Promise<void> {
 		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}`;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
-		if (endpoint === 'chat' && params.continueSessionId?.value) {
+		if (params.continueSessionId?.value) {
 			body.sessionId = params.continueSessionId.value;
 		}
 		await postAndConsume(url, body);
 	}
 
+	/**
+	 * Resume a suspended interaction via `chat/resume`, re-entering the same
+	 * SSE handler. The `runId` is required — it comes from the original
+	 * `tool-call-suspended` chunk (live) or from the `openSuspensions` sidecar
+	 * applied during history reload.
+	 *
+	 * The UI updates optimistically, then restores the previous card state if
+	 * the resume POST or SSE stream fails.
+	 */
 	async function resume(payload: ResumePayload): Promise<void> {
 		const isCancellation = 'cancelled' in payload;
 		const text = isCancellation ? payload.text.trim() : '';
@@ -548,6 +554,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg: found.msg,
 					prevStatus: found.msg.status,
 					prevInteractive: found.msg.interactive,
+					prevInteractives: found.msg.interactives ? [...found.msg.interactives] : undefined,
 				}
 			: null;
 		let optimisticUserMessageId: string | undefined;
@@ -556,12 +563,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (isCancellation) {
 				found.tc.state = TOOL_CALL_STATE.CANCELLED;
 				found.tc.canceled = true;
-				if (found.msg.interactive) {
-					found.msg.interactive = {
-						...found.msg.interactive,
+				const interactive = getMessageInteractive(found.msg, payload.toolCallId);
+				if (interactive) {
+					upsertMessageInteractive(found.msg, {
+						...interactive,
 						resolvedAt: Date.now(),
 						cancelled: true,
-					};
+					});
 				}
 			} else {
 				found.tc.state = TOOL_CALL_STATE.DONE;
@@ -573,10 +581,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.input,
 				);
 				const updated = rebuildInteractiveFromHistory(found.tc);
-				if (updated) found.msg.interactive = updated;
+				if (updated) upsertMessageInteractive(found.msg, updated);
 			}
-			if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
-				found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+			markMessageSuccessIfSettled(found.msg);
 		}
 
 		const resumeData: unknown = isCancellation
@@ -598,20 +605,25 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 
 		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
 		const { ok } = await postAndConsume(url, {
 			runId: payload.runId,
 			toolCallId: payload.toolCallId,
 			resumeData,
 		});
-
 		if (!ok && snapshot) {
 			snapshot.tc.state = snapshot.prevState;
 			snapshot.tc.output = snapshot.prevOutput;
 			snapshot.tc.canceled = snapshot.prevCanceled;
 			snapshot.tc.displaySummary = snapshot.prevSummary;
 			snapshot.msg.status = snapshot.prevStatus;
-			snapshot.msg.interactive = snapshot.prevInteractive;
+			if (snapshot.prevInteractives) {
+				setMessageInteractives(snapshot.msg, snapshot.prevInteractives);
+			} else if (snapshot.prevInteractive) {
+				setMessageInteractives(snapshot.msg, [snapshot.prevInteractive]);
+			} else {
+				setMessageInteractives(snapshot.msg, []);
+			}
 		}
 		if (!ok && optimisticUserMessageId) {
 			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
@@ -619,12 +631,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	async function cancelAndSteer(text: string): Promise<void> {
-		const openMsg = messages.value.find((m) => m.interactive && !m.interactive.resolvedAt);
-		if (!openMsg?.interactive?.runId) return;
+		const openInteractive = findOpenInteractive(messages.value);
+		if (!openInteractive?.runId) return;
 
 		await resume({
-			runId: openMsg.interactive.runId,
-			toolCallId: openMsg.interactive.toolCallId,
+			runId: openInteractive.runId,
+			toolCallId: openInteractive.toolCallId,
 			cancelled: true,
 			text,
 		});
@@ -641,7 +653,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			content: trimmed,
 			status: 'success',
 		});
-		await streamFromEndpoint(params.endpoint.value, trimmed);
+		await streamChat(trimmed);
 	}
 
 	function dismissFatalError(): void {

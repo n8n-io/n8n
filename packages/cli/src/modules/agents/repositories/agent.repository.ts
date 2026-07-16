@@ -1,5 +1,6 @@
+import type { ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -15,6 +16,50 @@ export class AgentRepository extends Repository<Agent> {
 			relations: { activeVersion: true },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	async findByProjectIdsPaginated(
+		projectIds: string[],
+		options: ListAgentsQueryDto,
+	): Promise<{ count: number; data: Agent[] }> {
+		if (projectIds.length === 0) return { count: 0, data: [] };
+
+		const query = this.createQueryBuilder('agent')
+			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
+			.where('agent.projectId IN (:...projectIds)', { projectIds });
+
+		this.applyFilters(query, options.filter);
+		this.applySorting(query, options.sortBy);
+		query.skip(options.skip).take(options.take);
+
+		const [data, count] = await query.getManyAndCount();
+		return { count, data };
+	}
+
+	private applyFilters(
+		query: SelectQueryBuilder<Agent>,
+		filter: ListAgentsQueryDto['filter'],
+	): void {
+		if (filter?.query) {
+			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${filter.query}%` });
+		}
+	}
+
+	private applySorting(
+		query: SelectQueryBuilder<Agent>,
+		sortBy?: ListAgentsQueryDto['sortBy'],
+	): void {
+		const [field = 'updatedAt', direction = 'desc'] = sortBy?.split(':') ?? [];
+		const sortDirection = direction.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+		if (field === 'name') {
+			query
+				.addSelect('LOWER(agent.name)', 'agent_name_lower')
+				.orderBy('agent_name_lower', sortDirection);
+			return;
+		}
+
+		query.orderBy(`agent.${field}`, sortDirection);
 	}
 
 	/**

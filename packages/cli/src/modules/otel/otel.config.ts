@@ -1,35 +1,37 @@
 import { Config, Env } from '@n8n/config';
 
+import { OTEL_ENV_VARS } from './otel.constants';
+
 @Config
 export class OtelConfig {
-	@Env('N8N_OTEL_ENABLED')
+	@Env(OTEL_ENV_VARS.enabled)
 	enabled: boolean = false;
 
-	@Env('N8N_OTEL_EXPORTER_OTLP_ENDPOINT')
+	@Env(OTEL_ENV_VARS.exporterEndpoint)
 	exporterEndpoint: string = 'http://localhost:4318';
 
-	@Env('N8N_OTEL_EXPORTER_OTLP_TRACING_PATH')
+	@Env(OTEL_ENV_VARS.exporterTracingPath)
 	exporterTracingPath: string = '/v1/traces';
 
-	@Env('N8N_OTEL_EXPORTER_OTLP_HEADERS')
+	@Env(OTEL_ENV_VARS.exporterHeaders)
 	exporterHeaders: string = '';
 
-	@Env('N8N_OTEL_EXPORTER_SERVICE_NAME')
+	@Env(OTEL_ENV_VARS.exporterServiceName)
 	exporterServiceName: string = 'n8n';
 
-	@Env('N8N_OTEL_TRACES_SAMPLE_RATE')
+	@Env(OTEL_ENV_VARS.tracesSampleRate)
 	tracesSampleRate: number = 1.0;
 
-	@Env('N8N_OTEL_STARTUP_CONNECTIVITY_TIMEOUT_MS')
+	@Env(OTEL_ENV_VARS.startupConnectivityTimeoutMs)
 	startupConnectivityTimeoutMs: number = 2_000;
 
-	@Env('N8N_OTEL_TRACES_INCLUDE_NODE_SPANS')
+	@Env(OTEL_ENV_VARS.includeNodeSpans)
 	includeNodeSpans: boolean = true;
 
-	@Env('N8N_OTEL_TRACES_INJECT_OUTBOUND')
+	@Env(OTEL_ENV_VARS.injectOutbound)
 	injectOutbound: boolean = true;
 
 	/** When true, only traces production executions of published (active) workflows, not manual/test runs. */
-	@Env('N8N_OTEL_TRACES_PRODUCTION_ONLY')
+	@Env(OTEL_ENV_VARS.productionExecutionsOnly)
 	productionExecutionsOnly: boolean = true;
 }

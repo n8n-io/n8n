@@ -30,8 +30,7 @@ const {
 	openEditModal,
 } = useCredentialResolvers();
 
-// TODO: use actual docs link when available
-const docsUrl = 'https://docs.n8n.io/';
+const docsUrl = 'https://docs.n8n.io/administer/manage-credentials/end-users-credentials';
 
 const RESOLVER_LIST_ITEM_ACTIONS = {
 	EDIT: 'edit',
@@ -117,7 +116,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 						<div :class="$style.iconCard"><N8nIcon icon="user" /></div>
 					</div>
 					<N8nHeading tag="h2" size="medium" align="center" class="mb-2xs">
-						Resolve private credentials from user identity
+						Resolve end-user credentials from user identity
 					</N8nHeading>
 					<div>
 						{{ i18n.baseText('credentialResolver.view.description') }}

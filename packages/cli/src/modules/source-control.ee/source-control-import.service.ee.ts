@@ -25,19 +25,14 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
+import { In, type DataSourceOptions } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { AutoPublishMode } from 'n8n-workflow';
-import {
-	shouldAutoPublishWorkflow,
-	ensureError,
-	jsonParse,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { shouldAutoPublishWorkflow, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
@@ -46,6 +41,8 @@ import type { IWorkflowToImport } from '@/interfaces';
 import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
+import { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
@@ -63,6 +60,7 @@ import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
+	SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
@@ -70,10 +68,12 @@ import {
 import { SourceControlContextFactory } from './source-control-context.factory';
 import {
 	getCredentialExportPath,
+	getDataTableColumnKey,
 	getDataTableExportPath,
 	getProjectExportPath,
 	getWorkflowExportPath,
 	isValidDataTableColumnType,
+	mapInBatches,
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
 } from './source-control-helper.ee';
@@ -82,7 +82,11 @@ import type {
 	ExportableCredential,
 	StatusExportableCredential,
 } from './types/exportable-credential';
-import type { ExportableDataTable, StatusExportableDataTable } from './types/exportable-data-table';
+import type {
+	DataTableResourceOwner,
+	ExportableDataTable,
+	StatusExportableDataTable,
+} from './types/exportable-data-table';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProject, ExportableProjectWithFileName } from './types/exportable-project';
 import type { ExportableTags } from './types/exportable-tags';
@@ -141,6 +145,7 @@ export class SourceControlImportService {
 		private readonly dataTableColumnRepository: DataTableColumnRepository,
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -161,24 +166,26 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const remoteWorkflowsRead = await Promise.all(
-			remoteWorkflowFiles.map(async (file) => await this.parseWorkflowFromFile(file)),
-		);
+		// Parse in bounded batches and project each workflow to its slim status shape
+		// right away, so at most one batch of full workflow graphs is in memory at a time
+		const remoteWorkflowFilesParsed = await mapInBatches(
+			remoteWorkflowFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file): Promise<SourceControlWorkflowVersionId | undefined> => {
+				const remote = await this.parseWorkflowFromFile(file);
 
-		const remoteWorkflowFilesParsed = remoteWorkflowsRead
-			.filter((remote) => {
 				if (!remote?.id) {
-					return false;
+					return undefined;
 				}
-				return (
-					context.hasAccessToAllProjects() ||
-					(remote.owner && context.findAuthorizedProjectByOwner(remote.owner))
-				);
-			})
-			.map((remote) => {
+
 				const project = remote.owner
 					? context.findAuthorizedProjectByOwner(remote.owner)
 					: undefined;
+
+				if (!context.hasAccessToAllProjects() && !project) {
+					return undefined;
+				}
+
 				return {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
@@ -186,12 +193,15 @@ export class SourceControlImportService {
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
-					owner: toStatusOwner(project ?? undefined),
+					owner: toStatusOwner(project),
 					isRemoteArchived: remote.isArchived,
 				};
-			});
+			},
+		);
 
-		return remoteWorkflowFilesParsed;
+		return remoteWorkflowFilesParsed.filter(
+			(workflow): workflow is SourceControlWorkflowVersionId => workflow !== undefined,
+		);
 	}
 
 	async getAllLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
@@ -299,14 +309,16 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const remoteCredentialFilesRead = await Promise.all(
-			remoteCredentialFiles.map(async (file) => {
+		const remoteCredentialFilesRead = await mapInBatches(
+			remoteCredentialFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file) => {
 				this.logger.debug(`Parsing credential file ${file}`);
 				const remote = jsonParse<ExportableCredential>(
 					await fsReadFile(file, { encoding: 'utf8' }),
 				);
 				return remote;
-			}),
+			},
 		);
 
 		const remoteCredentialFilesParsed = remoteCredentialFilesRead
@@ -356,6 +368,8 @@ export class SourceControlImportService {
 				type: true,
 				data: true,
 				isGlobal: true,
+				isResolvable: true,
+				resolvableAllowFallback: true,
 				shared: {
 					project: {
 						id: true,
@@ -369,8 +383,11 @@ export class SourceControlImportService {
 				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
 		});
 
-		return (await Promise.all(
-			localCredentials.map(async (local) => {
+		// Batched to bound the transient decryption allocations (plaintext + parsed object)
+		return (await mapInBatches(
+			localCredentials,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (local) => {
 				const ownerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
 
 				let data: Record<string, unknown> = {};
@@ -393,8 +410,10 @@ export class SourceControlImportService {
 					filename: getCredentialExportPath(local.id, this.credentialExportFolder),
 					ownedBy: toStatusOwner(ownerProject),
 					isGlobal: local.isGlobal,
+					isResolvable: local.isResolvable,
+					resolvableAllowFallback: local.resolvableAllowFallback,
 				};
-			}),
+			},
 		)) as StatusExportableCredential[];
 	}
 
@@ -431,8 +450,10 @@ export class SourceControlImportService {
 			return [];
 		}
 
-		const remoteTables = await Promise.all(
-			dataTableFiles.map(async (file): Promise<ExportableDataTable | undefined> => {
+		const remoteTables = await mapInBatches(
+			dataTableFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file): Promise<ExportableDataTable | undefined> => {
 				this.logger.debug(`Parsing data table file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
 				try {
@@ -441,7 +462,7 @@ export class SourceControlImportService {
 					this.logger.warn(`Failed to parse data table from file ${file}: invalid JSON format`);
 					return undefined;
 				}
-			}),
+			},
 		);
 
 		return remoteTables.filter((table): table is ExportableDataTable => {
@@ -626,8 +647,10 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const remoteProjects = await Promise.all(
-			remoteProjectFiles.map(async (file) => {
+		const remoteProjects = await mapInBatches(
+			remoteProjectFiles,
+			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
+			async (file) => {
 				this.logger.debug(`Parsing project file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
 				const parsedProject = jsonParse<ExportableProject>(fileContent);
@@ -636,7 +659,7 @@ export class SourceControlImportService {
 					...parsedProject,
 					filename: getProjectExportPath(parsedProject.id, this.projectExportFolder),
 				};
-			}),
+			},
 		);
 
 		if (context.hasAccessToAllProjects()) {
@@ -756,7 +779,9 @@ export class SourceControlImportService {
 		importedWorkflow.nodeGroups ??= [];
 
 		try {
-			validateWorkflowNodeGroups(importedWorkflow);
+			// Basic checks only: a git import should not reset groups for graph-shape
+			// rules, only for structural integrity (missing refs, duplicate ids/names).
+			validateWorkflowNodeGroups(importedWorkflow, null);
 		} catch {
 			this.logger.warn(
 				`Workflow file ${candidate.file} has invalid nodeGroups, resetting to empty`,
@@ -968,7 +993,17 @@ export class SourceControlImportService {
 					(e) => e.id === credential.id && e.type === credential.type,
 				);
 
-				const { name, type, data, id, isGlobal = false } = credential;
+				// Carry the "private"/resolvable nature across environments. resolverId is
+				// instance-local and handled separately (see IAM-906).
+				const {
+					name,
+					type,
+					data,
+					id,
+					isGlobal = false,
+					isResolvable = false,
+					resolvableAllowFallback = false,
+				} = credential;
 				const newCredentialObject = new Credentials({ id, name }, type);
 
 				if (existingCredential?.data) {
@@ -992,7 +1027,10 @@ export class SourceControlImportService {
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-				await this.credentialsRepository.upsert({ ...newCredentialObject, isGlobal }, ['id']);
+				await this.credentialsRepository.upsert(
+					{ ...newCredentialObject, isGlobal, isResolvable, resolvableAllowFallback },
+					['id'],
+				);
 
 				const localOwner = existingSharedCredentials.find(
 					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
@@ -1254,14 +1292,16 @@ export class SourceControlImportService {
 		// Get database type from the repository's connection
 		const dbType = this.dataTableRepository.manager.connection.options.type;
 
-		// Get the pulling user's personal project as a fallback for personal projects
-		const pullingUserPersonalProject =
-			await this.projectRepository.getPersonalProjectForUserOrFail(userId);
-
-		const result: { imported: string[] } = { imported: [] };
+		const result: {
+			imported: string[];
+			reconciliationFailures: Array<{ id: string; name: string }>;
+		} = {
+			imported: [],
+			reconciliationFailures: [],
+		};
 
 		// Phase 1: Parse all data table files and resolve target projects upfront
-		// so we can validate name collisions before any imports happen.
+		// so name collisions can be resolved before any imports happen.
 		const parsedTables: Array<{
 			dataTable: ExportableDataTable;
 			candidate: SourceControlledFile;
@@ -1294,63 +1334,54 @@ export class SourceControlImportService {
 				continue;
 			}
 
-			let targetProject: Project | null = null;
+			let targetProjectId: string;
 
-			if (dataTable.ownedBy) {
-				if (dataTable.ownedBy.type === 'personal') {
-					const personalEmail = dataTable.ownedBy.personalEmail;
-					if (personalEmail) {
-						const user = await this.userRepository.findOne({ where: { email: personalEmail } });
-						if (user) {
-							targetProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
-						} else {
-							this.logger.debug(
-								`User ${personalEmail} not found locally for data table ${dataTable.name}. Using pulling user's personal project as fallback.`,
-							);
-							targetProject = pullingUserPersonalProject;
-						}
-					}
-				} else if (dataTable.ownedBy.type === 'team') {
-					targetProject = await this.projectRepository.findOne({
+			if (dataTable.ownedBy?.type === 'team') {
+				const teamProject =
+					(await this.projectRepository.findOne({
 						where: { id: dataTable.ownedBy.teamId },
-					});
-
-					if (!targetProject) {
-						targetProject = await this.createTeamProject({
-							type: 'team',
-							teamId: dataTable.ownedBy.teamId,
-							teamName: dataTable.ownedBy.teamName,
-						});
-					}
-				}
+					})) ??
+					(await this.createTeamProject({
+						type: 'team',
+						teamId: dataTable.ownedBy.teamId,
+						teamName: dataTable.ownedBy.teamName,
+					}));
+				targetProjectId = teamProject.id;
+			} else {
+				targetProjectId = await this.resolveRemoteDataTableProjectId(dataTable.ownedBy, userId);
 			}
 
-			if (!targetProject) {
-				this.logger.debug(
-					`No owner specified for data table ${dataTable.name}. Using pulling user's personal project.`,
-				);
-				targetProject = pullingUserPersonalProject;
-			}
-
-			parsedTables.push({ dataTable, candidate, targetProjectId: targetProject.id });
+			parsedTables.push({ dataTable, candidate, targetProjectId });
 		}
 
-		// Phase 2: Validate all name collisions before importing anything.
-		// This prevents partial imports when a collision is detected mid-way.
-		for (const { dataTable, targetProjectId } of parsedTables) {
-			const existingByName = await this.dataTableRepository.findOne({
+		// Phase 2: Resolve name collisions (same (project, name), different id —
+		// typically a delete+recreate upstream). A same-named table in the same
+		// project is the same logical table: it adopts the incoming id, then the
+		// regular import path below aligns the schema. A failed adoption degrades
+		// to a per-table conflict so the rest of the pull proceeds.
+		const importableTables: typeof parsedTables = [];
+		for (const entry of parsedTables) {
+			const { dataTable, targetProjectId } = entry;
+			const localTable = await this.dataTableRepository.findOne({
 				where: { name: dataTable.name, projectId: targetProjectId },
-				select: ['id'],
+				relations: ['columns'],
 			});
-			if (existingByName && existingByName.id !== dataTable.id) {
-				throw new UserError(
-					`A data table with the name <strong>${dataTable.name}</strong> already exists locally.<br />Please either rename the local data table, or the remote one with the id <strong>${dataTable.id}</strong> in the source control files.`,
-				);
+			if (localTable && localTable.id !== dataTable.id) {
+				try {
+					await this.adoptDataTableIdentity(localTable, dataTable, dbType);
+				} catch (error) {
+					this.logger.error(`Failed to reconcile data table ${dataTable.name}`, {
+						error: ensureError(error),
+					});
+					result.reconciliationFailures.push({ id: dataTable.id, name: dataTable.name });
+					continue;
+				}
 			}
+			importableTables.push(entry);
 		}
 
 		// Phase 3: Import all data tables (no name collisions at this point)
-		for (const { dataTable, candidate, targetProjectId } of parsedTables) {
+		for (const { dataTable, candidate, targetProjectId } of importableTables) {
 			try {
 				this.logger.debug(`Importing data table from file ${candidate.file}`);
 
@@ -1471,6 +1502,77 @@ export class SourceControlImportService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Resolves the local project a remote data table belongs to: the team id
+	 * for team-owned tables, the owner's personal project for personal ones,
+	 * falling back to the pulling user's personal project when the owner is
+	 * unknown locally. The status service uses this for collision detection so
+	 * the pull preview matches where the import will place the table.
+	 */
+	async resolveRemoteDataTableProjectId(
+		ownedBy: DataTableResourceOwner | null,
+		pullingUserId: string,
+	): Promise<string> {
+		if (ownedBy?.type === 'team') {
+			return ownedBy.teamId;
+		}
+		if (ownedBy?.type === 'personal' && ownedBy.personalEmail) {
+			const user = await this.userRepository.findOne({
+				where: { email: ownedBy.personalEmail },
+			});
+			if (user) {
+				return (await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
+			}
+			this.logger.debug(
+				`User ${ownedBy.personalEmail} not found locally. Using pulling user's personal project as fallback.`,
+			);
+		}
+		return (await this.projectRepository.getPersonalProjectForUserOrFail(pullingUserId)).id;
+	}
+
+	/**
+	 * Re-keys a local data table (metadata and physical rows table) to the
+	 * incoming id, preserving its rows, so the regular import path can then
+	 * align the schema. Local columns adopt the incoming column id where
+	 * `(name, type)` matches, so an identical recreate imports as a no-op.
+	 *
+	 * Idempotent as defense in depth: a retry that finds the physical table
+	 * already renamed skips the rename and only completes the metadata swap,
+	 * so a half-finished adoption cannot wedge the pull.
+	 */
+	private async adoptDataTableIdentity(
+		localTable: DataTable,
+		incoming: ExportableDataTable,
+		dbType: DataSourceOptions['type'],
+	) {
+		this.logger.info(
+			`Reconciling data table "${localTable.name}": adopting id ${incoming.id} (was ${localTable.id})`,
+		);
+		await this.dataTableRepository.manager.transaction(async (trx) => {
+			const alreadyRenamed = await this.dataTableDDLService.tableExists(incoming.id, trx);
+			if (!alreadyRenamed) {
+				await this.dataTableDDLService.renameTable(localTable.id, incoming.id, dbType, trx);
+			}
+			// Spread the loaded entities so future scalar fields carry over
+			// automatically; only the id (and the column FK) are re-keyed.
+			const { columns: localColumns, ...localTableProps } = localTable;
+			// The delete cascades to the old data_table_column rows
+			await trx.delete(DataTable, { id: localTable.id });
+			await trx.insert(DataTable, { ...localTableProps, id: incoming.id });
+			const incomingIdByColumnKey = new Map(
+				incoming.columns.map((c) => [getDataTableColumnKey(c), c.id]),
+			);
+			for (const column of localColumns) {
+				await trx.insert(DataTableColumn, {
+					...column,
+					id: incomingIdByColumnKey.get(getDataTableColumnKey(column)) ?? column.id,
+					dataTableId: incoming.id,
+				});
+			}
+		});
+		this.dataTableSizeValidator.reset();
 	}
 
 	/**

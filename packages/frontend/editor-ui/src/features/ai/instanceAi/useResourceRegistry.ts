@@ -1,12 +1,12 @@
-import { computed } from 'vue';
+import { reactive, watch } from 'vue';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 
-export interface ResourceEntry {
-	type: 'workflow' | 'credential' | 'data-table';
+export type ResourceEntry = {
+	type: 'workflow' | 'credential' | 'data-table' | 'agent';
 	id: string;
 	name: string;
 	createdAt?: string;
@@ -19,7 +19,7 @@ export interface ResourceEntry {
 	 * "Archived" label.
 	 */
 	archived?: boolean;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Internal helpers (defined before use to satisfy no-use-before-define)
@@ -28,13 +28,24 @@ export interface ResourceEntry {
 interface Collections {
 	/** Resources produced/mutated by the agent in this thread, keyed by resource ID. */
 	produced: Map<string, ResourceEntry>;
-	/** Every resource seen in any tool call, keyed by lowercased name — for markdown linking. */
+	/** Every resource seen in any tool call, keyed by lowercased name. */
 	byName: Map<string, ResourceEntry>;
+	/** Produced resources keyed by lowercased name; safe for markdown auto-linking. */
+	linkableByName: Map<string, ResourceEntry>;
 }
 
 function optionalString(val: unknown): string | undefined {
 	return typeof val === 'string' ? val : undefined;
 }
+
+type RecordProducedOptions = {
+	linkable?: boolean;
+};
+
+type AgentBuilderTargetMetadata = {
+	agentId: string;
+	projectId: string;
+};
 
 /**
  * Upsert a produced artifact. When an entry for the same `id` already exists,
@@ -44,8 +55,16 @@ function optionalString(val: unknown): string | undefined {
  * `build-workflow` call that carries only a `workflowId`) don't regress a
  * known name to 'Untitled'.
  */
-function recordProduced(col: Collections, entry: ResourceEntry): void {
+function recordProduced(
+	col: Collections,
+	entry: ResourceEntry,
+	options: RecordProducedOptions = {},
+): void {
 	const existing = col.produced.get(entry.id);
+	const existingLinkKey = existing?.name.toLowerCase();
+	const wasLinkable =
+		existingLinkKey !== undefined && col.linkableByName.get(existingLinkKey)?.id === entry.id;
+	const shouldLink = options.linkable !== false || wasLinkable;
 	const merged: ResourceEntry = existing
 		? {
 				type: entry.type,
@@ -59,8 +78,10 @@ function recordProduced(col: Collections, entry: ResourceEntry): void {
 	col.produced.set(entry.id, merged);
 	if (existing && existing.name.toLowerCase() !== merged.name.toLowerCase()) {
 		col.byName.delete(existing.name.toLowerCase());
+		if (wasLinkable) col.linkableByName.delete(existing.name.toLowerCase());
 	}
 	col.byName.set(merged.name.toLowerCase(), merged);
+	if (shouldLink) col.linkableByName.set(merged.name.toLowerCase(), merged);
 }
 
 function indexByName(col: Collections, entry: ResourceEntry): void {
@@ -95,6 +116,22 @@ const ARTIFACT_TOOLS = new Set([
 	'update-data-table-rows',
 	'delete-data-table-rows',
 ]);
+const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
+function entryFromAgentBuilderTarget(
+	target: InstanceAiAgentNode['targetResource'],
+	existing?: ResourceEntry,
+	fallbackName = 'Untitled',
+): ResourceEntry | undefined {
+	if (target?.type !== 'agent' || !target.id) return undefined;
+	const entry: ResourceEntry = {
+		type: 'agent',
+		id: target.id,
+		name: optionalString(target.name) ?? existing?.name ?? fallbackName,
+	};
+	const projectId = optionalString(target.projectId) ?? existing?.projectId;
+	if (projectId !== undefined) entry.projectId = projectId;
+	return entry;
+}
 
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
 	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
@@ -121,6 +158,31 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			existing?.name ??
 			'Untitled';
 		recordProduced(col, { type: 'workflow', id: result.workflowId, name });
+	}
+
+	if (
+		tc.toolName === 'workflows' &&
+		result.success === true &&
+		typeof tc.args?.workflowId === 'string' &&
+		typeof tc.args.action === 'string' &&
+		WORKFLOW_MUTATING_ACTIONS.has(tc.args.action)
+	) {
+		const workflowId = tc.args.workflowId;
+		const existing = col.produced.get(workflowId);
+		const name =
+			optionalString(result.workflowName) ??
+			optionalString(tc.args.name) ??
+			existing?.name ??
+			'Untitled';
+		recordProduced(col, { type: 'workflow', id: workflowId, name });
+	}
+
+	// workflows action=get-json returns the workflow document itself, not under
+	// a `workflow` key. Surface it so existing workflows loaded for editing can
+	// be previewed even before a later update result is observed.
+	if (tc.toolName === 'workflows' && Array.isArray(result.nodes)) {
+		const entry = entryFromListItem('workflow', result);
+		if (entry) recordProduced(col, entry);
 	}
 
 	// Single workflow object: { workflow: { id, name, ... } } — produced.
@@ -191,12 +253,20 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			optionalString(result.dataTableName) ??
 			existing?.name ??
 			result.dataTableId;
-		recordProduced(col, {
-			type: 'data-table',
-			id: result.dataTableId,
-			name,
-			projectId: result.projectId,
-		});
+		const dataTableAction = optionalString(tc.args?.action);
+		const isReadOnlyLookup =
+			tc.toolName === 'data-tables' &&
+			(dataTableAction === 'schema' || dataTableAction === 'query');
+		recordProduced(
+			col,
+			{
+				type: 'data-table',
+				id: result.dataTableId,
+				name,
+				projectId: result.projectId,
+			},
+			{ linkable: !isReadOnlyLookup },
+		);
 	}
 }
 
@@ -210,10 +280,15 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections): void {
 	const target = node.targetResource;
 	if (!target?.id) return;
-	if (target.type !== 'workflow' && target.type !== 'data-table') return;
+	if (target.type !== 'workflow' && target.type !== 'data-table' && target.type !== 'agent') return;
 
 	const existing = col.produced.get(target.id);
 	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
+	if (target.type === 'agent') {
+		const entry = entryFromAgentBuilderTarget(target, existing, name);
+		if (entry) recordProduced(col, entry);
+		return;
+	}
 	recordProduced(col, { type: target.type, id: target.id, name });
 }
 
@@ -227,6 +302,49 @@ function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void
 	}
 }
 
+/**
+ * Register resource attachments on a (user) message as produced artifacts —
+ * e.g. the editor hand-off attaches the current workflow or agent, which then
+ * shows as an artifact tab even before the agent acts on it.
+ */
+function collectFromMessageAttachments(message: InstanceAiMessage, col: Collections): void {
+	for (const attachment of message.attachments ?? []) {
+		if (attachment.type === 'workflow') {
+			recordProduced(col, {
+				type: 'workflow',
+				id: attachment.id,
+				name: attachment.name ?? 'Untitled',
+			});
+		} else if (attachment.type === 'agent') {
+			recordProduced(col, {
+				type: 'agent',
+				id: attachment.id,
+				name: attachment.name ?? 'Untitled',
+				projectId: attachment.projectId,
+			});
+		}
+	}
+}
+
+function enrichAgentFromBuilderTarget(
+	col: Collections,
+	target: AgentBuilderTargetMetadata | undefined,
+): void {
+	if (!target) return;
+	const existing = col.produced.get(target.agentId);
+	if (existing && existing.type !== 'agent') return;
+	recordProduced(
+		col,
+		{
+			type: 'agent',
+			id: target.agentId,
+			name: existing?.name ?? 'Untitled',
+			projectId: target.projectId,
+		},
+		{ linkable: existing !== undefined },
+	);
+}
+
 function enrichWorkflowNames(
 	col: Collections,
 	workflowNameLookup: (id: string) => string | undefined,
@@ -236,8 +354,10 @@ function enrichWorkflowNames(
 		const storeName = workflowNameLookup(entry.id);
 		if (storeName && storeName !== entry.name) {
 			col.byName.delete(entry.name.toLowerCase());
+			col.linkableByName.delete(entry.name.toLowerCase());
 			entry.name = storeName;
 			col.byName.set(storeName.toLowerCase(), entry);
+			col.linkableByName.set(storeName.toLowerCase(), entry);
 		}
 	}
 }
@@ -255,44 +375,94 @@ function enrichWorkflowNames(
  *   existing entry instead of creating a duplicate.
  *
  * - `resourceNameIndex` (keyed by lowercased name) — every named resource
- *   seen in any tool call, including list results. Used only for markdown
- *   name→link replacement so references to listed workflows/tables still
- *   resolve.
+ *   seen in any tool call, including list results. Used for resource metadata
+ *   lookups after explicit links have rendered.
+ *
+ * - `linkableResourceNameIndex` (keyed by lowercased name) — only resources
+ *   produced or mutated by the agent. Used for markdown name→link replacement
+ *   so passive list/search results cannot rewrite ordinary prose.
  */
 export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
 	workflowNameLookup?: (id: string) => string | undefined,
 	archivedWorkflowIds?: () => ReadonlySet<string>,
+	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 ) {
-	const collections = computed((): Collections => {
-		const col: Collections = {
-			produced: new Map<string, ResourceEntry>(),
-			byName: new Map<string, ResourceEntry>(),
-		};
+	// Long-lived reactive maps, reconciled in place: rebuilds that change
+	// nothing trigger nothing.
+	const producedArtifacts = reactive(new Map<string, ResourceEntry>());
+	const resourceNameIndex = reactive(new Map<string, ResourceEntry>());
+	const linkableResourceNameIndex = reactive(new Map<string, ResourceEntry>());
 
-		for (const msg of messages()) {
-			if (!msg.agentTree) continue;
-			collectFromAgentNode(msg.agentTree, col);
-		}
+	// Derived from `messages` so every state-arrival path (hydration, run-sync
+	// replacement, rollback, reset) self-heals on the next derivation. Must
+	// stay a watch: the handler reads the target maps, so a watchEffect would
+	// re-trigger itself.
+	watch(
+		(): Collections => {
+			const col: Collections = {
+				produced: new Map<string, ResourceEntry>(),
+				byName: new Map<string, ResourceEntry>(),
+				linkableByName: new Map<string, ResourceEntry>(),
+			};
 
-		if (workflowNameLookup) {
-			enrichWorkflowNames(col, workflowNameLookup);
-		}
+			for (const msg of messages()) {
+				collectFromMessageAttachments(msg, col);
+				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
+			}
+			enrichAgentFromBuilderTarget(col, agentBuilderTarget?.());
 
-		const archived = archivedWorkflowIds?.();
-		if (archived && archived.size > 0) {
-			for (const entry of col.produced.values()) {
-				if (entry.type === 'workflow' && archived.has(entry.id)) {
-					entry.archived = true;
+			if (workflowNameLookup) {
+				enrichWorkflowNames(col, workflowNameLookup);
+			}
+
+			const archived = archivedWorkflowIds?.();
+			if (archived && archived.size > 0) {
+				for (const entry of col.produced.values()) {
+					if (entry.type === 'workflow' && archived.has(entry.id)) {
+						entry.archived = true;
+					}
 				}
 			}
+
+			return col;
+		},
+		(col) => {
+			reconcileMap(producedArtifacts, col.produced);
+			reconcileMap(resourceNameIndex, col.byName);
+			reconcileMap(linkableResourceNameIndex, col.linkableByName);
+		},
+		{ immediate: true },
+	);
+
+	return { producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
+}
+
+/** Sync `target` to `next` with minimal writes — unchanged entries trigger no subscribers. */
+function reconcileMap(target: Map<string, ResourceEntry>, next: Map<string, ResourceEntry>): void {
+	for (const key of [...target.keys()]) {
+		if (!next.has(key)) target.delete(key);
+	}
+	for (const [key, entry] of next) {
+		const existing = target.get(key);
+		if (existing) {
+			reconcileEntryFields(existing, entry);
+		} else {
+			target.set(key, entry);
 		}
+	}
+}
 
-		return col;
-	});
-
-	return {
-		producedArtifacts: computed(() => collections.value.produced),
-		resourceNameIndex: computed(() => collections.value.byName),
-	};
+/**
+ * Per-field sync: `Object.assign` writes through the proxy (equal values
+ * trigger nothing), the sweep deletes fields the new entry no longer carries.
+ */
+function reconcileEntryFields(
+	existing: Record<string, unknown>,
+	next: Record<string, unknown>,
+): void {
+	for (const key of Object.keys(existing)) {
+		if (!(key in next)) Reflect.deleteProperty(existing, key);
+	}
+	Object.assign(existing, next);
 }

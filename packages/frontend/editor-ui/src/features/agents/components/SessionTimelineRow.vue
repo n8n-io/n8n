@@ -3,7 +3,7 @@ import { N8nTooltip } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { truncate } from '@n8n/utils';
+import { truncate } from '@n8n/utils/string/truncate';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
@@ -45,6 +45,7 @@ const infoText = computed((): string => {
 		case 'agent':
 			return truncate(it.content ?? '', 500);
 		case 'tool': {
+			if (it.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
 			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
 			const key = builtinToolLabelKey(it.toolName, it.toolOutput);
 			return key ? i18n.baseText(key) : formatToolNameForDisplay(it.toolName);

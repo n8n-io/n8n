@@ -230,7 +230,7 @@ const completionProperties = updateDisplayOptions(
 			description: 'The text to display on the page. Use HTML to show a customized web page.',
 		},
 		{
-			displayName: 'Input Data Field Name',
+			displayName: 'Input Data Field Name(s)',
 			name: 'inputDataFieldName',
 			type: 'string',
 			displayOptions: {
@@ -241,8 +241,8 @@ const completionProperties = updateDisplayOptions(
 			default: 'data',
 			placeholder: 'e.g. data',
 			description:
-				'Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab',
-			hint: 'The name of the input field containing the binary file data to be returned',
+				'Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab. You can provide multiple comma-separated field names.',
+			hint: 'The name of the input field containing the binary file data to be returned. You can provide multiple comma-separated field names.',
 		},
 		...waitTimeProperties,
 		{

@@ -3,8 +3,8 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { getContacts } from '../GenericFunctions';
 
 describe('getContacts', () => {
-	const mockHighLevelApiRequest = jest.fn();
-	const mockGetCredentials = jest.fn();
+	const mockHighLevelApiRequest = vi.fn();
+	const mockGetCredentials = vi.fn();
 	const mockContext = {
 		getCredentials: mockGetCredentials,
 		helpers: {

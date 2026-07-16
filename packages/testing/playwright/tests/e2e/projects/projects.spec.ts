@@ -43,35 +43,56 @@ test.describe(
 			test('should allow changing an inaccessible credential when the workflow was moved to a team project @auth:owner', async ({
 				n8n,
 			}) => {
-				await n8n.navigate.toCredentials();
-				await n8n.credentials.emptyListCreateCredentialButton.click();
+				// Seed the setup via API (none of it is under test): a personal Notion
+				// credential, a personal workflow whose Notion node is bound to it, and a
+				// team project the member can edit. Building this through the UI navigates
+				// enough that V8 coverage accumulation trips the ~512MB string cap; seeding
+				// keeps the run to a single page load. goHome() then loads the sidebar with
+				// the new resources (same pattern as projects-move-resources.spec.ts).
+				const credential = await n8n.api.credentials.createCredential({
+					name: 'Credential in Home project',
+					type: 'notionApi',
+					data: { apiKey: NOTION_API_KEY },
+				});
 
-				await n8n.credentials.createCredentialFromCredentialPicker(
-					'Notion API',
-					{
-						apiKey: NOTION_API_KEY,
+				await n8n.api.workflows.createWorkflow({
+					name: 'My workflow',
+					active: false,
+					nodes: [
+						{
+							id: nanoid(),
+							name: "When clicking 'Execute workflow'",
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: nanoid(),
+							name: 'Append a block',
+							type: 'n8n-nodes-base.notion',
+							typeVersion: 2.2,
+							position: [220, 0],
+							parameters: {},
+							credentials: { notionApi: { id: credential.id, name: credential.name } },
+						},
+					],
+					connections: {
+						"When clicking 'Execute workflow'": {
+							main: [[{ node: 'Append a block', type: 'main', index: 0 }]],
+						},
 					},
-					{
-						name: 'Credential in Home project',
-					},
-				);
+				});
 
-				await n8n.navigate.toWorkflows();
-				await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(0);
-
-				await n8n.navigate.toWorkflow('new');
-
-				await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-				await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block', closeNDV: true });
-				await n8n.canvas.waitForSaveWorkflowCompleted();
-
-				const { projectId, projectName } = await n8n.projectComposer.createProject('Project 1');
-
+				const { id: projectId, name: projectName } =
+					await n8n.api.projects.createProject('Project 1');
 				await n8n.api.projects.addUserToProjectByEmail(
 					projectId,
 					INSTANCE_MEMBER_CREDENTIALS[0].email,
 					'project:editor',
 				);
+
+				await n8n.goHome();
 
 				await n8n.sideBar.clickPersonalMenuItem();
 				await n8n.sideBar.clickWorkflowsLink();
@@ -87,7 +108,7 @@ test.describe(
 
 				await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
 				await expect(
-					n8n.workflows.cards.getWorkflow('My workflow').getByText('Personal'),
+					n8n.workflows.cards.getWorkflowCardText('My workflow', 'Personal'),
 				).toBeHidden();
 
 				await n8n.sideBar.clickSignout();
@@ -164,12 +185,12 @@ test.describe(
 
 				await expect(subn8n.workflows.cards.getWorkflows()).toHaveCount(2);
 
-				await expect(subn8n.page.getByRole('heading', { name: 'My Sub-Workflow' })).toBeVisible();
+				await expect(subn8n.workflows.cards.getWorkflow('My Sub-Workflow')).toBeVisible();
 
 				await subn8n.navigate.toCredentials();
 
 				await expect(subn8n.credentials.cards.getCredentials()).toHaveCount(1);
-				await expect(subn8n.page.getByRole('heading', { name: 'Notion account' })).toBeVisible();
+				await expect(subn8n.credentials.cards.getCredential('Notion account')).toBeVisible();
 			});
 
 			test('should create credential from workflow in the correct project after editor page refresh @auth:owner', async ({
@@ -209,7 +230,7 @@ test.describe(
 
 				await n8n.projectComposer.createProject(NEW_PROJECT_NAME);
 
-				await expect(n8n.projectSettings.getIconPickerButton().locator('svg')).toHaveAttribute(
+				await expect(n8n.projectSettings.getIconPickerIcon()).toHaveAttribute(
 					'data-icon',
 					DEFAULT_ICON,
 				);
@@ -246,7 +267,7 @@ test.describe(
 				await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
 				// Close dropdown/menu
-				await n8n.page.locator('body').click();
+				await n8n.sideBar.dismissMenu();
 
 				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
 

@@ -2,42 +2,49 @@
 
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { SsrfProtectionService } from '@n8n/backend-network';
+import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
-import { Container } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
+import { Container } from '@n8n/di';
+import type { JSONSchema7 } from 'json-schema';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
-import {
-	UnexpectedError,
-	Workflow,
-	createRunExecutionData,
-	mergeRunsPerBranch,
-} from 'n8n-workflow';
 import type {
 	AiEvent,
+	EnvProviderState,
+	ExecuteAgentData,
+	ExecuteAgentSource,
+	ExecuteAgentWorkflowContext,
+	ExecuteWorkflowData,
+	ExecuteWorkflowOptions,
+	ExecutionError,
+	ExecutionStatus,
 	IDataObject,
 	IExecuteData,
+	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IWorkflowBase,
-	IWorkflowExecuteAdditionalData,
-	IWorkflowSettings,
-	WorkflowExecuteMode,
-	ExecutionStatus,
-	ExecutionError,
-	IExecuteFunctions,
-	ITaskDataConnections,
-	ExecuteWorkflowOptions,
-	IWorkflowExecutionDataProcess,
-	EnvProviderState,
-	ExecuteWorkflowData,
-	ExecuteAgentData,
-	RelatedExecution,
 	IRun,
 	IRunExecutionData,
+	ITaskDataConnections,
+	IWorkflowBase,
+	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionDataProcess,
+	IWorkflowSettings,
+	RelatedExecution,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import {
+	OperationalError,
+	UnexpectedError,
+	Workflow,
+	createRunExecutionData,
+	mergeRunsPerBranch,
+	attachDynamicCredentialsUsage,
+	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -45,6 +52,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
@@ -54,12 +62,12 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { UrlService } from '@/services/url.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
@@ -177,6 +185,30 @@ export async function getPublishedWorkflowData(
 	parentWorkflowId: string,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
+	// For a workflow loaded from the database, read the published version from the
+	// workflow_published_version table when the publication service is enabled.
+	// (Inline code is returned as-is below.)
+	//
+	// TODO(CAT-3202): clean up the workflow data fetching
+	if (
+		workflowInfo.id !== undefined &&
+		Container.get(WorkflowsConfig).useWorkflowPublicationService
+	) {
+		const publishedData = await Container.get(
+			WorkflowPublishedDataService,
+		).getPublishedWorkflowData(workflowInfo.id);
+		if (publishedData === null) {
+			throw new OperationalError('Workflow is not active and cannot be executed.', {
+				extra: { workflowId: workflowInfo.id, parentWorkflowId },
+			});
+		}
+		return {
+			...publishedData.workflow,
+			nodes: publishedData.publishedVersion.nodes,
+			connections: publishedData.publishedVersion.connections,
+		};
+	}
+
 	const workflowData = await fetchWorkflowData(
 		workflowInfo,
 		parentWorkflowId,
@@ -310,64 +342,90 @@ export async function executeWorkflow(
 }
 
 /**
- * Executes an agent with the given ID and message.
+ * Executes an agent — a saved one by ID, or an inline definition embedded in
+ * the calling node's parameters.
  */
 export async function executeAgent(
-	agentId: string,
+	source: ExecuteAgentSource,
 	message: string,
 	executionId: string,
 	threadId: string,
 	additionalData: IWorkflowExecuteAdditionalData,
 	executionMode: WorkflowExecuteMode,
+	outputSchema?: JSONSchema7,
+	workflowContext?: ExecuteAgentWorkflowContext,
 ): Promise<ExecuteAgentData> {
-	let userId = additionalData.userId;
 	const telemetryUserId = additionalData.userId;
 	let projectId = additionalData.projectId;
 
 	// Trigger-fired and webhook executions build `additionalData` without a
-	// `userId` (see `getBase` callers in `active-workflow-manager`,
-	// `webhooks/*`, `scaling/job-processor`). Resolve the workflow's owning
-	// project to derive both `userId` and `projectId` so the agent runs under
-	// the workflow owner's identity, mirroring the projectId backfill below.
-	if ((!userId || !projectId) && additionalData.workflowId) {
-		const { OwnershipService } = await import('@/services/ownership.service');
+	// `projectId` (see `getBase` callers in `active-workflow-manager`,
+	// `webhooks/*`, `scaling/job-processor`). Resolve it from the workflow's
+	// owning project so the agent runs under the correct project scope.
+	if (!projectId && additionalData.workflowId) {
+		const { OwnershipService } = await import('@/services/ownership.service.js');
 		const ownershipService = Container.get(OwnershipService);
 		const project = await ownershipService.getWorkflowProjectCached(additionalData.workflowId);
-		projectId = projectId ?? project.id;
-		if (!userId) {
-			const owner = await ownershipService.getPersonalProjectOwnerCached(project.id);
-			userId = owner?.id;
-		}
+		projectId = project.id;
 	}
 
-	if (!userId) {
-		throw new UnexpectedError('Cannot execute agent without a userId in additional data');
-	}
 	if (!projectId) {
 		throw new UnexpectedError(
 			'Cannot execute agent without a projectId or workflowId in additional data',
 		);
 	}
 
-	const { AgentsService } = await import('@/modules/agents/agents.service');
-	const agentsService = Container.get(AgentsService);
+	const { AgentWorkflowExecutionService } = await import(
+		'@/modules/agents/agent-workflow-execution.service.js'
+	);
+	const agentWorkflowExecutionService = Container.get(AgentWorkflowExecutionService);
+
+	if (!additionalData.workflowId) {
+		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
+	}
+
+	// Scope session threads by workflow
+	const scopedThreadId = `wf:${additionalData.workflowId}:${threadId}`;
+
+	if (source.inlineAgent) {
+		return await agentWorkflowExecutionService.executeInlineForWorkflow(
+			source.inlineAgent,
+			message,
+			executionId,
+			scopedThreadId,
+			projectId,
+			telemetryUserId,
+			isManualOrChatExecution(executionMode) ? 'test' : 'production',
+			outputSchema,
+			workflowContext,
+		);
+	}
 
 	const useDraftVersion = isManualOrChatExecution(executionMode);
 
-	return await agentsService.executeForWorkflow(
-		agentId,
+	const result = await agentWorkflowExecutionService.executeForWorkflow(
+		source.agentId,
 		message,
 		executionId,
-		threadId,
-		userId,
+		scopedThreadId,
 		projectId,
 		telemetryUserId,
 		useDraftVersion,
+		outputSchema,
+		workflowContext,
 	);
+
+	// Callers see the session id they supplied (or the derived per-call id), so
+	// feeding the output back into the node's Session ID continues the same
+	// conversation instead of re-prefixing. The scoped thread key stays
+	// internal, surfaced only as `session.threadId` for session deep links.
+	return result.session
+		? { ...result, session: { ...result.session, sessionId: threadId } }
+		: result;
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
-	const { AgentsService } = await import('@/modules/agents/agents.service');
+	const { AgentsService } = await import('@/modules/agents/agents.service.js');
 	const agentsService = Container.get(AgentsService);
 	// Only published agents are runnable from a published workflow.
 	// But unpublished agents may be called from manual workflow executions (e.g. during development), so they are included in the list as well.
@@ -489,6 +547,8 @@ async function startExecution(
 		// mode (e.g. 'manual') even though their own WorkflowExecute runs as 'integrated'
 		additionalDataIntegrated.rootExecutionMode =
 			additionalData.rootExecutionMode ?? options.executionMode;
+		// Propagate the eval run id so sub-workflows of an eval run expose `$evaluation.runId`
+		additionalDataIntegrated.evaluationRunId = additionalData.evaluationRunId;
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}
@@ -545,16 +605,25 @@ async function startExecution(
 
 		activeExecutions.finalizeExecution(executionId, fullRunData);
 
-		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
-		throw objectToError(
-			{
-				...executionError,
-				executionId,
-				workflowId: workflowData.id,
-				stack: executionError?.stack,
-				message: executionError?.message,
-			},
-			workflow,
+		await Container.get(ExecutionPersistence).updateExistingExecution(
+			executionId,
+			fullExecutionData,
+		);
+		// The engine mutates `runData.executionData` in place, so a mid-run crash may leave
+		// credential flags on already-executed tasks — ride them on the error like the
+		// regular failure path below.
+		throw attachDynamicCredentialsUsage(
+			objectToError(
+				{
+					...executionError,
+					executionId,
+					workflowId: workflowData.id,
+					stack: executionError?.stack,
+					message: executionError?.message,
+				},
+				workflow,
+			),
+			summarizeDynamicCredentialsUsage(runData.executionData),
 		);
 	}
 
@@ -568,6 +637,8 @@ async function startExecution(
 			executionId,
 			data: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
+			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
+			...summarizeDynamicCredentialsUsage(data.data),
 		};
 	}
 	activeExecutions.finalizeExecution(executionId, data);
@@ -575,14 +646,20 @@ async function startExecution(
 	// Workflow did fail
 	const { error } = data.data.resultData;
 
-	throw objectToError(
-		{
-			...error,
-			executionId,
-			workflowId: workflowData.id,
-			stack: error?.stack,
-		},
-		workflow,
+	// A failed child may still have attempted or resolved private credentials before failing;
+	// ride the usage on the error so a continue-on-fail caller still flags its task
+	// (see `BaseExecuteContext.executeWorkflow`).
+	throw attachDynamicCredentialsUsage(
+		objectToError(
+			{
+				...error,
+				executionId,
+				workflowId: workflowData.id,
+				stack: error?.stack,
+			},
+			workflow,
+		),
+		summarizeDynamicCredentialsUsage(data.data),
 	);
 }
 
@@ -642,6 +719,7 @@ export async function getBase({
 } = {}): Promise<IWorkflowExecuteAdditionalData> {
 	const urlService = Container.get(UrlService);
 	const urlBaseWebhook = urlService.getWebhookBaseUrl();
+	const urlBaseTestWebhook = urlService.getTestWebhookBaseUrl();
 	const instanceBaseUrl = urlService.getInstanceBaseUrl();
 
 	const globalConfig = Container.get(GlobalConfig);
@@ -661,7 +739,9 @@ export async function getBase({
 		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,
 		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
 		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,
-		webhookTestBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookTest,
+		webhookTestBaseUrl: urlBaseTestWebhook + globalConfig.endpoints.webhookTest,
+		mcpBaseUrl: urlBaseWebhook + globalConfig.endpoints.mcp,
+		mcpTestBaseUrl: urlBaseTestWebhook + globalConfig.endpoints.mcpTest,
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,
@@ -677,8 +757,8 @@ export async function getBase({
 			);
 		},
 		async getRunExecutionData(executionId) {
-			const executionRepository = Container.get(ExecutionRepository);
-			const executionData = await executionRepository.findSingleExecution(executionId, {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionData = await executionPersistence.findSingleExecution(executionId, {
 				unflattenData: true,
 				includeData: true,
 			});

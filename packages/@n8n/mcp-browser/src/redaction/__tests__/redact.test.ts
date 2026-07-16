@@ -33,6 +33,13 @@ const FIXTURES: Array<{ slug: string; secret: string }> = [
 	{ slug: 'slack_bot_token', secret: `xoxb-1111111111-1111111111-${'l'.repeat(24)}` },
 	{ slug: 'slack_user_token', secret: `xoxp-1111111111-1111111111-1111111111-${'m'.repeat(12)}` },
 	{ slug: 'slack_webhook_url', secret: `https://hooks.slack.com/services/${'N'.repeat(43)}` },
+	{
+		slug: 'slack_app_level_token',
+		secret: `xapp-1-${'A'.repeat(11)}-${'1'.repeat(14)}-${'a'.repeat(64)}`,
+	},
+	{ slug: 'slack_config_access_token', secret: `xoxe.xoxp-1-${'a'.repeat(146)}` },
+	{ slug: 'slack_config_refresh_token', secret: `xoxe-1-${'a'.repeat(146)}` },
+	{ slug: 'slack_workflow_token', secret: `xwfp-${'a'.repeat(40)}` },
 	{ slug: 'twilio_api_key_sid', secret: `SK${'0'.repeat(32)}` },
 	{ slug: 'twilio_account_sid', secret: `AC${'1'.repeat(32)}` },
 	{ slug: 'stripe_secret_key', secret: `sk_live_${'o'.repeat(20)}` },

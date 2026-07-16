@@ -3,6 +3,7 @@ import {
 	inDevelopment,
 	inTest,
 	LicenseState,
+	LockService,
 	Logger,
 	ModuleRegistry,
 	ModulesConfig,
@@ -18,9 +19,12 @@ import {
 	DataDeduplicationService,
 	ErrorReporter,
 	ExecutionContextHookRegistry,
+	StorageConfig,
 } from 'n8n-core';
 import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
-import { ensureError, Expression, sleep, UnexpectedError } from 'n8n-workflow';
+import { AzureBlobConfig } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.config';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { Expression, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
@@ -30,16 +34,17 @@ import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-clea
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -92,8 +97,11 @@ export abstract class BaseCommand<F = never> {
 			deploymentName,
 			profilesSampleRate,
 			tracesSampleRate,
+			tracesSlowSpanThresholdMs,
+			webhookTracesSampleRate,
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
+			eventLoopBlockDetectionEnabled,
 		} = this.globalConfig.sentry;
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
@@ -102,10 +110,13 @@ export abstract class BaseCommand<F = never> {
 			release: `n8n@${N8N_VERSION}`,
 			serverName: deploymentName,
 			releaseDate: N8N_RELEASE_DATE,
-			withEventLoopBlockDetection: true,
+			withEventLoopBlockDetection: eventLoopBlockDetectionEnabled,
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
 			tracesSampleRate,
+			slowSpanThresholdMs: tracesSlowSpanThresholdMs,
+			webhookEndpoint: this.globalConfig.endpoints.webhook,
+			webhookTracesSampleRate,
 			profilesSampleRate,
 			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {
@@ -124,6 +135,15 @@ export abstract class BaseCommand<F = never> {
 		this.nodeTypes = Container.get(NodeTypes);
 
 		await Container.get(LoadNodesAndCredentials).init();
+
+		const useRedisForLocking =
+			this.globalConfig.executions.mode === 'queue' ||
+			this.globalConfig.multiMainSetup.enabled ||
+			this.globalConfig.cache.backend === 'redis';
+		if (useRedisForLocking) {
+			const { RedisLockService } = await import('@/scaling/redis-lock.service.js');
+			Container.get(LockService).setProvider(Container.get(RedisLockService));
+		}
 
 		await this.dbConnection
 			.init()
@@ -174,7 +194,7 @@ export abstract class BaseCommand<F = never> {
 				);
 			}
 
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module.js');
 			await Container.get(TaskRunnerModule).start();
 		}
 
@@ -207,7 +227,7 @@ export abstract class BaseCommand<F = never> {
 		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
 		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
 			const { CommunityPackagesService } = await import(
-				'@/modules/community-packages/community-packages.service'
+				'@/modules/community-packages/community-packages.service.js'
 			);
 			await Container.get(CommunityPackagesService).init();
 		}
@@ -247,8 +267,9 @@ export abstract class BaseCommand<F = never> {
 		const binaryDataConfig = Container.get(BinaryDataConfig);
 		const binaryDataService = Container.get(BinaryDataService);
 		const isS3WriteMode = binaryDataConfig.mode === 's3';
+		const isAzureWriteMode = binaryDataConfig.mode === 'azure';
 
-		const { DatabaseManager } = await import('@/binary-data/database.manager');
+		const { DatabaseManager } = await import('@/binary-data/database.manager.js');
 		binaryDataService.setManager('database', Container.get(DatabaseManager));
 
 		if (isS3WriteMode) {
@@ -261,30 +282,129 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
-		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
-
-		if (isS3Configured) {
-			try {
-				const { ObjectStoreService } = await import(
-					'n8n-core/dist/binary-data/object-store/object-store.service.ee'
+		if (isAzureWriteMode) {
+			const isLicensed = Container.get(LicenseState).isBinaryDataAzureLicensed();
+			if (!isLicensed) {
+				this.logger.error(
+					'Azure Blob binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
 				);
-				const objectStoreService = Container.get(ObjectStoreService);
-				await objectStoreService.init();
+				process.exit(1);
+			}
+			if (Container.get(AzureBlobConfig).containerName === '') {
+				this.logger.error(
+					'Azure Blob binary data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
+
+		const executionDataMode = Container.get(StorageConfig).mode;
+		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
+		const isAzureConfigured = Container.get(AzureBlobConfig).containerName !== '';
+		const isExecutionDataS3Mode = executionDataMode === 's3';
+		const isExecutionDataAzureMode = executionDataMode === 'azure';
+		const isExecutionDataS3Licensed = Container.get(LicenseState).isExecutionDataS3Licensed();
+		const isExecutionDataAzureLicensed = Container.get(LicenseState).isExecutionDataAzureLicensed();
+
+		if (isExecutionDataS3Mode) {
+			if (!isExecutionDataS3Licensed) {
+				this.logger.error(
+					'S3 execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+			if (!isS3Configured) {
+				this.logger.error(
+					'S3 execution data storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
+
+		if (isExecutionDataAzureMode) {
+			if (!isExecutionDataAzureLicensed) {
+				this.logger.error(
+					'Azure Blob execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+			if (!isAzureConfigured) {
+				this.logger.error(
+					'Azure Blob execution data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
+
+		try {
+			const objectStoreService = await this.initObjectStoreIfConfigured();
+			if (objectStoreService) {
 				const { ObjectStoreManager } = await import(
-					'n8n-core/dist/binary-data/object-store.manager'
+					'n8n-core/dist/binary-data/object-store.manager.js'
 				);
 				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
-			} catch {
-				if (isS3WriteMode) {
-					this.logger.error(
-						'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
-					);
-					process.exit(1);
-				}
+			}
+		} catch {
+			if (isS3WriteMode || isExecutionDataS3Mode) {
+				this.logger.error('Failed to connect to S3. Please check your S3 configuration.');
+				process.exit(1);
+			}
+		}
+
+		try {
+			const azureBlobService = await this.initAzureStoreIfConfigured();
+			if (azureBlobService) {
+				const { AzureBlobManager } = await import(
+					'n8n-core/dist/binary-data/azure-blob.manager.js'
+				);
+				binaryDataService.setManager('azure', new AzureBlobManager(azureBlobService));
+			}
+		} catch {
+			if (isAzureWriteMode || isExecutionDataAzureMode) {
+				this.logger.error(
+					'Failed to connect to Azure Blob storage. Please check your Azure configuration.',
+				);
+				process.exit(1);
 			}
 		}
 
 		await binaryDataService.init();
+	}
+
+	protected async initObjectStoreIfConfigured() {
+		if (Container.get(ObjectStoreConfig).bucket.name === '') return undefined;
+
+		const { ObjectStoreService } = await import(
+			'n8n-core/dist/binary-data/object-store/object-store.service.ee.js'
+		);
+		const objectStoreService = Container.get(ObjectStoreService);
+		await objectStoreService.init();
+
+		const { S3ByteStore } = await import('@/blob-storage/s3-byte-store.ee.js');
+		Container.get(ExecutionDataJsonStore).registerByteStore(
+			's3',
+			new S3ByteStore(objectStoreService),
+		);
+
+		return objectStoreService;
+	}
+
+	protected async initAzureStoreIfConfigured() {
+		if (Container.get(AzureBlobConfig).containerName === '') return;
+
+		const { AzureBlobService } = await import(
+			'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee.js'
+		);
+		const azureBlobService = Container.get(AzureBlobService);
+		await azureBlobService.init();
+
+		const { AzureByteStore } = await import('@/blob-storage/azure-byte-store.ee.js');
+		Container.get(ExecutionDataJsonStore).registerByteStore(
+			'az',
+			new AzureByteStore(azureBlobService),
+		);
+
+		return azureBlobService;
 	}
 
 	protected async initDataDeduplicationService() {

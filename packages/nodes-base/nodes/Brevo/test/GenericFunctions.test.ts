@@ -9,18 +9,18 @@ function makeContext(overrides: {
 	binaries: Record<string, { metadata: IBinaryData; buffer: Buffer }>;
 	itemIndex?: number;
 }): IExecuteSingleFunctions {
-	const getNodeParameter = jest.fn().mockReturnValue({
+	const getNodeParameter = vi.fn().mockReturnValue({
 		binaryPropertyName: overrides.binaryPropertyName,
 	});
 
-	const assertBinaryData = jest.fn((propertyName: string) => {
+	const assertBinaryData = vi.fn((propertyName: string) => {
 		const entry = overrides.binaries[propertyName];
 		if (!entry) throw new Error(`No binary named ${propertyName}`);
 		return entry.metadata;
 	});
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	const getBinaryDataBuffer = jest.fn(async (propertyName: string) => {
+	const getBinaryDataBuffer = vi.fn(async (propertyName: string) => {
 		const entry = overrides.binaries[propertyName];
 		if (!entry) throw new Error(`No binary named ${propertyName}`);
 		return entry.buffer;
@@ -28,8 +28,8 @@ function makeContext(overrides: {
 
 	return {
 		getNodeParameter,
-		getItemIndex: jest.fn().mockReturnValue(overrides.itemIndex ?? 0),
-		getNode: jest.fn().mockReturnValue({ name: 'Brevo' }),
+		getItemIndex: vi.fn().mockReturnValue(overrides.itemIndex ?? 0),
+		getNode: vi.fn().mockReturnValue({ name: 'Brevo' }),
 		helpers: {
 			assertBinaryData,
 			getBinaryDataBuffer,

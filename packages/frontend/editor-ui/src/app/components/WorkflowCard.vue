@@ -49,7 +49,8 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useDependencies } from '@/app/composables/useDependencies';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
@@ -117,7 +118,7 @@ const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { hasDependencies } = useDependencies();
 
 const uiStore = useUIStore();
@@ -318,7 +319,7 @@ const isWorkflowPublished = computed(() => {
 });
 
 const hasDynamicCredentials = computed(() => {
-	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;
+	return isPrivateCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
 
 const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
@@ -618,35 +619,18 @@ const tags = computed(
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
-				<N8nTooltip v-if="hasDynamicCredentials" placement="top">
-					<template #content>
-						<div :class="$style.tooltipContent">
-							<strong>{{ locale.baseText('workflows.dynamic.tooltipTitle') }}</strong>
-							<span>{{ locale.baseText('workflows.dynamic.tooltip') }}</span>
-						</div>
-					</template>
-					<N8nBadge
-						theme="tertiary"
-						class="ml-3xs pl-3xs pr-3xs"
-						data-test-id="workflow-card-dynamic-credentials"
-					>
-						<span :class="$style.dynamicBadgeText">
-							<N8nIcon icon="key-round" size="medium" />
-							{{ locale.baseText('credentials.private.badge') }}
-						</span>
-					</N8nBadge>
-				</N8nTooltip>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
-			<span v-show="data"
-				>{{ locale.baseText('workflows.item.updated') }}
-				<TimeAgo :date="String(data.updatedAt)" /> |
+			<span v-show="data">
+				{{ locale.baseText('workflows.item.updated') }}
+				<TimeAgo :date="String(data.updatedAt)" />
 			</span>
+			<span v-show="data" :class="$style.divider">|</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				<span v-if="showLegacyMcpIndicator">|</span>
 			</span>
+			<span v-if="showLegacyMcpIndicator" :class="$style.divider">|</span>
 			<span
 				v-show="showLegacyMcpIndicator"
 				:class="$style.legacyMcpIndicator"
@@ -655,6 +639,18 @@ const tags = computed(
 				<N8nTooltip placement="right" :content="locale.baseText('workflows.item.availableInMCP')">
 					<N8nIcon icon="mcp" size="medium" />
 				</N8nTooltip>
+			</span>
+			<span v-if="hasDynamicCredentials" :class="$style.divider">|</span>
+			<span
+				v-if="hasDynamicCredentials"
+				:class="$style.privateCredentialIndicator"
+				data-test-id="workflow-card-private-credential"
+			>
+				<PrivateCredentialIcon
+					:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
+					:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
+					size="small"
+				/>
 			</span>
 			<span
 				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
@@ -796,6 +792,16 @@ const tags = computed(
 	align-items: center;
 }
 
+.divider {
+	// Standalone flex item so the row `gap` applies evenly on both sides.
+	user-select: none;
+}
+
+.privateCredentialIndicator {
+	display: inline-flex;
+	align-items: center;
+}
+
 .cardActions {
 	display: flex;
 	gap: var(--spacing--2xs);
@@ -824,20 +830,6 @@ const tags = computed(
 	background-color: var(--color--background--light-2);
 	border-color: var(--color--foreground--tint-1);
 	color: var(--color--text);
-}
-
-.dynamicBadgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	height: 18px;
-}
-
-.tooltipContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
 }
 
 .publishIndicator {

@@ -8,7 +8,7 @@ import { Config, Env } from '../decorators';
  * `N8N_AGENTS_MODULES`. The backend fails fast on unknown tokens so typos
  * surface at startup instead of silently disabling a feature.
  */
-export const AGENTS_MODULE_NAMES = ['node-tools-searcher', 'knowledge-base'] as const;
+export const AGENTS_MODULE_NAMES = [] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
 
@@ -17,9 +17,15 @@ class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 		super(str);
 
 		for (const name of this) {
+			const moduleName: string = name;
 			if (!AGENTS_MODULE_NAMES.includes(name)) {
+				const validTokens = AGENTS_MODULE_NAMES.join(', ');
 				throw new Error(
-					`Unknown agents module: "${name}". Valid tokens: ${AGENTS_MODULE_NAMES.join(', ')}.`,
+					`Unknown agents module: "${moduleName}". ${
+						validTokens
+							? `Valid tokens: ${validTokens}.`
+							: 'No agents modules are currently supported.'
+					}`,
 				);
 			}
 		}
@@ -32,27 +38,43 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_CHECKPOINT_TTL')
 	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
 
-	/** Maximum number of sub-agents a single parent run may spawn. Bounds fan-out width. */
-	@Env('N8N_AGENTS_SUBAGENT_MAX_CHILDREN')
-	subAgentMaxChildren: number = 5;
-
-	/** Abort an individual sub-agent run after this many milliseconds. */
-	@Env('N8N_AGENTS_SUBAGENT_TIMEOUT_MS')
-	subAgentTimeoutMs: number = 5 * Time.minutes.toMilliseconds;
-
 	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
 	 * gates a specific frontend/runtime capability inside the agents module.
-	 * Currently known:
-	 * - `node-tools-searcher` — surfaces the "Built-in node tools" toggle in
-	 *   the agent editor.
-	 * - `knowledge-base` — enables the agent knowledge base: file upload/list/
-	 *   delete endpoints, the files panel in the editor, and the
-	 *   `search_knowledge` runtime tool.
-	 *
-	 * Gates the UI surface only — existing agents persisted with a given
-	 * capability turned on continue to run even if its token is removed here.
+	 * Add supported module tokens to `AGENTS_MODULE_NAMES`.
 	 */
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
+
+	/** Enable Daytona sandbox for agent knowledge base operations. */
+	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
+	sandboxEnabled: boolean = false;
+
+	/** Sandbox provider for agent knowledge base. Only `daytona` is supported. */
+	@Env('N8N_AGENTS_AI_SANDBOX_PROVIDER')
+	sandboxProvider: string = '';
+
+	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
+	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
+	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
+
+	/** Daytona snapshot name for agent knowledge sandboxes. Falls back to image when unavailable. */
+	@Env('N8N_AGENTS_AI_SANDBOX_SNAPSHOT')
+	sandboxSnapshot: string = '';
+
+	/** Default command timeout in the sandbox (milliseconds). */
+	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
+	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
+
+	/** When true, Daytona deletes the knowledge sandbox when it stops. */
+	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
+	sandboxEphemeral: boolean = false;
+
+	/** Daytona API URL (e.g. "https://app.daytona.io/api"). */
+	@Env('DAYTONA_API_URL')
+	daytonaApiUrl: string = '';
+
+	/** Daytona API key for authentication. */
+	@Env('DAYTONA_API_KEY')
+	daytonaApiKey: string = '';
 }

@@ -1,5 +1,7 @@
 import { AgentJsonConfigSchema } from '../agent-json-config.schema';
-import { sanitizeAgentJsonConfig } from '../sanitize-agent-json-config';
+import { agentSkillSchema } from '../agent-skill.schema';
+import { sanitizeAgentJsonConfig, sanitizeAgentSkillBodies } from '../sanitize-agent-json-config';
+import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '../sub-agent.schema';
 
 const baseConfig = {
 	name: 'Test Agent',
@@ -22,6 +24,196 @@ describe('sanitizeAgentJsonConfig', () => {
 		};
 
 		expect(sanitizeAgentJsonConfig(config)).toEqual(config);
+	});
+
+	it('does not add omitted optional schema keys', () => {
+		const sanitized = sanitizeAgentJsonConfig(baseConfig);
+
+		expect(sanitized).toStrictEqual(baseConfig);
+		expect(Object.keys(sanitized as Record<string, unknown>).sort()).toEqual([
+			'instructions',
+			'model',
+			'name',
+		]);
+	});
+
+	it('strips unknown top-level keys before validation', () => {
+		expect(
+			sanitizeAgentJsonConfig({
+				...baseConfig,
+				legacyTopLevelField: 'removed',
+			}),
+		).toEqual(baseConfig);
+	});
+
+	it('strips unknown nested object keys before validation', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				maxChildren: 3,
+				agents: [
+					{
+						agentId: 'agent-2',
+						useWhen: 'Use for research tasks.',
+						legacyLabel: 'Research',
+					},
+				],
+				legacyBudget: 99,
+			},
+			config: {
+				toolCallConcurrency: 2,
+				webSearch: { enabled: true, provider: 'native', legacyProviderSetting: true },
+				promptCaching: {
+					enabled: true,
+					// anthropic.ttl is a real schema field; the made-up key inside it
+					// and the sibling made-up field are both stripped.
+					anthropic: { ttl: '1h', legacyAnthropicSetting: true },
+					legacyPromptCachingSetting: true,
+				},
+				nodeTools: { enabled: true, legacyNodeToolSetting: true },
+				legacyRuntimeSetting: true,
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				maxChildren: 3,
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for research tasks.' }],
+			},
+			config: {
+				toolCallConcurrency: 2,
+				webSearch: { enabled: true, provider: 'native' },
+				promptCaching: { enabled: true, anthropic: { ttl: '1h' } },
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('strips unknown keys from supported typed-array entries', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'wf-1',
+					name: 'Run workflow',
+					legacyWorkflowField: true,
+				},
+				{
+					type: 'node',
+					name: 'Send message',
+					description: 'Sends a message',
+					node: {
+						nodeType: 'n8n-nodes-base.slack',
+						nodeTypeVersion: 1,
+						nodeParameters: {
+							channel: '#support',
+							arbitraryRuntimeParameter: true,
+						},
+						credentials: {
+							slackApi: {
+								id: 'cred-1',
+								name: 'Slack',
+								legacyCredentialField: true,
+							},
+						},
+						legacyNodeConfigField: true,
+					},
+					legacyNodeToolField: true,
+				},
+			],
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'wf-1',
+					name: 'Run workflow',
+				},
+				{
+					type: 'node',
+					name: 'Send message',
+					description: 'Sends a message',
+					node: {
+						nodeType: 'n8n-nodes-base.slack',
+						nodeTypeVersion: 1,
+						nodeParameters: {
+							channel: '#support',
+							arbitraryRuntimeParameter: true,
+						},
+						credentials: {
+							slackApi: {
+								id: 'cred-1',
+								name: 'Slack',
+							},
+						},
+					},
+				},
+			],
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('strips unknown keys from strict nested MCP config schemas', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			mcpServers: [
+				{
+					name: 'github',
+					description: 'GitHub tools',
+					url: 'https://example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'bearerAuth',
+					credential: 'cred-github',
+					metadata: {
+						nodeTypeName: '@n8n/mcp-registry.github',
+						legacyMetadataField: true,
+					},
+					toolFilter: {
+						mode: 'allow',
+						tools: ['create_issue'],
+						legacyToolFilterField: true,
+					},
+					approval: {
+						mode: 'selected',
+						tools: ['create_issue'],
+						legacyApprovalField: true,
+					},
+					connectionTimeoutMs: 10_000,
+					legacyServerField: true,
+				},
+			],
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			mcpServers: [
+				{
+					name: 'github',
+					description: 'GitHub tools',
+					url: 'https://example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'bearerAuth',
+					credential: 'cred-github',
+					metadata: {
+						nodeTypeName: '@n8n/mcp-registry.github',
+					},
+					toolFilter: {
+						mode: 'allow',
+						tools: ['create_issue'],
+					},
+					approval: {
+						mode: 'selected',
+						tools: ['create_issue'],
+					},
+					connectionTimeoutMs: 10_000,
+				},
+			],
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
 	});
 
 	it('strips unsupported integration types such as the removed schedule integration', () => {
@@ -105,17 +297,24 @@ describe('sanitizeAgentJsonConfig', () => {
 
 		const sanitized = sanitizeAgentJsonConfig(legacyConfig);
 		expect(sanitized).toMatchObject({
-			...legacyConfig,
+			name: legacyConfig.name,
+			model: legacyConfig.model,
+			instructions: legacyConfig.instructions,
+			tools: [],
+			skills: [],
+			credential: legacyConfig.credential,
+			memory: legacyConfig.memory,
+			providerTools: legacyConfig.providerTools,
+			config: legacyConfig.config,
 			integrations: [],
-			legacyTopLevelField: 'should survive until schema parse',
 		});
+		expect(sanitized).not.toHaveProperty('legacyTopLevelField');
 
 		const parsed = AgentJsonConfigSchema.safeParse(sanitized);
 		expect(parsed.success).toBe(true);
 		if (!parsed.success) return;
 
 		expect(parsed.data.integrations).toEqual([]);
-		expect(parsed.data).not.toHaveProperty('legacyTopLevelField');
 	});
 
 	it('strips unsupported entries across integrations, tools, skills, and tasks in one pass', () => {
@@ -181,5 +380,261 @@ describe('sanitizeAgentJsonConfig', () => {
 		};
 
 		expect(sanitizeAgentJsonConfig(config)).toEqual(config);
+	});
+
+	it('preserves schema-known fields such as subAgents.maxChildren', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				maxChildren: 3,
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing questions.' }],
+			},
+		});
+		const parsed = AgentJsonConfigSchema.safeParse(sanitized);
+
+		expect(parsed.success).toBe(true);
+		if (!parsed.success) return;
+		expect(parsed.data.subAgents?.maxChildren).toBe(3);
+		expect(parsed.data.subAgents?.agents?.[0]?.useWhen).toBe('Use for billing questions.');
+	});
+
+	it.each(['', '   ', 'Too short'])('accepts optional sub-agent useWhen value %p', (useWhen) => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				agents: [{ agentId: 'agent-2', useWhen }],
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				agents: [{ agentId: 'agent-2', useWhen }],
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('rejects sub-agent useWhen values over 512 characters', () => {
+		expect(
+			AgentJsonConfigSchema.safeParse({
+				...baseConfig,
+				subAgents: {
+					agents: [{ agentId: 'agent-2', useWhen: 'a'.repeat(513) }],
+				},
+			}).success,
+		).toBe(false);
+	});
+
+	it.each([SUB_AGENT_MAX_CHILDREN_MIN, SUB_AGENT_MAX_CHILDREN_MAX])(
+		'accepts boundary subAgents.maxChildren %s',
+		(maxChildren) => {
+			expect(
+				AgentJsonConfigSchema.safeParse({
+					...baseConfig,
+					subAgents: { maxChildren },
+				}).success,
+			).toBe(true);
+		},
+	);
+
+	it.each([0, -1, 1.5, SUB_AGENT_MAX_CHILDREN_MAX + 1])(
+		'rejects invalid subAgents.maxChildren %s',
+		(maxChildren) => {
+			expect(
+				AgentJsonConfigSchema.safeParse({
+					...baseConfig,
+					subAgents: { maxChildren },
+				}).success,
+			).toBe(false);
+		},
+	);
+
+	it('preserves sub-agent model mappings by difficulty', () => {
+		const config = {
+			...baseConfig,
+			subAgents: {
+				maxChildren: 3,
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
+				modelsByDifficulty: {
+					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
+					medium: { model: 'anthropic/claude-haiku-4-5', credential: 'cred-anthropic' },
+					high: {
+						model: 'openrouter/anthropic/claude-sonnet-4-5',
+						credential: 'cred-openrouter',
+					},
+				},
+			},
+		};
+
+		expect(sanitizeAgentJsonConfig(config)).toEqual(config);
+		expect(AgentJsonConfigSchema.safeParse(config).success).toBe(true);
+	});
+
+	it('strips unknown sub-agent difficulty model keys', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
+					extreme: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('strips unknown fields from sub-agent difficulty model mappings', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: {
+						model: 'openai/gpt-4o-mini',
+						credential: 'cred-openai',
+						label: 'Cheap model',
+						provider: 'openai',
+					},
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('keeps invalid sub-agent difficulty model values for validation errors', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: {
+						model: 'gpt-4o-mini',
+						credential: 'cred-openai',
+					},
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: {
+						model: 'gpt-4o-mini',
+						credential: 'cred-openai',
+					},
+				},
+			},
+		});
+
+		const result = AgentJsonConfigSchema.safeParse(sanitized);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(
+			result.error.issues.some(
+				(issue) => issue.path.join('.') === 'subAgents.modelsByDifficulty.low.model',
+			),
+		).toBe(true);
+	});
+
+	it('allows cleared sub-agent difficulty model credentials in draft config', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: {
+						model: 'openai/gpt-4o-mini',
+						credential: '   ',
+					},
+				},
+			},
+		});
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.data.subAgents?.modelsByDifficulty?.low?.credential).toBe('');
+	});
+
+	it('preserves existing sub-agent refs and maxChildren with model mappings', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				maxChildren: 4,
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for support escalation.' }],
+				modelsByDifficulty: {
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				maxChildren: 4,
+				agents: [{ agentId: 'agent-2', useWhen: 'Use for support escalation.' }],
+				modelsByDifficulty: {
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+});
+
+describe('sanitizeAgentSkillBodies', () => {
+	const validBody = {
+		name: 'Triage',
+		description: 'Triage incoming requests',
+		instructions: 'Categorize the request and route it.',
+		allowedTools: ['lookup_orders'],
+		references: [{ path: 'references/guide.md', content: '# Guide' }],
+	};
+
+	it('returns non-record payloads unchanged', () => {
+		expect(sanitizeAgentSkillBodies(null)).toBe(null);
+		expect(sanitizeAgentSkillBodies('skills')).toBe('skills');
+		expect(sanitizeAgentSkillBodies([validBody])).toEqual([validBody]);
+	});
+
+	it('leaves clean bodies unchanged and keeps their keys', () => {
+		const bodies = { skill_triage: validBody };
+
+		const sanitized = sanitizeAgentSkillBodies(bodies);
+
+		expect(sanitized).toEqual(bodies);
+		expect(agentSkillSchema.safeParse((sanitized as typeof bodies).skill_triage).success).toBe(
+			true,
+		);
+	});
+
+	it('strips unknown body fields so retired schema keys degrade gracefully', () => {
+		const sanitized = sanitizeAgentSkillBodies({
+			skill_triage: { ...validBody, retiredField: 'saved by an older schema' },
+		});
+
+		expect(sanitized).toEqual({ skill_triage: validBody });
+	});
+
+	it('passes malformed bodies through for validation to reject', () => {
+		expect(sanitizeAgentSkillBodies({ skill_triage: 'not a body' })).toEqual({
+			skill_triage: 'not a body',
+		});
 	});
 });

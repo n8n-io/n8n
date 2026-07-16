@@ -1,26 +1,30 @@
 post:
   x-eov-operation-id: importPackage
+  x-required-scope: workflow:import
   x-eov-operation-handler: v1/handlers/n8n-packages/n8n-packages.handler
   tags:
     - N8nPackage
   summary: 'Beta: Import an n8n package into a project'
   description: |
-    **Beta — disabled by default.** Set `N8N_PUBLIC_API_PACKAGES_ENABLED=true` on the
-    instance to enable this endpoint. While disabled, requests return `404`.
+    **Beta** — breaking changes may still occur without major version bump.
 
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
-    `projectId`, `folderId`, `credentialMatchingMode`, and `credentialMissingMode`
-    (omit or leave empty for defaults). Maximum upload size is
-    `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
+    `projectId` and `folderId` (omit or send empty for defaults). The optional
+    `credentialMatchingMode`, `credentialMissingMode`, `bindings`,
+    `workflowIdPolicy`, and `workflowPublishingPolicy` fields take their defaults when omitted. The required
+    `workflowConflictPolicy` field controls what happens when a package workflow
+    matches an existing workflow by source id in the target project. Maximum upload
+    size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
 
     The package must declare its manifest at `manifest.json` and include every file
     referenced by the manifest. The caller is authorised through the `workflow:import`
-    scope. Each imported workflow is created with a fresh local id and arrives inactive.
+    scope. With the default `workflowIdPolicy=new`, newly created workflows receive a
+    fresh local id; imported workflows arrive inactive unless `workflowPublishingPolicy`
+    publishes them after import.
 
-    Credential references are resolved before any workflow is written. Only credentials owned by the
-    target project (with `credential:read`) or global credentials (with `credential:read`)
-    match. Credentials shared into the project as `credential:user` are not matched.
+    Credential references are resolved before any workflow is written. Credentials owned by,
+    shared with, or global to the target project (with `credential:read`) match.
   requestBody:
     required: true
     content:
@@ -29,6 +33,7 @@ post:
           type: object
           required:
             - package
+            - workflowConflictPolicy
           properties:
             package:
               type: string
@@ -48,22 +53,141 @@ post:
               type: string
               enum:
                 - id-only
+                - name-and-type
+                - type-only
               default: id-only
               description: >
                 How credential references in `requirements.credentials` are matched on
-                the target instance. Only `id-only` is supported today.
+                the target instance. `id-only` (default) matches by id. `name-and-type`
+                matches credentials with the exact same name and type. `type-only`
+                matches any credential of the same type. For `name-and-type` and
+                `type-only`, candidates are ranked by scope — a credential owned by
+                the target project wins over one merely shared into it, which in
+                turn wins over a global credential; if several candidates remain
+                in the winning scope, the most recently updated one is chosen.
             credentialMissingMode:
               type: string
               enum:
                 - must-preexist
-              default: must-preexist
+                - create-stub
+              default: create-stub
               description: >
                 What to do when a credential reference cannot be resolved.
-                `must-preexist` requires every referenced credential to already
-                exist and be accessible on the target instance.
+                `create-stub` (default) creates empty credential placeholders in
+                the target project for missing references. `must-preexist`
+                requires every referenced credential to already exist.
+            bindings:
+              type: string
+              default: '{}'
+              description: >
+                Optional JSON object of explicit source→target id bindings, keyed
+                by entity type. Only `credentials` is supported today: send
+                `{"credentials":{"<packageCredentialId>":"<targetCredentialId>"}}`
+                to map credential ids from the package to credential ids
+                on the target instance. These explicit bindings are validated on type and
+                applied before `credentialMatchingMode` resolution runs.
+            workflowConflictPolicy:
+              type: string
+              enum:
+                - new-version
+                - fail
+                - skip
+              description: >
+                `new-version` updates matching workflows and creates a new version,
+                `fail` rejects the import when any matching workflow exists, and
+                `skip` leaves matching workflows unchanged.
+            workflowIdPolicy:
+              type: string
+              enum:
+                - new
+                - source
+              default: new
+              description: >
+                Controls the id each newly created workflow receives. `new`
+                (default) mints a fresh id and records the package id as
+                `sourceWorkflowId`, so the same package can be imported
+                repeatedly without id collisions. `source` reuses the package's
+                own workflow id on the target instance. Workflows matched to an
+                existing workflow in the target project (status `updated` or
+                `skipped`) always keep that workflow's current id, regardless
+                of policy.
+            workflowPublishingPolicy:
+              type: string
+              enum:
+                - preserve-published-state
+                - match-source
+                - publish-all
+                - unpublish-all
+              default: preserve-published-state
+              description: >
+                Controls whether imported workflows are published after content is
+                written. `preserve-published-state` keeps new workflows inactive and
+                republishes an updated workflow only when it was already published and
+                the package workflow is published too, so drafts are never published.
+                `match-source` follows the package workflow's published flag.
+                `publish-all` publishes every imported workflow.
+                `unpublish-all` leaves new workflows inactive and unpublishes
+                updated workflows that were published.
+            folderConflictPolicy:
+              type: string
+              enum:
+                - merge
+                - fail
+              default: merge
+              description: >
+                Controls what happens when a package folder (matched by id in the
+                target project) already exists at the same position. `merge`
+                (default) reuses the existing folder as-is and merges the package's
+                children into it; `fail` rejects the import. A folder whose id exists
+                under a different parent, or belongs to another project, always blocks
+                the import. Requires the `folder:create` scope and a license that
+                supports folders when the package contains folders.
+            dataTableMatchingMode:
+              type: string
+              enum:
+                - by-id
+              default: by-id
+              description: >
+                How data tables referenced by the package's workflows are matched
+                against the target project. `by-id` matches the target-project table
+                with the same id (imported tables keep their source id) and never
+                falls back to name matching, so a match survives a rename on the
+                target. Currently the only mode.
+            dataTableMissingMode:
+              type: string
+              enum:
+                - create
+                - must-preexist
+                - do-nothing
+              default: create
+              description: >
+                Controls what happens when a referenced data table has no match in
+                the target project. `create` (default) creates it from the package
+                schema, keeping the source id, with no rows; requires the
+                `dataTable:create` scope. `must-preexist` rejects the import.
+                `do-nothing` skips creation of missing tables — matched tables are
+                still validated for schema compatibility and can still block the
+                import. Matched tables are always used as-is: never renamed,
+                altered, or filled.
+            dataTableSchemaConflictPolicy:
+              type: string
+              enum:
+                - keep-existing
+                - fail
+              default: keep-existing
+              description: >
+                How strictly a matched data table's schema is compared.
+                `keep-existing` (default) accepts a target table that has every
+                package column with the same name and type, even when the target table
+                also has additional columns of its own. `fail` is the strict
+                drift-detection choice: any difference, including such
+                target-only columns, rejects the import. A missing package
+                column or a type mismatch always rejects. Both policies are
+                non-destructive — the matched target table is never altered, and
+                package columns are never added to it.
   responses:
     '200':
-      description: Import succeeded.
+      description: Import succeeded; the listed workflows were written to the target project.
       content:
         application/json:
           schema:
@@ -71,6 +195,9 @@ post:
             required:
               - package
               - workflows
+              - folders
+              - projects
+              - bindings
               - credentials
             properties:
               package:
@@ -92,19 +219,25 @@ post:
                 items:
                   type: object
                   required:
-                    - sourceId
+                    - sourceWorkflowId
                     - localId
                     - name
                     - projectId
                     - parentFolderId
                     - activeVersionId
+                    - publishing
+                    - status
                   properties:
-                    sourceId:
+                    sourceWorkflowId:
                       type: string
                       description: Workflow id as it appeared in the package.
                     localId:
                       type: string
-                      description: Newly minted workflow id on the target instance.
+                      description: >
+                        Workflow id on the target instance: newly assigned for
+                        `created` (fresh under `workflowIdPolicy=new`, the
+                        package id under `source`), the existing workflow's id
+                        for `updated`/`skipped`.
                     name:
                       type: string
                     projectId:
@@ -116,59 +249,196 @@ post:
                       type: string
                       nullable: true
                       description: >
-                        Published version on the target instance. Always null
-                        immediately after import.
+                        Published version on the target instance, if any. `null` when the
+                        workflow is not published after import.
+                    publishing:
+                      type: object
+                      required:
+                        - state
+                      description: >
+                        Outcome of applying the selected publishing policy to this workflow.
+                      properties:
+                        state:
+                          type: string
+                          enum:
+                            - published
+                            - unpublished
+                            - unchanged
+                            - blocked
+                            - failed
+                          description: >
+                            `blocked` means the imported version could not be published
+                            and no version is active (for example because the workflow
+                            uses a stubbed credential). When a prior published version
+                            remains active, `state` is `unchanged` with
+                            `skippedPublishReason` instead. `failed` means publish or
+                            unpublish was attempted but did not succeed.
+                        error:
+                          type: string
+                          description: >
+                            Present when `state` is `failed`. Explains why publish or unpublish
+                            could not be applied.
+                        blockedReason:
+                          type: string
+                          enum:
+                            - stub-credential
+                          description: >
+                            Present when `state` is `blocked`: the imported version
+                            could not be published and no version is active.
+                        skippedPublishReason:
+                          type: string
+                          enum:
+                            - stub-credential
+                          description: >
+                            Present when `state` is `unchanged` but the policy wanted
+                            to publish the imported version: a prior published version
+                            is still active (for example after an update with stubbed
+                            credentials).
+                    status:
+                      type: string
+                      enum:
+                        - created
+                        - updated
+                        - skipped
+                      description: Import outcome for this package workflow.
+              folders:
+                type: array
+                description: Folder shells created or skipped in the target project.
+                items:
+                  type: object
+                  required:
+                    - sourceFolderId
+                    - localId
+                    - name
+                    - parentFolderId
+                    - status
+                  properties:
+                    sourceFolderId:
+                      type: string
+                      description: Folder id as it appeared in the package.
+                    localId:
+                      type: string
+                      description: Folder id on the target instance (equal to `sourceFolderId`; folder ids are reused).
+                    name:
+                      type: string
+                    parentFolderId:
+                      type: string
+                      nullable: true
+                      description: Resolved parent folder on the target, or `null` at the project root.
+                    status:
+                      type: string
+                      enum:
+                        - created
+                        - skipped
+                      description: Import outcome for this package folder.
+              projects:
+                type: array
+                description: >
+                  Project shells created or matched-and-updated. Present for project
+                  packages; empty when importing loose workflows/folders.
+                items:
+                  type: object
+                  required:
+                    - sourceProjectId
+                    - localId
+                    - name
+                    - status
+                  properties:
+                    sourceProjectId:
+                      type: string
+                      description: Project id as it appeared in the package.
+                    localId:
+                      type: string
+                      description: Project id on the target instance (equal to `sourceProjectId`; project ids are reused).
+                    name:
+                      type: string
+                    status:
+                      type: string
+                      enum:
+                        - created
+                        - updated
+                      description: Import outcome for this package project.
               credentials:
                 type: object
+                description: >
+                  Source credential ids grouped by whether they matched an
+                  existing credential or were created as stubs. Full
+                  source→target id mapping is in `bindings.credentials`.
                 required:
                   - matched
+                  - stubbed
                 properties:
                   matched:
                     type: array
                     items:
-                      type: object
-                      required:
-                        - sourceId
-                        - targetId
-                      properties:
-                        sourceId:
-                          type: string
-                          description: Credential id from `requirements.credentials` in the package manifest.
-                        targetId:
-                          type: string
-                          description: Matched credential id on the target instance.
-    '422':
-      description: One or more credential references could not be resolved.
+                      type: string
+                    description: >
+                      Source credential ids from the package that matched
+                      existing credentials on the target instance.
+                  stubbed:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Source credential ids for which empty placeholder
+                      credentials were created in the target project.
+              bindings:
+                type: object
+                description: >
+                  Source id → target id mappings produced during import, one map per
+                  entity type. Each value maps an id as it appeared in the package to
+                  the id on the target instance.
+                required:
+                  - workflows
+                  - credentials
+                properties:
+                  workflows:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  credentials:
+                    type: object
+                    description: >
+                      Credential id from `requirements.credentials` in the package
+                      manifest → matched credential id on the target instance.
+                    additionalProperties:
+                      type: string
+    '409':
+      description: >
+        Import blocked by at least one conflict among the issues — a workflow
+        source-id conflict or a folder conflict (id under a different parent, id
+        owned by another project, or a `fail`-policy match).
       content:
         application/json:
           schema:
             type: object
             required:
               - message
-              - failures
+              - issues
             properties:
               message:
                 type: string
-              failures:
+              issues:
                 type: array
                 items:
-                  type: object
-                  required:
-                    - kind
-                    - sourceId
-                    - usedByWorkflows
-                  properties:
-                    kind:
-                      type: string
-                      enum:
-                        - not_found
-                        - unknown_type
-                    sourceId:
-                      type: string
-                    usedByWorkflows:
-                      type: array
-                      items:
-                        type: string
+                  $ref: '../schemas/importBlockingIssue.yml'
+    '422':
+      description: >
+        Import blocked by non-conflict issues only (e.g. unresolved credentials).
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+              - issues
+            properties:
+              message:
+                type: string
+              issues:
+                type: array
+                items:
+                  $ref: '../schemas/importBlockingIssue.yml'
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':

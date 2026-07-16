@@ -1,6 +1,6 @@
 import { i18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
-import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	AGENTS_LIST_VIEW,
@@ -11,14 +11,15 @@ import {
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_TASK_MODAL_KEY,
-	AGENT_ADD_TRIGGER_MODAL_KEY,
 	AGENT_SUB_AGENTS_MODAL_KEY,
+	AGENT_VECTOR_STORES_MODAL_KEY,
+	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
+	AGENT_MODEL_CREDENTIAL_MODAL_KEY,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
-	NEW_AGENT_VIEW,
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
 
@@ -32,8 +33,6 @@ const AgentSessionsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
 const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
-const NewAgentView = async (): Promise<unknown> =>
-	await import('@/features/agents/views/NewAgentView.vue');
 const SettingsAgentBuilderView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/SettingsAgentBuilderView.vue');
 
@@ -93,20 +92,6 @@ export const AgentsModule: FrontendModuleDescription = {
 			},
 		},
 		{
-			key: AGENT_ADD_TRIGGER_MODAL_KEY,
-			component: async () => await import('./components/AgentAddTriggerModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					projectId: '',
-					agentId: '',
-					connectedTriggers: [],
-					onConnectedTriggersChange: () => {},
-					onTriggerAdded: () => {},
-				},
-			},
-		},
-		{
 			key: AGENT_SUB_AGENTS_MODAL_KEY,
 			component: async () => await import('./components/AgentSubAgentsModal.vue'),
 			initialState: {
@@ -118,13 +103,49 @@ export const AgentsModule: FrontendModuleDescription = {
 			},
 		},
 		{
+			key: AGENT_VECTOR_STORES_MODAL_KEY,
+			component: async () => await import('./components/AgentVectorStoresModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					projectId: '',
+					agentId: '',
+					existingNames: [],
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_JSON_IMPORT_MODAL_KEY,
+			component: async () => await import('./components/AgentJsonImportModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
 			key: AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
-			component: async () => await import('../ai/chatHub/components/CredentialSelectorModal.vue'),
+			component: async () => await import('../ai/components/CredentialSelectorModal.vue'),
 			initialState: {
 				open: false,
 				data: {
 					credentialType: AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
 					displayName: 'OpenAI',
+					initialValue: null,
+					onSelect: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_MODEL_CREDENTIAL_MODAL_KEY,
+			component: async () => await import('../ai/components/CredentialSelectorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					credentialType: '',
+					displayName: '',
 					initialValue: null,
 					onSelect: () => {},
 				},
@@ -146,14 +167,6 @@ export const AgentsModule: FrontendModuleDescription = {
 			component: AgentsListView,
 			meta: {
 				projectRoute: true,
-				middleware: ['authenticated', 'custom'],
-			},
-		},
-		{
-			name: NEW_AGENT_VIEW,
-			path: '/new-agent',
-			component: NewAgentView,
-			meta: {
 				middleware: ['authenticated', 'custom'],
 			},
 		},

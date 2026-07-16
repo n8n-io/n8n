@@ -1,8 +1,7 @@
+import { generateContentLengthHeader, isFormDataInstance } from '@n8n/backend-network/testing';
 import type { AxiosRequestConfig } from 'axios';
 import FormData from 'form-data';
 import { Readable } from 'stream';
-
-import { generateContentLengthHeader, isFormDataInstance } from '../request-helpers/axios-utils';
 
 describe('isFormDataInstance', () => {
 	it('should return true for a real FormData instance', () => {

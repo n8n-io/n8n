@@ -20,7 +20,7 @@ Commands:
   method-impact      Find tests that use a specific method (e.g., CanvasPage.addNode)
   tcr                Run TCR (Test && Commit || Revert) workflow
   discover           Discover test specs and capabilities (for orchestration)
-  orchestrate        Distribute specs across shards using capability-aware bin-packing
+  distribute        Distribute specs across shards using capability-aware bin-packing
 
 Analysis Options:
   --config=<path>    Path to janitor.config.js (default: ./janitor.config.js)
@@ -48,7 +48,7 @@ For command-specific help:
   playwright-janitor method-impact --help
   playwright-janitor tcr --help
   playwright-janitor discover --help
-  playwright-janitor orchestrate --help
+  playwright-janitor distribute --help
 `);
 }
 
@@ -183,8 +183,8 @@ Groups tests by capability to minimize fixture overhead, then uses greedy
 bin-packing to balance test time across shards. Outputs JSON to stdout.
 
 Usage:
-  playwright-janitor orchestrate --shards=<N>                    # Full result as JSON
-  playwright-janitor orchestrate --shards=<N> --shard-index=<I>  # Specs for one shard
+  playwright-janitor distribute --shards=<N>                    # Full result as JSON
+  playwright-janitor distribute --shards=<N> --shard-index=<I>  # Specs for one shard
 
 Options:
   --shards=<N>         Number of shards (required)
@@ -201,9 +201,9 @@ Output:
   { shards: [{ shard, specs, testTime, capabilities, fixtureCount }], totalTestTime }
 
 Examples:
-  playwright-janitor orchestrate --shards=14 | jq '.shards[0].specs'
-  playwright-janitor orchestrate --shards=8 --impact
-  playwright-janitor orchestrate --shards=4 --impact --file=pages/CanvasPage.ts
+  playwright-janitor distribute --shards=14 | jq '.shards[0].specs'
+  playwright-janitor distribute --shards=8 --impact
+  playwright-janitor distribute --shards=4 --impact --file=pages/CanvasPage.ts
 `);
 }
 
@@ -236,45 +236,36 @@ runtime via the DI container by every consuming package's integration tests).
 
 export function showScopeHelp(): void {
 	console.log(`
-Scope - Per-package jest/vitest scope from changed files
+Scope - Per-package vitest scope from changed files
 
 Usage:
-  janitor scope --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>]
+  janitor scope [--package-dir=<dir>] [--changed-files=<list>]
 
   --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
   --changed-files: newline- OR comma-separated repo-root-relative paths.
                    Defaults to $CHANGED_FILES env var.
-  --jest-variant:  'integration' widens the bailout set to catch runtime-
-                   coupled changes invisible to jest --findRelatedTests
-                   (entities, repositories, migrations, shared fixtures).
-                   Defaults to 'unit'.
 
 Output (single line on stdout):
   SKIP        No in-package files changed
   RUN_FULL    Config file changed, OR no CHANGED_FILES signal (local dev)
-  <files>     Pass to jest --findRelatedTests / vitest related
+  <files>     Pass to vitest related
 `);
 }
 
 export function showTestScopedHelp(): void {
 	console.log(`
-Test-Scoped - Compute scope and spawn jest/vitest with the right flags
+Test-Scoped - Compute scope and spawn vitest with the right flags
 
 Usage:
-  janitor test-scoped --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
+  janitor test-scoped [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
 
   --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
   --changed-files: newline- OR comma-separated repo-root-relative paths.
                    Defaults to $CHANGED_FILES env var.
-  --jest-variant:  'integration' widens the bailout set to catch runtime-
-                   coupled changes invisible to jest --findRelatedTests
-                   (entities, repositories, migrations, shared fixtures).
-                   Defaults to 'unit'.
 
 Local dev (no $CHANGED_FILES set): runs the full suite.
-CI: scopes via jest --findRelatedTests / vitest related --run, or skips
-if the package wasn't touched. Unrecognised flags are forwarded to the
-runner.
+CI: scopes via vitest related --run, or skips if the package wasn't touched.
+Unrecognised flags are forwarded to the runner.
 `);
 }
 

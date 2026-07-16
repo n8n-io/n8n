@@ -6,6 +6,7 @@ import {
 	onUnmounted,
 	provide,
 	ref,
+	shallowReactive,
 	useTemplateRef,
 	watch,
 } from 'vue';
@@ -20,7 +21,7 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import { useElementSize, useScroll, useSessionStorage, useWindowSize } from '@vueuse/core';
+import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -33,6 +34,7 @@ import { isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
+import { consumePendingFirstMessage } from './composables/useInstanceAiHandoff';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import { useSidebarState } from './instanceAiLayout';
@@ -54,6 +56,7 @@ import InstanceAiWorkflowPreview, {
 } from './components/InstanceAiWorkflowPreview.vue';
 import { buildFixWithAiPrompt } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import { TabsRoot } from 'reka-ui';
 
 const props = defineProps<{
@@ -82,7 +85,22 @@ const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages)
 // Assistant messages whose only content has been extracted to the bottom
 // builder section (or which haven't produced anything renderable yet) would
 // otherwise leave an empty wrapper in the list — filter them out.
-const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
+// Reconciled in place: spliced only when membership changes, so streamed
+// tokens don't re-render the list.
+const displayedMessages = shallowReactive<typeof thread.messages>([]);
+watch(
+	() => thread.messages.filter(messageHasVisibleContent),
+	(next) => {
+		const unchanged =
+			next.length === displayedMessages.length &&
+			next.every((msg, i) => msg === displayedMessages[i]);
+		if (!unchanged) displayedMessages.splice(0, displayedMessages.length, ...next);
+	},
+	{ immediate: true },
+);
+
+// Show the input disclaimer only once the AI has produced a visible response.
+const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (generic approvals + domain/web-search access). Drives the swap
@@ -135,6 +153,7 @@ const preview = useCanvasPreview({
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+provide('openAgentPreview', preview.openAgentPreview);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -151,8 +170,8 @@ watch(
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
-const isArtifactsPanelPinned = useSessionStorage('instanceAi.artifactsPanelPinned', true);
 const isArtifactsPanelRevealed = ref(false);
+const isArtifactsPanelDismissedInLayout = ref(false);
 const DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH = 260;
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
@@ -171,6 +190,13 @@ const artifactsPreviewToggleLabel = computed(() =>
 			: 'instanceAi.artifactsPanel.showPreview',
 	),
 );
+const artifactsPanelToggleLabel = computed(() =>
+	i18n.baseText(
+		showArtifactsPanel.value
+			? 'instanceAi.artifactsPanel.hidePanel'
+			: 'instanceAi.artifactsPanel.showPanel',
+	),
+);
 const artifactsPanelTransitionName = computed(() =>
 	isPreviewPanelTransitioning.value ? 'artifacts-panel-preview' : 'artifacts-panel-fade',
 );
@@ -181,41 +207,35 @@ function toggleArtifactsPreview() {
 		return;
 	}
 
-	const firstTab = preview.allArtifactTabs.value[0];
-	if (firstTab) {
-		preview.selectTab(firstTab.id);
+	const selectedTab = preview.allArtifactTabs.value.find(
+		(tab) => tab.id === preview.activeTabId.value,
+	);
+	const tabToOpen = selectedTab ?? preview.allArtifactTabs.value[0];
+	if (tabToOpen) {
+		preview.selectTab(tabToOpen.id);
 	}
 }
 
-function revealArtifactsPanel() {
-	if (
-		!canShowArtifactsPanel.value ||
-		isArtifactsPanelEffectivelyPinned.value ||
-		preview.isPreviewVisible.value
-	) {
+function toggleArtifactsPanel() {
+	if (!canShowArtifactsPanel.value || preview.isPreviewVisible.value) {
 		return;
 	}
+
+	if (showArtifactsPanel.value) {
+		if (isArtifactsPanelInLayout.value) {
+			isArtifactsPanelDismissedInLayout.value = true;
+			return;
+		}
+		isArtifactsPanelRevealed.value = false;
+		return;
+	}
+
+	if (isArtifactsPanelInLayout.value) {
+		isArtifactsPanelDismissedInLayout.value = false;
+		return;
+	}
+
 	isArtifactsPanelRevealed.value = true;
-}
-
-function hideArtifactsPanel(event?: FocusEvent) {
-	if (isArtifactsPanelEffectivelyPinned.value) return;
-	if (
-		event?.currentTarget instanceof HTMLElement &&
-		event.relatedTarget instanceof Node &&
-		event.currentTarget.contains(event.relatedTarget)
-	) {
-		return;
-	}
-	isArtifactsPanelRevealed.value = false;
-}
-
-function toggleArtifactsPanelPinned() {
-	if (!isArtifactsPanelPinningAvailable.value) return;
-
-	const nextPinned = !isArtifactsPanelPinned.value;
-	isArtifactsPanelPinned.value = nextPinned;
-	isArtifactsPanelRevealed.value = !nextPinned;
 }
 
 function enablePanelTransitionsAfterStableRender() {
@@ -242,34 +262,34 @@ const instanceAiSidebarOccupiedWidth = computed(() =>
 const availableWidthForPinnedArtifactsPanel = computed(
 	() => windowWidth.value - mainSidebarOccupiedWidth.value - instanceAiSidebarOccupiedWidth.value,
 );
-const isArtifactsPanelPinningAvailable = computed(
+const isArtifactsPanelInLayout = computed(
 	() =>
 		availableWidthForPinnedArtifactsPanel.value >= MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
-const isArtifactsPanelEffectivelyPinned = computed(
-	() => isArtifactsPanelPinningAvailable.value && isArtifactsPanelPinned.value,
-);
 const canShowArtifactsPanel = computed(
 	() => thread.hasMessages || (Boolean(props.threadId) && thread.isHydratingThread),
-);
-const showArtifactsPanelEdge = computed(
-	() =>
-		canShowArtifactsPanel.value &&
-		!preview.isPreviewVisible.value &&
-		!isArtifactsPanelEffectivelyPinned.value,
 );
 const showArtifactsPanel = computed(
 	() =>
 		canShowArtifactsPanel.value &&
 		!preview.isPreviewVisible.value &&
-		(isArtifactsPanelEffectivelyPinned.value || isArtifactsPanelRevealed.value),
+		(isArtifactsPanelInLayout.value
+			? !isArtifactsPanelDismissedInLayout.value
+			: isArtifactsPanelRevealed.value),
+);
+const showArtifactsPanelToggle = computed(
+	() => canShowArtifactsPanel.value && !preview.isPreviewVisible.value,
 );
 const reserveArtifactsPanelLayout = computed(
-	() => showArtifactsPanel.value && isArtifactsPanelEffectivelyPinned.value,
+	() => showArtifactsPanel.value && isArtifactsPanelInLayout.value,
+);
+const shouldAnimateArtifactsPanel = computed(
+	() => isArtifactsPanelTransitionEnabled.value && isArtifactsPanelInLayout.value,
 );
 const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
+const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
 const previewPanelWidth = ref(0);
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
@@ -330,17 +350,29 @@ watch(threadAreaWidth, (width) => {
 	}
 });
 
-watch(isArtifactsPanelPinningAvailable, (isAvailable) => {
-	if (!isAvailable) {
-		isArtifactsPanelRevealed.value = false;
+watch(isArtifactsPanelInLayout, (isInLayout) => {
+	isArtifactsPanelRevealed.value = false;
+
+	if (isInLayout) {
+		isArtifactsPanelDismissedInLayout.value = false;
 	}
 });
 
 watch(canShowArtifactsPanel, (canShow) => {
 	if (!canShow) {
 		isArtifactsPanelRevealed.value = false;
+		isArtifactsPanelDismissedInLayout.value = false;
 	}
 });
+
+onClickOutside(
+	artifactsPanelSlotRef,
+	() => {
+		if (isArtifactsPanelInLayout.value) return;
+		isArtifactsPanelRevealed.value = false;
+	},
+	{ ignore: ['[data-test-id="instance-ai-artifacts-panel-toggle"]', '.n8n-tooltip'] },
+);
 
 watch(
 	() => props.threadId,
@@ -449,11 +481,27 @@ watch(
 	},
 );
 
+function isCurrentThreadRuntime(): boolean {
+	return store.getRuntime(props.threadId) === thread;
+}
+
 function reconnectThreadAfterHydration(): void {
-	void thread.loadHistoricalMessages().then((hydrationStatus) => {
+	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
-		void thread.loadThreadStatus();
+		await thread.loadThreadStatus();
+		if (!isCurrentThreadRuntime()) return;
 		thread.connectSSE();
+		// Replay an opening message handed off from another tab (e.g. credential help
+		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
+		const pending = consumePendingFirstMessage(props.threadId);
+		if (pending) {
+			void thread.sendMessage(
+				pending.message,
+				pending.attachments,
+				rootStore.pushRef,
+				pending.context,
+			);
+		}
 	});
 }
 
@@ -478,12 +526,23 @@ async function syncRouteToStore() {
 
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
+
 	void syncRouteToStore();
+
 	void nextTick(focusChatInputIfFocusIsIdle);
 });
 
 onUnmounted(() => {
-	thread.closeSSE();
+	// This view owns its thread's runtime, so it disposes it here (closes the
+	// SSE, clears state, drops it from the store) — but only once the app has
+	// left this thread's route. Suspense can create a duplicate instance of
+	// this view for the same thread during layout transitions (e.g. an editor
+	// hand-off that loads the AIA chunks) and discard one; that discarded
+	// instance's unmount fires while the route still points at the thread, and
+	// must not tear down the runtime the live instance is rendering.
+	if (router.currentRoute.value.params.threadId !== props.threadId) {
+		store.disposeRuntime(props.threadId);
+	}
 	contentResizeObserver?.disconnect();
 });
 
@@ -517,6 +576,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 			skipped_inputs: [],
 			num_tasks: planEdit.taskCount,
 			feedback: scrubSecretsInText(message),
+			plan_feedback_type: 'changes_requested',
 		});
 		thread.markPlanUpdatePending(planEdit.requestId);
 		void thread
@@ -572,7 +632,15 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 		<div :class="$style.chatArea">
 			<InstanceAiViewHeader>
 				<template #title>
-					<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
+					<N8nHeading
+						v-if="currentThreadTitle"
+						tag="h2"
+						size="small"
+						:class="[
+							$style.headerTitle,
+							{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
+						]"
+					>
 						{{ currentThreadTitle }}
 					</N8nHeading>
 					<N8nText
@@ -597,6 +665,26 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 							store.debugMode = showDebugPanel;
 						"
 					/>
+					<N8nTooltip
+						:content="artifactsPanelToggleLabel"
+						placement="bottom"
+						:show-after="TOOLTIP_DELAY_MS"
+					>
+						<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
+							<N8nIconButton
+								v-if="showArtifactsPanelToggle"
+								icon="list"
+								variant="ghost"
+								size="small"
+								icon-size="large"
+								data-test-id="instance-ai-artifacts-panel-toggle"
+								:aria-label="artifactsPanelToggleLabel"
+								:aria-pressed="showArtifactsPanel"
+								:disabled="!canShowArtifactsPanel"
+								@click="toggleArtifactsPanel"
+							/>
+						</Transition>
+					</N8nTooltip>
 					<N8nTooltip
 						:content="artifactsPreviewToggleLabel"
 						placement="bottom"
@@ -633,7 +721,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 				data-test-id="instance-ai-content-area"
 			>
 				<div :class="$style.chatContent">
-					<N8nScrollArea as-child :class="$style.scrollArea">
+					<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
 						<div ref="scrollable" :class="$style.scrollContent">
 							<div :class="$style.messageList">
 								<TransitionGroup name="message-slide">
@@ -658,6 +746,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 									 the chat flow. Floating-eligible items take over the chat
 									 input slot below instead - see `hasFloatingConfirmation`. -->
 								<InstanceAiConfirmationPanel kind="inline" />
+
 								<Transition name="confirmation-slide">
 									<InstanceAiFixWithAiPanel
 										v-if="activeFixWithAiOffer"
@@ -668,14 +757,18 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										@dismiss="dismissFixWithAiOffer"
 									/>
 								</Transition>
+								<!-- Live activity indicator. Sits at the very end of the
+									 conversation flow — below any pending questions/confirmations
+									 and not pinned above the input — so it trails the active
+									 content and scrolls away when reading back. -->
+								<InstanceAiStatusBar />
 							</div>
 
 							<!-- Floating input slot - replaced by the confirmation panel while a
-								 floating-eligible approval is pending. StatusBar and credit
-								 banner stay anchored above the slot in both states. The
-								 leaving child is positioned absolutely during the cross-fade
-								 so the in-flow child can size the slot to its natural
-								 height. -->
+								 floating-eligible approval is pending. The credit banner stays
+								 anchored above the slot in both states. The leaving child is
+								 positioned absolutely during the cross-fade so the in-flow child
+								 can size the slot to its natural height. -->
 							<div :class="$style.inputDock">
 								<!-- Scroll to bottom button -->
 								<div :class="$style.scrollButtonContainer">
@@ -700,9 +793,9 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										<WorkflowBuilderUnavailableNotice
 											v-if="!settingsStore.isWorkflowBuilderAvailable"
 										/>
-										<InstanceAiStatusBar />
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
+											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
 											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -733,6 +826,9 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 												/>
 											</Transition>
 										</div>
+										<p v-if="hasAssistantResponse" :class="$style.disclaimer">
+											{{ i18n.baseText('instanceAi.input.disclaimer') }}
+										</p>
 									</div>
 								</div>
 							</div>
@@ -741,34 +837,17 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 				</div>
 
 				<!-- Artifacts panel (below header, beside chat) -->
-				<div
-					v-if="showArtifactsPanelEdge"
-					:class="$style.artifactsPanelEdge"
-					role="button"
-					tabindex="0"
-					:aria-label="i18n.baseText('instanceAi.artifactsPanel.showPanel')"
-					data-test-id="instance-ai-artifacts-sidebar-edge"
-					@click="revealArtifactsPanel"
-					@mouseenter="revealArtifactsPanel"
-					@focusin="revealArtifactsPanel"
-					@keydown.enter.prevent="revealArtifactsPanel"
-					@keydown.space.prevent="revealArtifactsPanel"
-				/>
-				<Transition :name="artifactsPanelTransitionName" :css="isArtifactsPanelTransitionEnabled">
+				<Transition :name="artifactsPanelTransitionName" :css="shouldAnimateArtifactsPanel">
 					<div
 						v-if="showArtifactsPanel"
-						:class="$style.artifactsPanelSlot"
+						ref="artifactsPanelSlot"
+						:class="[
+							$style.artifactsPanelSlot,
+							{ [$style.artifactsPanelSlotOverlay]: !reserveArtifactsPanelLayout },
+						]"
 						data-test-id="instance-ai-artifacts-sidebar-slot"
-						@mouseenter="revealArtifactsPanel"
-						@mouseleave="hideArtifactsPanel()"
-						@focusin="revealArtifactsPanel"
-						@focusout="hideArtifactsPanel"
 					>
-						<InstanceAiArtifactsPanel
-							:is-pinned="isArtifactsPanelEffectivelyPinned"
-							:is-pinning-available="isArtifactsPanelPinningAvailable"
-							@toggle-pinned="toggleArtifactsPanelPinned"
-						/>
+						<InstanceAiArtifactsPanel />
 					</div>
 				</Transition>
 
@@ -824,7 +903,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
-								v-if="preview.activeWorkflowId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowId.value"
 								:key="preview.activeWorkflowId.value"
 								ref="workflowPreview"
 								:class="[
@@ -833,14 +912,26 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
 								:refresh-key="preview.workflowRefreshKey.value"
+								:execution-result="preview.activeWorkflowExecutionResult.value"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
-								v-if="preview.activeDataTableId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
 								:class="$style.previewSlot"
 								:data-table-id="preview.activeDataTableId.value"
 								:project-id="preview.activeDataTableProjectId.value"
 								:refresh-key="preview.dataTableRefreshKey.value"
+							/>
+							<InstanceAiAgentPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.activeAgentId.value &&
+									preview.activeAgentProjectId.value
+								"
+								:class="$style.previewSlot"
+								:agent-id="preview.activeAgentId.value"
+								:project-id="preview.activeAgentProjectId.value"
+								:refresh-key="preview.agentRefreshKey.value"
 							/>
 						</div>
 					</TabsRoot>
@@ -925,6 +1016,10 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	color: var(--color--text);
 }
 
+.headerTitleWithSidebar {
+	padding-left: var(--spacing--4xs);
+}
+
 .activeButton {
 	color: var(--color--primary);
 }
@@ -944,21 +1039,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 		var(--instance-ai-panel-transition-easing);
 }
 
-.artifactsPanelEdge {
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	z-index: 3;
-	width: var(--spacing--xl);
-	cursor: default;
-	outline: none;
-
-	&:focus-visible {
-		box-shadow: inset calc(-1 * var(--spacing--5xs)) 0 0 var(--color--primary);
-	}
-}
-
 .artifactsPanelSlot {
 	position: absolute;
 	top: 0;
@@ -969,6 +1049,13 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	min-width: var(--instance-ai-artifacts-panel-width);
 	display: flex;
 	overflow: hidden;
+	// Keep the transparent right padding from intercepting the chat scrollbar.
+	clip-path: inset(0 var(--spacing--2xs) 0 0);
+}
+
+.artifactsPanelSlotOverlay {
+	bottom: auto;
+	max-height: calc(100% - var(--spacing--sm));
 }
 
 .chatContent {
@@ -983,6 +1070,21 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	flex: 1;
 	// Allow flex item to shrink below content size so reka-ui viewport scrolls
 	min-height: 0;
+
+	:global([data-orientation='vertical'][data-orientation='vertical']) {
+		background: transparent;
+		padding: 0;
+		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
+		z-index: 4;
+	}
+
+	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
+		background: light-dark(var(--color--neutral-400), var(--color--neutral-600));
+
+		&:hover {
+			background: light-dark(var(--color--neutral-500), var(--color--neutral-500));
+		}
+	}
 }
 
 .scrollContent {
@@ -1090,6 +1192,14 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.disclaimer {
+	margin: 0;
+	text-align: center;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -10,8 +10,13 @@
     "test:local:instance-ai": "node scripts/run-local-instance-ai.mjs",
     "test:e2e": "playwright test --project=*e2e*",
     "test:performance": "playwright test --project=performance",
+    "bench:canvas": "playwright test --project=performance tests/performance/canvas",
+    "bench:canvas:tier": "playwright test --project=performance tests/performance/canvas --grep",
+    "bench:canvas:sentinels": "node scripts/canvas-perf-sentinels.mjs test-results.json",
+    "bench:canvas:report": "playwright show-report",
     "test:infrastructure": "playwright test --project='*:infrastructure'",
     "test:benchmark": "playwright test --project='benchmarking:infrastructure'",
+    "benchmark:sizing-matrix": "tsx scripts/sizing-matrix-aggregate.ts",
     "test:container:sqlite": "playwright test --project='sqlite:*'",
     "test:container:sqlite:e2e": "playwright test --project='sqlite:e2e'",
     "test:container:postgres": "playwright test --project='postgres:*'",
@@ -29,7 +34,8 @@
     "coverage:shard": "node scripts/run-coverage-shard.mjs",
     "coverage:emit-shard": "tsx scripts/emit-shard-coverage.ts",
     "coverage:emit-spec-lcovs": "tsx scripts/emit-spec-lcovs.ts",
-    "coverage:clean": "rm -rf coverage coverage-by-spec .v8-coverage .nyc_output",
+    "coverage:emit-spec-backend-lcovs": "tsx scripts/emit-spec-backend-lcovs.ts",
+    "coverage:clean": "rm -rf coverage coverage-by-spec coverage-by-spec-backend .v8-coverage .nyc_output",
     "coverage:analyse": "node scripts/coverage-analysis.mjs",
     "install-browsers": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers playwright install chromium --with-deps",
     "browsers:uninstall": "playwright uninstall --all",
@@ -54,6 +60,7 @@
     "@n8n/instance-ai": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
+    "@n8n/test-impact": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@playwright/cli": "catalog:e2e",
     "@playwright/test": "catalog:e2e",
@@ -76,7 +83,9 @@
     "otplib": "^12.0.1",
     "ts-morph": "catalog:",
     "tsx": "catalog:",
+    "typescript": "catalog:",
     "zod": "catalog:",
     "vitest": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

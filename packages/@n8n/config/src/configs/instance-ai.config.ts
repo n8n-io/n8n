@@ -4,7 +4,7 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-opus-4-8"). */
+	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
 
@@ -28,13 +28,12 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
 	reflectorObservationTokens: number = 40_000;
 
-	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
-	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
-	subAgentMaxSteps: number = 100;
-
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
 	localGatewayDisabled: boolean = false;
+
+	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
+	browserUseEnabled: boolean = true;
 
 	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
@@ -64,6 +63,15 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_IMAGE')
 	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
 
+	/**
+	 * Overrides the full Daytona snapshot name used to create sandboxes (e.g.
+	 * `n8n/instance-ai:2.27.3`). Defaults to the versioned snapshot derived from the running
+	 * n8n version. Only applies in proxy mode; the snapshot must exist or Daytona falls back
+	 * to building from the base image.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_SNAPSHOT')
+	sandboxSnapshot: string = '';
+
 	/** Default command timeout in the sandbox (milliseconds). */
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
@@ -71,6 +79,34 @@ export class InstanceAiConfig {
 	/** Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`); also surfaced as a `name_prefix` label. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX')
 	sandboxNamePrefix: string = '';
+
+	/**
+	 * When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of
+	 * lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_EPHEMERAL')
+	sandboxEphemeral: boolean = false;
+
+	/**
+	 * Minutes an idle Daytona sandbox waits before it is stopped. Default 15 minutes.
+	 * `0` disables auto-stop (the sandbox stays running).
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES')
+	sandboxAutoStopMinutes: number = 15;
+
+	/**
+	 * Minutes a stopped Daytona sandbox waits before it is archived to cold storage.
+	 * Default 1 hour. `0` uses Daytona's maximum interval.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES')
+	sandboxAutoArchiveMinutes: number = 60;
+
+	/**
+	 * Minutes a stopped Daytona sandbox waits before it is deleted. Default 7 days. A negative
+	 * value disables auto-delete; `0` deletes on stop. Ignored when {@link sandboxEphemeral} is true.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES')
+	sandboxAutoDeleteMinutes: number = 7 * 24 * 60;
 
 	/**
 	 * Skew (milliseconds) used to proactively refresh the Daytona proxy JWT before it expires.
@@ -98,7 +134,7 @@ export class InstanceAiConfig {
 
 	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
-	threadTtlDays: number = 90;
+	threadTtlDays: number = 30;
 
 	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
@@ -108,7 +144,43 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
 	snapshotRetention: number = 24 * Time.hours.toMilliseconds;
 
+	/** Retention period in milliseconds for expired checkpoint tombstones before they are hard-deleted. Must exceed snapshotRetention. 0 = never hard-delete. */
+	@Env('N8N_INSTANCE_AI_CHECKPOINT_GC_RETENTION')
+	checkpointGcRetention: number = 7 * Time.days.toMilliseconds;
+
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
+
+	/** Scan and redact secrets/PII from agent output before it reaches the user. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED')
+	outputRedactionEnabled: boolean = true;
+
+	/** Redact credential/secret patterns from agent output. Applies only when output redaction is enabled. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS')
+	outputRedactionSecrets: boolean = true;
+
+	/** Comma-separated PII categories to redact from agent output. Available: email, phone, credit-card, ssn-us, iban, crypto-wallet, ip, mac, url. Empty = no PII scanning. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PII')
+	outputRedactionPii: string = 'credit-card';
+
+	/** Replacement text substituted for each redacted match in agent output. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER')
+	outputRedactionPlaceholder: string = '[REDACTED]';
+
+	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
+	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
+	runDebugEnabled: boolean = false;
+
+	/**
+	 * EXPERIMENTAL: persist Instance AI events to a durable DB log
+	 * (`instance_ai_events`) and serve SSE replay + history from it. Off =
+	 * today's in-memory-only behavior. See RFC: instance-ai durable event log.
+	 */
+	@Env('N8N_INSTANCE_AI_DURABLE_LOG')
+	durableLog: boolean = false;
+
+	/** Enable extended thinking / reasoning for the orchestrator agent. */
+	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
+	thinkingEnabled: boolean = true;
 }

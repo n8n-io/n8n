@@ -1,9 +1,9 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { LanguageModel, smoothStream } from 'ai';
+import type { LanguageModel, OnStepFinishEvent, OnStepStartEvent, smoothStream } from 'ai';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
-import type { ProviderId, ProviderCredentials } from '../../runtime/provider-credentials';
+import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
 import type {
 	AgentEvent,
 	AgentEventHandler,
@@ -32,6 +32,8 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	/** Estimated cost in USD, computed from models.dev pricing. */
 	cost?: number;
 	inputTokenDetails?: {
+		/** Uncached input tokens (billed at the full input rate). */
+		noCache?: number;
 		cacheRead?: number;
 		cacheWrite?: number;
 	};
@@ -161,14 +163,67 @@ export interface ExecutionOptions {
 	providerOptions?: ProviderOptions;
 	/** AI SDK `smoothStream` transform. Enabled by default; pass `false` to disable. */
 	smoothStream?: SmoothStreamOptions | false;
+	/**
+	 * Request the provider's raw stream events so a run aborted mid-turn can still
+	 * be billed for the tokens it consumed before the stop. Off by default — only
+	 * hosts that bill stopped runs (e.g. Instance AI) need it; leaving it off avoids
+	 * streaming raw provider events that nothing consumes.
+	 */
+	recoverUsageOnAbort?: boolean;
 	/** Inherited telemetry from a host runtime. */
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
 	executionCounter?: AgentExecutionCounter;
+	onStepStart?: (event: OnStepStartEvent) => void | Promise<void>;
+	onStepFinish?: (event: OnStepFinishEvent) => void | Promise<void>;
+	/**
+	 * Durable-log RFC (resilience phase), opt-in: persist a `running`-status
+	 * checkpoint at every step boundary (after a tool batch settles, before the
+	 * next model call) so a crash loses only the in-flight step. Requires a
+	 * persistence-backed CheckpointStore; recover via `crashResume()`.
+	 */
+	stepCheckpoints?: boolean;
 }
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+}
+
+export interface AnthropicPromptCachingConfig {
+	/**
+	 * Cache breakpoint residency. Default `'1h'`: agent workloads pause (HITL,
+	 * tool loops, eval waves) and a 1h breakpoint fails cheaper than 5m under
+	 * that pattern. Use `'5m'` for continuously warm chat loops to avoid the
+	 * 2x write premium.
+	 */
+	ttl?: '5m' | '1h';
+}
+
+export interface OpenAIPromptCachingConfig {
+	/**
+	 * Routing hint combined with OpenAI's prefix hash to improve cache-hit
+	 * stickiness. Auto-generated at agent-version granularity when omitted
+	 * (agent name + model id + a hash of the base instructions). Set
+	 * explicitly for per-tenant routing.
+	 */
+	promptCacheKey?: string;
+	/** Retention policy. Default `'24h'` (free on gpt-4.1/5/5.1; the only supported value on gpt-5.5+). */
+	promptCacheRetention?: 'in_memory' | '24h';
+}
+
+/**
+ * Opt-in prompt caching config set via `Agent.promptCaching()`. Generates
+ * provider-specific `providerOptions` (Anthropic cache breakpoints, OpenAI
+ * cache key + retention) on top of the model's provider. Caller-supplied
+ * `providerOptions` always take precedence on conflicts.
+ */
+export interface PromptCachingConfig {
+	/** Master switch. Defaults to `true` when this config is set. */
+	enabled?: boolean;
+	/** Anthropic-specific config, or `false` to disable for Anthropic models. */
+	anthropic?: false | AnthropicPromptCachingConfig;
+	/** OpenAI-specific config, or `false` to disable for OpenAI models. */
+	openai?: false | OpenAIPromptCachingConfig;
 }
 
 export interface ToolResultEntry {
@@ -272,11 +327,11 @@ export interface BuiltAgent {
 		options: ResumeOptions & ExecutionOptions,
 	): Promise<StreamResult>;
 
-	/** Approve a tool that uses requiresApproval or needsApprovalFn */
+	/** Approve a tool that uses requireApproval or needsApprovalFn */
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	approve(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 
-	/** Deny a tool that uses requiresApproval or needsApprovalFn */
+	/** Deny a tool that uses requireApproval or needsApprovalFn */
 	deny(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	deny(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 }

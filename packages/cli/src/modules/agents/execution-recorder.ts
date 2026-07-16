@@ -1,4 +1,6 @@
 import type { StreamChunk } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
 import type { ToolRegistry } from './tool-registry';
@@ -138,19 +140,63 @@ function normaliseToolErrorOutput(output: unknown): unknown {
 	return output;
 }
 
+function normaliseStreamError(error: unknown): string {
+	if (error instanceof Error) {
+		return scrubSecretsInText(error.message || error.name || 'Agent execution failed');
+	}
+	if (typeof error === 'string') return scrubSecretsInText(error);
+
+	const sanitized = sanitizeExecutionLogValue(error);
+	try {
+		return scrubSecretsInText(JSON.stringify(sanitized));
+	} catch {
+		return scrubSecretsInText(String(error));
+	}
+}
+
+const REDACTED_VALUE = '[REDACTED]';
+const CIRCULAR_VALUE = '[Circular]';
+
+function isSecretKey(key: string): boolean {
+	const probe = `${key}=value`;
+	return scrubSecretsInText(probe) !== probe;
+}
+
+function sanitizeExecutionLogValue(value: unknown, seen = new WeakSet<object>()): unknown {
+	if (typeof value === 'string') return scrubSecretsInText(value);
+
+	if (Array.isArray(value)) {
+		if (seen.has(value)) return CIRCULAR_VALUE;
+		seen.add(value);
+		const sanitized = value.map((item) => sanitizeExecutionLogValue(item, seen));
+		seen.delete(value);
+		return sanitized;
+	}
+
+	if (!isRecord(value)) return value;
+
+	if (seen.has(value)) return CIRCULAR_VALUE;
+	seen.add(value);
+
+	const sanitized: Record<string, unknown> = {};
+	for (const [key, item] of Object.entries(value)) {
+		sanitized[key] = isSecretKey(key) ? REDACTED_VALUE : sanitizeExecutionLogValue(item, seen);
+	}
+
+	seen.delete(value);
+	return sanitized;
+}
+
+function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | undefined {
+	const sanitized = sanitizeExecutionLogValue(value);
+	return isRecord(sanitized) ? sanitized : undefined;
+}
+
 export interface RecordedUsage {
 	promptTokens: number;
 	completionTokens: number;
 	totalTokens: number;
 }
-
-export interface RecordedToolCall {
-	name: string;
-	input: unknown;
-	output: unknown;
-}
-
-type PendingRecordedToolCall = RecordedToolCall & { toolCallId?: string };
 
 export type TimelineEvent =
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
@@ -181,10 +227,6 @@ export type TimelineEvent =
 	  }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null;
-}
-
 /**
  * Collects execution data from agent stream chunks.
  * Used to build an execution record after a message cycle completes.
@@ -195,7 +237,6 @@ export interface MessageRecord {
 	finishReason: string;
 	usage: RecordedUsage | null;
 	totalCost: number | null;
-	toolCalls: RecordedToolCall[];
 	timeline: TimelineEvent[];
 	startTime: number;
 	duration: number;
@@ -221,8 +262,6 @@ export class ExecutionRecorder {
 	private usage: RecordedUsage | null = null;
 
 	private totalCost: number | null = null;
-
-	private toolCalls: PendingRecordedToolCall[] = [];
 
 	private timeline: TimelineEvent[] = [];
 
@@ -284,8 +323,7 @@ export class ExecutionRecorder {
 				});
 				break;
 			case 'error': {
-				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
-				this.error = errMsg;
+				this.error = normaliseStreamError(chunk.error);
 				break;
 			}
 		}
@@ -305,7 +343,6 @@ export class ExecutionRecorder {
 			finishReason: this.finishReason,
 			usage: this.usage,
 			totalCost: this.totalCost,
-			toolCalls: this.toolCalls.map(({ toolCallId: _toolCallId, ...toolCall }) => toolCall),
 			timeline: this.timeline,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
@@ -333,14 +370,13 @@ export class ExecutionRecorder {
 	}
 
 	/**
-	 * Record a discrete `tool-call` chunk from the stream. Maintains both the
-	 * flat `toolCalls` array (backward compat) and the ordered timeline. The
-	 * matching `tool-result` chunk closes the timeline entry.
+	 * Record a discrete `tool-call` chunk from the stream. The matching
+	 * `tool-result` chunk closes the timeline entry.
 	 */
 	private recordToolCall(toolCallId: string, name: string, input: unknown): void {
 		this.flushTextBuffer();
 
-		this.toolCalls.push({ name, input, output: undefined, toolCallId });
+		const recordedInput = sanitizeExecutionLogValue(input);
 
 		const entry = this.registry.get(name);
 		// Resolve both `$fromAI(...)` placeholders and simple `={{ $json.x }}`
@@ -351,14 +387,14 @@ export class ExecutionRecorder {
 			input !== null && typeof input === 'object' ? (input as Record<string, unknown>) : {};
 		const resolvedNodeParameters =
 			entry?.nodeParameters !== undefined
-				? (resolveTemplatesInValue(entry.nodeParameters, llmArgs) as Record<string, unknown>)
+				? sanitizeExecutionLogRecord(resolveTemplatesInValue(entry.nodeParameters, llmArgs))
 				: undefined;
 		this.timeline.push({
 			type: 'tool-call',
 			kind: entry?.kind ?? 'tool',
 			name,
 			toolCallId,
-			input,
+			input: recordedInput,
 			output: undefined as unknown,
 			startTime: Date.now(),
 			endTime: 0,
@@ -414,19 +450,6 @@ export class ExecutionRecorder {
 	}
 
 	/**
-	 * Find the still-open flat tool-call entry to attach a result to. Prefers
-	 * an exact match on `toolCallId`; when the stream omits the id (empty
-	 * string), falls back to the most recent open entry (`output === undefined`)
-	 * with the same tool name.
-	 */
-	private findOpenToolCall(toolCallId: string, name: string): PendingRecordedToolCall | undefined {
-		if (toolCallId !== '') {
-			return this.toolCalls.find((tc) => tc.toolCallId === toolCallId && tc.output === undefined);
-		}
-		return [...this.toolCalls].reverse().find((tc) => tc.name === name && tc.output === undefined);
-	}
-
-	/**
 	 * Record a discrete `tool-result` chunk from the stream. Closes the
 	 * matching open timeline entry by `toolCallId` (preferred) or by name as
 	 * a fallback.
@@ -442,14 +465,9 @@ export class ExecutionRecorder {
 		output: unknown,
 		isError: boolean,
 	): void {
-		const recordedOutput = isError ? normaliseToolErrorOutput(output) : output;
-
-		const pendingFlat = this.findOpenToolCall(toolCallId, name);
-		if (pendingFlat) {
-			pendingFlat.output = recordedOutput;
-		} else {
-			this.toolCalls.push({ name, input: undefined, output: recordedOutput });
-		}
+		const recordedOutput = sanitizeExecutionLogValue(
+			isError ? normaliseToolErrorOutput(output) : output,
+		);
 
 		const pendingTimeline = [...this.timeline]
 			.reverse()
@@ -495,7 +513,10 @@ export class ExecutionRecorder {
 			nodeType: entry?.nodeType,
 			nodeTypeVersion: entry?.nodeTypeVersion,
 			nodeDisplayName: entry?.nodeDisplayName,
-			nodeParameters: entry?.nodeParameters,
+			nodeParameters:
+				entry?.nodeParameters !== undefined
+					? sanitizeExecutionLogRecord(entry.nodeParameters)
+					: undefined,
 		};
 		if (synthesized.kind === 'workflow' && isRecord(recordedOutput)) {
 			const execId = recordedOutput.executionId;

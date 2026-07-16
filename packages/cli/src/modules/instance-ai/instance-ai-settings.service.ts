@@ -77,9 +77,9 @@ const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENT
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
 	enabled?: boolean;
-	subAgentMaxSteps?: number;
 	permissions?: Partial<InstanceAiPermissions>;
 	mcpServers?: string;
+	mcpAccessEnabled?: boolean;
 	sandboxEnabled?: boolean;
 	sandboxProvider?: string;
 	sandboxImage?: string;
@@ -88,6 +88,7 @@ interface PersistedAdminSettings {
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
+	browserUseEnabled?: boolean;
 }
 
 @Service()
@@ -98,6 +99,9 @@ export class InstanceAiSettingsService {
 
 	/** Whether n8n Agent is enabled for this instance. */
 	private enabled = true;
+
+	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	private mcpAccessEnabled = true;
 
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
@@ -174,9 +178,9 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		return {
 			enabled: this.enabled,
-			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: { ...this.permissions },
 			mcpServers: c.mcpServers,
+			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
 			sandboxProvider: normalizeSandboxProvider(c.sandboxProvider),
 			sandboxImage: c.sandboxImage,
@@ -185,34 +189,28 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
+			browserUseEnabled: this.isBrowserUseEnabled(),
 		};
 	}
 
 	async updateAdminSettings(
 		update: InstanceAiAdminSettingsUpdateRequest,
 	): Promise<InstanceAiAdminSettingsResponse> {
-		if (this.isCloud) {
-			this.rejectManagedFields(
-				update,
-				InstanceAiSettingsService.CLOUD_MANAGED_ADMIN_FIELDS,
-				'cloud',
-			);
-		} else if (this.aiService.isProxyEnabled()) {
-			this.rejectManagedFields(
-				update,
-				InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS,
-				'proxy',
-			);
-		}
+		this.rejectManagedFields(
+			update,
+			InstanceAiSettingsService.MANAGED_ADMIN_FIELDS,
+			this.deploymentLabel(),
+		);
 		this.validateAdminSettingsUpdate(update);
 		const c = this.config;
 		const previousMcpServers = c.mcpServers;
+		const previousMcpAccessEnabled = this.mcpAccessEnabled;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
-		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
 		if (update.permissions) {
 			this.permissions = { ...this.permissions, ...update.permissions };
 		}
 		if (update.mcpServers !== undefined) c.mcpServers = update.mcpServers;
+		if (update.mcpAccessEnabled !== undefined) this.mcpAccessEnabled = update.mcpAccessEnabled;
 		if (update.sandboxEnabled !== undefined) c.sandboxEnabled = update.sandboxEnabled;
 		if (update.sandboxProvider !== undefined) c.sandboxProvider = update.sandboxProvider;
 		if (update.sandboxImage !== undefined) c.sandboxImage = update.sandboxImage;
@@ -225,10 +223,12 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = update.searchCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
+		if (update.browserUseEnabled !== undefined) c.browserUseEnabled = update.browserUseEnabled;
 		await this.persistAdminSettings();
 
 		this.eventService.emit('instance-ai-settings-updated', {
-			mcpSettingsChanged: c.mcpServers !== previousMcpServers,
+			mcpSettingsChanged:
+				c.mcpServers !== previousMcpServers || this.mcpAccessEnabled !== previousMcpAccessEnabled,
 		});
 
 		return this.getAdminSettings();
@@ -266,19 +266,11 @@ export class InstanceAiSettingsService {
 		user: User,
 		update: InstanceAiUserPreferencesUpdateRequest,
 	): Promise<InstanceAiUserPreferencesResponse> {
-		if (this.isCloud) {
-			this.rejectManagedFields(
-				update,
-				InstanceAiSettingsService.CLOUD_MANAGED_PREFERENCE_FIELDS,
-				'cloud',
-			);
-		} else if (this.aiService.isProxyEnabled()) {
-			this.rejectManagedFields(
-				update,
-				InstanceAiSettingsService.PROXY_MANAGED_PREFERENCE_FIELDS,
-				'proxy',
-			);
-		}
+		this.rejectManagedFields(
+			update,
+			InstanceAiSettingsService.MANAGED_PREFERENCE_FIELDS,
+			this.deploymentLabel(),
+		);
 		const prefs: UserInstanceAiPreferences = { ...this.readUserPreferences(user) };
 		if (update.credentialId !== undefined) prefs.credentialId = update.credentialId;
 		if (update.modelName !== undefined) prefs.modelName = update.modelName;
@@ -414,6 +406,11 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
+	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	isMcpAccessEnabled(): boolean {
+		return this.mcpAccessEnabled;
+	}
+
 	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
 	async isLocalGatewayDisabledForUser(userId: string): Promise<boolean> {
 		if (!this.enabled) return true;
@@ -431,6 +428,10 @@ export class InstanceAiSettingsService {
 	/** Whether the local gateway is disabled globally by the admin. */
 	isLocalGatewayDisabled(): boolean {
 		return this.config.localGatewayDisabled;
+	}
+
+	isBrowserUseEnabled(): boolean {
+		return this.config.browserUseEnabled;
 	}
 
 	/** Whether workflow building can use the required sandbox workspace. */
@@ -505,34 +506,36 @@ export class InstanceAiSettingsService {
 
 	// ── Private helpers ───────────────────────────────────────────────────
 
-	/** Admin fields managed by the AI service proxy — not user-editable when proxy is active. */
-	private static readonly PROXY_MANAGED_ADMIN_FIELDS: readonly string[] = [
+	/**
+	 * Admin fields sourced from environment variables only — never settable via
+	 * the API on any deployment. The settings UI exposes only the enable toggle
+	 * and permissions; model, search, sandbox and advanced options come from env.
+	 * Cloud and the AI service proxy already managed these externally; self-hosted
+	 * now follows suit for the initial launch.
+	 */
+	private static readonly MANAGED_ADMIN_FIELDS: readonly string[] = [
+		'mcpServers',
 		'sandboxEnabled',
 		'sandboxProvider',
 		'sandboxImage',
 		'sandboxTimeout',
 		'daytonaCredentialId',
+		'n8nSandboxCredentialId',
 		'searchCredentialId',
 	];
 
-	/** User preference fields managed by the AI service proxy. */
-	private static readonly PROXY_MANAGED_PREFERENCE_FIELDS: readonly string[] = [
+	/** User preference fields sourced from environment variables only. */
+	private static readonly MANAGED_PREFERENCE_FIELDS: readonly string[] = [
 		'credentialId',
 		'modelName',
 	];
 
-	/** Admin fields managed by the cloud platform — superset of proxy-managed fields. */
-	private static readonly CLOUD_MANAGED_ADMIN_FIELDS: readonly string[] = [
-		...InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS,
-		'n8nSandboxCredentialId',
-		'subAgentMaxSteps',
-		'mcpServers',
-	];
-
-	/** User preference fields managed by the cloud platform. */
-	private static readonly CLOUD_MANAGED_PREFERENCE_FIELDS: readonly string[] = [
-		...InstanceAiSettingsService.PROXY_MANAGED_PREFERENCE_FIELDS,
-	];
+	/** Label for the deployment surface that owns the env-managed config, used in error messages. */
+	private deploymentLabel(): string {
+		if (this.isCloud) return 'cloud';
+		if (this.aiService.isProxyEnabled()) return 'proxy';
+		return 'instance';
+	}
 
 	private rejectManagedFields(
 		update: object,
@@ -616,7 +619,6 @@ export class InstanceAiSettingsService {
 	private applyAdminSettings(persisted: PersistedAdminSettings): void {
 		const c = this.config;
 		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
-		if (persisted.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = persisted.subAgentMaxSteps;
 		if (persisted.permissions) {
 			this.permissions = {
 				...DEFAULT_INSTANCE_AI_PERMISSIONS,
@@ -624,6 +626,8 @@ export class InstanceAiSettingsService {
 			};
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
+		if (persisted.mcpAccessEnabled !== undefined)
+			this.mcpAccessEnabled = persisted.mcpAccessEnabled;
 		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;
 		if (persisted.sandboxProvider !== undefined)
 			c.sandboxProvider = normalizeSandboxProvider(persisted.sandboxProvider);
@@ -637,6 +641,8 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = persisted.searchCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
+		if (persisted.browserUseEnabled !== undefined)
+			c.browserUseEnabled = persisted.browserUseEnabled;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -647,9 +653,9 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		const value: PersistedAdminSettings = {
 			enabled: this.enabled,
-			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
+			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
 			sandboxProvider: c.sandboxProvider,
 			sandboxImage: c.sandboxImage,
@@ -658,6 +664,7 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
+			browserUseEnabled: c.browserUseEnabled,
 		};
 
 		await this.settingsRepository.upsert(

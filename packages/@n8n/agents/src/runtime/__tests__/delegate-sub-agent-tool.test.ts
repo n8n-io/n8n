@@ -1,15 +1,18 @@
-import { vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { GenerateResult } from '../../types/sdk/agent';
+import { isZodSchema } from '../../utils/zod';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
 	generateResultToDelegateSubAgentOutput,
+	getInlineDelegateSubAgentToolOptions,
+	isDelegateSubAgentTool,
 	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRunner,
-} from '../delegate-sub-agent-tool';
+} from '../tools/delegate-sub-agent-tool';
 
 const input = {
 	subAgentId: INLINE_SUB_AGENT_ID,
@@ -39,6 +42,252 @@ describe('createDelegateSubAgentTool', () => {
 		expect(tool.description).toContain('independent workstreams');
 		expect(tool.inputSchema).toBeDefined();
 		expect(tool.outputSchema).toBeDefined();
+	});
+
+	it('defaults to the delegate_subagent name when none is provided', () => {
+		const tool = createDelegateSubAgentTool();
+
+		expect(tool.name).toBe(DELEGATE_SUB_AGENT_TOOL_NAME);
+		expect(tool.systemInstruction).toContain('delegate_subagent runs a focused child agent');
+		expect(tool.systemInstruction).toContain('WHEN TO USE delegate_subagent:');
+		expect(tool.systemInstruction).toContain('WHEN NOT TO USE delegate_subagent:');
+	});
+
+	it('renames the tool and interpolates the name into the system instruction', () => {
+		const tool = createDelegateSubAgentTool({ name: 'agent' });
+
+		expect(tool.name).toBe('agent');
+		expect(tool.systemInstruction).toContain('agent runs a focused child agent');
+		expect(tool.systemInstruction).toContain('WHEN TO USE agent:');
+		expect(tool.systemInstruction).toContain('WHEN NOT TO USE agent:');
+		expect(tool.systemInstruction).not.toContain('delegate_subagent');
+	});
+
+	it('preserves a custom name across the SDK inline-completion rebuild', () => {
+		const tool = createDelegateSubAgentTool({
+			name: 'agent',
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		const rebuilt = createDelegateSubAgentTool({
+			...getInlineDelegateSubAgentToolOptions(tool),
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		expect(rebuilt.name).toBe('agent');
+	});
+
+	it.each(['', ' ', 'has space', '1agent', 'agent!', 'a'.repeat(65)])(
+		'rejects invalid delegate tool name %j',
+		(name) => {
+			expect(() => createDelegateSubAgentTool({ name })).toThrow(
+				'Invalid delegate sub-agent tool name',
+			);
+		},
+	);
+
+	it('names a renamed tool in policy validation errors', () => {
+		expect(() => createDelegateSubAgentTool({ name: 'agent', policy: { maxChildren: 0 } })).toThrow(
+			'agent policy.maxChildren must be at least 1',
+		);
+	});
+
+	it('names a renamed tool in the missing-runner error', async () => {
+		const tool = createDelegateSubAgentTool({ name: 'agent' });
+
+		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
+			status: 'failed',
+			error:
+				'agent was registered without a runSubAgent callback, and no host runner was provided. Register it on an Agent (for inline delegation) or pass runSubAgent.',
+		});
+	});
+
+	it('identifies delegate tools by metadata regardless of name', () => {
+		expect(isDelegateSubAgentTool(createDelegateSubAgentTool())).toBe(true);
+		expect(isDelegateSubAgentTool(createDelegateSubAgentTool({ name: 'agent' }))).toBe(true);
+		expect(isDelegateSubAgentTool({ name: DELEGATE_SUB_AGENT_TOOL_NAME })).toBe(false);
+	});
+
+	it.each([null, '', '   '])(
+		'falls back to the default system instruction for non-string or blank value %j',
+		(systemInstruction) => {
+			const tool = createDelegateSubAgentTool({ systemInstruction });
+
+			expect(tool.systemInstruction).toContain('WHEN TO USE delegate_subagent:');
+		},
+	);
+
+	it('uses a host-provided system instruction instead of the built-in guidance', () => {
+		const tool = createDelegateSubAgentTool({
+			name: 'agent',
+			systemInstruction: 'Host-authored delegation guidance.',
+		});
+
+		expect(tool.systemInstruction).toBe('Host-authored delegation guidance.');
+		expect(tool.systemInstruction).not.toContain('WHEN TO USE agent:');
+	});
+
+	it('preserves a custom system instruction across the SDK inline-completion rebuild', () => {
+		const tool = createDelegateSubAgentTool({
+			name: 'agent',
+			systemInstruction: 'Host-authored delegation guidance.',
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		const rebuilt = createDelegateSubAgentTool({
+			...getInlineDelegateSubAgentToolOptions(tool),
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		expect(rebuilt.systemInstruction).toBe('Host-authored delegation guidance.');
+	});
+
+	it('uses the default description when none is provided', () => {
+		const tool = createDelegateSubAgentTool();
+
+		expect(tool.description).toContain('focused child agent');
+		expect(tool.description).toContain('independent workstreams');
+	});
+
+	it.each([null, '', '   '])(
+		'falls back to the default description for non-string or blank value %j',
+		(description) => {
+			const tool = createDelegateSubAgentTool({ description });
+
+			expect(tool.description).toContain('independent workstreams');
+		},
+	);
+
+	it('uses a host-provided description instead of the built-in text', () => {
+		const tool = createDelegateSubAgentTool({
+			description: 'Delegate read-only research to a sub-agent.',
+		});
+
+		expect(tool.description).toBe('Delegate read-only research to a sub-agent.');
+		expect(tool.description).not.toContain('independent workstreams');
+	});
+
+	it('preserves a custom description across the SDK inline-completion rebuild', () => {
+		const tool = createDelegateSubAgentTool({
+			description: 'Delegate read-only research to a sub-agent.',
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		const rebuilt = createDelegateSubAgentTool({
+			...getInlineDelegateSubAgentToolOptions(tool),
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		expect(rebuilt.description).toBe('Delegate read-only research to a sub-agent.');
+	});
+
+	it('accepts optional difficulty on the delegate input schema', () => {
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(isZodSchema(tool.inputSchema)).toBe(true);
+		if (!isZodSchema(tool.inputSchema)) return;
+
+		expect(
+			tool.inputSchema.safeParse({
+				...input,
+				difficulty: 'medium',
+			}).success,
+		).toBe(true);
+		expect(
+			tool.inputSchema.safeParse({
+				...input,
+				difficulty: 'extreme',
+			}).success,
+		).toBe(false);
+	});
+
+	it('preserves inlineSubAgentModelsByDifficulty in delegate tool metadata', () => {
+		const tool = createDelegateSubAgentTool({
+			inlineSubAgentModelsByDifficulty: {
+				high: 'anthropic/claude-sonnet-4-5',
+			},
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(getInlineDelegateSubAgentToolOptions(tool)?.inlineSubAgentModelsByDifficulty).toEqual({
+			high: 'anthropic/claude-sonnet-4-5',
+		});
+	});
+
+	it('renders configured sub-agent useWhen guidance in model-facing instructions', () => {
+		const tool = createDelegateSubAgentTool({
+			availableSubAgents: [
+				{
+					id: 'agent-billing',
+					name: 'Billing Agent',
+					useWhen: 'Use for invoice investigations and payment status checks.',
+				},
+				{
+					id: 'agent-research',
+					name: 'Research Agent',
+					useWhen: 'Use for market and source research.',
+				},
+			],
+		});
+
+		expect(tool.systemInstruction).toContain('name and useWhen guidance');
+		expect(tool.systemInstruction).toContain('- agent-billing: Billing Agent');
+		expect(tool.systemInstruction).toContain(
+			'Use when: Use for invoice investigations and payment status checks.',
+		);
+		expect(tool.systemInstruction).toContain('- agent-research: Research Agent');
+		expect(tool.systemInstruction).toContain('Use when: Use for market and source research.');
+		expect(tool.systemInstruction).not.toContain('name/description');
+	});
+
+	it('preserves available sub-agent useWhen guidance in delegate tool metadata', () => {
+		const availableSubAgents = [
+			{
+				id: 'agent-billing',
+				name: 'Billing Agent',
+				useWhen: 'Use for invoice investigations.',
+			},
+		];
+		const tool = createDelegateSubAgentTool({ availableSubAgents });
+
+		expect(getInlineDelegateSubAgentToolOptions(tool)?.availableSubAgents).toEqual(
+			availableSubAgents,
+		);
+	});
+
+	it('preserves resolveInlineSubAgentProviderTools in delegate tool metadata', () => {
+		const resolveInlineSubAgentProviderTools = () => [];
+		const tool = createDelegateSubAgentTool({
+			resolveInlineSubAgentProviderTools,
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(getInlineDelegateSubAgentToolOptions(tool)?.resolveInlineSubAgentProviderTools).toBe(
+			resolveInlineSubAgentProviderTools,
+		);
 	});
 
 	it('can be created without a host runner for SDK inline execution', async () => {
@@ -84,6 +333,32 @@ describe('createDelegateSubAgentTool', () => {
 		);
 	});
 
+	it('forwards difficulty to the runner callback when provided', async () => {
+		const runSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			answer: 'done',
+		});
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+
+		await tool.handler?.(
+			{ ...input, difficulty: 'high' },
+			{
+				runId: 'parent-run-1',
+				toolCallId: 'tool-call-1',
+			},
+		);
+
+		expect(runSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				difficulty: 'high',
+			}),
+			expect.objectContaining({
+				runInlineSubAgent: expect.any(Function),
+			}),
+		);
+	});
+
 	it('passes runInlineSubAgent helpers to the host runner callback', async () => {
 		const runSubAgent = vi.fn<DelegateSubAgentRunner>(async (_request, helpers) => {
 			expect(helpers.runInlineSubAgent).toEqual(expect.any(Function));
@@ -99,6 +374,33 @@ describe('createDelegateSubAgentTool', () => {
 		await tool.handler?.(input, { runId: 'parent-run-1' });
 
 		expect(runSubAgent).toHaveBeenCalledOnce();
+	});
+
+	it('forwards the parent execution counter to the runner callback', async () => {
+		const runSubAgent = vi
+			.fn<DelegateSubAgentRunner>()
+			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+		const executionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'tool-call-1',
+			executionCounter,
+		});
+
+		expect(runSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				parentExecutionCounter: executionCounter,
+			}),
+			expect.objectContaining({
+				runInlineSubAgent: expect.any(Function),
+			}),
+		);
 	});
 
 	it('forwards the parent persistence thread id and resource id', async () => {
@@ -134,6 +436,7 @@ describe('createDelegateSubAgentTool', () => {
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentThreadId');
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentResourceId');
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentAbortSignal');
+		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentExecutionCounter');
 	});
 
 	it('forwards the parent run abort signal to the runner callback', async () => {
@@ -197,7 +500,73 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
-	it('tracks child count per parent run id', async () => {
+	it('defaults maxChildren to 10 when policy is omitted', () => {
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(tool.systemInstruction).toContain('DELEGATION PARALLELISM');
+		expect(tool.systemInstruction).toContain('Up to 10 child sub-agent runs');
+	});
+
+	it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+		'rejects invalid maxChildren policy value %s',
+		(maxChildren) => {
+			expect(() =>
+				createDelegateSubAgentTool({
+					policy: { maxChildren },
+					runSubAgent: async () =>
+						await Promise.resolve({
+							status: 'completed',
+							taskPath: '/root/research_api_0',
+							answer: 'done',
+						}),
+				}),
+			).toThrow('delegate_subagent policy.maxChildren');
+		},
+	);
+
+	it('describes maxChildren as a parallelism limit in model-facing instructions', () => {
+		const tool = createDelegateSubAgentTool({
+			policy: { maxChildren: 2 },
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(tool.systemInstruction).toContain('DELEGATION PARALLELISM');
+		expect(tool.systemInstruction).toContain('Up to 2 child sub-agent runs');
+		expect(tool.systemInstruction).toContain('limits parallelism, not the total number');
+	});
+
+	it('does not promise inline provider tools when no resolver is configured', () => {
+		const tool = createDelegateSubAgentTool();
+
+		expect(tool.systemInstruction).toContain(
+			'Inline children do not inherit provider-defined tools.',
+		);
+		expect(tool.systemInstruction).not.toContain('Provider-defined tools are loaded');
+	});
+
+	it('describes inline provider tools when a resolver is configured', () => {
+		const tool = createDelegateSubAgentTool({
+			resolveInlineSubAgentProviderTools: async () => await Promise.resolve([]),
+		});
+
+		expect(tool.systemInstruction).toContain(
+			"Provider-defined tools are loaded for the inline child's selected model provider.",
+		);
+	});
+
+	it('assigns distinct task paths for repeated delegations in the same parent run', async () => {
 		const runSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
 			status: 'completed',
 			taskPath: '/root/research_api',
@@ -213,14 +582,16 @@ describe('createDelegateSubAgentTool', () => {
 			status: 'completed',
 		});
 		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
-			status: 'failed',
-			error: 'Sub-agent child count 2 exceeds maxChildren 1',
+			status: 'completed',
 		});
 		await expect(tool.handler?.(input, { runId: 'parent-run-2' })).resolves.toMatchObject({
 			status: 'completed',
 		});
 
-		expect(runSubAgent).toHaveBeenCalledTimes(2);
+		expect(runSubAgent).toHaveBeenCalledTimes(3);
+		expect(runSubAgent.mock.calls[0]?.[0]).toMatchObject({ taskPath: '/root/research_api_0' });
+		expect(runSubAgent.mock.calls[1]?.[0]).toMatchObject({ taskPath: '/root/research_api_1' });
+		expect(runSubAgent.mock.calls[2]?.[0]).toMatchObject({ taskPath: '/root/research_api_0' });
 	});
 
 	it('returns a failed output when the runner callback throws', async () => {
@@ -314,6 +685,7 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 				},
 			],
 			finishReason: 'stop',
+			model: 'anthropic/claude-haiku-4-5',
 			usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
 			getState: () => ({
 				status: 'success',
@@ -330,6 +702,7 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 			runId: 'child-run-1',
 			threadId: 'child-thread-1',
 			answer: 'preamble\nanswer',
+			model: 'anthropic/claude-haiku-4-5',
 			usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
 			finishReason: 'stop',
 		});
@@ -356,13 +729,22 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 	});
 
 	it('returns a failed delegate output for delegated child suspension stopgap', async () => {
-		const { failedDelegatedChildSuspendOutput } = await import('../delegate-sub-agent-tool');
+		const { failedDelegatedChildSuspendOutput } = await import(
+			'../tools/delegate-sub-agent-tool.js'
+		);
 
 		expect(failedDelegatedChildSuspendOutput('/root/x_0')).toEqual({
 			status: 'failed',
 			taskPath: '/root/x_0',
 			answer: '',
 			error: 'agents.chat.delegate.childSuspendUnsupported',
+		});
+		expect(failedDelegatedChildSuspendOutput('/root/x_0', 'anthropic/claude-haiku-4-5')).toEqual({
+			status: 'failed',
+			taskPath: '/root/x_0',
+			answer: '',
+			error: 'agents.chat.delegate.childSuspendUnsupported',
+			model: 'anthropic/claude-haiku-4-5',
 		});
 	});
 

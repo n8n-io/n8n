@@ -11,6 +11,7 @@ import {
 	type RuntimeSkillSource,
 	type Workspace,
 } from '@n8n/agents';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { join as posixJoin, normalize as posixNormalize } from 'node:path/posix';
 
 import type { Logger } from '../logger';
@@ -18,7 +19,6 @@ import {
 	loadPrebakedWorkspaceBundle,
 	materializeWorkspaceBundle,
 } from '../workspace/prebaked-workspace-bundle';
-import { getWorkspaceRoot } from '../workspace/sandbox-setup';
 import { stringifyWorkspaceJson, withTrailingNewline } from '../workspace/workspace-file-content';
 import { WORKSPACE_MANIFEST_FILE } from '../workspace/workspace-manifest';
 
@@ -62,7 +62,7 @@ interface BuildRuntimeSkillWorkspaceBundleOptions {
 	root: string;
 	workspaceRoot?: string;
 	skillsRoot?: string;
-	logger?: Logger;
+	logger: Logger;
 }
 
 interface MaterializeRuntimeSkillsOptions {
@@ -70,13 +70,13 @@ interface MaterializeRuntimeSkillsOptions {
 	workspace: Workspace;
 	root: string;
 	workspaceRoot?: string;
-	logger?: Logger;
+	logger: Logger;
 }
 
 interface LazyWorkspaceRuntimeSkillSourceOptions {
 	source: RuntimeSkillSource;
 	workspace: Workspace | undefined;
-	logger?: Logger;
+	logger: Logger;
 }
 
 const LINKED_FILE_GROUPS = [
@@ -403,7 +403,7 @@ function linkedFilesFor(entry: RuntimeSkillRegistryEntry): RuntimeSkillLinkedFil
 }
 
 function warnIfExceedsLoadSkillLimit(
-	logger: Logger | undefined,
+	logger: Logger,
 	entry: RuntimeSkillRegistryEntry,
 	filePath: string,
 	content: string,
@@ -411,7 +411,7 @@ function warnIfExceedsLoadSkillLimit(
 	const bytes = Buffer.byteLength(content, 'utf8');
 	if (bytes <= LOAD_SKILL_OUTPUT_LIMIT_BYTES) return;
 
-	logger?.warn('Runtime skill file exceeds load_skill output limit', {
+	logger.warn('Runtime skill file exceeds load_skill output limit', {
 		skill: entry.name,
 		path: filePath,
 		bytes,

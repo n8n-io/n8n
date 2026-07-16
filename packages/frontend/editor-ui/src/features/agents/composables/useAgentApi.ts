@@ -1,31 +1,83 @@
 import type {
-	AgentBuilderMessagesResponse,
+	AgentCapabilitySummary,
+	AgentChatMessagesResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
-	AgentPersistedMessageDto,
+	AgentJsonVectorStoreConfig,
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
+	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
 	CreateSlackAgentAppResponse,
 	SlackAgentAppManifestResponse,
+	VectorStoreTestResult,
 } from '@n8n/api-types';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentResource, AgentJsonConfig } from '../types';
+
+export type ListAgentsSortBy =
+	| 'name:asc'
+	| 'name:desc'
+	| 'createdAt:asc'
+	| 'createdAt:desc'
+	| 'updatedAt:asc'
+	| 'updatedAt:desc';
+
+export type ListAgentsOptions = {
+	skip?: number;
+	take?: number;
+	sortBy?: ListAgentsSortBy;
+	filter?: {
+		query?: string;
+	};
+};
+
+const AGENTS_LIST_PAGE_SIZE = 250;
+
+export const listAgentsPage = async (
+	context: IRestApiContext,
+	projectId: string,
+	options: ListAgentsOptions,
+): Promise<{ count: number; data: AgentResource[] }> => {
+	return await getFullApiResponse<AgentResource[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2`,
+		options,
+	);
+};
+
+export const listAgentsPageGlobal = async (
+	context: IRestApiContext,
+	options: ListAgentsOptions,
+): Promise<{ count: number; data: AgentResource[] }> => {
+	return await getFullApiResponse<AgentResource[]>(context, 'GET', '/agents/v2', options);
+};
 
 export const listAgents = async (
 	context: IRestApiContext,
 	projectId: string,
 ): Promise<AgentResource[]> => {
-	return await makeRestApiRequest<AgentResource[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2`,
-	);
+	const agents: AgentResource[] = [];
+	let total = 0;
+
+	do {
+		const { count, data } = await listAgentsPage(context, projectId, {
+			skip: agents.length,
+			take: AGENTS_LIST_PAGE_SIZE,
+		});
+		agents.push(...data);
+		total = count;
+
+		if (data.length === 0) break;
+	} while (agents.length < total);
+
+	return agents;
 };
 
 export const getAgent = async (
@@ -50,20 +102,6 @@ export const createAgent = async (
 		'POST',
 		`/projects/${projectId}/agents/v2`,
 		{ name },
-	);
-};
-
-export const updateAgent = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	data: { code?: string; name?: string },
-): Promise<AgentResource> => {
-	return await makeRestApiRequest<AgentResource>(
-		context,
-		'PATCH',
-		`/projects/${projectId}/agents/v2/${agentId}`,
-		data,
 	);
 };
 
@@ -116,6 +154,18 @@ export const deleteAgentFile = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/files/${fileId}`,
+	);
+};
+
+export const warmAgentKnowledgeSandbox = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<{ accepted: true }> => {
+	return await makeRestApiRequest<{ accepted: true }>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/sandbox/knowledge/warmup`,
 	);
 };
 
@@ -272,17 +322,6 @@ export const getSlackAgentAppManifest = async (
 	);
 };
 
-export const listAllAgents = async (
-	context: IRestApiContext,
-	projectId: string,
-): Promise<AgentResource[]> => {
-	return await makeRestApiRequest<AgentResource[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2?all=true`,
-	);
-};
-
 export interface ModelInfo {
 	id: string;
 	name: string;
@@ -307,6 +346,20 @@ export const getModelCatalog = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/catalog/models`,
+	);
+};
+
+export const getProviderModels = async (
+	context: IRestApiContext,
+	projectId: string,
+	provider: string,
+	credentialId?: string,
+): Promise<AgentProviderModelsResponse> => {
+	return await makeRestApiRequest<AgentProviderModelsResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/catalog/models/${provider}`,
+		credentialId ? { credentialId } : undefined,
 	);
 };
 
@@ -388,6 +441,18 @@ export const getAgentConfig = async (
 	);
 };
 
+export const getAgentCapabilitySummary = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentCapabilitySummary> => {
+	return await makeRestApiRequest<AgentCapabilitySummary>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/summary`,
+	);
+};
+
 export const updateAgentConfig = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -431,37 +496,13 @@ export const updateAgentSkill = async (
 	);
 };
 
-export const getBuilderMessages = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<AgentBuilderMessagesResponse> => {
-	return await makeRestApiRequest<AgentBuilderMessagesResponse>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
-	);
-};
-
-export const clearBuilderMessages = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<void> => {
-	await makeRestApiRequest(
-		context,
-		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
-	);
-};
-
 export const getChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	threadId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
@@ -472,8 +513,8 @@ export const getTestChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
@@ -502,6 +543,19 @@ export const deleteCustomTool = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/tools/${toolId}`,
+	);
+};
+
+export const testAgentVectorStore = async (
+	context: IRestApiContext,
+	projectId: string,
+	vectorStore: AgentJsonVectorStoreConfig,
+): Promise<VectorStoreTestResult> => {
+	return await makeRestApiRequest<VectorStoreTestResult>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/vector-stores/test`,
+		{ vectorStore },
 	);
 };
 

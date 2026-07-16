@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
+import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
-import nock from 'nock';
+import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import { InfisicalProvider } from '../infisical';
 
@@ -55,147 +56,222 @@ function listSecretsResponse(
 	return { secrets, imports };
 }
 
+const WORKSPACE_PATH = `/api/v1/workspace/${PROJECT_ID}`;
+const LOGIN_PATH = '/api/v1/auth/universal-auth/login';
+const SECRETS_PATH = '/api/v4/secrets';
+
+const infisicalConnectSettingsLogContext = {
+	siteURL: SITE_URL,
+	projectId: PROJECT_ID,
+	authMethod: 'universalAuth',
+};
+
+const infisicalTestSettingsLogContext = {
+	siteURL: SITE_URL,
+	projectId: PROJECT_ID,
+};
+
+const infisicalUpdateSettingsLogContext = {
+	siteURL: SITE_URL,
+	projectId: PROJECT_ID,
+	environment: ENVIRONMENT,
+	secretPath: SECRET_PATH,
+};
+
 describe('InfisicalProvider', () => {
 	const logger = mockInstance(Logger);
 	logger.scoped.mockReturnValue(logger);
 
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
 	beforeEach(() => {
-		nock.cleanAll();
+		vi.clearAllMocks();
+		logger.scoped.mockReturnValue(logger);
 	});
 
-	afterAll(() => {
-		nock.cleanAll();
-		nock.enableNetConnect();
+	function createProvider(routes: Route[]) {
+		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(
+			routes,
+			vi.fn as unknown as Parameters<typeof createFakeOutboundHttp>[1],
+		);
+		const provider = new InfisicalProvider(logger, outboundHttp);
+		return { provider, httpRequest, requests, outboundHttp };
+	}
+
+	async function initProvider(routes: Route[]) {
+		const ctx = createProvider(routes);
+		await ctx.provider.init(universalAuthSettings);
+		return ctx;
+	}
+
+	type FakeHttpRequest = ReturnType<typeof createFakeOutboundHttp>['httpRequest'];
+
+	function findCall(
+		httpRequest: FakeHttpRequest,
+		predicate: (options: IHttpRequestOptions) => boolean,
+	) {
+		return httpRequest.mock.calls.map(([options]) => options).find(predicate);
+	}
+
+	describe('request wiring', () => {
+		it('binds the client to the site URL and a token header factory', async () => {
+			const { requests } = await initProvider([]);
+
+			expect(requests).toHaveBeenCalledWith({
+				baseURL: SITE_URL,
+				headers: expect.any(Function),
+				ssrf: 'disabled',
+			});
+		});
+
+		it('maps the login request to an absolute URL with a JSON body', async () => {
+			const { provider, httpRequest } = await initProvider([
+				{ method: 'POST', pathname: LOGIN_PATH, body: universalAuthLoginResponse('issued-token') },
+				{ method: 'GET', pathname: WORKSPACE_PATH, body: workspaceResponse() },
+			]);
+
+			await provider.connect();
+
+			const loginCall = findCall(httpRequest, (options) => options.url.endsWith(LOGIN_PATH));
+			expect(loginCall).toMatchObject({
+				url: `${SITE_URL}${LOGIN_PATH}`,
+				method: 'POST',
+				body: { clientId: 'test-client-id', clientSecret: 'test-client-secret' },
+				json: true,
+			});
+			expect(provider.state).toBe('connected');
+		});
+
+		it('sends the issued bearer token and query params when fetching secrets', async () => {
+			const { provider, httpRequest } = await initProvider([
+				{ method: 'POST', pathname: LOGIN_PATH, body: universalAuthLoginResponse('connect-token') },
+				{ method: 'GET', pathname: WORKSPACE_PATH, body: workspaceResponse() },
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse([{ secretKey: 'KEY', secretValue: 'val' }]),
+				},
+			]);
+
+			await provider.connect();
+			await provider.update();
+
+			const secretsCall = findCall(httpRequest, (options) => options.url.endsWith(SECRETS_PATH));
+			expect(secretsCall).toMatchObject({
+				method: 'GET',
+				qs: { projectId: PROJECT_ID, environment: ENVIRONMENT, secretPath: SECRET_PATH },
+				json: true,
+				headers: { Authorization: 'Bearer connect-token' },
+			});
+		});
 	});
 
 	describe('test', () => {
 		it('returns success when the workspace endpoint returns 200', async () => {
-			const provider = new InfisicalProvider(logger);
-			await provider.init(universalAuthSettings);
-
-			const scope = nock(SITE_URL)
-				.get(`/api/v1/workspace/${PROJECT_ID}`)
-				.reply(200, workspaceResponse());
+			const { provider } = await initProvider([
+				{ method: 'GET', pathname: WORKSPACE_PATH, body: workspaceResponse() },
+			]);
 
 			const [success] = await provider.test();
 			expect(success).toBe(true);
-			scope.done();
 		});
 
 		it('returns "Invalid credentials" on 401', async () => {
-			const provider = new InfisicalProvider(logger);
-			await provider.init(universalAuthSettings);
-
-			const scope = nock(SITE_URL)
-				.get(`/api/v1/workspace/${PROJECT_ID}`)
-				.reply(401, { message: 'Unauthorized' });
+			const { provider } = await initProvider([
+				{ method: 'GET', pathname: WORKSPACE_PATH, status: 401, body: { message: 'Unauthorized' } },
+			]);
 
 			const [success, message] = await provider.test();
 			expect(success).toBe(false);
 			expect(message).toBe('Invalid credentials');
-			scope.done();
 		});
 
 		it('returns "Project not found" on 404', async () => {
-			const provider = new InfisicalProvider(logger);
-			await provider.init(universalAuthSettings);
-
-			const scope = nock(SITE_URL)
-				.get(`/api/v1/workspace/${PROJECT_ID}`)
-				.reply(404, { message: 'Not found' });
+			const { provider } = await initProvider([
+				{ method: 'GET', pathname: WORKSPACE_PATH, status: 404, body: { message: 'Not found' } },
+			]);
 
 			const [success, message] = await provider.test();
 			expect(success).toBe(false);
 			expect(message).toBe('Project not found. Check the Project ID and Site URL.');
-			scope.done();
 		});
 
 		it('returns "Permission denied" on 403', async () => {
-			const provider = new InfisicalProvider(logger);
-			await provider.init(universalAuthSettings);
-
-			const scope = nock(SITE_URL)
-				.get(`/api/v1/workspace/${PROJECT_ID}`)
-				.reply(403, { message: 'Forbidden' });
+			const { provider } = await initProvider([
+				{ method: 'GET', pathname: WORKSPACE_PATH, status: 403, body: { message: 'Forbidden' } },
+			]);
 
 			const [success, message] = await provider.test();
 			expect(success).toBe(false);
 			expect(message).toBe(
 				'Permission denied. Verify the machine identity has access to this project.',
 			);
-			scope.done();
+		});
+
+		it('returns a connection-refused message when the socket is refused', async () => {
+			const { provider } = await initProvider([
+				{ method: 'GET', pathname: WORKSPACE_PATH, networkError: 'ECONNREFUSED' },
+			]);
+
+			const [success, message] = await provider.test();
+			expect(success).toBe(false);
+			expect(message).toBe('Connection refused. Check the Site URL.');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Infisical provider test failed',
+				expect.objectContaining({
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalTestSettingsLogContext,
+					operation: 'test',
+					endpoint: 'workspace',
+					errorCode: 'ECONNREFUSED',
+				}),
+			);
 		});
 	});
 
 	describe('doConnect with Universal Auth', () => {
-		it('logs in with clientId/clientSecret and tests the workspace with the issued token', async () => {
-			const provider = new InfisicalProvider(logger);
-			await provider.init(universalAuthSettings);
-
-			const scope = nock(SITE_URL)
-				.post('/api/v1/auth/universal-auth/login', {
-					clientId: 'test-client-id',
-					clientSecret: 'test-client-secret',
-				})
-				.reply(200, universalAuthLoginResponse('issued-token'))
-				.get(`/api/v1/workspace/${PROJECT_ID}`)
-				.matchHeader('authorization', 'Bearer issued-token')
-				.reply(200, workspaceResponse());
-
-			await provider.connect();
-
-			expect(provider.state).toBe('connected');
-			scope.done();
-		});
-
 		it('transitions to error state when login fails', async () => {
-			const provider = new InfisicalProvider(logger);
-			await provider.init(universalAuthSettings);
-
-			const scope = nock(SITE_URL)
-				.post('/api/v1/auth/universal-auth/login')
-				.reply(401, { message: 'Invalid client credentials' });
+			const { provider } = await initProvider([
+				{ method: 'POST', pathname: LOGIN_PATH, status: 401, body: { message: 'Invalid' } },
+			]);
 
 			await provider.connect();
 
 			expect(provider.state).toBe('error');
-			scope.done();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to connect Infisical provider',
+				expect.objectContaining({
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalConnectSettingsLogContext,
+					operation: 'connect',
+					statusCode: 401,
+				}),
+			);
 		});
 	});
 
 	describe('update', () => {
+		async function connectedProvider(routes: Route[]) {
+			const ctx = await initProvider([
+				{ method: 'POST', pathname: LOGIN_PATH, body: universalAuthLoginResponse('connect-token') },
+				{ method: 'GET', pathname: WORKSPACE_PATH, body: workspaceResponse() },
+				...routes,
+			]);
+			await ctx.provider.connect();
+			return ctx;
+		}
+
 		it('caches secrets returned from the v4 list endpoint', async () => {
-			const provider = new InfisicalProvider(logger);
-			await provider.init(universalAuthSettings);
-
-			const connectScope = nock(SITE_URL)
-				.post('/api/v1/auth/universal-auth/login')
-				.reply(200, universalAuthLoginResponse('connect-token'))
-				.get(`/api/v1/workspace/${PROJECT_ID}`)
-				.reply(200, workspaceResponse());
-
-			await provider.connect();
-			connectScope.done();
-
-			const updateScope = nock(SITE_URL)
-				.get('/api/v4/secrets')
-				.query({
-					projectId: PROJECT_ID,
-					environment: ENVIRONMENT,
-					secretPath: SECRET_PATH,
-				})
-				.matchHeader('authorization', 'Bearer connect-token')
-				.reply(
-					200,
-					listSecretsResponse([
+			const { provider } = await connectedProvider([
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse([
 						{ secretKey: 'API_KEY', secretValue: 'secret-value' },
 						{ secretKey: 'DB_PASSWORD', secretValue: 'hunter2' },
 					]),
-				);
+				},
+			]);
 
 			await provider.update();
 
@@ -204,106 +280,105 @@ describe('InfisicalProvider', () => {
 			expect(provider.hasSecret('API_KEY')).toBe(true);
 			expect(provider.hasSecret('UNKNOWN')).toBe(false);
 			expect(provider.getSecretNames().sort()).toEqual(['API_KEY', 'DB_PASSWORD']);
-			updateScope.done();
 		});
 
 		it('produces an empty cache when no secrets are returned', async () => {
-			const provider = new InfisicalProvider(logger);
-			await provider.init(universalAuthSettings);
-
-			const connectScope = nock(SITE_URL)
-				.post('/api/v1/auth/universal-auth/login')
-				.reply(200, universalAuthLoginResponse('connect-token'))
-				.get(`/api/v1/workspace/${PROJECT_ID}`)
-				.reply(200, workspaceResponse());
-
-			await provider.connect();
-			connectScope.done();
-
-			const updateScope = nock(SITE_URL)
-				.get('/api/v4/secrets')
-				.query(true)
-				.reply(200, listSecretsResponse([]));
+			const { provider } = await connectedProvider([
+				{ method: 'GET', pathname: SECRETS_PATH, body: listSecretsResponse([]) },
+			]);
 
 			await provider.update();
 
 			expect(provider.getSecretNames()).toHaveLength(0);
-			updateScope.done();
 		});
 
 		it('re-authenticates and retries once when the token is rejected during update', async () => {
-			const provider = new InfisicalProvider(logger);
-			await provider.init(universalAuthSettings);
-
-			const connectScope = nock(SITE_URL)
-				.post('/api/v1/auth/universal-auth/login')
-				.reply(200, universalAuthLoginResponse('first-token'))
-				.get(`/api/v1/workspace/${PROJECT_ID}`)
-				.reply(200, workspaceResponse());
-
-			await provider.connect();
-			connectScope.done();
-
-			const updateScope = nock(SITE_URL)
-				.get('/api/v4/secrets')
-				.query(true)
-				.matchHeader('authorization', 'Bearer first-token')
-				.reply(401, { message: 'Token expired' })
-				.post('/api/v1/auth/universal-auth/login')
-				.reply(200, universalAuthLoginResponse('refreshed-token'))
-				.get('/api/v4/secrets')
-				.query(true)
-				.matchHeader('authorization', 'Bearer refreshed-token')
-				.reply(200, listSecretsResponse([{ secretKey: 'KEY', secretValue: 'val' }]));
+			const { provider, httpRequest } = await connectedProvider([
+				{ method: 'GET', pathname: SECRETS_PATH, status: 401, body: { message: 'Token expired' } },
+				{
+					method: 'POST',
+					pathname: LOGIN_PATH,
+					body: universalAuthLoginResponse('refreshed-token'),
+				},
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse([{ secretKey: 'KEY', secretValue: 'val' }]),
+				},
+			]);
 
 			await provider.update();
 
 			expect(provider.getSecret('KEY')).toBe('val');
-			updateScope.done();
+			// The retry must carry the freshly issued token.
+			const secretsCalls = httpRequest.mock.calls
+				.map(([options]) => options)
+				.filter((options) => options.url.endsWith(SECRETS_PATH));
+			expect(secretsCalls).toHaveLength(2);
+			expect(secretsCalls[1].headers).toMatchObject({ Authorization: 'Bearer refreshed-token' });
 		});
-	});
 
-	describe('update with imports', () => {
-		const makeImport = (
-			secrets: Array<{ secretKey: string; secretValue: string }>,
-			secretPath = '/imported',
-			environment = ENVIRONMENT,
-		): ImportFixture => ({ secretPath, environment, secrets });
+		it('logs and rethrows update failures', async () => {
+			const { provider } = await connectedProvider([
+				{ method: 'GET', pathname: SECRETS_PATH, status: 500, body: { message: 'Failed' } },
+			]);
 
-		async function setupConnectedProvider() {
-			const provider = new InfisicalProvider(logger);
-			await provider.init(universalAuthSettings);
+			await expect(provider.update()).rejects.toThrow('Request failed with status 500');
 
-			const connectScope = nock(SITE_URL)
-				.post('/api/v1/auth/universal-auth/login')
-				.reply(200, universalAuthLoginResponse('connect-token'))
-				.get(`/api/v1/workspace/${PROJECT_ID}`)
-				.reply(200, workspaceResponse());
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to update Infisical provider secrets',
+				expect.objectContaining({
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalUpdateSettingsLogContext,
+					operation: 'update',
+					endpoint: 'secrets',
+					statusCode: 500,
+				}),
+			);
+		});
 
-			await provider.connect();
-			connectScope.done();
+		it('logs token refresh failures before attempting to reconnect', async () => {
+			const { provider } = await initProvider([
+				{ method: 'POST', pathname: LOGIN_PATH, networkError: 'ECONNREFUSED' },
+			]);
+			const connect = vi.spyOn(provider, 'connect').mockResolvedValue();
 
-			return provider;
-		}
+			await (provider as unknown as { tokenRefresh: () => Promise<void> }).tokenRefresh();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to refresh Infisical token. Attempting reconnect.',
+				expect.objectContaining({
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalConnectSettingsLogContext,
+					operation: 'tokenRefresh',
+					errorCode: 'ECONNREFUSED',
+				}),
+			);
+			expect(connect).toHaveBeenCalled();
+		});
 
 		it('caches secrets from imports alongside top-level secrets', async () => {
-			const provider = await setupConnectedProvider();
-
-			const updateScope = nock(SITE_URL)
-				.get('/api/v4/secrets')
-				.query(true)
-				.reply(
-					200,
-					listSecretsResponse(
+			const { provider } = await connectedProvider([
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse(
 						[{ secretKey: 'API_KEY', secretValue: 'top-value' }],
 						[
-							makeImport([
-								{ secretKey: 'IMPORTED_KEY', secretValue: 'from-import' },
-								{ secretKey: 'ANOTHER', secretValue: 'also' },
-							]),
+							{
+								secretPath: '/imported',
+								environment: ENVIRONMENT,
+								secrets: [
+									{ secretKey: 'IMPORTED_KEY', secretValue: 'from-import' },
+									{ secretKey: 'ANOTHER', secretValue: 'also' },
+								],
+							},
 						],
 					),
-				);
+				},
+			]);
 
 			await provider.update();
 
@@ -311,116 +386,127 @@ describe('InfisicalProvider', () => {
 			expect(provider.getSecret('IMPORTED_KEY')).toBe('from-import');
 			expect(provider.getSecret('ANOTHER')).toBe('also');
 			expect(provider.getSecretNames().sort()).toEqual(['ANOTHER', 'API_KEY', 'IMPORTED_KEY']);
-			updateScope.done();
 		});
 
 		it('prefers top-level secrets over imports when keys collide', async () => {
-			const provider = await setupConnectedProvider();
-
-			const updateScope = nock(SITE_URL)
-				.get('/api/v4/secrets')
-				.query(true)
-				.reply(
-					200,
-					listSecretsResponse(
+			const { provider } = await connectedProvider([
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse(
 						[{ secretKey: 'SHARED_KEY', secretValue: 'wins' }],
-						[makeImport([{ secretKey: 'SHARED_KEY', secretValue: 'loses' }])],
+						[
+							{
+								secretPath: '/imported',
+								environment: ENVIRONMENT,
+								secrets: [{ secretKey: 'SHARED_KEY', secretValue: 'loses' }],
+							},
+						],
 					),
-				);
+				},
+			]);
 
 			await provider.update();
 
 			expect(provider.getSecret('SHARED_KEY')).toBe('wins');
 			expect(provider.getSecretNames()).toEqual(['SHARED_KEY']);
-			updateScope.done();
 		});
 
 		it('keeps the value from the first import when later imports define the same key', async () => {
-			const provider = await setupConnectedProvider();
-
-			const updateScope = nock(SITE_URL)
-				.get('/api/v4/secrets')
-				.query(true)
-				.reply(
-					200,
-					listSecretsResponse(
+			const { provider } = await connectedProvider([
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse(
 						[],
 						[
-							makeImport([{ secretKey: 'DUP', secretValue: 'first' }], '/imported-a'),
-							makeImport([{ secretKey: 'DUP', secretValue: 'second' }], '/imported-b'),
+							{
+								secretPath: '/imported-a',
+								environment: ENVIRONMENT,
+								secrets: [{ secretKey: 'DUP', secretValue: 'first' }],
+							},
+							{
+								secretPath: '/imported-b',
+								environment: ENVIRONMENT,
+								secrets: [{ secretKey: 'DUP', secretValue: 'second' }],
+							},
 						],
 					),
-				);
+				},
+			]);
 
 			await provider.update();
 
 			expect(provider.getSecret('DUP')).toBe('first');
-			updateScope.done();
 		});
 
 		it('caches keys sourced only from imports when top-level secrets is empty', async () => {
-			const provider = await setupConnectedProvider();
-
-			const updateScope = nock(SITE_URL)
-				.get('/api/v4/secrets')
-				.query(true)
-				.reply(
-					200,
-					listSecretsResponse(
+			const { provider } = await connectedProvider([
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse(
 						[],
 						[
-							makeImport([{ secretKey: 'FROM_A', secretValue: 'a' }], '/imported-a'),
-							makeImport([{ secretKey: 'FROM_B', secretValue: 'b' }], '/imported-b'),
+							{
+								secretPath: '/imported-a',
+								environment: ENVIRONMENT,
+								secrets: [{ secretKey: 'FROM_A', secretValue: 'a' }],
+							},
+							{
+								secretPath: '/imported-b',
+								environment: ENVIRONMENT,
+								secrets: [{ secretKey: 'FROM_B', secretValue: 'b' }],
+							},
 						],
 					),
-				);
+				},
+			]);
 
 			await provider.update();
 
 			expect(provider.getSecret('FROM_A')).toBe('a');
 			expect(provider.getSecret('FROM_B')).toBe('b');
 			expect(provider.getSecretNames().sort()).toEqual(['FROM_A', 'FROM_B']);
-			updateScope.done();
 		});
 
 		it('handles imports with empty secrets arrays without affecting the cache', async () => {
-			const provider = await setupConnectedProvider();
-
-			const updateScope = nock(SITE_URL)
-				.get('/api/v4/secrets')
-				.query(true)
-				.reply(
-					200,
-					listSecretsResponse(
+			const { provider } = await connectedProvider([
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse(
 						[],
 						[
-							makeImport([], '/empty'),
-							makeImport([{ secretKey: 'REAL', secretValue: 'value' }], '/has-secrets'),
+							{ secretPath: '/empty', environment: ENVIRONMENT, secrets: [] },
+							{
+								secretPath: '/has-secrets',
+								environment: ENVIRONMENT,
+								secrets: [{ secretKey: 'REAL', secretValue: 'value' }],
+							},
 						],
 					),
-				);
+				},
+			]);
 
 			await provider.update();
 
 			expect(provider.getSecret('REAL')).toBe('value');
 			expect(provider.getSecretNames()).toEqual(['REAL']);
-			updateScope.done();
 		});
 	});
 
 	describe('disconnect', () => {
 		it('clears cached secrets and the in-flight token', async () => {
-			const provider = new InfisicalProvider(logger);
-			await provider.init(universalAuthSettings);
-
-			const scope = nock(SITE_URL)
-				.post('/api/v1/auth/universal-auth/login')
-				.reply(200, universalAuthLoginResponse('connect-token'))
-				.get(`/api/v1/workspace/${PROJECT_ID}`)
-				.reply(200, workspaceResponse())
-				.get('/api/v4/secrets')
-				.query(true)
-				.reply(200, listSecretsResponse([{ secretKey: 'KEY', secretValue: 'val' }]));
+			const { provider } = await initProvider([
+				{ method: 'POST', pathname: LOGIN_PATH, body: universalAuthLoginResponse('connect-token') },
+				{ method: 'GET', pathname: WORKSPACE_PATH, body: workspaceResponse() },
+				{
+					method: 'GET',
+					pathname: SECRETS_PATH,
+					body: listSecretsResponse([{ secretKey: 'KEY', secretValue: 'val' }]),
+				},
+			]);
 
 			await provider.connect();
 			await provider.update();
@@ -430,7 +516,6 @@ describe('InfisicalProvider', () => {
 
 			expect(provider.getSecretNames()).toHaveLength(0);
 			expect(provider.hasSecret('KEY')).toBe(false);
-			scope.done();
 		});
 	});
 });

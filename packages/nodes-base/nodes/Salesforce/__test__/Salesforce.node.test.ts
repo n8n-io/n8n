@@ -1,32 +1,57 @@
-import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode, ILoadOptionsFunctions } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INode,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+} from 'n8n-workflow';
+import { jsonParse, NodeApiError } from 'n8n-workflow';
+import get from 'lodash/get';
+import type { Mock, Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Salesforce } from '../Salesforce.node';
+import type * as _importType0 from '../GenericFunctions';
 
-jest.mock('../GenericFunctions', () => {
-	const actual = jest.requireActual('../GenericFunctions');
+// Resolves a (possibly dotted) parameter from a test params object, mirroring
+// core's `extractValue` for resourceLocator values so unit tests can exercise
+// the id-extraction wiring without the full execution engine. Extraction
+// against the real core implementation is verified separately.
+const resolveParam = (
+	params: Record<string, unknown>,
+	param: string,
+	options?: unknown,
+): unknown => {
+	const value = get(params, param);
+	const extractValue = (options as { extractValue?: boolean } | undefined)?.extractValue;
+	if (extractValue && value && typeof value === 'object' && 'value' in value) {
+		return (value as { value: unknown }).value;
+	}
+	return value;
+};
+
+vi.mock('../GenericFunctions', async () => {
+	const actual = await vi.importActual<typeof _importType0>('../GenericFunctions');
 	return {
 		...actual,
-		getQuery: jest.fn(),
-		salesforceApiRequest: jest.fn(),
-		salesforceApiRequestAllItems: jest.fn(),
-		sortOptions: jest.fn(),
+		getQuery: vi.fn(),
+		salesforceApiRequest: vi.fn(),
+		salesforceApiRequestAllItems: vi.fn(),
+		sortOptions: vi.fn(),
 	};
 });
 
 describe('Salesforce', () => {
 	let node: Salesforce;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
 
-	const salesforceApiRequestSpy = jest.spyOn(GenericFunctions, 'salesforceApiRequest');
-	const salesforceApiRequestAllItemsSpy = jest.spyOn(
+	const salesforceApiRequestSpy = vi.spyOn(GenericFunctions, 'salesforceApiRequest');
+	const salesforceApiRequestAllItemsSpy = vi.spyOn(
 		GenericFunctions,
 		'salesforceApiRequestAllItems',
 	);
-	const sortOptionsSpy = jest.spyOn(GenericFunctions, 'sortOptions');
+	const sortOptionsSpy = vi.spyOn(GenericFunctions, 'sortOptions');
 
 	beforeEach(() => {
 		node = new Salesforce();
@@ -40,20 +65,20 @@ describe('Salesforce', () => {
 			parameters: {},
 		};
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
-		mockExecuteFunctions.logger.debug = jest.fn();
-		(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+		mockExecuteFunctions.logger.debug = vi.fn();
+		(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 			(data: unknown[], meta: unknown) =>
 				data.map((item: unknown, index: number) => ({
 					...(typeof item === 'object' && item !== null ? item : {}),
 					pairedItem: (meta as any)?.itemData?.item || index,
 				})),
 		);
-		(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data) =>
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data) =>
 			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
 		);
 
@@ -62,11 +87,11 @@ describe('Salesforce', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('LoadOptions Methods', () => {
-		let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+		let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
 		beforeEach(() => {
 			mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
@@ -114,98 +139,180 @@ describe('Salesforce', () => {
 			});
 		});
 
-		describe('getUsers', () => {
-			it('should return users with sorted options', async () => {
-				const mockUsers = [
-					{ Id: 'user1', Name: 'John Doe' },
-					{ Id: 'user2', Name: 'Jane Smith' },
-				];
-
-				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockUsers);
-				sortOptionsSpy.mockImplementation((options) => {
-					return options.sort((a, b) => a.name.localeCompare(b.name));
+		describe('searchUsers (listSearch)', () => {
+			it('should run a filtered SOQL query with a batchSize header and map results', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({
+					records: [
+						{ Id: 'user1', Name: 'John Doe' },
+						{ Id: 'user2', Name: 'Jane Smith' },
+					],
+					nextRecordsUrl: '/services/data/v59.0/query/01g-2000',
 				});
 
-				const result = await node.methods.loadOptions.getUsers.call(mockLoadOptionsFunctions);
+				const result = await node.methods.listSearch.searchUsers.call(
+					mockLoadOptionsFunctions,
+					'jo',
+				);
 
-				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
-					'records',
+				expect(salesforceApiRequestAllItemsSpy).not.toHaveBeenCalled();
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
 					'/query',
 					{},
-					{ q: 'SELECT id, Name FROM User' },
+					{ q: "SELECT Id, Name FROM User WHERE Name LIKE '%jo%' ORDER BY Name" },
+					undefined,
+					{ headers: { 'Sforce-Query-Options': 'batchSize=200' } },
+				);
+				expect(result).toEqual({
+					results: [
+						{ name: 'John Doe', value: 'user1' },
+						{ name: 'Jane Smith', value: 'user2' },
+					],
+					paginationToken: '/services/data/v59.0/query/01g-2000',
+				});
+			});
+
+			it('should omit the WHERE clause when no filter is given', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
+
+				const result = await node.methods.listSearch.searchUsers.call(mockLoadOptionsFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					'/query',
+					{},
+					{ q: 'SELECT Id, Name FROM User ORDER BY Name' },
+					undefined,
+					{ headers: { 'Sforce-Query-Options': 'batchSize=200' } },
+				);
+				expect(result).toEqual({ results: [], paginationToken: undefined });
+			});
+
+			it('should escape single quotes in the filter without applying a LIMIT', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
+
+				await node.methods.listSearch.searchUsers.call(mockLoadOptionsFunctions, "O'Brien");
+
+				const qs = salesforceApiRequestSpy.mock.calls[0][3] as { q: string };
+				expect(qs.q).toBe("SELECT Id, Name FROM User WHERE Name LIKE '%O\\'Brien%' ORDER BY Name");
+				expect(qs.q).not.toContain('LIMIT');
+			});
+
+			it('should follow the pagination cursor instead of re-querying', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [{ Id: 'user3', Name: 'Zoe' }] });
+
+				const result = await node.methods.listSearch.searchUsers.call(
+					mockLoadOptionsFunctions,
+					'',
+					'/services/data/v59.0/query/01g-2000',
 				);
 
-				expect(result).toEqual([
-					{ name: 'Jane Smith', value: 'user2' },
-					{ name: 'John Doe', value: 'user1' },
-				]);
+				expect(salesforceApiRequestSpy).toHaveBeenCalledTimes(1);
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/query/01g-2000');
+				expect(result).toEqual({
+					results: [{ name: 'Zoe', value: 'user3' }],
+					paginationToken: undefined,
+				});
 			});
 		});
 
-		describe('getCaseOwners', () => {
-			it('should return case owners with queues and users', async () => {
-				const mockQueues = [
+		describe('searchCaseOwners (listSearch)', () => {
+			it('should combine case queues and users with prefixed labels', async () => {
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([
 					{ Queue: { Id: 'queue1', Name: 'Support Queue' } },
 					{ Queue: { Id: 'queue2', Name: 'Sales Queue' } },
-				];
-				const mockUsers = [
-					{ Id: 'user1', Name: 'John Doe' },
-					{ Id: 'user2', Name: 'Jane Smith' },
-				];
+				]);
+				salesforceApiRequestSpy.mockResolvedValue({ records: [{ Id: 'user1', Name: 'John Doe' }] });
 
-				salesforceApiRequestAllItemsSpy
-					.mockResolvedValueOnce(mockQueues)
-					.mockResolvedValueOnce(mockUsers);
+				const result = await node.methods.listSearch.searchCaseOwners.call(
+					mockLoadOptionsFunctions,
+					'',
+				);
 
-				const result = await node.methods.loadOptions.getCaseOwners.call(mockLoadOptionsFunctions);
-
+				// Queues are fetched in full (legacy behaviour), users via a capped search.
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
 					'/query',
 					{},
 					{
-						q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Case'",
+						q: "SELECT Queue.Id, Queue.Name FROM QueuesObject WHERE Queue.Type = 'Queue' AND SobjectType = 'Case'",
 					},
 				);
-				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
-					'records',
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
 					'/query',
 					{},
-					{ q: 'SELECT id, Name FROM User' },
+					{ q: 'SELECT Id, Name FROM User ORDER BY Name' },
+					undefined,
+					{ headers: { 'Sforce-Query-Options': 'batchSize=200' } },
 				);
-
-				expect(result).toEqual([
-					{ name: 'Queue: Support Queue', value: 'queue1' },
+				// Queues are sorted by label; users follow in their SOQL order.
+				expect(result.results).toEqual([
 					{ name: 'Queue: Sales Queue', value: 'queue2' },
+					{ name: 'Queue: Support Queue', value: 'queue1' },
 					{ name: 'User: John Doe', value: 'user1' },
-					{ name: 'User: Jane Smith', value: 'user2' },
 				]);
 			});
 
-			it('should handle users without queue prefix when no queues exist', async () => {
-				salesforceApiRequestAllItemsSpy
-					.mockResolvedValueOnce([])
-					.mockResolvedValueOnce([{ Id: 'user1', Name: 'John Doe' }]);
+			it('should not prefix users when the filter matches no queues', async () => {
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([
+					{ Queue: { Id: 'queue1', Name: 'Support Queue' } },
+				]);
+				salesforceApiRequestSpy.mockResolvedValue({ records: [{ Id: 'user1', Name: 'John Doe' }] });
 
-				const result = await node.methods.loadOptions.getCaseOwners.call(mockLoadOptionsFunctions);
+				const result = await node.methods.listSearch.searchCaseOwners.call(
+					mockLoadOptionsFunctions,
+					'doe',
+				);
 
-				expect(result).toEqual([{ name: 'John Doe', value: 'user1' }]);
+				// No queue matched 'doe', so the users render without the "User: " prefix.
+				expect(result.results).toEqual([{ name: 'John Doe', value: 'user1' }]);
+			});
+
+			it('should filter queues in-memory by the search term', async () => {
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([
+					{ Queue: { Id: 'queue1', Name: 'Support Queue' } },
+					{ Queue: { Id: 'queue2', Name: 'Sales Queue' } },
+				]);
+				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
+
+				const result = await node.methods.listSearch.searchCaseOwners.call(
+					mockLoadOptionsFunctions,
+					'support',
+				);
+
+				expect(result.results).toEqual([{ name: 'Queue: Support Queue', value: 'queue1' }]);
+			});
+
+			it('should skip the queue query when following a pagination cursor', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [{ Id: 'user1', Name: 'John Doe' }] });
+
+				const result = await node.methods.listSearch.searchCaseOwners.call(
+					mockLoadOptionsFunctions,
+					'',
+					'/services/data/v59.0/query/01g-2000',
+				);
+
+				expect(salesforceApiRequestAllItemsSpy).not.toHaveBeenCalled();
+				expect(salesforceApiRequestSpy).toHaveBeenCalledTimes(1);
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/query/01g-2000');
+				// Paginated pages carry no queues, so users stay unprefixed.
+				expect(result.results).toEqual([{ name: 'John Doe', value: 'user1' }]);
 			});
 		});
 
-		describe('getLeadOwners', () => {
-			it('should return lead owners with queues and users', async () => {
-				const mockQueues = [{ Queue: { Id: 'queue1', Name: 'Lead Queue' } }];
-				const mockUsers = [{ Id: 'user1', Name: 'John Doe' }];
+		describe('searchLeadOwners (listSearch)', () => {
+			it('should query the Lead queues and prefix users', async () => {
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([
+					{ Queue: { Id: 'queue1', Name: 'Lead Queue' } },
+				]);
+				salesforceApiRequestSpy.mockResolvedValue({ records: [{ Id: 'user1', Name: 'John Doe' }] });
 
-				salesforceApiRequestAllItemsSpy
-					.mockResolvedValueOnce(mockQueues)
-					.mockResolvedValueOnce(mockUsers);
-
-				const result = await node.methods.loadOptions.getLeadOwners.call(mockLoadOptionsFunctions);
+				const result = await node.methods.listSearch.searchLeadOwners.call(
+					mockLoadOptionsFunctions,
+					'',
+				);
 
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
@@ -213,11 +320,10 @@ describe('Salesforce', () => {
 					'/query',
 					{},
 					{
-						q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Lead'",
+						q: "SELECT Queue.Id, Queue.Name FROM QueuesObject WHERE Queue.Type = 'Queue' AND SobjectType = 'Lead'",
 					},
 				);
-
-				expect(result).toEqual([
+				expect(result.results).toEqual([
 					{ name: 'Queue: Lead Queue', value: 'queue1' },
 					{ name: 'User: John Doe', value: 'user1' },
 				]);
@@ -481,28 +587,178 @@ describe('Salesforce', () => {
 			});
 		});
 
-		describe('getAccounts', () => {
-			it('should return accounts with sorted options', async () => {
-				const mockAccounts = [
-					{ Id: 'acc1', Name: 'ACME Corp' },
-					{ Id: 'acc2', Name: 'ABC Inc' },
-				];
+		describe('searchAccounts (listSearch)', () => {
+			it('should issue an unfiltered, unbounded SOQL query with a batchSize header', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({
+					records: [
+						{ Id: 'acc1', Name: 'ACME Corp' },
+						{ Id: 'acc2', Name: 'Acme Subsidiary' },
+					],
+				});
 
-				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockAccounts);
+				const result = await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions);
 
-				const result = await node.methods.loadOptions.getAccounts.call(mockLoadOptionsFunctions);
+				expect(salesforceApiRequestAllItemsSpy).not.toHaveBeenCalled();
+				expect(salesforceApiRequestSpy).toHaveBeenCalledTimes(1);
+				const [method, endpoint, body, qs, uri, option] = salesforceApiRequestSpy.mock.calls[0];
+				expect(method).toBe('GET');
+				expect(endpoint).toBe('/query');
+				expect(body).toEqual({});
+				const query = (qs as { q: string }).q;
+				// No LIMIT — a LIMIT below the batch size would suppress nextRecordsUrl
+				// and silently break pagination after the first page.
+				expect(query).toBe('SELECT Id, Name FROM Account ORDER BY Name');
+				expect(query).not.toContain('LIMIT');
+				expect(uri).toBeUndefined();
+				expect(option).toEqual({ headers: { 'Sforce-Query-Options': 'batchSize=200' } });
+				expect(result).toEqual({
+					results: [
+						{ name: 'ACME Corp', value: 'acc1' },
+						{ name: 'Acme Subsidiary', value: 'acc2' },
+					],
+					paginationToken: undefined,
+				});
+			});
 
-				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
-					'records',
-					'GET',
-					'/query',
-					{},
-					{ q: 'SELECT id, Name FROM Account' },
+			it('should narrow results with a SOQL LIKE clause when a filter is provided', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({
+					records: [{ Id: 'acc1', Name: 'Acme Corp' }],
+				});
+
+				await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions, 'acme');
+
+				const [, , , qs] = salesforceApiRequestSpy.mock.calls[0];
+				expect((qs as { q: string }).q).toBe(
+					"SELECT Id, Name FROM Account WHERE Name LIKE '%acme%' ORDER BY Name",
 				);
-				expect(result).toEqual([
-					{ name: 'ACME Corp', value: 'acc1' },
-					{ name: 'ABC Inc', value: 'acc2' },
-				]);
+			});
+
+			it('should escape single quotes in the filter to prevent breaking the SOQL string', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
+
+				await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions, "O'Brien");
+
+				const [, , , qs] = salesforceApiRequestSpy.mock.calls[0];
+				expect((qs as { q: string }).q).toBe(
+					"SELECT Id, Name FROM Account WHERE Name LIKE '%O\\'Brien%' ORDER BY Name",
+				);
+			});
+
+			it('should surface the Salesforce nextRecordsUrl as the paginationToken', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({
+					records: [{ Id: 'acc1', Name: 'Acme Corp' }],
+					nextRecordsUrl: '/services/data/v59.0/query/01g4o00000abcdef-200',
+				});
+
+				const result = await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions);
+
+				expect(result.paginationToken).toBe('/services/data/v59.0/query/01g4o00000abcdef-200');
+			});
+
+			it('should follow the cursor across pages and stop when nextRecordsUrl is absent', async () => {
+				// Page 1: filtered query returns a full batch plus a cursor.
+				salesforceApiRequestSpy.mockResolvedValueOnce({
+					records: [{ Id: 'acc1', Name: 'Acme One' }],
+					nextRecordsUrl: '/services/data/v59.0/query/01g4o00000abcdef-200',
+				});
+				// Page 2: cursor fetch returns the tail with no further cursor.
+				salesforceApiRequestSpy.mockResolvedValueOnce({
+					records: [{ Id: 'acc2', Name: 'Acme Two' }],
+				});
+
+				const page1 = await node.methods.listSearch.searchAccounts.call(
+					mockLoadOptionsFunctions,
+					'acme',
+				);
+				expect(page1.paginationToken).toBe('/services/data/v59.0/query/01g4o00000abcdef-200');
+
+				const page2 = await node.methods.listSearch.searchAccounts.call(
+					mockLoadOptionsFunctions,
+					'acme',
+					page1.paginationToken as string,
+				);
+
+				// Second call follows the cursor: only the locator suffix is sent, no SOQL,
+				// no batchSize header (batchSize is sticky to the query cursor).
+				const secondCall = salesforceApiRequestSpy.mock.calls[1];
+				const [method, endpoint, body, qs, uri, option] = secondCall;
+				expect(method).toBe('GET');
+				expect(endpoint).toBe('/query/01g4o00000abcdef-200');
+				expect(body).toBeUndefined();
+				expect(qs).toBeUndefined();
+				expect(uri).toBeUndefined();
+				expect(option).toBeUndefined();
+				expect(page2.results).toEqual([{ name: 'Acme Two', value: 'acc2' }]);
+				expect(page2.paginationToken).toBeUndefined();
+			});
+
+			it('should page through a 2000-account org via the cursor and terminate exactly once exhausted', async () => {
+				const TOTAL = 2000;
+				const PAGE = 200;
+				const allAccounts = Array.from({ length: TOTAL }, (_, i) => ({
+					Id: `acc${String(i).padStart(4, '0')}`,
+					Name: `Account ${String(i).padStart(4, '0')}`,
+				}));
+
+				// Simulate Salesforce query/queryMore: serve PAGE rows per call and emit a
+				// nextRecordsUrl cursor while rows remain, dropping it on the final page.
+				let served = 0;
+				salesforceApiRequestSpy.mockImplementation(async () => {
+					const slice = allAccounts.slice(served, served + PAGE);
+					served += slice.length;
+					const hasMore = served < TOTAL;
+					return {
+						records: slice,
+						...(hasMore
+							? { nextRecordsUrl: `/services/data/v59.0/query/01gCURSOR-${served}` }
+							: {}),
+					};
+				});
+
+				const collected: Array<{ name: string; value: string }> = [];
+				let token: string | undefined;
+				let pages = 0;
+				do {
+					const res = await node.methods.listSearch.searchAccounts.call(
+						mockLoadOptionsFunctions,
+						undefined,
+						token,
+					);
+					collected.push(...(res.results as Array<{ name: string; value: string }>));
+					token = res.paginationToken as string | undefined;
+					pages += 1;
+					// Guard: a broken cursor that never clears would loop forever.
+					expect(pages).toBeLessThanOrEqual(TOTAL / PAGE);
+				} while (token);
+
+				// Walked the whole org in exactly 10 pages of 200, no duplicates, no gaps.
+				expect(pages).toBe(TOTAL / PAGE);
+				expect(collected).toHaveLength(TOTAL);
+				expect(collected[0]).toEqual({ name: 'Account 0000', value: 'acc0000' });
+				expect(collected[TOTAL - 1]).toEqual({ name: 'Account 1999', value: 'acc1999' });
+
+				// First call sends SOQL + batchSize header; the second follows the cursor only.
+				expect(salesforceApiRequestSpy.mock.calls[0][1]).toBe('/query');
+				expect(salesforceApiRequestSpy.mock.calls[0][5]).toEqual({
+					headers: { 'Sforce-Query-Options': 'batchSize=200' },
+				});
+				expect(salesforceApiRequestSpy.mock.calls[1][1]).toBe('/query/01gCURSOR-200');
+			});
+
+			it('should return an empty result set for an org with no accounts', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
+
+				const result = await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions);
+
+				expect(result).toEqual({ results: [], paginationToken: undefined });
+			});
+
+			it('should tolerate a response without a records property', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({});
+
+				const result = await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions);
+
+				expect(result).toEqual({ results: [], paginationToken: undefined });
 			});
 		});
 
@@ -1180,7 +1436,7 @@ describe('Salesforce', () => {
 						lastname: 'Test Lead',
 						additionalFields: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'lead123', success: true });
@@ -1239,7 +1495,7 @@ describe('Salesforce', () => {
 							},
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'lead456', success: true });
@@ -1284,6 +1540,31 @@ describe('Salesforce', () => {
 				);
 			});
 
+			it('should resolve a resourceLocator owner value to OwnerId', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'create',
+						company: 'ACME Corp',
+						lastname: 'Doe',
+						additionalFields: {
+							owner: { __rl: true, mode: 'id', value: 'user123' },
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'lead456', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/lead',
+					expect.objectContaining({ OwnerId: 'user123' }),
+				);
+			});
+
 			it('should handle lead upsert operation', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(param: string, index?: number): any => {
@@ -1305,7 +1586,7 @@ describe('Salesforce', () => {
 						if (param === 'externalIdValue') {
 							return params.externalIdValue;
 						}
-						return params[param];
+						return get(params, param);
 					},
 				);
 
@@ -1372,7 +1653,7 @@ describe('Salesforce', () => {
 							},
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -1424,7 +1705,7 @@ describe('Salesforce', () => {
 						leadId: 'lead123',
 						updateFields: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
@@ -1441,7 +1722,7 @@ describe('Salesforce', () => {
 						operation: 'get',
 						leadId: 'lead123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockLead = { Id: 'lead123', FirstName: 'John', LastName: 'Doe' };
@@ -1460,7 +1741,7 @@ describe('Salesforce', () => {
 						returnAll: true,
 						options: { fields: 'Id,FirstName,LastName' },
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockLeads = [
@@ -1468,7 +1749,7 @@ describe('Salesforce', () => {
 					{ Id: 'lead2', FirstName: 'Jane', LastName: 'Smith' },
 				];
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,FirstName,LastName FROM Lead');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockLeads);
 
@@ -1499,10 +1780,10 @@ describe('Salesforce', () => {
 						limit: 50,
 						options: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT * FROM Lead LIMIT 50');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -1518,7 +1799,7 @@ describe('Salesforce', () => {
 						operation: 'delete',
 						leadId: 'lead123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -1534,7 +1815,7 @@ describe('Salesforce', () => {
 						resource: 'lead',
 						operation: 'getSummary',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockSummary = { objectDescribe: { name: 'Lead', fields: [] } };
@@ -1554,7 +1835,7 @@ describe('Salesforce', () => {
 						campaignId: 'campaign456',
 						options: { status: 'Sent' },
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'cm123', success: true });
@@ -1585,7 +1866,7 @@ describe('Salesforce', () => {
 							isPrivate: true,
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'note123', success: true });
@@ -1621,7 +1902,7 @@ describe('Salesforce', () => {
 						type: 'Problem',
 						additionalFields: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'case123', success: true });
@@ -1662,7 +1943,7 @@ describe('Salesforce', () => {
 							recordTypeId: 'rt123',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'case456', success: true });
@@ -1709,7 +1990,7 @@ describe('Salesforce', () => {
 							},
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'case789', success: true });
@@ -1755,7 +2036,7 @@ describe('Salesforce', () => {
 							suppliedCompany: 'Updated Company',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -1801,7 +2082,7 @@ describe('Salesforce', () => {
 							},
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -1826,7 +2107,7 @@ describe('Salesforce', () => {
 						operation: 'get',
 						caseId: 'case123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockCase = { Id: 'case123', Subject: 'Test Case', Type: 'Problem' };
@@ -1845,7 +2126,7 @@ describe('Salesforce', () => {
 						returnAll: true,
 						options: { fields: 'Id,Subject,Type' },
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockCases = [
@@ -1853,7 +2134,7 @@ describe('Salesforce', () => {
 					{ Id: 'case2', Subject: 'Case 2', Type: 'Question' },
 				];
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,Subject,Type FROM Case');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockCases);
 
@@ -1878,10 +2159,10 @@ describe('Salesforce', () => {
 						limit: 25,
 						options: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT * FROM Case LIMIT 25');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -1898,10 +2179,10 @@ describe('Salesforce', () => {
 						returnAll: true,
 						options: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT * FROM Case');
 				salesforceApiRequestAllItemsSpy.mockRejectedValue(new Error('API Error'));
 
@@ -1915,7 +2196,7 @@ describe('Salesforce', () => {
 						operation: 'delete',
 						caseId: 'case123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -1932,7 +2213,7 @@ describe('Salesforce', () => {
 						operation: 'delete',
 						caseId: 'case123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockRejectedValue(new Error('Delete error'));
@@ -1946,7 +2227,7 @@ describe('Salesforce', () => {
 						resource: 'case',
 						operation: 'getSummary',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockSummary = { objectDescribe: { name: 'Case', fields: [] } };
@@ -1968,7 +2249,7 @@ describe('Salesforce', () => {
 							isPublished: true,
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'comment123', success: true });
@@ -1994,7 +2275,7 @@ describe('Salesforce', () => {
 						caseId: 'case456',
 						options: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'comment456', success: true });
@@ -2026,7 +2307,7 @@ describe('Salesforce', () => {
 						lastname: 'Test Contact',
 						additionalFields: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact123', success: true });
@@ -2092,7 +2373,7 @@ describe('Salesforce', () => {
 							},
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact456', success: true });
@@ -2145,6 +2426,121 @@ describe('Salesforce', () => {
 				);
 			});
 
+			// The Account field migrated from a `loadOptions`-typed select
+			// to a `resourceLocator`. New workflows save `{ __rl, mode, value }`
+			// objects; existing workflows keep saving raw strings. Execute must
+			// extract the underlying Id from either shape.
+			it('should map the Account resourceLocator (list mode) onto AccountId', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(param: string, _i?: number, _d?: unknown, options?: unknown): any => {
+						const params: Record<string, unknown> = {
+							resource: 'contact',
+							operation: 'create',
+							lastname: 'RL-List Contact',
+							additionalFields: {
+								acconuntId: { __rl: true, mode: 'list', value: 'acc-from-list' },
+							},
+						};
+						return resolveParam(params, param, options);
+					},
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact-rl-list', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/contact',
+					expect.objectContaining({
+						LastName: 'RL-List Contact',
+						AccountId: 'acc-from-list',
+					}),
+				);
+			});
+
+			it('should map the Account resourceLocator (id mode) onto AccountId', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(param: string, _i?: number, _d?: unknown, options?: unknown): any => {
+						const params: Record<string, unknown> = {
+							resource: 'contact',
+							operation: 'create',
+							lastname: 'RL-Id Contact',
+							additionalFields: {
+								acconuntId: { __rl: true, mode: 'id', value: '0011700000QABCDE' },
+							},
+						};
+						return resolveParam(params, param, options);
+					},
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact-rl-id', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/contact',
+					expect.objectContaining({
+						LastName: 'RL-Id Contact',
+						AccountId: '0011700000QABCDE',
+					}),
+				);
+			});
+
+			it('should omit AccountId when the Account value is empty', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(param: string, _i?: number, _d?: unknown, options?: unknown): any => {
+						const params: Record<string, unknown> = {
+							resource: 'contact',
+							operation: 'create',
+							lastname: 'RL-Empty Contact',
+							additionalFields: {
+								acconuntId: { __rl: true, mode: 'list', value: '' },
+							},
+						};
+						return resolveParam(params, param, options);
+					},
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact-rl-empty', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				const body = salesforceApiRequestSpy.mock.calls[0][2] as Record<string, unknown>;
+				expect(body).not.toHaveProperty('AccountId');
+				expect(body).toEqual(expect.objectContaining({ LastName: 'RL-Empty Contact' }));
+			});
+
+			it('should still accept Account as a legacy raw string id', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(param: string, _i?: number, _d?: unknown, options?: unknown): any => {
+						const params: Record<string, unknown> = {
+							resource: 'contact',
+							operation: 'create',
+							lastname: 'Legacy String Contact',
+							additionalFields: {
+								acconuntId: 'legacy-acc-id',
+							},
+						};
+						return resolveParam(params, param, options);
+					},
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact-legacy', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/contact',
+					expect.objectContaining({
+						LastName: 'Legacy String Contact',
+						AccountId: 'legacy-acc-id',
+					}),
+				);
+			});
+
 			it('should handle contact upsert operation', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(param: string, index?: number): any => {
@@ -2165,7 +2561,7 @@ describe('Salesforce', () => {
 						if (param === 'externalIdValue') {
 							return params.externalIdValue;
 						}
-						return params[param];
+						return get(params, param);
 					},
 				);
 
@@ -2240,7 +2636,7 @@ describe('Salesforce', () => {
 							},
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -2301,11 +2697,38 @@ describe('Salesforce', () => {
 						contactId: 'contact123',
 						updateFields: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
 					'You must add at least one update field',
+				);
+			});
+
+			// Parallel to the Create-path resourceLocator tests above.
+			it('should accept Account as a resourceLocator object on update', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(param: string, _i?: number, _d?: unknown, options?: unknown): any => {
+						const params: Record<string, unknown> = {
+							resource: 'contact',
+							operation: 'update',
+							contactId: 'contact-rl-update',
+							updateFields: {
+								acconuntId: { __rl: true, mode: 'list', value: 'acc-updated' },
+							},
+						};
+						return resolveParam(params, param, options);
+					},
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/contact/contact-rl-update',
+					expect.objectContaining({ AccountId: 'acc-updated' }),
 				);
 			});
 		});
@@ -2318,7 +2741,7 @@ describe('Salesforce', () => {
 						operation: 'get',
 						contactId: 'contact123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockContact = { Id: 'contact123', FirstName: 'John', LastName: 'Doe' };
@@ -2337,7 +2760,7 @@ describe('Salesforce', () => {
 						returnAll: true,
 						options: { fields: 'Id,FirstName,LastName' },
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockContacts = [
@@ -2345,7 +2768,7 @@ describe('Salesforce', () => {
 					{ Id: 'contact2', FirstName: 'Jane', LastName: 'Smith' },
 				];
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,FirstName,LastName FROM Contact');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockContacts);
 
@@ -2374,7 +2797,7 @@ describe('Salesforce', () => {
 						operation: 'delete',
 						contactId: 'contact123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -2393,7 +2816,7 @@ describe('Salesforce', () => {
 						resource: 'contact',
 						operation: 'getSummary',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockSummary = { objectDescribe: { name: 'Contact', fields: [] } };
@@ -2413,7 +2836,7 @@ describe('Salesforce', () => {
 						campaignId: 'campaign456',
 						options: { status: 'Responded' },
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'cm456', success: true });
@@ -2444,7 +2867,7 @@ describe('Salesforce', () => {
 							isPrivate: false,
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'note456', success: true });
@@ -2489,7 +2912,7 @@ describe('Salesforce', () => {
 							recordTypeId: 'rt123',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'custom123', success: true });
@@ -2531,7 +2954,7 @@ describe('Salesforce', () => {
 						if (param === 'externalIdValue') {
 							return params.externalIdValue;
 						}
-						return params[param];
+						return get(params, param);
 					},
 				);
 
@@ -2571,7 +2994,7 @@ describe('Salesforce', () => {
 							recordTypeId: 'rt456',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -2588,6 +3011,37 @@ describe('Salesforce', () => {
 					}),
 				);
 			});
+
+			// A 204 No Content reply has no body: the axios-based JWT auth path resolves
+			// it as '', the legacy OAuth2 path as undefined. All must normalize alike.
+			it.each([
+				['empty string', ''],
+				['undefined', undefined],
+				['null', null],
+			])(
+				'should normalize a %s 204 response into a valid success item',
+				async (_label, emptyResponse) => {
+					mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+						const params: Record<string, unknown> = {
+							resource: 'customObject',
+							operation: 'update',
+							recordId: 'custom123',
+							customObject: 'CustomObject__c',
+							customFieldsUi: {
+								customFieldsValues: [{ fieldId: 'Name', value: 'Updated' }],
+							},
+							updateFields: {},
+						};
+						return params[param];
+					});
+
+					salesforceApiRequestSpy.mockResolvedValue(emptyResponse);
+
+					const result = await node.execute.call(mockExecuteFunctions);
+
+					expect(result[0][0].json).toEqual({ errors: [], success: true });
+				},
+			);
 		});
 
 		describe('CustomObject Other Operations', () => {
@@ -2599,7 +3053,7 @@ describe('Salesforce', () => {
 						customObject: 'CustomObject__c',
 						recordId: 'custom123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockCustomObject = { Id: 'custom123', Name: 'Test Custom Object' };
@@ -2622,7 +3076,7 @@ describe('Salesforce', () => {
 						returnAll: true,
 						options: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockCustomObjects = [
@@ -2630,7 +3084,7 @@ describe('Salesforce', () => {
 					{ Id: 'custom2', Name: 'Custom Object 2' },
 				];
 
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT * FROM CustomObject__c');
 				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockCustomObjects);
 
@@ -2654,7 +3108,7 @@ describe('Salesforce', () => {
 						customObject: 'CustomObject__c',
 						recordId: 'custom123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -2688,7 +3142,7 @@ describe('Salesforce', () => {
 							fileExtension: 'pdf',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockBinaryData = {
@@ -2698,10 +3152,8 @@ describe('Salesforce', () => {
 					fileName: 'test.pdf',
 				};
 
-				(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(
-					mockBinaryData,
-				);
-				(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+				(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 					mockBinaryData.data,
 				);
 
@@ -2755,7 +3207,7 @@ describe('Salesforce', () => {
 						binaryPropertyName: 'data',
 						additionalFields: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockBinaryData = {
@@ -2765,10 +3217,8 @@ describe('Salesforce', () => {
 					fileName: 'test.txt',
 				};
 
-				(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(
-					mockBinaryData,
-				);
-				(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+				(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 					mockBinaryData.data,
 				);
 
@@ -2811,7 +3261,7 @@ describe('Salesforce', () => {
 						jsonParameters: true,
 						variablesJson: { input1: 'value1', input2: 'value2' },
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -2841,7 +3291,7 @@ describe('Salesforce', () => {
 							],
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -2864,7 +3314,7 @@ describe('Salesforce', () => {
 						operation: 'getAll',
 						returnAll: true,
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockFlows = {
@@ -2890,7 +3340,7 @@ describe('Salesforce', () => {
 						returnAll: false,
 						limit: 2,
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockFlows = {
@@ -2915,7 +3365,7 @@ describe('Salesforce', () => {
 						operation: 'query',
 						query: 'SELECT Id, Name FROM Account',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockResults = [
@@ -2963,7 +3413,7 @@ describe('Salesforce', () => {
 							},
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'opp123', success: true });
@@ -2993,6 +3443,34 @@ describe('Salesforce', () => {
 				);
 			});
 
+			it('should map the Account resourceLocator onto AccountId (create)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(param: string, _i?: number, _d?: unknown, options?: unknown): any => {
+						const params: Record<string, unknown> = {
+							resource: 'opportunity',
+							operation: 'create',
+							name: 'RLC Opportunity',
+							closeDate: '2024-12-31',
+							stageName: 'Qualification',
+							additionalFields: {
+								accountId: { __rl: true, mode: 'list', value: 'acc-rlc-opp' },
+							},
+						};
+						return resolveParam(params, param, options);
+					},
+				);
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'opp-rlc', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/opportunity',
+					expect.objectContaining({ Name: 'RLC Opportunity', AccountId: 'acc-rlc-opp' }),
+				);
+			});
+
 			it('should handle opportunity upsert operation', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
 					const params: Record<string, unknown> = {
@@ -3008,7 +3486,7 @@ describe('Salesforce', () => {
 							External_Id__c: 'EXT123', // This should be removed from body
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'opp123', success: true });
@@ -3057,7 +3535,7 @@ describe('Salesforce', () => {
 							},
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ success: true });
@@ -3098,7 +3576,7 @@ describe('Salesforce', () => {
 						lastname: 'Test',
 						additionalFields: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				// Mock API to return undefined
@@ -3109,7 +3587,17 @@ describe('Salesforce', () => {
 		});
 
 		describe('Error Handling', () => {
-			it('should handle errors with continueOnFail true', async () => {
+			beforeEach(() => {
+				(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation(
+					(data: object) => [{ json: data }],
+				);
+				(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
+					(data: INodeExecutionData[], { itemData }: { itemData: { item: number } }) =>
+						data.map((item) => ({ ...item, pairedItem: { item: itemData.item } })),
+				);
+			});
+
+			it('should output full error details with continueOnFail true', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
 					const params: Record<string, unknown> = {
 						resource: 'lead',
@@ -3118,16 +3606,43 @@ describe('Salesforce', () => {
 						lastname: 'Test',
 						additionalFields: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				mockExecuteFunctions.continueOnFail.mockReturnValue(true);
-				salesforceApiRequestSpy.mockRejectedValue(new Error('API Error'));
 
-				await node.execute.call(mockExecuteFunctions);
+				const testError = new NodeApiError(mockExecuteFunctions.getNode(), {
+					message: 'Bad request - please check your parameters',
+					description: "No such column 'Fake_Field__c' on sobject of type Lead",
+					httpCode: '400',
+					error: [
+						{
+							fields: [],
+							message: "No such column 'Fake_Field__c' on sobject of type Lead",
+							errorCode: 'INVALID_FIELD',
+						},
+					],
+				});
+				testError.context = {
+					errorCode: 'INVALID_FIELD',
+					fields: null,
+				};
+
+				salesforceApiRequestSpy.mockRejectedValue(testError);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json).toEqual({
+					error: 'Bad request - please check your parameters',
+					description: "No such column 'Fake_Field__c' on sobject of type Lead",
+					httpCode: '400',
+					errorCode: 'INVALID_FIELD',
+					fields: null,
+				});
+				expect(result[0][0].pairedItem).toEqual({ item: 0 });
 			});
 
-			it('should throw error with continueOnFail false', async () => {
+			it('should output fields as comma-separated string when SF returns field-level errors', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
 					const params: Record<string, unknown> = {
 						resource: 'lead',
@@ -3136,12 +3651,85 @@ describe('Salesforce', () => {
 						lastname: 'Test',
 						additionalFields: {},
 					};
-					return params[param];
+					return get(params, param);
+				});
+
+				mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+
+				const testError = new NodeApiError(mockExecuteFunctions.getNode(), {
+					message: 'Bad request - please check your parameters',
+					description: 'Annual Revenue cannot be negative.',
+					httpCode: '400',
+					error: [
+						{
+							fields: ['AnnualRevenue'],
+							message: 'Annual Revenue cannot be negative.',
+							errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+						},
+					],
+				});
+				testError.context = {
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: 'AnnualRevenue',
+				};
+
+				salesforceApiRequestSpy.mockRejectedValue(testError);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json).toEqual({
+					error: 'Bad request - please check your parameters',
+					description: 'Annual Revenue cannot be negative.',
+					httpCode: '400',
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: 'AnnualRevenue',
+				});
+				expect(result[0][0].pairedItem).toEqual({ item: 0 });
+			});
+
+			it('should output null for all optional fields when error lacks them', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'create',
+						company: 'Test Company',
+						lastname: 'Test',
+						additionalFields: {},
+					};
+					return get(params, param);
+				});
+
+				mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+
+				salesforceApiRequestSpy.mockRejectedValue(new Error('Generic Error'));
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json).toEqual({
+					error: 'Generic Error',
+					description: null,
+					httpCode: null,
+					errorCode: null,
+					fields: null,
+				});
+				expect(result[0][0].pairedItem).toEqual({ item: 0 });
+			});
+
+			it('should throw error when continueOnFail is false', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'create',
+						company: 'Test Company',
+						lastname: 'Test',
+						additionalFields: {},
+					};
+					return get(params, param);
 				});
 
 				mockExecuteFunctions.continueOnFail.mockReturnValue(false);
-				const testError = new Error('API Error');
-				salesforceApiRequestSpy.mockRejectedValue(testError);
+
+				salesforceApiRequestSpy.mockRejectedValue(new Error('API Error'));
 
 				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('API Error');
 			});
@@ -3160,7 +3748,7 @@ describe('Salesforce', () => {
 						operation: 'query',
 						query: 'SELECT Id FROM Account',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestAllItemsSpy
@@ -3175,6 +3763,39 @@ describe('Salesforce', () => {
 	});
 
 	describe('Execute Method - Account Resource Extended Fields', () => {
+		describe('Account Add Note Operation', () => {
+			it('should set the note owner from the ownerId option', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'account',
+						operation: 'addNote',
+						accountId: 'acc123',
+						title: 'Important Note',
+						options: {
+							body: 'Note body',
+							ownerId: { __rl: true, mode: 'id', value: 'user789' },
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'note123', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/note',
+					expect.objectContaining({
+						Title: 'Important Note',
+						ParentId: 'acc123',
+						Body: 'Note body',
+						OwnerId: 'user789',
+					}),
+				);
+			});
+		});
+
 		describe('Account Create Operation - Additional Fields', () => {
 			it('should handle account create with all additional fields', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -3210,7 +3831,7 @@ describe('Salesforce', () => {
 							recordTypeId: 'rt123',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'acc123', success: true });
@@ -3264,7 +3885,7 @@ describe('Salesforce', () => {
 							},
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'acc123', success: true });
@@ -3292,7 +3913,7 @@ describe('Salesforce', () => {
 								type: 'Customer - Direct',
 							},
 						};
-						return params[param];
+						return get(params, param);
 					},
 				);
 
@@ -3328,7 +3949,7 @@ describe('Salesforce', () => {
 							owner: 'user123',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
@@ -3370,7 +3991,7 @@ describe('Salesforce', () => {
 							recurrenceRegeneratedType: 'RecurEvery',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
@@ -3412,7 +4033,7 @@ describe('Salesforce', () => {
 							},
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
@@ -3447,7 +4068,7 @@ describe('Salesforce', () => {
 							description: 'Updated description',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
@@ -3494,7 +4115,7 @@ describe('Salesforce', () => {
 							recurrenceRegeneratedType: 'RecurChild',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
@@ -3536,7 +4157,7 @@ describe('Salesforce', () => {
 							},
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'task123', success: true });
@@ -3553,7 +4174,7 @@ describe('Salesforce', () => {
 
 		describe('Task GetAll Operation - Query and Error Handling', () => {
 			it('should handle task getAll with limit', async () => {
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,Subject,Status FROM Task LIMIT 10');
 
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -3564,7 +4185,7 @@ describe('Salesforce', () => {
 						limit: 10,
 						options: { fields: 'Id,Subject,Status' },
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestAllItemsSpy.mockResolvedValue([
@@ -3600,7 +4221,7 @@ describe('Salesforce', () => {
 			});
 
 			it('should handle task getAll operation error handling', async () => {
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id FROM Task LIMIT 5');
 
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -3611,7 +4232,7 @@ describe('Salesforce', () => {
 						limit: 5,
 						options: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const testError = new Error('Query failed');
@@ -3647,7 +4268,7 @@ describe('Salesforce', () => {
 						binaryPropertyName: 'data',
 						additionalFields: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'att123', success: true });
@@ -3691,7 +4312,7 @@ describe('Salesforce', () => {
 							isPrivate: true,
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'att456', success: true });
@@ -3726,7 +4347,7 @@ describe('Salesforce', () => {
 						binaryPropertyName: 'nonexistent',
 						additionalFields: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
@@ -3763,7 +4384,7 @@ describe('Salesforce', () => {
 							isPrivate: false,
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'att123', success: true });
@@ -3803,7 +4424,7 @@ describe('Salesforce', () => {
 							description: 'Updated description',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'att123', success: true });
@@ -3837,7 +4458,7 @@ describe('Salesforce', () => {
 							binaryPropertyName: 'missing',
 						},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
@@ -3854,7 +4475,7 @@ describe('Salesforce', () => {
 						operation: 'get',
 						attachmentId: 'att123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockAttachment = {
@@ -3875,7 +4496,7 @@ describe('Salesforce', () => {
 
 		describe('Attachment GetAll Operation', () => {
 			it('should handle attachment getAll with returnAll true', async () => {
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,Name,ParentId FROM Attachment');
 
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -3885,7 +4506,7 @@ describe('Salesforce', () => {
 						returnAll: true,
 						options: { fields: 'Id,Name,ParentId' },
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockAttachments = [
@@ -3922,7 +4543,7 @@ describe('Salesforce', () => {
 			});
 
 			it('should handle attachment getAll with limit', async () => {
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id,Name FROM Attachment LIMIT 5');
 
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -3933,7 +4554,7 @@ describe('Salesforce', () => {
 						limit: 5,
 						options: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestAllItemsSpy.mockResolvedValue([{ Id: 'att1', Name: 'File 1' }]);
@@ -3944,7 +4565,7 @@ describe('Salesforce', () => {
 			});
 
 			it('should handle attachment getAll operation error handling', async () => {
-				const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+				const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 				getQuerySpy.mockReturnValue('SELECT Id FROM Attachment');
 
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -3954,7 +4575,7 @@ describe('Salesforce', () => {
 						returnAll: true,
 						options: {},
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const testError = new Error('Query execution failed');
@@ -3974,7 +4595,7 @@ describe('Salesforce', () => {
 						operation: 'delete',
 						attachmentId: 'att123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				salesforceApiRequestSpy.mockResolvedValue({ id: 'att123', success: true });
@@ -3996,7 +4617,7 @@ describe('Salesforce', () => {
 						operation: 'delete',
 						attachmentId: 'att123',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const testError = new Error('Delete operation failed');
@@ -4015,7 +4636,7 @@ describe('Salesforce', () => {
 						resource: 'attachment',
 						operation: 'getSummary',
 					};
-					return params[param];
+					return get(params, param);
 				});
 
 				const mockSummary = {
@@ -4039,7 +4660,7 @@ describe('Salesforce', () => {
 	// Coverage for the 9 getAll call sites that previously had no test (Contact limit,
 	// CustomObject limit, Opportunity returnAll/limit, Account returnAll/limit, Task
 	// returnAll, User returnAll/limit) and end-to-end verification that the SF node's
-	// typeVersion is threaded into getQuery (NODE-5116 version-gate wiring).
+	// typeVersion is threaded into getQuery (version-gate wiring).
 	describe('Execute Method - GetAll Query Wiring', () => {
 		const mockGetAll = (resource: string, returnAll: boolean, limit?: number, options = {}) => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
@@ -4051,13 +4672,13 @@ describe('Salesforce', () => {
 					options,
 					customObject: 'CustomObject__c',
 				};
-				return params[param];
+				return get(params, param);
 			});
 		};
 
 		it('should call getQuery for contact getAll with limit', async () => {
 			mockGetAll('contact', false, 25);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM Contact LIMIT 25');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4068,7 +4689,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for customObject getAll with limit', async () => {
 			mockGetAll('customObject', false, 10);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM CustomObject__c LIMIT 10');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4079,7 +4700,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for opportunity getAll with returnAll', async () => {
 			mockGetAll('opportunity', true, undefined, { fields: 'Id,Name' });
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT Id,Name FROM Opportunity');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4090,7 +4711,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for opportunity getAll with limit', async () => {
 			mockGetAll('opportunity', false, 5);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM Opportunity LIMIT 5');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4101,7 +4722,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for account getAll with returnAll', async () => {
 			mockGetAll('account', true, undefined, { fields: 'Id,Name,Type' });
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT Id,Name,Type FROM Account');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4112,7 +4733,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for account getAll with limit', async () => {
 			mockGetAll('account', false, 15);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM Account LIMIT 15');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4123,7 +4744,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for task getAll with returnAll', async () => {
 			mockGetAll('task', true, undefined, { fields: 'Id,Subject' });
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT Id,Subject FROM Task');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4134,7 +4755,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for user getAll with returnAll', async () => {
 			mockGetAll('user', true, undefined, { fields: 'Id,Name,Email' });
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT Id,Name,Email FROM User');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4145,7 +4766,7 @@ describe('Salesforce', () => {
 
 		it('should call getQuery for user getAll with limit', async () => {
 			mockGetAll('user', false, 20);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM User LIMIT 20');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
@@ -4156,16 +4777,74 @@ describe('Salesforce', () => {
 
 		it('should pass typeVersion 1.1 to getQuery when the node is on the new version', async () => {
 			// End-to-end proof that getNode().typeVersion is threaded into getQuery,
-			// so a workflow created on v1.1 actually gets the NODE-5116 fix at runtime.
+			// so a workflow created on v1.1 actually gets the fix at runtime.
 			mockNode.typeVersion = 1.1;
 			mockGetAll('lead', false, 10);
-			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			const getQuerySpy = vi.spyOn(GenericFunctions, 'getQuery');
 			getQuerySpy.mockReturnValue('SELECT * FROM Lead LIMIT 10');
 			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
 
 			await node.execute.call(mockExecuteFunctions);
 
 			expect(getQuerySpy).toHaveBeenCalledWith({}, 'Lead', false, 10, 1.1);
+		});
+	});
+
+	describe('Error output routing (onError)', () => {
+		const buildApiError = () =>
+			Object.assign(new Error('Bad request - please check your parameters'), {
+				description: 'Lead can\'t be created with the domain name "loopwork.co"',
+				httpCode: '400',
+				context: { errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION', fields: null },
+			});
+
+		const expectedErrorJson = {
+			error: 'Bad request - please check your parameters',
+			description: 'Lead can\'t be created with the domain name "loopwork.co"',
+			httpCode: '400',
+			errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+			fields: null,
+		};
+
+		beforeEach(() => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { testData: 'value' } }]);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+				const params: Record<string, unknown> = {
+					resource: 'lead',
+					operation: 'create',
+					company: 'Test Company',
+					lastname: 'Test Lead',
+					additionalFields: {},
+				};
+				return params[param];
+			});
+		});
+
+		it('should attach the error to the item so it routes to the error output with continueErrorOutput', async () => {
+			mockNode.onError = 'continueErrorOutput';
+			const apiError = buildApiError();
+			salesforceApiRequestSpy.mockRejectedValue(apiError);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+			const item = result[0][0];
+
+			expect(item.error).toBe(apiError);
+			expect(item.json).toEqual(expectedErrorJson);
+			expect(item.pairedItem).toEqual({ item: 0 });
+		});
+
+		it('should keep the error payload on the regular output without an error marker with continueRegularOutput', async () => {
+			mockNode.onError = 'continueRegularOutput';
+			const apiError = buildApiError();
+			salesforceApiRequestSpy.mockRejectedValue(apiError);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+			const item = result[0][0];
+
+			expect(item.error).toBeUndefined();
+			expect(item.json).toEqual(expectedErrorJson);
+			expect(item.pairedItem).toEqual({ item: 0 });
 		});
 	});
 });

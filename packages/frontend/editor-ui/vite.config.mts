@@ -2,13 +2,13 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { codecovVitePlugin } from '@codecov/vite-plugin';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
+import { lucideIconsPlugin } from '../@n8n/design-system/src/icons/lucide/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
 import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
@@ -52,8 +52,16 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
 	},
 	{
+		find: /^@n8n\/frontend-module-sdk$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'frontend-module-sdk', 'src/index.ts'),
+	},
+	{
 		find: /^@n8n\/constants(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
+	},
+	{
+		find: /^@n8n\/design-system$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src/index.ts'),
 	},
 	{
 		find: /^@n8n\/design-system(.+)$/,
@@ -90,6 +98,7 @@ const { RELEASE: release } = process.env;
 
 const plugins: UserConfig['plugins'] = [
 	nodePopularityPlugin(),
+	lucideIconsPlugin(),
 	icons({
 		compiler: 'vue3',
 		autoInstall: NODE_ENV === 'development',
@@ -156,9 +165,9 @@ const plugins: UserConfig['plugins'] = [
 		},
 	},
 	// For sanitize-html
-	nodePolyfills({
-		include: ['fs', 'path', 'url', 'util', 'timers'],
-	}),
+	// nodePolyfills({
+	// 	include: ['fs', 'path', 'url', 'util', 'timers'],
+	// }),
 	{
 		name: 'i18n-locales-hmr',
 		configureServer(server) {
@@ -221,7 +230,7 @@ export default mergeConfig(
 		base: publicPath,
 		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 		css: {
-			preprocessorMaxWorkers: true,
+			preprocessorMaxWorkers: 2,
 			preprocessorOptions: {
 				scss: {
 					additionalData: [

@@ -68,6 +68,14 @@ describe('findMockQuirks (real registry)', () => {
 		expect(findMockQuirks('Stripe', 'POST', '/v1/charges')).toEqual([]);
 	});
 
+	it('returns Anthropic guidance requiring content-block arrays for /v1/messages', () => {
+		const guidance = findMockQuirks('Anthropic', 'POST', '/v1/messages');
+		expect(guidance.length).toBeGreaterThan(0);
+		const text = guidance.join('\n');
+		expect(text).toMatch(/content.*MUST be an ARRAY/i);
+		expect(text).toMatch(/NEVER a plain string/i);
+	});
+
 	describe('binary / file quirks', () => {
 		it('returns Telegram guidance that documents both bot-API and file-CDN shapes', () => {
 			const guidance = findMockQuirks('Telegram', 'GET', '/bot123/getFile');
@@ -82,6 +90,24 @@ describe('findMockQuirks (real registry)', () => {
 			expect(guidance.length).toBeGreaterThan(0);
 			expect(guidance.join('\n')).toMatch(/transcriptions/);
 			expect(guidance.join('\n')).toMatch(/images\/generations/);
+		});
+
+		it('requires b64_json (never url) for the gpt-image-1 family on image generations', () => {
+			// gpt-image-1 / gpt-image-1-mini always return b64_json and never a url;
+			// the mock must not default them to a url response.
+			const guidance = findMockQuirks('Openai', 'POST', '/v1/images/generations').join('\n');
+			expect(guidance).toMatch(/gpt-image-1/);
+			expect(guidance).toMatch(/b64_json/);
+			// The gpt-image-1 rule must be stated as always-b64_json, not gated on response_format.
+			expect(guidance).toMatch(/gpt-image-1[\s\S]*b64_json/);
+		});
+
+		it('steers image generations to a JSON envelope with a data array, never raw binary', () => {
+			// The endpoint returns JSON with a `data` ARRAY of image objects — the mock
+			// must not return a binary/Buffer response (crashes the node with "data is not iterable").
+			const guidance = findMockQuirks('Openai', 'POST', '/v1/images/generations').join('\n');
+			expect(guidance).toMatch(/never.*binary|not.*binary|NEVER a binary/i);
+			expect(guidance).toMatch(/array/i);
 		});
 
 		it('returns Googleapis guidance that names alt=media as the binary marker', () => {

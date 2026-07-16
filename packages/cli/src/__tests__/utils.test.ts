@@ -1,4 +1,4 @@
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { INodeType } from 'n8n-workflow';
 
 import {
@@ -7,7 +7,21 @@ import {
 	isWorkflowIdValid,
 	setMicrosoftObservabilityDefaults,
 	containsExpression,
+	stripToolSuffix,
 } from '../utils';
+
+describe('stripToolSuffix', () => {
+	it.each([
+		['@n8n/n8n-nodes-langchain.openAi', '@n8n/n8n-nodes-langchain.openAi'],
+		['@n8n/n8n-nodes-langchain.openAiTool', '@n8n/n8n-nodes-langchain.openAi'],
+		['@n8n/n8n-nodes-langchain.openAiHitlTool', '@n8n/n8n-nodes-langchain.openAi'],
+		['@n8n/n8n-nodes-langchain.slackTool', '@n8n/n8n-nodes-langchain.slack'],
+		['plain', 'plain'],
+		['n8n-nodes-base.set', 'n8n-nodes-base.set'],
+	])('strips %s -> %s', (input, expected) => {
+		expect(stripToolSuffix(input)).toBe(expected);
+	});
+});
 
 describe('shouldAssignExecuteMethod', () => {
 	it('should return true when node has no execute, poll, trigger, webhook (unless declarative), or methods', () => {
@@ -25,7 +39,7 @@ describe('shouldAssignExecuteMethod', () => {
 
 	it('should return false when node has execute', () => {
 		const nodeType = {
-			execute: jest.fn(),
+			execute: vi.fn(),
 		} as unknown as INodeType;
 
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(false);
@@ -33,7 +47,7 @@ describe('shouldAssignExecuteMethod', () => {
 
 	it('should return false when node has poll', () => {
 		const nodeType = {
-			poll: jest.fn(),
+			poll: vi.fn(),
 		} as unknown as INodeType;
 
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(false);
@@ -41,7 +55,7 @@ describe('shouldAssignExecuteMethod', () => {
 
 	it('should return false when node has trigger', () => {
 		const nodeType = {
-			trigger: jest.fn(),
+			trigger: vi.fn(),
 		} as unknown as INodeType;
 
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(false);
@@ -50,7 +64,7 @@ describe('shouldAssignExecuteMethod', () => {
 	it('should return false when node has webhook and is not declarative', () => {
 		const nodeType = {
 			description: {},
-			webhook: jest.fn(),
+			webhook: vi.fn(),
 		} as unknown as INodeType;
 
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(false);
@@ -59,7 +73,7 @@ describe('shouldAssignExecuteMethod', () => {
 	it('should return true when node has webhook but is declarative', () => {
 		const nodeType = {
 			description: { requestDefaults: {} }, // Declarative node
-			webhook: jest.fn(),
+			webhook: vi.fn(),
 		} as unknown as INodeType;
 
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(true);
@@ -246,7 +260,7 @@ describe('setMicrosoftObservabilityDefaults', () => {
 	const originalEnv = process.env;
 
 	beforeEach(() => {
-		jest.resetModules();
+		vi.resetModules();
 		process.env = { ...originalEnv };
 	});
 

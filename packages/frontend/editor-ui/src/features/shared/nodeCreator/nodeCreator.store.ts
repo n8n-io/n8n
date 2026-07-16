@@ -20,9 +20,11 @@ import { defineStore } from 'pinia';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 import type { TelemetryNdvType } from '@/app/types/telemetry';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { isVueFlowConnection } from '@/app/utils/typeGuards';
@@ -47,8 +49,8 @@ import {
 } from '@/app/stores/workflowDocument.store';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
-	const workflowsStore = useWorkflowsStore();
-	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
+	const routeWorkflowId = useRouteWorkflowId();
+	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(routeWorkflowId.value)));
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const telemetry = useTelemetry();
@@ -355,6 +357,13 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		workflow_id?: string;
 	}) {
 		resetNodesPanelSession();
+
+		// Warm up the AI Gateway config so the n8n Connect search boost has the
+		// supported-node list by the time the user types. Cached after first load.
+		if (useSettingsStore().isAiGatewayEnabled) {
+			void useAiGatewayStore().fetchConfig();
+		}
+
 		trackNodeCreatorEvent('User opened nodes panel', {
 			source,
 			mode,
@@ -443,6 +452,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		});
 	}
 
+	function onAgentPanelOptionSelected(properties: { choice: 'create_new' | 'existing_agent' }) {
+		trackNodeCreatorEvent('User selected agent in node creator panel', properties);
+	}
+
 	function onNodeAddedToCanvas(properties: {
 		node_id: string;
 		node_type: string;
@@ -497,6 +510,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		onActionsCustomAPIClicked,
 		onViewActions,
 		onSubcategorySelected,
+		onAgentPanelOptionSelected,
 		onNodeAddedToCanvas,
 		openNodeCreatorWithNode,
 	};
