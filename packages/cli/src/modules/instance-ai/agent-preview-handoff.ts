@@ -15,6 +15,16 @@ export type AgentPreviewHandoffResult = {
 	target: { agentId: string; projectId: string };
 };
 
+const ESCAPED_AGENT_PREVIEW_CONTEXT_OPEN_TAG = '&lt;agent-preview-context&gt;';
+const ESCAPED_AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '&lt;/agent-preview-context&gt;';
+
+/** Neutralize delimiter tags in title-derived text placed inside the context block. */
+function escapeAgentPreviewContextDelimiters(value: string): string {
+	return value
+		.replaceAll(AGENT_PREVIEW_CONTEXT_OPEN_TAG, ESCAPED_AGENT_PREVIEW_CONTEXT_OPEN_TAG)
+		.replaceAll(AGENT_PREVIEW_CONTEXT_CLOSE_TAG, ESCAPED_AGENT_PREVIEW_CONTEXT_CLOSE_TAG);
+}
+
 /**
  * Resolve an agent-preview handoff reference into an LLM-facing context block.
  * The block is a reference only — it does NOT embed the transcript. The
@@ -47,6 +57,7 @@ export async function resolveAgentPreviewHandoff(
 		trimmedTitle.length > 0
 			? `"${trimmedTitle}" (session #${detail.thread.sessionNumber})`
 			: `session #${detail.thread.sessionNumber}`;
+	const safeSessionLabel = escapeAgentPreviewContextDelimiters(sessionLabel);
 
 	const refJson = JSON.stringify({
 		source: context.source,
@@ -59,7 +70,7 @@ export async function resolveAgentPreviewHandoff(
 	});
 
 	const prose = [
-		`The user shared a real preview-chat transcript for agent \`${context.agentId}\` (${sessionLabel}).`,
+		`The user shared a real preview-chat transcript for agent \`${context.agentId}\` (${safeSessionLabel}).`,
 		'Call `get-session` to read the transcript before commenting on the agent.',
 		'For review/analysis requests (e.g. "review the tone", "assess behavior"), answer directly from the transcript — do NOT modify the agent.',
 		'Only call `build-agent` when the user explicitly asks to update, improve, or fix the agent. The builder sub-agent cannot see this chat — pass `agentId` and the relevant findings from the transcript in `message`.',
