@@ -252,7 +252,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 		it('shows the pinned description panel with the description text', () => {
 			const visibility = useCanvasNodeGroupDescriptionVisibility({
 				workflowId: () => 'wf-1',
-				getCurrentGroupIds: () => ['g1'],
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
 				onNodeGroupsChange: () => ({ off: () => {} }),
 			});
 			visibility.setVisible('g1', true);
@@ -270,7 +270,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 		it('unpins the description when the pin button is clicked', async () => {
 			const visibility = useCanvasNodeGroupDescriptionVisibility({
 				workflowId: () => 'wf-1',
-				getCurrentGroupIds: () => ['g1'],
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
 				onNodeGroupsChange: () => ({ off: () => {} }),
 			});
 			visibility.setVisible('g1', true);
@@ -284,7 +284,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 		it('starts editing when the edit icon is clicked', async () => {
 			const visibility = useCanvasNodeGroupDescriptionVisibility({
 				workflowId: () => 'wf-1',
-				getCurrentGroupIds: () => ['g1'],
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
 				onNodeGroupsChange: () => ({ off: () => {} }),
 			});
 			visibility.setVisible('g1', true);
@@ -298,7 +298,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 		it('emits update:description when editing from the pinned panel', async () => {
 			const visibility = useCanvasNodeGroupDescriptionVisibility({
 				workflowId: () => 'wf-1',
-				getCurrentGroupIds: () => ['g1'],
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
 				onNodeGroupsChange: () => ({ off: () => {} }),
 			});
 			visibility.setVisible('g1', true);
@@ -315,7 +315,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 		it('emits update:description when Enter is pressed', async () => {
 			const visibility = useCanvasNodeGroupDescriptionVisibility({
 				workflowId: () => 'wf-1',
-				getCurrentGroupIds: () => ['g1'],
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
 				onNodeGroupsChange: () => ({ off: () => {} }),
 			});
 			visibility.setVisible('g1', true);
@@ -333,7 +333,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 		it('keeps editing and does not commit on Shift+Enter', async () => {
 			const visibility = useCanvasNodeGroupDescriptionVisibility({
 				workflowId: () => 'wf-1',
-				getCurrentGroupIds: () => ['g1'],
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
 				onNodeGroupsChange: () => ({ off: () => {} }),
 			});
 			visibility.setVisible('g1', true);
@@ -351,7 +351,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 		it('discards edits when cancel is clicked', async () => {
 			const visibility = useCanvasNodeGroupDescriptionVisibility({
 				workflowId: () => 'wf-1',
-				getCurrentGroupIds: () => ['g1'],
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
 				onNodeGroupsChange: () => ({ off: () => {} }),
 			});
 			visibility.setVisible('g1', true);

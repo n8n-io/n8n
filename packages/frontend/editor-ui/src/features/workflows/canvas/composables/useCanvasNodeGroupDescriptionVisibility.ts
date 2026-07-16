@@ -1,4 +1,5 @@
 import { computed, ref, type InjectionKey } from 'vue';
+import type { IWorkflowGroup } from 'n8n-workflow';
 import type { NodeGroupChangeEvent } from '@/app/stores/workflowDocument/useWorkflowDocumentNodeGroups';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 import { LOCAL_STORAGE_CANVAS_GROUP_DESCRIPTION_PINNED } from '@/app/constants/localStorage';
@@ -7,8 +8,13 @@ import { useNodeGroupsSubscription } from './useNodeGroupsSubscription';
 
 export interface UseCanvasNodeGroupDescriptionVisibilityDeps {
 	workflowId: () => string;
-	getCurrentGroupIds: () => string[];
+	getCurrentGroups: () => IWorkflowGroup[];
 	onNodeGroupsChange: (handler: (event: NodeGroupChangeEvent) => void) => { off: () => void };
+}
+
+// Only a group that still exists and has text to show can stay pinned.
+function hasDescription(group: Pick<IWorkflowGroup, 'description'>): boolean {
+	return Boolean(group.description?.trim());
 }
 
 export type CanvasNodeGroupDescriptionVisibility = ReturnType<
@@ -58,19 +64,20 @@ export function useCanvasNodeGroupDescriptionVisibility(
 		setVisible(id, false);
 	}
 
-	// Load the persisted set for the current workflow, dropping ids whose group
-	// no longer exists.
-	function restore(presentIds: Set<string>) {
+	// Load the persisted set for the current workflow, keeping only groups that
+	// still exist and still have a description to show.
+	function restore(groups: IWorkflowGroup[]) {
+		const pinnable = new Set(groups.filter(hasDescription).map((group) => group.id));
 		const stored = storage.read(deps.workflowId());
-		visibleIds.value = new Set(stored.filter((id) => presentIds.has(id)));
+		visibleIds.value = new Set(stored.filter((id) => pinnable.has(id)));
 	}
 
 	function handleNodeGroupsChange(event: NodeGroupChangeEvent) {
 		if (event.action === CHANGE_ACTION.SET) {
-			restore(new Set(event.payload.groups.map((group) => group.id)));
+			restore(event.payload.groups);
 		} else if (event.action === CHANGE_ACTION.UPDATE) {
 			// A description cleared to empty has nothing left to pin open.
-			if (!event.payload.group.description?.trim()) {
+			if (!hasDescription(event.payload.group)) {
 				removeDeleted(event.payload.group.id);
 			}
 		} else if (event.action === CHANGE_ACTION.DELETE) {
@@ -81,7 +88,7 @@ export function useCanvasNodeGroupDescriptionVisibility(
 	const { reinitialize } = useNodeGroupsSubscription({
 		onNodeGroupsChange: deps.onNodeGroupsChange,
 		onChange: handleNodeGroupsChange,
-		onRebind: () => restore(new Set(deps.getCurrentGroupIds())),
+		onRebind: () => restore(deps.getCurrentGroups()),
 	});
 
 	return {

@@ -110,7 +110,7 @@ const nodeGroupView = useCanvasNodeGroupView({
 
 const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility({
 	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
-	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
+	getCurrentGroups: () => workflowDocumentStore.value.allGroups,
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 });
 

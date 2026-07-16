@@ -9,10 +9,14 @@ import type { NodeGroupChangeEvent } from '@/app/stores/workflowDocument/useWork
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 import { LOCAL_STORAGE_CANVAS_GROUP_DESCRIPTION_PINNED } from '@/app/constants/localStorage';
 
+function makeGroup(overrides: Partial<IWorkflowGroup> = {}): IWorkflowGroup {
+	return { id: 'g1', name: 'G', nodeIds: [], description: 'desc', ...overrides };
+}
+
 function makeVisibility(deps: Partial<UseCanvasNodeGroupDescriptionVisibilityDeps> = {}) {
 	return useCanvasNodeGroupDescriptionVisibility({
 		workflowId: () => 'wf-1',
-		getCurrentGroupIds: () => [],
+		getCurrentGroups: () => [],
 		onNodeGroupsChange: () => ({ off: () => {} }),
 		...deps,
 	});
@@ -64,16 +68,26 @@ describe('useCanvasNodeGroupDescriptionVisibility', () => {
 		setStore({ 'wf-1': ['g1', 'g2'] });
 
 		// g2 is not present in the current workflow and should be pruned.
-		const visibility = makeVisibility({ getCurrentGroupIds: () => ['g1'] });
+		const visibility = makeVisibility({ getCurrentGroups: () => [makeGroup({ id: 'g1' })] });
 
 		expect(visibility.isVisible('g1')).toBe(true);
 		expect(visibility.isVisible('g2')).toBe(false);
 	});
 
+	it('drops a persisted pin whose group no longer has a description', () => {
+		setStore({ 'wf-1': ['g1'] });
+
+		const visibility = makeVisibility({
+			getCurrentGroups: () => [makeGroup({ id: 'g1', description: '' })],
+		});
+
+		expect(visibility.isVisible('g1')).toBe(false);
+	});
+
 	it('does not read another workflow’s pinned ids', () => {
 		setStore({ 'wf-2': ['g1'] });
 
-		const visibility = makeVisibility({ getCurrentGroupIds: () => ['g1'] });
+		const visibility = makeVisibility({ getCurrentGroups: () => [makeGroup({ id: 'g1' })] });
 
 		expect(visibility.isVisible('g1')).toBe(false);
 	});
@@ -90,8 +104,7 @@ describe('useCanvasNodeGroupDescriptionVisibility', () => {
 
 		expect(visibility.isVisible('g1')).toBe(false);
 
-		const group: IWorkflowGroup = { id: 'g1', name: 'G', nodeIds: [] };
-		handler?.({ action: CHANGE_ACTION.SET, payload: { groups: [group] } });
+		handler?.({ action: CHANGE_ACTION.SET, payload: { groups: [makeGroup({ id: 'g1' })] } });
 
 		expect(visibility.isVisible('g1')).toBe(true);
 	});
