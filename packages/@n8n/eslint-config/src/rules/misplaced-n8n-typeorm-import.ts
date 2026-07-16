@@ -15,7 +15,12 @@ export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs
 	create(context) {
 		return {
 			ImportDeclaration(node) {
-				if (node.source.value === '@n8n/typeorm' && !context.filename.includes('@n8n/db')) {
+				const source = node.source.value;
+				if (
+					typeof source === 'string' &&
+					(source === '@n8n/typeorm' || source.startsWith('@n8n/typeorm/')) &&
+					!context.filename.includes('@n8n/db')
+				) {
 					context.report({ node, messageId: 'moveImport' });
 				}
 			},

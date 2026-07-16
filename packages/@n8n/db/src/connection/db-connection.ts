@@ -15,6 +15,8 @@ import { DbConnectionOptions } from './db-connection-options';
 import { readPoolStats, type DbPoolStats } from './db-pool-stats';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
+import { TransactionRunner } from '../services/transaction';
+import { TypeOrmTransactionRunner } from '../services/typeorm-transaction';
 
 type ConnectionState = {
 	connected: boolean;
@@ -41,6 +43,9 @@ export class DbConnection {
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);
+		// Bind the TransactionRunner port to its TypeORM implementation so business logic
+		// can inject the abstract port without knowing the adapter.
+		Container.set(TransactionRunner, Container.get(TypeOrmTransactionRunner));
 	}
 
 	@Memoized
