@@ -7,7 +7,6 @@ import { mock } from 'vitest-mock-extended';
 import type { NodeCatalogService } from '@/node-catalog';
 
 import type { InstanceAiCreditService } from '../../../instance-ai/instance-ai-credit.service';
-import type { InstanceAiModelService } from '../../../instance-ai/instance-ai-model.service';
 import type { AgentsService } from '../../agents.service';
 import type { Agent as AgentEntity } from '../../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
@@ -156,16 +155,12 @@ function setup(
 	const nodeCatalogService = mock<NodeCatalogService>();
 	const agentsBuilderToolsService = mock<AgentsBuilderToolsService>();
 	const n8nMemory = mock<N8nMemory>();
-	const instanceAiModelService = mock<InstanceAiModelService>();
 	const instanceAiCreditService = mock<InstanceAiCreditService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 	const agentCheckpointRepository = mock<AgentCheckpointRepository>();
 	const agentsConfig = mock<AgentsConfig>();
 
 	nodeCatalogService.initialize.mockResolvedValue(undefined);
-	instanceAiModelService.resolveBuilderMemoryModelConfig.mockResolvedValue(
-		'anthropic/claude-haiku-4-5-20251001',
-	);
 	agentsBuilderToolsService.getTools.mockReturnValue(standardTools);
 
 	const memoryImplementation = mock<N8nMemoryImpl>();
@@ -187,7 +182,6 @@ function setup(
 		nodeCatalogService,
 		agentsBuilderToolsService,
 		n8nMemory,
-		instanceAiModelService,
 		instanceAiCreditService,
 		n8nCheckpointStorage,
 		agentCheckpointRepository,
@@ -204,7 +198,6 @@ function setup(
 		user,
 		credentialProvider,
 		agentsBuilderToolsService,
-		instanceAiModelService,
 		instanceAiCreditService,
 		n8nCheckpointStorage,
 	};
@@ -350,23 +343,21 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.memoryTaskObserverCalls).toEqual([]);
 	});
 
-	it('constructs Haiku-backed observer/reflector callbacks and claims usage under the host thread/run/target-agent dedupe key', async () => {
-		const { service, user, credentialProvider, instanceAiModelService, instanceAiCreditService } =
-			setup();
+	it('constructs observer/reflector callbacks on the builder model and claims usage under the host thread/run/target-agent dedupe key', async () => {
+		const { service, user, credentialProvider, instanceAiCreditService } = setup();
 
 		await drain(
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
 		);
 
-		expect(instanceAiModelService.resolveBuilderMemoryModelConfig).toHaveBeenCalledWith(user);
 		expect(agentsSdkMocks.observationalMemoryCalls).toHaveLength(1);
 		const { observe, reflect } = agentsSdkMocks.observationalMemoryCalls[0];
-		expect(observe.model).toBe('anthropic/claude-haiku-4-5-20251001');
-		expect(reflect.model).toBe('anthropic/claude-haiku-4-5-20251001');
+		expect(observe.model).toBe(baseSession.modelConfig);
+		expect(reflect.model).toBe(baseSession.modelConfig);
 
 		await observe.options.onUsage({
 			task: 'observer',
-			model: 'anthropic/claude-haiku-4-5-20251001',
+			model: baseSession.modelConfig,
 			usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
 			reportId: 'report-1',
 		});
@@ -377,30 +368,6 @@ describe('AgentsBuilderService session isolation', () => {
 			'run-1:agent-builder:agent-1:memory:observer:report-1',
 			expect.arrayContaining([expect.objectContaining({ type: 'llmTokens' })]),
 			'completed',
-		);
-	});
-
-	it('falls back to the builder model when preferred memory-model resolution fails', async () => {
-		const { service, user, credentialProvider, instanceAiModelService, logger } = setup();
-		instanceAiModelService.resolveBuilderMemoryModelConfig.mockRejectedValue(
-			new Error('lookup failed'),
-		);
-
-		await expect(
-			drain(
-				service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
-			),
-		).resolves.toBeDefined();
-
-		expect(agentsSdkMocks.observationalMemoryCalls).toHaveLength(1);
-		const { observe, reflect } = agentsSdkMocks.observationalMemoryCalls[0];
-		expect(observe.model).toBe(baseSession.modelConfig);
-		expect(reflect.model).toBe(baseSession.modelConfig);
-		expect(agentsSdkMocks.modelCalls).toEqual([baseSession.modelConfig]);
-
-		expect(logger.warn).toHaveBeenCalledWith(
-			'Failed to resolve preferred agent-builder memory model; using builder model',
-			{ agentId: 'agent-1', runId: 'run-1', error: 'lookup failed' },
 		);
 	});
 });

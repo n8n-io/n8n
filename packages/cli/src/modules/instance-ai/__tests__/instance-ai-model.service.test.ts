@@ -102,40 +102,4 @@ describe('InstanceAiModelService', () => {
 			);
 		});
 	});
-
-	describe('resolveBuilderMemoryModelConfig', () => {
-		it('should override the proxy model name with Haiku 4.5 when the proxy is active', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
-			const client = createClient();
-			aiService.getClient.mockResolvedValue(client as never);
-			const resolveProxyModel = vi
-				.spyOn(service, 'resolveProxyModel')
-				.mockResolvedValue('model' as never);
-
-			await service.resolveBuilderMemoryModelConfig(fakeUser);
-
-			expect(resolveProxyModel).toHaveBeenCalledWith(
-				fakeUser,
-				'https://proxy.base',
-				expect.anything(),
-				'claude-haiku-4-5-20251001',
-			);
-		});
-
-		it('should swap only the model name to Haiku for a direct anthropic config, and return undefined for a non-anthropic config', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-
-			settingsService.resolveModelConfig.mockResolvedValue({
-				id: 'anthropic/claude-sonnet-4-5',
-				apiKey: 'k',
-			} as never);
-			await expect(service.resolveBuilderMemoryModelConfig(fakeUser)).resolves.toEqual({
-				id: 'anthropic/claude-haiku-4-5-20251001',
-				apiKey: 'k',
-			});
-
-			settingsService.resolveModelConfig.mockResolvedValue('openai/gpt-4o' as never);
-			await expect(service.resolveBuilderMemoryModelConfig(fakeUser)).resolves.toBeUndefined();
-		});
-	});
 });

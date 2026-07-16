@@ -24,7 +24,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
 
 import { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
-import { InstanceAiModelService } from '../../instance-ai/instance-ai-model.service';
 import { AgentsService } from '../agents.service';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
@@ -83,7 +82,6 @@ export class AgentsBuilderService {
 		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly n8nMemory: N8nMemory,
-		private readonly instanceAiModelService: InstanceAiModelService,
 		private readonly instanceAiCreditService: InstanceAiCreditService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
@@ -251,26 +249,6 @@ export class AgentsBuilderService {
 
 		const { Agent, Memory } = await import('@n8n/agents');
 
-		// Builder observational memory is summarization work, not the build
-		// itself, so it runs on Haiku 4.5 when the host is Anthropic-compatible;
-		// otherwise fall back to the run's own model. The lookup is a best-effort
-		// optimization — a failure here (proxy setup, credential resolution, etc.)
-		// must not abort the build itself, so it falls back to the builder model.
-		let memoryModel = modelConfig;
-		try {
-			const preferredMemoryModel =
-				await this.instanceAiModelService.resolveBuilderMemoryModelConfig(user);
-			if (preferredMemoryModel) memoryModel = preferredMemoryModel;
-		} catch (error) {
-			this.logger.warn(
-				'Failed to resolve preferred agent-builder memory model; using builder model',
-				{
-					agentId,
-					runId: session.runId,
-					error: error instanceof Error ? error.message : String(error),
-				},
-			);
-		}
 		const onMemoryUsage = async (report: MemoryTaskUsageReport) => {
 			try {
 				const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
@@ -296,8 +274,8 @@ export class AgentsBuilderService {
 		const builderMemory = new Memory()
 			.storage(this.n8nMemory.getImplementation(agentId))
 			.observationalMemory({
-				observe: createObservationLogObserveFn(memoryModel, { onUsage: onMemoryUsage }),
-				reflect: createObservationLogReflectFn(memoryModel, { onUsage: onMemoryUsage }),
+				observe: createObservationLogObserveFn(modelConfig, { onUsage: onMemoryUsage }),
+				reflect: createObservationLogReflectFn(modelConfig, { onUsage: onMemoryUsage }),
 			});
 
 		const builder = new Agent('agent-builder')

@@ -12,9 +12,6 @@ import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 
-/** Memory tasks (observer/reflector) are summarization work — a small fast model is deliberate. */
-const BUILDER_MEMORY_MODEL_NAME = 'claude-haiku-4-5-20251001';
-
 /**
  * Resolves the language model the Instance AI agent runs against and reports
  * the credit balance for the current user.
@@ -89,9 +86,8 @@ export class InstanceAiModelService {
 		user: User,
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
-		modelName?: string,
 	): Promise<ModelConfig> {
-		const resolvedModelName = modelName ?? this.settingsService.resolveModelName(user);
+		const modelName = this.settingsService.resolveModelName(user);
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
 		// Route through the proxy-aware transport so this path honours
 		// HTTP(S)_PROXY and the long AI timeout, same as the HTTP-proxy path.
@@ -113,7 +109,7 @@ export class InstanceAiModelService {
 				return await modelFetch(input, { ...init, headers });
 			},
 		});
-		return provider(resolvedModelName);
+		return provider(modelName);
 	}
 
 	/**
@@ -121,10 +117,7 @@ export class InstanceAiModelService {
 	 * with a proxy-aware fetch so the AI SDK routes through the proxy.
 	 * Returns undefined if no HTTP_PROXY is set or the model isn't anthropic.
 	 */
-	private async resolveHttpProxyModel(
-		user: User,
-		modelName?: string,
-	): Promise<ModelConfig | undefined> {
+	private async resolveHttpProxyModel(user: User): Promise<ModelConfig | undefined> {
 		// Only take over model construction when a proxy is configured; otherwise
 		// the regular model resolution path applies. Node's global `fetch` does
 		// not honour HTTP(S)_PROXY, hence the proxy-aware transport below.
@@ -136,7 +129,7 @@ export class InstanceAiModelService {
 		if (!modelId) return undefined;
 
 		const [provider, ...rest] = modelId.split('/');
-		const resolvedModelName = modelName ?? rest.join('/');
+		const modelName = rest.join('/');
 		const apiKey = typeof config === 'object' && 'apiKey' in config ? config.apiKey : undefined;
 		const baseURL = typeof config === 'object' && 'url' in config ? config.url : undefined;
 		if (provider !== 'anthropic') return undefined;
@@ -146,40 +139,7 @@ export class InstanceAiModelService {
 			apiKey,
 			baseURL: baseURL || undefined,
 			fetch: createAiProxyFetch(this.outboundHttp),
-		})(resolvedModelName);
-	}
-
-	/**
-	 * Resolve the model for the agent-builder sub-agent's observational-memory
-	 * tasks (a small fast model). Returns undefined when no Anthropic-compatible
-	 * path exists, in which case the builder's main model is used.
-	 */
-	async resolveBuilderMemoryModelConfig(user: User): Promise<ModelConfig | undefined> {
-		if (this.aiService.isProxyEnabled()) {
-			const client = await this.aiService.getClient();
-			const proxyBaseUrl = client.getApiProxyBaseUrl();
-			const tokenManager = new ProxyTokenManager(async () => {
-				return await client.getInstanceAiApiProxyToken(
-					{ id: user.id },
-					{ userMessageId: nanoid() },
-				);
-			});
-			return await this.resolveProxyModel(
-				user,
-				proxyBaseUrl,
-				tokenManager,
-				BUILDER_MEMORY_MODEL_NAME,
-			);
-		}
-		const httpProxyModel = await this.resolveHttpProxyModel(user, BUILDER_MEMORY_MODEL_NAME);
-		if (httpProxyModel) return httpProxyModel;
-
-		const config = await this.settingsService.resolveModelConfig(user);
-		const configId = typeof config === 'string' ? config : 'id' in config ? config.id : undefined;
-		if (typeof configId !== 'string' || !configId.startsWith('anthropic/')) return undefined;
-
-		const memoryId = `anthropic/${BUILDER_MEMORY_MODEL_NAME}`;
-		return typeof config === 'string' ? memoryId : { ...config, id: memoryId };
+		})(modelName);
 	}
 
 	/** Get current Instance AI credit usage from the AI service proxy. */
