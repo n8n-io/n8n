@@ -322,7 +322,7 @@ function formatSlackHistoryLine(
  */
 function sanitizeSlackHistoryText(text: string): string {
 	return text.replace(
-		/<(\/?)(slack_thread_history)>/gi,
+		/<(\/?)(slack_thread_history)\s*>/gi,
 		(_m, slash: string, name: string) => `[${slash}${name}]`,
 	);
 }
