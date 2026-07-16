@@ -2,16 +2,7 @@
 import type { AcceptableValue } from 'reka-ui';
 import { RadioGroupRoot } from 'reka-ui';
 import { reactiveOmit } from '@vueuse/core';
-import {
-	computed,
-	nextTick,
-	onBeforeUnmount,
-	onMounted,
-	ref,
-	useAttrs,
-	useTemplateRef,
-	watch,
-} from 'vue';
+import { computed, ref, useAttrs } from 'vue';
 
 import type { SegmentControlSize } from './SegmentControl.types';
 import SegmentControlItem from './SegmentControlItem.vue';
@@ -65,59 +56,37 @@ const serializedModelValue = computed(() =>
 const arrowKeyPressed = ref(false);
 const ARROW_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
+/**
+ * After keyboard selection the cursor may still sit over a segment, leaving a
+ * sticky :hover. Suppress hover until the pointer moves again.
+ */
+const suppressHover = ref(false);
+/** Ignore synthetic pointer events fired when focus/layout shifts under the cursor. */
+const canClearHover = ref(false);
+
 /** Last pointer event, so consumers like TabBar can read ctrl/meta for open-in-new-tab. */
 const lastPointerEvent = ref<MouseEvent>();
-
-const rootRef = useTemplateRef<HTMLElement>('rootRef');
-const indicatorReady = ref(false);
-const indicatorVisible = ref(false);
-const indicatorStyle = ref<Record<string, string>>({
-	width: '0px',
-	height: '0px',
-	transform: 'translate(0, 0)',
-});
-
-let resizeObserver: ResizeObserver | undefined;
-
-function updateIndicator() {
-	const root = rootRef.value;
-	if (!root) return;
-
-	const active = root.querySelector<HTMLElement>('[role="radio"][data-state="checked"]');
-	if (!active) {
-		indicatorVisible.value = false;
-		return;
-	}
-
-	const rootRect = root.getBoundingClientRect();
-	const activeRect = active.getBoundingClientRect();
-	// Absolute children are positioned against the padding box; rects include the border.
-	const offsetLeft = activeRect.left - rootRect.left - root.clientLeft;
-	const offsetTop = activeRect.top - rootRect.top - root.clientTop;
-
-	indicatorVisible.value = true;
-	indicatorStyle.value = {
-		width: `${activeRect.width}px`,
-		height: `${activeRect.height}px`,
-		transform: `translate(${offsetLeft}px, ${offsetTop}px)`,
-	};
-
-	if (!indicatorReady.value) {
-		// Defer enabling transitions until after the first paint position is applied.
-		requestAnimationFrame(() => {
-			indicatorReady.value = true;
-		});
-	}
-}
 
 function onKeyDownCapture(event: KeyboardEvent) {
 	if (ARROW_KEYS.includes(event.key)) {
 		arrowKeyPressed.value = true;
+		suppressHover.value = true;
+		canClearHover.value = false;
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				canClearHover.value = true;
+			});
+		});
 	}
 }
 
 function onKeyUp() {
 	arrowKeyPressed.value = false;
+}
+
+function onPointerInteract() {
+	if (!canClearHover.value) return;
+	suppressHover.value = false;
 }
 
 function onItemClickCapture(event: MouseEvent) {
@@ -151,48 +120,15 @@ function onUpdate(raw: AcceptableValue) {
 	lastPointerEvent.value = undefined;
 	emit('update:modelValue', option.value, event);
 }
-
-watch(
-	() => [props.modelValue, props.options, props.size, props.squareButtons, props.disabled] as const,
-	async () => {
-		await nextTick();
-		updateIndicator();
-	},
-);
-
-onMounted(() => {
-	updateIndicator();
-
-	const root = rootRef.value;
-	if (!root || typeof ResizeObserver === 'undefined') return;
-
-	resizeObserver = new ResizeObserver(() => {
-		updateIndicator();
-	});
-	resizeObserver.observe(root);
-});
-
-onBeforeUnmount(() => {
-	resizeObserver?.disconnect();
-});
 </script>
 
 <template>
 	<div
-		ref="rootRef"
 		:class="['n8n-segment-control', $style.segmentControl, disabled && $style.disabled, rootClass]"
+		:data-suppress-hover="suppressHover || undefined"
+		@pointermove="onPointerInteract"
+		@pointerdown="onPointerInteract"
 	>
-		<span
-			v-show="indicatorVisible"
-			aria-hidden="true"
-			data-test-id="segment-control-indicator"
-			:class="[
-				$style.indicator,
-				indicatorReady && $style.indicatorReady,
-				disabled && $style.indicatorDisabled,
-			]"
-			:style="indicatorStyle"
-		/>
 		<RadioGroupRoot
 			v-bind="rootAttrs"
 			:model-value="serializedModelValue"
@@ -223,12 +159,11 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .segmentControl {
-	position: relative;
 	display: inline-flex;
 	align-items: stretch;
 	line-height: 1;
 	vertical-align: middle;
-	background-color: var(--color--foreground--tint-1);
+	background-color: var(--color--foreground);
 	padding: var(--spacing--5xs);
 	border-radius: var(--radius--2xs);
 }
@@ -239,35 +174,6 @@ onBeforeUnmount(() => {
 	flex: 1;
 	width: 100%;
 	gap: var(--spacing--5xs);
-	position: relative;
-	z-index: 1;
-}
-
-.indicator {
-	position: absolute;
-	top: 0;
-	left: 0;
-	z-index: 0;
-	border-radius: var(--radius--3xs);
-	background-color: var(--background--surface);
-	box-shadow: var(--shadow--outline), var(--shadow--xs);
-	pointer-events: none;
-}
-
-.indicatorReady {
-	transition:
-		transform var(--duration--snappy) var(--easing--ease-out),
-		width var(--duration--snappy) var(--easing--ease-out),
-		height var(--duration--snappy) var(--easing--ease-out);
-
-	@media (prefers-reduced-motion: reduce) {
-		transition: none;
-	}
-}
-
-.indicatorDisabled {
-	background-color: var(--background--disabled);
-	box-shadow: none;
 }
 
 .disabled {

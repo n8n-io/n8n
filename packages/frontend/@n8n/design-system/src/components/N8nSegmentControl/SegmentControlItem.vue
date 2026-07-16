@@ -48,8 +48,6 @@ defineSlots<{ default?: {} }>();
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	position: relative;
-	z-index: 1;
 	margin: 0;
 	border: none;
 	border-radius: var(--radius--3xs);
@@ -57,10 +55,6 @@ defineSlots<{ default?: {} }>();
 	font-family: inherit;
 	font-weight: var(--font-weight--medium);
 	color: var(--text-color--subtle);
-	transition:
-		background-color var(--duration--snappy) ease,
-		color var(--duration--snappy) ease,
-		box-shadow var(--duration--snappy) ease;
 	cursor: pointer;
 	user-select: none;
 	white-space: nowrap;
@@ -68,14 +62,26 @@ defineSlots<{ default?: {} }>();
 	text-rendering: optimizeLegibility;
 	-webkit-tap-highlight-color: transparent;
 
+	position: relative;
+
 	&:focus {
 		outline: none;
 	}
 
 	@include focus.focus-visible-ring-offset;
 
+	/* Keep the offset ring above neighboring hover/selected backgrounds */
+	&:focus-visible {
+		z-index: 1;
+	}
+
 	&[data-state='checked'] {
 		color: var(--text-color);
+		background-color: var(--color--foreground--tint-2);
+	}
+
+	&[data-state='checked'][data-disabled] {
+		background-color: var(--background--disabled);
 	}
 
 	&[data-disabled] {
@@ -87,7 +93,13 @@ defineSlots<{ default?: {} }>();
 @media (hover: hover) {
 	.hoverable:hover:not([data-state='checked']):not([data-disabled]) {
 		color: var(--text-color);
-		background-color: var(--color--foreground--shade-1);
+		background-color: var(--color--foreground--tint-1);
+	}
+
+	/* Sticky hover after keyboard nav — cleared when the pointer moves again */
+	:global(.n8n-segment-control[data-suppress-hover]) .hoverable:hover:not([data-state='checked']) {
+		color: var(--text-color--subtle);
+		background-color: transparent;
 	}
 }
 
