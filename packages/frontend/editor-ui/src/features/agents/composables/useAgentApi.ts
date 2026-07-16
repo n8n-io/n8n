@@ -1,5 +1,4 @@
 import type {
-	AgentBuilderMessagesResponse,
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentFileDto,
@@ -494,30 +493,6 @@ export const updateAgentSkill = async (
 		'PATCH',
 		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,
 		updates,
-	);
-};
-
-export const getBuilderMessages = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<AgentBuilderMessagesResponse> => {
-	return await makeRestApiRequest<AgentBuilderMessagesResponse>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
-	);
-};
-
-export const clearBuilderMessages = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<void> => {
-	await makeRestApiRequest(
-		context,
-		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
 	);
 };
 

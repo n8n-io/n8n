@@ -22,6 +22,7 @@ describe('OAuthConsentView', () => {
 			clientName: 'Test MCP Client',
 			clientId: 'test-client-id',
 			redirectUri: 'https://legitimate-client.com/callback',
+			scopes: [],
 		};
 		consentStore.consentDetails = details;
 		consentStore.fetchConsentDetails.mockImplementation(async () => {
@@ -51,6 +52,7 @@ describe('OAuthConsentView', () => {
 			clientName: 'Test MCP Client',
 			clientId: 'test-client-id',
 			resourceName: 'My Workflow',
+			scopes: [],
 		};
 		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails);
 
@@ -149,7 +151,7 @@ describe('OAuthConsentView', () => {
 		await userEvent.click(allowButton);
 		await waitAllPromises();
 
-		expect(consentStore.approveConsent).toHaveBeenCalledWith(true);
+		expect(consentStore.approveConsent).toHaveBeenCalledWith(true, undefined);
 		expect(window.location.href).toBe(redirectUrl);
 	});
 
@@ -163,5 +165,85 @@ describe('OAuthConsentView', () => {
 		await userEvent.click(getByLabelText('I recognize and trust this URL'));
 
 		expect(allowButton).not.toBeDisabled();
+	});
+
+	describe('scope selection', () => {
+		const scopedDetails = {
+			clientName: 'Test MCP Client',
+			clientId: 'test-client-id',
+			redirectUri: 'https://legitimate-client.com/callback',
+			scopes: ['workflow:read', 'workflow:write', 'execution:read'],
+		};
+
+		beforeEach(() => {
+			consentStore.consentDetails = scopedDetails;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = scopedDetails;
+				return scopedDetails;
+			});
+		});
+
+		it('should render the scope picker instead of the static permission list', async () => {
+			const { getByTestId, queryByText } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-scopes')).toBeVisible();
+			expect(getByTestId('consent-scopes-note')).toBeVisible();
+			expect(queryByText('Get a list of your workflows')).toBeNull();
+		});
+
+		it('should preselect all scopes on a first-time consent', async () => {
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('scopes-count')).toHaveTextContent('3 of 3 scopes selected');
+		});
+
+		it('should preselect the scopes from the previous grant', async () => {
+			const requestedDetails = { ...scopedDetails, previousScopes: ['workflow:read'] };
+			consentStore.consentDetails = requestedDetails;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = requestedDetails;
+				return requestedDetails;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('scopes-count')).toHaveTextContent('1 of 3 scopes selected');
+		});
+
+		it('should send the selected scopes on approval', async () => {
+			consentStore.approveConsent.mockResolvedValue({
+				status: 'approved',
+				redirectUrl: 'https://legitimate-client.com/callback?code=abc',
+			});
+
+			const { getByTestId, getByLabelText } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByLabelText('I recognize and trust this URL'));
+			await userEvent.click(getByTestId('consent-allow-button'));
+			await waitAllPromises();
+
+			expect(consentStore.approveConsent).toHaveBeenCalledWith(true, [
+				'workflow:read',
+				'workflow:write',
+				'execution:read',
+			]);
+		});
+
+		it('should disable Allow when no scopes are selected', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByLabelText('I recognize and trust this URL'));
+			expect(getByTestId('consent-allow-button')).not.toBeDisabled();
+
+			// Custom mode starts with an empty selection
+			await userEvent.click(getByTestId('scopes-mode-custom'));
+
+			expect(getByTestId('consent-allow-button')).toBeDisabled();
+		});
 	});
 });

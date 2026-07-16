@@ -1,0 +1,63 @@
+{
+	"$comment": "Single source of truth for how project-owned entities are handled when a project's resources change owner (user deletion with transfer, LDAP reset). Read by: OwnershipTransferService consumers via ownership-transfer.manifest.ts, the manifest guard test, and the n8n-local-rules/project-owned-entity-transfer lint rule via the eslint configs of @n8n/db and cli. Adding a new project-owned entity requires an entry here: either in 'transferred' (and handling in OwnershipTransferService.transferAllResources) or in 'notTransferred' with the reason for the decision. The 'path' pins the entry to the declaring file: the lint rule rejects a same-named entity in a different file, and the guard test fails when a listed file no longer declares the entity.",
+	"transferred": [
+		{
+			"name": "SharedWorkflow",
+			"path": "packages/@n8n/db/src/entities/shared-workflow.ts"
+		},
+		{
+			"name": "SharedCredentials",
+			"path": "packages/@n8n/db/src/entities/shared-credentials.ts"
+		},
+		{
+			"name": "Folder",
+			"path": "packages/@n8n/db/src/entities/folder.ts"
+		},
+		{
+			"name": "DataTable",
+			"path": "packages/cli/src/modules/data-table/data-table.entity.ts"
+		}
+	],
+	"notTransferred": [
+		{
+			"name": "ProjectRelation",
+			"path": "packages/@n8n/db/src/entities/project-relation.ts",
+			"reason": "Membership rows; they describe the deleted project itself."
+		},
+		{
+			"name": "ProjectSecretsProviderAccess",
+			"path": "packages/@n8n/db/src/entities/project-secrets-provider-access.ts",
+			"reason": "Per-project secrets-provider config; scoped to the deleted project."
+		},
+		{
+			"name": "RoleMappingRule",
+			"path": "packages/@n8n/db/src/entities/role-mapping-rule.ts",
+			"reason": "SSO role-mapping config attached to the project, not user data."
+		},
+		{
+			"name": "Variables",
+			"path": "packages/@n8n/db/src/entities/variables.ts",
+			"reason": "Project-scoped variables are dropped via FK cascade; personal projects do not expose them."
+		},
+		{
+			"name": "Agent",
+			"path": "packages/cli/src/modules/agents/entities/agent.entity.ts",
+			"reason": "Dropped via FK cascade today. Revisit: agents created by the deleted user are lost on transfer."
+		},
+		{
+			"name": "AgentExecutionThread",
+			"path": "packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts",
+			"reason": "Dropped via FK cascade together with its Agent."
+		},
+		{
+			"name": "InstanceAiThread",
+			"path": "packages/cli/src/modules/instance-ai/entities/instance-ai-thread.entity.ts",
+			"reason": "AI assistant conversation history; personal to the deleted user."
+		},
+		{
+			"name": "InsightsMetadata",
+			"path": "packages/cli/src/modules/insights/database/entities/insights-metadata.ts",
+			"reason": "Denormalized analytics snapshot; historical insights keep the original project reference by design."
+		}
+	]
+}

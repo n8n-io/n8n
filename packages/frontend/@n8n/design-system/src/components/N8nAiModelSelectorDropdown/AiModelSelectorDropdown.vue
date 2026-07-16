@@ -109,6 +109,7 @@ defineExpose({
 		placement="bottom-start"
 		teleported
 		searchable
+		width="var(--reka-dropdown-menu-trigger-width)"
 		@select="handleSelect"
 	>
 		<template #trigger>

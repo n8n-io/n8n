@@ -43,8 +43,9 @@ const evalTestCaseObjectSchema = z
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
 		processExpectations: z.array(z.string().min(1)).optional(),
-		/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
-		 *  so they also run in prebuilt/MCP runs. Counted as units in the pass rate. */
+		/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow
+		 *  and from the rendered agent/config-eval context when the build produced one, so they also
+		 *  cover artifact existence/absence/content. Also run in prebuilt/MCP runs. Counted as units. */
 		outcomeExpectations: z.array(z.string().min(1)).optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
@@ -130,16 +131,26 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		message:
 			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',
 	})
-	.refine(
-		(c) =>
-			(c.executionScenarios?.length ?? 0) > 0 ||
-			(c.processExpectations?.length ?? 0) > 0 ||
-			(c.outcomeExpectations?.length ?? 0) > 0,
-		{
-			message:
-				'a case needs at least one executionScenario, or a process/outcome expectation to grade',
-		},
-	);
+	.superRefine((c, ctx) => {
+		// Note: this message avoids double quotes — ZodError.message is a JSON.stringify of
+		// the issue list, which would otherwise backslash-escape them and break substring/regex
+		// matching against the raw error message in callers and tests.
+		//
+		// A case needs at least one gradable unit. Execution scenarios grade the built workflow;
+		// process/outcome expectations grade the conversation, the workflow, and any non-workflow
+		// artifact (agent, config-eval) rendered into the judge context.
+		if (
+			(c.executionScenarios?.length ?? 0) === 0 &&
+			(c.processExpectations?.length ?? 0) === 0 &&
+			(c.outcomeExpectations?.length ?? 0) === 0
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					'a case needs at least one executionScenario, or a process/outcome expectation to grade it',
+			});
+		}
+	});
 
 // Inferred from the pre-`.refine()` object schema, not `EvalTestCaseSchema`.
 // `.refine()` doesn't alter the inferred type, so this is identical — but resolving

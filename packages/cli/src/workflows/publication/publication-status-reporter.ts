@@ -155,6 +155,7 @@ export class PublicationStatusReporter {
 			nodeId: triggerStatus.nodeId,
 			versionId: record.publishedVersionId,
 			status: triggerStatus.status,
+			triggerKind: triggerStatus.triggerKind,
 			errorMessage: triggerStatus.status === 'failed' ? triggerStatus.errorMessage : null,
 		}));
 	}

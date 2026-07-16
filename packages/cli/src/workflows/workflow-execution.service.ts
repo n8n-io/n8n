@@ -264,6 +264,7 @@ export class WorkflowExecutionService {
 						userId: data.userId,
 						dirtyNodeNames: data.dirtyNodeNames,
 						triggerToStartFrom: data.triggerToStartFrom,
+						source: data.source,
 					},
 					// Set this to null so `createRunExecutionData` doesn't initialize it.
 					// Otherwise this would be treated as a resumed execution after waiting.

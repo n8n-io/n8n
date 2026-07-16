@@ -34,7 +34,7 @@ export class InsightsService {
 			return;
 		}
 
-		const { InsightsCollectionService } = await import('./insights-collection.service');
+		const { InsightsCollectionService } = await import('./insights-collection.service.js');
 		const collectionService = Container.get(InsightsCollectionService);
 		if (enable) {
 			collectionService.init();

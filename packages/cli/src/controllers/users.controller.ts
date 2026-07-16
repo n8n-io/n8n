@@ -6,7 +6,7 @@ import {
 	UsersListFilterDto,
 	usersListSchema,
 } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import type { PublicUser } from '@n8n/db';
 import {
 	Project,
@@ -32,7 +32,6 @@ import {
 	Query,
 	Post,
 } from '@n8n/decorators';
-import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
@@ -45,8 +44,8 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { UserRequest } from '@/requests';
-import { FolderService } from '@/services/folder.service';
 import { JwtService } from '@/services/jwt.service';
+import { OwnershipTransferService } from '@/services/ownership-transfer/ownership-transfer.service';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -65,18 +64,11 @@ export class UsersController {
 		private readonly workflowService: WorkflowService,
 		private readonly credentialsService: CredentialsService,
 		private readonly eventService: EventService,
-		private readonly folderService: FolderService,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
 		private readonly provisioningService: ProvisioningService,
-		private readonly moduleRegistry: ModuleRegistry,
+		private readonly ownershipTransferService: OwnershipTransferService,
 	) {}
-
-	private get dataTableService() {
-		return import('@/modules/data-table/data-table.service').then(({ DataTableService }) =>
-			Container.get(DataTableService),
-		);
-	}
 
 	static ERROR_MESSAGES = {
 		CHANGE_ROLE: {
@@ -288,24 +280,10 @@ export class UsersController {
 
 			transfereeId = transferee.id;
 
-			await this.userService.getManager().transaction(async (trx) => {
-				await this.workflowService.transferAll(
-					personalProjectToDelete.id,
-					transfereeProjectId,
-					trx,
-				);
-				await this.credentialsService.transferAll(
-					personalProjectToDelete.id,
-					transfereeProjectId,
-					trx,
-				);
-
-				await this.folderService.transferAllFoldersToProject(
-					personalProjectToDelete.id,
-					transfereeProjectId,
-					trx,
-				);
-			});
+			await this.ownershipTransferService.transferAllResources(
+				[personalProjectToDelete.id],
+				transfereeProjectId,
+			);
 		}
 
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
@@ -329,18 +307,11 @@ export class UsersController {
 			await this.credentialsService.delete(userToDelete, credential.id);
 		}
 
-		// Transfer or hard-delete data tables before the project is removed, so the physical
-		// data_table_user_<id> tables are dropped instead of orphaned by the FK cascade.
-		if (this.moduleRegistry.isActive('data-table')) {
-			const dataTableService = await this.dataTableService;
-			if (transfereeProject) {
-				await dataTableService.transferDataTablesByProjectId(
-					personalProjectToDelete.id,
-					transfereeProject.id,
-				);
-			} else {
-				await dataTableService.deleteDataTableByProjectId(personalProjectToDelete.id);
-			}
+		// Clean up module-owned resources (e.g. data tables with their physical
+		// user tables) before the project is removed, so they are not orphaned by
+		// the FK cascade. The transfer case is handled by the transfer above.
+		if (!transfereeProject) {
+			await this.ownershipTransferService.deleteModuleOwnedResources([personalProjectToDelete.id]);
 		}
 
 		await this.userService.getManager().transaction(async (trx) => {

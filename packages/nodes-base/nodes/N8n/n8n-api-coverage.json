@@ -145,7 +145,13 @@
 		"GET /workflows/{id}/test-runs": {
 			"status": "gap"
 		},
+		"POST /workflows/{id}/test-runs": {
+			"status": "gap"
+		},
 		"GET /workflows/{id}/test-runs/{runId}": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/test-runs/{runId}/cancel": {
 			"status": "gap"
 		},
 		"GET /workflows/{id}/test-runs/{runId}/test-cases": {
@@ -173,6 +179,9 @@
 			"status": "gap"
 		},
 		"PUT /settings/security-policy": {
+			"status": "gap"
+		},
+		"GET /settings/sso/saml": {
 			"status": "gap"
 		},
 		"POST /variables": {

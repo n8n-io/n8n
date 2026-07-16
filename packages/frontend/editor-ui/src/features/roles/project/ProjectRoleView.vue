@@ -151,6 +151,7 @@ async function createProjectRole() {
 		telemetry.track('User successfully created new role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'project',
 			permissions: role.scopes,
 		});
 
@@ -208,6 +209,7 @@ async function updateProjectRole(slug: string) {
 		telemetry.track('User updated role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'project',
 			permissions_from: initialState.value?.scopes,
 			permissions_to: role.scopes,
 		});

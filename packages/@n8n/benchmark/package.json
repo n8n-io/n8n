@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "2.15.0",
+  "version": "2.16.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
@@ -45,7 +45,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@types/convict": "^6.1.1",
     "@types/k6": "^0.52.0",
-    "typescript": "catalog:"
+    "typescript": "catalog:typescript"
   },
   "bin": {
     "n8n-benchmark": "./bin/n8n-benchmark"

@@ -11,16 +11,19 @@ import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { DataTableExporter } from './entities/data-table/data-table.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
+import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
+import { PackageWorkflowRequirementValidator } from './entities/workflow/package-workflow-requirement.validator';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
-import type {
-	ExportPackageRequest,
-	ImportPackageRequest,
-	ImportResult,
+import {
+	MissingWorkflowDependencyPolicy,
+	type ExportPackageRequest,
+	type ImportPackageRequest,
+	type ImportResult,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
 import {
@@ -44,9 +47,20 @@ export class N8nPackagesService {
 		private readonly projectPackageImporter: ProjectPackageImporter,
 		private readonly workflowPackageImporter: WorkflowPackageImporter,
 		private readonly eventService: EventService,
+		private readonly workflowRequirementValidator: PackageWorkflowRequirementValidator,
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
+		// TODO: remove this once the other options are implemented
+		const missingWorkflowDependencyPolicy =
+			request.missingWorkflowDependencyPolicy ?? MissingWorkflowDependencyPolicy.Fail;
+
+		if (missingWorkflowDependencyPolicy !== MissingWorkflowDependencyPolicy.Fail) {
+			throw new PackageExportBlockedError(
+				`missingWorkflowDependencyPolicy="${missingWorkflowDependencyPolicy}" is not supported yet. Only "fail" is currently supported.`,
+			);
+		}
+
 		const writer = new TarPackageWriter();
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
@@ -90,6 +104,22 @@ export class N8nPackagesService {
 			projectExportResult?.requirements,
 		);
 
+		const allFolders = [
+			...(folderExportResult?.entries ?? []),
+			...(projectExportResult?.folderEntries ?? []),
+		];
+
+		const allWorkflowsInPackage = [
+			...(workflowExportResult?.entries ?? []),
+			...(folderExportResult?.workflowEntries ?? []),
+			...(projectExportResult?.workflowEntries ?? []),
+		];
+
+		await this.workflowRequirementValidator.validateStaticSubWorkflowsIncluded(
+			request.user,
+			new Set(allWorkflowsInPackage.map(({ id }) => id)),
+		);
+
 		const credentialExportResult = await this.credentialExporter.export({
 			user: request.user,
 			requirements: requirements.credentials,
@@ -105,17 +135,6 @@ export class N8nPackagesService {
 			// Routes project-owned data tables into their project namespace; others stay top-level.
 			projectTargetsById: projectExportResult?.projectTargetsById,
 		});
-
-		const allFolders = [
-			...(folderExportResult?.entries ?? []),
-			...(projectExportResult?.folderEntries ?? []),
-		];
-
-		const allWorkflowsInPackage = [
-			...(workflowExportResult?.entries ?? []),
-			...(folderExportResult?.workflowEntries ?? []),
-			...(projectExportResult?.workflowEntries ?? []),
-		];
 
 		const manifestRequirements = this.buildManifestRequirements(
 			credentialExportResult.requirements,
