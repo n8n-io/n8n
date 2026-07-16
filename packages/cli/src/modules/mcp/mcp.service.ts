@@ -16,25 +16,27 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
+import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
 import { ManualExecutionCancelledError, type IRun } from 'n8n-workflow';
 
-import {
-	createAddDataTableColumnTool,
-	createAddDataTableRowsTool,
-	createCreateDataTableTool,
-	createDeleteDataTableColumnTool,
-	createRenameDataTableColumnTool,
-	createRenameDataTableTool,
-	createSearchDataTablesTool,
-} from './tools/data-table';
+import { ActiveExecutions } from '@/active-executions';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { N8N_VERSION } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ExecutionService } from '@/executions/execution.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { NodeCatalogService } from '@/node-catalog';
+
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
+import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
@@ -56,15 +58,10 @@ import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-w
 import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
 import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
 import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
-import { NodeCatalogService } from '@/node-catalog';
 
-import { ActiveExecutions } from '@/active-executions';
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { N8N_VERSION } from '@/constants';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -77,13 +74,21 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
+import {
+	createAddDataTableColumnTool,
+	createAddDataTableRowsTool,
+	createCreateDataTableTool,
+	createDeleteDataTableColumnTool,
+	createRenameDataTableColumnTool,
+	createRenameDataTableTool,
+	createSearchDataTablesTool,
+} from './tools/data-table';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
-import { ExecutionService } from '@/executions/execution.service';
 
 /**
  * Pending MCP execution response, used for queue mode support.
@@ -144,6 +149,7 @@ export class McpService {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
 
 	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
@@ -217,8 +223,14 @@ export class McpService {
 		clientInfo?: McpClientInfo,
 		grantedScopes?: string[],
 	) {
-		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
+		const { McpServer } = await lazyImport<
+			typeof import('@modelcontextprotocol/sdk/server/mcp.js')
+		>(async () => await import('@modelcontextprotocol/sdk/server/mcp.js'));
+
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
+		const n8nConnectAvailable = builderEnabled
+			? (await this.aiGatewayService.isAvailable()).available
+			: false;
 		const allowedToolNames = getAllowedToolNames(grantedScopes);
 		// The builder walkthrough is only useful when the grant can actually
 		// create workflows; a read-only grant gets the plain intro instead of
@@ -232,7 +244,7 @@ export class McpService {
 				version: builderEnabled ? '1.1.0' : '1.0.0',
 			},
 			{
-				instructions: getMcpInstructions(builderInstructionsEnabled),
+				instructions: getMcpInstructions(builderInstructionsEnabled, n8nConnectAvailable),
 			},
 		);
 
@@ -351,8 +363,16 @@ export class McpService {
 			user,
 			this.credentialsService,
 			this.telemetry,
+			this.aiGatewayService,
+		);
+
+		const listN8nConnectServicesTool = createListN8nConnectServicesTool(
+			user,
+			this.aiGatewayService,
+			this.telemetry,
 		);
 		registerIfAllowed(listCredentialsTool);
+		registerIfAllowed(listN8nConnectServicesTool);
 
 		if (!this.globalConfig.tags.disabled) {
 			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
@@ -422,6 +442,7 @@ export class McpService {
 			user,
 			this.nodeCatalogService,
 			this.telemetry,
+			this.aiGatewayService,
 		);
 		registerIfAllowed(searchNodesTool);
 
@@ -429,6 +450,7 @@ export class McpService {
 			user,
 			this.nodeCatalogService,
 			this.telemetry,
+			this.aiGatewayService,
 		);
 		registerIfAllowed(getNodeTypesTool);
 
@@ -458,6 +480,7 @@ export class McpService {
 			this.credentialsService,
 			this.projectRepository,
 			dataTableOps,
+			this.aiGatewayService,
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
@@ -533,6 +556,7 @@ export class McpService {
 			this.globalConfig,
 			this.subworkflowPolicyChecker,
 			this.workflowPublishedDataService,
+			this.aiGatewayService,
 		);
 		registerIfAllowed(updateTool);
 

@@ -301,6 +301,9 @@ function createApiRouter(
 	}
 
 	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (_, res) => {
+		// Public, read-only spec with no auth or sensitive data - safe to expose
+		// cross-origin for documentation playgrounds
+		res.header('Access-Control-Allow-Origin', '*');
 		res.sendFile(openApiSpecPath);
 	});
 

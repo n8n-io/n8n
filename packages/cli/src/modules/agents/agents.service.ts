@@ -219,7 +219,7 @@ export class AgentsService {
 		this.eventService.emit('agent-deleted', { agentId, projectId });
 
 		try {
-			const { AgentTaskService } = await import('./agent-task.service');
+			const { AgentTaskService } = await import('./agent-task.service.js');
 			await Container.get(AgentTaskService).requestReconcile(agentId);
 		} catch (error) {
 			this.logger.warn('Failed to stop tasks on agent delete', {

@@ -2,10 +2,7 @@ import { z } from 'zod';
 
 import { Z } from '../../zod-class';
 
-/**
- * DTO for OAuth client response (excludes sensitive data like clientSecret)
- */
-export class OAuthClientResponseDto extends Z.class({
+const oauthClientShape = {
 	id: z.string(),
 	name: z.string(),
 	redirectUris: z.array(z.string()),
@@ -13,23 +10,22 @@ export class OAuthClientResponseDto extends Z.class({
 	tokenEndpointAuthMethod: z.string(),
 	createdAt: z.string().datetime(), // Using string for date serialization over HTTP
 	updatedAt: z.string().datetime(),
-}) {}
+	/** Unix ms when the user granted access on the consent screen. */
+	grantedAt: z.number(),
+	/** Scopes granted on the consent screen. */
+	scopes: z.array(z.string()),
+};
+
+/**
+ * DTO for OAuth client response (excludes sensitive data like clientSecret)
+ */
+export class OAuthClientResponseDto extends Z.class(oauthClientShape) {}
 
 /**
  * DTO for listing OAuth clients response
  */
 export class ListOAuthClientsResponseDto extends Z.class({
-	data: z.array(
-		z.object({
-			id: z.string(),
-			name: z.string(),
-			redirectUris: z.array(z.string()),
-			grantTypes: z.array(z.string()),
-			tokenEndpointAuthMethod: z.string(),
-			createdAt: z.string().datetime(),
-			updatedAt: z.string().datetime(),
-		}),
-	),
+	data: z.array(z.object(oauthClientShape)),
 	count: z.number(),
 }) {}
 

@@ -22,11 +22,14 @@ export class PublishedWorkflowEnqueuer {
 	}
 
 	/**
-	 * Enqueue a publication outbox record for every active workflow at its current
-	 * active version. This is idempotent.
+	 * Enqueue a publication outbox record for every active workflow that needs
+	 * leader-side publication at its current active version. Workflows with only
+	 * persisted (webhook) triggers are skipped: those live durably in
+	 * `webhook_entity` and are served by any main, so a new leader has no
+	 * in-memory state to rebuild for them. This is idempotent.
 	 */
 	async enqueueActiveWorkflows(): Promise<void> {
-		await this.outboxRepository.enqueueAllActiveWorkflows();
+		await this.outboxRepository.enqueueForLeaderHandoff();
 		this.logger.debug('Enqueued active workflow publication records');
 	}
 
