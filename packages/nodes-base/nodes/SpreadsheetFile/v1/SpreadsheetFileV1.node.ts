@@ -38,9 +38,9 @@ export class SpreadsheetFileV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: 1,
+			iconColor: 'blue',
 			defaults: {
 				name: 'Spreadsheet File',
-				color: '#2244FF',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],

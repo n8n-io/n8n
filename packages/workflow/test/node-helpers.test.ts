@@ -6704,7 +6704,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
@@ -6724,7 +6723,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
@@ -6744,7 +6742,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
@@ -6764,7 +6761,6 @@ describe('NodeHelpers', () => {
 				version: 0,
 				defaults: {
 					name: '',
-					color: '',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				properties: [],
