@@ -15,7 +15,7 @@ import {
 	TaskHandlerRegistry,
 } from './executor';
 import type { ExecutorOptions, ExecutorTaskStore } from './executor';
-import { DEFAULT_LIFECYCLE_OPTIONS, Loop, PASS_TIMED_OUT } from './lifecycle';
+import { DEFAULT_LIFECYCLE_OPTIONS, pollLookaheadSeconds, Loop, PASS_TIMED_OUT } from './lifecycle';
 import type { LifecycleOptions } from './lifecycle';
 import { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
@@ -196,6 +196,29 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		}
 	};
 	const described = (error: unknown) => ensureError(error).message;
+
+	// Derived, not caller-chosen: sized to the materializer loop's own
+	// worst-case discovery delay (same formula the executor uses against its
+	// own tick), so a job is claimed before its `nextRunAt`, not one poll tick
+	// after it.
+	materializerOptions.lookaheadSeconds = pollLookaheadSeconds(
+		lifecycleOptions.materializerIntervalSeconds,
+		lifecycleOptions.jitterRatio,
+	);
+	if (materializerOptions.lookaheadSeconds >= materializerOptions.windowSeconds) {
+		// The lookahead is meant to sit inside the window: claim a job a little before
+		// its window lapses so the next occurrences are planned ahead. A lookahead at or
+		// past the whole window means a job is re-claimed every poll with nothing new to
+		// record, degrading to no-lookahead materialization.
+		emit(
+			'warn',
+			'Scheduler materializer lookahead reaches or exceeds the window; jobs may be reclaimed with nothing to plan',
+			{
+				lookaheadSeconds: materializerOptions.lookaheadSeconds,
+				windowSeconds: materializerOptions.windowSeconds,
+			},
+		);
+	}
 
 	// Metrics are best-effort observability: a throwing sink (e.g. a broken
 	// exporter) must never break the pass that emitted, so every record is

@@ -6,7 +6,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import { UnexpectedError } from 'n8n-workflow';
 
 import { ScheduledJob } from '../entities/scheduled-job';
-import { dbNowLiteral, parseDbTime } from '../utils/dialect-time';
+import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
 
 /** The new clock values for one advanced job. */
 export interface JobAdvance {
@@ -69,15 +69,22 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	async claimDue(
 		manager: EntityManager,
 		limit: number,
+		lookaheadMs = 0,
 	): Promise<{ now: Date; jobs: ScheduledJob[] } | undefined> {
 		const nowExpression = dbNowLiteral(this.isPostgres);
+		// Claim a job whose `nextRunAt` falls within `lookaheadMs` of now, not only
+		// once it's already due: a fixed-interval poll only wakes on its own tick,
+		// so a strict `<= now` comparison claims (and therefore materializes new
+		// occurrences for) a job a whole tick late. Mirrors the executor, which
+		// claims ahead of due and then fires on a precise timer (see `pollLookaheadSeconds`).
+		const dueExpression = dbNowPlusMsLiteral(this.isPostgres, lookaheadMs);
 
 		const query = manager
 			.createQueryBuilder(ScheduledJob, 'job')
 			.addSelect(nowExpression, 'db_now')
 			.where('job.enabled = :enabled', { enabled: true })
 			.andWhere('job.nextRunAt IS NOT NULL')
-			.andWhere(`job.nextRunAt <= ${nowExpression}`)
+			.andWhere(`job.nextRunAt <= ${dueExpression}`)
 			.orderBy('job.nextRunAt', 'ASC')
 			.limit(limit);
 
