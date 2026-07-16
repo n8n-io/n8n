@@ -2,6 +2,7 @@
 import { N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import omit from 'lodash/omit';
+import { deepCopy } from 'n8n-workflow';
 import { computed, markRaw, ref, watch } from 'vue';
 
 import { useToast } from '@/app/composables/useToast';
@@ -57,8 +58,7 @@ let loadRequestId = 0;
 // reactive source that write feeds back into a hydrate → dispose → hydrate loop
 // that pins the main thread. A plain, `markRaw`'d clone breaks the cycle — the
 // diff is read-only, so it never needs reactivity or to reach the live stores.
-const detach = (workflow: IWorkflowDb): IWorkflowDb =>
-	markRaw(JSON.parse(JSON.stringify(workflow)) as IWorkflowDb);
+const detach = (workflow: IWorkflowDb): IWorkflowDb => markRaw(deepCopy(workflow));
 
 // Resolve a version to a full workflow the diff can render. A null
 // `workflowVersionId` is the "current draft" — the live workflow itself; a real
