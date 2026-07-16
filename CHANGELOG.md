@@ -1,3 +1,11 @@
+## [2.30.6](https://github.com/n8n-io/n8n/compare/n8n@2.30.5...n8n@2.30.6) (2026-07-16)
+
+
+### Bug Fixes
+
+* **core:** Require execution mode for MCP workflow executions ([#34281](https://github.com/n8n-io/n8n/issues/34281)) ([ea5319f](https://github.com/n8n-io/n8n/commit/ea5319fe6c1a0cb7d88863a7e060603a55f9e2ca))
+
+
 ## [2.30.5](https://github.com/n8n-io/n8n/compare/n8n@2.30.4...n8n@2.30.5) (2026-07-15)
 
 
