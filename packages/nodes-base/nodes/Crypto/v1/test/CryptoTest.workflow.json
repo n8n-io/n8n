@@ -144,11 +144,12 @@
 		},
 		{
 			"parameters": {
-				"fileSelector": "nodes/Crypto/v1/test/fixtures/binary.data"
+				"fileSelector": "nodes/Crypto/v1/test/fixtures/binary.data",
+				"options": {}
 			},
 			"id": "09bbc611-c2ca-4750-94a7-d1bb4fc53a57",
 			"name": "Read Binary Files",
-			"type": "n8n-nodes-base.readBinaryFiles",
+			"type": "n8n-nodes-base.readWriteFile",
 			"typeVersion": 1,
 			"position": [-160, 40]
 		},

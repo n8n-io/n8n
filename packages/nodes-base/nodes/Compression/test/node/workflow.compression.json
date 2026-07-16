@@ -23,11 +23,12 @@
 		},
 		{
 			"parameters": {
-				"filePath": "/home/me/Desktop/lorem.txt"
+				"fileSelector": "/home/me/Desktop/lorem.txt",
+				"options": {}
 			},
 			"id": "2fdbf11d-e1ae-4091-b15f-e0eed69e87c3",
 			"name": "Read Binary File",
-			"type": "n8n-nodes-base.readBinaryFile",
+			"type": "n8n-nodes-base.readWriteFile",
 			"typeVersion": 1,
 			"position": [600, 400]
 		},
