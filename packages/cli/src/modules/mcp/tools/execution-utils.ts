@@ -18,13 +18,14 @@ type ToolHandlerExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
 /**
  * Streams MCP progress notifications while a workflow execution is awaited.
  * No-op when the client did not send a progress token with the tool call.
+ * `total` is deliberately omitted: execution duration is unknown, and a total
+ * would make clients render a meaningless completion percentage.
  */
 export const createExecutionProgressReporter = (
 	extra: ToolHandlerExtra | undefined,
 	label: string,
 ) => {
 	const progressToken = extra?._meta?.progressToken;
-	const totalSeconds = WORKFLOW_EXECUTION_TIMEOUT_MS * Time.milliseconds.toSeconds;
 	let elapsedSeconds = 0;
 	let heartbeat: NodeJS.Timeout | undefined;
 
@@ -33,7 +34,7 @@ export const createExecutionProgressReporter = (
 		void extra
 			?.sendNotification({
 				method: 'notifications/progress',
-				params: { progressToken, progress: elapsedSeconds, total: totalSeconds, message },
+				params: { progressToken, progress: elapsedSeconds, message },
 			})
 			.catch(() => {}); // Client may have disconnected — progress is best-effort
 	};

@@ -39,7 +39,6 @@ describe('createExecutionProgressReporter', () => {
 			params: {
 				progressToken: 'token-1',
 				progress: 0,
-				total: WORKFLOW_EXECUTION_TIMEOUT_MS / 1000,
 				message: 'Execution 1 started',
 			},
 		});
