@@ -187,6 +187,9 @@
 		"PUT /settings/security-policy": {
 			"status": "gap"
 		},
+		"GET /settings/sso/saml": {
+			"status": "gap"
+		},
 		"POST /variables": {
 			"status": "gap"
 		},

@@ -55,6 +55,28 @@ connected.)
    its trace is pruned or deleted — so it has no durable home; that's exactly why
    step 4 turns the confirmed failure into a durable synthetic case.
 
+## Sourcing a regression baseline (successful builds)
+
+The discover→verify→encode flow above hunts **failures**. The complementary need
+— a broad **regression baseline** of things that already work — is sourced the
+opposite way: from conversations where a workflow was **built and executed
+without errors**. Use `list_conversations` with the **conversion-funnel** filter:
+
+- `funnelStep: '03'` = built a workflow, `'04'` = launched an execution, `'05'` =
+  execution succeeded, `'06'` = published (each step is a strict subset — also
+  reached every earlier step). For "built + executed cleanly" cases, **`'05'`** is
+  the signal; add `language: 'eng'` to keep prompts English.
+- The result is large — it spills to a file. Triage by first prompt:
+  `jq -r '.data[] | "\(.threadId)\t\(.firstUserPrompt[0:180])"'`. Skip "The
+  execution failed…" debugging threads (they didn't cleanly build) and off-topic
+  app-build requests.
+- Author a **build case** per selected thread (prompt in the user's voice,
+  grounded in the real `firstUserPrompt`; note the source thread id in
+  `description`). These are `regression`-kind cases whose value is coverage of a
+  working capability, not a currently-red gap — you rarely need `get_conversation`
+  when the first prompt already specifies the build. Terse prompts almost always
+  need a multi-turn director note (see [`case-shapes.md`](case-shapes.md)).
+
 ## Two practical notes on `get_conversation_analysis`
 
 - **It hands you draft cases.** The response's
