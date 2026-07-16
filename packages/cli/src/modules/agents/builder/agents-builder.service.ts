@@ -14,7 +14,7 @@ import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
+import { applyAgentThinking, tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
 import { IsNull } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 
@@ -275,6 +275,8 @@ export class AgentsBuilderService {
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);
 		}
+
+		applyAgentThinking(builder, modelConfig);
 
 		return builder;
 	}

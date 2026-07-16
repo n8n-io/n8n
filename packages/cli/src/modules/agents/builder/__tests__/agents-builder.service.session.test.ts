@@ -27,6 +27,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 	const registeredToolNames: string[] = [];
 	const modelCalls: unknown[] = [];
 	const promptCachingCalls: unknown[] = [];
+	const thinkingCalls: Array<{ provider: string; config: unknown }> = [];
 	const skillsCalls: unknown[] = [];
 	const telemetryCalls: unknown[] = [];
 	const memoryTaskObserverCalls: unknown[] = [];
@@ -51,6 +52,10 @@ const agentsSdkMocks = vi.hoisted(() => {
 		}
 		promptCaching(config?: unknown) {
 			promptCachingCalls.push(config);
+			return this;
+		}
+		thinking(provider: string, config?: unknown) {
+			thinkingCalls.push({ provider, config });
 			return this;
 		}
 		instructions(text: string) {
@@ -117,6 +122,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		registeredToolNames,
 		modelCalls,
 		promptCachingCalls,
+		thinkingCalls,
 		skillsCalls,
 		telemetryCalls,
 		memoryTaskObserverCalls,
@@ -220,6 +226,7 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.registeredToolNames.length = 0;
 		agentsSdkMocks.modelCalls.length = 0;
 		agentsSdkMocks.promptCachingCalls.length = 0;
+		agentsSdkMocks.thinkingCalls.length = 0;
 		agentsSdkMocks.skillsCalls.length = 0;
 		agentsSdkMocks.telemetryCalls.length = 0;
 		agentsSdkMocks.memoryTaskObserverCalls.length = 0;
@@ -317,6 +324,46 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.promptCachingCalls).toEqual([{ anthropic: { ttl: '5m' } }]);
+	});
+
+	it('enables adaptive thinking for an Anthropic builder model', async () => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
+		);
+
+		expect(agentsSdkMocks.thinkingCalls).toEqual([
+			{ provider: 'anthropic', config: { mode: 'adaptive' } },
+		]);
+	});
+
+	it('enables high-effort reasoning for an OpenAI builder model', async () => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				modelConfig: 'openai/gpt-5.5',
+			}),
+		);
+
+		expect(agentsSdkMocks.thinkingCalls).toEqual([
+			{ provider: 'openai', config: { reasoningEffort: 'high' } },
+		]);
+	});
+
+	it('does not configure thinking for a provider without reasoning support', async () => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				modelConfig: 'google/gemini-2.5-pro',
+			}),
+		);
+
+		expect(agentsSdkMocks.thinkingCalls).toEqual([]);
 	});
 
 	it('attaches session.telemetry when provided, and omits it otherwise', async () => {
