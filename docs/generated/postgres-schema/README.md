@@ -62,7 +62,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.insights_raw](public.insights_raw.md) | 5 |  | BASE TABLE |
 | [public.installed_nodes](public.installed_nodes.md) | 4 |  | BASE TABLE |
 | [public.installed_packages](public.installed_packages.md) | 6 |  | BASE TABLE |
-| [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) | 8 |  | BASE TABLE |
+| [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) | 9 |  | BASE TABLE |
 | [public.instance_ai_events](public.instance_ai_events.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) | 7 |  | BASE TABLE |
@@ -94,7 +94,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
 | [public.scheduled_job](public.scheduled_job.md) | 19 |  | BASE TABLE |
-| [public.scheduled_task](public.scheduled_task.md) | 16 |  | BASE TABLE |
+| [public.scheduled_task](public.scheduled_task.md) | 17 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
@@ -820,6 +820,7 @@ erDiagram
 "public.instance_ai_checkpoints" {
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone expiredAt
+  varchar_64_ hostRunId
   varchar_255_ key
   varchar_255_ resourceId
   varchar_255_ runId
@@ -1133,6 +1134,7 @@ erDiagram
   integer attempts
   varchar_255_ claimedBy
   timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone dispatchedAt
   text errorMessage
   timestamp_3__with_time_zone finishedAt
   bigint id

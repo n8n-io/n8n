@@ -109,7 +109,6 @@ const i18n = useI18n();
 						:is-published="Boolean(agent?.activeVersionId)"
 						:task-refs="localConfig?.tasks ?? []"
 						:reload-key="tasksReloadKey"
-						:simple-channel-setup="artifactMode"
 						@open-tool="emit('open-tool', $event)"
 						@open-skill="emit('open-skill', $event)"
 						@add-tool="emit('add-tool')"

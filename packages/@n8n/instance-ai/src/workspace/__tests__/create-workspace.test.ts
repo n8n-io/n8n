@@ -207,7 +207,7 @@ describe('createSandbox', () => {
 		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith(undefined, logger, '1.2.3');
 	});
 
-	it('prepares snapshot and image in Daytona proxy snapshot fallback mode', async () => {
+	it('creates from the snapshot only in Daytona proxy snapshot fallback mode', async () => {
 		const getAuthToken = vi.fn().mockResolvedValue('jwt-token');
 		const config: SandboxConfig = {
 			enabled: true,
@@ -227,7 +227,8 @@ describe('createSandbox', () => {
 		).resolves.toBe(sandbox);
 
 		expect(mockSnapshotName).toHaveBeenCalledWith();
-		expect(mockEnsureImage).toHaveBeenCalledWith();
+		// Image builds cannot run through the sandbox proxy, so no image is prepared or passed.
+		expect(mockEnsureImage).not.toHaveBeenCalled();
 		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
 		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
 			{
@@ -236,7 +237,6 @@ describe('createSandbox', () => {
 				id: sharedConfig.id,
 				daytonaApiUrl: 'https://proxy.example.com',
 				getAuthToken,
-				image: { dockerfile: 'FROM node:20' },
 				labels: {
 					'n8n-instance-ai-sandbox-id': sharedConfig.id,
 				},
@@ -244,6 +244,24 @@ describe('createSandbox', () => {
 			},
 			{ logger, errorReporter },
 		);
+	});
+
+	it('fails fast in proxy mode when no snapshot can be resolved', async () => {
+		mockSnapshotName.mockReturnValue(undefined);
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://proxy.example.com',
+			getAuthToken: vi.fn().mockResolvedValue('jwt-token'),
+			image: 'node:20',
+		};
+
+		await expect(
+			createSandbox(config, { logger, errorReporter, useSnapshotFallback: true }),
+		).rejects.toThrow('No Instance AI sandbox snapshot is available');
+
+		expect(mockEnsureImage).not.toHaveBeenCalled();
+		expect(mockCreateSharedSandbox).not.toHaveBeenCalled();
 	});
 
 	it('uses an explicit snapshot override instead of the version-derived name', async () => {

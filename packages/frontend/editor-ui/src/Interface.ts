@@ -1,5 +1,6 @@
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
+	AgentJsonConfig,
 	FrontendSettings,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
@@ -513,6 +514,14 @@ export interface OpenTemplateItemProps {
 	compact?: boolean;
 }
 
+export interface AgentItemProps {
+	name: string;
+	description?: string;
+	variant: 'create' | 'existing';
+	agentId?: string;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
+}
+
 export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;
@@ -599,6 +608,11 @@ export interface ActionCreateElement extends CreateElementBase {
 	properties: ActionTypeDescription;
 }
 
+export interface AgentCreateElement extends CreateElementBase {
+	type: 'agent';
+	properties: AgentItemProps;
+}
+
 export type INodeCreateElement =
 	| NodeCreateElement
 	| CategoryCreateElement
@@ -607,6 +621,7 @@ export type INodeCreateElement =
 	| ViewCreateElement
 	| LabelCreateElement
 	| ActionCreateElement
+	| AgentCreateElement
 	| LinkCreateElement
 	| OpenTemplateElement;
 

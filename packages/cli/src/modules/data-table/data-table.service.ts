@@ -80,7 +80,12 @@ export class DataTableService {
 		return dataTable.projectId;
 	}
 
-	async createDataTable(projectId: string, dto: CreateDataTableDto) {
+	/**
+	 * `id` is package-import-only: it keeps the id the table had on the exporting
+	 * instance (mirrors `FolderService.createFolder`). REST callers never pass it —
+	 * the public create endpoint always mints a fresh id.
+	 */
+	async createDataTable(projectId: string, dto: CreateDataTableDto, id?: string) {
 		if (dto.fileId && dto.columns.length === 0) {
 			throw new DataTableValidationError(
 				'At least one column must be included when importing from CSV',
@@ -89,7 +94,13 @@ export class DataTableService {
 
 		await this.validateUniqueName(dto.name, projectId);
 
-		const result = await this.dataTableRepository.createDataTable(projectId, dto.name, dto.columns);
+		const result = await this.dataTableRepository.createDataTable(
+			projectId,
+			dto.name,
+			dto.columns,
+			undefined,
+			id,
+		);
 
 		if (dto.fileId) {
 			try {
@@ -115,6 +126,33 @@ export class DataTableService {
 		this.dataTableSizeValidator.reset();
 
 		return result;
+	}
+
+	/**
+	 * Instance-wide id lookup (with columns) used by package import: same-project
+	 * hits are match candidates, cross-project hits are id conflicts.
+	 * Authorization is the import flow's concern.
+	 */
+	async findDataTablesByIds(dataTableIds: string[]): Promise<DataTable[]> {
+		if (dataTableIds.length === 0) return [];
+
+		return await this.dataTableRepository.find({
+			where: { id: In(dataTableIds) },
+			relations: { columns: true },
+		});
+	}
+
+	/** Project-scoped name lookup used by package import to detect name conflicts before creating tables. */
+	async findDataTablesByNamesInProject(
+		projectId: string,
+		names: string[],
+	): Promise<Array<Pick<DataTable, 'id' | 'name'>>> {
+		if (names.length === 0) return [];
+
+		return await this.dataTableRepository.find({
+			select: ['id', 'name'],
+			where: { projectId, name: In(names) },
+		});
 	}
 
 	async importCsvToExistingTable(
