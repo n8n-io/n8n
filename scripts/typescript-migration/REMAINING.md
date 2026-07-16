@@ -24,7 +24,7 @@ migrate it before the others to keep downstream typechecks green.
 
 ## Testing packages
 
-- [ ] `@n8n/code-health` (`packages/testing/code-health`)
+- [x] `@n8n/code-health` (`packages/testing/code-health`)
 - [ ] `@n8n/playwright-janitor` (`packages/testing/janitor`)
 - [ ] `@n8n/performance` (`packages/testing/performance`)
 - [ ] `n8n-playwright` (`packages/testing/playwright`)
