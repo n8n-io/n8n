@@ -8,7 +8,7 @@ import {
 	GITHUB_TRIGGER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	IF_NODE_TYPE,
-	ITEM_LISTS_NODE_TYPE,
+	AGGREGATE_NODE_TYPE,
 	JIRA_TRIGGER_NODE_TYPE,
 	MICROSOFT_EXCEL_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
@@ -181,7 +181,7 @@ function getPersonalizationSurveyV2OrLater(
 	if (codingSkill !== null && codingSkill >= 4) {
 		nodeTypes = nodeTypes.concat(CODE_NODE_TYPE);
 	} else {
-		nodeTypes = nodeTypes.concat(ITEM_LISTS_NODE_TYPE);
+		nodeTypes = nodeTypes.concat(AGGREGATE_NODE_TYPE);
 	}
 
 	// slot 3 logic node
@@ -286,7 +286,7 @@ function getPersonalizationSurveyV1(answers: IPersonalizationSurveyAnswersV1) {
 	if (codingSkill !== null && codingSkill >= 4) {
 		nodeTypes = nodeTypes.concat(CODE_NODE_TYPE);
 	} else {
-		nodeTypes = nodeTypes.concat(ITEM_LISTS_NODE_TYPE);
+		nodeTypes = nodeTypes.concat(AGGREGATE_NODE_TYPE);
 	}
 
 	if (codingSkill !== null && codingSkill < 3) {
