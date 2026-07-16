@@ -170,12 +170,12 @@ watch(sortBy, (newValue) => {
 		>
 			<template #[`item.workflowName`]="{ item }">
 				<component
-					:is="item.workflowId && item.hasAccess ? RouterLink : 'div'"
+					:is="item.workflowId && item.hasAccess ? RouterLink : 'span'"
+					:class="[$style.nameCell, { [$style.link]: item.workflowId && item.hasAccess }]"
 					v-bind="
 						item.workflowId && item.hasAccess
 							? {
 									to: getWorkflowLink(item),
-									class: $style.link,
 									onClick: () => trackWorkflowClick(item),
 								}
 							: {}
@@ -233,12 +233,10 @@ watch(sortBy, (newValue) => {
 	max-width: 100%;
 }
 
-.link {
+.nameCell {
 	display: flex;
 	height: 100%;
 	align-items: center;
-	color: var(--color--text);
-	text-decoration: underline;
 	max-width: 100%;
 	overflow: hidden;
 	min-width: 0;
@@ -246,6 +244,11 @@ watch(sortBy, (newValue) => {
 		min-width: 0;
 		overflow: hidden;
 	}
+}
+
+.link {
+	color: var(--color--text);
+	text-decoration: underline;
 	&:hover {
 		color: var(--color--text--shade-1);
 	}
