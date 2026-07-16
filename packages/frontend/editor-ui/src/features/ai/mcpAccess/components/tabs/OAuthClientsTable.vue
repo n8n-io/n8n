@@ -16,6 +16,7 @@ const mcpStore = useMCPStore();
 type Props = {
 	clients: OAuthClientResponseDto[];
 	loading: boolean;
+	scopeTools?: Record<string, string[]>;
 };
 
 const props = defineProps<Props>();
@@ -204,6 +205,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 		<OAuthClientDetailsModal
 			v-model:open="detailsOpen"
 			:client="detailsClient"
+			:scope-tools="props.scopeTools"
 			@revoke="onRevoke"
 		/>
 	</div>

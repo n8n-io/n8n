@@ -363,6 +363,13 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 							...task,
 						});
 					},
+					onCompletedAfterDispatch: ({ taskId }) => {
+						emit(
+							'warn',
+							'Scheduler completed a task whose lease lapsed after dispatch; its effect had already happened',
+							{ taskId },
+						);
+					},
 				},
 				signal,
 			);
