@@ -5,15 +5,13 @@ import { computed, ref } from 'vue';
 
 import {
 	getAgentBuilderSettings,
-	getAgentBuilderStatus,
 	updateAgentBuilderSettings,
 } from './composables/useAgentBuilderSettingsApi';
 
 const DEFAULT_SETTINGS: AgentBuilderAdminSettings = { mode: 'default' };
 
 /**
- * Pinia store for the agent builder admin settings page and the build-UI
- * gating empty state.
+ * Pinia store for the agent builder admin settings page.
  *
  * Holds only what the dedicated `/agent-builder` endpoints return — the
  * cross-cutting context (deployment type, available credentials, credential
@@ -26,7 +24,6 @@ export const useAgentBuilderSettingsStore = defineStore('agentBuilderSettings', 
 	const isLoading = ref(false);
 	const isSaving = ref(false);
 	const settings = ref<AgentBuilderAdminSettings | null>(null);
-	const isConfigured = ref<boolean>(false);
 	const draft = ref<AgentBuilderAdminSettings | null>(null);
 
 	const effectiveSettings = computed<AgentBuilderAdminSettings>(
@@ -41,7 +38,6 @@ export const useAgentBuilderSettingsStore = defineStore('agentBuilderSettings', 
 
 	function applyResponse(response: AgentBuilderAdminSettingsResponse) {
 		settings.value = response.settings;
-		isConfigured.value = response.isConfigured;
 		draft.value = null;
 	}
 
@@ -53,11 +49,6 @@ export const useAgentBuilderSettingsStore = defineStore('agentBuilderSettings', 
 		} finally {
 			isLoading.value = false;
 		}
-	}
-
-	async function fetchStatus(): Promise<void> {
-		const status = await getAgentBuilderStatus(rootStore.restApiContext);
-		isConfigured.value = status.isConfigured;
 	}
 
 	function setMode(next: AgentBuilderAdminSettings['mode']): void {
@@ -109,13 +100,11 @@ export const useAgentBuilderSettingsStore = defineStore('agentBuilderSettings', 
 		isLoading,
 		isSaving,
 		settings,
-		isConfigured,
 		draft,
 		effectiveSettings,
 		mode,
 		isDirty,
 		fetch,
-		fetchStatus,
 		setMode,
 		setCustomSelection,
 		save,

@@ -9,12 +9,12 @@ export class BreakingChangesModule implements ModuleInterface {
 		if (!MIGRATION_REPORT_TARGET_VERSION) return;
 
 		// Import rules so that they are added to the BreakingChangeRuleMetadata registry
-		await import('./rules');
+		await import('./rules/index.js');
 
 		// Register rules in the service
-		const { BreakingChangeService } = await import('./breaking-changes.service');
+		const { BreakingChangeService } = await import('./breaking-changes.service.js');
 		Container.get(BreakingChangeService).registerRules();
 
-		await import('./breaking-changes.controller');
+		await import('./breaking-changes.controller.js');
 	}
 }

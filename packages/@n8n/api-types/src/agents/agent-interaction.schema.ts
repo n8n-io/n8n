@@ -26,6 +26,16 @@ export const CONFIGURE_CHANNEL_TOOL_NAME = 'configure_channel' as const;
 export const BUILDER_NOT_CONFIGURED_CODE = 'BUILDER_NOT_CONFIGURED' as const;
 
 /**
+ * Stable code on `BuilderCheckpointUnavailableError`
+ * (`packages/cli/src/modules/agents/builder/errors.ts`), thrown by
+ * `AgentsBuilderService.resumeBuild` when the checkpoint being resumed has
+ * expired or no longer exists. Pinned here so
+ * `isBuilderCheckpointUnavailableError` in instance AI's `build-agent.tool.ts`
+ * can detect the state by matching the thrown error's `code`.
+ */
+export const BUILDER_CHECKPOINT_UNAVAILABLE_CODE = 'BUILDER_CHECKPOINT_UNAVAILABLE' as const;
+
+/**
  * The only two agent-builder tools that mutate the agent config. Mirrors
  * `BUILDER_TOOLS.WRITE_CONFIG` / `PATCH_CONFIG` in
  * `packages/cli/src/modules/agents/builder/builder-tool-names.ts`.

@@ -26,14 +26,14 @@
   ],
   "exports": {
     "./start": {
+      "types": "./dist/start.d.ts",
       "require": "./dist/start.js",
-      "import": "./src/start.ts",
-      "types": "./dist/start.d.ts"
+      "import": "./src/start.ts"
     },
     ".": {
+      "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "import": "./src/index.ts",
-      "types": "./dist/index.d.ts"
+      "import": "./src/index.ts"
     }
   },
   "dependencies": {

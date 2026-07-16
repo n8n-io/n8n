@@ -275,7 +275,11 @@ The event bus decouples agent execution from event delivery:
 - All events carry `runId` (correlates to triggering message) and `agentId`
 - SSE events use monotonically increasing per-thread `id` values for replay
 - SSE supports both `Last-Event-ID` header and `?lastEventId` query parameter
-- Events are persisted to thread storage regardless of transport
+- Event storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`: off (default), events
+  live only in a bounded in-memory buffer (500 events / 2 MB per thread,
+  FIFO-evicted, ids reset on restart); on, coalesced step-level facts are
+  appended to the `instance_ai_events` table (the durable replay source, ids
+  survive restarts) while token deltas stay memory-only
 - No need to pipe sub-agent streams through orchestrator tool execution
 - One active run per thread (additional `POST /chat` is rejected while active)
 - Cancellation via `POST /instance-ai/chat/:threadId/cancel` (idempotent)

@@ -24,6 +24,7 @@ n8n-cli package export -p abc -p def -o projects.n8np
 | `-f, --folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
 | `-p, --project-id` | Project ID to include. Repeat the flag to export several. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
+| `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail`, `reference-only`, or `include-in-package`. Currently only `fail` is supported. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
 the API key to hold `workflow:export` when exporting workflows or folders, or
