@@ -195,10 +195,7 @@ test.describe(
 			);
 
 			try {
-				// First call hits the gate and returns the Keycloak authorization URL.
-				// (The gate emits the provider URL directly — its CSRF state already
-				// carries the caller identity + resolver — so no separate n8n authorize
-				// step is needed before completing the Keycloak flow.)
+				// First call hits the gate and returns an n8n authorization intent URL.
 				const gateResult = await mainApi.mcp.callTool(
 					session,
 					mcpPath,
@@ -211,12 +208,16 @@ test.describe(
 				const authorizationUrl = gateText.split('\n').find((line) => line.startsWith('http'));
 				expect(authorizationUrl).toBeTruthy();
 
-				// Complete the Keycloak authorization code flow, then GET the n8n callback
-				// (on the same main) so n8n exchanges the code and stores the caller's
-				// token for the resolver-keyed private credential.
-				const n8nCallbackUrl = await services.keycloak.completeAuthorizationCodeFlow(
-					authorizationUrl!,
-				);
+				const intentUrl = new URL(authorizationUrl!);
+				const authorizeResponse = await mainApi.request.get(intentUrl.pathname + intentUrl.search, {
+					maxRedirects: 0,
+				});
+				expect(authorizeResponse.status()).toBe(302);
+				const keycloakAuthorizationUrl = authorizeResponse.headers().location;
+				expect(keycloakAuthorizationUrl).toBeTruthy();
+
+				const n8nCallbackUrl =
+					await services.keycloak.completeAuthorizationCodeFlow(keycloakAuthorizationUrl);
 				await mainApi.dynamicCredentials.completeAuthorizationCallback(n8nCallbackUrl);
 
 				// Retry with the same caller token: the credential is now connected, the
