@@ -16,6 +16,12 @@ function truncate(value: string, max: number): string {
 	return value.slice(0, max) + TRUNCATION_FOOTER;
 }
 
+function truncateBlockToFit(value: string, max: number): string | null {
+	if (max <= TRUNCATION_FOOTER.length) return null;
+	if (value.length <= max) return value;
+	return value.slice(0, max - TRUNCATION_FOOTER.length) + TRUNCATION_FOOTER;
+}
+
 function stringifyToolValue(value: unknown): string {
 	if (value === undefined) return '(none)';
 	let serialized: string;
@@ -67,13 +73,17 @@ function formatExecution(execution: AgentExecution): string {
 	return lines.join('\n');
 }
 
-// Select the executions making up a single conversation turn: main execution + any subsequent tool / HITL execution
 function selectTurnExecutions(
 	executions: AgentExecution[],
 	executionId: string,
 ): AgentExecution[] | null {
-	const anchorIndex = executions.findIndex((execution) => execution.id === executionId);
+	let anchorIndex = executions.findIndex((execution) => execution.id === executionId);
 	if (anchorIndex === -1) return null;
+
+	while (anchorIndex > 0 && executions[anchorIndex].userMessage === null) {
+		anchorIndex--;
+	}
+
 	const selected = [executions[anchorIndex]];
 	for (let i = anchorIndex + 1; i < executions.length; i++) {
 		if (executions[i].userMessage !== null) break;
@@ -110,24 +120,50 @@ export function formatPreviewSessionContext(
 		'so you can assess its behavior and improve its configuration.',
 	].join('\n');
 	const closing = `\n${PREVIEW_CONTEXT_CLOSE_TAG}`;
-	const includedTurns: string[] = [];
+	const includedNewestFirst: string[] = [];
 	let includedLength = 0;
-	let omitted = 0;
+	let boundaryTurn: string | null = null;
+	let omittedEarlierTurns = 0;
 
-	for (let i = 0; i < scoped.length; i++) {
+	for (let i = scoped.length - 1; i >= 0; i--) {
 		const formatted = `\n${formatExecution(scoped[i])}`;
 		const projectedLength = prefix.length + includedLength + formatted.length + closing.length;
 		if (projectedLength > MAX_BLOCK_CHARS) {
-			omitted = scoped.length - i;
+			boundaryTurn = formatted;
+			omittedEarlierTurns = i;
 			break;
 		}
-		includedTurns.push(formatted);
+		includedNewestFirst.push(formatted);
 		includedLength += formatted.length;
 	}
 
+	const includedTurns = includedNewestFirst.reverse();
+	if (boundaryTurn !== null) {
+		for (;;) {
+			const footerCandidate =
+				omittedEarlierTurns > 0
+					? `\n[transcript truncated: ${omittedEarlierTurns} earlier turns omitted]`
+					: '';
+			const remainingBudget =
+				MAX_BLOCK_CHARS - prefix.length - includedLength - footerCandidate.length - closing.length;
+			const truncatedBoundary = truncateBlockToFit(boundaryTurn, remainingBudget);
+			if (truncatedBoundary !== null) {
+				includedTurns.unshift(truncatedBoundary);
+				includedLength += truncatedBoundary.length;
+				break;
+			}
+
+			omittedEarlierTurns++;
+			if (includedTurns.length === 0) break;
+			const removedTurn = includedTurns.shift();
+			if (!removedTurn) break;
+			includedLength -= removedTurn.length;
+		}
+	}
+
 	let footer = '';
-	while (omitted > 0) {
-		const footerCandidate = `\n[transcript truncated: ${omitted} later turns omitted]`;
+	while (omittedEarlierTurns > 0) {
+		const footerCandidate = `\n[transcript truncated: ${omittedEarlierTurns} earlier turns omitted]`;
 		const projectedLength =
 			prefix.length + includedLength + footerCandidate.length + closing.length;
 		if (projectedLength <= MAX_BLOCK_CHARS) {
@@ -135,10 +171,10 @@ export function formatPreviewSessionContext(
 			break;
 		}
 
-		const removedTurn = includedTurns.pop();
+		const removedTurn = includedTurns.shift();
 		if (!removedTurn) break;
 		includedLength -= removedTurn.length;
-		omitted++;
+		omittedEarlierTurns++;
 	}
 
 	return prefix + includedTurns.join('') + footer + closing;

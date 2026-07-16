@@ -89,6 +89,35 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).not.toContain('Turn two');
 	});
 
+	it('walks back from a resumed HITL execution to include the user message and pre-suspension events', () => {
+		const executions = [
+			makeExecution({
+				id: 'exec-1',
+				userMessage: 'Turn one',
+				timeline: [
+					{ type: 'text', content: 'Before suspension.', timestamp: 1, endTime: 2 },
+					{ type: 'suspension', toolName: 'ask_question', toolCallId: 'tc-1', timestamp: 3 },
+				],
+			}),
+			makeExecution({
+				id: 'exec-2',
+				userMessage: null,
+				hitlStatus: 'resumed',
+				timeline: [{ type: 'text', content: 'After resume.', timestamp: 4, endTime: 5 }],
+			}),
+			makeExecution({ id: 'exec-3', userMessage: 'Turn two' }),
+		];
+
+		const block = formatPreviewSessionContext(makeThread(), executions, 'exec-2');
+
+		expect(block).toContain('scope: single turn, turns: 2');
+		expect(block).toContain('User: Turn one');
+		expect(block).toContain('Before suspension.');
+		expect(block).toContain('[suspended waiting on ask_question]');
+		expect(block).toContain('After resume.');
+		expect(block).not.toContain('Turn two');
+	});
+
 	it('returns null for an unknown executionId', () => {
 		expect(formatPreviewSessionContext(makeThread(), [makeExecution()], 'missing')).toBeNull();
 	});
@@ -128,13 +157,34 @@ describe('formatPreviewSessionContext', () => {
 		const executions = Array.from({ length: 40 }, (_, i) =>
 			makeExecution({
 				id: `exec-${i}`,
-				userMessage: bigText,
+				userMessage: `${bigText}-${i}`,
 			}),
 		);
 
 		const block = formatPreviewSessionContext(makeThread(), executions);
 
-		expect(block).toMatch(/\[transcript truncated: \d+ later turns omitted\]/);
+		expect(block).toMatch(/\[transcript truncated: \d+ earlier turns omitted\]/);
+		expect(block!.length).toBeLessThanOrEqual(100_000);
+		expect(block).toContain(`${bigText}-39`);
+		expect(block).not.toContain(`${bigText}-0`);
+	});
+
+	it('truncates an oversized single turn to the remaining budget instead of dropping it', () => {
+		const executions = [
+			makeExecution({
+				timeline: Array.from({ length: 5_000 }, (_, i) => ({
+					type: 'suspension' as const,
+					toolName: `ask_question_${i}`,
+					toolCallId: `tc-${i}`,
+					timestamp: i,
+				})),
+			}),
+		];
+
+		const block = formatPreviewSessionContext(makeThread(), executions);
+
+		expect(block).toContain('## Turn');
+		expect(block).toContain('[suspended waiting on ask_question_0]');
 		expect(block!.length).toBeLessThanOrEqual(100_000);
 	});
 });
