@@ -344,6 +344,62 @@ describe('useNodeSettingsParameters', () => {
 			});
 		});
 
+		describe('envFeatureFlag', () => {
+			const gatedParameter: INodeProperties = {
+				...mockParameter,
+				envFeatureFlag: 'SOME_FEATURE',
+			};
+
+			it('returns false when the env feature flag is not enabled', async () => {
+				mockNodeHelpers();
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, null, gatedParameter);
+				expect(result).toBe(false);
+			});
+
+			it('does not call displayParameter when the env feature flag hides the parameter', async () => {
+				mockNodeHelpers();
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				await shouldDisplayNodeParameter({}, null, gatedParameter);
+				expect(displayParameterSpy).not.toHaveBeenCalled();
+			});
+
+			it('continues normal evaluation when the env feature flag is enabled', async () => {
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				settingsStore.settings = {
+					...settingsStore.settings,
+					envFeatureFlags: { N8N_ENV_FEAT_SOME_FEATURE: 'true' },
+				};
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, null, gatedParameter);
+				expect(result).toBe(true);
+			});
+
+			it('does not apply the env feature flag gate to disabledOptions checks', async () => {
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter(
+					{},
+					null,
+					gatedParameter,
+					'',
+					'disabledOptions',
+				);
+				expect(result).toBe(true);
+			});
+		});
+
 		describe('custom API call handling', () => {
 			it('returns false for custom API call with mustHideDuringCustomApiCall', async () => {
 				vi.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall').mockReturnValueOnce(true);

@@ -462,6 +462,7 @@ describe('GlobalConfig', () => {
 			minIntervalSeconds: 0,
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'legacy',
+			allowSkipDurableScheduler: false,
 		},
 		evaluation: {
 			collectionsEnabled: false,
