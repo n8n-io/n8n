@@ -155,6 +155,20 @@
 		},
 		{
 			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{}",
+				"options": {
+					"includeBinary": true
+				}
+			},
+			"id": "d847d9db-5d9d-4cf3-8e2d-78a86f41c3e1",
+			"name": "Clear File Metadata",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [20, 40]
+		},
+		{
+			"parameters": {
 				"binaryData": true
 			},
 			"id": "9f23080a-402d-4a82-821c-b74388cc9a26",
@@ -322,6 +336,17 @@
 			"main": [[]]
 		},
 		"Read Binary Files": {
+			"main": [
+				[
+					{
+						"node": "Clear File Metadata",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clear File Metadata": {
 			"main": [
 				[
 					{
