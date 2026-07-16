@@ -13,7 +13,7 @@
 | id | varchar(36) |  | false | [public.workflow_review_request_authors](public.workflow_review_request_authors.md) [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | state | varchar(16) | 'open'::character varying | false |  |  | Review lifecycle: open reviews accept actions; closed reviews are done |
-| title | varchar(512) |  | false |  |  |  |
+| title | varchar(255) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedById | uuid |  | true |  | [public.user](public.user.md) |  |
 
@@ -65,7 +65,7 @@ erDiagram
   varchar_36_ id
   varchar_36_ projectId FK
   varchar_16_ state
-  varchar_512_ title
+  varchar_255_ title
   timestamp_3__with_time_zone updatedAt
   uuid updatedById FK
 }

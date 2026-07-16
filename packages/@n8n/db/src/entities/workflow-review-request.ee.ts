@@ -34,7 +34,7 @@ export class WorkflowReviewRequest extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 50 })
 	decision: WorkflowReviewRequestDecision;
 
-	@Column({ type: 'varchar', length: 512 })
+	@Column({ type: 'varchar', length: 255 })
 	title: string;
 
 	@Column({ type: 'text', nullable: true })
