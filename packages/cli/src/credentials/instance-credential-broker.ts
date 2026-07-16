@@ -1,5 +1,5 @@
-import { CredentialsRepository, type CredentialsEntity } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
+import { CredentialsRepository, type CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
@@ -8,7 +8,10 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 import { CredentialsService } from './credentials.service';
-import { InstanceCredentialConsumerRegistry } from './instance-credential-consumer.registry';
+import {
+	InstanceCredentialConsumerRegistry,
+	type InstanceCredentialConsumer,
+} from './instance-credential-consumer.registry';
 
 export type InstanceCredentialSummary = Pick<CredentialsEntity, 'id' | 'name' | 'type'>;
 
@@ -24,6 +27,10 @@ export class InstanceCredentialBroker {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialsService: CredentialsService,
 	) {}
+
+	registerConsumer(consumer: InstanceCredentialConsumer): void {
+		this.consumerRegistry.register(consumer);
+	}
 
 	async listForConsumer(consumerId: string): Promise<InstanceCredentialSummary[]> {
 		const consumer = this.consumerRegistry.get(consumerId);

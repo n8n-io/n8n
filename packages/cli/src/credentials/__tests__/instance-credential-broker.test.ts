@@ -1,10 +1,10 @@
-import type { CredentialsEntity, CredentialsRepository } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
+import type { CredentialsEntity, CredentialsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialsService } from '../credentials.service';
 import { InstanceCredentialBroker } from '../instance-credential-broker';
 import { InstanceCredentialConsumerRegistry } from '../instance-credential-consumer.registry';
-import type { CredentialsService } from '../credentials.service';
 
 describe('InstanceCredentialBroker', () => {
 	const consumerId = 'example:primary';
@@ -20,7 +20,7 @@ describe('InstanceCredentialBroker', () => {
 	);
 
 	beforeAll(() => {
-		consumerRegistry.register({
+		broker.registerConsumer({
 			id: consumerId,
 			credentialTypes: ['openAiApi'],
 			isCredentialInUse: () => false,

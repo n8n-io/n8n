@@ -56,7 +56,7 @@ const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	cohereApi: 'cohere',
 };
 
-export const INSTANCE_AI_MODEL_CREDENTIAL_CONSUMER = {
+export const INSTANCE_AI_MODEL_CREDENTIAL_POLICY = {
 	id: 'instance-ai:model',
 	credentialTypes: Object.keys(CREDENTIAL_TO_MODEL_PROVIDER),
 };
@@ -306,7 +306,7 @@ export class InstanceAiSettingsService {
 			'credential:read',
 		]);
 		return allCredentials
-			.filter((c) => INSTANCE_AI_MODEL_CREDENTIAL_CONSUMER.credentialTypes.includes(c.type))
+			.filter((c) => INSTANCE_AI_MODEL_CREDENTIAL_POLICY.credentialTypes.includes(c.type))
 			.map((c) => ({
 				id: c.id,
 				name: c.name,
@@ -318,7 +318,7 @@ export class InstanceAiSettingsService {
 	async listInstanceModelCredentials(): Promise<InstanceAiModelCredential[]> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
 		const instanceCredentials = await this.instanceCredentialBroker.listForConsumer(
-			INSTANCE_AI_MODEL_CREDENTIAL_CONSUMER.id,
+			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
 		);
 		return instanceCredentials.map((c) => ({
 			id: c.id,
@@ -538,7 +538,7 @@ export class InstanceAiSettingsService {
 
 	private async resolveModelCredential(credentialId: string) {
 		return await this.instanceCredentialBroker.resolveForConsumer(
-			INSTANCE_AI_MODEL_CREDENTIAL_CONSUMER.id,
+			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
 			credentialId,
 		);
 	}
