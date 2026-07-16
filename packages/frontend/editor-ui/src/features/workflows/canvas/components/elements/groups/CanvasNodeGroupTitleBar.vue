@@ -16,6 +16,7 @@ import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
 import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
+import { HOVER_DELAY } from '@/app/constants';
 import {
 	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
 	GROUP_DESCRIPTION_MAX_LENGTH,
@@ -29,9 +30,6 @@ import {
 	createCanvasGroupNodeId,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
-
-const HOVER_SHOW_DELAY_MS = 500;
-const HOVER_LEAVE_DELAY_MS = 150;
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 
@@ -242,7 +240,7 @@ function onInfoMouseEnter() {
 	clearTimeout(hoverLeaveTimer);
 	hoverShowTimer = setTimeout(() => {
 		isDescriptionHovered.value = true;
-	}, HOVER_SHOW_DELAY_MS);
+	}, HOVER_DELAY.SHOW);
 }
 
 function onInfoMouseLeave() {
@@ -251,7 +249,7 @@ function onInfoMouseLeave() {
 		if (!isEditingDescription.value && !isPermanentlyVisible.value) {
 			isDescriptionHovered.value = false;
 		}
-	}, HOVER_LEAVE_DELAY_MS);
+	}, HOVER_DELAY.LEAVE);
 }
 
 function onDescriptionMouseEnter() {
@@ -264,7 +262,7 @@ function onDescriptionMouseLeave() {
 		if (!isEditingDescription.value && !isPermanentlyVisible.value) {
 			isDescriptionHovered.value = false;
 		}
-	}, HOVER_LEAVE_DELAY_MS);
+	}, HOVER_DELAY.LEAVE);
 }
 
 function autoResizeTextarea() {
