@@ -52,16 +52,11 @@ const WRITE_ITERS = envInt('N8N_SCHEDULER_QUERY_WRITE_ITERS', 25);
 const BATCH = envInt('N8N_SCHEDULER_QUERY_BATCH', 100);
 const WRITE_BATCH = envInt('N8N_SCHEDULER_QUERY_WRITE_BATCH', 10_000);
 
-// `insertMany` does not chunk, and its read-back is `name IN (...)` with one term
-// per job. On SQLite an IN list past ~1000 terms exceeds the expression-depth cap
-// (and the insert past ~2500 rows exceeds the bind-parameter ceiling), so the job
-// batch must stay small there; Postgres has far more headroom. Both are
-// optimization notes: `insertMany` is not safe for large batches on SQLite.
+// `insertMany` chunks its insert and `name IN (...)` read-back internally (dialect-aware,
+// clamped), so any batch is safe; these sizes just shape the benchmark's write workload.
 const WRITE_JOB_BATCH = envInt('N8N_SCHEDULER_QUERY_WRITE_JOB_BATCH', isPostgres ? 5_000 : 800);
-// `advanceMany` builds one CASE branch (a comparison + a value) per row; SQLite
-// caps expression depth at 1000, so even a few hundred branches errors — its chunk
-// must stay small. Postgres has ample headroom. This asymmetry is itself an
-// optimization note: the method's default chunk (1000) is unusable on SQLite.
+// Mirrors `advanceMany`'s own dialect-aware default (it clamps oversized values), sizing the
+// benchmark's advance batches.
 const ADVANCE_CHUNK = isPostgres ? 1_000 : 200;
 // Loose catastrophic-regression guards.
 const READ_MAX_P99_MS = envInt('N8N_SCHEDULER_QUERY_READ_MAX_P99_MS', 2_000);
@@ -482,9 +477,7 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 			);
 
 			// ScheduledJobRepository.advanceMany — materializer clock advance (CASE update).
-			// Chunked per dialect (see ADVANCE_CHUNK) so SQLite's expression-depth cap
-			// isn't hit, which is how a caller advancing many jobs must call it. Advances the
-			// ids inserted by the matching insertMany iteration.
+			// Advances the ids inserted by the matching insertMany iteration.
 			const advanceLatency = await measureWrite(async (iter) => {
 				const ids = jobIdBatches.get(iter) ?? lastIds;
 				const advances = ids.map((id) => ({
