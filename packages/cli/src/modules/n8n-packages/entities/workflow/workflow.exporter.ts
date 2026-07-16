@@ -13,8 +13,6 @@ import { DataTableRequirementsExtractor } from '../data-table/data-table-require
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import type { WorkflowExportRequirements } from '../requirements.types';
-import { WorkflowRequirementsExtractor } from './workflow-requirements.extractor';
-import type { WorkflowWorkflowRequirement } from './workflow.types';
 
 export interface WorkflowExportRequest {
 	user: User;
@@ -37,7 +35,6 @@ export class WorkflowExporter {
 		private readonly workflowSerializer: WorkflowSerializer,
 		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
 		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
-		private readonly workflowRequirementsExtractor: WorkflowRequirementsExtractor,
 	) {}
 
 	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
@@ -59,7 +56,6 @@ export class WorkflowExporter {
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
-		const workflowRequirements: WorkflowWorkflowRequirement[] = [];
 		const fileNames = new UniqueFilenameAllocator(
 			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
 			'workflow',
@@ -80,10 +76,9 @@ export class WorkflowExporter {
 
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));
-			workflowRequirements.push(...this.workflowRequirementsExtractor.extract(workflow));
 		}
 
-		return { entries, requirements: { credentials, dataTables, workflows: workflowRequirements } };
+		return { entries, requirements: { credentials, dataTables } };
 	}
 
 	private orderWorkflowsByRequest(

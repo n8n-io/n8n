@@ -13,10 +13,8 @@ import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
 } from '../../package-export.errors';
-import { WorkflowRequirementsExtractor } from '../workflow-requirements.extractor';
 import { WorkflowExporter } from '../workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
-import type { WorkflowWorkflowRequirement } from '../workflow.types';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -39,7 +37,6 @@ function makeExporter(
 	returned: WorkflowEntity[],
 	credentialExtractor?: CredentialRequirementsExtractor,
 	dataTableExtractor?: DataTableRequirementsExtractor,
-	workflowExtractor?: WorkflowRequirementsExtractor,
 ) {
 	const finder = mock<WorkflowFinderService>();
 	finder.findWorkflowsByIdsForUser.mockResolvedValue(returned);
@@ -49,7 +46,6 @@ function makeExporter(
 		new WorkflowSerializer(),
 		credentialExtractor ?? new CredentialRequirementsExtractor(),
 		dataTableExtractor ?? new DataTableRequirementsExtractor(),
-		workflowExtractor ?? new WorkflowRequirementsExtractor(),
 	);
 	return { exporter, finder };
 }
@@ -269,52 +265,6 @@ describe('WorkflowExporter', () => {
 		expect(requirements.dataTables).toEqual<WorkflowDataTableRequirement[]>([
 			{ workflowId: 'wf-a', dataTableId: 'dt-from-wf-a' },
 			{ workflowId: 'wf-b', dataTableId: 'dt-from-wf-b' },
-		]);
-	});
-
-	it('extracts sub-workflow references from each workflow into requirements.workflows', async () => {
-		const a = makeWorkflow({
-			id: 'wf-a',
-			nodes: [
-				{
-					id: 'node-a',
-					name: 'Execute Workflow',
-					type: 'n8n-nodes-base.executeWorkflow',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {
-						workflowId: { __rl: true, mode: 'list', value: 'wf-child-a' },
-					},
-				},
-			],
-		});
-		const b = makeWorkflow({
-			id: 'wf-b',
-			nodes: [
-				{
-					id: 'node-b',
-					name: 'Call workflow',
-					type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-					typeVersion: 2.2,
-					position: [0, 0],
-					parameters: {
-						workflowId: { __rl: true, mode: 'list', value: 'wf-child-b' },
-					},
-				},
-			],
-		});
-		const { exporter } = makeExporter([a, b]);
-		const writer = new CapturingWriter();
-
-		const { requirements } = await exporter.export({
-			user,
-			workflowIds: [a.id, b.id],
-			writer,
-		});
-
-		expect(requirements.workflows).toEqual<WorkflowWorkflowRequirement[]>([
-			{ workflowId: 'wf-a', referencedWorkflowId: 'wf-child-a' },
-			{ workflowId: 'wf-b', referencedWorkflowId: 'wf-child-b' },
 		]);
 	});
 });
