@@ -3189,7 +3189,7 @@
 	"settings.mcp.workflowsExposed.description": "Choose which workflows connected clients can access.",
 	"settings.mcp.workflowsExposed.count": "{count} workflow | {count} workflows",
 	"settings.mcp.workflowsExposed.page.title": "Workflows exposed",
-	"settings.mcp.workflowsExposed.page.description": "Workflows connected MCP clients can discover and execute.",
+	"settings.mcp.workflowsExposed.page.description": "Choose which workflows connected clients can reach over MCP. Changes apply immediately.",
 	"settings.mcp.callbackUrls.title": "Allowed callback URLs",
 	"settings.mcp.callbackUrls.description": "Restrict OAuth sign-in redirects to trusted URLs. Allowing all URLs (the default) is less secure.",
 	"settings.mcp.callbackUrls.value.all": "All",
