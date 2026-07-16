@@ -143,10 +143,11 @@ const i18n = useI18n();
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'knowledge' && knowledgeBaseEnabled"
+					v-else-if="activeMainTab === 'knowledge'"
 					data-testid="agent-knowledge-tab-content"
 				>
 					<AgentFilesPanel
+						v-if="knowledgeBaseEnabled"
 						:files="agentFiles"
 						:disabled="childrenDisabled"
 						:loading="agentFilesLoading"
