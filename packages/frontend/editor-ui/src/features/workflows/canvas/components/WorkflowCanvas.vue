@@ -102,14 +102,14 @@ const nodes = computed(() => {
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
 const nodeGroupView = useCanvasNodeGroupView({
-	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
+	workflowId: () => workflowDocumentStore.value.workflowId,
 	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	getGroupExpansionMode: () => props.groupExpansionMode,
 });
 
 const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility({
-	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
+	workflowId: () => workflowDocumentStore.value.workflowId,
 	getCurrentGroups: () => workflowDocumentStore.value.allGroups,
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 });
