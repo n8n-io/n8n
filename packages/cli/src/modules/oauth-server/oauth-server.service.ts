@@ -550,10 +550,9 @@ export class OAuthServerService implements OAuthServerProvider {
 		const take = options.take;
 		const page = take === undefined ? filtered.slice(skip) : filtered.slice(skip, skip + take);
 
-		// Reuse the fetched set's size where it already equals the population.
-		const mine = listAll
-			? await this.userConsentRepository.countBy({ userId: user.id })
-			: rows.length;
+		// In the `all` view every consent is already loaded with its owner, so
+		// the caller's own count is derivable without a separate query.
+		const mine = listAll ? rows.filter((row) => row.owner?.id === user.id).length : rows.length;
 		const totals: ConnectedOAuthClientTotals = { mine };
 		if (canSeeAll) {
 			totals.all = listAll ? rows.length : await this.userConsentRepository.count();

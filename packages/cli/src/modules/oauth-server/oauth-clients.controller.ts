@@ -42,15 +42,7 @@ export class OAuthClientsController {
 
 		const { clients, count, totals, owners } = await this.oauthServerService.getAllClients(
 			req.user,
-			{
-				ownership: query.ownership,
-				skip: query.skip,
-				take: query.take,
-				name: query.name,
-				ownerId: query.ownerId,
-				type: query.type,
-				connected: query.connected,
-			},
+			query,
 		);
 
 		this.logger.debug(`Found ${count} OAuth clients`);
@@ -65,7 +57,7 @@ export class OAuthClientsController {
 			updatedAt: client.updatedAt.toISOString(),
 			grantedAt: client.grantedAt,
 			scopes: client.scopes,
-			...(client.owner ? { owner: client.owner } : {}),
+			owner: client.owner,
 		}));
 
 		return {
@@ -73,7 +65,7 @@ export class OAuthClientsController {
 			count,
 			scopeTools: this.oauthServerService.getInstanceScopeTools(),
 			totals,
-			...(owners ? { owners } : {}),
+			owners,
 		};
 	}
 

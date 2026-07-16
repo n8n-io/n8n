@@ -310,21 +310,21 @@ const onOwnershipChange = async (ownership: 'mine' | 'all') => {
 	}
 };
 
-const onClientsFiltersChange = async (filters: OAuthClientFilters) => {
+const withClientsErrorToast = async (fn: () => Promise<void>) => {
 	try {
-		await mcpStore.setOAuthClientsFilters(filters);
+		await fn();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	}
 };
 
-const onClientsOptionsChange = async (options: { page: number; itemsPerPage: number }) => {
-	try {
-		await mcpStore.setOAuthClientsPagination(options.page, options.itemsPerPage);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
-	}
-};
+const onClientsFiltersChange = async (filters: OAuthClientFilters) =>
+	await withClientsErrorToast(() => mcpStore.setOAuthClientsFilters(filters));
+
+const onClientsOptionsChange = async (options: { page: number; itemsPerPage: number }) =>
+	await withClientsErrorToast(() =>
+		mcpStore.setOAuthClientsPagination(options.page, options.itemsPerPage),
+	);
 
 const onRevokeRequest = (client: OAuthClientResponseDto) => {
 	revokeClient.value = client;
