@@ -94,7 +94,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
 | [scheduled_job](scheduled_job.md) | 19 |  | table |
-| [scheduled_task](scheduled_task.md) | 16 |  | table |
+| [scheduled_task](scheduled_task.md) | 17 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
 | [settings](settings.md) | 3 |  | table |
@@ -1119,6 +1119,7 @@ erDiagram
   INTEGER attempts
   varchar_255_ claimedBy
   datetime_3_ createdAt
+  datetime_3_ dispatchedAt
   TEXT errorMessage
   datetime_3_ finishedAt
   INTEGER id
