@@ -52,11 +52,13 @@ const getAllowedPaths = () => {
 };
 
 function createBlockedPathError(node: INode): NodeOperationError {
-	const allowedPaths = getAllowedPaths();
-	const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
-	return new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
-		level: 'warning',
-	});
+	return new NodeOperationError(
+		node,
+		'Access to the file is not allowed. The file is outside of the allowed paths.',
+		{
+			level: 'warning',
+		},
+	);
 }
 
 async function resolvePath(path: PathLike): Promise<ResolvedFilePath> {

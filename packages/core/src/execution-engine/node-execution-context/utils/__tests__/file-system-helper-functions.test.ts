@@ -310,21 +310,25 @@ describe('getFileSystemHelperFunctions', () => {
 			).rejects.toThrow(`The file "${filePath}" could not be accessed.`);
 		});
 
-		it('should throw when file access is blocked', async () => {
+		it('should explain that a blocked file is outside the allowed paths', async () => {
 			securityConfig.restrictFileAccessTo = '/allowed/path';
 			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
-			).rejects.toThrow('Access to the file is not allowed. Allowed paths: /allowed/path');
+			).rejects.toThrow(
+				'Access to the file is not allowed. The file is outside of the allowed paths.',
+			);
 		});
 
-		it('should not reveal if file exists if it is within restricted path', async () => {
+		it('should not reveal if a blocked file exists', async () => {
 			securityConfig.restrictFileAccessTo = '/allowed/path';
 			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
-			).rejects.toThrow('Access to the file is not allowed. Allowed paths: /allowed/path');
+			).rejects.toThrow(
+				'Access to the file is not allowed. The file is outside of the allowed paths.',
+			);
 		});
 
 		it('should omit allowed paths from blocked access errors when none are configured', async () => {
@@ -409,7 +413,7 @@ describe('getFileSystemHelperFunctions', () => {
 			).rejects.toThrow('Access to the file is not allowed.');
 		});
 
-		it('should include allowed paths when writing outside configured allowed paths', async () => {
+		it('should explain that a blocked file is outside the allowed paths', async () => {
 			securityConfig.restrictFileAccessTo = '/allowed/path';
 			(fsStat as Mock).mockResolvedValueOnce(mockFileStats);
 
@@ -419,7 +423,9 @@ describe('getFileSystemHelperFunctions', () => {
 					'content',
 					constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC,
 				),
-			).rejects.toThrow('Access to the file is not allowed. Allowed paths: /allowed/path');
+			).rejects.toThrow(
+				'Access to the file is not allowed. The file is outside of the allowed paths.',
+			);
 		});
 
 		it('should reject symlinks with ELOOP error', async () => {
