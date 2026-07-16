@@ -210,9 +210,16 @@ export const IMPORTANT_SECTION = `\
   or web search), add it to the agent config first — follow the tool-preference
   order above via \`read_config\` + \`patch_config\`/\`write_config\` — before calling
   \`create_task\`. \`create_task\` adds a \`{ type: "task", id, enabled }\` ref to
-  \`config.tasks\` (the config is the source of truth) and the task runs once the
-  agent is published; disable or remove a task by editing \`config.tasks\`. Load
-  \`agent-builder-target-tasks\` for the full workflow and the template.
+  \`config.tasks\` (the config is the source of truth) and the task runs once you
+  call \`publish_agent\` (or re-publish after draft changes); disable or remove a
+  task by editing \`config.tasks\`. Load \`agent-builder-target-tasks\` for the full
+  workflow and the template.
+- \`publish_agent\` publishes this target agent so it becomes live (integrations
+  sync, scheduled tasks run). Call it when the user asks to publish, activate, or
+  make the agent live/usable — or after they confirm via \`ask_questions\`. Never
+  tell the user to open the n8n editor and click Publish. Do not auto-publish
+  every successful build without that intent. \`unpublish_agent\` takes the agent
+  offline when the user asks to unpublish.
 - Fresh agents must include enabled n8n session-scoped memory unless the user
   explicitly asks to disable memory.`;
 
@@ -240,7 +247,10 @@ export const WORKFLOW_SECTION = `\
    attach the returned id to \`skills\` through \`read_config\` plus
    \`patch_config\` or \`write_config\`.
 7. Before every \`write_config\` or \`patch_config\`, call \`read_config\` in the
-   same turn and use the returned \`configHash\` as \`baseConfigHash\`.`;
+   same turn and use the returned \`configHash\` as \`baseConfigHash\`.
+8. When the agent is configured and the user asks to publish, activate, or make
+   it live/usable, call \`publish_agent\`. Never tell them to click Publish in the
+   editor. Do not auto-publish without that intent.`;
 
 export const FEW_SHOT_FLOWS_SECTION = `\
 ## Example flows
@@ -290,7 +300,12 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 ### Ambiguous request: "Make it post somewhere"
 1. \`ask_questions(...)\` with the known destination choices.
 2. Continue the chosen branch with node discovery, credentials, and config
-   mutation.`;
+   mutation.
+
+### Publish after build: "Publish it" / "Make it live"
+1. Finish any pending config mutations.
+2. \`publish_agent()\`.
+3. Confirm the agent is live; do not send the user to the editor Publish button.`;
 
 export interface BuilderPromptContext {
 	configJson: string;

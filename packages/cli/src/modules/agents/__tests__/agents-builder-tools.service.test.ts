@@ -24,6 +24,7 @@ import type { DynamicNodeParametersService } from '@/services/dynamic-node-param
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsToolsService } from '../agents-tools.service';
@@ -39,6 +40,7 @@ import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import type { AiService } from '@/services/ai.service';
+import * as checkAccess from '@/permissions.ee/check-access';
 
 const ctx = {
 	resumeData: undefined,
@@ -75,6 +77,7 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentRepository = mock<AgentRepository>();
+	const agentPublishService = mock<AgentPublishService>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -104,6 +107,7 @@ function makeService() {
 		credentialTypes,
 		agentTaskService,
 		agentRepository,
+		agentPublishService,
 		aiService,
 		outboundHttp,
 		dynamicNodeParametersService,
@@ -119,6 +123,7 @@ function makeService() {
 		attachableWorkflowsService,
 		agentTaskService,
 		agentRepository,
+		agentPublishService,
 		nodeTypes,
 		outboundHttp,
 	};
@@ -223,6 +228,10 @@ describe('AgentsBuilderToolsService', () => {
 		vi.clearAllMocks();
 	});
 
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	describe('JSON config tools', () => {
 		function getJsonTool(service: AgentsBuilderToolsService, name: string) {
 			return service
@@ -237,6 +246,16 @@ describe('AgentsBuilderToolsService', () => {
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
 			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
+		});
+
+		it('registers publish and unpublish tools in the builder toolset', () => {
+			const { service } = makeService();
+
+			const toolNames = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.json.map((tool) => tool.name);
+			expect(toolNames).toContain(BUILDER_TOOLS.PUBLISH_AGENT);
+			expect(toolNames).toContain(BUILDER_TOOLS.UNPUBLISH_AGENT);
 		});
 
 		it('builds verify_mcp_server with OutboundHttp SSRF protection enabled', () => {
@@ -1347,6 +1366,141 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found' }] });
 			expect(agentTaskService.create).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('publish_agent / unpublish_agent tools', () => {
+		function getPublishTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.json.find((tool) => tool.name === BUILDER_TOOLS.PUBLISH_AGENT)!;
+		}
+
+		function getUnpublishTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.json.find((tool) => tool.name === BUILDER_TOOLS.UNPUBLISH_AGENT)!;
+		}
+
+		it('publishes the bound agent draft when the user has agent:publish', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.publishAgent.mockResolvedValue({
+				activeVersionId: 'v-active',
+				versionId: 'v-active',
+			} as Agent);
+
+			const result = await getPublishTool(service).handler!({}, ctx);
+
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:publish'], false, {
+				projectId,
+			});
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				undefined,
+			);
+			expect(result).toEqual({
+				ok: true,
+				agentId,
+				activeVersionId: 'v-active',
+				versionId: 'v-active',
+			});
+		});
+
+		it('forwards an optional versionId to publishAgent', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.publishAgent.mockResolvedValue({
+				activeVersionId: 'v-history',
+				versionId: 'v-draft',
+			} as Agent);
+
+			const result = await getPublishTool(service).handler!({ versionId: 'v-history' }, ctx);
+
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				'v-history',
+			);
+			expect(result).toEqual({
+				ok: true,
+				agentId,
+				activeVersionId: 'v-history',
+				versionId: 'v-draft',
+			});
+		});
+
+		it('denies publish when the user lacks agent:publish', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			const result = await getPublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'You do not have permission to publish agents in this project.' }],
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('surfaces publish service errors to the model', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.publishAgent.mockRejectedValue(
+				new Error('Cannot publish agent with missing custom tools: my_tool'),
+			);
+
+			const result = await getPublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'Cannot publish agent with missing custom tools: my_tool' }],
+			});
+		});
+
+		it('unpublishes the bound agent when the user has agent:unpublish', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.unpublishAgent.mockResolvedValue({
+				activeVersionId: null,
+			} as Agent);
+
+			const result = await getUnpublishTool(service).handler!({}, ctx);
+
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:unpublish'], false, {
+				projectId,
+			});
+			expect(agentPublishService.unpublishAgent).toHaveBeenCalledWith(agentId, projectId);
+			expect(result).toEqual({ ok: true, agentId, activeVersionId: null });
+		});
+
+		it('denies unpublish when the user lacks agent:unpublish', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			const result = await getUnpublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'You do not have permission to unpublish agents in this project.' }],
+			});
+			expect(agentPublishService.unpublishAgent).not.toHaveBeenCalled();
+		});
+
+		it('surfaces unpublish service errors to the model', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.unpublishAgent.mockRejectedValue(new Error('Agent "agent-1" not found'));
+
+			const result = await getUnpublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'Agent "agent-1" not found' }],
+			});
 		});
 	});
 });

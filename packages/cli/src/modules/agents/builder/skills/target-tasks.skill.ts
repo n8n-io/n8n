@@ -8,7 +8,13 @@ export function targetTasksSkill(): RuntimeSkill {
 		name: 'Agent Builder Target Tasks',
 		description:
 			'Use when the user wants the target agent to run something on a recurring schedule (a "task"): a daily/weekly/hourly objective the agent carries out on its own with create_task. Not for one-off requests, chat/event triggers, or config/tool/skill/model edits.',
-		recommendedTools: ['create_task', 'ask_questions', 'read_config', 'patch_config'],
+		recommendedTools: [
+			'create_task',
+			'ask_questions',
+			'read_config',
+			'patch_config',
+			'publish_agent',
+		],
 		allowedTools: [
 			'create_task',
 			'ask_questions',
@@ -19,6 +25,7 @@ export function targetTasksSkill(): RuntimeSkill {
 			'search_nodes',
 			'get_node_types',
 			'ask_credential',
+			'publish_agent',
 		],
 		instructions: `\
 ## Purpose
@@ -85,9 +92,11 @@ template and pin down the cadence. Never create a placeholder or "refine-it-late
 
 - \`create_task\` adds a \`{ type: "task", id, enabled }\` ref to \`config.tasks\` and
   creates the task body. The task is enabled by default and only starts running
-  once the agent is (re)published; tell the user this when relevant.
+  once the agent is (re)published via \`publish_agent\`; tell the user this when
+  relevant, and call \`publish_agent\` when they ask to publish or make the agent live.
 - To disable or remove a task, edit \`config.tasks\` with \`patch_config\` (set
-  \`enabled: false\`, or drop the ref). Changes take effect on the next publish.
+  \`enabled: false\`, or drop the ref). Changes take effect on the next
+  \`publish_agent\`.
 - \`create_task\` does NOT add tools — if the task needs a tool the agent lacks,
   add it to the config yourself first.`,
 	};
