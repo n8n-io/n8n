@@ -74,11 +74,6 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		lookaheadMs = 0,
 	): Promise<{ now: Date; jobs: ScheduledJob[] } | undefined> {
 		const nowExpression = dbNowLiteral(this.isPostgres);
-		// Claim a job whose `nextRunAt` falls within `lookaheadMs` of now, not only
-		// once it's already due: a fixed-interval poll only wakes on its own tick,
-		// so a strict `<= now` comparison claims (and therefore materializes new
-		// occurrences for) a job a whole tick late. Same claim-ahead the executor
-		// uses against its own tick (see `pollLookaheadSeconds`).
 		const dueExpression = dbNowPlusMsLiteral(this.isPostgres, lookaheadMs);
 
 		const query = manager
