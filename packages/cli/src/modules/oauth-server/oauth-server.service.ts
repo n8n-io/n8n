@@ -499,23 +499,35 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new ForbiddenError('You are not allowed to list connected clients of other users');
 		}
 
-		// `type` is a regex over the client name that SQL can't express, so its
-		// presence defers paging and counting to JS; every other filter and the
-		// pagination itself run in the DB query.
-		const typeFilter = options.type;
+		// The `type` filter is a name-pattern match SQL can't express. Resolve it
+		// to the matching client ids first — bounded by the registered client cap,
+		// not the (client × user) consent set — so filtering and paging stay in SQL.
+		let clientIds: string[] | undefined;
+		if (options.type) {
+			const registered = await this.oauthClientRepository.find({
+				select: { id: true, name: true },
+			});
+			clientIds = registered
+				.filter((client) => matchesTypeFilter(client.name, options.type!))
+				.map((client) => client.id);
+		}
 
-		const { rows: consents, total } = await this.userConsentRepository.findConnectedClients({
-			userId: listAll ? undefined : user.id,
-			withOwner: listAll,
-			name: options.name,
-			ownerId: listAll ? options.ownerId : undefined,
-			connected: options.connected,
-			now: Date.now(),
-			skip: typeFilter ? undefined : options.skip,
-			take: typeFilter ? undefined : options.take,
-		});
+		const { rows: consents, total } =
+			clientIds?.length === 0
+				? { rows: [], total: 0 }
+				: await this.userConsentRepository.findConnectedClients({
+						userId: listAll ? undefined : user.id,
+						withOwner: listAll,
+						name: options.name,
+						ownerId: listAll ? options.ownerId : undefined,
+						clientIds,
+						connected: options.connected,
+						now: Date.now(),
+						skip: options.skip,
+						take: options.take,
+					});
 
-		let clients: ConnectedOAuthClient[] = consents.map((consent) => {
+		const clients: ConnectedOAuthClient[] = consents.map((consent) => {
 			const { clientSecret, clientSecretExpiresAt, ...sanitizedClient } = consent.client;
 			return {
 				...sanitizedClient,
@@ -534,15 +546,7 @@ export class OAuthServerService implements OAuthServerProvider {
 					: {}),
 			};
 		});
-		let count = total;
-
-		if (typeFilter) {
-			clients = clients.filter((client) => matchesTypeFilter(client.name, typeFilter));
-			count = clients.length;
-			const skip = options.skip ?? 0;
-			clients =
-				options.take === undefined ? clients.slice(skip) : clients.slice(skip, skip + options.take);
-		}
+		const count = total;
 
 		// Owners and the tab totals reflect the unfiltered set, so they come from
 		// dedicated counts rather than the filtered page above.

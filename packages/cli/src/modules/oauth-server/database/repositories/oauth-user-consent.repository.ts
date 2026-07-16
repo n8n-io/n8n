@@ -22,6 +22,12 @@ export type FindConnectedClientsOptions = {
 	name?: string;
 	/** Restrict to a single owner (managers filtering the "all" view). */
 	ownerId?: string;
+	/**
+	 * Restrict to these client ids. Used for the name-pattern "type" filter,
+	 * which is resolved to matching clients up front (bounded by the registered
+	 * client cap) so paging stays in SQL. Must be non-empty when provided.
+	 */
+	clientIds?: string[];
 	/** Date bucket applied to the consent's `grantedAt`. */
 	connected?: McpClientConnectedPeriod;
 	/** Reference timestamp for the `connected` buckets. */
@@ -52,6 +58,9 @@ export class UserConsentRepository extends Repository<UserConsent> {
 		if (options.withOwner) qb.leftJoinAndSelect('consent.user', 'user');
 		if (options.userId) qb.andWhere('consent.userId = :userId', { userId: options.userId });
 		if (options.ownerId) qb.andWhere('consent.userId = :ownerId', { ownerId: options.ownerId });
+		if (options.clientIds) {
+			qb.andWhere('consent.clientId IN (:...clientIds)', { clientIds: options.clientIds });
+		}
 
 		if (options.name?.trim()) {
 			qb.andWhere('LOWER(client.name) LIKE :name', {
