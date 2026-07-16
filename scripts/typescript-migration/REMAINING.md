@@ -27,7 +27,7 @@ migrate it before the others to keep downstream typechecks green.
 - [x] `@n8n/code-health` (`packages/testing/code-health`)
 - [x] `@n8n/playwright-janitor` (`packages/testing/janitor`)
 - [x] `@n8n/performance` (`packages/testing/performance`)
-- [ ] `n8n-playwright` (`packages/testing/playwright`)
+- [x] `n8n-playwright` (`packages/testing/playwright`)
 - [ ] `@n8n/rules-engine` (`packages/testing/rules-engine`)
 - [ ] `@n8n/test-impact` (`packages/testing/test-impact`)
 - [ ] `n8n-containers` (`packages/testing/containers`) — no `typescript`
