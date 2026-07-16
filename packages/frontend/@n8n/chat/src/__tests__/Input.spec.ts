@@ -189,12 +189,39 @@ describe('ChatInput', () => {
 			expect(wrapper.vm.chatStore.messages.value).toHaveLength(0);
 		});
 
-		it('treats both legacy and JSON continue frames as control, not messages', () => {
+		it('treats a legacy continue frame as control, not a message', () => {
+			emit('n8n|heartbeat'); // locks legacy mode
 			emit('n8n|continue');
+
+			expect(wrapper.vm.chatStore.messages.value).toHaveLength(0);
+			expect(wrapper.vm.chatStore.waitingForResponse.value).toBe(true);
+		});
+
+		it('treats a JSON continue frame as control once JSON mode is established', () => {
+			emit(JSON.stringify({ type: 'heartbeat' })); // locks JSON mode
 			emit(JSON.stringify({ type: 'continue' }));
 
 			expect(wrapper.vm.chatStore.messages.value).toHaveLength(0);
 			expect(wrapper.vm.chatStore.waitingForResponse.value).toBe(true);
+		});
+
+		it('renders JSON that looks like a control frame as a message when the server is legacy', () => {
+			emit('n8n|heartbeat'); // locks legacy mode (single legacy ack)
+			emit(JSON.stringify({ type: 'continue' }));
+			emit(JSON.stringify({ type: 'heartbeat' }));
+
+			// Both are rendered as text, not swallowed or acked as control frames
+			expect(wrapper.vm.chatStore.messages.value).toHaveLength(2);
+			expect(wrapper.vm.chatStore.messages.value[0]).toMatchObject({
+				sender: 'bot',
+				text: JSON.stringify({ type: 'continue' }),
+			});
+			expect(wrapper.vm.chatStore.messages.value[1]).toMatchObject({
+				sender: 'bot',
+				text: JSON.stringify({ type: 'heartbeat' }),
+			});
+			expect(ws.send).toHaveBeenCalledTimes(1);
+			expect(ws.send).toHaveBeenCalledWith('n8n|heartbeat-ack');
 		});
 
 		it('renders a JSON message frame as bot text', () => {

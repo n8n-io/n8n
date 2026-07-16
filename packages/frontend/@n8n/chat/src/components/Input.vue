@@ -167,6 +167,10 @@ function setupWebsocketConnection(executionId: string, resumeToken?: string) {
 				resumeToken,
 			);
 			chatStore.ws = new WebSocket(wsUrl);
+			// The first heartbeat locks the protocol: a pre-v3 server sends the string
+			// `n8n|heartbeat`, a v3 server sends `{type:'heartbeat'}`. Once legacy mode is
+			// locked, JSON that merely looks like a control frame is a chat message.
+			let jsonProtocol: boolean | undefined;
 			chatStore.ws.onmessage = (e) => {
 				const data = e.data as string;
 
@@ -185,14 +189,19 @@ function setupWebsocketConnection(executionId: string, resumeToken?: string) {
 					}
 				}
 
-				if (frameType === 'heartbeat') {
+				// A JSON heartbeat is only honored until legacy mode is locked; a legacy
+				// string heartbeat always is. Either one locks the mode for this socket.
+				if (frameType === 'heartbeat' && (isLegacy || jsonProtocol !== false)) {
+					jsonProtocol = !isLegacy;
 					chatStore.ws?.send(
 						isLegacy ? 'n8n|heartbeat-ack' : JSON.stringify({ type: 'heartbeat-ack' }),
 					);
 					return;
 				}
 
-				if (frameType === 'continue') {
+				// JSON control frames only count once JSON mode is established; legacy
+				// string sentinels always count.
+				if (frameType === 'continue' && (isLegacy || jsonProtocol === true)) {
 					waitingForChatResponse.value = false;
 					chatStore.waitingForResponse.value = true;
 					return;
