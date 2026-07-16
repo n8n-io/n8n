@@ -10,10 +10,11 @@ import {
 	type SandboxConfig,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION } from '@/constants';
+import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from '../sandbox-provider';
 
@@ -21,24 +22,6 @@ const SANDBOX_NAME_MAX_LEN = 63;
 const SANDBOX_LABEL_MAX_LEN = 63;
 const NAME_PREFIX_SLUG_MAX_LEN = 24;
 const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
-
-const AI_SERVICE_MAX_ATTEMPTS = 3;
-const AI_SERVICE_RETRY_BACKOFF_BASE_MS = 1_000;
-const AI_SERVICE_RETRY_BACKOFF_CAP_MS = 5_000;
-
-async function sleep(ms: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// The AI assistant service SDK carries the upstream HTTP status as a numeric statusCode;
-// gateway HTML bodies and network failures are re-wrapped without one, so treat a missing
-// status as transient rather than parsing error messages.
-function isTransientAiServiceError(error: unknown): boolean {
-	if (typeof error !== 'object' || error === null) return false;
-	const status = 'statusCode' in error ? error.statusCode : undefined;
-	if (typeof status !== 'number') return true;
-	return status >= 500 || status === 408 || status === 429;
-}
 
 /** Cached runtime sandbox + workspace pair for a single thread. */
 export type RuntimeSandboxEntry = {
@@ -179,37 +162,6 @@ export class InstanceAiSandboxService {
 		return this.options.logger;
 	}
 
-	/**
-	 * Call the AI assistant service, retrying transient failures (5xx/408/429, gateway
-	 * HTML bodies, network errors) with capped exponential backoff. Exhausted retries
-	 * surface as a user-facing OperationalError; definite client errors rethrow as-is.
-	 */
-	private async callAiService<T>(label: string, call: () => Promise<T>): Promise<T> {
-		for (let attempt = 1; ; attempt++) {
-			try {
-				return await call();
-			} catch (error) {
-				if (!isTransientAiServiceError(error)) throw error;
-				if (attempt >= AI_SERVICE_MAX_ATTEMPTS) {
-					throw new OperationalError(
-						'The AI assistant service is temporarily unavailable. Please try again in a few minutes.',
-						{ cause: error },
-					);
-				}
-				this.logger.warn(`${label} hit a transient AI assistant service error; retrying`, {
-					attempt,
-					error: error instanceof Error ? error.message : String(error),
-				});
-				await sleep(
-					Math.min(
-						AI_SERVICE_RETRY_BACKOFF_BASE_MS * 2 ** (attempt - 1),
-						AI_SERVICE_RETRY_BACKOFF_CAP_MS,
-					),
-				);
-			}
-		}
-	}
-
 	private get instanceAiConfig(): InstanceAiConfig {
 		return this.options.config;
 	}
@@ -278,9 +230,10 @@ export class InstanceAiSandboxService {
 			// If AI assistant service is available, route Daytona calls through its sandbox proxy
 			if (this.options.aiService.isProxyEnabled()) {
 				const client = await this.options.aiService.getClient();
-				const proxyConfig = await this.callAiService(
+				const proxyConfig = await callAiServiceWithRetry(
 					'Sandbox proxy config fetch',
 					async () => await client.getSandboxProxyConfig(),
+					this.logger,
 				);
 				return {
 					...base,
@@ -288,13 +241,14 @@ export class InstanceAiSandboxService {
 					image: proxyConfig.image,
 					logger: this.logger,
 					getAuthToken: async () => {
-						const token = await this.callAiService(
+						const token = await callAiServiceWithRetry(
 							'Sandbox proxy token mint',
 							async () =>
 								await client.getInstanceAiApiProxyToken(
 									{ id: user.id },
 									{ userMessageId: nanoid() },
 								),
+							this.logger,
 						);
 
 						return token.accessToken;
