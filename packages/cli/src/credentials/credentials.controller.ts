@@ -15,6 +15,7 @@ import {
 import {
 	Delete,
 	Get,
+	GlobalScope,
 	Licensed,
 	Patch,
 	Post,
@@ -99,6 +100,18 @@ export class CredentialsController {
 			.union([z.object({ workflowId: z.string() }), z.object({ projectId: z.string() })])
 			.parse(req.query);
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
+	}
+
+	/**
+	 * Lists all instance credentials (`availability: 'instance'`) for the
+	 * instance-credentials management UI. Must be declared before the
+	 * `/:credentialId` route so it isn't shadowed by it.
+	 */
+	@Get('/instance')
+	@GlobalScope('credential:manageInstance')
+	async getInstanceCredentials() {
+		const instanceCredentials = await this.credentialsFinderService.findInstanceCredentials();
+		return instanceCredentials.map(({ data, shared, ...rest }) => rest);
 	}
 
 	@Get('/new')

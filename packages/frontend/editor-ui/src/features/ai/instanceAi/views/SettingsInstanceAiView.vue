@@ -5,6 +5,7 @@ import {
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
+	N8nLink,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -18,6 +19,7 @@ import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrows
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -235,6 +237,14 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 							<span :class="$style.settingsRowDescription">
 								{{ i18n.baseText('settings.n8nAgent.modelCredential.description') }}
 							</span>
+							<N8nLink
+								:class="$style.manageInstanceCredentialsLink"
+								size="small"
+								:to="{ name: VIEWS.INSTANCE_CREDENTIALS_SETTINGS }"
+								data-test-id="n8n-agent-manage-instance-credentials-link"
+							>
+								{{ i18n.baseText('settings.n8nAgent.modelCredential.manage') }}
+							</N8nLink>
 						</div>
 						<div :class="$style.modelCredentialControls">
 							<N8nSelect
@@ -265,7 +275,7 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 							>
 								<template #activator>
 									<N8nButton
-										type="secondary"
+										variant="subtle"
 										size="small"
 										:disabled="store.isSaving"
 										data-test-id="n8n-agent-model-credential-create-button"
@@ -467,8 +477,8 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-left: var(--spacing--sm);
-	padding-right: var(--spacing--sm);
+	gap: var(--spacing--md);
+	padding: var(--spacing--xs) var(--spacing--sm);
 	min-height: 64px;
 	background: var(--color--background--light-3);
 }
@@ -491,6 +501,9 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+	// Let the text column shrink and wrap instead of running under the controls
+	flex: 1;
+	min-width: 0;
 }
 
 .settingsRowLabel {
@@ -532,6 +545,11 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 
 .modelCredentialSelect {
 	width: 240px;
+}
+
+.manageInstanceCredentialsLink {
+	margin-top: var(--spacing--3xs);
+	align-self: flex-start;
 }
 
 .enableSection {

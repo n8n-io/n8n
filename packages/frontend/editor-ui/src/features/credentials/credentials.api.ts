@@ -73,6 +73,17 @@ export async function getAllCredentials(
 	});
 }
 
+/**
+ * Fetch all instance credentials (availability: 'instance'). These are ownerless,
+ * admin-managed credentials excluded from the regular credentials list; the
+ * endpoint is gated on the global `credential:manageInstance` scope.
+ */
+export async function getInstanceCredentials(
+	context: IRestApiContext,
+): Promise<ICredentialsResponse[]> {
+	return await makeRestApiRequest(context, 'GET', '/credentials/instance');
+}
+
 export async function getAllCredentialsForWorkflow(
 	context: IRestApiContext,
 	options: { workflowId: string } | { projectId: string },

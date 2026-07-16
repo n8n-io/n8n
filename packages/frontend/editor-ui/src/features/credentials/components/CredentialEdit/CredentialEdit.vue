@@ -269,6 +269,13 @@ const appendToBody = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.appendToBody === true;
 });
 
+// Instance credentials are admin-managed and never shared with projects/users:
+// preset on new credentials, carried on the loaded response when editing.
+const isInstanceCredential = computed(
+	() =>
+		presetAvailability.value === 'instance' || currentCredential.value?.availability === 'instance',
+);
+
 const sidebarItems = computed(() => {
 	const menuItems: IMenuItem[] = [
 		{
@@ -276,8 +283,7 @@ const sidebarItems = computed(() => {
 			label: i18n.baseText('credentialEdit.credentialEdit.connection'),
 			position: 'top',
 		},
-		// Instance credentials are admin-managed and never shared with projects/users.
-		...(presetAvailability.value === 'instance'
+		...(isInstanceCredential.value
 			? []
 			: [
 					{
