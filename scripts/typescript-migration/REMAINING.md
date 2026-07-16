@@ -19,8 +19,8 @@ migrate it before the others to keep downstream typechecks green.
 
 - [x] `n8n-workflow` (`packages/workflow`)
 - [x] `n8n-core` (`packages/core`)
-- [ ] `n8n-nodes-base` (`packages/nodes-base`)
-- [ ] `n8n-node-dev` (`packages/node-dev`)
+- [x] `n8n-nodes-base` (`packages/nodes-base`)
+- [x] `n8n-node-dev` (`packages/node-dev`)
 
 ## Testing packages
 
