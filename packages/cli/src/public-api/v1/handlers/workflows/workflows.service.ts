@@ -65,6 +65,14 @@ export async function createWorkflow(
 	body: WorkflowEntity & { projectId?: string; parentFolderId?: string | null },
 ): Promise<WorkflowEntity> {
 	const { projectId, parentFolderId, ...rest } = body;
+
+	// binaryMode is a derived, internal setting rather than something users are
+	// expected to control programmatically; ignore any value sent so new
+	// workflows always get the default.
+	if (rest.settings?.binaryMode !== undefined) {
+		delete rest.settings.binaryMode;
+	}
+
 	const workflow = createWorkflowEntityFromPayload(rest);
 
 	// A policy supplied via the API is explicit intent, so a below-floor value is

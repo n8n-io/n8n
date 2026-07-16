@@ -25,6 +25,14 @@ properties:
   executionOrder:
     type: string
     example: v1
+  binaryMode:
+    type: string
+    enum: ['separate', 'combined']
+    description: |
+      Controls how binary data is resolved from a node's input. This is a derived,
+      internal setting rather than something intended to be set programmatically.
+      It is included in workflow responses for reference, but any value sent when
+      creating or updating a workflow is ignored.
   callerPolicy:
     type: string
     enum: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']

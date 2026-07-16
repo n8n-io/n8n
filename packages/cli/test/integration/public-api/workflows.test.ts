@@ -1621,6 +1621,25 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
+	test('should ignore binaryMode when creating a workflow', async () => {
+		const payload = {
+			...mockPostWorkflowPayload(),
+			settings: {
+				executionOrder: 'v1',
+				binaryMode: 'combined',
+			},
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.binaryMode).toBeUndefined();
+
+		const workflow = await workflowRepository.findOneBy({ id: response.body.id });
+
+		expect(workflow?.settings?.binaryMode).toBeUndefined();
+	});
+
 	test('should create workflow with node groups', async () => {
 		const payload = {
 			name: 'grouped',
@@ -2283,6 +2302,32 @@ describe('PUT /workflows/:id', () => {
 		});
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
+	});
+
+	test('should ignore binaryMode when updating a workflow', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{ settings: { executionOrder: 'v1', binaryMode: 'combined' } },
+			member,
+		);
+
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: {
+				executionOrder: 'v1',
+				binaryMode: 'separate',
+			},
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.binaryMode).toBe('combined');
+
+		const workflowAfter = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(workflowAfter?.settings?.binaryMode).toBe('combined');
 	});
 
 	test('should update non-owned workflow if owner', async () => {
