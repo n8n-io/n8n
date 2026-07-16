@@ -34,17 +34,17 @@ export interface SandboxWorkspace extends SharedSandboxWorkspace {
 }
 
 const BASE64_WRITE_CHUNK_SIZE = 32_000;
-const WRITE_MAX_ATTEMPTS = 3;
-const DEFAULT_WRITE_RETRY_BACKOFF_BASE_MS = 1_000;
-const WRITE_RETRY_BACKOFF_CAP_MS = 5_000;
+const SANDBOX_IO_MAX_ATTEMPTS = 3;
+const DEFAULT_SANDBOX_IO_RETRY_BACKOFF_BASE_MS = 1_000;
+const SANDBOX_IO_RETRY_BACKOFF_CAP_MS = 5_000;
 
-export interface SandboxWriteRetryOptions {
+export interface SandboxIoRetryOptions {
 	logger?: Pick<Logger, 'warn'>;
 	resourceLabel?: string;
 	retryBackoffBaseMs?: number;
 }
 
-function writeResourceLabel(options?: SandboxWriteRetryOptions): string {
+function ioResourceLabel(options?: SandboxIoRetryOptions): string {
 	return options?.resourceLabel ?? 'Sandbox file';
 }
 
@@ -52,33 +52,30 @@ async function sleep(ms: number): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function isTransientWriteError(error: unknown): boolean {
+// Daytona surfaces upstream gateway failures (e.g. Cloudflare 502/524) as errors with a numeric status.
+export function isTransientSandboxIoError(error: unknown): boolean {
 	if (typeof error !== 'object' || error === null) return false;
 	const status = 'statusCode' in error ? error.statusCode : 'status' in error ? error.status : null;
 	return typeof status === 'number' && (status >= 500 || status === 408 || status === 429);
 }
 
-export async function retryTransientWrite(
-	write: () => Promise<void>,
+export async function retryTransientSandboxIo<T>(
+	op: () => Promise<T>,
 	filePath: string,
-	options?: SandboxWriteRetryOptions,
-): Promise<void> {
-	const baseMs = options?.retryBackoffBaseMs ?? DEFAULT_WRITE_RETRY_BACKOFF_BASE_MS;
+	options?: SandboxIoRetryOptions,
+): Promise<T> {
+	const baseMs = options?.retryBackoffBaseMs ?? DEFAULT_SANDBOX_IO_RETRY_BACKOFF_BASE_MS;
 	for (let attempt = 1; ; attempt++) {
 		try {
-			await write();
-			return;
+			return await op();
 		} catch (error) {
-			if (attempt >= WRITE_MAX_ATTEMPTS || !isTransientWriteError(error)) throw error;
-			options?.logger?.warn(
-				`${writeResourceLabel(options)} write hit a transient error; retrying`,
-				{
-					path: filePath,
-					attempt,
-					error: formatErrorForLog(error),
-				},
-			);
-			await sleep(Math.min(baseMs * 2 ** (attempt - 1), WRITE_RETRY_BACKOFF_CAP_MS));
+			if (attempt >= SANDBOX_IO_MAX_ATTEMPTS || !isTransientSandboxIoError(error)) throw error;
+			options?.logger?.warn(`${ioResourceLabel(options)} I/O hit a transient error; retrying`, {
+				path: filePath,
+				attempt,
+				error: formatErrorForLog(error),
+			});
+			await sleep(Math.min(baseMs * 2 ** (attempt - 1), SANDBOX_IO_RETRY_BACKOFF_CAP_MS));
 		}
 	}
 }
@@ -120,9 +117,9 @@ export async function writeFileViaSandbox(
 	workspace: SandboxCommandTarget,
 	filePath: string,
 	content: string | Buffer,
-	options?: SandboxWriteRetryOptions,
+	options?: SandboxIoRetryOptions,
 ): Promise<void> {
-	await retryTransientWrite(
+	await retryTransientSandboxIo(
 		async () => {
 			const runWriteCommand = async (command: string) => {
 				const result = await runInSandbox(workspace, command);
@@ -167,13 +164,19 @@ export async function writeFileViaSandbox(
 
 /**
  * Read a file from the sandbox via shell command.
- * Returns null if the file doesn't exist.
+ * Returns null if the file doesn't exist. Transient provider errors are
+ * retried and, when exhausted, thrown — they are not a missing file.
  */
 export async function readFileViaSandbox(
 	workspace: SandboxCommandTarget,
 	filePath: string,
+	options?: SandboxIoRetryOptions,
 ): Promise<string | null> {
-	const result = await runInSandbox(workspace, `cat '${escapeSingleQuotes(filePath)}' 2>/dev/null`);
+	const result = await retryTransientSandboxIo(
+		async () => await runInSandbox(workspace, `cat '${escapeSingleQuotes(filePath)}' 2>/dev/null`),
+		filePath,
+		options,
+	);
 	if (result.exitCode !== 0) return null;
 	return result.stdout;
 }

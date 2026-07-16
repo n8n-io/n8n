@@ -1,8 +1,9 @@
 import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
 import {
+	isTransientSandboxIoError,
 	readFileViaSandbox,
-	retryTransientWrite,
+	retryTransientSandboxIo,
 	writeFileViaSandbox,
 	type SandboxWorkspace,
 } from './sandbox-fs';
@@ -45,10 +46,24 @@ export async function readWorkspaceFile(
 	options?: WorkspaceFileOptions,
 ): Promise<string | null> {
 	const filesystem = workspace.filesystem;
-	if (filesystem?.readFile) {
+	const readFile = filesystem?.readFile;
+	if (filesystem && readFile) {
 		try {
-			return decodeWorkspaceFileContent(await filesystem.readFile(filePath, { encoding: 'utf-8' }));
+			return decodeWorkspaceFileContent(
+				await retryTransientSandboxIo(
+					// .call preserves the provider's `this` binding (e.g. LazyRuntimeFilesystem).
+					async () => await readFile.call(filesystem, filePath, { encoding: 'utf-8' }),
+					filePath,
+					options,
+				),
+			);
 		} catch (error) {
+			// A provider failure is not a missing file — surface it instead of reporting null.
+			if (isTransientSandboxIoError(error)) {
+				throw new Error(
+					`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+				);
+			}
 			options?.logger.debug(`${resourceLabel(options)} filesystem read missed`, {
 				path: filePath,
 				error: formatErrorForLog(error),
@@ -60,8 +75,13 @@ export async function readWorkspaceFile(
 	if (!workspace.sandbox) return null;
 
 	try {
-		return await readFileViaSandbox(workspace, filePath);
+		return await readFileViaSandbox(workspace, filePath, options);
 	} catch (error) {
+		if (isTransientSandboxIoError(error)) {
+			throw new Error(
+				`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+			);
+		}
 		options?.logger.debug(`${resourceLabel(options)} command read missed`, {
 			path: filePath,
 			error: formatErrorForLog(error),
@@ -85,7 +105,7 @@ export async function writeWorkspaceFile(
 	const filesystem = workspace.filesystem;
 	if (filesystem) {
 		try {
-			await retryTransientWrite(
+			await retryTransientSandboxIo(
 				async () => await filesystem.writeFile(filePath, content, { recursive: true }),
 				filePath,
 				options,

@@ -86,6 +86,66 @@ describe('workspace-files', () => {
 		await expect(readWorkspaceFile(target, '/tmp/manifest.json')).resolves.toBe('{"ok":true}');
 	});
 
+	it('retries transient filesystem read errors instead of reporting a missing file', async () => {
+		const readFile = vi
+			.fn()
+			.mockRejectedValueOnce(new TransientWriteError('gateway timeout'))
+			.mockResolvedValue('{"ok":true}');
+		const target: WorkspaceFileTarget = {
+			filesystem: { readFile, writeFile: vi.fn(async () => {}) },
+		};
+
+		await expect(
+			readWorkspaceFile(target, '/tmp/manifest.json', {
+				logger: createLogger(),
+				retryBackoffBaseMs: 1,
+			}),
+		).resolves.toBe('{"ok":true}');
+		expect(readFile).toHaveBeenCalledTimes(2);
+	});
+
+	it('throws on exhausted transient read errors instead of returning null', async () => {
+		const readFile = vi.fn(async () => await Promise.reject(new TransientWriteError('timeout')));
+		const target: WorkspaceFileTarget = {
+			filesystem: { readFile, writeFile: vi.fn(async () => {}) },
+		};
+
+		await expect(
+			readWorkspaceFile(target, '/tmp/manifest.json', {
+				logger: createLogger(),
+				retryBackoffBaseMs: 1,
+			}),
+		).rejects.toThrow('Failed to read workspace file "/tmp/manifest.json"');
+		expect(readFile).toHaveBeenCalledTimes(3);
+	});
+
+	it('still returns null for non-transient read misses', async () => {
+		const readFile = vi.fn(async () => await Promise.reject(new Error('ENOENT')));
+		const target: WorkspaceFileTarget = {
+			filesystem: { readFile, writeFile: vi.fn(async () => {}) },
+		};
+
+		await expect(
+			readWorkspaceFile(target, '/tmp/manifest.json', { logger: createLogger() }),
+		).resolves.toBeNull();
+		expect(readFile).toHaveBeenCalledTimes(1);
+	});
+
+	it('throws on exhausted transient command read errors', async () => {
+		const executeCommand = vi.fn(async () => {
+			return await Promise.reject(new TransientWriteError('bad gateway'));
+		});
+		const target: WorkspaceFileTarget = { sandbox: { executeCommand } };
+
+		await expect(
+			readWorkspaceFile(target, '/tmp/manifest.json', {
+				logger: createLogger(),
+				retryBackoffBaseMs: 1,
+			}),
+		).rejects.toThrow('Failed to read workspace file "/tmp/manifest.json"');
+		expect(executeCommand).toHaveBeenCalledTimes(3);
+	});
+
 	it('writes via filesystem and supports batch writes', async () => {
 		const { target, writes } = createWorkspaceTarget(new Map());
 

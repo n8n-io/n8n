@@ -55,9 +55,8 @@ vi.mock('../sandbox-fs', () => ({
 			throw new Error(`Failed to write file ${path}: ${result.stderr}`);
 		}
 	},
-	retryTransientWrite: async (write: () => Promise<void>) => {
-		await write();
-	},
+	retryTransientSandboxIo: async (op: () => Promise<unknown>) => await op(),
+	isTransientSandboxIoError: () => false,
 	escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
 }));
 
@@ -204,9 +203,8 @@ async function loadLinkWorkspaceSdkWithMocks(
 		runInSandbox,
 		readFileViaSandbox: vi.fn(),
 		writeFileViaSandbox: vi.fn(),
-		retryTransientWrite: async (write: () => Promise<void>) => {
-			await write();
-		},
+		retryTransientSandboxIo: async (op: () => Promise<unknown>) => await op(),
+		isTransientSandboxIoError: () => false,
 		escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
 	}));
 

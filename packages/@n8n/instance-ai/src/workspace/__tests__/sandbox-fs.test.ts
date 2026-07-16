@@ -157,9 +157,22 @@ describe('writeFileViaSandbox', () => {
 
 		expect(executeCommand).toHaveBeenCalledTimes(4);
 		expect(logger.warn).toHaveBeenCalledWith(
-			'Sandbox file write hit a transient error; retrying',
+			'Sandbox file I/O hit a transient error; retrying',
 			expect.objectContaining({ path: 'test.ts', attempt: 1 }),
 		);
+	});
+
+	it('retries transient provider errors while reading and keeps missing-file semantics', async () => {
+		const executeCommand = vi
+			.fn()
+			.mockRejectedValueOnce(new TransientWriteError('gateway timeout'))
+			.mockResolvedValue({ exitCode: 1, stdout: '', stderr: '' });
+		const workspace = createMockWorkspace({ executeCommand });
+
+		await expect(
+			readFileViaSandbox(workspace, 'missing.ts', { retryBackoffBaseMs: 1 }),
+		).resolves.toBeNull();
+		expect(executeCommand).toHaveBeenCalledTimes(2);
 	});
 
 	it('should skip mkdir when file has no parent directory', async () => {
