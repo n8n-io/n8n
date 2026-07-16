@@ -1019,6 +1019,40 @@ describe('applyOperations', () => {
 			});
 			expect(parsed.success).toBe(true);
 		});
+
+		test('persists a group description', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{
+					type: 'setNodeGroups',
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'], description: 'What this does' }],
+				},
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups).toEqual([
+				{ id: 'g1', name: 'Group', nodeIds: ['a'], description: 'What this does' },
+			]);
+		});
+
+		test('omits an empty description so the group stays unset', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{
+					type: 'setNodeGroups',
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'], description: '   ' }],
+				},
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups![0]).not.toHaveProperty('description');
+		});
+
+		test('schema rejects a description over the max length', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setNodeGroups',
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'], description: 'x'.repeat(1000) }],
+			});
+			expect(parsed.success).toBe(false);
+		});
 	});
 
 	describe('toWorkflowSlice', () => {

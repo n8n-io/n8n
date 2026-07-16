@@ -1,3 +1,4 @@
+import { GROUP_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { IANAZone } from 'luxon';
 import type {
 	IConnection,
@@ -294,6 +295,14 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 					nodeIds: z
 						.array(z.string().trim().min(1))
 						.describe('IDs of the nodes that belong to this group.'),
+					description: z
+						.string()
+						.trim()
+						.max(GROUP_DESCRIPTION_MAX_LENGTH)
+						.optional()
+						.describe(
+							`Optional description shown when the group is collapsed. Max ${GROUP_DESCRIPTION_MAX_LENGTH} characters.`,
+						),
 				}),
 			)
 			.describe(
@@ -720,11 +729,16 @@ export function applyOperations(
 			}
 
 			case 'setNodeGroups': {
-				workflow.nodeGroups = op.nodeGroups.map((group) => ({
-					id: group.id ?? uuid(),
-					name: group.name,
-					nodeIds: [...group.nodeIds],
-				}));
+				workflow.nodeGroups = op.nodeGroups.map((group) => {
+					// Omit blank descriptions so groups without one stay unset, matching the editor.
+					const description = group.description?.trim();
+					return {
+						id: group.id ?? uuid(),
+						name: group.name,
+						nodeIds: [...group.nodeIds],
+						...(description ? { description } : {}),
+					};
+				});
 				break;
 			}
 
