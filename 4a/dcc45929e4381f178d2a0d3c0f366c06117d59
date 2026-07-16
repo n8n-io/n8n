@@ -1,0 +1,27 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.test.ts
+  s_934a382079a856::t_d7398e3710c26a 1208-1209,1412-1413
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4adcc45929e4381f178d2a0d3c0f366c06117d59",
+  "prompts": {},
+  "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": null
+    },
+    "s_934a382079a856": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fafd5ab5-0be6-49da-b91c-294f988595c1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
