@@ -590,8 +590,159 @@ function renderScenario(
 	</div>`;
 }
 
+/** Objects render as pretty JSON; pre-truncated capture strings render verbatim. */
+function agentValueBlock(value: unknown): string {
+	const text = typeof value === 'string' ? value : (JSON.stringify(value, null, 2) ?? 'null');
+	return `<pre class="json-block json-sm"><code>${escapeHtml(text)}</code></pre>`;
+}
+
+/**
+ * Scenario detail for agent-artifact runs: the tool-call timeline (with the
+ * intercepted requests + mock responses behind each call) plays the role the
+ * per-node execution trace plays for workflows, and the recorded real-model
+ * turns replace the wire-server section.
+ */
+function renderAgentScenarioDetail(
+	sr: ExecutionScenarioResult,
+	ar: NonNullable<ExecutionScenarioResult['agentEvalResult']>,
+): string {
+	let html = '';
+
+	if (!sr.success && sr.failureCategory) {
+		const catClass =
+			sr.failureCategory === 'builder_issue'
+				? 'warn'
+				: sr.failureCategory === 'mock_issue'
+					? 'fail'
+					: 'info';
+		html += `<div class="category-badge category-${catClass}">${escapeHtml(sr.failureCategory)}${sr.rootCause ? ': ' + escapeHtml(sr.rootCause) : ''}</div>`;
+	}
+
+	if (ar.errors.length > 0) {
+		html += `<div class="error-box">${escapeHtml(ar.errors.join('; '))}</div>`;
+	}
+	if (ar.seed.warnings.length > 0) {
+		html += `<div class="warning-box">${escapeHtml(ar.seed.warnings.join('; '))}</div>`;
+	}
+	if (ar.skippedFeatures.length > 0) {
+		html += `<div class="warning-box">Agent features disabled for this run (not mockable yet): ${escapeHtml(
+			ar.skippedFeatures.map((s) => s.feature).join(', '),
+		)}</div>`;
+	}
+
+	if (sr.reasoning) {
+		html += '<details class="section" open><summary>Diagnosis</summary>';
+		html += `<div class="diagnosis">${escapeHtml(sr.reasoning)}</div>`;
+		html += '</details>';
+	}
+
+	// Scenario seed — the agent analog of the workflow mock data plan: the
+	// generated opening message plays the trigger-content role.
+	html += '<details class="section"><summary>Scenario seed</summary>';
+	html += '<div class="subsection-label">Opening user message</div>';
+	html += `<div class="hint-text">${escapeHtml(ar.seed.openingMessage || '(none)')}</div>`;
+	if (ar.seed.globalContext) {
+		html += '<div class="subsection-label">Global context</div>';
+		html += `<div class="hint-text">${escapeHtml(ar.seed.globalContext)}</div>`;
+	}
+	const toolHintEntries = Object.entries(ar.seed.toolHints);
+	if (toolHintEntries.length > 0) {
+		html += '<div class="subsection-label">Per-tool hints</div>';
+		for (const [toolName, hint] of toolHintEntries) {
+			html += `<details class="node-hint"><summary>${escapeHtml(toolName)}</summary>`;
+			html += `<div class="hint-text">${escapeHtml(hint)}</div>`;
+			html += '</details>';
+		}
+	}
+	html += '</details>';
+
+	// Agent run trace — tool calls with their intercepted wire traffic.
+	html += '<details class="section"><summary>Agent run trace</summary>';
+	const usage = ar.usage
+		? ` — ~${String(ar.usage.inputTokens ?? 0)} in / ${String(ar.usage.outputTokens ?? 0)} out tokens`
+		: '';
+	html += `<div class="hint-text">Model ${escapeHtml(ar.model ?? '(unknown)')} ran for real (${String(ar.modelTurns.length)} turn(s)${usage})${ar.finishReason ? ` — finishReason: ${escapeHtml(ar.finishReason)}` : ''}</div>`;
+
+	if (ar.toolCalls.length === 0) {
+		html += '<div class="muted">No tool calls were made in this run.</div>';
+	}
+	for (const call of ar.toolCalls) {
+		html += '<div class="trace-node">';
+		html += '<div class="trace-node-header">';
+		html += `<span class="${call.mocked ? 'node-mode-mocked' : 'node-mode-real'}">[${escapeHtml(call.kind)}]</span> <strong>${escapeHtml(call.tool)}</strong>`;
+		if (call.interceptedRequests.length > 0) {
+			html += ` <span class="request-count">${String(call.interceptedRequests.length)} request(s)</span>`;
+		}
+		if (call.autoApproved) {
+			html += ' <span class="muted">(approval auto-granted by the harness)</span>';
+		}
+		html += '</div>';
+		if (call.error) {
+			html += `<span class="build-issue">Tool error: ${escapeHtml(call.error)}</span>`;
+		}
+		if (call.input !== undefined) {
+			html += '<div class="request-header">Tool input</div>';
+			html += agentValueBlock(call.input);
+		}
+		for (const req of call.interceptedRequests) {
+			html += '<div class="request-pair">';
+			html += '<div class="request-header">Request sent</div>';
+			html += `<div class="request-method">${escapeHtml(req.method)} ${escapeHtml(req.url || '(no URL)')}</div>`;
+			if (req.requestBody) {
+				html += agentValueBlock(req.requestBody);
+			}
+			html += '<div class="response-header">Mock returned</div>';
+			if (req.mockResponse !== undefined) {
+				html += agentValueBlock(req.mockResponse);
+			} else {
+				html += '<div class="muted">no mock response</div>';
+			}
+			html += '</div>';
+		}
+		if (call.output !== undefined) {
+			html += '<div class="response-header">Tool output</div>';
+			html += agentValueBlock(call.output);
+		}
+		html += '</div>';
+	}
+
+	// Real model turns (recorded passthrough traffic, bodies truncated at capture).
+	if (ar.modelTurns.length > 0) {
+		html += '<div class="subsection-label">Model turns (real, recorded)</div>';
+		ar.modelTurns.forEach((turn, index) => {
+			const duration =
+				turn.durationMs !== undefined ? ` ${String(Math.round(turn.durationMs / 100) / 10)}s` : '';
+			html += `<details class="node-hint"><summary>turn ${String(index + 1)} — ${escapeHtml(turn.provider ?? turn.url)} ${turn.status !== undefined ? String(turn.status) : ''}${duration}${turn.streamed ? ' (streamed)' : ''}${turn.error ? ' — ERROR' : ''}</summary>`;
+			if (turn.error) {
+				html += `<div class="error-box">${escapeHtml(turn.error)}</div>`;
+			}
+			if (turn.requestBody !== undefined) {
+				html += '<div class="request-header">Request body</div>';
+				html += agentValueBlock(turn.requestBody);
+			}
+			if (turn.responseBody !== undefined) {
+				html += '<div class="response-header">Response body</div>';
+				html += agentValueBlock(turn.responseBody);
+			}
+			html += '</details>';
+		});
+	}
+	html += '</details>';
+
+	// Final reply — what the user would have seen.
+	html += '<details class="section" open><summary>Agent final reply</summary>';
+	html += `<div class="diagnosis">${escapeHtml(ar.finalText || '(no final text)')}</div>`;
+	html += '</details>';
+
+	return html;
+}
+
 function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 	let html = '';
+
+	if (sr.agentEvalResult) {
+		return renderAgentScenarioDetail(sr, sr.agentEvalResult);
+	}
 
 	if (!sr.evalResult) {
 		if (sr.reasoning) {
@@ -1197,7 +1348,14 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 			`<details class="section"><summary>Builder agent activity (raw)</summary><pre class="json-block"><code>${escapeHtml(JSON.stringify(result.buildTrace.agentActivities, null, 2))}</code></pre></details>`;
 	}
 
-	return nodesHtml + diagramHtml + edgesHtml + jsonHtml + traceHtml;
+	// Agent-artifact cases: the rendered agent config + skills is the built
+	// artifact — the counterpart of the workflow JSON block above.
+	let agentHtml = '';
+	if (result.agentArtifactContext) {
+		agentHtml = `<details class="section"><summary>Built agent${result.agentId ? ` (${escapeHtml(result.agentId)})` : ''}</summary><pre class="json-block"><code>${escapeHtml(result.agentArtifactContext)}</code></pre></details>`;
+	}
+
+	return agentHtml + nodesHtml + diagramHtml + edgesHtml + jsonHtml + traceHtml;
 }
 
 // ---------------------------------------------------------------------------

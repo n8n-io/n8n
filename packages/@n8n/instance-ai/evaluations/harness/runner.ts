@@ -405,6 +405,8 @@ export async function runWorkflowTestCase(
 		result.buildTrace = build.buildTrace;
 
 		const agentContext = await fetchAgentScenarioContext(client, agentScenarioRef, logger);
+		result.agentId = agentScenarioRef.id;
+		result.agentArtifactContext = agentContext;
 
 		const agentCaseName = deriveTestCaseArtifactName(testCase);
 		const scenarioStart = Date.now();

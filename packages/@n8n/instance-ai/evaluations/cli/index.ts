@@ -1092,6 +1092,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			return {
 				buildSuccess: true,
 				workflowId: build.workflowId,
+				...(agentRef ? { agentId: agentRef.id } : {}),
+				...(agentRef ? { agentContext: await agentContextByKey.get(cacheKey) } : {}),
 				passed: outcome.passed,
 				score: outcome.score,
 				reasoning: outcome.reasoning,
@@ -1184,6 +1186,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			return await attachExpectations({
 				buildSuccess: true,
 				agentId: agentRef.id,
+				agentContext,
+				agentEvalResult: agentResult.agentEvalResult,
 				passed: agentResult.success,
 				score: agentResult.score,
 				reasoning: agentResult.reasoning,
@@ -1939,14 +1943,18 @@ function writeEvalResults(
 				passHatK: terminalRate(sa.passHatK),
 				runs: sa.runs.map((sr, runIndex) => ({
 					workflowId: sr.workflowId ?? tc.runs[runIndex]?.workflowId ?? null,
+					...((sr.agentId ?? tc.runs[runIndex]?.agentId)
+						? { agentId: sr.agentId ?? tc.runs[runIndex]?.agentId }
+						: {}),
 					passed: sr.success,
 					...(sr.incomplete ? { incomplete: true } : {}),
 					score: sr.score,
 					reasoning: sr.reasoning,
 					failureCategory: sr.failureCategory,
 					rootCause: sr.rootCause,
-					execErrors: sr.evalResult?.errors ?? [],
+					execErrors: sr.evalResult?.errors ?? sr.agentEvalResult?.errors ?? [],
 					evalResult: sr.evalResult,
+					...(sr.agentEvalResult ? { agentEvalResult: sr.agentEvalResult } : {}),
 				})),
 			})),
 		})),

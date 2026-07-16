@@ -290,6 +290,10 @@ export interface WorkflowTestCaseResult {
 	/** Source-file slug (matches the PR-comment / comparison label, for consistency). */
 	fileSlug?: string;
 	workflowId?: string;
+	/** Agent the case's scenarios executed (agent-artifact cases). */
+	agentId?: string;
+	/** Rendered agent config + skills — the agent analog of `workflowJson`, for the report. */
+	agentArtifactContext?: string;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
 	executionScenarioResults: ExecutionScenarioResult[];
