@@ -33,6 +33,7 @@ import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.se
 import { decompressFolder } from '@/utils/compression.util';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
@@ -70,6 +71,7 @@ export class ImportService {
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly userRepository: UserRepository,
 		private readonly workflowService: WorkflowService,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	async initRecords() {
@@ -96,18 +98,20 @@ export class ImportService {
 		const workflowIds = workflows.map((w) => w.id).filter((id) => !!id);
 		const existingWorkflowIds = new Set<string>();
 		const activeVersionIdByWorkflow = new Map<string, string>();
+		const existingNodesByWorkflow = new Map<string, INode[]>();
 
 		if (workflowIds.length > 0) {
 			const existingWorkflows = await dbManager.find(WorkflowEntity, {
 				where: { id: In(workflowIds) },
-				select: ['id', 'activeVersionId'],
+				select: ['id', 'activeVersionId', 'nodes'],
 			});
 
-			for (const { id, activeVersionId } of existingWorkflows) {
+			for (const { id, activeVersionId, nodes } of existingWorkflows) {
 				existingWorkflowIds.add(id);
 				if (activeVersionId !== null) {
 					activeVersionIdByWorkflow.set(id, activeVersionId);
 				}
+				existingNodesByWorkflow.set(id, nodes ?? []);
 			}
 		}
 
@@ -122,6 +126,17 @@ export class ImportService {
 
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
 			validateWorkflowStructure(workflow);
+
+			// Apply the same deprecated-node enforcement that the REST/public API
+			// endpoints use: treat unknown workflow IDs as creates, known IDs as
+			// updates (so a re-import of an existing workflow with the same
+			// deprecated nodes is allowed, but introducing new ones is not).
+			const existingNodes = workflow.id ? existingNodesByWorkflow.get(workflow.id) : undefined;
+			if (existingNodes) {
+				this.deprecatedNodesValidationService.validateOnUpdate(workflow.nodes, existingNodes);
+			} else {
+				this.deprecatedNodesValidationService.validateOnCreate(workflow.nodes);
+			}
 
 			// Deactivate BEFORE the transaction to prevent orphaned trigger listeners.
 			// Only applies to workflows that are currently active in the database.

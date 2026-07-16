@@ -114,6 +114,7 @@ describe('ImportService', () => {
 			mockDataTableDDLService,
 			mockUserRepository,
 			mockWorkflowService,
+			mock(), // deprecatedNodesValidationService
 		);
 	});
 

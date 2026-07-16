@@ -72,6 +72,7 @@ describe('WorkflowCreationService', () => {
 			mock<NodeTypes>(),
 			workflowValidationServiceMock,
 			instanceRedactionEnforcementServiceMock,
+			mock(), // deprecatedNodesValidationService
 		);
 	});
 

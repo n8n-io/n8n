@@ -92,6 +92,7 @@ beforeAll(async () => {
 		mock(), // redactionEnforcementService
 		mock(), // workflowPublicationNotifier
 		mock(), // scheduleTriggerJobRegistrar
+		mock(), // deprecatedNodesValidationService
 	);
 });
 

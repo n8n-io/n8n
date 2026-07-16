@@ -95,6 +95,7 @@ describe('WorkflowService', () => {
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // deprecatedNodesValidationService
 			);
 		});
 
@@ -357,6 +358,7 @@ describe('WorkflowService', () => {
 				redactionEnforcementServiceMock, // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // deprecatedNodesValidationService
 			);
 
 			vi.clearAllMocks();
@@ -1058,6 +1060,7 @@ describe('WorkflowService', () => {
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				scheduleTriggerJobRegistrarMock, // scheduleTriggerJobRegistrar
+				mock(), // deprecatedNodesValidationService
 			);
 
 			// Bypass validation internals
@@ -1323,6 +1326,7 @@ describe('WorkflowService', () => {
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // deprecatedNodesValidationService
 			);
 		});
 

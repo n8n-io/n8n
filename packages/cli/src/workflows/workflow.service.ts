@@ -58,6 +58,7 @@ import { WorkflowValidationService } from './workflow-validation.service';
 
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -93,6 +94,7 @@ export class WorkflowService {
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	async getMany(
@@ -447,6 +449,13 @@ export class WorkflowService {
 					connections: workflowUpdateData.connections,
 				},
 				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+			);
+		}
+
+		if (hasNodesKey && nodesChanged) {
+			this.deprecatedNodesValidationService.validateOnUpdate(
+				workflowUpdateData.nodes,
+				workflow.nodes,
 			);
 		}
 

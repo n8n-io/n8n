@@ -109,6 +109,7 @@ describe('SourceControlImportService', () => {
 		dataTableDDLService,
 		redactionEnforcementService,
 		dataTableSizeValidator,
+		mock(), // deprecatedNodesValidationService
 	);
 
 	const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
