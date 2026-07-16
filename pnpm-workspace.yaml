@@ -111,6 +111,7 @@ catalog:
   '@types/xml2js': ^0.4.14
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
+  '@e965/xlsx': 0.20.3
   agent-browser: 0.26.0
   ai: ^6.0.197
   axios: 1.18.0

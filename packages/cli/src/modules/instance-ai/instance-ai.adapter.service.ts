@@ -40,6 +40,7 @@ import type {
 	InstanceAiEvaluationConfigService,
 	EvaluationConfigSummary,
 	UpsertEvaluationConfigInput,
+	InstanceAiBuilderDelegate,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
@@ -111,6 +112,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
+	UserError,
 	isTriggerNodeType,
 	jsonParse,
 	createRunExecutionData,
@@ -122,6 +124,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
+import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
@@ -268,6 +271,7 @@ export class InstanceAiAdapterService {
 		// Optional: absent only in package/test contexts constructed without DI.
 		// DI (by type, not position) always provides it in a running instance.
 		private readonly evaluationConfigService?: EvaluationConfigService,
+		private readonly llmJudgeProviderRegistry?: LlmJudgeProviderRegistry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -341,13 +345,37 @@ export class InstanceAiAdapterService {
 				: {}),
 			...(builderDelegateAdapter && projectId
 				? {
-						builderDelegate: builderDelegateAdapter.createDelegate(
-							user,
-							projectId,
-							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+						builderDelegate: this.withBuilderCreateTelemetry(
+							builderDelegateAdapter.createDelegate(
+								user,
+								projectId,
+								new AgentsCredentialProvider(this.credentialsService, projectId, user),
+							),
+							threadId,
 						),
 					}
 				: {}),
+		};
+	}
+
+	/** Mirror of the workflow-adapter telemetry: track agent creation via the
+	 *  builder sub-agent at the delegate boundary, only in a thread context. */
+	private withBuilderCreateTelemetry(
+		delegate: InstanceAiBuilderDelegate,
+		threadId: string | undefined,
+	): InstanceAiBuilderDelegate {
+		if (!threadId) return delegate;
+		return {
+			...delegate,
+			createAgent: async (name) => {
+				const created = await delegate.createAgent(name);
+				this.telemetry.track('Builder created agent', {
+					thread_id: threadId,
+					agent_id: created.agentId,
+					project_id: created.projectId,
+				});
+				return created;
+			},
 		};
 	}
 
@@ -1674,7 +1702,7 @@ export class InstanceAiAdapterService {
 					const raw = await credentialsService.decrypt(credential, true);
 					const tokenData = raw.oauthTokenData;
 					if (tokenData && typeof tokenData === 'object') {
-						const { OauthService } = await import('@/oauth/oauth.service');
+						const { OauthService } = await import('@/oauth/oauth.service.js');
 						const identifier = OauthService.extractAccountIdentifier(
 							tokenData as Record<string, unknown>,
 						);
@@ -1719,7 +1747,7 @@ export class InstanceAiAdapterService {
 		evaluationConfigService: EvaluationConfigService,
 		user: User,
 	): InstanceAiEvaluationConfigService {
-		const { workflowFinderService } = this;
+		const { workflowFinderService, credentialsFinderService, llmJudgeProviderRegistry } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('evaluations');
 
 		const findWorkflow = async (
@@ -1732,6 +1760,17 @@ export class InstanceAiAdapterService {
 			}
 			return workflow;
 		};
+
+		// The judge `provider` is the chat-model node type, which the caller often
+		// doesn't know — but the credential they pick determines it (each credential
+		// type maps to exactly one provider). Fill any missing provider from the
+		// credential so the agent only needs to supply a credential + model.
+		const resolveProviders = async (input: UpsertEvaluationConfigInput) =>
+			await resolveMetricProviders(input, {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry,
+			});
 
 		return {
 			async list(workflowId) {
@@ -1747,23 +1786,25 @@ export class InstanceAiAdapterService {
 			async create(workflowId, input) {
 				assertNotReadOnly();
 				const workflow = await findWorkflow(workflowId, 'workflow:update');
+				const resolved = await resolveProviders(input);
 				const config = await evaluationConfigService.create(
 					workflowId,
 					workflow,
 					user,
-					buildEvaluationConfigDto(input),
+					buildEvaluationConfigDto(resolved),
 				);
 				return evaluationConfigToSummary(config);
 			},
 			async update(workflowId, configId, input) {
 				assertNotReadOnly();
 				const workflow = await findWorkflow(workflowId, 'workflow:update');
+				const resolved = await resolveProviders(input);
 				const config = await evaluationConfigService.update(
 					workflowId,
 					configId,
 					workflow,
 					user,
-					buildEvaluationConfigDto(input),
+					buildEvaluationConfigDto(resolved),
 				);
 				return evaluationConfigToSummary(config);
 			},
@@ -2850,6 +2891,53 @@ export type ResolveDataTableResult =
 	| { kind: 'hit'; table: DataTableRecord }
 	| { kind: 'miss' }
 	| { kind: 'ambiguous'; candidates: DataTableRecord[] };
+
+interface ResolveMetricProvidersDeps {
+	user: User;
+	credentialsFinderService: CredentialsFinderService;
+	llmJudgeProviderRegistry?: LlmJudgeProviderRegistry;
+}
+
+/**
+ * Fill each metric's `provider` (the chat-model node type) from its credential
+ * when the caller didn't supply one. Each credential type maps to exactly one
+ * provider, so the agent only needs to pass a credential id + model. Metrics
+ * that already carry a provider are left untouched.
+ */
+export async function resolveMetricProviders(
+	input: UpsertEvaluationConfigInput,
+	deps: ResolveMetricProvidersDeps,
+): Promise<UpsertEvaluationConfigInput> {
+	const { user, credentialsFinderService, llmJudgeProviderRegistry } = deps;
+	const metrics = await Promise.all(
+		input.metrics.map(async (metric) => {
+			if (metric.provider) return metric;
+			if (!llmJudgeProviderRegistry) {
+				throw new UnexpectedError(
+					'Cannot derive the judge provider: provider registry is unavailable.',
+				);
+			}
+			const credential = await credentialsFinderService.findCredentialForUser(
+				metric.credentialId,
+				user,
+				['credential:read'],
+			);
+			if (!credential) {
+				throw new UserError(
+					`Credential "${metric.credentialId}" for metric "${metric.name}" was not found or is not accessible.`,
+				);
+			}
+			const provider = llmJudgeProviderRegistry.getByCredentialType(credential.type);
+			if (!provider) {
+				throw new UserError(
+					`Credential type "${credential.type}" for metric "${metric.name}" is not a supported LLM judge provider.`,
+				);
+			}
+			return { ...metric, provider: provider.nodeType };
+		}),
+	);
+	return { ...input, metrics };
+}
 
 /**
  * Map the tool's focused LLM-judge input onto the full evaluation-config DTO,

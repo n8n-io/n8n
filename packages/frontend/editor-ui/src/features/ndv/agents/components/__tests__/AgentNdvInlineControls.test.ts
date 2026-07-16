@@ -5,7 +5,7 @@ import { describe, it, expect, vi } from 'vitest';
 import AgentNdvInlineControls from '../AgentNdvInlineControls.vue';
 import { NdvAgentConfigKey } from '../../composables/useNdvAgentConfig';
 import type { UseNdvAgentConfigReturn } from '../../composables/useNdvAgentConfig';
-import type { AgentJsonConfig } from '@/features/agents/types';
+import type { AgentJsonConfig, AgentSkill } from '@/features/agents/types';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -29,7 +29,15 @@ const CapabilitiesStub = {
 		'reloadKey',
 		'sections',
 	],
-	emits: ['add-tool', 'open-tool', 'remove-tool', 'update:config'],
+	emits: [
+		'add-tool',
+		'open-tool',
+		'remove-tool',
+		'add-skill',
+		'open-skill',
+		'remove-skill',
+		'update:config',
+	],
 	template: '<div data-testid="capabilities-stub" />',
 };
 
@@ -55,6 +63,7 @@ function createNdvStub(
 		isAgentNode: boolean;
 		mode: 'referenced' | 'inline';
 		localConfig: AgentJsonConfig | null;
+		appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	}> = {},
 ) {
 	const scheduleConfigUpdate = vi.fn();
@@ -62,6 +71,10 @@ function createNdvStub(
 		onOpenAddToolModal: vi.fn(),
 		onOpenToolFromList: vi.fn(),
 		onRemoveTool: vi.fn(),
+		onOpenAddSkillModal: vi.fn(),
+		onOpenSkillFromList: vi.fn(),
+		onRemoveSkill: vi.fn(),
+		appliedSkills: computed(() => overrides.appliedSkills ?? []),
 	};
 
 	const value = {
@@ -116,9 +129,12 @@ describe('AgentNdvInlineControls', () => {
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ name: 'Renamed' });
 	});
 
-	it('passes the local config to the panels and restricts capabilities to tools', () => {
+	it('passes the local config to the panels and enables the tools + skills sections', () => {
 		const config = makeConfig();
-		const { value } = createNdvStub({ localConfig: config });
+		const appliedSkills = [
+			{ id: 'skill_triage', skill: { name: 'Triage', description: '', instructions: '' } },
+		];
+		const { value } = createNdvStub({ localConfig: config, appliedSkills });
 		const wrapper = mountControls(value);
 
 		const infoPanel = wrapper.findComponent(InfoPanelStub);
@@ -126,8 +142,8 @@ describe('AgentNdvInlineControls', () => {
 		expect(infoPanel.props('disabled')).toBe(false);
 
 		const capabilities = wrapper.findComponent(CapabilitiesStub);
-		expect(capabilities.props('sections')).toEqual(['tools']);
-		expect(capabilities.props('skills')).toEqual([]);
+		expect(capabilities.props('sections')).toEqual(['tools', 'skills']);
+		expect(capabilities.props('skills')).toEqual(appliedSkills);
 	});
 
 	it('routes panel edits and tool actions to the inline adapter', async () => {
@@ -139,6 +155,21 @@ describe('AgentNdvInlineControls', () => {
 
 		wrapper.findComponent(CapabilitiesStub).vm.$emit('add-tool');
 		expect(actions.onOpenAddToolModal).toHaveBeenCalled();
+	});
+
+	it('routes skill actions to the inline adapter', () => {
+		const { value, actions } = createNdvStub();
+		const wrapper = mountControls(value);
+
+		const capabilities = wrapper.findComponent(CapabilitiesStub);
+		capabilities.vm.$emit('add-skill');
+		expect(actions.onOpenAddSkillModal).toHaveBeenCalled();
+
+		capabilities.vm.$emit('open-skill', 'skill_triage');
+		expect(actions.onOpenSkillFromList).toHaveBeenCalledWith('skill_triage');
+
+		capabilities.vm.$emit('remove-skill', 'skill_triage');
+		expect(actions.onRemoveSkill).toHaveBeenCalledWith('skill_triage');
 	});
 
 	it('disables editing when the NDV is read-only', () => {

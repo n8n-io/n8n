@@ -1570,7 +1570,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private async getOtelTelemetryInfo() {
-		const { OtelConfig } = await import('@/modules/otel/otel.config');
+		const { OtelConfig } = await import('@/modules/otel/otel.config.js');
 		const otelConfig = Container.get(OtelConfig);
 
 		return {
