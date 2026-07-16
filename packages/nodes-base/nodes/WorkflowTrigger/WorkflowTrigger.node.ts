@@ -24,7 +24,6 @@ export class WorkflowTrigger implements INodeType {
 		activationMessage: 'Your workflow will now trigger executions on the event you have defined.',
 		defaults: {
 			name: 'Workflow Trigger',
-			color: '#ff6d5a',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],

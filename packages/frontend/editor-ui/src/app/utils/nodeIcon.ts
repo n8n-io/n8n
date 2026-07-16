@@ -106,8 +106,7 @@ const getNodeIconColor = (nodeType: IconNodeType): string | undefined => {
 	if ('iconColor' in nodeType && nodeType.iconColor) {
 		return `var(--node--icon--color--${nodeType.iconColor})`;
 	}
-	const defaultColor = nodeType?.defaults?.color;
-	return typeof defaultColor === 'string' ? defaultColor : undefined;
+	return undefined;
 };
 
 const prefixBaseUrl = (url: string): string => {
