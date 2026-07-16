@@ -13,6 +13,15 @@ const SignatureConfigSchema = z.object({
 	}),
 });
 
+/** Same shape without defaults — required for full-object Public API PUTs. */
+const SignatureConfigRequiredSchema = z.object({
+	prefix: z.string(),
+	location: z.object({
+		reference: z.string(),
+		action: z.enum(['before', 'after', 'prepend', 'append']),
+	}),
+});
+
 export class SamlPreferencesAttributeMapping extends Z.class({
 	/** SAML attribute mapped to the user's email. */
 	email: z.string(),
@@ -88,6 +97,6 @@ export class UpdateSamlConfigurationDto extends Z.class({
 	signingPrivateKey: z.string(),
 	signingCertificate: z.string(),
 	acsBinding: SamlLoginBindingSchema,
-	signatureConfig: SignatureConfigSchema,
+	signatureConfig: SignatureConfigRequiredSchema,
 	relayState: z.string(),
 }) {}

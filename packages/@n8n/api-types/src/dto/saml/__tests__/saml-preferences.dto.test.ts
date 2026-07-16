@@ -1,4 +1,4 @@
-import { SamlPreferences } from '../saml-preferences.dto';
+import { SamlPreferences, UpdateSamlConfigurationDto } from '../saml-preferences.dto';
 
 describe('SamlPreferences', () => {
 	describe('Valid requests', () => {
@@ -153,5 +153,57 @@ describe('SamlPreferences', () => {
 				expect(result.data?.relayState).toBe('');
 			});
 		});
+	});
+});
+
+describe('UpdateSamlConfigurationDto', () => {
+	const fullBody = {
+		mapping: {
+			email: 'user@example.com',
+			firstName: 'John',
+			lastName: 'Doe',
+			userPrincipalName: 'johndoe',
+			n8nInstanceRole: '',
+			n8nProjectRoles: [] as string[],
+		},
+		metadata: '',
+		metadataUrl: '',
+		ignoreSSL: false,
+		loginBinding: 'redirect' as const,
+		loginEnabled: false,
+		loginLabel: 'SAML',
+		authnRequestsSigned: false,
+		wantAssertionsSigned: true,
+		wantMessageSigned: true,
+		signingPrivateKey: '',
+		signingCertificate: '',
+		acsBinding: 'post' as const,
+		signatureConfig: {
+			prefix: 'custom',
+			location: {
+				reference: '/samlp:Response/saml:Issuer',
+				action: 'after' as const,
+			},
+		},
+		relayState: '',
+	};
+
+	it('accepts a complete signatureConfig', () => {
+		const result = UpdateSamlConfigurationDto.safeParse(fullBody);
+		expect(result.success).toBe(true);
+		expect(result.data?.signatureConfig.prefix).toBe('custom');
+	});
+
+	it('rejects signatureConfig when prefix is omitted instead of defaulting to ds', () => {
+		const { prefix: _prefix, ...locationOnly } = fullBody.signatureConfig;
+		const result = UpdateSamlConfigurationDto.safeParse({
+			...fullBody,
+			signatureConfig: {
+				location: locationOnly.location,
+			},
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0].path).toEqual(['signatureConfig', 'prefix']);
 	});
 });
