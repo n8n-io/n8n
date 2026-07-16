@@ -1,4 +1,6 @@
+import { NodeTypes } from '@test/helpers';
 import get from 'lodash/get';
+import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
 import type {
 	DeclarativeRestApiSettings,
 	ICredentialDataDecryptedObject,
@@ -18,16 +20,14 @@ import type {
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	ICredentialsDecrypted,
 } from 'n8n-workflow';
-import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
-import type { ICredentialsDecrypted } from 'n8n-workflow/src';
 import { mock } from 'vitest-mock-extended';
+
+import { RoutingNode } from '../routing-node';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
 import { DirectoryLoader } from '@/nodes-loader';
-import { NodeTypes } from '@test/helpers';
-
-import { RoutingNode } from '../routing-node';
 
 const postReceiveFunction1 = async function (
 	this: IExecuteSingleFunctions,
