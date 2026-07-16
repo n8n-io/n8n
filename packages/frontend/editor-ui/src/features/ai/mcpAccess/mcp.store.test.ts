@@ -310,6 +310,44 @@ describe('mcp.store', () => {
 			expect(fetchSpy).toHaveBeenCalled();
 			expect(store.oauthClientTotals).toEqual({ mine: 0, all: 0 });
 		});
+
+		it('keeps a successful revoke successful when the totals refetch fails', async () => {
+			vi.spyOn(mcpApi, 'deleteOAuthClient').mockResolvedValue({ success: true, message: 'ok' });
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockRejectedValue(new Error('refetch failed'));
+
+			await expect(store.removeOAuthClient('client-1')).resolves.toEqual({
+				success: true,
+				message: 'ok',
+			});
+		});
+
+		it('ignores a stale in-flight list response superseded by a newer request', async () => {
+			let resolveStale!: (value: Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>) => void;
+			const stale = new Promise<Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>>((resolve) => {
+				resolveStale = resolve;
+			});
+			vi.spyOn(mcpApi, 'fetchOAuthClients')
+				.mockReturnValueOnce(stale)
+				.mockResolvedValueOnce({
+					data: [createOAuthClient({ id: 'new' })],
+					count: 1,
+					totals: { mine: 1 },
+				});
+
+			const staleCall = store.getAllOAuthClients(); // in flight
+			await store.getAllOAuthClients(); // newer request commits 'new'
+
+			resolveStale({
+				data: [createOAuthClient({ id: 'old' })],
+				count: 1,
+				totals: { mine: 99 },
+			});
+			await staleCall;
+
+			// the superseded response must not overwrite the newer selection
+			expect(store.oauthClients.map((client) => client.id)).toEqual(['new']);
+			expect(store.oauthClientTotals).toEqual({ mine: 1 });
+		});
 	});
 
 	describe('toggleWorkflowsMcpAccess (bulk)', () => {

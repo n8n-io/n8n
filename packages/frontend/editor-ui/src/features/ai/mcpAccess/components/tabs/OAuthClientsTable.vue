@@ -13,7 +13,7 @@ import {
 } from '@n8n/design-system';
 import type { IUser, TabOptions } from '@n8n/design-system';
 import { computed, ref } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
+import debounce from 'lodash/debounce';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -101,7 +101,7 @@ function onFiltersChange(newFilters: OAuthClientFilters) {
 	emit('update:filters', newFilters);
 }
 
-const applySearch = useDebounceFn((value: string) => {
+const applySearch = debounce((value: string) => {
 	onFiltersChange({ ...filters.value, search: value });
 }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
@@ -122,6 +122,8 @@ const ownerOptions = computed<IUser[]>(() =>
 
 function onOwnershipChange(newOwnership: 'mine' | 'all') {
 	if (newOwnership === ownership.value) return;
+	// Drop any queued search so a stale term can't re-filter after the switch.
+	applySearch.cancel();
 	filters.value = { ...EMPTY_OAUTH_CLIENT_FILTERS };
 	searchQuery.value = '';
 	emit('update:ownership', newOwnership);

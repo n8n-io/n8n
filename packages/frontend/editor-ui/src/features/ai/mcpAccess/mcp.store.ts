@@ -53,6 +53,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	const oauthClientsCount = ref(0);
 	/** Distinct consent owners for the "Connected by" filter (managers only). */
 	const oauthClientOwners = ref<Array<NonNullable<OAuthClientResponseDto['owner']>>>([]);
+	/** Monotonic token so a slow in-flight list fetch can't overwrite a newer one. */
+	let oauthClientsRequestSeq = 0;
 	const allowedRedirectUris = ref<string[]>([]);
 	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
@@ -182,6 +184,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	}
 
 	async function getAllOAuthClients(): Promise<OAuthClientResponseDto[]> {
+		const seq = ++oauthClientsRequestSeq;
 		const filters = oauthClientsFilters.value;
 		const response = await fetchOAuthClients(rootStore.restApiContext, {
 			ownership: oauthClientsOwnership.value,
@@ -192,6 +195,11 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			type: filters.type ?? undefined,
 			connected: filters.connected ?? undefined,
 		});
+
+		// A newer request (tab switch, search, pagination) superseded this one
+		// while it was in flight; drop the stale response so it can't overwrite
+		// the current selection.
+		if (seq !== oauthClientsRequestSeq) return response.data;
 
 		// Clamp to the last page when the requested one shrank away (e.g. after a revoke)
 		if (response.data.length === 0 && response.count > 0 && oauthClientsPage.value > 0) {
@@ -248,8 +256,14 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		userId?: string,
 	): Promise<DeleteOAuthClientResponseDto> {
 		const response = await deleteOAuthClient(rootStore.restApiContext, clientId, userId);
-		// Refetch instead of splicing locally so the tab totals stay accurate
-		await getAllOAuthClients();
+		// Refetch instead of splicing locally so the tab totals stay accurate. The
+		// revoke already succeeded, so keep the refresh best-effort: a failed
+		// refetch must not turn a successful revoke into a reported error.
+		try {
+			await getAllOAuthClients();
+		} catch {
+			// Stale list/totals are acceptable; the next interaction refetches.
+		}
 		return response;
 	}
 
