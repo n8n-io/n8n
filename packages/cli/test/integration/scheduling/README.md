@@ -169,7 +169,7 @@ Reads — latency p99 (ms) and plan:
 
 | Query | SQLite | Postgres | Plan |
 |-------|--------|----------|------|
-| `ScheduledTask.getMetricSnapshot` | ~9 | ~12 | **FULL / Seq Scan** |
+| `ScheduledTask.getMetricSnapshot` | ~9 | ~12 | ~~FULL / Seq Scan~~ → index (runAt + leaseExpiresAt partials), see finding 1 |
 | `ScheduledTask.claimDueTasks` (select) | ~5 | ~6 | index (runAt partial) |
 | `ScheduledTask.findExpiredLeases` | <1 | ~1 | index (leaseExpiresAt partial) |
 | `ScheduledTask.deleteFinishedOlderThan` (select) | ~1.5 | ~15 | index (finishedAt partial) + status filter |
@@ -180,17 +180,19 @@ job `insertMany` ~33k / ~17k, `advanceMany` ~127k / ~49k (SQLite / Postgres).
 
 ### Optimization findings
 
-1. **`getMetricSnapshot` does a full table scan on both dialects.** There is no
+1. **`getMetricSnapshot` did a full table scan on both dialects.** There was no
    index supporting `WHERE status IN ('pending','running')`, so the Prometheus
-   scrape scans the whole table, and its cost grows with total history (dead
-   tuples on Postgres), not just the working set. It's still fast at 100k (~10ms)
-   but scales linearly — at 1M rows expect ~100ms per scrape. Options:
-   - split into two `COUNT(*)` reads, each hitting a partial index
-     (`WHERE status = 'pending'` / `= 'running'`) for index-only counts; or
-   - add a partial/covering index keyed on `status` (the `due` count and
-     `oldestPendingAgeMs` still need `runAt`, so a `(status, runAt)` partial index
-     on the live statuses is the strongest single change); or
-   - accept the scan but keep retention aggressive so the table stays small.
+   scrape scanned the whole table, and its cost grew with total history (dead
+   tuples on Postgres), not just the working set — fast at 100k (~10ms) but
+   linear, so ~100ms per scrape projected at 1M rows.
+
+   **Resolved:** the query was rewritten to ride the existing partial indexes
+   instead of adding one (no new write cost on the claim/complete hot path). The
+   `pending`, `due` and `oldestDueRunAt` aggregates read the `runAt WHERE status =
+   'pending'` index as the outer scan, and `running` reads the `leaseExpiresAt
+   WHERE status = 'running'` index via a scalar subquery. The benchmark's EXPLAIN
+   now reports `uses index` on both dialects (SQLite covering-index scans;
+   Postgres bitmap index scans, no `Seq Scan`).
 
 2. **`advanceMany`'s CASE update is unusable at its default chunk on SQLite.** It
    builds one `WHEN id = ? THEN ?` branch per row; SQLite caps expression depth at

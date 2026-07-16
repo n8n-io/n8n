@@ -299,10 +299,12 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 			await profileRead(
 				'ScheduledTask.getMetricSnapshot',
 				async () => await taskRepository.getMetricSnapshot(),
-				`SELECT COUNT(*) FILTER (WHERE "status" = 'pending') AS pending,
-				        COUNT(*) FILTER (WHERE "status" = 'running') AS running
+				`SELECT COUNT(*) AS pending,
+				        COUNT(*) FILTER (WHERE "runAt" <= CURRENT_TIMESTAMP) AS due,
+				        MIN("runAt") FILTER (WHERE "runAt" <= CURRENT_TIMESTAMP) AS "oldestDueRunAt",
+				        (SELECT COUNT(*) FROM ${taskTable} WHERE "status" = 'running') AS running
 				 FROM ${taskTable}
-				 WHERE "status" IN ('pending', 'running')`,
+				 WHERE "status" = 'pending'`,
 				[],
 			);
 

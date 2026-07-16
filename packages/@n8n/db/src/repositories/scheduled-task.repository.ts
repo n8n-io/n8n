@@ -380,18 +380,12 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * (`oldestPendingAgeMs`). Everything reads the DB clock, so `due`-ness and the
 	 * oldest-age reference are consistent regardless of any instance clock skew.
 	 *
-	 * One conditional-aggregation pass (`COUNT(*) FILTER`) over the live working set,
-	 * rather than several round-trips: `status IN ('pending','running')` keeps the scan
-	 * off the terminal rows that grow the table (and that retention prunes), so cost
-	 * scales with the backlog, not total history. The caller runs this behind a short
-	 * scrape cache.
+	 * The caller runs this behind a short scrape cache.
 	 */
 	async getMetricSnapshot(): Promise<ScheduledTaskMetricSnapshot> {
 		const now = dbNowLiteral(this.isPostgres);
-		// Double-quoted identifiers and `FILTER` are accepted by both dialects; the only
-		// per-dialect bit is the DB-now literal. `oldestDueRunAt` is NULL when nothing is
-		// due, and `dbNow` is selected so the age is measured against the same instant the
-		// `due` filter used.
+		// "running" is computed through a subquery (and not a FILTER) to prevent
+		// the WHERE to use 'IN', which does not take the partial index into account
 		const [row]: [
 			{
 				pending: number | string;
@@ -402,13 +396,13 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			},
 		] = await this.query(
 			`SELECT
-			   COUNT(*) FILTER (WHERE "status" = '${ScheduledTaskStatus.Pending}') AS "pending",
-			   COUNT(*) FILTER (WHERE "status" = '${ScheduledTaskStatus.Pending}' AND "runAt" <= ${now}) AS "due",
-			   COUNT(*) FILTER (WHERE "status" = '${ScheduledTaskStatus.Running}') AS "running",
-			   MIN("runAt") FILTER (WHERE "status" = '${ScheduledTaskStatus.Pending}' AND "runAt" <= ${now}) AS "oldestDueRunAt",
+			   COUNT(*) AS "pending",
+			   COUNT(*) FILTER (WHERE "runAt" <= ${now}) AS "due",
+			   MIN("runAt") FILTER (WHERE "runAt" <= ${now}) AS "oldestDueRunAt",
+			   (SELECT COUNT(*) FROM ${this.tableName} WHERE "status" = '${ScheduledTaskStatus.Running}') AS "running",
 			   ${now} AS "dbNow"
 			 FROM ${this.tableName}
-			 WHERE "status" IN ('${ScheduledTaskStatus.Pending}', '${ScheduledTaskStatus.Running}')`,
+			 WHERE "status" = '${ScheduledTaskStatus.Pending}'`,
 		);
 
 		const oldestPendingAgeMs =
