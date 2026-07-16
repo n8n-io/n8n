@@ -330,21 +330,19 @@ describe('OAuthClientsTable', () => {
 			const modal = document.querySelector('[data-test-id="mcp-client-details-modal"]');
 			expect(modal).not.toBeNull();
 
-			// granted scope tokens are grouped per resource, with read/write tags
-			const workflowGroup = within(modal as HTMLElement).getByTestId(
-				'mcp-client-details-group-workflow',
-			);
-			expect(workflowGroup).toHaveTextContent('Workflow');
-			expect(workflowGroup).toHaveTextContent('workflow:read');
-			expect(workflowGroup).toHaveTextContent('workflow:write');
-			expect(workflowGroup).toHaveTextContent('Read');
-			expect(workflowGroup).toHaveTextContent('Write');
-
-			const executionGroup = within(modal as HTMLElement).getByTestId(
-				'mcp-client-details-group-execution',
-			);
-			expect(executionGroup).toHaveTextContent('Execution');
-			expect(executionGroup).toHaveTextContent('execution:read');
+			// access is listed plainly, one human-readable line per granted scope
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-access'),
+			).toBeInTheDocument();
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-scope-workflow:read'),
+			).toBeInTheDocument();
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-scope-workflow:write'),
+			).toBeInTheDocument();
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-scope-execution:read'),
+			).toBeInTheDocument();
 		});
 
 		it('should emit revokeClient from the details modal revoke button', async () => {

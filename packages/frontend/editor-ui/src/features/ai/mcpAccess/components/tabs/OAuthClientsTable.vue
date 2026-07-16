@@ -354,7 +354,6 @@ function onRevoke(item: OAuthClientResponseDto) {
 		<OAuthClientDetailsModal
 			v-model:open="detailsOpen"
 			:client="detailsClient"
-			:scope-tools="props.scopeTools"
 			@revoke="onRevoke"
 		/>
 	</div>
@@ -411,11 +410,15 @@ function onRevoke(item: OAuthClientResponseDto) {
 	color: var(--color--neutral-black);
 }
 
-/* Access summary stays on one line; the whole row opens the details modal. */
+/* Access summary stays on one line; capped + ellipsised so a long grant can't
+   overflow the column into "Connected on". The whole row opens the details modal. */
 .access {
-	white-space: nowrap;
+	display: inline-block;
+	max-width: 22rem;
 	overflow: hidden;
+	white-space: nowrap;
 	text-overflow: ellipsis;
+	vertical-align: middle;
 }
 
 .access:hover {
