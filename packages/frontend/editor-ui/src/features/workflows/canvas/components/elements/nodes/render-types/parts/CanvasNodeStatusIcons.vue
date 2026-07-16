@@ -34,9 +34,18 @@ const {
 	runDataIterations,
 	isDisabled,
 	render,
+	isDeprecated,
+	deprecatedReplacementName,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
 const renderData = injectCanvasRenderData();
+const deprecatedTooltip = computed(() =>
+	deprecatedReplacementName.value
+		? i18n.baseText('node.deprecatedWithReplacement', {
+				interpolate: { nodeTypeName: deprecatedReplacementName.value },
+			})
+		: i18n.baseText('node.deprecated'),
+);
 const executionErrors = computed(
 	() => renderData.value.executionIssuesByNodeName.get(name.value)?.value ?? [],
 );
@@ -83,7 +92,17 @@ const groupedExecutionErrors = computed(() => {
 
 <template>
 	<div
-		v-if="isNotInstalledCommunityNode && !isDemoRoute"
+		v-if="isDeprecated"
+		:class="[...commonClasses, $style.deprecated]"
+		data-test-id="canvas-node-status-deprecated"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content> {{ deprecatedTooltip }} </template>
+			<N8nIcon icon="triangle-alert" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="isNotInstalledCommunityNode && !isDemoRoute"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-not-installed"
 	>
@@ -203,6 +222,10 @@ const groupedExecutionErrors = computed(() => {
 
 .warning {
 	color: var(--color--warning);
+}
+
+.deprecated {
+	color: var(--color--danger);
 }
 
 .disabled {

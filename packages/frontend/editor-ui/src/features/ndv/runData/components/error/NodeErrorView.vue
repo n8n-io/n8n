@@ -176,7 +176,11 @@ const isSubNodeError = computed(() => {
 });
 
 function nodeVersionTag(nodeType: NodeError['node']): string {
-	if (!nodeType || ('hidden' in nodeType && nodeType.hidden)) {
+	if (
+		!nodeType ||
+		('hidden' in nodeType && nodeType.hidden) ||
+		('deprecated' in nodeType && nodeType.deprecated)
+	) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}
 

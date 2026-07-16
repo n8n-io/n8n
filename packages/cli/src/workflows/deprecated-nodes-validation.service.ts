@@ -96,14 +96,27 @@ export class DeprecatedNodesValidationService {
 	}
 
 	private formatMessage(violations: DeprecatedNodeViolation[]): string {
-		const lines = violations.map((v) => {
-			const verb = v.kind === 'added' ? 'add a new' : 'modify a';
-			return `Cannot ${verb} "${v.nodeType}" node ("${v.nodeName}"): this node type is deprecated.`;
-		});
+		return violations
+			.map((v) => {
+				const verb = v.kind === 'added' ? 'add a new' : 'modify a';
+				const replacement = this.getReplacementDisplayName(v.nodeType);
+				const fix = replacement
+					? `Replace it with the ${replacement} node or remove it from the workflow.`
+					: 'Replace it with a supported alternative or remove it from the workflow.';
+				return `Cannot ${verb} "${v.nodeType}" node ("${v.nodeName}"): this node type is deprecated. ${fix}`;
+			})
+			.join(' ');
+	}
 
-		const suffix =
-			' Replace the node with a supported alternative (e.g. the "Code" node) or remove it from the workflow.';
-
-		return lines.join(' ') + suffix;
+	/** Display name of the node type configured as this node's replacement, if any. */
+	private getReplacementDisplayName(nodeType: string): string | undefined {
+		try {
+			const replacementType =
+				this.nodeTypes.getByNameAndVersion(nodeType)?.description?.replacedByNodeType;
+			if (!replacementType) return undefined;
+			return this.nodeTypes.getByNameAndVersion(replacementType)?.description?.displayName;
+		} catch {
+			return undefined;
+		}
 	}
 }

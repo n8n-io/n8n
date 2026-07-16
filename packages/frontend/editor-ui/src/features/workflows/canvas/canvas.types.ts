@@ -81,6 +81,8 @@ export type CanvasNodeDefaultRender = {
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
 		placeholder?: boolean;
+		deprecated?: boolean;
+		deprecatedReplacementName?: string;
 	}>;
 };
 

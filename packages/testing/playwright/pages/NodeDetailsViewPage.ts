@@ -208,6 +208,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('node-parameters');
 	}
 
+	getDeprecatedNotice() {
+		return this.container.getByTestId('node-deprecated-notice');
+	}
+
 	getParameterInputHint() {
 		return this.container.getByTestId('parameter-input-hint');
 	}

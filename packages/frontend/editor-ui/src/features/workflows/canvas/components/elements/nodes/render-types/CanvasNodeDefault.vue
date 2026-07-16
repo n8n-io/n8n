@@ -47,6 +47,7 @@ const {
 	executionRunning,
 	hasRunData,
 	render,
+	isDeprecated,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
 const { hasPrivateCredential, tooltipText: privateCredentialTooltip } =
@@ -87,6 +88,7 @@ const classes = computed(() => {
 		[$style.selected]: isSelected.value,
 		[$style.disabled]:
 			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
+		[$style.deprecated]: isDeprecated.value,
 		[$style.success]: Boolean(
 			hasRunData.value && executionStatus.value === 'success' && !hasExecutionPinData.value,
 		),
@@ -226,7 +228,7 @@ function onActivate(event: MouseEvent) {
 			:icon-source="iconSource"
 			:size="iconSize"
 			:shrink="false"
-			:disabled="isDisabled"
+			:disabled="isDisabled || isDeprecated"
 			:class="$style.icon"
 		/>
 		<CanvasNodeSettingsIcons
@@ -248,7 +250,7 @@ function onActivate(event: MouseEvent) {
 				{{ subtitle }}
 			</div>
 		</div>
-		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		<CanvasNodeStatusIcons v-if="!isDisabled || isDeprecated" :class="$style.statusIcons" />
 	</div>
 </template>
 
@@ -359,6 +361,11 @@ function onActivate(event: MouseEvent) {
 
 	&.warning {
 		@include styles.status-warning;
+	}
+
+	&.deprecated {
+		--canvas-node--border-width: 2px;
+		--canvas-node--border-color: var(--color--danger);
 	}
 
 	&.error {

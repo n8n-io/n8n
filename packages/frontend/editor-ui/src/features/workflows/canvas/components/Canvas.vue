@@ -306,7 +306,7 @@ const renameKeyCode = ' ';
 useShortKeyPress(
 	renameKeyCode,
 	() => {
-		if (lastSelectedNode.value) {
+		if (lastSelectedNode.value && !isNodeDeprecated(lastSelectedNode.value.id)) {
 			emit('update:node:name', lastSelectedNode.value.id);
 		}
 	},
@@ -420,6 +420,14 @@ function onKeyboardGroup() {
 	}
 }
 
+function isNodeDeprecated(id: string): boolean {
+	const node = graphNodes.value.find((n) => n.id === id);
+	return (
+		node?.data?.render.type === CanvasNodeRenderType.Default &&
+		node.data.render.options.deprecated === true
+	);
+}
+
 const keyMap = computed(() => {
 	const readOnlyKeymap: KeyMap = {
 		ctrl_shift_o: emitWithLastSelectedNode((id) => emit('open:sub-workflow', id)),
@@ -467,10 +475,22 @@ const keyMap = computed(() => {
 		...readOnlyKeymap,
 		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
 		'delete|backspace': onDeleteSelection,
-		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
-		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
+		ctrl_d: emitWithSelectedNodes((ids) =>
+			emit(
+				'duplicate:nodes',
+				ids.filter((id) => !isNodeDeprecated(id)),
+			),
+		),
+		d: emitWithSelectedNodes((ids) =>
+			emit(
+				'update:nodes:enabled',
+				ids.filter((id) => !isNodeDeprecated(id)),
+			),
+		),
 		p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
-		f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
+		f2: emitWithLastSelectedNode((id) => {
+			if (!isNodeDeprecated(id)) emit('update:node:name', id);
+		}),
 		n: () => emit('create:node', 'node_shortcut'),
 		tab: {
 			disabled: () => usersStore.isCalloutDismissed(NODE_CREATOR_SHORTCUT_COACHMARK_KEY),
