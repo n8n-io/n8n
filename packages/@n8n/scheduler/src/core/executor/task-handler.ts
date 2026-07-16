@@ -5,9 +5,16 @@ import type { ClaimedTask } from '../types';
  * Runs one claimed task. Registered against a `taskType`; the executor resolves
  * the handler for a task's type and calls `execute`. A throw means the attempt
  * failed (the executor retries with backoff or marks the task failed).
+ *
+ * `onDispatch` lets the handler tell the executor the instant its effect was
+ * actually handed off (e.g. the workflow execution was created and started).
+ * The executor records that as the task's dispatch marker, which the reaper uses
+ * to avoid recording an occurrence that did run as failed. Call it once, exactly
+ * when the effect becomes real: not before, and not when a redelivery finds the
+ * effect already exists. Handlers that never dispatch simply never call it.
  */
 export interface TaskHandler {
-	execute(task: ClaimedTask): Promise<void>;
+	execute(task: ClaimedTask, onDispatch: () => void): Promise<void>;
 }
 
 /**

@@ -36,7 +36,14 @@ connected.)
    real, recurring failure modes.
 2. **Pull the conversations** — `list_conversations` (e.g. `verdict:"bad"`,
    `analyzed:"yes"`) → `get_conversation` (raw trace) + `get_conversation_analysis`
-   (findings). `get_linear_ticket_context` links a thread to its ticket.
+   (findings). `get_linear_ticket_context` links a thread to its ticket. To target
+   **execution failures**, add `funnelDrop:"05"` (built + launched an execution
+   that never *succeeded*). **Caveat: the funnel drop is a *conversion* signal, not
+   a build-quality one** — most `funnelDrop:"05"` threads are healthy builds that
+   correctly routed to credential setup, or the user simply abandoned, so the drop
+   alone tells you nothing about the build. **Pair it with `verdict:"bad"`** to
+   filter down to threads where the analyser actually flagged a build/execution
+   defect (in one sample: 131 raw drops → 18 once `verdict:"bad"` was added).
 3. **Verify before trusting a finding.** The analyser keys off tool-call *spans*
    (was `build-workflow` called on this turn?), which it reads reliably — but a
    content-dependent claim ("invented ID", "missing node") can be wrong when it

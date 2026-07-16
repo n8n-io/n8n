@@ -10,6 +10,7 @@ import { createScheduler, DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS } from '..
 import type { SchedulerDeps, SchedulerEvent, SchedulerTaskStore } from '../factory';
 import { PASS_TIMED_OUT } from '../lifecycle';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
+import type { ExpiredLeaseRow } from '../reaper';
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
 import type { ClaimedTask, ScheduledJob } from '../types';
 
@@ -194,6 +195,13 @@ const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	...overrides,
 });
 
+/** An expired-lease row for the reaper; pre-dispatch (`dispatchedAt` null) by default. */
+const expiredRow = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow => ({
+	...claimedTask(),
+	dispatchedAt: null,
+	...overrides,
+});
+
 describe('createScheduler execute', () => {
 	it('claims nothing while no handler is registered, then scopes the claim to registered types', async () => {
 		const { scheduler, taskStore } = makeScheduler();
@@ -232,7 +240,7 @@ describe('createScheduler execute', () => {
 			id: '1',
 			claimedEpoch: 1,
 		});
-		expect(taskStore.markStarted).not.toHaveBeenCalled();
+		expect(taskStore.beginDispatch).not.toHaveBeenCalled();
 	});
 
 	it('routes a mid-fire failure to an error event and leaves the row to the reaper', async () => {
@@ -240,7 +248,7 @@ describe('createScheduler execute', () => {
 		scheduler.registerTaskHandler('test-task', { execute: vi.fn() });
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
 		// The outcome write fails outside the handler-failure path.
-		taskStore.markStarted.mockRejectedValue(new Error('db down'));
+		taskStore.beginDispatch.mockRejectedValue(new Error('db down'));
 
 		await scheduler.execute();
 
@@ -595,7 +603,7 @@ describe('createScheduler late dispatch', () => {
 		taskStore.claimDueTasks.mockResolvedValue([
 			claimedTask({ runAt: new Date('2020-01-01T00:00:00.000Z') }),
 		]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.markDispatched.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -628,7 +636,7 @@ describe('createScheduler late dispatch', () => {
 		taskStore.claimDueTasks.mockResolvedValue([
 			claimedTask({ runAt: new Date('2020-01-01T00:00:00.000Z') }),
 		]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.markDispatched.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -803,7 +811,7 @@ describe('createScheduler pass timeout and overlap', () => {
 			id: '1',
 			claimedEpoch: 1,
 		});
-		expect(taskStore.markStarted).not.toHaveBeenCalled();
+		expect(taskStore.beginDispatch).not.toHaveBeenCalled();
 
 		await scheduler.stop();
 	});
@@ -901,7 +909,7 @@ describe('createScheduler reap', () => {
 	it('routes a row recovery failure to an error event and finishes the sweep', async () => {
 		const { scheduler, taskStore, onEvent } = makeScheduler();
 		taskStore.findExpiredLeases.mockResolvedValue([
-			{ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 },
+			expiredRow({ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 }),
 		]);
 		taskStore.reclaimExpired.mockRejectedValue(new Error('deadlock'));
 
@@ -918,7 +926,7 @@ describe('createScheduler reap', () => {
 	it('routes a dead-lettered task to a warn event carrying the task identity', async () => {
 		const { scheduler, taskStore, onEvent } = makeScheduler();
 		taskStore.findExpiredLeases.mockResolvedValue([
-			{ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+			expiredRow({ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 }),
 		]);
 		taskStore.deadLetterExpired.mockResolvedValue(1);
 
@@ -1067,7 +1075,7 @@ describe('createScheduler tracing', () => {
 		const { scheduler, taskStore } = makeScheduler({ tracer });
 		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.beginDispatch.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -1098,9 +1106,9 @@ describe('createScheduler tracing', () => {
 		// the wrong attribute key cannot slip past these assertions: two leases with
 		// attempts left are reclaimed, one out of attempts is dead-lettered.
 		taskStore.findExpiredLeases.mockResolvedValue([
-			{ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 },
-			{ id: '8', attempts: 0, maxAttempts: 3, leaseEpoch: 1 },
-			{ id: '9', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+			expiredRow({ id: '7', attempts: 0, maxAttempts: 3, leaseEpoch: 1 }),
+			expiredRow({ id: '8', attempts: 0, maxAttempts: 3, leaseEpoch: 1 }),
+			expiredRow({ id: '9', attempts: 2, maxAttempts: 3, leaseEpoch: 1 }),
 		]);
 		taskStore.reclaimExpired.mockResolvedValue(1);
 		taskStore.deadLetterExpired.mockResolvedValue(1);
@@ -1296,7 +1304,7 @@ describe('createScheduler metrics', () => {
 		const metrics = mock<SchedulerMetrics>();
 		const { scheduler, taskStore } = makeScheduler({ metrics });
 		taskStore.findExpiredLeases.mockResolvedValue([
-			{ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 },
+			expiredRow({ id: '7', attempts: 2, maxAttempts: 3, leaseEpoch: 1 }),
 		]);
 		taskStore.deadLetterExpired.mockResolvedValue(1);
 
@@ -1329,7 +1337,7 @@ describe('createScheduler metrics', () => {
 		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
 		// A task due in the past fires on the next timer tick.
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.beginDispatch.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -1351,7 +1359,7 @@ describe('createScheduler metrics', () => {
 		});
 		// Single attempt: the first failure exhausts it.
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 1 })]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.beginDispatch.mockResolvedValue(1);
 		taskStore.failTaskTerminal.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -1371,7 +1379,7 @@ describe('createScheduler metrics', () => {
 		});
 		// Attempts remain, so the failure reschedules rather than fails terminally.
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask({ attempts: 0, maxAttempts: 3 })]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.beginDispatch.mockResolvedValue(1);
 		taskStore.rescheduleTask.mockResolvedValue(1);
 
 		await scheduler.execute();
@@ -1404,7 +1412,7 @@ describe('createScheduler metrics', () => {
 		const execute = vi.fn().mockResolvedValue(undefined);
 		scheduler.registerTaskHandler('test-task', { execute });
 		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
-		taskStore.markStarted.mockResolvedValue(1);
+		taskStore.beginDispatch.mockResolvedValue(1);
 		taskStore.completeTask.mockResolvedValue(1);
 
 		await scheduler.execute();
