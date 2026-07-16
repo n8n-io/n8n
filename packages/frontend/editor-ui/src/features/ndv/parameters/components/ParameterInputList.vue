@@ -146,14 +146,11 @@ onErrorCaptured((e, component) => {
 
 const node = computed(() => props.node ?? ndvStore.value.activeNode);
 
-// Whether the active Agent v3+ node has a Chat Trigger (or Manual Chat Trigger) in its
-// main-connection ancestry. Used as a reactive dependency of the parameter watch so the
-// prompt-source dropdown re-filters when a chat trigger is wired/removed while the NDV is open.
-const hasChatOrManualChatParent = computed(() =>
-	Boolean(
-		node.value &&
-			workflowDocumentStore?.value?.checkIfNodeHasChatOrManualChatParent(node.value.name),
-	),
+// Whether the active Agent v3+ node has a Chat Trigger in its main-connection ancestry.
+// Used as a reactive dependency of the parameter watch so the prompt-source dropdown
+// re-filters when a chat trigger is wired or removed while the NDV is open.
+const hasChatParent = computed(() =>
+	Boolean(node.value && workflowDocumentStore?.value?.checkIfNodeHasChatParent(node.value.name)),
 );
 
 const nodeType = computed(() => {
@@ -184,7 +181,7 @@ const parameterItems = ref<ParameterComputedData[]>([]);
 let previousParameterNames: string[] = [];
 
 throttledWatch(
-	[() => props.parameters, () => props.nodeValues, node, hasChatOrManualChatParent],
+	[() => props.parameters, () => props.nodeValues, node, hasChatParent],
 	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
@@ -407,12 +404,11 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 	return parameters;
 }
 
-// Agent v3+ 'auto' prompt source reads the message from a connected chat trigger
-// (Chat Trigger or Manual Chat Trigger). Keep it visible, but disable it when neither
-// is in the node's main-connection ancestry so users can still discover the mode.
+// Agent v3+ 'auto' prompt source reads the message from a connected Chat Trigger.
+// Keep it visible, but disable it when no Chat Trigger is in the node's
+// main-connection ancestry so users can still discover the mode.
 function updateAgentParameters(parameters: INodeProperties[], nodeName: string) {
-	const hasChatParent =
-		workflowDocumentStore?.value?.checkIfNodeHasChatOrManualChatParent(nodeName);
+	const hasChatParent = workflowDocumentStore?.value?.checkIfNodeHasChatParent(nodeName);
 	if (hasChatParent) {
 		return parameters;
 	}

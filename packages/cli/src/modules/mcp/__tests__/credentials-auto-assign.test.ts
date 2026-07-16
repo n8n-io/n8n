@@ -151,8 +151,7 @@ describe('autoPopulateNodeCredentials', () => {
 	test('skips HTTP Request nodes and reports them', async () => {
 		const httpNodes = [
 			makeNode({ id: '1', name: 'HTTP 1', type: 'n8n-nodes-base.httpRequest' }),
-			makeNode({ id: '2', name: 'HTTP 2', type: '@n8n/n8n-nodes-langchain.toolHttpRequest' }),
-			makeNode({ id: '3', name: 'HTTP 3', type: 'n8n-nodes-base.httpRequestTool' }),
+			makeNode({ id: '2', name: 'HTTP 2', type: 'n8n-nodes-base.httpRequestTool' }),
 		];
 		const workflow = makeWorkflow(httpNodes);
 		const { credentialsService, nodeTypes } = createMocks({
@@ -167,7 +166,7 @@ describe('autoPopulateNodeCredentials', () => {
 			projectId,
 		);
 
-		expect(result.skippedHttpNodes).toEqual(['HTTP 1', 'HTTP 2', 'HTTP 3']);
+		expect(result.skippedHttpNodes).toEqual(['HTTP 1', 'HTTP 2']);
 		expect(result.assignments).toEqual([]);
 	});
 

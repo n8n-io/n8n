@@ -157,18 +157,6 @@ export interface TriggerBinaryRequirement {
  */
 const BINARY_CONSUMER_NODE_TYPES: Record<string, Omit<TriggerBinaryRequirement, 'propertyName'>> = {
 	'n8n-nodes-base.extractFromFile': { contentType: 'application/pdf', filename: 'input.pdf' },
-	'n8n-nodes-base.readBinaryFile': {
-		contentType: 'application/octet-stream',
-		filename: 'input.bin',
-	},
-	'n8n-nodes-base.writeBinaryFile': {
-		contentType: 'application/octet-stream',
-		filename: 'input.bin',
-	},
-	'@n8n/n8n-nodes-langchain.documentBinaryInputLoader': {
-		contentType: 'application/pdf',
-		filename: 'input.pdf',
-	},
 };
 
 /**

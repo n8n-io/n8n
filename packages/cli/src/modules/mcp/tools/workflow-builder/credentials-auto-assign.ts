@@ -16,11 +16,7 @@ export interface AutoAssignResult {
 	skippedHttpNodes: string[];
 }
 
-const HTTP_NODE_TYPES = new Set([
-	'n8n-nodes-base.httpRequest',
-	'@n8n/n8n-nodes-langchain.toolHttpRequest',
-	'n8n-nodes-base.httpRequestTool',
-]);
+const HTTP_NODE_TYPES = new Set(['n8n-nodes-base.httpRequest', 'n8n-nodes-base.httpRequestTool']);
 
 /**
  * Auto-populates missing credentials on workflow nodes by assigning

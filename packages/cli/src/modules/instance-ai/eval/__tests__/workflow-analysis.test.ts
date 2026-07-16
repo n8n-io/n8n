@@ -411,7 +411,6 @@ describe('partitionAiRoots', () => {
 			'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
 			'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 			'@n8n/n8n-nodes-langchain.lmChatOllama',
-			'@n8n/n8n-nodes-langchain.lmOpenAi',
 		])('auto-pins an Agent backed by unmapped vendor LLM %s', (llmType) => {
 			const result = partitionAiRoots(agentWithLlm(llmType));
 			expect(result.pinNodes).toEqual(['Agent']);

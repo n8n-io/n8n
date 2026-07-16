@@ -21,7 +21,6 @@ export const LM_SUBNODE_TYPE_TO_CHATHUB_PROVIDER: Record<string, ChatHubLLMProvi
 // Keep in sync with packages/@n8n/nodes-langchain/nodes/{agents,chains,vendors}/.
 export const AI_ROOT_NODE_TYPES: readonly string[] = [
 	'@n8n/n8n-nodes-langchain.agent',
-	'@n8n/n8n-nodes-langchain.openAiAssistant',
 	'@n8n/n8n-nodes-langchain.chainLlm',
 	'@n8n/n8n-nodes-langchain.chainRetrievalQa',
 	'@n8n/n8n-nodes-langchain.chainSummarization',

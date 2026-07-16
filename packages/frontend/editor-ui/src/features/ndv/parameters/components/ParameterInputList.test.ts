@@ -119,7 +119,7 @@ const workflowDocumentStoreMock = {
 	getParentNodes: vi.fn().mockReturnValue([]),
 	getParentNodesByDepth: vi.fn().mockReturnValue([]),
 	getNodeByName: vi.fn().mockReturnValue(undefined),
-	checkIfNodeHasChatOrManualChatParent: vi.fn().mockReturnValue(false),
+	checkIfNodeHasChatParent: vi.fn().mockReturnValue(false),
 	name: '',
 	settings: {},
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
@@ -149,7 +149,7 @@ describe('ParameterInputList', () => {
 		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);
 		workflowDocumentStoreMock.getNodeByName.mockReturnValue(undefined);
-		workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
+		workflowDocumentStoreMock.checkIfNodeHasChatParent.mockReturnValue(false);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
 			shallowRef(workflowDocumentStoreMock) as unknown as ReturnType<
 				typeof injectWorkflowDocumentStore
@@ -1219,7 +1219,7 @@ describe('ParameterInputList', () => {
 
 		it('should keep the auto option visible but disabled when no chat trigger is connected', async () => {
 			ndvStore.activeNode = agentNode(3.1);
-			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(false);
+			workflowDocumentStoreMock.checkIfNodeHasChatParent.mockReturnValue(false);
 
 			const { findByText, getByTestId } = renderComponent({
 				props: {
@@ -1247,7 +1247,7 @@ describe('ParameterInputList', () => {
 
 		it('should keep the auto option when a chat trigger is connected', async () => {
 			ndvStore.activeNode = agentNode(3.1);
-			workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockReturnValue(true);
+			workflowDocumentStoreMock.checkIfNodeHasChatParent.mockReturnValue(true);
 
 			const { findByText, getByTestId } = renderComponent({
 				props: {
@@ -1274,7 +1274,7 @@ describe('ParameterInputList', () => {
 			vi.useFakeTimers();
 			try {
 				const hasChatParent = ref(false);
-				workflowDocumentStoreMock.checkIfNodeHasChatOrManualChatParent.mockImplementation(
+				workflowDocumentStoreMock.checkIfNodeHasChatParent.mockImplementation(
 					() => hasChatParent.value,
 				);
 

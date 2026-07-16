@@ -40,13 +40,7 @@ export const WEBHOOK_VALIDATOR_NODE_TYPES = new Set([
 	'n8n-nodes-base.functionItem',
 ]);
 
-export const FILESYSTEM_INTERACTION_NODE_TYPES = new Set([
-	'n8n-nodes-base.readPdf',
-	'n8n-nodes-base.readBinaryFile',
-	'n8n-nodes-base.readBinaryFiles',
-	'n8n-nodes-base.spreadsheetFile',
-	'n8n-nodes-base.writeBinaryFile',
-]);
+export const FILESYSTEM_INTERACTION_NODE_TYPES = new Set(['n8n-nodes-base.spreadsheetFile']);
 
 export const OFFICIAL_RISKY_NODE_TYPES = new Set([
 	'n8n-nodes-base.executeCommand',

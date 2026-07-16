@@ -15,7 +15,7 @@ import {
 	FROM_AI_AUTO_GENERATED_MARKER,
 	GUARDRAILS_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
 	LANGCHAIN_LM_NODE_TYPE_PREFIX,
 	MCP_CLIENT_NODE_TYPE,
@@ -445,7 +445,7 @@ export function generateNodesGraph(
 
 			nodeItem.domain_base = getDomainBase(url);
 			nodeItem.method = node.parameters.requestMethod as string;
-		} else if (HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE === node.type) {
+		} else if (HTTP_REQUEST_AS_TOOL_NODE_TYPE === node.type) {
 			if (!nodeItem.toolSettings) nodeItem.toolSettings = {};
 
 			nodeItem.toolSettings.url_type = 'other';

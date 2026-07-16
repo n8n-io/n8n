@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router';
 
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { nodeViewEventBus } from '@/app/event-bus';
 
 // Shared "Run workflow" trigger for the evaluations gate. Chat-trigger workflows
@@ -16,9 +16,7 @@ export function useRunEvalWorkflow() {
 
 	const hasChatTrigger = computed(() =>
 		(workflowDocumentStore.value?.allNodes ?? []).some(
-			(node) =>
-				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type) &&
-				node.disabled !== true,
+			(node) => node.type === CHAT_TRIGGER_NODE_TYPE && node.disabled !== true,
 		),
 	);
 
