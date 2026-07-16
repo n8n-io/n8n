@@ -33,6 +33,7 @@ type Item = InsightsByWorkflow['data'][number];
 const sampleWorkflows: InsightsByWorkflow['data'] = Array.from({ length: 10 }, (_, i) => ({
 	workflowId: `sample-workflow-${i + 1}`,
 	workflowName: `Sample Workflow ${i + 1}`,
+	hasAccess: true,
 	total: Math.floor(Math.random() * 2000) + 500,
 	failed: Math.floor(Math.random() * 100) + 20,
 	failureRate: Math.random() * 100,
@@ -169,9 +170,9 @@ watch(sortBy, (newValue) => {
 		>
 			<template #[`item.workflowName`]="{ item }">
 				<component
-					:is="item.workflowId ? RouterLink : 'div'"
+					:is="item.workflowId && item.hasAccess ? RouterLink : 'div'"
 					v-bind="
-						item.workflowId
+						item.workflowId && item.hasAccess
 							? {
 									to: getWorkflowLink(item),
 									class: $style.link,
@@ -180,7 +181,14 @@ watch(sortBy, (newValue) => {
 							: {}
 					"
 				>
-					<N8nTooltip :content="item.workflowName" placement="top">
+					<N8nTooltip
+						:content="
+							item.hasAccess
+								? item.workflowName
+								: i18n.baseText('insights.dashboard.table.noAccess')
+						"
+						placement="top"
+					>
 						<div :class="$style.ellipsis">
 							{{ item.workflowName }}
 						</div>
@@ -189,7 +197,7 @@ watch(sortBy, (newValue) => {
 			</template>
 			<template #[`item.timeSaved`]="{ item, value }">
 				<RouterLink
-					v-if="!item.timeSaved && item.workflowId"
+					v-if="!item.timeSaved && item.workflowId && item.hasAccess"
 					:to="getWorkflowLink(item, { settings: 'true' })"
 					:class="$style.link"
 				>

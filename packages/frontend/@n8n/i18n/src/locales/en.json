@@ -6075,6 +6075,7 @@
 	"insights.dashboard.table.projectName": "Project name",
 	"insights.dashboard.table.title": "Breakdown by workflow",
 	"insights.dashboard.table.estimate": "Estimate",
+	"insights.dashboard.table.noAccess": "You don't have access to this workflow",
 	"insights.dashboard.title": "Insights",
 	"insights.dashboard.search.placeholder": "All projects",
 	"insights.dashboard.dataRangeAlert.title": "Your selected range goes back further than your data",
