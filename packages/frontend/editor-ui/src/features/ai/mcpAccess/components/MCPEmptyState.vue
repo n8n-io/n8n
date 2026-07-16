@@ -77,6 +77,26 @@ const buttonDisabled = computed(() => props.disabled || props.loading);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+	/* Gentle entrance for the enable/disable swap, matching the prototype. */
+	animation: mcp-reveal-in var(--duration--base, 240ms) var(--easing--ease-out, ease-out);
+}
+
+@keyframes mcp-reveal-in {
+	from {
+		opacity: 0;
+		transform: translateY(var(--spacing--2xs));
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.container {
+		animation: none;
+	}
 }
 
 .cards {

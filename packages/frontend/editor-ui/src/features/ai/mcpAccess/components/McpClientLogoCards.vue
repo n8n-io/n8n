@@ -86,7 +86,7 @@ onUnmounted(() => {
 	align-items: center;
 	/* fixed white tile so dark brand marks stay visible on the dark theme */
 	background: var(--color--neutral-white);
-	box-shadow: var(--shadow--dark);
+	box-shadow: var(--shadow--xs);
 	border-radius: var(--radius);
 	overflow: hidden;
 
@@ -124,5 +124,11 @@ onUnmounted(() => {
 .fading {
 	opacity: 0;
 	filter: blur(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.clientLogo {
+		transition: none;
+	}
 }
 </style>

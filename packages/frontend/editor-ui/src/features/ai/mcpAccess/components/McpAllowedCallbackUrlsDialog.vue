@@ -64,7 +64,9 @@ const result = computed(() => (mode.value === 'all' ? [] : trimmedDrafts.value))
 const canSave = computed(() => {
 	if (validationError.value) return false;
 	if (mode.value === 'trusted' && trimmedDrafts.value.length === 0) return false;
-	return JSON.stringify(result.value) !== JSON.stringify(props.uris);
+	// Saving an unchanged selection (e.g. the default "All") is allowed and
+	// idempotent, so the user never has to tweak something just to enable Save.
+	return true;
 });
 
 const addUrl = () => {
@@ -90,7 +92,7 @@ const onSave = () => emit('save', result.value);
 		@update:open="emit('update:open', $event)"
 	>
 		<div :class="$style.body">
-			<N8nRadioGroup v-model="mode" orientation="horizontal" :class="$style.modes">
+			<N8nRadioGroup v-model="mode" orientation="vertical" :class="$style.modes">
 				<div
 					v-for="option in ['all', 'trusted'] as const"
 					:key="option"
@@ -178,7 +180,7 @@ const onSave = () => emit('save', result.value);
 
 .modes {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: 1fr;
 	gap: var(--spacing--xs);
 }
 

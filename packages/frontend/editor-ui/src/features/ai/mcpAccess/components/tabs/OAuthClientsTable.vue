@@ -261,6 +261,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 			<N8nDataTableServer
 				v-model:page="page"
 				v-model:items-per-page="itemsPerPage"
+				:class="$style.table"
 				data-test-id="oauth-clients-data-table"
 				:headers="tableHeaders"
 				:items="props.clients"
@@ -338,6 +339,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nButton
+						class="revoke-action"
 						variant="outline"
 						size="small"
 						data-test-id="mcp-oauth-client-revoke-button"
@@ -393,8 +395,8 @@ function onRevoke(item: OAuthClientResponseDto) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--spacing--xl);
-	height: var(--spacing--xl);
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
 	flex-shrink: 0;
 	/* fixed white tile so dark brand marks stay visible on the dark theme */
 	background-color: var(--color--neutral-white);
@@ -403,13 +405,19 @@ function onRevoke(item: OAuthClientResponseDto) {
 }
 
 .client-icon {
-	width: var(--spacing--md);
-	height: var(--spacing--md);
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 	/* the tile is always white, so the fallback MCP glyph must stay dark in both themes */
 	color: var(--color--neutral-black);
 }
 
-/* the whole row opens the details modal; hint that on the access summary */
+/* Access summary stays on one line; the whole row opens the details modal. */
+.access {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .access:hover {
 	color: var(--color--primary);
 	text-decoration: underline;
@@ -429,5 +437,27 @@ function onRevoke(item: OAuthClientResponseDto) {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg) 0;
 	min-height: 250px;
+}
+
+/* The whole row opens the details modal, so hint it with a pointer... */
+.table :global(tbody tr) {
+	cursor: pointer;
+}
+
+/* ...and keep the revoke button out of the way until the row is hovered/focused. */
+.table :global(tbody tr .revoke-action) {
+	opacity: 0;
+	transition: opacity var(--duration--fast, 100ms) ease;
+}
+
+.table :global(tbody tr:hover .revoke-action),
+.table :global(tbody tr:focus-within .revoke-action) {
+	opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.table :global(tbody tr .revoke-action) {
+		transition: none;
+	}
 }
 </style>

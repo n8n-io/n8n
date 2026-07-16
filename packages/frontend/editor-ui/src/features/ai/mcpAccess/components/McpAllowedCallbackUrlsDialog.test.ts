@@ -23,14 +23,16 @@ describe('McpAllowedCallbackUrlsDialog', () => {
 		await renderDialog([]);
 
 		expect(body().queryByTestId('mcp-callback-url-input')).not.toBeInTheDocument();
-		expect(saveButton()).toBeDisabled();
+		// Saving the default "all" selection is allowed (idempotent), no tweak needed.
+		expect(saveButton()).toBeEnabled();
 	});
 
 	it('should preselect "trusted" mode with the persisted URLs', async () => {
 		await renderDialog(['https://a.example.com/cb', 'https://b.example.com/cb']);
 
 		expect(body().getAllByTestId('mcp-callback-url-input')).toHaveLength(2);
-		expect(saveButton()).toBeDisabled();
+		// A valid, unchanged selection can still be re-saved.
+		expect(saveButton()).toBeEnabled();
 	});
 
 	it('should emit the trimmed URL list when saving trusted URLs', async () => {

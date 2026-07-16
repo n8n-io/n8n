@@ -208,7 +208,10 @@ onMounted(async () => {
 				:content="instanceCapacityNoticeContent"
 			/>
 
-			<N8nSettingsSection data-test-id="mcp-enabled-section">
+			<N8nSettingsSection
+				:title="i18n.baseText('settings.mcp.connectionDetails.title')"
+				data-test-id="mcp-enabled-section"
+			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
 						:title="i18n.baseText('settings.mcp.status.title')"
@@ -229,7 +232,7 @@ onMounted(async () => {
 					>
 						<template #action>
 							<N8nButton
-								variant="solid"
+								variant="outline"
 								size="medium"
 								icon="mcp"
 								:label="i18n.baseText('settings.mcp.yourClient.connect')"
@@ -241,10 +244,7 @@ onMounted(async () => {
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
-			<N8nSettingsSection
-				:title="i18n.baseText('settings.mcp.access.title')"
-				:description="i18n.baseText('settings.mcp.access.description')"
-			>
+			<N8nSettingsSection :title="i18n.baseText('settings.mcp.access.title')">
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
 						:title="i18n.baseText('settings.mcp.workflowsExposed.title')"
@@ -257,8 +257,9 @@ onMounted(async () => {
 							<N8nSettingsRowConfigure :value="workflowsExposedValue" />
 						</template>
 					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="canManageMcpInstance">
 					<N8nSettingsRow
-						v-if="canManageMcpInstance"
 						:title="i18n.baseText('settings.mcp.callbackUrls.title')"
 						:description="i18n.baseText('settings.mcp.callbackUrls.description')"
 						clickable
@@ -272,10 +273,7 @@ onMounted(async () => {
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
-			<N8nSettingsSection
-				:title="i18n.baseText('settings.mcp.connectedClients.title')"
-				:description="i18n.baseText('settings.mcp.connectedClients.description')"
-			>
+			<N8nSettingsSection :title="i18n.baseText('settings.mcp.connectedClients.title')">
 				<div
 					v-if="connectedClientsTotal === 0"
 					:class="$style['clients-empty']"

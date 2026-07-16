@@ -374,7 +374,8 @@ const serverUrlDescription = computed(() =>
    (e.g. Claude Code's config block) never run off-screen. */
 .body {
 	max-height: calc(100dvh - 16rem);
-	margin-top: var(--spacing--xs);
+	/* Extra breathing room so the OAuth/API-key tabs don't crowd the description. */
+	margin-top: var(--spacing--md);
 	overflow-y: auto;
 }
 
