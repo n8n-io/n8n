@@ -1,6 +1,6 @@
 # TypeScript 6 → 7 migration benchmarks
 
-Generated 2026-07-16T08:22:55.276Z from `scripts/typescript-migration/results/`.
+Generated 2026-07-16T08:25:04.413Z from `scripts/typescript-migration/results/`.
 
 | Package | typecheck Δ | build Δ |
 | --- | --- | --- |
