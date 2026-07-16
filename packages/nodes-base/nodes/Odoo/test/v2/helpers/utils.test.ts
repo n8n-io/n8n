@@ -30,6 +30,16 @@ describe('formatOdooDateFields', () => {
 		expect(result.date_deadline).toBe('2026-07-14');
 	});
 
+	it('preserves date component for positive UTC offset without day-shift', () => {
+		const result = formatOdooDateFields({ date_deadline: '2026-07-14T00:30:00.000+05:30' }, schema);
+		expect(result.date_deadline).toBe('2026-07-14');
+	});
+
+	it('converts timezone-less ISO datetime without host timezone shift', () => {
+		const result = formatOdooDateFields({ start: '2026-07-14T12:00:00.000' }, schema);
+		expect(result.start).toBe('2026-07-14 12:00:00');
+	});
+
 	it('leaves values already in Odoo datetime format unchanged', () => {
 		const result = formatOdooDateFields({ start: '2026-07-14 12:00:00' }, schema);
 		expect(result.start).toBe('2026-07-14 12:00:00');

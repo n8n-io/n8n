@@ -99,8 +99,10 @@ export async function getModelSchema(
 
 // n8n's resource mapper emits ISO 8601 strings with timezone for dateTime fields,
 // e.g. "2026-07-14T12:00:00.000+02:00". Odoo expects "YYYY-MM-DD HH:MM:SS" (UTC)
-// for datetime and "YYYY-MM-DD" for date fields.
+// for datetime and "YYYY-MM-DD" for date fields. Timezone is optional — auto-mapped
+// input may pass naive ISO datetimes without an offset.
 const ISO_8601_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/;
+const HAS_TZ_RE = /(Z|[+-]\d{2}:\d{2})$/;
 
 /**
  * Converts ISO 8601 datetime/date strings in `fields` to the formats Odoo
@@ -111,15 +113,21 @@ export function formatOdooDateFields(fields: IDataObject, schema: OdooFieldSchem
 	const result = { ...fields };
 	for (const [key, value] of Object.entries(result)) {
 		if (typeof value !== 'string' || !(key in schema) || !ISO_8601_RE.test(value)) continue;
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) continue;
 		const odooType = schema[key].type;
 		if (odooType === 'datetime') {
-			// Odoo stores datetime in UTC; strip timezone and milliseconds
-			result[key] = date
-				.toISOString()
-				.replace('T', ' ')
-				.replace(/\.\d+Z$/, '');
+			if (HAS_TZ_RE.test(value)) {
+				// Offset / Z present — normalize to UTC for Odoo storage
+				const date = new Date(value);
+				if (Number.isNaN(date.getTime())) continue;
+				result[key] = date
+					.toISOString()
+					.replace('T', ' ')
+					.replace(/\.\d+Z$/, '');
+			} else {
+				// Naive ISO datetime — keep wall-clock time; `new Date()` would parse
+				// as host-local and `toISOString()` would shift by the host timezone.
+				result[key] = value.replace('T', ' ').replace(/\.\d+$/, '');
+			}
 		} else if (odooType === 'date') {
 			// Preserve the date from the original input — no UTC conversion needed.
 			// `toISOString()` would shift to UTC first, causing a day-off for positive offsets.
