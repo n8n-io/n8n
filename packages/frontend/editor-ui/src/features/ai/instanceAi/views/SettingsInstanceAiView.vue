@@ -5,14 +5,12 @@ import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
+import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
+import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import ModelSection from '../components/settings/ModelSection.vue';
-import SandboxSection from '../components/settings/SandboxSection.vue';
-import SearchSection from '../components/settings/SearchSection.vue';
-import AdvancedSection from '../components/settings/AdvancedSection.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -21,6 +19,8 @@ const store = useInstanceAiSettingsStore();
 
 const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
 	useInstanceAiMcpConnectionsExperiment();
+const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
+const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
 const isAdmin = computed(() => store.canManage);
 
@@ -92,6 +92,11 @@ function handleComputerUseToggle(value: string | number | boolean) {
 	void store.save();
 }
 
+function handleBrowserUseToggle(value: string | number | boolean) {
+	store.setField('browserUseEnabled', Boolean(value));
+	void store.save();
+}
+
 function handleMcpAccessToggle(value: string | number | boolean) {
 	store.setField('mcpAccessEnabled', Boolean(value));
 	void store.save();
@@ -143,7 +148,7 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 			</template>
 
 			<template v-if="isEnabled">
-				<div v-if="isAdmin" :class="$style.card">
+				<div v-if="isAdmin && isComputerUseExperimentEnabled" :class="$style.card">
 					<div :class="$style.settingsRow">
 						<div :class="$style.settingsRowLeft">
 							<span :class="$style.settingsRowLabel">
@@ -158,6 +163,25 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 							:disabled="store.isSaving"
 							data-test-id="n8n-agent-computer-use-toggle"
 							@update:model-value="handleComputerUseToggle"
+						/>
+					</div>
+				</div>
+
+				<div v-if="isAdmin && isBrowserUseEnabled" :class="$style.card">
+					<div :class="$style.settingsRow">
+						<div :class="$style.settingsRowLeft">
+							<span :class="$style.settingsRowLabel">
+								{{ i18n.baseText('settings.n8nAgent.browserUse.label') }}
+							</span>
+							<span :class="$style.settingsRowDescription">
+								{{ i18n.baseText('settings.n8nAgent.browserUse.description') }}
+							</span>
+						</div>
+						<ElSwitch
+							:model-value="store.settings?.browserUseEnabled ?? true"
+							:disabled="store.isSaving"
+							data-test-id="n8n-agent-browser-use-toggle"
+							@update:model-value="handleBrowserUseToggle"
 						/>
 					</div>
 				</div>
@@ -246,32 +270,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 									:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"
 								/>
 							</N8nSelect>
-						</div>
-					</div>
-				</template>
-
-				<div v-if="!store.isProxyEnabled && !store.isCloudManaged" :class="$style.card">
-					<div :class="$style.sectionBlock">
-						<ModelSection />
-					</div>
-				</div>
-
-				<template v-if="isAdmin">
-					<div v-if="!store.isProxyEnabled && !store.isCloudManaged" :class="$style.card">
-						<div :class="$style.sectionBlock">
-							<SandboxSection />
-						</div>
-					</div>
-
-					<div v-if="!store.isProxyEnabled" :class="$style.card">
-						<div :class="$style.sectionBlock">
-							<SearchSection />
-						</div>
-					</div>
-
-					<div v-if="!store.isCloudManaged" :class="$style.card">
-						<div :class="$style.sectionBlock">
-							<AdvancedSection />
 						</div>
 					</div>
 				</template>

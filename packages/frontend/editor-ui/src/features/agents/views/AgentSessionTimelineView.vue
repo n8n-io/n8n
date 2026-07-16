@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { truncate } from '@n8n/utils';
+import { truncate } from '@n8n/utils/string/truncate';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
@@ -309,8 +309,8 @@ async function loadThreadDetail() {
 	try {
 		const result = await sessionsStore.getThreadDetail(
 			currentProjectId,
-			currentThreadId,
 			currentAgentId,
+			currentThreadId,
 		);
 		if (requestId !== loadThreadDetailRequestId) return;
 		thread.value = result.thread;

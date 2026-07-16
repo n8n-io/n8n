@@ -1,7 +1,7 @@
 import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { SsrfProtectionConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { CacheService } from '@/services/cache/cache.service';
@@ -12,7 +12,7 @@ import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client';
 describe('OAuth2MetadataHttpClient', () => {
 	const logger = mockLogger();
 	const cache = mock<CacheService>();
-	const request = jest.fn();
+	const request = vi.fn();
 	const outboundHttp = mock<OutboundHttp>();
 
 	const buildClient = (
@@ -28,7 +28,7 @@ describe('OAuth2MetadataHttpClient', () => {
 		);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request }));
 		cache.get.mockResolvedValue(undefined);
 		cache.set.mockResolvedValue();
@@ -38,7 +38,7 @@ describe('OAuth2MetadataHttpClient', () => {
 		test('builds the client with SSRF disabled when protection is off', () => {
 			buildClient({ enabled: false });
 
-			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: 10_000 });
 		});
 
 		test('builds the client with the SSRF service when protection is on', () => {
@@ -46,7 +46,10 @@ describe('OAuth2MetadataHttpClient', () => {
 
 			buildClient({ enabled: true }, ssrfProtectionService);
 
-			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: ssrfProtectionService });
+			expect(outboundHttp.requests).toHaveBeenCalledWith({
+				ssrf: ssrfProtectionService,
+				timeout: 10_000,
+			});
 		});
 	});
 

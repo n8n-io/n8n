@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import type { MockInstance } from 'vitest';
 
 import type { DatabaseConfig } from '../src/index';
 import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
@@ -13,7 +14,8 @@ vi.mock('node:fs', () => ({
 	readFileSync: readFileSyncMock,
 }));
 
-const consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+// `restoreMocks` restores spies before each test, so this is re-established in beforeEach.
+let consoleWarnMock: MockInstance;
 
 // Ignore the sanitize function from the GlobalConfig nested types
 type ConfigShape<T> = T extends ReadonlyArray<infer U>
@@ -34,6 +36,7 @@ describe('GlobalConfig', () => {
 	beforeEach(() => {
 		Container.reset();
 		vi.clearAllMocks();
+		consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
 	});
 
 	const originalEnv = process.env;
@@ -73,6 +76,7 @@ describe('GlobalConfig', () => {
 		ssl_cert: '',
 		canvasOnly: false,
 		editorBaseUrl: '',
+		webhookUrl: '',
 		dataTable: {
 			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
@@ -94,6 +98,7 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				destroyTimeoutMs: 10_000,
 				idleTimeoutMs: 30_000,
 				statementTimeoutMs: 5 * 60 * 1000,
 				maxConnectionLifetimeMs: 60 * 60 * 1000,
@@ -121,6 +126,7 @@ describe('GlobalConfig', () => {
 			minRecoveryBackoffMs: 1_000,
 			maxRecoveryBackoffMs: 30_000,
 			connectionAcquisitionTimeoutMs: 30_000,
+			startupConnectMaxRetries: 5,
 		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
@@ -188,17 +194,16 @@ describe('GlobalConfig', () => {
 			include: [],
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
+			mergeSqlSandboxMemoryLimitMb: 64,
 		},
 		publicApi: {
 			disabled: false,
 			path: 'api',
 			swaggerUiDisabled: false,
-			packagesEnabled: false,
 		},
 		templates: {
 			enabled: true,
 			host: 'https://api.n8n.io/api/',
-			dynamicTemplatesHost: 'https://dynamic-templates.n8n.io/templates',
 		},
 		versionNotifications: {
 			enabled: true,
@@ -219,10 +224,12 @@ describe('GlobalConfig', () => {
 			useWorkflowPublicationService: false,
 			publicationOutboxPollIntervalMs: 15_000,
 			publicationOutboxLeaseSeconds: 120,
+			workflowPublicationConcurrency: 5,
 			publicationOutboxCompletedRetentionHours: 1,
 			publicationOutboxFailedRetentionHours: 168,
 			publicationOutboxCleanupIntervalSeconds: 1200,
 			publicationOutboxCleanupBatchSize: 1000,
+			publicationReconcileIntervalSeconds: 10,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -243,6 +250,8 @@ describe('GlobalConfig', () => {
 				includeQueueMetrics: false,
 				includeWorkflowExecutionDuration: true,
 				queueMetricsInterval: 20,
+				includeSchedulerMetrics: false,
+				schedulerMetricsInterval: 20,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
@@ -253,6 +262,9 @@ describe('GlobalConfig', () => {
 				includeFormMetrics: false,
 				includeWorkflowInfoMetrics: false,
 				workflowInfoMetricInterval: 60,
+				includeDbPoolMetrics: false,
+				includeWorkflowPublicationMetrics: false,
+				workflowPublicationMetricInterval: 60,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -291,6 +303,14 @@ describe('GlobalConfig', () => {
 			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
 			maxZipEntries: 5000,
 		},
+		mcpClient: {
+			cacheTtl: 300000,
+			cacheMaxSize: 500,
+		},
+		mcpServer: {
+			sessionIdleTtl: 900000,
+			sessionSweepInterval: 300000,
+		},
 		chatHub: {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
@@ -302,9 +322,9 @@ describe('GlobalConfig', () => {
 			modelApiKey: '',
 			mcpServers: '',
 			localGatewayDisabled: false,
+			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
 			reflectorObservationTokens: 40_000,
-			subAgentMaxSteps: 100,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
@@ -317,16 +337,17 @@ describe('GlobalConfig', () => {
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
 			sandboxAutoStopMinutes: 15,
-			sandboxAutoArchiveMinutes: 10_080,
-			sandboxAutoDeleteMinutes: 43_200,
+			sandboxAutoArchiveMinutes: 60,
+			sandboxAutoDeleteMinutes: 10_080,
 			daytonaTokenRefreshSkewMs: 300_000,
 			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			gatewayApiKey: '',
-			threadTtlDays: 90,
+			threadTtlDays: 30,
 			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
+			checkpointGcRetention: 604_800_000,
 			confirmationTimeout: 86_400_000,
 			outputRedactionEnabled: true,
 			outputRedactionSecrets: true,
@@ -334,6 +355,7 @@ describe('GlobalConfig', () => {
 			outputRedactionPlaceholder: '[REDACTED]',
 			runDebugEnabled: false,
 			thinkingEnabled: true,
+			durableLog: false,
 		},
 		queue: {
 			health: {
@@ -351,6 +373,10 @@ describe('GlobalConfig', () => {
 					username: '',
 					clusterNodes: '',
 					tls: false,
+					tlsConfig: {
+						serverName: '',
+						rejectUnauthorized: true,
+					},
 					dualStack: false,
 					slotsRefreshInterval: 5_000,
 					slotsRefreshTimeout: 1_000,
@@ -392,6 +418,7 @@ describe('GlobalConfig', () => {
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
 			tracesSlowSpanThresholdMs: 1000,
+			webhookTracesSampleRate: 0.05,
 			eventLoopBlockDetectionEnabled: false,
 			eventLoopBlockThreshold: 500,
 			eventLoopBlockMaxEventsPerHour: 5,
@@ -414,6 +441,27 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
+		},
+		scheduler: {
+			enabled: false,
+			materializationWindowSeconds: 60,
+			materializationIntervalSeconds: 10,
+			materializationTimeoutSeconds: 60,
+			executorIntervalSeconds: 5,
+			executorTimeoutSeconds: 60,
+			claimBatchSize: 100,
+			reaperIntervalSeconds: 30,
+			reaperBatchSize: 100,
+			reaperTimeoutSeconds: 60,
+			leaseDurationSeconds: 60,
+			retentionSeconds: 86400,
+			failedRetentionSeconds: 604800,
+			retentionIntervalSeconds: 3600,
+			retentionTimeoutSeconds: 300,
+			jitterRatio: 0.1,
+			minIntervalSeconds: 0,
+			maxConcurrentPasses: 10,
+			triggerNodeMode: 'legacy',
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -443,6 +491,7 @@ describe('GlobalConfig', () => {
 			disableFormHtmlSandboxing: false,
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
+			awsSystemCredentialsSdkSources: 'all',
 			enableGitNodeHooks: false,
 			enableGitNodeAllConfigKeys: false,
 		},
@@ -532,6 +581,7 @@ describe('GlobalConfig', () => {
 			blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
 			allowedIpRanges: [],
 			allowedHostnames: [],
+			blockedHostnames: [],
 			dnsCacheMaxSize: 1024 * 1024,
 		},
 		httpRequest: {
@@ -607,7 +657,6 @@ describe('GlobalConfig', () => {
 			sandboxSnapshot: '',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
-			daytonaVolumeId: '',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
 		},
@@ -681,6 +730,7 @@ describe('GlobalConfig', () => {
 				minRecoveryBackoffMs: 1_000,
 				maxRecoveryBackoffMs: 30_000,
 				connectionAcquisitionTimeoutMs: 30_000,
+				startupConnectMaxRetries: 5,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,
@@ -860,6 +910,21 @@ describe('GlobalConfig', () => {
 			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_BATCH_SIZE: '50' };
 			const config = Container.get(GlobalConfig);
 			expect(config.workflows.publicationOutboxCleanupBatchSize).toBe(50);
+		});
+
+		it('should reject a consumer concurrency of 0 and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_CONCURRENCY: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.workflowPublicationConcurrency).toBe(5);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_CONCURRENCY'),
+			);
+		});
+
+		it('should accept a positive consumer concurrency', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_CONCURRENCY: '3' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.workflowPublicationConcurrency).toBe(3);
 		});
 	});
 

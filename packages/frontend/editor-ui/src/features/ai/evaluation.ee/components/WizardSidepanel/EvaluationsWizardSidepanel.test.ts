@@ -8,6 +8,7 @@ import EvaluationsWizardSidepanel from './EvaluationsWizardSidepanel.vue';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useEvaluationStore } from '../../evaluation.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 // Plain mutable holders instead of module-scope `ref()`s — reactive refs
 // surviving teardown have caused post-teardown rejections on Node 24.
@@ -106,11 +107,23 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
+const { workflowIdHolder } = vi.hoisted(() => ({
+	workflowIdHolder: { current: (): string => '' },
+}));
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => workflowIdHolder.current()),
+		useRouteWorkflowId: () => computed(() => workflowIdHolder.current()),
+	};
+});
+
 const renderComponent = createComponentRenderer(EvaluationsWizardSidepanel);
 
 describe('EvaluationsWizardSidepanel', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+		workflowIdHolder.current = () => useWorkflowsStore().workflowId;
 		mocks.workflowId = 'workflow-id';
 		mocks.allNodes = [];
 		mocks.nodeTypeOutputs = {};
@@ -273,6 +286,18 @@ describe('EvaluationsWizardSidepanel', () => {
 
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('evaluations-wizard-sidepanel-metric-toolsUsed')).toBeInTheDocument();
+	});
+
+	it('renders a selected metric that is outside the built-in catalog', () => {
+		// A config created outside the wizard (agent/API) can select a metric the
+		// curated primary/more lists never surface — e.g. `helpfulness`. It must
+		// still get a card so the selection is visible.
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
+		store.selectedMetricKeys = ['helpfulness'];
+
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-helpfulness')).toBeInTheDocument();
 	});
 
 	it('toggles selection when a check card is clicked on step 1', async () => {

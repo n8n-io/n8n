@@ -13,7 +13,6 @@ export interface VerifyMcpServerDeps {
 	credentialProvider: CredentialProvider;
 	oauthService: OauthService;
 	projectId: string;
-	/** Proxy-aware base `fetch` for the MCP transport (see `createAiProxyFetch`). */
 	proxyFetch: CustomFetch;
 }
 

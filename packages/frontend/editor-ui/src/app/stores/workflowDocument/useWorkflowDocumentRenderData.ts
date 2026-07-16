@@ -2,7 +2,7 @@ import { computed, effectScope, onScopeDispose, shallowReactive, type ComputedRe
 import isEqual from 'lodash/isEqual';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import { useI18n } from '@n8n/i18n';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeParameterResourceLocator, INodeTypeDescription } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
@@ -19,11 +19,17 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
+import {
+	inlineAgentToCapabilitySummary,
+	readAgentSource,
+	readInlineAgentParameter,
+} from '@/features/agents/utils/inlineAgent';
 import { checkOverlap } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	BoundingBox,
 	CanvasNode,
 	CanvasNodeAddNodesRender,
+	CanvasNodeAgentRender,
 	CanvasNodeChoicePromptRender,
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
@@ -31,6 +37,7 @@ import type {
 	CanvasNodeStickyNoteRender,
 } from '@/features/workflows/canvas/canvas.types';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import { CHANGE_ACTION } from './types';
 import type {
 	NodeAddedPayload,
@@ -189,7 +196,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		if (node.disabled) return undefined;
 		const status = executionStateStore.activeExecutionStatusByNodeId.get(nodeId)?.value ?? 'new';
 		if (!['new', 'unknown', 'waiting'].includes(status)) return undefined;
-		const pinned = workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
+		const pinned = getVisiblePinData(nodeId);
 		if (pinned) return undefined;
 
 		if (typeof nodeTypeDescription.eventTriggerDescription === 'string') {
@@ -218,7 +225,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		const status = executionStateStore.activeExecutionStatusByNodeId.get(nodeId)?.value ?? 'new';
 		if (status === 'crashed' || status === 'error') return true;
 
-		const pinned = workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
+		const pinned = getVisiblePinData(nodeId);
 		if (pinned) return false;
 
 		const validationErrors =
@@ -233,6 +240,15 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		return Boolean(tasks?.at(-1)?.error);
 	}
 
+	function getVisiblePinData(nodeId: string) {
+		const node = getNode(nodeId);
+		if (!node) return undefined;
+		if (executionStateStore.isExecutionDataDisplayed) {
+			return executionStateStore.activeExecutionPinDataByNodeName[node.name];
+		}
+		return workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
+	}
+
 	// --- renderTypeByNodeId --------------------------------------------------
 	// Original: useCanvasMapping `renderTypeByNodeId` + create*RenderType
 	// helpers. Returns the canvas render type/options the renderer reads.
@@ -244,6 +260,22 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				height: node.parameters.height as number,
 				color: node.parameters.color as number,
 				content: node.parameters.content as string,
+			},
+		};
+	}
+
+	function createAgentRenderType(node: INodeUi): CanvasNodeAgentRender {
+		const agentSource = readAgentSource(node);
+		const inlineAgent = agentSource === 'inline' ? readInlineAgentParameter(node) : null;
+
+		return {
+			type: CanvasNodeRenderType.Agent,
+			options: {
+				agentSource,
+				agentId: node.parameters.agentId as INodeParameterResourceLocator | undefined,
+				inlineSummary: inlineAgent
+					? inlineAgentToCapabilitySummary(node.id, inlineAgent)
+					: undefined,
 			},
 		};
 	}
@@ -300,6 +332,12 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				return createAddNodesRenderType();
 			case `${CanvasNodeRenderType.ChoicePrompt}`:
 				return createChoicePromptRenderType();
+			case `${CanvasNodeRenderType.Agent}`:
+				// The rich agent card targets the v2 node (same gate as the NDV
+				// agent controls); v1 keeps its legacy default node rendering.
+				return isAgentNodeV2(node)
+					? createAgentRenderType(node)
+					: createDefaultNodeRenderType(node);
 			default:
 				return createDefaultNodeRenderType(node);
 		}
@@ -513,8 +551,11 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		get executionIssuesByNodeName() {
 			return executionStateStore.activeExecutionIssuesByNodeName;
 		},
-		get executionSimulationByNodeName() {
-			return executionStateStore.activeExecutionSimulationByNodeName;
+		get executionPinDataByNodeName() {
+			return executionStateStore.activeExecutionPinDataByNodeName;
+		},
+		get isExecutionDataDisplayed() {
+			return executionStateStore.isExecutionDataDisplayed;
 		},
 		get executionStatusByNodeId() {
 			return executionStateStore.activeExecutionStatusByNodeId;

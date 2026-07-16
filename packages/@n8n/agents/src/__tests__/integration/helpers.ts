@@ -14,14 +14,17 @@ import { InMemoryMemory } from '../../runtime/memory/memory-store';
 export type { StreamChunk };
 
 /**
- * Returns `describe` or `describe.skip` depending on whether the provider API keys are set.
+ * Returns `describe` or `describe.skip` depending on whether the provider API
+ * keys are set.  In CI (replay) mode tests always run — cassettes substitute
+ * for real credentials.
  */
 export function describeIf(...providers: Array<'anthropic' | 'openai'>) {
 	const hasAllKeys = providers.every((provider) => {
 		const envVar = provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
 		return Boolean(process.env[envVar]);
 	});
-	return hasAllKeys ? _describe : _describe.skip;
+	const isReplayMode = Boolean(process.env.CI);
+	return hasAllKeys || isReplayMode ? _describe : _describe.skip;
 }
 
 /**

@@ -7,6 +7,7 @@ import type {
 } from './chat-hub';
 import type { QuickConnectOption } from './quick-connect';
 import type { InsightsDateRange } from './schemas/insights.schema';
+import type { WorkflowReviewsPolicy } from './workflow-reviews-policy';
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
@@ -67,6 +68,7 @@ export interface IEnterpriseSettings {
 	personalSpacePolicy: boolean;
 	dataRedaction: boolean;
 	otelCustomSpanAttributes: boolean;
+	workflowReviews: boolean;
 }
 
 export interface FrontendSettings {
@@ -98,6 +100,7 @@ export interface FrontendSettings {
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
+	urlBaseWebhookTest: string;
 	versionCli: string;
 	nodeJsVersion: string;
 	nodeEnv: string | undefined;
@@ -106,7 +109,7 @@ export interface FrontendSettings {
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'azure' | 'database';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev' | 'rc';
 	n8nMetadata?: {
 		userId?: string;
@@ -166,6 +169,7 @@ export interface FrontendSettings {
 	};
 	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
+	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -213,6 +217,7 @@ export interface FrontendSettings {
 		enabled: boolean;
 		enforced: boolean;
 	};
+	workflowReviews?: WorkflowReviewsPolicy;
 	folders: {
 		enabled: boolean;
 	};
@@ -272,6 +277,7 @@ export type FrontendModuleSettings = {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
+		earliestDataDate: string | null;
 	};
 
 	/**
@@ -282,6 +288,8 @@ export type FrontendModuleSettings = {
 		mcpAccessEnabled: boolean;
 		/** Whether MCP settings are managed via environment variables. */
 		mcpManagedByEnv: boolean;
+		/** Public URL of the instance MCP server endpoint. */
+		serverUrl?: string;
 	};
 
 	/**
@@ -300,6 +308,7 @@ export type FrontendModuleSettings = {
 	'instance-ai'?: {
 		enabled: boolean;
 		localGatewayDisabled: boolean;
+		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
 		sandboxEnabled: boolean;

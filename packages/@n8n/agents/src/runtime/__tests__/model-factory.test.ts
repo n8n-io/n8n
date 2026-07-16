@@ -36,6 +36,16 @@ vi.mock('@ai-sdk/openai', () => ({
 				specificationVersion: 'v3',
 			}),
 			{
+				chat: (model: string) => ({
+					provider: 'openai',
+					modelId: model,
+					api: 'chat-completions',
+					apiKey: opts?.apiKey,
+					baseURL: opts?.baseURL,
+					fetch: opts?.fetch,
+					headers: opts?.headers,
+					specificationVersion: 'v3',
+				}),
 				embeddingModel: (model: string) => ({
 					provider: 'openai',
 					modelId: model,
@@ -205,6 +215,39 @@ describe('createModel', () => {
 		}) as unknown as Record<string, unknown>;
 		expect(model.provider).toBe('openai');
 		expect(model.baseURL).toBe('https://custom.endpoint.com/v1');
+		// Custom endpoints are OpenAI-COMPATIBLE servers: they speak
+		// /chat/completions, not OpenAI's Responses API.
+		expect(model.api).toBe('chat-completions');
+	});
+
+	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', () => {
+		const model = createModel({
+			id: 'openai/mock-model',
+			apiKey: 'sk-test',
+			url: 'http://127.0.0.1:1234/v1',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBe('http://127.0.0.1:1234/v1');
+		expect(model.api).toBe('chat-completions');
+	});
+
+	it('treats an empty url as no custom endpoint (api-key-only host config)', () => {
+		// Instance AI emits { id, url: '', apiKey } when only the API key is set;
+		// the provider default endpoint and default model must be preserved.
+		const model = createModel({
+			id: 'anthropic/claude-sonnet-4-6',
+			apiKey: 'sk-ant-test',
+			url: '',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBeUndefined();
+		expect(model.apiKey).toBe('sk-ant-test');
+	});
+
+	it('keeps the default Responses API model for plain OpenAI (no baseURL)', () => {
+		const model = createModel({
+			id: 'openai/gpt-4o',
+			apiKey: 'sk-test',
+		}) as unknown as Record<string, unknown>;
+		expect(model.api).toBeUndefined();
 	});
 
 	it('should pass through a prebuilt LanguageModel', () => {
@@ -311,6 +354,43 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('nvidia/llama-3.3-nemotron-super-49b-v1');
 			expect(model.apiKey).toBe('nv-test');
 			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
+		});
+	});
+
+	describe('anthropic baseURL normalization', () => {
+		it('appends /v1 to a custom baseURL without a version segment (e.g. Azure AI Foundry)', () => {
+			const model = createModel({
+				id: 'anthropic/claude-sonnet-4-6',
+				apiKey: 'sk-ant',
+				baseURL: 'https://internal.example.services.ai.azure.com/anthropic/',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://internal.example.services.ai.azure.com/anthropic/v1');
+		});
+
+		it('appends /v1 to a bare host baseURL', () => {
+			const model = createModel({
+				id: 'anthropic/claude-sonnet-4-6',
+				apiKey: 'sk-ant',
+				baseURL: 'https://api.anthropic.com',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://api.anthropic.com/v1');
+		});
+
+		it('leaves a baseURL that already ends in /v1 unchanged', () => {
+			const model = createModel({
+				id: 'anthropic/claude-sonnet-4-6',
+				apiKey: 'sk-ant',
+				baseURL: 'https://proxy.example/api-proxy/anthropic/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://proxy.example/api-proxy/anthropic/v1');
+		});
+
+		it('leaves baseURL undefined when none is provided', () => {
+			const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<
+				string,
+				unknown
+			>;
+			expect(model.baseURL).toBeUndefined();
 		});
 	});
 

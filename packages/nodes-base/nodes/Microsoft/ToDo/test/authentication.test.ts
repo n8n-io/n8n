@@ -18,7 +18,11 @@ describe('MicrosoftToDo authentication descriptor', () => {
 		const optionValues = (authentication?.options as INodePropertyOptions[]).map(
 			(option) => option.value,
 		);
-		expect(optionValues).toEqual(['microsoftToDoOAuth2Api', 'microsoftOAuth2Api']);
+		expect(optionValues).toEqual([
+			'microsoftToDoOAuth2Api',
+			'microsoftOAuth2Api',
+			'microsoftEntraServicePrincipalApi',
+		]);
 	});
 
 	it('defaults to the To Do credential and gates it on that value (backward compatibility)', () => {
@@ -34,5 +38,25 @@ describe('MicrosoftToDo authentication descriptor', () => {
 	it('gates the generic credential behind the generic option', () => {
 		expect(genericCredential?.required).toBe(true);
 		expect(genericCredential?.displayOptions?.show?.authentication).toEqual(['microsoftOAuth2Api']);
+	});
+
+	it('gates the Service Principal credential and its user target behind the SP option', () => {
+		const spCredential = credentials?.find(
+			(cred) => cred.name === 'microsoftEntraServicePrincipalApi',
+		);
+		expect(spCredential?.required).toBe(true);
+		expect(spCredential?.displayOptions?.show?.authentication).toEqual([
+			'microsoftEntraServicePrincipalApi',
+		]);
+
+		const userTarget = properties.find((property) => property.name === 'userTarget');
+		expect(userTarget?.displayOptions?.show?.authentication).toEqual([
+			'microsoftEntraServicePrincipalApi',
+		]);
+		// Team decision (ENT-123): the SP target stays expression-capable (no `noDataExpression`),
+		// so it can be driven from upstream data; it is resolved once per run (from the first item).
+		expect(userTarget?.noDataExpression).toBeUndefined();
+		// To Do is user-only: no "Access As" selector and no drive/site targets.
+		expect(properties.find((property) => property.name === 'resourceTarget')).toBeUndefined();
 	});
 });

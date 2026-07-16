@@ -8,7 +8,7 @@ import { targetSkillsSkill } from './target-skills.skill';
 import { targetTasksSkill } from './target-tasks.skill';
 
 export function getBuilderRuntimeSkills(): RuntimeSkill[] {
-	const skills: RuntimeSkill[] = [
+	return [
 		integrationsSkill(),
 		mcpSkill(),
 		resourceLocatorsSkill(),
@@ -20,6 +20,4 @@ export function getBuilderRuntimeSkills(): RuntimeSkill[] {
 		// instead of merely loading instructions that tell it to research.
 		// researchSkill(),
 	];
-
-	return skills;
 }

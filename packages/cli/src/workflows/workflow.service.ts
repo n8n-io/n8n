@@ -25,47 +25,43 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
-
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import {
-	PROJECT_ROOT,
-	Workflow,
-	assert,
-	calculateWorkflowChecksum,
-	ensureError,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-
-import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
-import * as WorkflowHelpers from '@/workflow-helpers';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 
 import { WorkflowValidationService } from './workflow-validation.service';
+
 import { WebhookService } from '@/webhooks/webhook.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
+import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
 @Service()
 export class WorkflowService {
@@ -95,6 +91,8 @@ export class WorkflowService {
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
+		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 	) {}
 
 	async getMany(
@@ -232,9 +230,9 @@ export class WorkflowService {
 
 	private async addResolvableCredentialsFlag<
 		T extends ListQueryDb.Workflow.Plain | ListQueryDb.Workflow.WithSharing,
-	>(workflows: T[]): Promise<(T & { hasResolvableCredentials: boolean })[]> {
+	>(workflows: T[]): Promise<Array<T & { hasResolvableCredentials: boolean }>> {
 		// Use lazy import to avoid circular dependency
-		const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
+		const { EnterpriseWorkflowService } = await import('./workflow.service.ee.js');
 		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
 
 		const workflowIds = workflows.map((w) => w.id);
@@ -338,6 +336,8 @@ export class WorkflowService {
 			expectedChecksum?: string;
 			autosaved?: boolean;
 			source?: WorkflowActionSource;
+			versionName?: string;
+			versionDescription?: string;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -350,6 +350,8 @@ export class WorkflowService {
 			aiBuilderAssisted = false,
 			autosaved = false,
 			source = 'ui',
+			versionName,
+			versionDescription,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -390,7 +392,7 @@ export class WorkflowService {
 		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
 		// folder/project services which import this module).
 		if (this.licenseState.isSharingLicensed()) {
-			const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
+			const { EnterpriseWorkflowService } = await import('./workflow.service.ee.js');
 			await Container.get(EnterpriseWorkflowService).preventTampering(
 				workflowUpdateData,
 				workflowId,
@@ -547,6 +549,11 @@ export class WorkflowService {
 				workflowUpdateData,
 				workflowId,
 				autosaved,
+				source,
+				undefined,
+				versionName || versionDescription
+					? { name: versionName, description: versionDescription }
+					: undefined,
 			);
 		}
 
@@ -1242,6 +1249,10 @@ export class WorkflowService {
 				role: sw.role,
 			})),
 		);
+
+		// Caller must invalidate the workflow-project cache for these IDs after the
+		// surrounding transaction commits, since their owner project has changed.
+		return ownedWorkflowIds;
 	}
 
 	async getWorkflowsWithNodesIncluded(user: User, nodeTypes: string[], includeNodes = false) {
@@ -1433,6 +1444,10 @@ export class WorkflowService {
 
 			await this.outboxRepository.enqueue(workflowId, versionIdToActivate, trx);
 		});
+
+		// Wake the leader now that the record is committed, so it drains without
+		// waiting for the next poll cycle.
+		this.workflowPublicationNotifier.requestDrain();
 	}
 
 	/**
@@ -1469,6 +1484,15 @@ export class WorkflowService {
 			);
 
 			await this.outboxRepository.enqueue(workflowId, deactivatedVersionId, trx);
+
+			// Durable jobs are DB state, so their removal commits here rather than
+			// waiting on the leader's outbox handler: a lost hand-off would otherwise
+			// leave them firing a workflow already marked inactive.
+			await this.scheduleTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
 		});
+
+		// Wake the leader now that the record is committed, so it drains without
+		// waiting for the next poll cycle.
+		this.workflowPublicationNotifier.requestDrain();
 	}
 }

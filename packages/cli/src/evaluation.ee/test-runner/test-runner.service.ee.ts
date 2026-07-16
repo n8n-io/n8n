@@ -16,10 +16,6 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -44,7 +40,7 @@ import assert from 'node:assert';
 import pLimit from 'p-limit';
 
 import { ActiveExecutions } from '@/active-executions';
-import { EventService } from '@/events/event.service';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import {
 	getEvaluationConcurrencyLimitSource,
 	resolveEvaluationConcurrencyLimit,
@@ -54,9 +50,14 @@ import {
 	checkNodeParameterNotEmpty,
 	extractTokenUsage,
 } from '@/evaluation.ee/test-runner/utils.ee';
+import { EventService } from '@/events/event.service';
 import { License } from '@/license';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee';
 import { WorkflowCompilerService } from './workflow-compiler.service';
@@ -103,6 +104,7 @@ export class TestRunnerService {
 		private readonly evaluationCollectionRepository: EvaluationCollectionRepository,
 		private readonly evaluationConfigRepository: EvaluationConfigRepository,
 		private readonly workflowCompiler: WorkflowCompilerService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/**
@@ -290,6 +292,7 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
+			evaluationRunId: metadata.testRunId,
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
@@ -305,6 +308,7 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
+					evaluationRunId: metadata.testRunId,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},
@@ -316,11 +320,18 @@ export class TestRunnerService {
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
 
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflow.id,
+		);
+
 		this.eventService.emit('workflow-executed', {
 			user: metadata.userId ? { id: metadata.userId } : undefined,
 			workflowId: workflow.id,
 			workflowName: workflow.name,
 			executionId,
+			projectId,
+			projectName,
 			source: 'evaluation',
 		});
 
@@ -564,6 +575,8 @@ export class TestRunnerService {
 			evaluationConfigId?: string;
 			evaluationConfigSnapshot?: IDataObject;
 			compileFromConfig?: boolean;
+			via?: 'ui' | 'public-api';
+			rowIndices?: number[];
 		},
 	): Promise<{ testRun: TestRun; finished: Promise<void> }> {
 		const requestedConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
@@ -663,6 +676,8 @@ export class TestRunnerService {
 			effectiveConcurrency,
 			concurrencyLimitedByConfig,
 			runType,
+			via: options?.via,
+			rowIndices: options?.rowIndices,
 		});
 
 		return { testRun, finished };
@@ -676,6 +691,8 @@ export class TestRunnerService {
 		effectiveConcurrency,
 		concurrencyLimitedByConfig,
 		runType,
+		via = 'ui',
+		rowIndices,
 	}: {
 		user: User;
 		workflowId: string;
@@ -684,6 +701,8 @@ export class TestRunnerService {
 		effectiveConcurrency: number;
 		concurrencyLimitedByConfig: boolean;
 		runType: 'config' | 'direct';
+		via?: 'ui' | 'public-api';
+		rowIndices?: number[];
 	}): Promise<void> {
 		// Initialize telemetry metadata
 		const telemetryMeta = {
@@ -691,6 +710,7 @@ export class TestRunnerService {
 			test_type: 'evaluation',
 			run_id: testRun.id,
 			run_type: runType,
+			via,
 			start: Date.now(),
 			status: 'success' as 'success' | 'fail' | 'cancelled',
 			test_case_count: 0,
@@ -737,6 +757,7 @@ export class TestRunnerService {
 				run_id: testRun.id,
 				workflow_id: workflowId,
 				run_type: runType,
+				via,
 			});
 
 			///
@@ -751,17 +772,30 @@ export class TestRunnerService {
 				workflow,
 			);
 
-			const testCases = datasetTriggerOutput.map((items) => ({ json: items.json }));
+			const allTestCases = datasetTriggerOutput.map((items) => ({ json: items.json }));
+
+			// Determine which dataset rows to run. When `rowIndices` is provided
+			// and non-empty, only those rows are executed; otherwise all rows run.
+			// Out-of-range indices are silently dropped.
+			const indicesToRun =
+				rowIndices && rowIndices.length > 0
+					? rowIndices.filter((i) => i >= 0 && i < allTestCases.length)
+					: allTestCases.map((_, i) => i);
+
+			const testCases = indicesToRun.map((i) => allTestCases[i]);
 			telemetryMeta.test_case_count = testCases.length;
 
-			this.logger.debug('Found test cases', { count: testCases.length });
+			this.logger.debug('Found test cases', {
+				total: allTestCases.length,
+				running: testCases.length,
+			});
 
-			// Seed one TestCaseExecution row per dataset entry so the FE can
-			// render placeholder cards while the run is in progress and the
-			// user can pre-emptively cancel pending cases (TRUST-70).
+			// Seed one TestCaseExecution row per case to run. Each row's `runIndex`
+			// equals the original dataset index so the FE can map results back even
+			// when only a subset of rows is executed.
 			const seededCases = await this.testCaseExecutionRepository.createPendingBatch(
 				testRun.id,
-				testCases.length,
+				indicesToRun,
 			);
 
 			// Initialize object to collect the results of the evaluation workflow executions
@@ -925,6 +959,10 @@ export class TestRunnerService {
 							const runAt = new Date();
 
 							try {
+								// Hoisted so the catch below can still link the failed case to
+								// its execution: errors thrown during metric extraction (e.g.
+								// INVALID_METRICS) happen after the execution already ran.
+								let testCaseExecutionId: string | undefined;
 								try {
 									const testCaseMetadata = { ...testRunMetadata };
 
@@ -949,8 +987,8 @@ export class TestRunnerService {
 										return [];
 									}
 
-									const { executionId: testCaseExecutionId, executionData: testCaseExecution } =
-										testCaseResult;
+									const { executionData: testCaseExecution } = testCaseResult;
+									testCaseExecutionId = testCaseResult.executionId;
 
 									assert(testCaseExecution);
 									assert(testCaseExecutionId);
@@ -1032,8 +1070,11 @@ export class TestRunnerService {
 
 									telemetryMeta.errored_test_case_count++;
 
+									// `executionId` is left undefined when the failure happened before
+									// an execution was created; TypeORM skips undefined fields on update.
 									if (e instanceof TestCaseExecutionError) {
 										await this.testCaseExecutionRepository.update(seededCase.id, {
+											executionId: testCaseExecutionId,
 											runAt,
 											completedAt,
 											status: 'error',
@@ -1042,6 +1083,7 @@ export class TestRunnerService {
 										});
 									} else {
 										await this.testCaseExecutionRepository.update(seededCase.id, {
+											executionId: testCaseExecutionId,
 											runAt,
 											completedAt,
 											status: 'error',

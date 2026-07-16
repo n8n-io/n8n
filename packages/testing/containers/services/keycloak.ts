@@ -421,11 +421,66 @@ export class KeycloakHelper {
 
 		try {
 			// Step 1: GET the Keycloak authorization page (HTML with login form).
-			// Use undiciRequest to access raw set-cookie headers for forwarding.
-			const authPageResult = await undiciRequest(authorizationUrl, {
-				method: 'GET',
-				dispatcher: agent,
-			});
+			// Keycloak intermittently answers this GET with a 302 rather than the login
+			// page — either to re-establish an authentication session (redirect back into
+			// Keycloak to set AUTH_SESSION_ID) or, if an SSO session already exists,
+			// straight to the n8n callback with a `code`. undiciRequest does NOT follow
+			// redirects, so follow them ourselves, accumulating cookies across hops.
+			// Cookies are keyed by name so later hops override earlier ones.
+			const cookieJar = new Map<string, string>();
+			const collectCookies = (setCookie: string | string[] | undefined) => {
+				for (const raw of Array.isArray(setCookie) ? setCookie : [setCookie]) {
+					if (!raw) continue;
+					const pair = raw.split(';')[0];
+					const eq = pair.indexOf('=');
+					if (eq > 0) cookieJar.set(pair.slice(0, eq), pair.slice(eq + 1));
+				}
+			};
+			const cookieHeaderFrom = (jar: Map<string, string>) =>
+				[...jar].map(([name, value]) => `${name}=${value}`).join('; ');
+
+			let currentUrl = authorizationUrl;
+			let authPageResult = await undiciRequest(currentUrl, { method: 'GET', dispatcher: agent });
+			collectCookies(authPageResult.headers['set-cookie']);
+
+			for (
+				let hop = 0;
+				authPageResult.statusCode >= 300 && authPageResult.statusCode < 400;
+				hop++
+			) {
+				await authPageResult.body.text();
+				const rawLocation = authPageResult.headers.location;
+				const location = Array.isArray(rawLocation) ? rawLocation[0] : rawLocation;
+				if (!location) {
+					throw new Error(
+						`Keycloak authorization page redirected (HTTP ${authPageResult.statusCode}) without a Location header`,
+					);
+				}
+				const nextUrl = new URL(location, currentUrl);
+
+				// Already-authenticated short circuit: Keycloak redirected straight to the
+				// n8n OAuth2 callback with the authorization code — no login form needed.
+				// Match on the pathname and require `code`, so a Keycloak restart redirect
+				// that merely echoes `redirect_uri=…/callback` in its query isn't mistaken
+				// for the final callback.
+				if (
+					nextUrl.pathname.endsWith('/rest/oauth2-credential/callback') &&
+					nextUrl.searchParams.has('code')
+				) {
+					return nextUrl.toString();
+				}
+				if (hop >= 5) {
+					throw new Error('Too many redirects loading the Keycloak authorization page');
+				}
+
+				currentUrl = nextUrl.toString();
+				authPageResult = await undiciRequest(currentUrl, {
+					method: 'GET',
+					headers: cookieJar.size ? { Cookie: cookieHeaderFrom(cookieJar) } : undefined,
+					dispatcher: agent,
+				});
+				collectCookies(authPageResult.headers['set-cookie']);
+			}
 
 			if (authPageResult.statusCode < 200 || authPageResult.statusCode >= 300) {
 				await authPageResult.body.text();
@@ -434,14 +489,9 @@ export class KeycloakHelper {
 				);
 			}
 
-			// Extract session cookies from the response to forward with the login POST.
-			// Keycloak sets cookies like AUTH_SESSION_ID, KC_RESTART that are required
-			// for the login form submission to succeed.
-			const rawCookies = authPageResult.headers['set-cookie'];
-			const cookieHeader = (Array.isArray(rawCookies) ? rawCookies : [rawCookies])
-				.filter(Boolean)
-				.map((c) => (c as string).split(';')[0])
-				.join('; ');
+			// Session cookies (AUTH_SESSION_ID, KC_RESTART, ...) accumulated across the
+			// redirect chain are required for the login form submission to succeed.
+			const cookieHeader = cookieHeaderFrom(cookieJar);
 
 			const html = await authPageResult.body.text();
 

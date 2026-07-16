@@ -1,7 +1,12 @@
 import type { Run } from 'langsmith/schemas';
 
-import { reshapeLangSmithRuns } from '../cli/reshape';
+import {
+	parseTargetOutput,
+	reshapeLangSmithRuns,
+	sentinelOutcomeFromVerdicts,
+} from '../cli/reshape';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type {
 	BuildExpectationResult,
 	ExecutionScenario,
@@ -40,7 +45,7 @@ const turn: TranscriptTurn = { steps: [{ kind: 'agent-text', text: 'building...'
 const verdict: BuildExpectationResult = { expectation: 'asked first', pass: true, reason: 'did' };
 
 describe('reshapeLangSmithRuns', () => {
-	it('reattaches transcript + build-expectation verdicts to the test case by threadId', () => {
+	it('reattaches transcript by threadId and build-expectation verdicts by iteration:fileSlug', () => {
 		const cases = [withFile('airtable', [scenario('s1'), scenario('s2')])];
 		const rows = [
 			row(
@@ -58,7 +63,7 @@ describe('reshapeLangSmithRuns', () => {
 			cases,
 			1,
 			new Map([['tid-1', [turn]]]),
-			new Map([['tid-1', [verdict]]]),
+			new Map([['0:airtable', [verdict]]]),
 			'http://localhost:5678',
 		);
 
@@ -72,24 +77,82 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.executionScenarioResults.map((r) => r.success)).toEqual([true, true]);
 	});
 
-	it('leaves transcript + verdicts undefined when the run output carries no threadId (regression: dropped threadId)', () => {
-		// Models the exec-error return that omitted threadId: build succeeded, but
-		// with no threadId on the output the join can't find the maps' entries.
+	it('grades a build-only case (0 scenarios) from the sentinel row without a scenario unit', () => {
+		const cases = [withFile('build-only', [])];
+		const rows = [
+			row(
+				{ testCaseFile: 'build-only', scenarioName: BUILD_ONLY_SCENARIO_NAME, _iteration: 0 },
+				{
+					buildSuccess: true,
+					passed: false,
+					score: 0,
+					reasoning: 'Build-only case — graded by process/outcome expectations',
+					workflowId: 'wf-1',
+					threadId: 'tid-1',
+				},
+			),
+		];
+
+		const result = reshapeLangSmithRuns(
+			rows,
+			cases,
+			1,
+			new Map([['tid-1', [turn]]]),
+			new Map([['0:build-only', [verdict]]]),
+			undefined,
+		);
+
+		const tc = result[0][0];
+		expect(tc.executionScenarioResults).toEqual([]); // no phantom scenario unit
+		expect(tc.workflowBuildSuccess).toBe(true);
+		expect(tc.workflowId).toBe('wf-1');
+		expect(tc.threadId).toBe('tid-1');
+		expect(tc.transcript).toEqual([turn]);
+		expect(tc.buildExpectationResults).toEqual([verdict]);
+	});
+
+	it('reports a build-only case whose build failed as not built, surfacing the build error', () => {
+		const cases = [withFile('build-only', [])];
+		// The sentinel row carries the build-failure output the target returns before the
+		// build-only branch — reshape must report it as not built, not mask it as success.
+		const rows = [
+			row(
+				{ testCaseFile: 'build-only', scenarioName: BUILD_ONLY_SCENARIO_NAME, _iteration: 0 },
+				{
+					buildSuccess: false,
+					passed: false,
+					score: 0,
+					reasoning: 'Build failed: agent produced no workflow',
+				},
+			),
+		];
+
+		const result = reshapeLangSmithRuns(rows, cases, 1, new Map(), new Map(), undefined);
+
+		const tc = result[0][0];
+		expect(tc.executionScenarioResults).toEqual([]); // no phantom scenario unit
+		expect(tc.workflowBuildSuccess).toBe(false);
+		expect(tc.buildError).toBe('Build failed: agent produced no workflow');
+	});
+
+	it('attaches build-expectation verdicts by iteration:fileSlug even with no threadId (prebuilt/MCP path)', () => {
+		// Prebuilt/MCP builds have no threadId. Transcript stays threadId-gated (so it
+		// remains undefined here), but outcome-expectation verdicts must still attach via
+		// the build-cache key, so LangSmith prebuilt runs match the direct-loop path.
 		const cases = [withFile('airtable', [scenario('s1')])];
 		const rows = [
 			row(
 				{ testCaseFile: 'airtable', scenarioName: 's1', _iteration: 0 },
-				{ buildSuccess: true, passed: false, score: 0, reasoning: 'exec error' },
+				{ buildSuccess: true, passed: true, score: 1, reasoning: 'ok' },
 			),
 		];
 
-		// Maps DO hold data under a real threadId — proving we don't misattach it.
 		const result = reshapeLangSmithRuns(
 			rows,
 			cases,
 			1,
 			new Map([['tid-real', [turn]]]),
-			new Map([['tid-real', [verdict]]]),
+			new Map([['0:airtable', [verdict]]]),
 			undefined,
 		);
 
@@ -97,7 +160,7 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.workflowBuildSuccess).toBe(true);
 		expect(tc.threadId).toBeUndefined();
 		expect(tc.transcript).toBeUndefined();
-		expect(tc.buildExpectationResults).toBeUndefined();
+		expect(tc.buildExpectationResults).toEqual([verdict]);
 	});
 
 	it('stubs a build_failure for a scenario with no matching run', () => {
@@ -256,5 +319,104 @@ describe('reshapeLangSmithRuns', () => {
 
 		expect(result[0][0]?.runDebug).toHaveLength(1);
 		expect(result[0][0]?.runDebug?.[0]?.runId).toBe('run-1');
+	});
+});
+
+describe('sentinelOutcomeFromVerdicts', () => {
+	const pass = (expectation: string): BuildExpectationResult => ({
+		expectation,
+		pass: true,
+		reason: 'ok',
+	});
+	const fail = (expectation: string): BuildExpectationResult => ({
+		expectation,
+		pass: false,
+		reason: 'nope',
+	});
+	const noVerdict = (expectation: string): BuildExpectationResult => ({
+		expectation,
+		pass: false,
+		reason: 'no verdict returned',
+		incomplete: true,
+	});
+
+	it('passes when every evaluated expectation passes', () => {
+		const out = sentinelOutcomeFromVerdicts([pass('a'), pass('b')]);
+		expect(out).toMatchObject({ passed: true, score: 1 });
+		expect(out.incomplete).toBeUndefined();
+		expect(out.failureCategory).toBeUndefined();
+		expect(out.reasoning).toContain('all 2 expectations passed');
+	});
+
+	it('fails with a fractional score and names the failed expectations', () => {
+		const out = sentinelOutcomeFromVerdicts([
+			pass('a'),
+			fail('sends a Slack alert'),
+			pass('c'),
+			fail('uses the IF node'),
+		]);
+		expect(out.passed).toBe(false);
+		expect(out.score).toBeCloseTo(0.5);
+		expect(out.reasoning).toContain('sends a Slack alert');
+		expect(out.reasoning).toContain('uses the IF node');
+	});
+
+	it('excludes incomplete verdicts from the denominator', () => {
+		const out = sentinelOutcomeFromVerdicts([pass('a'), noVerdict('b')]);
+		expect(out).toMatchObject({ passed: true, score: 1 });
+		expect(out.incomplete).toBeUndefined();
+	});
+
+	it('is incomplete when the judge produced no evaluated verdicts', () => {
+		for (const verdicts of [undefined, [], [noVerdict('a')]]) {
+			expect(sentinelOutcomeFromVerdicts(verdicts)).toMatchObject({
+				passed: false,
+				score: 0,
+				incomplete: true,
+			});
+		}
+	});
+
+	// Non-passing sentinels need an explicit category — target() forwards it, and
+	// without one the feedback extractor labels the LangSmith row 'unknown'.
+	it('categorizes failed expectations as expectations_failed', () => {
+		const out = sentinelOutcomeFromVerdicts([pass('a'), fail('b')]);
+		expect(out.failureCategory).toBe('expectations_failed');
+	});
+
+	it('categorizes judge-dead outcomes as verification_failure', () => {
+		for (const verdicts of [undefined, [], [noVerdict('a')]]) {
+			expect(sentinelOutcomeFromVerdicts(verdicts).failureCategory).toBe('verification_failure');
+		}
+	});
+});
+
+describe('parseTargetOutput expectationResults', () => {
+	const base = { buildSuccess: true, passed: true, score: 1, reasoning: 'ok' };
+
+	it('parses embedded expectation verdicts', () => {
+		const out = parseTargetOutput({
+			...base,
+			expectationResults: [
+				{ expectation: 'a', pass: true, reason: 'did' },
+				{ expectation: 'b', pass: false, reason: 'no verdict', incomplete: true },
+			],
+		});
+		expect(out?.expectationResults).toEqual([
+			{ expectation: 'a', pass: true, reason: 'did' },
+			{ expectation: 'b', pass: false, reason: 'no verdict', incomplete: true },
+		]);
+	});
+
+	it('leaves the field undefined when absent', () => {
+		const out = parseTargetOutput(base);
+		expect(out).toBeDefined();
+		expect(out?.expectationResults).toBeUndefined();
+	});
+
+	it('drops a malformed field without voiding the row', () => {
+		const out = parseTargetOutput({ ...base, expectationResults: 'garbage' });
+		expect(out?.passed).toBe(true);
+		expect(out?.expectationResults).toBeUndefined();
 	});
 });

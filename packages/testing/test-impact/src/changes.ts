@@ -33,7 +33,7 @@ const NON_IMPACTFUL: Array<(f: string) => boolean> = [
 	(f) => f.startsWith('scripts/'),
 	// Named build / lint / test-runner config (NOT all json/yaml)
 	(f) =>
-		/(^|\/)(turbo\.json|tsconfig([.\w-]*)\.json|biome\.jsonc?|jest\.config\.[cm]?[jt]s|\.eslintrc[\w.]*|\.prettierrc[\w.]*)$/.test(
+		/(^|\/)(turbo\.json|tsconfig([.\w-]*)\.json|biome\.jsonc?|vitest\.config\.[cm]?[jt]s|\.eslintrc[\w.]*|\.prettierrc[\w.]*)$/.test(
 			f,
 		),
 ];
@@ -56,11 +56,18 @@ export function filterImpactfulChanges(files: string[]): string[] {
  * image and the container harness. The coverage map can't attribute these (a
  * change here can reach any spec), so they force a broad run rather than being
  * declared uncovered. This is a small, low-churn set, so broad is cheap here.
+ *
+ * Credential definitions belong here for a different reason: they're declarative
+ * metadata loaded into the registry once at boot, so no code in them re-executes
+ * attributably to a spec and the runtime coverage map never records them. Absent
+ * from the map, a credential change would be declared uncovered and skip its
+ * covering specs, so we force broad instead.
  */
 const FORCES_BROAD: Array<(f: string) => boolean> = [
 	(f) => f.startsWith('docker/'),
 	(f) => /(^|\/)Dockerfile(\.|$)|\.Dockerfile$/.test(f),
 	(f) => f.startsWith('packages/testing/containers/'),
+	(f) => f.startsWith('packages/nodes-base/credentials/'),
 ];
 
 /** True if a changed file defines the E2E runtime → the whole suite must run. */

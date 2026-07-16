@@ -85,6 +85,15 @@ export class Github implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'githubAppApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['githubAppApi'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -99,6 +108,10 @@ export class Github implements INodeType {
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
+					},
+					{
+						name: 'GitHub App',
+						value: 'githubAppApi',
 					},
 				],
 				default: 'accessToken',
@@ -539,7 +552,9 @@ export class Github implements INodeType {
 						typeOptions: {
 							searchListMethod: 'getUsers',
 							searchable: true,
-							searchFilterRequired: false,
+							// Endpoint requires a search filter
+							// https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28#search-users
+							searchFilterRequired: true,
 						},
 					},
 					{

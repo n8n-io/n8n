@@ -1,4 +1,4 @@
-import type { CallExpression } from 'ts-morph';
+import type { Node } from 'ts-morph';
 
 import type { AstRule } from './ast';
 
@@ -24,15 +24,15 @@ import type { AstRule } from './ast';
  *		const calls = file.getDescendantsOfKind(SyntaxKind.CallExpression);
  *
  *		for (const call of calls) {
- *		if (isSuppressed(astRule: AstRule, lines: string[], call: CallExpression)) {
+ *		if (isSuppressed(astRule: AstRule, lines: string[], node: Node)) {
  *			continue;
  *		}
  * }
  * ```
  *
  * */
-export function isSuppressed(astRule: AstRule, lines: string[], call: CallExpression): boolean {
-	const lineNumber = call.getStartLineNumber();
+export function isSuppressed(astRule: AstRule, lines: string[], node: Node): boolean {
+	const lineNumber = node.getStartLineNumber();
 	const previousLine = lines[lineNumber - 2] ?? '';
 	const directive = /\/\/\s*janitor-disable-next-line\s+([^\s].*)?$/.exec(previousLine);
 	if (!directive) {

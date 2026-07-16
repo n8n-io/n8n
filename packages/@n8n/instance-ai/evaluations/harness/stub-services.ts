@@ -18,7 +18,7 @@
 // even though they synchronously return canned data — there's nothing to
 // await here.
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -303,6 +303,7 @@ export async function createStubServices(
 		credentialService,
 		nodeService,
 		dataTableService,
+		workflowTemplateService: { getTemplate: async () => ({ available: false as const }) },
 	};
 
 	return { context, capturedWorkflows };

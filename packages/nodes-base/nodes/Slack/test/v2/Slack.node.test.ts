@@ -2134,4 +2134,249 @@ describe('SlackV2', () => {
 			});
 		});
 	});
+
+	describe('User Operations - Look Up by Email', () => {
+		it('should look up a user by email and return the user object', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'user',
+					operation: 'lookupByEmail',
+					email: 'jane@example.com',
+				};
+				return params[paramName];
+			});
+
+			const mockResponse = {
+				ok: true,
+				user: {
+					id: 'U111111111',
+					name: 'jane.smith',
+					profile: { email: 'jane@example.com' },
+				},
+			};
+			slackApiRequestSpy.mockResolvedValue(mockResponse);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/users.lookupByEmail',
+				{},
+				{ email: 'jane@example.com' },
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: mockResponse.user,
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('should propagate API errors when continueOnFail is false', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'user',
+					operation: 'lookupByEmail',
+					email: 'missing@example.com',
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockRejectedValue(new Error('users_not_found'));
+
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('users_not_found');
+		});
+	});
+
+	describe('Message Operations - Schedule', () => {
+		beforeEach(() => {
+			vi.spyOn(GenericFunctions, 'getTarget').mockReturnValue('C123456789');
+			vi.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
+				text: 'Scheduled hello',
+			});
+			vi.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
+		});
+
+		it('should schedule a message to a channel with post_at as unix seconds', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'schedule',
+					authentication: 'accessToken',
+					select: 'channel',
+					postAt: '2030-01-01T00:00:00.000Z',
+					otherOptions: {},
+				};
+				return params[paramName];
+			});
+
+			const mockResponse = {
+				ok: true,
+				channel: 'C123456789',
+				scheduled_message_id: 'Q1298393284',
+				post_at: 1893456000,
+			};
+			slackApiRequestSpy.mockResolvedValue(mockResponse);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'/chat.scheduleMessage',
+				{
+					channel: 'C123456789',
+					post_at: 1893456000,
+					text: 'Scheduled hello',
+				},
+				{},
+			);
+			expect(result).toEqual([[{ json: mockResponse, pairedItem: { item: 0 } }]]);
+		});
+	});
+
+	describe('Message Operations - Delete Scheduled', () => {
+		it('should delete a scheduled message by id', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'deleteScheduled',
+					channelId: 'C123456789',
+					scheduledMessageId: 'Q1298393284',
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ ok: true });
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'/chat.deleteScheduledMessage',
+				{
+					channel: 'C123456789',
+					scheduled_message_id: 'Q1298393284',
+				},
+				{},
+			);
+			expect(result).toEqual([[{ json: { ok: true }, pairedItem: { item: 0 } }]]);
+		});
+	});
+
+	describe('Message Operations - Get Many Scheduled', () => {
+		it('should list scheduled messages with a limit', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'getManyScheduled',
+					returnAll: false,
+					limit: 10,
+					filters: {},
+				};
+				return params[paramName];
+			});
+
+			const mockResponse = {
+				ok: true,
+				scheduled_messages: [
+					{ id: 'Q1', channel_id: 'C1', post_at: 1893456000, text: 'one' },
+					{ id: 'Q2', channel_id: 'C2', post_at: 1893456100, text: 'two' },
+				],
+			};
+			slackApiRequestSpy.mockResolvedValue(mockResponse);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/chat.scheduledMessages.list',
+				{},
+				{ limit: 10 },
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: mockResponse.scheduled_messages,
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('should apply channel + latest + oldest filters as unix seconds', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _i: number, fallback?: unknown, _options?: unknown) => {
+					const params: Record<string, any> = {
+						resource: 'message',
+						operation: 'getManyScheduled',
+						returnAll: false,
+						limit: 50,
+						filters: {
+							channelId: 'C123456789',
+							latest: '2030-01-02T00:00:00.000Z',
+							oldest: '2030-01-01T00:00:00.000Z',
+						},
+						'filters.channelId': 'C123456789',
+					};
+					if (paramName in params) return params[paramName];
+					return fallback;
+				},
+			);
+
+			slackApiRequestSpy.mockResolvedValue({ scheduled_messages: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/chat.scheduledMessages.list',
+				{},
+				{
+					channel: 'C123456789',
+					latest: 1893542400,
+					oldest: 1893456000,
+					limit: 50,
+				},
+			);
+		});
+
+		it('should return all scheduled messages when returnAll is true', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'getManyScheduled',
+					returnAll: true,
+					filters: {},
+				};
+				return params[paramName];
+			});
+
+			const mockMessages = [
+				{ id: 'Q1', channel_id: 'C1', post_at: 1893456000 },
+				{ id: 'Q2', channel_id: 'C2', post_at: 1893456100 },
+				{ id: 'Q3', channel_id: 'C3', post_at: 1893456200 },
+			];
+			slackApiRequestAllItemsSpy.mockResolvedValue(mockMessages);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
+				'scheduled_messages',
+				'GET',
+				'/chat.scheduledMessages.list',
+				{},
+				{},
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: mockMessages,
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+	});
 });

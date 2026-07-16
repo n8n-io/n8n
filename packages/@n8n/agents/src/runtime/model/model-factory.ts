@@ -15,10 +15,11 @@ import type { ModelConfig } from '../../types/sdk/agent';
  * model calls route through the configured HTTP(S)_PROXY.
  */
 export type FetchFn = typeof globalThis.fetch;
-type EmbeddingProviderOptions = {
+export type EmbeddingProviderOptions = {
 	apiKey?: string;
 	baseURL?: string;
-};
+	fetch?: FetchFn;
+} & Partial<ProviderCredentials<'aws-bedrock'>>;
 type CreateEmbeddingProviderFn = (opts?: EmbeddingProviderOptions) => {
 	embeddingModel(model: string): EmbeddingModel;
 };
@@ -28,15 +29,18 @@ function isLanguageModel(config: unknown): config is LanguageModel {
 }
 
 /**
- * Fallback proxy `fetch` used only when the caller does not inject one.
+ * Env-proxy `fetch` fallback for standalone SDK use.
  *
- * Prefer passing a `fetch` built by `@n8n/backend-network` into
- * {@link createModel} / {@link createEmbeddingModel}.
+ * `@n8n/agents` is a standalone SDK and deliberately does not depend on `@n8n/backend-network`,
+ * so it cannot build the backend's centrally-guarded transport itself.
+ * Inside the n8n backend that guarded `fetch` is always injected into {@link createModel} / {@link createEmbeddingModel}
+ * (see cli's `createAiProxyFetch`, which wraps `@n8n/backend-network`), and this fallback is never reached.
  */
 function getProxyFetch(): FetchFn | undefined {
 	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
 	if (!proxyUrl) return undefined;
 
+	// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- standalone SDK cannot depend on @n8n/backend-network; the backend always injects its guarded transport, so this env-proxy path runs only outside the backend (see doc comment above). To drop this: make `fetch` a required arg of createModel/createEmbeddingModel and delete the fallback, so standalone callers always supply their own transport
 	const { ProxyAgent } = require('undici') as typeof Undici;
 	const dispatcher = new ProxyAgent(proxyUrl);
 	return (async (url, init) =>
@@ -70,14 +74,43 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	openai: {
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
-			return createOpenAI({ ...creds, fetch })(model);
+			const provider = createOpenAI({ ...creds, fetch });
+			// A custom baseURL means an OpenAI-COMPATIBLE server (LM Studio, vLLM,
+			// Ollama, gateways), which speaks /chat/completions; the provider's
+			// default model targets OpenAI's own Responses API (/responses) that
+			// those servers do not implement.
+			return creds.baseURL ? provider.chat(model) : provider(model);
+		},
+	},
+	custom: {
+		build: (creds, model, fetch) => {
+			const { createOpenAICompatible } =
+				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+			return createOpenAICompatible({
+				name: 'custom',
+				baseURL: creds.baseURL,
+				apiKey: creds.apiKey,
+				headers: creds.headers,
+				fetch,
+			})(model);
 		},
 	},
 	anthropic: {
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =
 				require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
-			return createAnthropic({ ...creds, fetch })(model);
+			let normalizedBaseURL = creds.baseURL;
+			// The SDK expects the versioned base (default `https://api.anthropic.com/v1`),
+			// but n8n Anthropic credentials store the host without `/v1` — their
+			// consumers append the version segment themselves.
+			if (normalizedBaseURL) {
+				const url = new URL(normalizedBaseURL);
+				if (!url.pathname.replace(/\/$/, '').endsWith('/v1')) {
+					url.pathname = url.pathname.replace(/\/?$/, '/v1');
+					normalizedBaseURL = url.toString();
+				}
+			}
+			return createAnthropic({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
 	},
 	google: {
@@ -211,6 +244,15 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	if (typeof config !== 'string') {
 		const { id: _id, ...rest } = config as { id: string; [k: string]: unknown };
 		credFields = rest;
+	}
+	// Host configs (e.g. Instance AI's `{ id, url }` for OpenAI-compatible
+	// endpoints) spell the base URL as `url`; the provider schemas only know
+	// `baseURL`, and Zod strips unknown keys, so normalize before validation.
+	// An EMPTY url means "no custom endpoint" (Instance AI emits `url: ''` for
+	// the api-key-only config) and must keep the provider default.
+	if (typeof credFields.url === 'string' && credFields.baseURL === undefined) {
+		const { url, ...restCreds } = credFields;
+		credFields = url ? { ...restCreds, baseURL: url } : restCreds;
 	}
 
 	const schema = PROVIDER_CREDENTIAL_SCHEMAS[provider];

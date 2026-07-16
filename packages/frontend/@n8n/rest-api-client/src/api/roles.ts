@@ -1,6 +1,7 @@
 import type {
 	CreateRoleDto,
 	RoleAssignmentsResponse,
+	RoleMembersResponse,
 	RoleProjectMembersResponse,
 	UpdateRoleDto,
 } from '@n8n/api-types';
@@ -53,4 +54,11 @@ export const getRoleProjectMembers = async (
 		'GET',
 		`/roles/${slug}/assignments/${projectId}/members`,
 	);
+};
+
+export const getRoleMembers = async (
+	context: IRestApiContext,
+	slug: string,
+): Promise<RoleMembersResponse> => {
+	return await makeRestApiRequest(context, 'GET', `/roles/${slug}/members`);
 };

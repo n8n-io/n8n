@@ -4,7 +4,7 @@ import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
@@ -38,6 +38,7 @@ export class LicenseService {
 	) {
 		this.http = outboundHttp.requests({
 			ssrf: 'disabled', // Fixed, n8n-controlled host
+			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
 
@@ -78,7 +79,6 @@ export class LicenseService {
 				instanceUrl: this.urlService.getWebhookBaseUrl(),
 			},
 			json: true,
-			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
 
@@ -96,7 +96,11 @@ export class LicenseService {
 		licenseType: string;
 	}): Promise<{ title: string; text: string }> {
 		try {
-			const { licenseKey, ...rest } = (await this.http.request({
+			const { licenseKey, ...rest } = await this.http.request<{
+				title: string;
+				text: string;
+				licenseKey: string;
+			}>({
 				url: 'https://enterprise.n8n.io/community-registered',
 				method: 'POST',
 				body: {
@@ -106,8 +110,7 @@ export class LicenseService {
 					licenseType,
 				},
 				json: true,
-				timeout: REQUEST_TIMEOUT_MS,
-			})) as { title: string; text: string; licenseKey: string };
+			});
 			this.eventService.emit('license-community-plus-registered', { userId, email, licenseKey });
 			return rest;
 		} catch (e: unknown) {

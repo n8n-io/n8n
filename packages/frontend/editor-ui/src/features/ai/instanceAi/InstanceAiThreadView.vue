@@ -56,6 +56,7 @@ import InstanceAiWorkflowPreview, {
 } from './components/InstanceAiWorkflowPreview.vue';
 import { buildFixWithAiPrompt } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import { TabsRoot } from 'reka-ui';
 
 const props = defineProps<{
@@ -97,6 +98,9 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// Show the input disclaimer only once the AI has produced a visible response.
+const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (generic approvals + domain/web-search access). Drives the swap
@@ -149,6 +153,7 @@ const preview = useCanvasPreview({
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+provide('openAgentPreview', preview.openAgentPreview);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -202,9 +207,12 @@ function toggleArtifactsPreview() {
 		return;
 	}
 
-	const firstTab = preview.allArtifactTabs.value[0];
-	if (firstTab) {
-		preview.selectTab(firstTab.id);
+	const selectedTab = preview.allArtifactTabs.value.find(
+		(tab) => tab.id === preview.activeTabId.value,
+	);
+	const tabToOpen = selectedTab ?? preview.allArtifactTabs.value[0];
+	if (tabToOpen) {
+		preview.selectTab(tabToOpen.id);
 	}
 }
 
@@ -473,16 +481,26 @@ watch(
 	},
 );
 
+function isCurrentThreadRuntime(): boolean {
+	return store.getRuntime(props.threadId) === thread;
+}
+
 function reconnectThreadAfterHydration(): void {
-	void thread.loadHistoricalMessages().then((hydrationStatus) => {
+	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
-		void thread.loadThreadStatus();
+		await thread.loadThreadStatus();
+		if (!isCurrentThreadRuntime()) return;
 		thread.connectSSE();
 		// Replay an opening message handed off from another tab (e.g. credential help
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
 		const pending = consumePendingFirstMessage(props.threadId);
 		if (pending) {
-			void thread.sendMessage(pending.message, pending.attachments, rootStore.pushRef);
+			void thread.sendMessage(
+				pending.message,
+				pending.attachments,
+				rootStore.pushRef,
+				pending.context,
+			);
 		}
 	});
 }
@@ -508,16 +526,23 @@ async function syncRouteToStore() {
 
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
+
 	void syncRouteToStore();
+
 	void nextTick(focusChatInputIfFocusIsIdle);
 });
 
 onUnmounted(() => {
 	// This view owns its thread's runtime, so it disposes it here (closes the
-	// SSE, clears state, drops it from the store). Per-thread ownership means a
-	// late-firing unmount only ever tears down its own thread — never a sibling
-	// or a freshly handed-off thread, which a bulk dispose-all would nuke.
-	store.disposeRuntime(props.threadId);
+	// SSE, clears state, drops it from the store) — but only once the app has
+	// left this thread's route. Suspense can create a duplicate instance of
+	// this view for the same thread during layout transitions (e.g. an editor
+	// hand-off that loads the AIA chunks) and discard one; that discarded
+	// instance's unmount fires while the route still points at the thread, and
+	// must not tear down the runtime the live instance is rendering.
+	if (router.currentRoute.value.params.threadId !== props.threadId) {
+		store.disposeRuntime(props.threadId);
+	}
 	contentResizeObserver?.disconnect();
 });
 
@@ -770,6 +795,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										/>
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
+											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
 											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -800,6 +826,9 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 												/>
 											</Transition>
 										</div>
+										<p v-if="hasAssistantResponse" :class="$style.disclaimer">
+											{{ i18n.baseText('instanceAi.input.disclaimer') }}
+										</p>
 									</div>
 								</div>
 							</div>
@@ -874,7 +903,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
-								v-if="preview.activeWorkflowId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowId.value"
 								:key="preview.activeWorkflowId.value"
 								ref="workflowPreview"
 								:class="[
@@ -883,14 +912,26 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
 								:refresh-key="preview.workflowRefreshKey.value"
+								:execution-result="preview.activeWorkflowExecutionResult.value"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
-								v-if="preview.activeDataTableId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
 								:class="$style.previewSlot"
 								:data-table-id="preview.activeDataTableId.value"
 								:project-id="preview.activeDataTableProjectId.value"
 								:refresh-key="preview.dataTableRefreshKey.value"
+							/>
+							<InstanceAiAgentPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.activeAgentId.value &&
+									preview.activeAgentProjectId.value
+								"
+								:class="$style.previewSlot"
+								:agent-id="preview.activeAgentId.value"
+								:project-id="preview.activeAgentProjectId.value"
+								:refresh-key="preview.agentRefreshKey.value"
 							/>
 						</div>
 					</TabsRoot>
@@ -1033,6 +1074,8 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	:global([data-orientation='vertical'][data-orientation='vertical']) {
 		background: transparent;
 		padding: 0;
+		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
+		z-index: 4;
 	}
 
 	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
@@ -1149,6 +1192,14 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.disclaimer {
+	margin: 0;
+	text-align: center;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
 }
 
 @media (prefers-reduced-motion: reduce) {

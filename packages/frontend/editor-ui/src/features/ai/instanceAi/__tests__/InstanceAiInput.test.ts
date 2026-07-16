@@ -891,7 +891,7 @@ describe('InstanceAiInput', () => {
 					profile_role: 'sales',
 					metadata_load_state: 'loaded',
 					variant: 'variant-cards',
-					'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+					'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 				},
 			},
 		});
@@ -912,7 +912,7 @@ describe('InstanceAiInput', () => {
 			profile_role: 'sales',
 			metadata_load_state: 'loaded',
 			variant: 'variant-cards',
-			'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+			'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 			suggestion_id: 'custom-raw-prompt',
 			suggestion_kind: 'prompt',
 			position: 1,
@@ -1062,5 +1062,11 @@ describe('InstanceAiInput', () => {
 		});
 
 		expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
+	});
+
+	it('raises the character limit for long, externally-drafted prompts', () => {
+		const { getByRole } = renderComponent();
+
+		expect(getByRole('textbox')).toHaveAttribute('maxlength', '25000');
 	});
 });

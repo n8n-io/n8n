@@ -154,9 +154,11 @@ function hasSafeEventKeys(event: InstanceAiEvent): boolean {
 			return event.payload.messageGroupId ? isSafeObjectKey(event.payload.messageGroupId) : true;
 		case 'agent-spawned':
 			return isSafeObjectKey(event.payload.parentId);
+		case 'tool-input-start':
 		case 'tool-call':
 		case 'tool-result':
 		case 'tool-error':
+		case 'tool-interrupted':
 		case 'confirmation-request':
 			return isSafeObjectKey(event.payload.toolCallId);
 		default:
@@ -255,7 +257,11 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return event.runId;
 		}
 
-		case 'text-delta': {
+		// text-block: a coalesced segment from the durable log. Live it appends
+		// like a delta; on replay the shared reducer REPLACES the segment's
+		// streamed deltas (keyed by responseId), so nothing renders twice.
+		case 'text-delta':
+		case 'text-block': {
 			const { msg, runState } = resolveTarget(state, event.runId);
 			if (runState) {
 				reduceRunEvent(runState, event);
@@ -268,6 +274,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
+		case 'reasoning-block':
 		case 'reasoning-delta': {
 			const { msg, runState } = resolveTarget(state, event.runId);
 			if (runState) {
@@ -279,9 +286,11 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
+		case 'tool-input-start':
 		case 'tool-call':
 		case 'tool-result':
 		case 'tool-error':
+		case 'tool-interrupted':
 		case 'agent-spawned':
 		case 'agent-completed':
 		case 'confirmation-request':
@@ -308,6 +317,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 						...(event.payload.statusCode !== undefined
 							? { statusCode: event.payload.statusCode }
 							: {}),
+						...(event.payload.code ? { code: event.payload.code } : {}),
 						...(event.payload.provider ? { provider: event.payload.provider } : {}),
 						...(event.payload.technicalDetails
 							? { technicalDetails: event.payload.technicalDetails }
@@ -329,6 +339,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 
 		case 'run-finish': {
 			const { msg, runState } = resolveTarget(state, event.runId);
+			const isActiveRunFinishing = event.runId === state.activeRunId;
 			if (runState) {
 				reduceRunEvent(runState, event);
 				const { status, reason } = event.payload;
@@ -338,15 +349,15 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 				if (root && status === 'error' && reason && !root.error) {
 					root.error = reason;
 				}
-				if (msg) msg.isStreaming = false;
+				if (msg && isActiveRunFinishing) msg.isStreaming = false;
 			} else if (msg) {
-				msg.isStreaming = false;
+				if (isActiveRunFinishing) msg.isStreaming = false;
 				const { status, reason } = event.payload;
 				if (status === 'error' && reason) {
 					msg.content += '\n\n*Error: ' + reason + '*';
 				}
 			}
-			return null;
+			return isActiveRunFinishing ? null : state.activeRunId;
 		}
 
 		default:

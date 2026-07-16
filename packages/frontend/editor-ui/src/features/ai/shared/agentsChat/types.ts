@@ -1,16 +1,4 @@
-import {
-	type ASK_CREDENTIAL_TOOL_NAME,
-	type ASK_LLM_TOOL_NAME,
-	type ASK_QUESTION_TOOL_NAME,
-	type APPROVAL_TOOL_NAME,
-	type N8N_CHAT_ACTION_TOOL_NAME,
-	type AskCredentialInput,
-	type AskCredentialResume,
-	type AskLlmInput,
-	type AskLlmResume,
-	type AskQuestionInput,
-	type AskQuestionResume,
-} from '@n8n/api-types';
+import { type APPROVAL_TOOL_NAME, type N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 
 import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
 
@@ -32,13 +20,14 @@ export interface ToolCall {
 	/**
 	 * One-line answer label rendered next to the tool name in
 	 * `AgentChatToolSteps`. Set when an interactive tool resolves so the user
-	 * sees what they picked (e.g. "Slack") instead of just "ask_question".
+	 * sees what they picked (e.g. "Slack") instead of just "ask_questions".
 	 */
 	displaySummary?: string;
 	/**
-	 * Raw suspend payload from `tool-call-suspended` for non-builder tools
-	 * (e.g. `{ type: 'integration_action', ... }`). Builder interactive tools
-	 * instead overwrite `input` (their suspend payload IS the renderable input).
+	 * Raw suspend payload from `tool-call-suspended` for tools other than
+	 * `approval` (e.g. `{ type: 'integration_action', ... }`). The approval
+	 * tool instead overwrites `input` (its suspend payload IS the renderable
+	 * input).
 	 */
 	suspendPayload?: unknown;
 }
@@ -79,21 +68,6 @@ export type InteractivePayload =
 			toolName: typeof APPROVAL_TOOL_NAME;
 			input: ApprovalInput;
 			resolvedValue?: ApprovalResume;
-	  })
-	| (InteractivePayloadBase & {
-			toolName: typeof ASK_CREDENTIAL_TOOL_NAME;
-			input: AskCredentialInput;
-			resolvedValue?: AskCredentialResume;
-	  })
-	| (InteractivePayloadBase & {
-			toolName: typeof ASK_LLM_TOOL_NAME;
-			input: AskLlmInput;
-			resolvedValue?: AskLlmResume;
-	  })
-	| (InteractivePayloadBase & {
-			toolName: typeof ASK_QUESTION_TOOL_NAME;
-			input: AskQuestionInput;
-			resolvedValue?: AskQuestionResume;
 	  })
 	| (InteractivePayloadBase & {
 			toolName: typeof N8N_CHAT_ACTION_TOOL_NAME;

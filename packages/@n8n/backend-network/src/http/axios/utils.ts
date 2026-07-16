@@ -12,8 +12,8 @@ import {
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
 
+import { hasProxyEnvironmentVariables } from '../../proxy/proxy-resolution';
 import type { SsrfBridge } from '../../ssrf';
-import { hasProxyEnvironmentVariables } from '../http-proxy';
 import { buildNodeAgents, isSupportedProxyUrl } from '../node-agents';
 import type { ProxyOption, SsrfOption } from '../node-agents';
 
@@ -199,7 +199,7 @@ export function digestAuthAxiosConfig(
 }
 
 const pushFormDataValue = (form: FormData, key: string, value: any) => {
-	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
+	if (typeof value === 'object' && value !== null && 'value' in value && 'options' in value) {
 		form.append(key, value.value, value.options);
 	} else {
 		form.append(key, value);
@@ -297,10 +297,10 @@ export async function generateContentLengthHeader(config: AxiosRequestConfig) {
 		return;
 	}
 
+	const formData = config.data;
 	try {
 		const length = await new Promise<number>((res, rej) => {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			config.data.getLength((error: Error | null, dataLength: number) => {
+			formData.getLength((error: Error | null, dataLength: number) => {
 				if (error) rej(error);
 				else res(dataLength);
 			});

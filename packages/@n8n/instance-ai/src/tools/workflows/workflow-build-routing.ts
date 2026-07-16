@@ -1,11 +1,18 @@
-import { isMockableTriggerNodeType } from './workflow-json-utils';
+import { isTriggerNodeType } from './workflow-json-utils';
 import type {
 	WorkflowBuildOutcome,
 	WorkflowSetupRequirement,
 	WorkflowVerificationReadiness,
 } from '../../workflow-loop/workflow-loop-state';
 
-function hasMockedCredentials(
+type WorkflowBuildRoutingInput = Omit<
+	WorkflowBuildOutcome,
+	'verificationReadiness' | 'setupRequirement'
+> & {
+	workflowNeedsSetup?: boolean;
+};
+
+function hasSetupCredentials(
 	outcome: Pick<WorkflowBuildOutcome, 'mockedCredentialTypes' | 'mockedCredentialsByNode'>,
 ): boolean {
 	return (
@@ -14,31 +21,8 @@ function hasMockedCredentials(
 	);
 }
 
-function hasCredentialVerificationData(
-	outcome: Pick<WorkflowBuildOutcome, 'mockedNodeNames' | 'nodeSimulationPlan'>,
-): boolean {
-	const mocked = outcome.mockedNodeNames ?? [];
-	if (mocked.length === 0) return false;
-	const simulated = new Set(
-		(outcome.nodeSimulationPlan ?? [])
-			.filter((verdict) => verdict.verdict === 'simulate')
-			.map((verdict) => verdict.nodeName),
-	);
-	return mocked.every((name) => simulated.has(name));
-}
-
 function determineVerificationReadiness(
-	outcome: Pick<
-		WorkflowBuildOutcome,
-		| 'submitted'
-		| 'workflowId'
-		| 'triggerNodes'
-		| 'mockedCredentialTypes'
-		| 'mockedCredentialsByNode'
-		| 'mockedNodeNames'
-		| 'nodeSimulationPlan'
-		| 'hasUnresolvedPlaceholders'
-	>,
+	outcome: Pick<WorkflowBuildRoutingInput, 'submitted' | 'workflowId' | 'triggerNodes'>,
 ): WorkflowVerificationReadiness {
 	if (!outcome.submitted) {
 		return {
@@ -56,27 +40,15 @@ function determineVerificationReadiness(
 		};
 	}
 
-	if (outcome.hasUnresolvedPlaceholders) {
-		return {
-			status: 'needs_setup',
-			reason: 'unresolved-placeholders',
-			guidance: 'Route the workflow through setup before verification.',
-		};
-	}
-
-	if (hasMockedCredentials(outcome) && !hasCredentialVerificationData(outcome)) {
-		return {
-			status: 'needs_setup',
-			reason: 'missing-mocked-credential-pin-data',
-			guidance: 'Route the workflow through setup because mocked credentials cannot be verified.',
-		};
-	}
-
-	if (!outcome.triggerNodes?.some((node) => isMockableTriggerNodeType(node.nodeType))) {
+	// Any trigger type is verifiable: deterministic triggers get shaped input
+	// (getPinDataForTrigger), every other trigger gets a simulated fixture from
+	// the build outcome sidecar (planVerificationSimulation), so the trigger
+	// never really fires. Only a workflow with no trigger at all can't run.
+	if (!outcome.triggerNodes?.some((node) => isTriggerNodeType(node.nodeType))) {
 		return {
 			status: 'not_verifiable',
-			reason: 'non-mockable-trigger',
-			guidance: 'The workflow does not have a trigger the post-build verifier can exercise.',
+			reason: 'no-trigger-node',
+			guidance: 'The workflow does not have a trigger node the post-build verifier can start from.',
 		};
 	}
 
@@ -85,12 +57,13 @@ function determineVerificationReadiness(
 
 function determineSetupRequirement(
 	outcome: Pick<
-		WorkflowBuildOutcome,
+		WorkflowBuildRoutingInput,
 		| 'submitted'
 		| 'workflowId'
 		| 'mockedCredentialTypes'
 		| 'mockedCredentialsByNode'
 		| 'hasUnresolvedPlaceholders'
+		| 'workflowNeedsSetup'
 	>,
 ): WorkflowSetupRequirement {
 	if (!outcome.submitted || !outcome.workflowId) {
@@ -105,7 +78,7 @@ function determineSetupRequirement(
 		};
 	}
 
-	if (hasMockedCredentials(outcome)) {
+	if (hasSetupCredentials(outcome)) {
 		return {
 			status: 'required',
 			reason: 'mocked-credentials',
@@ -113,14 +86,21 @@ function determineSetupRequirement(
 		};
 	}
 
+	if (outcome.workflowNeedsSetup) {
+		return {
+			status: 'required',
+			reason: 'workflow-needs-setup',
+			guidance: 'Route the workflow through setup so the user can fill pending node setup fields.',
+		};
+	}
+
 	return { status: 'not_required' };
 }
 
-export function withDeterministicRouting(
-	outcome: Omit<WorkflowBuildOutcome, 'verificationReadiness' | 'setupRequirement'>,
-): WorkflowBuildOutcome {
+export function withDeterministicRouting(outcome: WorkflowBuildRoutingInput): WorkflowBuildOutcome {
+	const { workflowNeedsSetup, ...buildOutcome } = outcome;
 	return {
-		...outcome,
+		...buildOutcome,
 		verificationReadiness: determineVerificationReadiness(outcome),
 		setupRequirement: determineSetupRequirement(outcome),
 	};

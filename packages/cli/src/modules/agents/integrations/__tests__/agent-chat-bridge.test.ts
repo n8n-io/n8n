@@ -1,6 +1,7 @@
+import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
 
 import { AgentChatBridge } from '../agent-chat-bridge';
@@ -11,6 +12,7 @@ import {
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
+import { SlackIntegration } from '../platforms/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 
@@ -20,9 +22,9 @@ interface FakeThread {
 	id: string;
 	channelId?: string;
 	adapter?: { botUserId?: string };
-	subscribe: jest.Mock;
-	post: jest.Mock;
-	startTyping: jest.Mock;
+	subscribe: Mock;
+	post: Mock;
+	startTyping: Mock;
 }
 
 function makeBot() {
@@ -41,7 +43,7 @@ function makeBot() {
 		onAction: (h: typeof handlers.action) => {
 			handlers.action = h;
 		},
-		getAdapter: jest.fn().mockReturnValue(undefined),
+		getAdapter: vi.fn().mockReturnValue(undefined),
 	};
 	return { bot, handlers };
 }
@@ -51,9 +53,9 @@ function makeThread(id = 'thread-1', adapter?: FakeThread['adapter']): FakeThrea
 		id,
 		channelId: 'channel-1',
 		adapter,
-		subscribe: jest.fn().mockResolvedValue(undefined),
-		post: jest.fn().mockResolvedValue(undefined),
-		startTyping: jest.fn().mockResolvedValue(undefined),
+		subscribe: vi.fn().mockResolvedValue(undefined),
+		post: vi.fn().mockResolvedValue(undefined),
+		startTyping: vi.fn().mockResolvedValue(undefined),
 	};
 }
 
@@ -139,19 +141,20 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new BufferingTestIntegration());
 		registry.register(new StreamingTestIntegration());
 		registry.register(new FormattedBufferedTestIntegration());
+		registry.register(new SlackIntegration());
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 		Container.reset();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	function makeAgentExecutor(chunks: StreamChunk[]) {
 		return {
-			executeForChatPublished: jest.fn(() => toStream(chunks)),
-			resumeForChat: jest.fn(() => toStream(chunks)),
+			executeForChatPublished: vi.fn(() => toStream(chunks)),
+			resumeForChat: vi.fn(() => toStream(chunks)),
 		};
 	}
 
@@ -268,6 +271,51 @@ describe('AgentChatBridge — consumeStream', () => {
 								},
 							],
 						},
+						{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
+						{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
+					],
+				},
+				'run-1',
+				'tool-1',
+				undefined,
+				undefined,
+				'test-buffered',
+			);
+			expect(thread.post).toHaveBeenCalledWith({ card: { kind: 'card' } });
+		});
+
+		it('falls back to a default suspension card for malformed payloads', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			const agentExecutor = makeAgentExecutor([
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-1',
+					toolCallId: 'tool-1',
+					toolName: 'approval',
+					suspendPayload: 'Approve?',
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				bufferedIntegration,
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(componentMapper.toCard).toHaveBeenCalledWith(
+				{
+					title: 'Action required — approve or deny?',
+					components: [
 						{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
 						{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
 					],
@@ -420,6 +468,34 @@ describe('AgentChatBridge — consumeStream', () => {
 			const received = await drainIterable(thread.post.mock.calls[0][0]);
 			expect(received).toBe('Hello world');
 		});
+
+		it('posts an error message when the streaming post fails', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			thread.post.mockRejectedValueOnce(new Error('send failed')).mockResolvedValueOnce(undefined);
+			const agentExecutor = makeAgentExecutor([
+				{ type: 'text-delta', id: 't1', delta: 'Hello' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(thread.post).toHaveBeenCalledTimes(2);
+			expect(thread.post).toHaveBeenNthCalledWith(
+				2,
+				'⚠️ Something went wrong while processing your request. Please try again.',
+			);
+		});
 	});
 
 	describe('Slack assistant status', () => {
@@ -432,10 +508,8 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = {
-				executeForChatPublished: jest.fn(() =>
-					toStream([{ type: 'finish', finishReason: 'stop' }]),
-				),
-				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
 			new AgentChatBridge(
@@ -463,19 +537,19 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalled();
 		});
 
-		it('sets assistant status for top-level Slack channel mentions via the Slack adapter and buffers the response', async () => {
+		it('clears assistant status before responding to top-level Slack channel mentions', async () => {
 			const { bot, handlers } = makeBot();
-			const setAssistantStatus = jest.fn().mockResolvedValue(undefined);
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
-				executeForChatPublished: jest.fn(() =>
+				executeForChatPublished: vi.fn(() =>
 					toStream([
 						{ type: 'text-delta', id: 't1', delta: 'Hello' },
 						{ type: 'finish', finishReason: 'stop' },
 					]),
 				),
-				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
 			new AgentChatBridge(
@@ -500,25 +574,33 @@ describe('AgentChatBridge — consumeStream', () => {
 			});
 
 			expect(thread.startTyping).not.toHaveBeenCalled();
-			expect(setAssistantStatus).toHaveBeenCalledWith('C123', '1779466577.518139', 'Thinking...', [
+			expect(setAssistantStatus).toHaveBeenNthCalledWith(
+				1,
+				'C123',
+				'1779466577.518139',
 				'Thinking...',
-			]);
+				['Thinking...'],
+			);
+			expect(setAssistantStatus).toHaveBeenNthCalledWith(2, 'C123', '1779466577.518139', '');
+			expect(setAssistantStatus.mock.invocationCallOrder[1]).toBeLessThan(
+				thread.post.mock.invocationCallOrder[0],
+			);
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
 		});
 
 		it('clears assistant status before responding directly to top-level Slack DMs', async () => {
 			const { bot, handlers } = makeBot();
-			const setAssistantStatus = jest.fn().mockResolvedValue(undefined);
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
-				executeForChatPublished: jest.fn(() =>
+				executeForChatPublished: vi.fn(() =>
 					toStream([
 						{ type: 'text-delta', id: 't1', delta: 'Hello' },
 						{ type: 'finish', finishReason: 'stop' },
 					]),
 				),
-				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
 			new AgentChatBridge(
@@ -557,23 +639,23 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('retries top-level Slack assistant status when Slack has not materialized the thread yet', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			const { bot, handlers } = makeBot();
 			const invalidThreadError = Object.assign(new Error('invalid_thread_ts'), {
 				data: { error: 'invalid_thread_ts' },
 			});
-			const setAssistantStatus = jest
+			const setAssistantStatus = vi
 				.fn()
 				.mockRejectedValueOnce(invalidThreadError)
 				.mockResolvedValue(undefined);
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
-				executeForChatPublished: jest.fn(async function* () {
+				executeForChatPublished: vi.fn(async function* () {
 					await new Promise((resolve) => setTimeout(resolve, 1000));
 					yield { type: 'finish' as const, finishReason: 'stop' as const };
 				}),
-				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
 			new AgentChatBridge(
@@ -596,25 +678,25 @@ describe('AgentChatBridge — consumeStream', () => {
 				},
 				author: { userId: 'u1', userName: 'user1' },
 			});
-			await jest.advanceTimersByTimeAsync(0);
+			await vi.advanceTimersByTimeAsync(0);
 
 			expect(setAssistantStatus).toHaveBeenCalledTimes(1);
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalled();
 
-			await jest.advanceTimersByTimeAsync(750);
+			await vi.advanceTimersByTimeAsync(750);
 			expect(setAssistantStatus).toHaveBeenCalledTimes(2);
 
-			await jest.advanceTimersByTimeAsync(250);
+			await vi.advanceTimersByTimeAsync(250);
 			await run;
 		});
 
 		it('does not re-set Slack DM status with a stale retry after it has been cleared', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			const { bot, handlers } = makeBot();
 			const invalidThreadError = Object.assign(new Error('invalid_thread_ts'), {
 				data: { error: 'invalid_thread_ts' },
 			});
-			const setAssistantStatus = jest
+			const setAssistantStatus = vi
 				.fn()
 				.mockRejectedValueOnce(invalidThreadError)
 				.mockResolvedValue(undefined);
@@ -624,13 +706,13 @@ describe('AgentChatBridge — consumeStream', () => {
 				// Respond (which clears the status) while the initial "Thinking..."
 				// set is still waiting out its retry delay, then keep the stream open
 				// past that delay so the retry would otherwise fire after the clear.
-				executeForChatPublished: jest.fn(async function* (): AsyncGenerator<StreamChunk> {
+				executeForChatPublished: vi.fn(async function* (): AsyncGenerator<StreamChunk> {
 					yield { type: 'text-delta', id: 't1', delta: 'Hello' };
 					yield { type: 'message', message: { role: 'assistant', content: [] } };
 					await new Promise((resolve) => setTimeout(resolve, 2000));
 					yield { type: 'finish', finishReason: 'stop' };
 				}),
-				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
 			new AgentChatBridge(
@@ -656,7 +738,7 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			// Let the response flush and clear the status, then run past the retry
 			// delay and finish the stream.
-			await jest.advanceTimersByTimeAsync(2000);
+			await vi.advanceTimersByTimeAsync(2000);
 			await run;
 
 			const thinkingCalls = setAssistantStatus.mock.calls.filter((c) => c[2] === 'Thinking...');
@@ -677,19 +759,19 @@ describe('AgentChatBridge — consumeStream', () => {
 			const setInFlight = new Promise<void>((resolve) => {
 				resolveSet = resolve;
 			});
-			const setAssistantStatus = jest.fn(async (_channel: string, _ts: string, status: string) => {
+			const setAssistantStatus = vi.fn(async (_channel: string, _ts: string, status: string) => {
 				if (status === 'Thinking...') await setInFlight;
 			});
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
-				executeForChatPublished: jest.fn(() =>
+				executeForChatPublished: vi.fn(() =>
 					toStream([
 						{ type: 'text-delta', id: 't1', delta: 'Hello' },
 						{ type: 'finish', finishReason: 'stop' },
 					]),
 				),
-				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
 			new AgentChatBridge(
@@ -733,14 +815,18 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
 		});
 
-		it('sets a thinking status before resuming a Slack action', async () => {
+		it('sets a thinking status and buffers the response when resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = {
-				executeForChatPublished: jest.fn(() =>
-					toStream([{ type: 'finish', finishReason: 'stop' }]),
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() =>
+					toStream([
+						{ type: 'text-delta', id: 't1', delta: 'Approved ' },
+						{ type: 'text-delta', id: 't1', delta: 'response' },
+						{ type: 'finish', finishReason: 'stop' },
+					]),
 				),
-				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
 			new AgentChatBridge(
@@ -760,10 +846,14 @@ describe('AgentChatBridge — consumeStream', () => {
 				thread,
 				threadId: 'thread-1',
 				user: { userId: 'u2', userName: 'user2' },
-				adapter: { deleteMessage: jest.fn().mockResolvedValue(undefined) },
+				adapter: { deleteMessage: vi.fn().mockResolvedValue(undefined) },
 			});
 
 			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(thread.startTyping.mock.invocationCallOrder[0]).toBeLessThan(
+				thread.post.mock.invocationCallOrder[0],
+			);
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Approved response' });
 			expect(agentExecutor.resumeForChat).toHaveBeenCalled();
 		});
 	});
@@ -913,7 +1003,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				thread,
 				threadId: 'thread-1',
 				user: { userId: 'u2', userName: 'user2' },
-				adapter: { deleteMessage: jest.fn().mockResolvedValue(undefined) },
+				adapter: { deleteMessage: vi.fn().mockResolvedValue(undefined) },
 			});
 
 			expect(messageContextStore.setLatest).toHaveBeenCalledWith(

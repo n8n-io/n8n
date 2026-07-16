@@ -1,13 +1,13 @@
+import { AiGatewayConfigDto, type AiGatewayUsageResponse } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { Service } from '@n8n/di';
 import { UserRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
-import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -25,6 +25,10 @@ interface GatewayWalletResponse {
 	balance: number;
 }
 
+export type AiGatewayAvailability =
+	| { available: true; config: AiGatewayConfigDto }
+	| { available: false };
+
 @Service()
 export class AiGatewayService {
 	private readonly tokenCache = new Map<
@@ -38,6 +42,13 @@ export class AiGatewayService {
 	private gatewayConfig: AiGatewayConfigDto | null = null;
 	private configFetchedAt = 0;
 	private static readonly CONFIG_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+	/**
+	 * Timestamp of the last failed config fetch. A failure is cached briefly so a
+	 * down gateway isn't re-hit on every `isAvailable()` call (fired per MCP tool call).
+	 */
+	private configFetchFailedAt = 0;
+	private static readonly CONFIG_FAILURE_TTL_MS = 60 * 1000; // 1 minute
 
 	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
 
@@ -286,29 +297,55 @@ export class AiGatewayService {
 		);
 	}
 
+	/**
+	 * Returns `{ available: true, config }` when the AI Gateway is both licensed
+	 * AND its config fetches successfully; `{ available: false }` otherwise.
+	 * Never propagates gateway or config errors.
+	 */
+	async isAvailable(): Promise<AiGatewayAvailability> {
+		if (!this.licenseState.isAiGatewayLicensed()) return { available: false };
+		try {
+			const config = await this.getGatewayConfig();
+			return { available: true, config };
+		} catch {
+			return { available: false };
+		}
+	}
+
 	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
 		if (!this.isConfigStale()) return this.gatewayConfig!;
 
-		const baseUrl = this.requireBaseUrl();
-
-		const data = await this.gatewayRequest<AiGatewayConfigDto>(
-			{
-				method: 'GET',
-				url: `${baseUrl}/v1/gateway/config`,
-			},
-			'Failed to fetch AI Gateway config',
-		);
+		// Throttle re-fetching after a recent failure so a down gateway isn't hit on every call.
 		if (
-			!Array.isArray(data.nodes) ||
-			!Array.isArray(data.credentialTypes) ||
-			typeof data.providerConfig !== 'object'
+			this.configFetchFailedAt > 0 &&
+			Date.now() - this.configFetchFailedAt < AiGatewayService.CONFIG_FAILURE_TTL_MS
 		) {
-			throw new UserError('AI Gateway returned an invalid config response.');
+			throw new OperationalError('AI Gateway config fetch recently failed; retry is throttled.');
 		}
 
-		this.gatewayConfig = data;
-		this.configFetchedAt = Date.now();
-		return data;
+		const baseUrl = this.requireBaseUrl();
+
+		try {
+			const data = await this.gatewayRequest<unknown>(
+				{
+					method: 'GET',
+					url: `${baseUrl}/v1/gateway/config`,
+				},
+				'Failed to fetch AI Gateway config',
+			);
+			const parsed = AiGatewayConfigDto.safeParse(data);
+			if (!parsed.success) {
+				throw new UserError('AI Gateway returned an invalid config response.');
+			}
+
+			this.gatewayConfig = parsed.data;
+			this.configFetchedAt = Date.now();
+			this.configFetchFailedAt = 0;
+			return parsed.data;
+		} catch (error) {
+			this.configFetchFailedAt = Date.now();
+			throw error;
+		}
 	}
 
 	/**
