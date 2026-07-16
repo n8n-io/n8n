@@ -453,12 +453,26 @@ async function onOpenPreview() {
 	telemetry.track('User opened agent preview', { agent_id: agentId.value });
 }
 
+function getBuilderQuery() {
+	const query = { ...route.query };
+	delete query[CONTINUE_SESSION_ID_PARAM];
+	delete query.prompt;
+	return query;
+}
+
 function closePreview() {
-	const { [CONTINUE_SESSION_ID_PARAM]: _sessionId, prompt: _prompt, ...rest } = route.query;
 	void router.push({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
-		query: rest,
+		query: getBuilderQuery(),
+	});
+}
+
+function openMemorySettings() {
+	void router.push({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: { ...getBuilderQuery(), section: 'settings' },
 	});
 }
 
@@ -1217,6 +1231,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
 					@continue-loaded="onContinueLoaded"
+					@open-memory-settings="openMemorySettings"
 				/>
 
 				<AgentBuilderEditorColumn

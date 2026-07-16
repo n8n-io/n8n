@@ -591,8 +591,8 @@ catalogs:
       specifier: ^0.7.0
       version: 0.7.0
     '@vueuse/core':
-      specifier: ^10.11.0
-      version: 10.11.0
+      specifier: ^14.3.0
+      version: 14.3.0
     element-plus:
       specifier: 2.4.3
       version: 2.4.3
@@ -4713,7 +4713,7 @@ importers:
         version: link:../design-system
       '@vueuse/core':
         specifier: catalog:frontend
-        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       highlight.js:
         specifier: catalog:frontend
         version: 11.8.0
@@ -4804,13 +4804,16 @@ importers:
     dependencies:
       '@vueuse/core':
         specifier: catalog:frontend
-        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       lodash:
         specifier: 4.18.1
         version: 4.18.1
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
+      xss:
+        specifier: 'catalog:'
+        version: 1.0.15
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -4913,7 +4916,7 @@ importers:
         version: 3.27.0(@floating-ui/dom@1.7.0)(@tiptap/core@3.27.0(@tiptap/pm@3.27.0))(@tiptap/pm@3.27.0)(vue@3.5.26(typescript@6.0.2))
       '@vueuse/core':
         specifier: catalog:frontend
-        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -5153,7 +5156,7 @@ importers:
         version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       '@vueuse/core':
         specifier: catalog:frontend
-        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -5244,7 +5247,7 @@ importers:
         version: link:../../../@n8n/permissions
       '@vueuse/core':
         specifier: catalog:frontend
-        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
@@ -5546,7 +5549,7 @@ importers:
         version: 10.11.0(vue@3.5.26(typescript@6.0.2))
       '@vueuse/core':
         specifier: catalog:frontend
-        version: 10.11.0(vue@3.5.26(typescript@6.0.2))
+        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       ag-grid-community:
         specifier: ^34.1.1
         version: 34.1.1
@@ -13076,6 +13079,11 @@ packages:
   '@vueuse/core@12.8.2':
     resolution: {integrity: sha512-HbvCmZdzAu3VGi/pWYm5Ut+Kd9mn1ZHnn4L5G8kOQTPs/IwIAmJoBrmYk2ckLArgMXZj0AW3n5CAejLUO+PhdQ==}
 
+  '@vueuse/core@14.3.0':
+    resolution: {integrity: sha512-aHfz47g0ZhMtTVHmIzMVpJy8ePhhOy68GY5bv110+5DVtZ+W7BsOx+m61UNQqfrWyPztIHIanWa3E2tib3NFIw==}
+    peerDependencies:
+      vue: ^3.5.0
+
   '@vueuse/core@9.13.0':
     resolution: {integrity: sha512-pujnclbeHWxxPRqXWmdkKV5OX4Wk4YeK7wusHqRwU0Q7EFusHoqNA/aPhB6KCh9hEqJkLAJo7bb0Lh9b+OIVzw==}
 
@@ -13085,6 +13093,9 @@ packages:
   '@vueuse/metadata@12.8.2':
     resolution: {integrity: sha512-rAyLGEuoBJ/Il5AmFHiziCPdQzRt88VxR+Y/A/QhJ1EWtWqPBBAxTAFaSkviwEuOEZNtW8pvkPgoCZQ+HxqW1A==}
 
+  '@vueuse/metadata@14.3.0':
+    resolution: {integrity: sha512-BwxmbAzwAVF50+MW57GXOUEV61nFBGnlBvrTqj49PqWJu3uw7hdu72ztXeZ33RdZtDY6kO+bfCAE1PCn88Tktw==}
+
   '@vueuse/metadata@9.13.0':
     resolution: {integrity: sha512-gdU7TKNAUVlXXLbaF+ZCfte8BjRJQWPCa2J55+7/h+yDtzw3vOoGQDRXzI6pyKyo6bXFT5/QoPE4hAknExjRLQ==}
 
@@ -13093,6 +13104,11 @@ packages:
 
   '@vueuse/shared@12.8.2':
     resolution: {integrity: sha512-dznP38YzxZoNloI0qpEfpkms8knDtaoQ6Y/sfS0L7Yki4zh40LFHEhur0odJC6xTHG5dxWVPiUWBXn+wCG2s5w==}
+
+  '@vueuse/shared@14.3.0':
+    resolution: {integrity: sha512-bZpge9eSXwa4ToSiqJ7j6KRwhAsneMFoSz3LMWKQDkqimm3D/tbFlrklrs/IOqC8tEcYmXQZJ6N0UrjhBirVCg==}
+    peerDependencies:
+      vue: ^3.5.0
 
   '@vueuse/shared@9.13.0':
     resolution: {integrity: sha512-UrnhU+Cnufu4S6JLCPZnkWh0WwZGUp72ktOF2DFptMlOs3TOdVv8xJN53zhHGARmVOsz5KqOls09+J1NR6sBKw==}
@@ -30457,6 +30473,13 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
+  '@vueuse/core@14.3.0(vue@3.5.26(typescript@6.0.2))':
+    dependencies:
+      '@types/web-bluetooth': 0.0.21
+      '@vueuse/metadata': 14.3.0
+      '@vueuse/shared': 14.3.0(vue@3.5.26(typescript@6.0.2))
+      vue: 3.5.26(typescript@6.0.2)
+
   '@vueuse/core@9.13.0(vue@3.5.26(typescript@6.0.2))':
     dependencies:
       '@types/web-bluetooth': 0.0.16
@@ -30470,6 +30493,8 @@ snapshots:
   '@vueuse/metadata@10.11.0': {}
 
   '@vueuse/metadata@12.8.2': {}
+
+  '@vueuse/metadata@14.3.0': {}
 
   '@vueuse/metadata@9.13.0': {}
 
@@ -30485,6 +30510,10 @@ snapshots:
       vue: 3.5.26(typescript@6.0.2)
     transitivePeerDependencies:
       - typescript
+
+  '@vueuse/shared@14.3.0(vue@3.5.26(typescript@6.0.2))':
+    dependencies:
+      vue: 3.5.26(typescript@6.0.2)
 
   '@vueuse/shared@9.13.0(vue@3.5.26(typescript@6.0.2))':
     dependencies:
