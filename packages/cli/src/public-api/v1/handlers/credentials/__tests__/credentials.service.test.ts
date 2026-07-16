@@ -151,6 +151,7 @@ describe('CredentialsService', () => {
 					name: payload.name,
 					data: payload.data,
 					projectId: undefined,
+					isResolvable: undefined,
 					availability: 'workflow',
 				},
 				expect.anything(),

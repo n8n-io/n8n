@@ -96,7 +96,13 @@ export async function getSharedCredentials(
  * resolution, validation, and encryption.
  */
 export async function saveCredential(
-	payload: { type: string; name: string; data: ICredentialDataDecryptedObject; projectId?: string },
+	payload: {
+		type: string;
+		name: string;
+		data: ICredentialDataDecryptedObject;
+		projectId?: string;
+		isResolvable?: boolean;
+	},
 	user: User,
 ): Promise<PublicApiCredentialResponse> {
 	const { scopes: _scopes, ...credential } = await Container.get(
@@ -107,6 +113,7 @@ export async function saveCredential(
 			name: payload.name,
 			data: payload.data,
 			projectId: payload.projectId,
+			isResolvable: payload.isResolvable,
 			availability: 'workflow',
 		},
 		user,
