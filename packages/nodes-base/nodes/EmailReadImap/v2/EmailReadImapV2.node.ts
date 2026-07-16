@@ -40,7 +40,6 @@ const versionDescription: INodeTypeDescription = {
 	eventTriggerDescription: 'Waiting for you to receive an email',
 	defaults: {
 		name: 'Email Trigger (IMAP)',
-		color: '#44AA22',
 	},
 	triggerPanel: {
 		header: '',

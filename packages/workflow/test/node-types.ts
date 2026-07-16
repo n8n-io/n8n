@@ -20,7 +20,7 @@ const stickyNode: LoadedClass<INodeType> = {
 			group: ['input'],
 			version: 1,
 			description: 'Make your workflow easier to understand',
-			defaults: { name: 'Sticky Note', color: '#FFD233' },
+			defaults: { name: 'Sticky Note' },
 			inputs: [],
 			outputs: [],
 			properties: [
@@ -551,7 +551,6 @@ const setNode: LoadedClass<INodeType> = {
 			description: 'Sets a value',
 			defaults: {
 				name: 'Set',
-				color: '#0000FF',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
@@ -584,7 +583,6 @@ const codeNode: LoadedClass<INodeType> = {
 			description: 'Code node',
 			defaults: {
 				name: 'Code',
-				color: '#0000FF',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
@@ -611,7 +609,6 @@ const htmlNode: LoadedClass<INodeType> = {
 			description: 'HTML node',
 			defaults: {
 				name: 'HTML',
-				color: '#0000FF',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
@@ -638,7 +635,6 @@ const formNode: LoadedClass<INodeType> = {
 			description: 'Form node',
 			defaults: {
 				name: 'Form',
-				color: '#0000FF',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
@@ -910,7 +906,6 @@ const manualTriggerNode: LoadedClass<INodeType> = {
 			maxNodes: 1,
 			defaults: {
 				name: 'When clicking ‘Execute workflow’',
-				color: '#909298',
 			},
 			inputs: [],
 			outputs: [NodeConnectionTypes.Main],
@@ -938,7 +933,7 @@ const executeWorkflowNode: LoadedClass<INodeType> = {
 			version: [1, 1.1, 1.2],
 			subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 			description: 'Execute another workflow',
-			defaults: { name: 'Execute Workflow', color: '#ff6d5a' },
+			defaults: { name: 'Execute Workflow' },
 			inputs: [],
 			outputs: [],
 			properties: [
@@ -1164,7 +1159,6 @@ const aiAgentNode: LoadedClass<INodeType> = {
 			description: 'Generates an action plan and executes it. Can use external tools.',
 			defaults: {
 				name: 'AI Agent',
-				color: '#404040',
 			},
 			inputs: [
 				NodeConnectionTypes.Main,
@@ -1345,7 +1339,6 @@ export class NodeTypes implements INodeTypes {
 					description: 'Sets multiple values',
 					defaults: {
 						name: 'Set Multi',
-						color: '#0000FF',
 					},
 					inputs: [NodeConnectionTypes.Main],
 					outputs: [NodeConnectionTypes.Main],
