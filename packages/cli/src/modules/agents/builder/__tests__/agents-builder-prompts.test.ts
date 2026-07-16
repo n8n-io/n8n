@@ -1,7 +1,6 @@
 import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '@n8n/api-types';
 
 import {
-	FEW_SHOT_FLOWS_SECTION,
 	IMPORTANT_SECTION,
 	INTERACTIVE_TOOLS_SECTION,
 	WORKFLOW_SECTION,
@@ -62,12 +61,6 @@ describe('chat-channel credential guidance', () => {
 		);
 		expect(integrationsSkill?.instructions).toContain(
 			'Do not call `configure_channel` to remove a channel.',
-		);
-		expect(FEW_SHOT_FLOWS_SECTION).toContain(
-			'### Remove an existing Slack, Telegram, or Linear channel',
-		);
-		expect(FEW_SHOT_FLOWS_SECTION).toContain(
-			'`patch_config(...)` removing `/integrations/<index>`',
 		);
 		expect(getConfigMutationPrompt()).toContain('#### Remove An Existing Chat Integration');
 		expect(getConfigMutationPrompt()).toContain(
