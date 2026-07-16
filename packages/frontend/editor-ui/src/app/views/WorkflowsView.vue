@@ -46,7 +46,6 @@ import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplat
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
 import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/components/TemplateRecommendationV3.vue';
-import RecommendedTemplatesSection from '@/features/workflows/templates/recommendations/components/RecommendedTemplatesSection.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
@@ -176,8 +175,7 @@ const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
 const { next: nextFetch } = useLatestFetch();
 const { fetchDependencyCounts } = useDependencies();
-const { showRecommendedTemplatesInline, readOnlyEnv, projectPermissions } =
-	useWorkflowsEmptyState();
+const { readOnlyEnv, projectPermissions } = useWorkflowsEmptyState();
 const { hasKnownInstanceContent } = useEmptyStateDetection();
 const emptinessResolved = ref(false);
 
@@ -2453,11 +2451,7 @@ const onNameSubmit = async (name: string) => {
 				resource-type="workflows"
 			/>
 			<div v-else>
-				<div v-if="showRecommendedTemplatesInline" :class="$style.templatesContainer">
-					<RecommendedTemplatesSection />
-				</div>
 				<ResourcesListEmptyState
-					v-else
 					resource-key="workflows"
 					:button-disabled="readOnlyEnv || !projectPermissions.workflow.create"
 					:disabled-tooltip-text="
@@ -2557,7 +2551,7 @@ const onNameSubmit = async (name: string) => {
 					</template></N8nActionBox
 				>
 				<ResourcesListEmptyState
-					v-else-if="showArchivedOnlyHint && !showRecommendedTemplatesInline"
+					v-else-if="showArchivedOnlyHint"
 					resource-key="workflows"
 					:button-disabled="readOnlyEnv || !projectPermissions.workflow.create"
 					:disabled-tooltip-text="
@@ -2566,27 +2560,11 @@ const onNameSubmit = async (name: string) => {
 					@click:button="addWorkflow"
 				/>
 			</div>
-			<div
-				v-if="showRecommendedTemplatesInline && showArchivedOnlyHint"
-				:class="$style.templatesContainer"
-			>
-				<RecommendedTemplatesSection />
-			</div>
 		</template>
 	</ResourcesListLayout>
 </template>
 
 <style lang="scss" module>
-.templatesContainer {
-	display: flex;
-	justify-content: center;
-	width: 100%;
-
-	> section {
-		margin-top: var(--spacing--2xl);
-	}
-}
-
 .easy-ai-workflow-callout {
 	// Make the callout padding in line with workflow cards
 	margin-top: var(--spacing--xs);

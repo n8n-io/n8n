@@ -163,6 +163,10 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn(),
+}));
+
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
@@ -193,6 +197,7 @@ import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
 
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
@@ -1217,6 +1222,30 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 			'thread-a',
 			'run-1',
 			'How do I set this up?',
+			expect.any(AbortController),
+			undefined,
+			context,
+			'group-1',
+			undefined,
+		);
+	});
+
+	it('passes agent-preview handoff context into executeRun', () => {
+		const service = createStartRunService();
+		const context = {
+			source: 'agent-preview' as const,
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			executionId: 'exec-1',
+		};
+
+		service.startRun(fakeUser, 'thread-a', 'Please improve this agent', undefined, context);
+
+		expect(service.executeRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			'Please improve this agent',
 			expect.any(AbortController),
 			undefined,
 			context,
@@ -3086,6 +3115,42 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 	});
 });
 
+describe('InstanceAiService — agent preview handoff scopes', () => {
+	type AgentPreviewPermissionService = {
+		assertAgentPreviewHandoffScopes: (user: User, projectId: string) => Promise<void>;
+	};
+
+	function createAgentPreviewPermissionService(): AgentPreviewPermissionService {
+		return Object.create(InstanceAiService.prototype) as AgentPreviewPermissionService;
+	}
+
+	beforeEach(() => {
+		vi.mocked(userHasScopes).mockReset();
+	});
+
+	it('requires both agent read and update scopes for preview handoffs', async () => {
+		const service = createAgentPreviewPermissionService();
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+
+		await expect(
+			service.assertAgentPreviewHandoffScopes(fakeUser, 'project-1'),
+		).resolves.toBeUndefined();
+
+		expect(userHasScopes).toHaveBeenCalledWith(fakeUser, ['agent:read', 'agent:update'], false, {
+			projectId: 'project-1',
+		});
+	});
+
+	it('rejects preview handoffs when either required agent scope is missing', async () => {
+		const service = createAgentPreviewPermissionService();
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+
+		await expect(service.assertAgentPreviewHandoffScopes(fakeUser, 'project-1')).rejects.toThrow(
+			'You do not have permission to load or edit agent previews in this project.',
+		);
+	});
+});
+
 describe('InstanceAiService — OAuth callback URL', () => {
 	// Regression: the OAuth callback URL exposed to browser-assisted credential
 	// setup must come from urlService.getInstanceBaseUrl() (which honors WEBHOOK_URL
@@ -3102,6 +3167,15 @@ describe('InstanceAiService — OAuth callback URL', () => {
 		const source = InstanceAiService.toString();
 
 		expect(source).not.toMatch(/globalConfig\.editorBaseUrl\s*\|\|/);
+	});
+});
+
+describe('InstanceAiService — editor handoff context resources', () => {
+	it('builds the context block from combined workflow and agent attachments', () => {
+		const source = InstanceAiService.toString();
+
+		expect(source).toContain('buildContextResourcesBlock(contextAttachments)');
+		expect(source).not.toContain('buildContextResourcesBlock(workflowAttachments)');
 	});
 });
 

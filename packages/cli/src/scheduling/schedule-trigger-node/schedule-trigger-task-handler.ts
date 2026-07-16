@@ -9,8 +9,10 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { EventService } from '@/events/event.service';
+import { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import {
@@ -39,11 +41,12 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		private readonly eventService: EventService,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly workflowExecutionService: WorkflowExecutionService,
+		private readonly ownershipService: OwnershipService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
 
-	async execute(task: ClaimedTask): Promise<void> {
+	async execute(task: ClaimedTask, onDispatch: () => void): Promise<void> {
 		const { workflowId, nodeId } = this.parsePayload(task);
 		const workflowData =
 			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(workflowId);
@@ -76,10 +79,19 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 				deduplicationKey,
 			);
 
+			onDispatch();
+
+			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+				this.ownershipService,
+				workflowData.id,
+			);
+
 			this.eventService.emit('workflow-executed', {
 				workflowId,
 				workflowName: workflowData.name,
 				executionId,
+				projectId,
+				projectName,
 				source: 'trigger',
 			});
 

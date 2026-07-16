@@ -17,26 +17,14 @@ export class MessageAnAgentV2 implements INodeType {
 			...sharedVersionDescription,
 			version: 2,
 			properties: [
+				// Set by the node-creator agent picker ('referenced' | 'inline'), not
+				// editable in the NDV. Kept hidden with no displayOptions so saves
+				// never strip it. Existing workflows have no stored agentSource, so
+				// the default must keep them on the referenced path.
 				{
 					displayName: 'Agent Source',
 					name: 'agentSource',
-					type: 'options',
-					noDataExpression: true,
-					options: [
-						{
-							name: 'Saved Agent',
-							value: 'referenced',
-							description: 'Reference an agent from this project, managed in the Agent Builder',
-						},
-						{
-							name: 'Inline Agent',
-							value: 'inline',
-							description:
-								'Configure the agent directly in this node; its settings are saved with the workflow',
-						},
-					],
-					// Existing workflows have no stored agentSource, so the default must
-					// keep them on the referenced path.
+					type: 'hidden',
 					default: 'referenced',
 				},
 				{

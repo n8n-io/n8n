@@ -9,6 +9,11 @@
  * janitor (`.janitor-baseline.json`). Baseline is updated manually after real
  * fixes, never automatically.
  *
+ * The baseline is the POST-BUILD count: CI's lint job builds dependencies before
+ * this check runs, and built dist trees surface ~8 extra issues that a cold
+ * checkout doesn't. Run `pnpm build` before `pnpm boundaries:baseline`, or CI
+ * will read a higher count than you saw locally.
+ *
  * ponytail: parses turbo's "N issues found" line — the ratchet is a single
  * number, not a per-issue snapshot, so it can't tell a fixed issue from a new
  * one at the same count. Upgrade to a fingerprinted baseline if that matters.
@@ -32,7 +37,12 @@ if (!match) {
 	process.exit(2);
 }
 
-const current = Number(match[1]);
+// `@nodes-testing/*` is a tsconfig path alias into packages/core/nodes-testing
+// (NodeTestHarness) — the sanctioned way to write node workflow tests, so every
+// new suite would otherwise ratchet the count up. Exempt the class; turbo's
+// `implicitDependencies` only covers undeclared-package issues, not path leaves.
+const exempted = (output.match(/import `@nodes-testing\/[^`]+` leaves the package/g) ?? []).length;
+const current = Number(match[1]) - exempted;
 
 if (write) {
 	writeFileSync(baselineFile, JSON.stringify({ issues: current }, null, 2) + '\n');
@@ -40,7 +50,9 @@ if (write) {
 	process.exit(0);
 }
 
-console.log(`turbo boundaries: ${current} issues (baseline ${baseline})`);
+console.log(
+	`turbo boundaries: ${current} issues (baseline ${baseline}, ${exempted} node-test-harness imports exempted)`,
+);
 
 if (current > baseline) {
 	console.error(
