@@ -1,0 +1,27 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_7d5b418df88cbb::t_fbdfbbf2ccfb12 71,73
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-schema-conflict-policy.ts
+  s_7d5b418df88cbb::t_43b20c75fcfd7b 10-13
+packages/@n8n/cli/docs/commands/package.md
+  s_7d5b418df88cbb::t_245bda8d3fee0e 62
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_7d5b418df88cbb::t_cd0f492f95623b 181-187
+packages/@n8n/cli/src/commands/package/import.ts
+  s_7d5b418df88cbb::t_60b24d0be5ac41 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d535dafff644d5260e0a639659dccd9d6495bc1",
+  "prompts": {},
+  "sessions": {
+    "s_7d5b418df88cbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c084e852-91a7-4f75-9fe0-e9fe131514c6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

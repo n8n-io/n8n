@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.ts
+  s_e5eb138ee1927f::t_b0d1a2862371ca 1-98
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.test.ts
+  s_e5eb138ee1927f::t_e21874c4fa1c4b 1-75
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_e5eb138ee1927f::t_f054723be5c2f2 3,889-949
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialForm.vue
+  s_e5eb138ee1927f::t_a51e5f0c25ea0b 5,98-102
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_e5eb138ee1927f::t_d3da6750ad9ab9 1-110
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e5eb138ee1927f::t_beb822421cb522 1085-1087
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_e5eb138ee1927f::t_dfe301f144a6cf 2,32-37,300-316,637-641,643,650-661
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.test.ts
+  s_e5eb138ee1927f::t_4d3067cd65d3f6 1-35,38-52,55-63
+  s_e5eb138ee1927f::t_6ad87098c6cb2c 36-37,53-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3a37e353dd9d0d74f05e147b0c2814b34d1a6d54",
+  "prompts": {},
+  "sessions": {
+    "s_e5eb138ee1927f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87369f71-7cd7-4171-b908-682eacaab3f4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
