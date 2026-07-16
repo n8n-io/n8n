@@ -33,6 +33,13 @@ import {
 	type RowMutation,
 } from './useEvaluationPersistenceHelpers';
 
+// Serialize every evaluations persistence mutation across all callers — the
+// per-case auto-save, the suite-config auto-save, single-case runs, run-all, and
+// deletes all target the same table + config, and live in separate components.
+// One module-wide queue means a run can't race, or be dropped by, an auto-save
+// happening elsewhere.
+let persistenceQueue: Promise<unknown> = Promise.resolve();
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -50,9 +57,29 @@ export function useTestCasePersistence() {
 		useEvaluationPersistenceHelpers();
 
 	const isPersisting = ref(false);
-	// Set when a save is requested while one is already running, so the in-flight
-	// save runs one more pass afterwards instead of dropping the newer edit.
-	let saveRerunRequested = false;
+	// Count of this composable's ops queued/running, so the per-instance
+	// `isPersisting` loading flag stays true until they all settle.
+	let activeOps = 0;
+
+	// Route a mutation through the shared queue: it runs after any in-flight op
+	// (in this component or another) settles, rather than racing or bailing.
+	async function enqueue<T>(op: () => Promise<T>): Promise<T> {
+		activeOps += 1;
+		isPersisting.value = true;
+		// `run` and the queue reassignment happen synchronously (before the await),
+		// so ops are ordered by call order.
+		const run = persistenceQueue.then(op, op);
+		const settled = run.then(
+			() => undefined,
+			() => undefined,
+		);
+		persistenceQueue = settled;
+		void settled.then(() => {
+			activeOps -= 1;
+			if (activeOps === 0) isPersisting.value = false;
+		});
+		return await run;
+	}
 
 	type PersistCaseResult =
 		| { ok: true; configId: string; resolvedIndex: number; isNewCase: boolean }
@@ -109,6 +136,7 @@ export function useTestCasePersistence() {
 		const tableName = getCanonicalEvaluationName(wf.name);
 		const configName = tableName;
 		let createdTableId: string | undefined;
+		let addedColumns: { tableId: string; columnIds: string[] } | undefined;
 		let rowMutation: RowMutation | undefined;
 		let createdConfigId: string | undefined;
 		let priorConfigSnapshot: { id: string; payload: UpsertEvaluationConfigDto } | undefined;
@@ -118,6 +146,7 @@ export function useTestCasePersistence() {
 		try {
 			const ensured = await ensureDataTable(tableName, projectId, requiredColumns);
 			if (ensured.created) createdTableId = ensured.id;
+			else addedColumns = { tableId: ensured.id, columnIds: ensured.addedColumnIds };
 
 			const row: DataTableRow = {};
 			for (const name of inputNames) row[name] = wizardStore.inputs[name] ?? '';
@@ -193,6 +222,7 @@ export function useTestCasePersistence() {
 		} catch (error) {
 			await rollback(projectId, workflowId, {
 				createdTableId,
+				addedColumns,
 				rowMutation,
 				createdConfigId,
 				priorConfigSnapshot,
@@ -207,81 +237,56 @@ export function useTestCasePersistence() {
 	 * been run yet. When `silent`, failures (e.g. node not yet chosen) are
 	 * swallowed — suitable for debounced auto-save.
 	 */
-	async function saveCase(opts?: { silent?: boolean }): Promise<boolean> {
-		// A save already in flight: don't drop this edit — flag a follow-up pass so
-		// the latest store values get persisted once the current one settles. This
-		// call returns false (it didn't persist), but the re-run reads up-to-date
-		// store state, so a rapid edit isn't lost when navigating away.
-		if (isPersisting.value) {
-			saveRerunRequested = true;
+	async function doSaveCase(opts?: { silent?: boolean }): Promise<boolean> {
+		const result = await persistCase();
+		if (!result.ok) {
+			if (!opts?.silent) showPersistError(result.error);
 			return false;
 		}
-		isPersisting.value = true;
-		// About to snapshot the current state; only a request raised from here on
-		// is a genuine follow-up, so clear any stale flag left by a prior run.
-		saveRerunRequested = false;
-		try {
-			let result = await persistCase();
-			while (saveRerunRequested) {
-				saveRerunRequested = false;
-				result = await persistCase();
-			}
-			if (!result.ok) {
-				if (!opts?.silent) showPersistError(result.error);
-				return false;
-			}
-			return true;
-		} finally {
-			isPersisting.value = false;
-		}
+		return true;
 	}
 
 	/**
 	 * Persist the currently-edited test case and then dispatch a test run scoped
 	 * to that single row via `rowIndices`.
 	 */
-	async function persistAndRunCase(trigger: 'initial' | 'run_again' = 'initial'): Promise<boolean> {
-		if (isPersisting.value) return false;
-		isPersisting.value = true;
+	async function doPersistAndRunCase(
+		trigger: 'initial' | 'run_again' = 'initial',
+	): Promise<boolean> {
+		const result = await persistCase();
+		if (!result.ok) {
+			showPersistError(result.error);
+			return false;
+		}
 
+		const wf = workflowDocumentStore.value;
+		const workflowId = wf?.workflowId as string;
+		const { configId, resolvedIndex, isNewCase } = result;
+
+		// Don't roll back on dispatch failure — config is intact, retry is safe.
 		try {
-			const result = await persistCase();
-			if (!result.ok) {
-				showPersistError(result.error);
-				return false;
-			}
-
-			const wf = workflowDocumentStore.value;
-			const workflowId = wf?.workflowId as string;
-			const { configId, resolvedIndex, isNewCase } = result;
-
-			// Don't roll back on dispatch failure — config is intact, retry is safe.
-			try {
-				wizardStore.setActiveRunId(null);
-				const dispatched = await evaluationStore.startTestRun(workflowId, {
-					evaluationConfigId: configId,
-					compileFromConfig: true,
-					rowIndices: [resolvedIndex],
-				});
-				wizardStore.setActiveRunId(dispatched?.testRunId ?? null);
-				telemetry.track('User ran evaluation', {
-					workflow_id: workflowId,
-					run_id: dispatched?.testRunId ?? null,
-					row_index: resolvedIndex,
-					is_new_case: isNewCase,
-					trigger,
-					metric_count: wizardStore.selectedMetricKeys.length,
-					custom_check_count: wizardStore.customChecks.length,
-					slice_mode: wizardStore.isSliceMode,
-				});
-				await evaluationStore.fetchTestRuns(workflowId);
-				return true;
-			} catch (error) {
-				toast.showError(error, locale.baseText('evaluations.wizardSidepanel.step2.dispatchError'));
-				return false;
-			}
-		} finally {
-			isPersisting.value = false;
+			wizardStore.setActiveRunId(null);
+			const dispatched = await evaluationStore.startTestRun(workflowId, {
+				evaluationConfigId: configId,
+				compileFromConfig: true,
+				rowIndices: [resolvedIndex],
+			});
+			wizardStore.setActiveRunId(dispatched?.testRunId ?? null);
+			telemetry.track('User ran evaluation', {
+				workflow_id: workflowId,
+				run_id: dispatched?.testRunId ?? null,
+				row_index: resolvedIndex,
+				is_new_case: isNewCase,
+				trigger,
+				metric_count: wizardStore.selectedMetricKeys.length,
+				custom_check_count: wizardStore.customChecks.length,
+				slice_mode: wizardStore.isSliceMode,
+			});
+			await evaluationStore.fetchTestRuns(workflowId);
+			return true;
+		} catch (error) {
+			toast.showError(error, locale.baseText('evaluations.wizardSidepanel.step2.dispatchError'));
+			return false;
 		}
 	}
 
@@ -292,7 +297,7 @@ export function useTestCasePersistence() {
 	 * When `silent`, failures (e.g. node not yet chosen) are swallowed — suitable
 	 * for debounced auto-save.
 	 */
-	async function saveConfig(opts?: { silent?: boolean }): Promise<string | null> {
+	async function doSaveConfig(opts?: { silent?: boolean }): Promise<string | null> {
 		const wf = workflowDocumentStore.value;
 		const projectId = wf?.homeProject?.id;
 		const workflowId = wf?.workflowId;
@@ -354,7 +359,7 @@ export function useTestCasePersistence() {
 	 * Picks the canonical config (by name) if present, else falls back to the
 	 * last config — same selection rule as `useWizardHydration`.
 	 */
-	async function runAll(): Promise<boolean> {
+	async function doRunAll(): Promise<boolean> {
 		const wf = workflowDocumentStore.value;
 		const workflowId = wf?.workflowId;
 		if (!workflowId) {
@@ -363,9 +368,10 @@ export function useTestCasePersistence() {
 		}
 
 		// Best-effort: persist any pending suite-config edits first so "Run all"
-		// uses the latest node + metrics. Non-blocking — falls back to the
-		// existing config if this can't run (e.g. node not resolvable here).
-		await saveConfig({ silent: true });
+		// uses the latest node + metrics. Runs inline (same queue slot) so it can't
+		// race a separate auto-save. Falls back to the existing config if it can't
+		// run (e.g. node not resolvable here).
+		await doSaveConfig({ silent: true });
 
 		let configId: string;
 		try {
@@ -410,15 +416,13 @@ export function useTestCasePersistence() {
 	 * table via the workflow's evaluation config and the row via `activeRowId`
 	 * (falling back to a lookup by `activeRowIndex`). Leaves the config untouched.
 	 */
-	async function deleteCase(): Promise<boolean> {
-		if (isPersisting.value) return false;
+	async function doDeleteCase(): Promise<boolean> {
 		const wf = workflowDocumentStore.value;
 		const projectId = wf?.homeProject?.id;
 		const workflowId = wf?.workflowId;
 		const rowIndex = wizardStore.activeRowIndex;
 		if (!projectId || !workflowId || rowIndex === null) return false;
 
-		isPersisting.value = true;
 		try {
 			const configs = await listEvaluationConfigs(rootStore.restApiContext, workflowId);
 			const canonicalName = getCanonicalEvaluationName(wf.name);
@@ -447,9 +451,24 @@ export function useTestCasePersistence() {
 		} catch (error) {
 			showPersistError(error);
 			return false;
-		} finally {
-			isPersisting.value = false;
 		}
+	}
+
+	// Public entry points — each queues its core through the shared serializer.
+	async function saveCase(opts?: { silent?: boolean }): Promise<boolean> {
+		return await enqueue(async () => await doSaveCase(opts));
+	}
+	async function persistAndRunCase(trigger: 'initial' | 'run_again' = 'initial'): Promise<boolean> {
+		return await enqueue(async () => await doPersistAndRunCase(trigger));
+	}
+	async function saveConfig(opts?: { silent?: boolean }): Promise<string | null> {
+		return await enqueue(async () => await doSaveConfig(opts));
+	}
+	async function runAll(): Promise<boolean> {
+		return await enqueue(async () => await doRunAll());
+	}
+	async function deleteCase(): Promise<boolean> {
+		return await enqueue(async () => await doDeleteCase());
 	}
 
 	return { persistAndRunCase, saveCase, runAll, saveConfig, deleteCase, isPersisting };

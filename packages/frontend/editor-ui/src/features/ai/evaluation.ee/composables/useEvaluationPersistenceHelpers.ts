@@ -10,6 +10,7 @@ import {
 	addDataTableColumnApi,
 	createDataTableApi,
 	deleteDataTableApi,
+	deleteDataTableColumnApi,
 	deleteDataTableRowsApi,
 	fetchDataTablesApi,
 	updateDataTableRowsApi,
@@ -34,6 +35,10 @@ export type RowMutation =
 // Everything a persist may have mutated, captured for rollback on failure.
 export type RollbackState = {
 	createdTableId?: string;
+	// Columns added to a pre-existing table (id + table). Dropped on rollback so a
+	// failed save doesn't permanently widen the table's schema. Irrelevant when
+	// `createdTableId` is set — deleting the table already removes them.
+	addedColumns?: { tableId: string; columnIds: string[] };
 	rowMutation?: RowMutation;
 	createdConfigId?: string;
 	priorConfigSnapshot?: { id: string; payload: UpsertEvaluationConfigDto };
@@ -43,7 +48,12 @@ export type EnsureConfigResult =
 	| { created: true; id: string }
 	| { created: false; id: string; priorPayload: UpsertEvaluationConfigDto };
 
-export type EnsureDataTableResult = { id: string; created: boolean };
+export type EnsureDataTableResult = {
+	id: string;
+	created: boolean;
+	// Ids of columns added to a pre-existing table this call (empty when created).
+	addedColumnIds: string[];
+};
 
 export type SliceResolution =
 	| { ok: true; upstreamNodeName: string; startNodeName: string; endNodeName: string }
@@ -129,10 +139,17 @@ export function useEvaluationPersistenceHelpers() {
 		if (existing) {
 			const have = new Set(existing.columns.map((c) => c.name));
 			const missing = required.filter((c) => !have.has(c.name));
+			const addedColumnIds: string[] = [];
 			for (const column of missing) {
-				await addDataTableColumnApi(rootStore.restApiContext, existing.id, projectId, column);
+				const added = await addDataTableColumnApi(
+					rootStore.restApiContext,
+					existing.id,
+					projectId,
+					column,
+				);
+				addedColumnIds.push(added.id);
 			}
-			return { id: existing.id, created: false };
+			return { id: existing.id, created: false, addedColumnIds };
 		}
 
 		const created = await createDataTableApi(
@@ -141,7 +158,7 @@ export function useEvaluationPersistenceHelpers() {
 			projectId,
 			required,
 		);
-		return { id: created.id, created: true };
+		return { id: created.id, created: true, addedColumnIds: [] };
 	}
 
 	/**
@@ -209,6 +226,23 @@ export function useEvaluationPersistenceHelpers() {
 					);
 				} catch (error) {
 					logRollbackFailure('restore prior data table row', error);
+				}
+			}
+		}
+		// Drop any columns this save added to a pre-existing table so a failure
+		// doesn't leave the schema permanently widened. Skipped when the whole
+		// table was deleted above (those columns went with it).
+		if (!tableDeleted && state.addedColumns) {
+			for (const columnId of state.addedColumns.columnIds) {
+				try {
+					await deleteDataTableColumnApi(
+						rootStore.restApiContext,
+						state.addedColumns.tableId,
+						projectId,
+						columnId,
+					);
+				} catch (error) {
+					logRollbackFailure('delete added data table column', error);
 				}
 			}
 		}

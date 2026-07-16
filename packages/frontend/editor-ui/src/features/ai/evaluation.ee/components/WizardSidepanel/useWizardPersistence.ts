@@ -100,6 +100,7 @@ export function useWizardPersistence() {
 		const tableName = getCanonicalEvaluationName(wf.name);
 		const configName = tableName;
 		let createdTableId: string | undefined;
+		let addedColumns: { tableId: string; columnIds: string[] } | undefined;
 		let rowMutation: RowMutation | undefined;
 		let createdConfigId: string | undefined;
 		let priorConfigSnapshot: { id: string; payload: UpsertEvaluationConfigDto } | undefined;
@@ -109,6 +110,7 @@ export function useWizardPersistence() {
 		try {
 			const ensured = await ensureDataTable(tableName, projectId, requiredColumns);
 			if (ensured.created) createdTableId = ensured.id;
+			else addedColumns = { tableId: ensured.id, columnIds: ensured.addedColumnIds };
 
 			const row: DataTableRow = {};
 			for (const name of inputNames) row[name] = wizardStore.inputs[name] ?? '';
@@ -170,6 +172,7 @@ export function useWizardPersistence() {
 		} catch (error) {
 			await rollback(projectId, workflowId, {
 				createdTableId,
+				addedColumns,
 				rowMutation,
 				createdConfigId,
 				priorConfigSnapshot,

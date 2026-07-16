@@ -44,6 +44,7 @@ const { mocks } = vi.hoisted(() => ({
 		createDataTableApi: vi.fn(),
 		addDataTableColumnApi: vi.fn(),
 		deleteDataTableApi: vi.fn(),
+		deleteDataTableColumnApi: vi.fn(),
 		getDataTableRowsApi: vi.fn(),
 		insertDataTableRowApi: vi.fn(),
 		updateDataTableRowsApi: vi.fn(),
@@ -160,6 +161,7 @@ vi.mock('@/features/core/dataTable/dataTable.api', () => ({
 	createDataTableApi: (...args: unknown[]) => mocks.createDataTableApi(...args),
 	addDataTableColumnApi: (...args: unknown[]) => mocks.addDataTableColumnApi(...args),
 	deleteDataTableApi: (...args: unknown[]) => mocks.deleteDataTableApi(...args),
+	deleteDataTableColumnApi: (...args: unknown[]) => mocks.deleteDataTableColumnApi(...args),
 	getDataTableRowsApi: (...args: unknown[]) => mocks.getDataTableRowsApi(...args),
 	insertDataTableRowApi: (...args: unknown[]) => mocks.insertDataTableRowApi(...args),
 	updateDataTableRowsApi: (...args: unknown[]) => mocks.updateDataTableRowsApi(...args),
@@ -301,6 +303,9 @@ describe('useTestCasePersistence', () => {
 		mocks.fieldNames = ['input'];
 		mocks.setActiveRow.mockReset();
 		mocks.setActiveRunId.mockReset();
+		// `ensureDataTable` now reads the created column's id (for rollback), so the
+		// add-column mock must return a column shape like the real API does.
+		mocks.addDataTableColumnApi.mockResolvedValue({ id: 'col-added', name: 'col', type: 'string' });
 	});
 
 	// -----------------------------------------------------------------------
@@ -585,15 +590,16 @@ describe('useTestCasePersistence', () => {
 	});
 
 	// -----------------------------------------------------------------------
-	// Guard: isPersisting prevents concurrent calls
+	// Serialized persistence queue: ops run one at a time, none dropped
 	// -----------------------------------------------------------------------
 
-	describe('isPersisting guard', () => {
-		it('returns false immediately when already persisting', async () => {
+	describe('serialized persistence queue', () => {
+		it('runs a run requested during an in-flight op after it, instead of dropping it', async () => {
 			setupHappyPath();
 			mocks.activeRowIndex = null;
 
-			// Make getDataTableRowsApi hang so isPersisting stays true
+			// Hang the first op at the row-count lookup so a second op arrives while
+			// it's still running.
 			let resolveHang!: () => void;
 			mocks.getDataTableRowsApi.mockReturnValue(
 				new Promise<{ data: unknown[]; count: number }>((resolve) => {
@@ -604,19 +610,18 @@ describe('useTestCasePersistence', () => {
 
 			const { persistAndRunCase, isPersisting } = useTestCasePersistence();
 
-			// Start first call (will hang at getDataTableRowsApi)
 			const first = persistAndRunCase('initial');
-			// Tiny tick to enter the async function
+			const second = persistAndRunCase('initial');
 			await Promise.resolve();
 			expect(isPersisting.value).toBe(true);
+			// The second is queued behind the hung first — neither has dispatched.
+			expect(mocks.startTestRun).not.toHaveBeenCalled();
 
-			// Second call should be rejected immediately
-			const second = await persistAndRunCase('initial');
-			expect(second).toBe(false);
-
-			// Clean up the hanging promise
 			resolveHang();
-			await first;
+			expect(await first).toBe(true);
+			expect(await second).toBe(true);
+			// Both dispatched: a click during an in-flight op isn't silently dropped.
+			expect(mocks.startTestRun).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -678,14 +683,14 @@ describe('useTestCasePersistence', () => {
 		});
 	});
 
-	describe('saveCase coalescing', () => {
-		it('re-runs the persist once when a save is requested mid-flight, not dropping the edit', async () => {
+	describe('serialized saves', () => {
+		it('does not drop a save requested while another save is in flight', async () => {
 			setupHappyPath();
 			mocks.activeRowIndex = null;
 			mocks.getDataTableRowsApi.mockResolvedValue({ data: [], count: 0 });
 			mocks.insertDataTableRowApi.mockResolvedValue([{ id: 0 }]);
 
-			// Hang the first persist at the data-table lookup; release it on demand.
+			// Hang the first save at the data-table lookup; release it on demand.
 			let releaseFirst!: () => void;
 			let calls = 0;
 			mocks.fetchDataTablesApi.mockImplementation(async () => {
@@ -704,16 +709,45 @@ describe('useTestCasePersistence', () => {
 			const { saveCase } = useTestCasePersistence();
 
 			const first = saveCase({ silent: true });
-			// A second edit lands while the first save is still in flight.
-			const second = await saveCase({ silent: true });
-			// The guard returns false, but the edit is not lost — a re-run is queued.
-			expect(second).toBe(false);
+			// A second edit lands while the first save is still in flight; it queues.
+			const second = saveCase({ silent: true });
 
+			// The first op runs on the queue's microtask; wait until it reaches the
+			// hung table lookup before releasing it.
+			await vi.waitFor(() => expect(releaseFirst).toBeInstanceOf(Function));
 			releaseFirst();
 			expect(await first).toBe(true);
+			expect(await second).toBe(true);
 
-			// The queued re-run means the persist flow executed twice in total.
+			// Both saves ran — the later edit wasn't dropped by a busy guard.
 			expect(mocks.insertDataTableRowApi).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('rollback', () => {
+		it('drops a column added to an existing table when the save fails', async () => {
+			setupHappyPath();
+			mocks.activeRowIndex = null;
+			mocks.getDataTableRowsApi.mockResolvedValue({ data: [], count: 0 });
+			mocks.insertDataTableRowApi.mockResolvedValue([{ id: 0 }]);
+			// 'caseName' is missing from the existing table, so it gets added.
+			mocks.addDataTableColumnApi.mockResolvedValue({ id: 'col-added', name: 'caseName' });
+			// Config creation fails after the column + row were written → rollback.
+			mocks.createEvaluationConfig.mockRejectedValue(new Error('config failed'));
+
+			const { saveCase } = useTestCasePersistence();
+			const ok = await saveCase({ silent: true });
+
+			expect(ok).toBe(false);
+			// The column added to the pre-existing table is removed again.
+			expect(mocks.deleteDataTableColumnApi).toHaveBeenCalledWith(
+				mocks.restApiContext,
+				'tbl-1',
+				'proj-456',
+				'col-added',
+			);
+			// The inserted row is rolled back too (the table itself pre-existed).
+			expect(mocks.deleteDataTableRowsApi).toHaveBeenCalled();
 		});
 	});
 

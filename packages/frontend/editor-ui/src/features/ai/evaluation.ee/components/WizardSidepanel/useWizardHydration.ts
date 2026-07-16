@@ -98,7 +98,11 @@ export function useWizardHydration() {
 			if (isStale()) return;
 			await restoreLastRun(workflowId, isStale);
 		} catch (error) {
-			toast.showError(error, locale.baseText('evaluations.wizardSidepanel.hydrate.error'));
+			// A failure for a workflow the user already navigated away from must not
+			// surface a toast on the now-active workflow.
+			if (!isStale()) {
+				toast.showError(error, locale.baseText('evaluations.wizardSidepanel.hydrate.error'));
+			}
 		} finally {
 			isHydrating.value = false;
 		}

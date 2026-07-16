@@ -159,6 +159,28 @@ describe('useWizardHydration', () => {
 		expect(mocks.listEvaluationConfigs).toHaveBeenCalledTimes(2);
 	});
 
+	it('toasts a hydration failure for the still-active workflow', async () => {
+		mocks.listEvaluationConfigs.mockRejectedValue(new Error('boom'));
+
+		const { hydrate } = useWizardHydration();
+		await hydrate();
+
+		expect(mocks.showError).toHaveBeenCalled();
+	});
+
+	it('does not toast a hydration failure for a workflow the user already left', async () => {
+		// The request rejects, but by then the active workflow has changed.
+		mocks.listEvaluationConfigs.mockImplementation(async () => {
+			mocks.workflowId = 'other-workflow-id';
+			throw new Error('boom');
+		});
+
+		const { hydrate } = useWizardHydration();
+		await hydrate();
+
+		expect(mocks.showError).not.toHaveBeenCalled();
+	});
+
 	it('discards hydration results when the workflow switches mid-flight', async () => {
 		// The active workflow changes while the config request is in flight.
 		mocks.listEvaluationConfigs.mockImplementation(async () => {

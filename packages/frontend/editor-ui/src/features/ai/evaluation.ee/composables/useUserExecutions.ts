@@ -17,27 +17,61 @@ export function isUserExecution(execution: { mode?: string; id?: unknown }): boo
  * surfaces that seed test cases from a prior run apply the same "successful,
  * non-evaluation" rule instead of re-deriving it.
  */
+// Cap on how many pages we walk looking for user executions. The list endpoint
+// pages ~10 at a time, so this covers ~200 recent runs — enough to look past a
+// streak of evaluation runs without unbounded paging on a huge history.
+const MAX_PAGES = 20;
+
 export function useUserExecutions() {
 	const executionsStore = useExecutionsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
+	// Walk successful executions newest-first, one page at a time via `lastId`,
+	// invoking `onPage` until it returns a value or the history is exhausted.
+	// Evaluation runs can fill many pages, so a single page isn't enough to know
+	// whether a user run exists.
+	async function scanUserExecutions<T>(
+		onPage: (users: ExecutionSummary[]) => T | undefined,
+	): Promise<T | undefined> {
+		const workflowId = workflowDocumentStore.value?.workflowId;
+		if (!workflowId) return undefined;
+		let lastId: string | undefined;
+		let seen = 0;
+		for (let page = 0; page < MAX_PAGES; page++) {
+			const list = await executionsStore.fetchExecutions(
+				{ status: ['success'], workflowId },
+				lastId,
+			);
+			const rows = list.results;
+			if (rows.length === 0) return undefined;
+			seen += rows.length;
+			const hit = onPage(rows.filter(isUserExecution));
+			if (hit !== undefined) return hit;
+			const oldest = rows[rows.length - 1]?.id;
+			// Consumed the whole history, no total to page against, or no cursor to
+			// advance — stop.
+			if (!list.count || seen >= list.count || !oldest || oldest === lastId) return undefined;
+			lastId = oldest;
+		}
+		return undefined;
+	}
+
 	/** Successful, non-evaluation executions for the workflow (newest first). */
 	async function fetchUserExecutionCandidates(limit?: number): Promise<ExecutionSummary[]> {
-		const workflowId = workflowDocumentStore.value?.workflowId;
-		if (!workflowId) return [];
-		const list = await executionsStore.fetchExecutions({ status: ['success'], workflowId });
-		const candidates = list.results.filter(isUserExecution);
-		return limit === undefined ? candidates : candidates.slice(0, limit);
+		const collected: ExecutionSummary[] = [];
+		await scanUserExecutions((users) => {
+			collected.push(...users);
+			// Stop once we have enough to satisfy the caller's limit.
+			return limit !== undefined && collected.length >= limit ? true : undefined;
+		});
+		return limit === undefined ? collected : collected.slice(0, limit);
 	}
 
 	/** The most recent user execution, fully loaded — or null when there is none. */
 	async function fetchLatestUserExecution(): Promise<IExecutionResponse | null> {
-		const workflowId = workflowDocumentStore.value?.workflowId;
-		if (!workflowId) return null;
-		const list = await executionsStore.fetchExecutions({ status: ['success'], workflowId });
-		const candidate = list.results.find(isUserExecution);
-		if (!candidate?.id) return null;
-		return (await executionsStore.fetchExecution(candidate.id)) ?? null;
+		const candidateId = await scanUserExecutions((users) => users[0]?.id);
+		if (!candidateId) return null;
+		return (await executionsStore.fetchExecution(candidateId)) ?? null;
 	}
 
 	return { fetchUserExecutionCandidates, fetchLatestUserExecution };
