@@ -150,6 +150,7 @@ export class McpService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
@@ -238,7 +239,7 @@ export class McpService {
 		const builderInstructionsEnabled =
 			builderEnabled &&
 			(allowedToolNames?.has(MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName) ?? true);
-		const agentsEnabled = builderEnabled && Container.get(ModuleRegistry).isActive('agents');
+		const agentsEnabled = builderEnabled && this.moduleRegistry.isActive('agents');
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',

@@ -27,7 +27,8 @@ import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repo
 import { streamAgentChunks } from '../utils/agent-stream';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { buildBuilderPrompt } from './agents-builder-prompts';
-import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
+import { AgentsBuilderToolsService } from './agents-builder-tools.service';
+import { getAgentConfigHash } from '../utils/agent-config-hash';
 import { BuilderCheckpointUnavailableError } from './errors';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';

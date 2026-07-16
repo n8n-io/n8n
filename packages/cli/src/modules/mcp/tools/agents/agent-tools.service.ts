@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CredentialProvider, McpClient } from '@n8n/agents';
+import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_MODEL_PROVIDERS,
 	AgentIntegrationSchema,
@@ -8,6 +8,7 @@ import {
 	McpAuthenticationSchemaTypes,
 	agentSkillSchema,
 	agentTaskSchema,
+	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
@@ -20,7 +21,6 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
@@ -31,12 +31,15 @@ import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
+import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
-import { buildMcpClientForServer } from '@/modules/agents/json-config/mcp-client-factory';
+import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
+import { listMcpServerTools } from '@/modules/agents/json-config/mcp-client-factory';
 import { filterOfferedAgentModelProviders } from '@/modules/agents/model-catalog';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
+import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -386,7 +389,7 @@ export class McpAgentToolsService {
 							configHash = getAgentConfigHash(result.config);
 							versionId = result.versionId;
 						} else {
-							configHash = await this.getAgentConfigHash(projectId, agent.id);
+							configHash = await this.fetchConfigHash(projectId, agent.id);
 						}
 					} catch (error) {
 						await this.agentsService.delete(agent.id, projectId);
@@ -432,7 +435,8 @@ export class McpAgentToolsService {
 					{ projectId: input.projectId, agentId: input.agentId, type: input.operation.type },
 					async () => {
 						await this.assertScope(user, input.projectId, 'agent:update');
-						const configHash = await this.getAgentConfigHash(input.projectId, input.agentId);
+						const config = await this.agentConfigService.getConfig(input.agentId, input.projectId);
+						const configHash = getAgentConfigHash(config);
 						if (configHash !== input.baseConfigHash) {
 							return {
 								ok: false,
@@ -443,12 +447,14 @@ export class McpAgentToolsService {
 							};
 						}
 
-						const resource = await this.applyMutation(user, input);
+						const { resource, config: newConfig } = await this.applyMutation(user, input, config);
 						return {
 							ok: true,
 							agentId: input.agentId,
 							operation: input.operation.type,
-							configHash: await this.getAgentConfigHash(input.projectId, input.agentId),
+							configHash: newConfig
+								? getAgentConfigHash(newConfig)
+								: await this.fetchConfigHash(input.projectId, input.agentId),
 							...(resource ? { resource } : {}),
 						};
 					},
@@ -666,7 +672,7 @@ export class McpAgentToolsService {
 			config: {
 				description:
 					'Return the required reference for Agent configuration and mutate_agent operations. Read before building an Agent.',
-				inputSchema: {},
+				inputSchema: emptyInput,
 				annotations: {
 					title: 'Get Agent Builder Reference',
 					readOnlyHint: true,
@@ -692,22 +698,21 @@ export class McpAgentToolsService {
 
 	private async listAgentsForUser(user: User) {
 		const agents = await this.agentsService.findByUser(user.id);
-		const allowedProjects = new Set<string>();
-		for (const projectId of new Set(agents.map((agent) => agent.projectId))) {
-			if (await userHasScopes(user, ['agent:list'], false, { projectId })) {
-				allowedProjects.add(projectId);
-			}
-		}
+		const projectIds = [...new Set(agents.map((agent) => agent.projectId))];
+		const allowed = await Promise.all(
+			projectIds.map(
+				async (projectId) => await userHasScopes(user, ['agent:list'], false, { projectId }),
+			),
+		);
+		const allowedProjects = new Set(projectIds.filter((_, index) => allowed[index]));
 		return agents.filter((agent) => allowedProjects.has(agent.projectId));
 	}
 
 	private async getAgentSnapshot(user: User, projectId: string, agentId: string) {
-		const agent = await this.agentsService.findById(agentId, projectId);
-		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
-
+		const agent = await this.getAgentOrThrow(agentId, projectId);
+		const config = this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
-		const [config, runnable, skills, tasks] = await Promise.all([
-			this.agentConfigService.getConfig(agentId, projectId),
+		const [runnable, skills, tasks] = await Promise.all([
 			this.agentValidationService.validateAgentIsRunnable(agentId, projectId, credentialProvider),
 			this.agentSkillsService.listSkills(agentId, projectId),
 			this.agentTaskService.list(agentId),
@@ -739,25 +744,49 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private async getAgentConfigHash(projectId: string, agentId: string) {
+	private async fetchConfigHash(projectId: string, agentId: string) {
 		return getAgentConfigHash(await this.agentConfigService.getConfig(agentId, projectId));
+	}
+
+	private async getAgentOrThrow(agentId: string, projectId: string): Promise<Agent> {
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
+		return agent;
+	}
+
+	private configFromEntity(agent: Agent): AgentJsonConfig {
+		const config = composeJsonConfig(agent);
+		if (!config) throw new UserError('Agent has no JSON config yet.');
+		return config;
 	}
 
 	private getAgentUrl(projectId: string, agentId: string) {
 		return `${this.urlService.getInstanceBaseUrl()}/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}`;
 	}
 
+	/**
+	 * Applies one mutation against the stale-checked `config`. Returns the
+	 * post-mutation config when the mutation itself produced it; the caller
+	 * re-fetches otherwise (sidecar services update config references
+	 * internally).
+	 */
 	private async applyMutation(
 		user: User,
 		input: MutateAgentInput,
-	): Promise<MutationResource | undefined> {
+		config: AgentJsonConfig,
+	): Promise<{ resource?: MutationResource; config?: AgentJsonConfig }> {
 		const { projectId, agentId, operation } = input;
 		switch (operation.type) {
-			case 'config.replace':
-				await this.agentConfigService.updateConfig(agentId, projectId, operation.config, user);
-				return;
+			case 'config.replace': {
+				const result = await this.agentConfigService.updateConfig(
+					agentId,
+					projectId,
+					operation.config,
+					user,
+				);
+				return { config: result.config };
+			}
 			case 'config.patch': {
-				const config = await this.agentConfigService.getConfig(agentId, projectId);
 				const jsonpatch = (await import('fast-json-patch')).default;
 				const patchError = jsonpatch.validate(operation.patch, config);
 				if (patchError) throw new UserError(patchError.message ?? 'Invalid JSON patch');
@@ -765,8 +794,13 @@ export class McpAgentToolsService {
 					jsonpatch.deepClone(config),
 					operation.patch,
 				).newDocument;
-				await this.agentConfigService.updateConfig(agentId, projectId, patched, user);
-				return;
+				const result = await this.agentConfigService.updateConfig(
+					agentId,
+					projectId,
+					patched,
+					user,
+				);
+				return { config: result.config };
 			}
 			case 'skill.upsert':
 				if (operation.skillId) {
@@ -776,18 +810,18 @@ export class McpAgentToolsService {
 						operation.skillId,
 						operation.skill,
 					);
-					return { type: 'skill', id: result.id };
+					return { resource: { type: 'skill', id: result.id } };
 				} else {
 					const result = await this.agentSkillsService.createAndAttachSkill(
 						agentId,
 						projectId,
 						operation.skill,
 					);
-					return { type: 'skill', id: result.id };
+					return { resource: { type: 'skill', id: result.id } };
 				}
 			case 'skill.delete':
 				await this.agentSkillsService.deleteSkill(agentId, projectId, operation.skillId);
-				return { type: 'skill', id: operation.skillId };
+				return { resource: { type: 'skill', id: operation.skillId } };
 			case 'task.upsert':
 				if (operation.taskId) {
 					const result = await this.agentTaskService.update(
@@ -804,17 +838,17 @@ export class McpAgentToolsService {
 							operation.enabled,
 						);
 					}
-					return { type: 'task', id: result.id };
+					return { resource: { type: 'task', id: result.id } };
 				} else {
 					const result = await this.agentTaskService.create(agentId, {
 						...operation.task,
 						enabled: operation.enabled ?? true,
 					});
-					return { type: 'task', id: result.id };
+					return { resource: { type: 'task', id: result.id } };
 				}
 			case 'task.delete':
 				await this.agentTaskService.delete(agentId, operation.taskId);
-				return { type: 'task', id: operation.taskId };
+				return { resource: { type: 'task', id: operation.taskId } };
 			case 'customTool.upsert': {
 				const descriptor = await this.agentSecureRuntime.describeToolSecurely(operation.code);
 				const built = await this.agentCustomToolsService.buildCustomTool(
@@ -823,16 +857,20 @@ export class McpAgentToolsService {
 					operation.code,
 					descriptor,
 				);
-				const config = await this.agentConfigService.getConfig(agentId, projectId);
-				if (!(config.tools ?? []).some((tool) => tool.type === 'custom' && tool.id === built.id)) {
-					config.tools = [...(config.tools ?? []), { type: 'custom', id: built.id }];
-					await this.agentConfigService.updateConfig(agentId, projectId, config, user);
+				if ((config.tools ?? []).some((tool) => tool.type === 'custom' && tool.id === built.id)) {
+					return { resource: { type: 'customTool', id: built.id }, config };
 				}
-				return { type: 'customTool', id: built.id };
+				const result = await this.agentConfigService.updateConfig(
+					agentId,
+					projectId,
+					{ ...config, tools: [...(config.tools ?? []), { type: 'custom', id: built.id }] },
+					user,
+				);
+				return { resource: { type: 'customTool', id: built.id }, config: result.config };
 			}
 			case 'customTool.delete':
 				await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, operation.toolId);
-				return { type: 'customTool', id: operation.toolId };
+				return { resource: { type: 'customTool', id: operation.toolId } };
 		}
 	}
 
@@ -855,18 +893,20 @@ export class McpAgentToolsService {
 	}
 
 	private async validateAgent(user: User, projectId: string, agentId: string) {
-		const agent = await this.agentsService.findById(agentId, projectId);
-		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
-		const config = await this.agentConfigService.getConfig(agentId, projectId);
+		const agent = await this.getAgentOrThrow(agentId, projectId);
+		const config = this.configFromEntity(agent);
+		const credentialProvider = this.credentialProvider(user, projectId);
+		// Serve validateAgentIsRunnable's lazy list() from the same single query.
+		const credentialsPromise = credentialProvider.list();
+		const cachedProvider: CredentialProvider = {
+			list: async () => await credentialsPromise,
+			resolve: async (credentialId) => await credentialProvider.resolve(credentialId),
+		};
 		const [schema, runnable, tasks, credentials] = await Promise.all([
 			this.agentConfigService.validateConfig(config),
-			this.agentValidationService.validateAgentIsRunnable(
-				agentId,
-				projectId,
-				this.credentialProvider(user, projectId),
-			),
+			this.agentValidationService.validateAgentIsRunnable(agentId, projectId, cachedProvider),
 			this.agentTaskService.list(agentId),
-			this.credentialProvider(user, projectId).list(),
+			credentialsPromise,
 		]);
 		const errors = schema.valid ? [] : [schema.error];
 		const missing = [...runnable.missing];
@@ -941,75 +981,67 @@ export class McpAgentToolsService {
 			if (!input.credential) {
 				throw new UserError('credential is required when authentication is not none');
 			}
-			const credential = (await credentialProvider.list()).find(
-				(item) => item.id === input.credential,
-			);
-			if (!credential) throw new UserError('Credential not found or not accessible');
+			await this.requireAccessibleCredential(credentialProvider, input.credential);
 		}
 
-		let client: McpClient | undefined;
-		try {
-			client = await buildMcpClientForServer(
-				{
-					name: input.name,
-					url: input.url,
-					transport: input.transport,
-					authentication: input.authentication,
-					credential: input.credential,
-					...(input.connectionTimeoutMs !== undefined
-						? { connectionTimeoutMs: input.connectionTimeoutMs }
-						: {}),
-				},
-				{
-					credentialProvider,
-					oauthService: this.oauthService,
-					projectId: input.projectId,
-					proxyFetch: createAiMcpFetch(
-						this.outboundHttp,
-						this.ssrfConfig,
-						this.ssrfProtectionService,
-					),
-				},
-			);
-			const tools = await client.listTools();
-			return {
-				ok: true,
-				tools: tools.map((tool) => ({ name: tool.name, description: tool.description ?? '' })),
-			};
-		} finally {
-			await client?.close().catch(() => {});
-		}
+		const tools = await listMcpServerTools(
+			{
+				name: input.name,
+				url: input.url,
+				transport: input.transport,
+				authentication: input.authentication,
+				credential: input.credential,
+				...(input.connectionTimeoutMs !== undefined
+					? { connectionTimeoutMs: input.connectionTimeoutMs }
+					: {}),
+			},
+			{
+				credentialProvider,
+				oauthService: this.oauthService,
+				projectId: input.projectId,
+				proxyFetch: createAiMcpFetch(
+					this.outboundHttp,
+					this.ssrfConfig,
+					this.ssrfProtectionService,
+				),
+			},
+		);
+		return { ok: true, tools };
 	}
 
 	private async updateIntegration(user: User, input: UpdateIntegrationInput) {
 		await this.assertScope(user, input.projectId, 'agent:update');
-		const agent = await this.agentsService.findById(input.agentId, input.projectId);
-		if (!agent) throw new UserError(`Agent "${input.agentId}" not found`);
+		const agent = await this.getAgentOrThrow(input.agentId, input.projectId);
+		return input.action === 'disconnect'
+			? await this.disconnectIntegration(input, agent)
+			: await this.connectIntegration(user, input, agent);
+	}
 
-		if (input.action === 'disconnect') {
-			const integration = (agent.integrations ?? []).find(
-				(item) => item.type === input.type && item.credentialId === input.credentialId,
+	private async disconnectIntegration(input: UpdateIntegrationInput, agent: Agent) {
+		const integration = (agent.integrations ?? []).find(
+			(item) => item.type === input.type && item.credentialId === input.credentialId,
+		);
+		if (integration) {
+			await this.chatIntegrationService.disconnectChannel(input.agentId, integration);
+			await this.integrationPersistenceService.removeCredentialIntegration(
+				agent,
+				input.type,
+				input.credentialId,
+				{ broadcast: false },
 			);
-			if (integration) {
-				await this.chatIntegrationService.disconnectChannel(input.agentId, integration);
-				await this.integrationPersistenceService.removeCredentialIntegration(
-					agent,
-					input.type,
-					input.credentialId,
-					{ broadcast: false },
-				);
-			}
-			return {
-				ok: true,
-				agentId: input.agentId,
-				integration: { type: input.type, credentialId: input.credentialId },
-				connected: false,
-				published: agent.activeVersionId !== null,
-				activeVersionId: agent.activeVersionId,
-				configHash: await this.getAgentConfigHash(input.projectId, input.agentId),
-			};
 		}
+		return {
+			ok: true,
+			agentId: input.agentId,
+			integration: { type: input.type, credentialId: input.credentialId },
+			connected: false,
+			published: agent.activeVersionId !== null,
+			activeVersionId: agent.activeVersionId,
+			configHash: await this.fetchConfigHash(input.projectId, input.agentId),
+		};
+	}
 
+	private async connectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
 		const candidate = {
 			type: input.type,
 			credentialId: input.credentialId,
@@ -1021,10 +1053,10 @@ export class McpAgentToolsService {
 			throw new UserError('Telegram integration settings are required');
 		}
 
-		const credential = (await this.credentialProvider(user, input.projectId).list()).find(
-			(item) => item.id === input.credentialId,
+		const credential = await this.requireAccessibleCredential(
+			this.credentialProvider(user, input.projectId),
+			input.credentialId,
 		);
-		if (!credential) throw new UserError('Credential not found or not accessible');
 		const implementation = this.chatIntegrationRegistry.require(parsed.data.type);
 		if (!implementation.credentialTypes.includes(credential.type)) {
 			throw new UserError(
@@ -1055,12 +1087,21 @@ export class McpAgentToolsService {
 			connected: true,
 			published: true,
 			activeVersionId: publishedAgent.activeVersionId,
-			configHash: await this.getAgentConfigHash(input.projectId, input.agentId),
+			configHash: await this.fetchConfigHash(input.projectId, input.agentId),
 		};
 	}
 
 	private credentialProvider(user: User, projectId: string): CredentialProvider {
-		return new AgentsCredentialProvider(this.credentialsService, projectId, user);
+		return createAgentCredentialProvider(this.credentialsService, projectId, user);
+	}
+
+	private async requireAccessibleCredential(
+		credentialProvider: CredentialProvider,
+		credentialId: string,
+	) {
+		const credential = (await credentialProvider.list()).find((item) => item.id === credentialId);
+		if (!credential) throw new UserError('Credential not found or not accessible');
+		return credential;
 	}
 
 	private async assertScope(user: User, projectId: string, scope: Scope): Promise<void> {

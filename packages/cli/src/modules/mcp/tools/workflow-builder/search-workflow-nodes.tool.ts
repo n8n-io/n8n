@@ -56,6 +56,8 @@ type SearchNodesInput = {
 	usage?: 'workflow' | 'agentTool';
 };
 
+// The SDK's inferred handler input marks optional zod fields as required
+// properties, so callers would have to pass `usage: undefined` explicitly.
 type SearchNodesCallback = ToolDefinition<typeof inputSchema>['handler'];
 type SearchNodesToolDefinition = Omit<ToolDefinition<typeof inputSchema>, 'handler'> & {
 	handler: (
@@ -88,7 +90,7 @@ export const createSearchWorkflowNodesTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ queries, usage }, _extra) => {
+	handler: async ({ queries, usage }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: CODE_BUILDER_SEARCH_NODES_TOOL.toolName,
@@ -102,11 +104,9 @@ export const createSearchWorkflowNodesTool = (
 							nodeFilter: (await import('@/modules/agents/agents-tools.service.js'))
 								.isAgentToolNodeType,
 						}
-					: undefined;
+					: {};
 			const [{ results, queriesWithNoResults }, availability] = await Promise.all([
-				options
-					? nodeCatalogService.searchNodes(queries, options)
-					: nodeCatalogService.searchNodes(queries),
+				nodeCatalogService.searchNodes(queries, options),
 				aiGatewayService.isAvailable(),
 			]);
 

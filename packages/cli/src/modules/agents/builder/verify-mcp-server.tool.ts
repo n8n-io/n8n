@@ -1,4 +1,4 @@
-import type { BuiltTool, CredentialProvider, McpClient } from '@n8n/agents';
+import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { McpAuthenticationSchemaTypes } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { OauthService } from '@/oauth/oauth.service';
 
 import { BUILDER_TOOLS } from './builder-tool-names';
-import { buildMcpClientForServer } from '../json-config/mcp-client-factory';
+import { listMcpServerTools } from '../json-config/mcp-client-factory';
 
 export interface VerifyMcpServerDeps {
 	credentialProvider: CredentialProvider;
@@ -69,9 +69,8 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 		)
 		.input(verifyMcpServerInputSchema)
 		.handler(async (input: VerifyMcpServerInput) => {
-			let client: McpClient | undefined;
 			try {
-				client = await buildMcpClientForServer(
+				const tools = await listMcpServerTools(
 					{
 						name: input.name,
 						url: input.url,
@@ -84,21 +83,12 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 					},
 					deps,
 				);
-				const tools = await client.listTools();
-				return {
-					ok: true,
-					tools: tools.map((t) => ({
-						name: t.name,
-						description: t.description ?? '',
-					})),
-				};
+				return { ok: true, tools };
 			} catch (error) {
 				return {
 					ok: false,
 					error: error instanceof Error ? error.message : String(error),
 				};
-			} finally {
-				await client?.close().catch(() => {});
 			}
 		})
 		.build();

@@ -1,4 +1,4 @@
-import { LicenseState, type Logger } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
@@ -113,6 +113,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowPublishedDataService),
 			mockInstance(SubworkflowPolicyChecker),
 			mockAiGatewayService(),
+			mockInstance(ModuleRegistry),
 		);
 	});
 
@@ -162,6 +163,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(ModuleRegistry),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -364,6 +366,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(ModuleRegistry),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -474,6 +477,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(ModuleRegistry),
 			);
 
 			const server = await service.getServer(user, false);
@@ -525,6 +529,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(ModuleRegistry),
 			);
 
 			const server = await service.getServer(user, false);
@@ -600,6 +605,7 @@ describe('McpService', () => {
 					mockInstance(WorkflowPublishedDataService),
 					mockInstance(SubworkflowPolicyChecker),
 					mockAiGatewayService(),
+					mockInstance(ModuleRegistry),
 				);
 			};
 

@@ -64,8 +64,6 @@ import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 
-export { getAgentConfigHash } from '../utils/agent-config-hash';
-
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
 	message:

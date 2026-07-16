@@ -29,15 +29,13 @@ import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
-import {
-	AgentsBuilderToolsService,
-	getAgentConfigHash,
-} from '../builder/agents-builder-tools.service';
+import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { getAgentConfigHash } from '../utils/agent-config-hash';
 import type { AiService } from '@/services/ai.service';
 
 const ctx = {
