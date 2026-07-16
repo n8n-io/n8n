@@ -519,7 +519,7 @@ export class WorkflowRunner {
 		};
 
 		if (!this.scalingService) {
-			const { ScalingService } = await import('@/scaling/scaling.service');
+			const { ScalingService } = await import('@/scaling/scaling.service.js');
 			this.scalingService = Container.get(ScalingService);
 			await this.scalingService.setupQueue();
 		}

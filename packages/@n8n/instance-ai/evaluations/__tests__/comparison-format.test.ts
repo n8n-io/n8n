@@ -256,6 +256,43 @@ describe('formatComparisonMarkdown', () => {
 		);
 	});
 
+	it('counts outcome expectations in no-baseline build-only summaries', () => {
+		const buildOnly = evaluation({
+			totalRuns: 1,
+			testCases: [
+				{
+					userText: 'Build an agent',
+					expectations: [
+						{ text: 'An agent was created', passes: [true] },
+						{ text: 'No workflow was built', passes: [true] },
+					],
+				},
+			],
+		});
+		const slugs = slugMap(buildOnly, ['build-only']);
+
+		const md = formatComparisonMarkdown(
+			buildOnly,
+			{ kind: 'no_baseline' },
+			{ slugByTestCase: slugs },
+		);
+		expect(md).toContain(
+			'**Aggregate**: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
+		);
+		expect(md).toMatch(/\| `build-only` \| CHECKED \| 2\/2 \|/);
+
+		const terminal = formatComparisonTerminal(
+			buildOnly,
+			{ kind: 'no_baseline' },
+			{
+				slugByTestCase: slugs,
+			},
+		);
+		expect(terminal).toContain(
+			'Aggregate: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
+		);
+	});
+
 	it('renders distinct alerts per skip reason', () => {
 		const noBase = formatComparisonMarkdown(evalFixture, { kind: 'no_baseline' });
 		expect(noBase).toMatch(/> \[!NOTE\]/);
@@ -755,14 +792,14 @@ describe('formatComparisonTerminal', () => {
 		const agentsEval = evaluation({
 			totalRuns: 1,
 			testCases: [
-					{
-						userText: 'workflow-scheduled-weather-and-agent',
-						buildSuccessCount: 0,
-						buildError: "Agent response: Here's the intent I'd detect",
-						expectations: [{ text: 'classifies the request intent', passes: [true] }],
-					},
-				],
-			});
+				{
+					userText: 'workflow-scheduled-weather-and-agent',
+					buildSuccessCount: 0,
+					buildError: "Agent response: Here's the intent I'd detect",
+					expectations: [{ text: 'classifies the request intent', passes: [true] }],
+				},
+			],
+		});
 
 		const out = formatComparisonTerminal(agentsEval);
 
@@ -775,17 +812,17 @@ describe('formatComparisonTerminal', () => {
 		const agentsEval = evaluation({
 			totalRuns: 1,
 			testCases: [
-					{
-						userText: 'workflow-scheduled-weather-and-agent',
-						buildSuccessCount: 0,
-						expectations: [
-							{ text: 'does not build', passes: [true] },
-							{ text: 'classifies weather as workflow', passes: [true] },
-							{ text: 'classifies support as agent', passes: [true] },
-							{ text: 'brief reasoning only', passes: [true] },
-						],
-					},
-				],
+				{
+					userText: 'workflow-scheduled-weather-and-agent',
+					buildSuccessCount: 0,
+					expectations: [
+						{ text: 'does not build', passes: [true] },
+						{ text: 'classifies weather as workflow', passes: [true] },
+						{ text: 'classifies support as agent', passes: [true] },
+						{ text: 'brief reasoning only', passes: [true] },
+					],
+				},
+			],
 		});
 
 		const out = formatComparisonTerminal(agentsEval);

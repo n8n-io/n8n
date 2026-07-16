@@ -37,7 +37,6 @@ import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
-import '@/controllers/dynamic-templates.controller';
 import '@/controllers/instance-ai-examples.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
@@ -101,10 +100,10 @@ export class Server extends AbstractServer {
 
 	async start() {
 		if (!this.globalConfig.endpoints.disableUi) {
-			const { FrontendService } = await import('@/services/frontend.service');
+			const { FrontendService } = await import('@/services/frontend.service.js');
 			this.frontendService = Container.get(FrontendService);
-			await import('@/controllers/module-settings.controller');
-			await import('@/controllers/third-party-licenses.controller');
+			await import('@/controllers/module-settings.controller.js');
+			await import('@/controllers/third-party-licenses.controller.js');
 		}
 
 		this.presetCredentialsLoaded = false;
@@ -125,29 +124,29 @@ export class Server extends AbstractServer {
 
 	private async registerAdditionalControllers() {
 		if (!inProduction && this.instanceSettings.isMultiMain) {
-			await import('@/controllers/debug.controller');
+			await import('@/controllers/debug.controller.js');
 		}
 
 		if (inE2ETests) {
-			await import('@/controllers/e2e.controller');
+			await import('@/controllers/e2e.controller.js');
 		}
 
 		if (isMfaFeatureEnabled()) {
 			await Container.get(MfaService).init();
-			await import('@/controllers/mfa.controller');
+			await import('@/controllers/mfa.controller.js');
 		}
 
 		if (!this.globalConfig.endpoints.disableUi) {
-			await import('@/controllers/cta.controller');
+			await import('@/controllers/cta.controller.js');
 		}
 
 		if (!this.globalConfig.tags.disabled) {
-			await import('@/controllers/tags.controller');
+			await import('@/controllers/tags.controller.js');
 		}
 
 		if (this.globalConfig.diagnostics.enabled) {
-			await import('@/controllers/telemetry.controller');
-			await import('@/controllers/posthog.controller');
+			await import('@/controllers/telemetry.controller.js');
+			await import('@/controllers/posthog.controller.js');
 		}
 
 		// ----------------------------------------
@@ -155,7 +154,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		try {
-			await import('@/environments.ee/variables/variables.controller.ee');
+			await import('@/environments.ee/variables/variables.controller.ee.js');
 		} catch (error) {
 			this.logger.warn(`Variables initialization failed: ${(error as Error).message}`);
 		}
@@ -163,7 +162,7 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (this.globalConfig.endpoints.metrics.enable) {
-			const { PrometheusMetricsService } = await import('@/metrics/prometheus');
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 			Container.get(PrometheusMetricsService).init(this.app);
 		}
 
@@ -216,7 +215,7 @@ export class Server extends AbstractServer {
 		push.setupPushHandler(restEndpoint, app);
 
 		if (push.isBidirectional) {
-			const { CollaborationService } = await import('@/collaboration/collaboration.service');
+			const { CollaborationService } = await import('@/collaboration/collaboration.service.js');
 
 			const collaborationService = Container.get(CollaborationService);
 			collaborationService.init();
@@ -227,7 +226,7 @@ export class Server extends AbstractServer {
 		}
 
 		if (this.globalConfig.executions.mode === 'queue') {
-			const { ScalingService } = await import('@/scaling/scaling.service');
+			const { ScalingService } = await import('@/scaling/scaling.service.js');
 			await Container.get(ScalingService).setupQueue();
 		}
 
@@ -503,7 +502,7 @@ export class Server extends AbstractServer {
 
 	private async initializeWorkflowIndexing() {
 		const { WorkflowIndexService } = await import(
-			'@/modules/workflow-index/workflow-index.service'
+			'@/modules/workflow-index/workflow-index.service.js'
 		);
 		Container.get(WorkflowIndexService).init();
 	}
