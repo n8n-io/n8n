@@ -1602,19 +1602,16 @@ export function useCanvasOperations() {
 					// We want to place the new node directly to the right of the last interacted with node.
 
 					let pushOffset = PUSH_NODES_OFFSET;
-					if (
+					if (isAgentNodeV2(lastInteractedWithNodeObject)) {
+						// The agent card is wider than a default node, so offset by its width
+						// to keep the standard gap to its right edge
+						pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+					} else if (
 						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
 						// If the node has scoped inputs, push it down a bit more
 						pushOffset += 140;
 					}
-					if (isAgentNodeV2(lastInteractedWithNodeObject)) {
-						// The agent card is much wider than the default node width baked
-						// into PUSH_NODES_OFFSET — advance by the extra width so the new
-						// node clears the card instead of landing on top of it.
-						pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
-					}
-
 					const measuredSourceHeight = isAgentNodeV2(lastInteractedWithNodeObject)
 						? agentNodeCanvasGeometryStore.getNodeHeight(
 								workflowDocumentStore.value.workflowId,
@@ -2017,9 +2014,14 @@ export function useCanvasOperations() {
 		if (!sourceNode) return;
 
 		// Calculate insertion position (to the right of source node)
-		// Use PUSH_NODES_OFFSET to match the actual position where nodes are placed
+		// Use PUSH_NODES_OFFSET to match the actual position where nodes are placed,
+		// including the wider agent card offset applied in resolveNodePosition
+		let insertOffset = PUSH_NODES_OFFSET;
+		if (isAgentNodeV2(sourceNode)) {
+			insertOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+		}
 		const insertPosition: XYPosition = [
-			sourceNode.position[0] + PUSH_NODES_OFFSET,
+			sourceNode.position[0] + insertOffset,
 			sourceNode.position[1],
 		];
 

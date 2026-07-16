@@ -203,6 +203,7 @@ export {
 	dataTableColumnNameSchema,
 	dataTableColumnTypeSchema,
 	dataTableIdSchema,
+	dataTableNameSchema,
 } from './schemas/data-table.schema';
 
 export type {
@@ -324,6 +325,7 @@ export {
 	webSearchMetaSchema,
 	credentialFlowSchema,
 	instanceAiCredentialHandoffContextSchema,
+	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -443,6 +445,7 @@ export type {
 	WebSearchMeta,
 	InstanceAiCredentialFlow,
 	InstanceAiCredentialHandoffContext,
+	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,

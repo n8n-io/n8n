@@ -14,6 +14,7 @@ import type {
 	TokenCounter,
 } from '../../types/sdk/observation-log';
 import { estimateObservationTokens } from '../../types/sdk/observation-log';
+import type { BuiltTelemetry } from '../../types/telemetry';
 
 export type { ObservationLogReflectFn, ObservationLogReflectorInput };
 
@@ -45,6 +46,7 @@ export interface RunObservationLogReflectorOpts {
 	now?: Date;
 	onWarning?: (warning: ObservationLogReflectorWarning) => void;
 	executionCounter?: AgentExecutionCounter;
+	telemetry?: BuiltTelemetry;
 }
 
 export type RunObservationLogReflectorResult =
@@ -184,6 +186,7 @@ export async function runObservationLogReflector(
 		tokenCount,
 		tokenBudget: reflectorThresholdTokens,
 		executionCounter: opts.executionCounter,
+		telemetry: opts.telemetry,
 	});
 	const reflection = normalizeObservationLogReflection(
 		activeObservationLog,

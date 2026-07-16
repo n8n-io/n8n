@@ -553,6 +553,40 @@ describe('useCanvasOperations', () => {
 			expect(position).toEqual([320, 112]);
 		});
 
+		it('should place the node clear of the agent card when added after a message an agent node', () => {
+			const uiStore = mockedStore(useUIStore);
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+
+			const lastInteracted = createTestNode({
+				position: [112, 112],
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+			});
+			uiStore.lastInteractedWithNodeId = lastInteracted.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+			geometryStore.getNodeHeight.mockReturnValue(DEFAULT_NODE_SIZE[1]);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			expect(position).toEqual([
+				lastInteracted.position[0] +
+					PUSH_NODES_OFFSET +
+					(AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]),
+				lastInteracted.position[1],
+			]);
+		});
+
 		it('centers a node after an agent using the agent measured height', () => {
 			const uiStore = mockedStore(useUIStore);
 			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);

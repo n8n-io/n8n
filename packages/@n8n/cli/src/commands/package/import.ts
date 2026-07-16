@@ -51,6 +51,23 @@ export default class PackageImport extends BaseCommand {
 			options: ['must-preexist', 'create-stub'],
 			aliases: ['credential-missing-mode'],
 		}),
+		dataTableMatchingMode: Flags.string({
+			description: 'How referenced data tables are matched on the target instance',
+			options: ['by-id'],
+			aliases: ['data-table-matching-mode'],
+		}),
+		dataTableMissingMode: Flags.string({
+			description:
+				'What to do when a referenced data table is absent in the target project (default on the instance: create). Matched tables are always schema-validated, even with do-nothing',
+			options: ['create', 'must-preexist', 'do-nothing'],
+			aliases: ['data-table-missing-mode'],
+		}),
+		dataTableSchemaConflictPolicy: Flags.string({
+			description:
+				'How strictly a matched target data table schema is compared: keep-existing (instance default) requires every package column but ignores additional columns the target table has of its own; fail rejects any difference. Neither policy alters the matched target table',
+			options: ['keep-existing', 'fail'],
+			aliases: ['data-table-schema-conflict-policy'],
+		}),
 		bindings: Flags.string({
 			description:
 				'Explicit source→target id bindings as a JSON object keyed by entity type, e.g. \'{"credentials":{"<sourceId>":"<targetId>"}}\'. Applied before credential-matching-mode resolution.',
@@ -79,6 +96,9 @@ export default class PackageImport extends BaseCommand {
 						folderConflictPolicy: flags.folderConflictPolicy,
 						credentialMatchingMode: flags.credentialMatchingMode,
 						credentialMissingMode: flags.credentialMissingMode,
+						dataTableMatchingMode: flags.dataTableMatchingMode,
+						dataTableMissingMode: flags.dataTableMissingMode,
+						dataTableSchemaConflictPolicy: flags.dataTableSchemaConflictPolicy,
 						bindings: flags.bindings,
 					},
 				);

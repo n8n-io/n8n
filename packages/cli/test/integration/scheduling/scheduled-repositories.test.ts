@@ -197,6 +197,32 @@ describe('scheduled repositories', () => {
 			expect(claimed?.jobs.map((j) => j.id)).toEqual([dueEarly.id, dueLate.id]);
 		});
 
+		it('claims a not-yet-due job whose nextRunAt falls within the lookahead', async () => {
+			// The materializer polls on a fixed tick, so a job due just after a tick would
+			// otherwise wait a whole interval to be noticed. Claiming ahead of due lets the
+			// job be planned before its window lapses. Default (0) lookahead ignores it.
+			const soon = await createJob({ nextRunAt: secondsFromNow(5) });
+
+			const strict = await dataSource.transaction(
+				async (trx) => await jobRepository.claimDue(trx, 100),
+			);
+			expect(strict).toBeUndefined();
+
+			const withLookahead = await dataSource.transaction(
+				async (trx) => await jobRepository.claimDue(trx, 100, 10_000),
+			);
+			expect(withLookahead?.jobs.map((j) => j.id)).toEqual([soon.id]);
+		});
+
+		it('still excludes a job whose nextRunAt is beyond the lookahead', async () => {
+			await createJob({ nextRunAt: secondsFromNow(60) });
+
+			const claimed = await dataSource.transaction(
+				async (trx) => await jobRepository.claimDue(trx, 100, 10_000),
+			);
+			expect(claimed).toBeUndefined();
+		});
+
 		it('excludes disabled, future, and null-nextRunAt jobs', async () => {
 			await createJob({ enabled: false, nextRunAt: secondsFromNow(-60) });
 			await createJob({ nextRunAt: secondsFromNow(3600) });
