@@ -9,6 +9,6 @@ export class WorkflowReviewsModule implements ModuleInterface {
 	async init() {
 		if (!isWorkflowReviewsEnvFeatureFlagEnabled()) return;
 
-		await import('./workflow-review-requests.controller');
+		await import('./workflow-review-requests.controller.js');
 	}
 }
