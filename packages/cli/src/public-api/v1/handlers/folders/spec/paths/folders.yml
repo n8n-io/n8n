@@ -9,7 +9,9 @@ post:
   parameters:
     - name: projectId
       in: path
-      description: The ID of the project.
+      description: >-
+        The ID of the project, or `personal` to create the folder in the
+        calling user's own personal project.
       required: true
       schema:
         type: string

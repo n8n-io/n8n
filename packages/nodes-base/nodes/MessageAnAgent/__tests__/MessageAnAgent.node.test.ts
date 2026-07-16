@@ -686,6 +686,15 @@ describe('MessageAnAgent versioning', () => {
 		expect(agentId?.type).toBe('agentSelector');
 	});
 
+	it('keeps agentSource hidden with a referenced default on v2', () => {
+		const v2 = new MessageAnAgentV2(baseDescription);
+		const agentSource = v2.description.properties.find((p) => p.name === 'agentSource');
+
+		expect(agentSource?.type).toBe('hidden');
+		expect(agentSource?.default).toBe('referenced');
+		expect(agentSource?.displayOptions).toBeUndefined();
+	});
+
 	it('keeps the same message field on both versions', () => {
 		const v1Names = new MessageAnAgentV1(baseDescription).description.properties.map((p) => p.name);
 		expect(v1Names).toContain('message');
