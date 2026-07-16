@@ -64,6 +64,7 @@ import {
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
 	orchestratorAgentId,
+	saveAgentBuilderTarget,
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type ManagedBackgroundTask,
@@ -94,6 +95,7 @@ import {
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
+import type { Scope } from '@n8n/permissions';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -101,8 +103,10 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -111,6 +115,7 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
+import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
@@ -176,6 +181,7 @@ import {
 	WorkflowVerificationObligationService,
 } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
+import { AgentExecutionService } from '../agents/agent-execution.service';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -218,7 +224,7 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 }
 
 function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
-	if (!context) return '';
+	if (!context || context.source !== 'credential-modal') return '';
 
 	const { credential } = context;
 	const lines = [
@@ -2218,6 +2224,20 @@ export class InstanceAiService {
 		};
 	}
 
+	/**
+	 * Resolve the agents execution service only when the `agents` module is
+	 * active. Mirrors the builder-delegate gate so agent-preview handoff is
+	 * absent (rather than exploding) when agents are disabled.
+	 */
+	private getAgentExecutionService(): AgentExecutionService | null {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		try {
+			return Container.get(AgentExecutionService);
+		} catch {
+			return null;
+		}
+	}
+
 	private async dispatchPlannedTask(
 		task: PlannedTaskRecord,
 		context: OrchestrationContext,
@@ -3182,13 +3202,45 @@ export class InstanceAiService {
 				}
 			}
 
+			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
+			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
+
+			let handoffContextBlock = '';
+			let agentPreviewTitleFallback: string | undefined;
+			if (handoffContext?.source === 'agent-preview') {
+				const projectId = context.projectId;
+				if (!projectId) {
+					throw new UnexpectedError(
+						`Instance AI thread "${threadId}" has no bound project; agent-preview handoff requires a project`,
+					);
+				}
+				await this.assertAgentPreviewHandoffScopes(user, projectId);
+				const agentExecutionService = this.getAgentExecutionService();
+				if (!agentExecutionService) {
+					throw new UserError('Agent preview handoff is not available');
+				}
+				const resolved = await resolveAgentPreviewHandoff(handoffContext, {
+					projectId,
+					getThreadDetail: agentExecutionService.getThreadDetail.bind(agentExecutionService),
+				});
+				handoffContextBlock = resolved.block;
+				agentPreviewTitleFallback = resolved.titleFallback;
+
+				context.agentBuilderTarget = resolved.target;
+				await saveAgentBuilderTarget(context, resolved.target);
+			} else {
+				handoffContextBlock = buildHandoffContextBlock(handoffContext);
+			}
+
 			// Set heuristic title before agent starts — thread always has a title.
 			// For an editor hand-off the user text is empty (the workflow is the
 			// message), so title it with the workflow name and mark it refined so
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
 			if (thread && !thread.title) {
-				const handoffTitle = contextAttachments.find((attachment) => attachment.name)?.name;
+				const handoffTitle =
+					contextAttachments.find((attachment) => attachment.name)?.name ??
+					agentPreviewTitleFallback;
 				await patchThread(memory, {
 					threadId,
 					update: ({ metadata }) =>
@@ -3210,10 +3262,6 @@ export class InstanceAiService {
 					payload: { tasks: existingTasks },
 				});
 			}
-
-			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
-			const handoffContextBlock = buildHandoffContextBlock(handoffContext);
 
 			let nonStructuredAttachments: InstanceAiFileAttachment[] = [];
 			let attachmentManifest = '';
@@ -4242,6 +4290,15 @@ export class InstanceAiService {
 				error: getErrorMessage(error),
 			});
 			return null;
+		}
+	}
+
+	private async assertAgentPreviewHandoffScopes(user: User, projectId: string): Promise<void> {
+		const requiredScopes: Scope[] = ['agent:read', 'agent:update'];
+		if (!(await userHasScopes(user, requiredScopes, false, { projectId }))) {
+			throw new ForbiddenError(
+				'You do not have permission to load or edit agent previews in this project.',
+			);
 		}
 	}
 

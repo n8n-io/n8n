@@ -183,6 +183,7 @@ export {
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
+export { saveAgentBuilderTarget } from './tools/orchestration/agent-target-binding';
 export type {
 	AgentDbMessage,
 	AgentMessage,
