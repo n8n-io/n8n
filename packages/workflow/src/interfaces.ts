@@ -2895,10 +2895,6 @@ export interface INodeOutputConfiguration {
 export type ExpressionString = `={{${string}}}`;
 
 export type NodeDefaults = Partial<{
-	/**
-	 * @deprecated Use {@link INodeTypeBaseDescription.iconColor|iconColor} instead. `iconColor` supports dark mode and uses preset colors from n8n's design system.
-	 */
-	color: string;
 	name: string;
 }>;
 
