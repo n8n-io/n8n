@@ -9,6 +9,10 @@ import {
 	type RequestResponseMetadata,
 } from '@utils/agent-execution';
 import { buildResponseMetadata } from '@utils/agent-execution/buildResponseMetadata';
+import {
+	isObservationContentBlock,
+	type ObservationContentBlock,
+} from '@utils/agent-execution/types';
 import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 import type {
 	EngineRequest,
@@ -48,14 +52,14 @@ export async function runAgent(
 	const { itemIndex, input, steps, tools, options } = itemContext;
 
 	const parsedSteps = steps.map((step) => {
-		let observation: any = step.observation;
+		let observation: string | ObservationContentBlock[] = step.observation;
 		try {
 			if (typeof step.observation === 'string' && step.observation.trim().startsWith('[')) {
-				const parsed = JSON.parse(step.observation);
-				if (
-					Array.isArray(parsed) &&
-					parsed.every((item) => typeof item === 'object' && item !== null && 'type' in item)
-				) {
+				const parsed: unknown = JSON.parse(step.observation);
+				// Only treat the observation as multimodal content when every element is a
+				// valid content block. A plain JSON array that merely contains a `type` key
+				// must stay a string so existing non-image tools don't regress.
+				if (Array.isArray(parsed) && parsed.every(isObservationContentBlock)) {
 					observation = parsed;
 				}
 			}

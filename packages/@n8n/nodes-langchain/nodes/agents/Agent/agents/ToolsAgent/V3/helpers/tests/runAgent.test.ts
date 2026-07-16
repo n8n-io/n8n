@@ -588,3 +588,72 @@ describe('runAgent - intermediate steps', () => {
 		expect((result as any).intermediateSteps).toEqual([]);
 	});
 });
+
+describe('runAgent - observation parsing', () => {
+	const buildStep = (observation: string): ToolCallData => ({
+		action: {
+			tool: 'TestTool',
+			toolInput: { input: 'test' },
+			log: 'Calling TestTool',
+			messageLog: [],
+			toolCallId: 'call_123',
+			type: 'tool_call',
+		},
+		observation,
+	});
+
+	const runWithSteps = async (steps: ToolCallData[]) => {
+		const mockInvoke = vi.fn().mockResolvedValue({ returnValues: { output: 'Final answer' } });
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ invoke: mockInvoke }),
+		});
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps,
+			tools: [],
+			prompt: mock(),
+			options: { maxIterations: 10, returnIntermediateSteps: false },
+			outputParser: undefined,
+		};
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		await runAgent(mockContext, mockExecutor, itemContext, mock<BaseChatModel>(), undefined);
+
+		return (mockInvoke.mock.calls[0][0] as { steps: ToolCallData[] }).steps;
+	};
+
+	it('parses a valid multimodal observation into structured content blocks', async () => {
+		const observation = JSON.stringify([
+			{ type: 'image_url', image_url: { url: 'data:image/png;base64,AAA' } },
+			{ type: 'text', text: 'a picture' },
+		]);
+
+		const passedSteps = await runWithSteps([buildStep(observation)]);
+
+		expect(Array.isArray(passedSteps[0].observation)).toBe(true);
+		expect(passedSteps[0].observation).toEqual([
+			{ type: 'image_url', image_url: { url: 'data:image/png;base64,AAA' } },
+			{ type: 'text', text: 'a picture' },
+		]);
+	});
+
+	it('leaves an ordinary array-valued observation with a `type` field as a string', async () => {
+		// A plain tool result that merely contains a `type` key must NOT be
+		// promoted to multimodal content (regression guard for non-image tools).
+		const observation = JSON.stringify([{ type: 'foo', value: 1 }]);
+
+		const passedSteps = await runWithSteps([buildStep(observation)]);
+
+		expect(passedSteps[0].observation).toBe(observation);
+	});
+
+	it('leaves a non-JSON string observation untouched', async () => {
+		const passedSteps = await runWithSteps([buildStep('plain tool result')]);
+
+		expect(passedSteps[0].observation).toBe('plain tool result');
+	});
+});

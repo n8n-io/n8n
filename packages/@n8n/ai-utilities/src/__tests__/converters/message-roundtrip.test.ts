@@ -464,6 +464,24 @@ describe('message round-trip: LC -> n8n -> LC', () => {
 
 			expectLcEqual(roundTrip(original), original);
 		});
+
+		it('should round-trip a HumanMessage with an image_url block', () => {
+			// `image_url` is the OpenAI-style multimodal block emitted for image tool
+			// outputs. Without a matching fromLcContent branch it is dropped on the way
+			// back to n8n; this guards that the image survives the full round-trip.
+			const imageUrlBlock = {
+				type: 'image_url',
+				image_url: { url: 'https://example.com/pic.png' },
+			};
+			const original = new HumanMessage({
+				content: [{ type: 'text', text: 'Look at this' }, imageUrlBlock] as never,
+			});
+
+			const result = roundTrip(original);
+			const content = normalizeContent(result.content as string | Array<Record<string, unknown>>);
+
+			expect(content).toContainEqual(imageUrlBlock);
+		});
 	});
 
 	describe('AIMessage', () => {

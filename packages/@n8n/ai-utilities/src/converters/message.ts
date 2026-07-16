@@ -96,6 +96,16 @@ function isCitationBlock(block: unknown): block is LangchainMessages.ContentBloc
 		typeof block === 'object' && block !== null && 'type' in block && block.type === 'citation'
 	);
 }
+// `image_url` is the OpenAI-style multimodal block emitted by `toLcContent` for
+// image tool outputs. It is not part of LangChain's standard `ContentBlock` union,
+// so it needs its own guard to survive the round-trip back to n8n content.
+function isImageUrlBlock(
+	block: unknown,
+): block is { type: 'image_url'; image_url: string | { url: string; detail?: string } } {
+	return (
+		typeof block === 'object' && block !== null && 'type' in block && block.type === 'image_url'
+	);
+}
 function isNonStandardBlock(
 	block: LangchainMessages.ContentBlock,
 ): block is LangchainMessages.ContentBlock.NonStandard {
@@ -145,6 +155,11 @@ export function fromLcContent(
 					data: block.data!,
 					providerMetadata: Object.keys(metadata).length > 0 ? metadata : undefined,
 				};
+			} else if (isImageUrlBlock(block)) {
+				content = {
+					type: 'image_url',
+					image_url: block.image_url,
+				} as unknown as N8nMessages.MessageContent;
 			} else if (isToolCallBlock(block)) {
 				content = {
 					type: 'tool-call',
