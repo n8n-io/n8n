@@ -9,21 +9,20 @@ import { WorkflowRequirementsExtractor } from '../workflow-requirements.extracto
 
 const user = mock<User>({ id: 'user-1' });
 
-function makeWorkflow(id: string, referencedWorkflowId?: string): WorkflowEntity {
-	const nodes: INode[] = referencedWorkflowId
-		? [
-				{
-					id: `execute-${referencedWorkflowId}`,
-					name: 'Execute Workflow',
-					type: 'n8n-nodes-base.executeWorkflow',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {
-						workflowId: { __rl: true, mode: 'list', value: referencedWorkflowId },
-					},
-				},
-			]
-		: [];
+function makeWorkflow(id: string, referencedWorkflowIds: string | string[] = []): WorkflowEntity {
+	const ids = Array.isArray(referencedWorkflowIds)
+		? referencedWorkflowIds
+		: [referencedWorkflowIds];
+	const nodes: INode[] = ids.map((referencedWorkflowId) => ({
+		id: `execute-${referencedWorkflowId}`,
+		name: 'Execute Workflow',
+		type: 'n8n-nodes-base.executeWorkflow',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {
+			workflowId: { __rl: true, mode: 'list', value: referencedWorkflowId },
+		},
+	}));
 
 	return { id, nodes } as WorkflowEntity;
 }
@@ -85,5 +84,47 @@ describe('WorkflowDependencyResolver', () => {
 		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(['workflow-b'], user, [
 			'workflow:export',
 		]);
+	});
+
+	it('resolves a complex graph with fan-out, cycles, convergence, and inaccessible dependencies', async () => {
+		// a → b, a → c
+		// c → b, c → d (d inaccessible)
+		// b → e, e → b
+		const { resolver, workflowFinder } = makeResolver([
+			makeWorkflow('workflow-a', ['workflow-b', 'workflow-c']),
+			makeWorkflow('workflow-b', 'workflow-e'),
+			makeWorkflow('workflow-c', ['workflow-b', 'workflow-d']),
+			makeWorkflow('workflow-e', 'workflow-b'),
+		]);
+
+		const requirements = await resolver.resolve({ user, workflowIds: ['workflow-a'] });
+
+		expect(requirements).toEqual([
+			{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
+			{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-c' },
+			{ workflowId: 'workflow-b', referencedWorkflowId: 'workflow-e' },
+			{ workflowId: 'workflow-c', referencedWorkflowId: 'workflow-b' },
+			{ workflowId: 'workflow-c', referencedWorkflowId: 'workflow-d' },
+			{ workflowId: 'workflow-e', referencedWorkflowId: 'workflow-b' },
+		]);
+		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledTimes(3);
+		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenNthCalledWith(
+			1,
+			['workflow-a'],
+			user,
+			['workflow:export'],
+		);
+		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenNthCalledWith(
+			2,
+			['workflow-b', 'workflow-c'],
+			user,
+			['workflow:export'],
+		);
+		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenNthCalledWith(
+			3,
+			['workflow-e', 'workflow-d'],
+			user,
+			['workflow:export'],
+		);
 	});
 });
