@@ -1,0 +1,87 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/readRows.operation.ts
+  s_d617b0cea1e757::t_2755c2773e2661 224-227
+  h_63d8ce7f01339b 8-9,220,228
+  s_d617b0cea1e757::t_fd4238be0497e6 200-202
+  s_d617b0cea1e757::t_4dcef30964c843 214-219
+  s_d617b0cea1e757::t_a7e31a67dfb673 135,137,139,141,143,145,147
+  s_d617b0cea1e757::t_067aba88fa5abc 134,136,138,140,142,144,146,148-179,191,193-195,199,205-206,212-213,222-223
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/readRows.sp.test.ts
+  s_d617b0cea1e757::t_700fb2126cf17d 1-36
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/readRows.sp.workflow.json
+  s_d617b0cea1e757::t_50f43c1291876c 1-74
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/utils.test.ts
+  s_d617b0cea1e757::t_24c5b9ecdf4330 1-53,58-133,137-155,159-188,192-199,203-214
+  s_d617b0cea1e757::t_c5bf7220c0761e 54-57,134-136,156-158,189-191,200-202
+.boundaries-baseline.json
+  s_6f268c94c3a11b::t_5d8e82c589e573 2
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/append.harness.test.ts
+  s_5f8e628d007fa4::t_d47aa413314c55 19-20
+  s_5f8e628d007fa4::t_19f6a52f702fda 57
+  s_5f8e628d007fa4::t_e9edd944ba327f 1-18,21-56,58-63
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/MicrosoftExcelSharePoint.node.ts
+  s_5f8e628d007fa4::t_3f28ca69e1adb4 97-102,113,123-126
+  s_5f8e628d007fa4::t_a0e3268f99b0df 9
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/append.sp.test.ts
+  s_5f8e628d007fa4::t_409b9f16e095f6 1-40
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/constants.ts
+  s_5f8e628d007fa4::t_bddc8a5c77ff91 13-16
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/append.test.ts
+  s_5f8e628d007fa4::t_1e4f9bba3e2a78 189-192
+  s_5f8e628d007fa4::t_0926df8761ac58 1-83,88-188,193-236
+  s_5f8e628d007fa4::t_7d57b888844e0a 84-87
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/dataModes.ts
+  s_5f8e628d007fa4::t_d2ae181b0dd375 1-37
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/append.sp.workflow.json
+  s_5f8e628d007fa4::t_f756842a027783 1-76
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/dataModes.test.ts
+  s_5f8e628d007fa4::t_49f94092336698 1-75
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/append.operation.ts
+  s_5f8e628d007fa4::t_dd817a0f0ebf45 153
+  s_5f8e628d007fa4::t_5f2a88ecc00a91 271-274
+  s_5f8e628d007fa4::t_9f47438a275afc 3
+  s_5f8e628d007fa4::t_946d0ac2b5894f 269
+  s_5f8e628d007fa4::t_ba212da023f906 158-210,220-222,225,238,240-241,246-248,251,256,276-277
+  s_5f8e628d007fa4::t_4c43b8dc4fa018 1-2,4-20,22-152,154-157,211-219,223,228-237,239,242-245,253-255,257-268,270,275,278-292
+  s_5f8e628d007fa4::t_0f95f3745bf9cb 21
+  s_5f8e628d007fa4::t_7839d5d74fef62 224,226-227,249-250,252
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/append.workflow.json
+  s_5f8e628d007fa4::t_3fe1505266fd69 1-6,10-12,14-17,20-22,25,28-31,35-36,38-43,45-55,66
+  s_5f8e628d007fa4::t_2cb927f9b74622 7-9,13,18-19,23-24,26-27,32-34,37,44,56-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "da9367feea28b5155e0c9a8401829da45ed34d08",
+  "prompts": {},
+  "humans": {
+    "h_63d8ce7f01339b": {
+      "author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5f8e628d007fa4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ec3a5a-6e03-4a43-9b73-176a2eae41a5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_6f268c94c3a11b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08a45d53-e841-4699-a8be-08ab180887ef",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_d617b0cea1e757": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b89a3ee-4aba-4b85-a778-80d03cbf21d4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
