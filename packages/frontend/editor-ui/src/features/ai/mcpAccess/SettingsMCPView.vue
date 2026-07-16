@@ -94,6 +94,8 @@ const redirectUrisLoading = ref(false);
 
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
 
+const canEditRedirectUris = computed(() => canManageMcpInstance.value);
+
 const canSeeInstanceStats = canManageMcpInstance;
 
 const showInstanceCapacityNotice = computed(
@@ -522,7 +524,7 @@ onMounted(async () => {
 							type="textarea"
 							:rows="6"
 							:placeholder="i18n.baseText('settings.mcp.allowedRedirectUris.placeholder')"
-							:disabled="!canToggleMCP"
+							:disabled="!canEditRedirectUris"
 							data-test-id="mcp-redirect-uris-input"
 						/>
 					</N8nInputLabel>
@@ -533,7 +535,7 @@ onMounted(async () => {
 						<N8nButton
 							:label="i18n.baseText('settings.mcp.allowedRedirectUris.save')"
 							:loading="redirectUrisLoading"
-							:disabled="!canToggleMCP"
+							:disabled="!canEditRedirectUris"
 							size="small"
 							data-test-id="mcp-redirect-uris-save-button"
 							@click="saveRedirectUris"
