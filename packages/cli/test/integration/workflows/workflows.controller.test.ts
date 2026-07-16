@@ -3276,8 +3276,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				{
 					id: 'uuid-1234',
 					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},
@@ -3376,8 +3376,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				{
 					id: 'uuid-5678',
 					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},
@@ -3408,8 +3408,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				{
 					id: 'uuid-5678',
 					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},

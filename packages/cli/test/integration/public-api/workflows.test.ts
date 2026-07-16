@@ -2072,8 +2072,8 @@ describe('PUT /workflows/:id', () => {
 				{
 					id: 'uuid-1234',
 					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 					customTelemetryTags: {
@@ -2155,9 +2155,9 @@ describe('PUT /workflows/:id', () => {
 			nodes: [
 				{
 					id: 'uuid-updated',
-					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
-					name: 'Updated Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: {},
+					name: 'Updated Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [300, 400],
 				},
@@ -2237,8 +2237,8 @@ describe('PUT /workflows/:id', () => {
 				{
 					id: 'uuid-2',
 					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},
