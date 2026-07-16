@@ -84,7 +84,7 @@ erDiagram
   varchar_36_ id PK
   varchar_36_ projectId FK
   varchar_16_ state
-  varchar_512_ title
+  varchar_255_ title
   datetime_3_ updatedAt
   varchar updatedById FK
 }

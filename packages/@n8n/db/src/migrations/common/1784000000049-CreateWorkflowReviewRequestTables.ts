@@ -59,7 +59,7 @@ export class CreateWorkflowReviewRequestTables1784000000049 implements Reversibl
 					.notNull.default("'pending'")
 					.withEnumCheck(['pending', 'changes_requested', 'approved'])
 					.comment('Latest review outcome while the request is open'),
-				column('title').varchar(512).notNull,
+				column('title').varchar(255).notNull,
 				column('description').text,
 				column('createdById').uuid,
 				column('updatedById').uuid,
