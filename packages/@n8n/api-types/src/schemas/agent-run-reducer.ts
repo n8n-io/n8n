@@ -110,6 +110,13 @@ function ensureAgent(state: AgentRunState, agentId: string): InstanceAiAgentNode
 	return state.agentsById[agentId];
 }
 
+/** When the event was published — falls back to "now" for live events and
+ *  old persisted events that predate the `ts` envelope field. Replays must
+ *  use the publish time or tool durations collapse to processing time. */
+function eventTimestamp(event: { ts?: number }): string {
+	return (event.ts !== undefined ? new Date(event.ts) : new Date()).toISOString();
+}
+
 /** Append text to timeline — merges consecutive text entries within the same responseId. */
 function appendTimelineText(
 	timeline: InstanceAiTimelineEntry[],
@@ -241,6 +248,32 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'tool-input-start': {
+			// Announces a tool call whose arguments are still streaming — surfaces
+			// the pending call immediately; `tool-call` fills the args in later.
+			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			if (state.toolCallsById[event.payload.toolCallId]) break;
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				const tc: InstanceAiToolCallState = {
+					toolCallId: event.payload.toolCallId,
+					toolName: event.payload.toolName,
+					args: {},
+					isLoading: true,
+					renderHint: getRenderHint(event.payload.toolName),
+					startedAt: eventTimestamp(event),
+				};
+				state.toolCallsById[event.payload.toolCallId] = tc;
+				agent.toolCalls.push(tc);
+				agent.timeline.push({
+					type: 'tool-call',
+					toolCallId: event.payload.toolCallId,
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
+			}
+			break;
+		}
+
 		case 'text-block': {
 			// Coalesced segment from the durable log (replay path). When the last
 			// timeline entry is this segment's streamed deltas (mid-block reconnect:
@@ -304,6 +337,13 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'tool-call': {
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			// Announced by a preceding tool-input-start: fill in the streamed args
+			// on the existing entry instead of duplicating it.
+			const announced = state.toolCallsById[event.payload.toolCallId];
+			if (announced) {
+				announced.args = event.payload.args;
+				break;
+			}
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				const tc: InstanceAiToolCallState = {
@@ -312,7 +352,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					args: event.payload.args,
 					isLoading: true,
 					renderHint: getRenderHint(event.payload.toolName),
-					startedAt: new Date().toISOString(),
+					startedAt: eventTimestamp(event),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;
 				agent.toolCalls.push(tc);
@@ -331,7 +371,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (tc) {
 				tc.result = event.payload.result;
 				tc.isLoading = false;
-				tc.completedAt = new Date().toISOString();
+				tc.completedAt = eventTimestamp(event);
 			}
 			break;
 		}
@@ -342,7 +382,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (tc) {
 				tc.error = event.payload.error;
 				tc.isLoading = false;
-				tc.completedAt = new Date().toISOString();
+				tc.completedAt = eventTimestamp(event);
 			}
 			break;
 		}
@@ -355,7 +395,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (tc) {
 				tc.error = event.payload.error;
 				tc.isLoading = false;
-				tc.completedAt = new Date().toISOString();
+				tc.completedAt = eventTimestamp(event);
 			}
 			break;
 		}
