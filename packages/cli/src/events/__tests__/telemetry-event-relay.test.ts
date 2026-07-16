@@ -2223,7 +2223,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-imported` event with params and counts', () => {
 			const event: RelayEventMap['n8n-package-imported'] = {
 				user: { id: 'user123' },
-				projectId: 'project123',
+				projectIds: ['project123'],
 				folderId: 'folder123',
 				workflowIds: ['wf1', 'wf2', 'wf3'],
 				options: {
