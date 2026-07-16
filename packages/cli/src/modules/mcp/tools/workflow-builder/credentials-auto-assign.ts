@@ -58,10 +58,7 @@ export type McpCredentialsAutoassignEventPayload = {
 	reason_not_ai_gateway?: ReasonNotAiGateway;
 };
 
-const HTTP_NODE_TYPES = new Set([
-	'n8n-nodes-base.httpRequest',
-	'n8n-nodes-base.httpRequestTool',
-]);
+const HTTP_NODE_TYPES = new Set(['n8n-nodes-base.httpRequest', 'n8n-nodes-base.httpRequestTool']);
 
 /**
  * Normalizes n8n Connect (`__aiGatewayManaged`) markers on the given nodes.
