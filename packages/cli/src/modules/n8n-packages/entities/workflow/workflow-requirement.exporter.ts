@@ -1,8 +1,8 @@
 import { Service } from '@n8n/di';
 
+import type { WorkflowWorkflowRequirement } from './workflow.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
-import type { WorkflowWorkflowRequirement } from './workflow.types';
 
 export interface WorkflowRequirementExportRequest {
 	requirements: WorkflowWorkflowRequirement[];
