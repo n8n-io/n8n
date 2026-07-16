@@ -174,7 +174,7 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 				);
 			});
 
-			it('caches the resolution per execution, across items', async () => {
+			it('caches the resolution per execution, across items, when the caller shares its cache', async () => {
 				setParams(ctx, {
 					workbook: { mode: 'url', value: 'https://contoso.sharepoint.com/book.xlsx' },
 				});
@@ -183,13 +183,16 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 					parentReference: { siteId: 'contoso.sharepoint.com,g1,g2', driveId: 'b!drive1' },
 				});
 
-				await resolveWorkbookRoot.call(ctx, 0);
-				await resolveWorkbookRoot.call(ctx, 1);
+				// The caller (readRows' execute()) hoists this once per run and passes
+				// the same instance for every item — that's what makes it a per-run cache.
+				const workbookRootCache = new Map<string, string>();
+				await resolveWorkbookRoot.call(ctx, 0, workbookRootCache);
+				await resolveWorkbookRoot.call(ctx, 1, workbookRootCache);
 
 				expect(apiRequest).toHaveBeenCalledTimes(1);
 			});
 
-			it('does not share the cache across different executions', async () => {
+			it('resolves again when no cache is passed, or a fresh one is', async () => {
 				const workbook = { mode: 'url', value: 'https://contoso.sharepoint.com/book.xlsx' };
 				setParams(ctx, { workbook });
 				apiRequest.mockResolvedValue({
@@ -197,12 +200,8 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 					parentReference: { siteId: 'contoso.sharepoint.com,g1,g2', driveId: 'b!drive1' },
 				});
 
-				const otherCtx = mockDeep<IExecuteFunctions>();
-				otherCtx.getNode.mockReturnValue(mock<INode>());
-				setParams(otherCtx, { workbook });
-
 				await resolveWorkbookRoot.call(ctx, 0);
-				await resolveWorkbookRoot.call(otherCtx, 0);
+				await resolveWorkbookRoot.call(ctx, 0, new Map());
 
 				expect(apiRequest).toHaveBeenCalledTimes(2);
 			});
@@ -325,29 +324,28 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 			);
 		});
 
-		it('caches the resolution per execution, across items', async () => {
+		it('caches the resolution per execution, across items, when the caller shares its cache', async () => {
 			setParams(ctx, {
 				site: { mode: 'url', value: 'https://contoso.sharepoint.com/sites/mysite' },
 			});
 			apiRequest.mockResolvedValue({ id: 'contoso.sharepoint.com,g1,g2' });
 
-			await resolveSiteId.call(ctx, 0);
-			await resolveSiteId.call(ctx, 1);
+			// The caller hoists this once per run and passes the same instance for
+			// every item — that's what makes it a per-run cache, not the function itself.
+			const siteIdCache = new Map<string, string>();
+			await resolveSiteId.call(ctx, 0, siteIdCache);
+			await resolveSiteId.call(ctx, 1, siteIdCache);
 
 			expect(apiRequest).toHaveBeenCalledTimes(1);
 		});
 
-		it('does not share the cache across different executions', async () => {
+		it('resolves again when no cache is passed, or a fresh one is', async () => {
 			const site = { mode: 'url', value: 'https://contoso.sharepoint.com/sites/mysite' };
 			setParams(ctx, { site });
 			apiRequest.mockResolvedValue({ id: 'contoso.sharepoint.com,g1,g2' });
 
-			const otherCtx = mockDeep<IExecuteFunctions>();
-			otherCtx.getNode.mockReturnValue(mock<INode>());
-			setParams(otherCtx, { site });
-
 			await resolveSiteId.call(ctx, 0);
-			await resolveSiteId.call(otherCtx, 0);
+			await resolveSiteId.call(ctx, 0, new Map());
 
 			expect(apiRequest).toHaveBeenCalledTimes(2);
 		});

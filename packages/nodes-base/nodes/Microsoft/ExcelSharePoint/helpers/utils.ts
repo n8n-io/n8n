@@ -4,13 +4,6 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { AuthContext } from './interfaces';
 import { microsoftApiRequest } from '../transport';
 
-// One lookup per distinct pasted address per execution — without this, a
-// multi-item run repeats the same resolution call and risks throttling
-const workbookRootCache = new WeakMap<IExecuteFunctions, Map<string, string>>();
-
-// Same rationale as workbookRootCache, for the site's own "By URL" mode.
-const siteIdCache = new WeakMap<AuthContext, Map<string, string>>();
-
 /**
  * Guards a user-supplied value destined for a URL path segment: rejects empty
  * values and dots-only values ('..' survives encodeURIComponent and would
@@ -35,10 +28,16 @@ export function validatePathSegment(node: INode, label: string, value: string): 
  * Resolves the workbook fields to the Graph root every request hangs off:
  * `/v1.0/sites/{site}/drives/{drive}/items/{item}`. A pasted address costs one
  * lookup (Graph's sharing-URL exchange); IDs are used as given.
+ *
+ * `workbookRootCache`/`siteIdCache` are the caller's per-execution caches (one
+ * lookup per distinct pasted address, not one per item) — the caller hoists
+ * them once above its item loop and passes the same instances every call.
  */
 export async function resolveWorkbookRoot(
 	this: IExecuteFunctions,
 	itemIndex: number,
+	workbookRootCache: Map<string, string> = new Map(),
+	siteIdCache: Map<string, string> = new Map(),
 ): Promise<string> {
 	const workbook = this.getNodeParameter('workbook', itemIndex) as INodeParameterResourceLocator;
 	const workbookValue = String(workbook.value ?? '').trim();
@@ -50,12 +49,7 @@ export async function resolveWorkbookRoot(
 			});
 		}
 
-		let cache = workbookRootCache.get(this);
-		if (!cache) {
-			cache = new Map();
-			workbookRootCache.set(this, cache);
-		}
-		const cached = cache.get(workbookValue);
+		const cached = workbookRootCache.get(workbookValue);
 		if (cached !== undefined) {
 			return cached;
 		}
@@ -82,12 +76,12 @@ export async function resolveWorkbookRoot(
 		}
 
 		const root = `/v1.0/sites/${encodeURIComponent(parent.siteId)}/drives/${encodeURIComponent(parent.driveId)}/items/${encodeURIComponent(itemId)}`;
-		cache.set(workbookValue, root);
+		workbookRootCache.set(workbookValue, root);
 		return root;
 	}
 
 	const node = this.getNode();
-	const siteId = await resolveSiteId.call(this, itemIndex);
+	const siteId = await resolveSiteId.call(this, itemIndex, siteIdCache);
 	const driveId = validatePathSegment(
 		node,
 		'Library',
@@ -105,8 +99,15 @@ export async function resolveWorkbookRoot(
  * this happens, reused by workbook-root resolution and the library dropdown.
  * IDs (from "By ID" or a "From List" pick) are used as given; a pasted
  * address costs one lookup via Graph's `{hostname}:{site-path}` addressing.
+ *
+ * `cache` is the caller's per-execution cache; a load-options call (the
+ * library dropdown) has no loop to amortize, so it just omits one.
  */
-export async function resolveSiteId(this: AuthContext, itemIndex: number): Promise<string> {
+export async function resolveSiteId(
+	this: AuthContext,
+	itemIndex: number,
+	cache: Map<string, string> = new Map(),
+): Promise<string> {
 	const site = this.getNodeParameter('site', itemIndex) as INodeParameterResourceLocator;
 	const value = String(site.value ?? '').trim();
 
@@ -132,11 +133,6 @@ export async function resolveSiteId(this: AuthContext, itemIndex: number): Promi
 	const endpoint =
 		path === '' ? `/v1.0/sites/${parsed.hostname}` : `/v1.0/sites/${parsed.hostname}:${path}`;
 
-	let cache = siteIdCache.get(this);
-	if (!cache) {
-		cache = new Map();
-		siteIdCache.set(this, cache);
-	}
 	const cached = cache.get(endpoint);
 	if (cached !== undefined) {
 		return cached;
