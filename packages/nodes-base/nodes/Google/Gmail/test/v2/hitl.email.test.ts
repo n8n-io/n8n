@@ -4,11 +4,12 @@ import type { Mock } from 'vitest';
 import { type MockProxy, mock } from 'vitest-mock-extended';
 
 import * as genericFunctions from '../../GenericFunctions';
-import type * as _importType0 from '../../GenericFunctions';
+import type * as genericFunctionsType from '../../GenericFunctions';
 import { createSendAndWaitEmail } from '../../v2/hitl/email';
 
 vi.mock('../../GenericFunctions', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../GenericFunctions');
+	const originalModule =
+		await vi.importActual<typeof genericFunctionsType>('../../GenericFunctions');
 	return {
 		...originalModule,
 		googleApiRequest: vi.fn(),
