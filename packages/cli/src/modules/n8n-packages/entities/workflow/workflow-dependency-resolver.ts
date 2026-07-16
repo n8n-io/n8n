@@ -52,6 +52,9 @@ export class WorkflowDependencyResolver {
 
 			for (const workflowId of workflowIds) {
 				const workflow = workflowsById.get(workflowId);
+
+				// This prevents exposing and traversing through workflows that should not be visible to user.
+				// But the missing/inaccessible IDs are kept as direct requirements from their parent.
 				if (!workflow) continue;
 
 				for (const requirement of this.workflowRequirementsExtractor.extract(workflow)) {
