@@ -1,0 +1,61 @@
+{
+  "package": "n8n-nodes-base",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:05:53.926Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            17177,
+            16411,
+            16991
+          ],
+          "min": 16411,
+          "median": 16991,
+          "mean": 16860
+        },
+        "build": {
+          "runsMs": [
+            42612,
+            47814,
+            45802
+          ],
+          "min": 42612,
+          "median": 45802,
+          "mean": 45409
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:20:04.736Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            4628,
+            3761,
+            3682
+          ],
+          "min": 3682,
+          "median": 3761,
+          "mean": 4024
+        },
+        "build": {
+          "runsMs": [
+            33356,
+            32118,
+            31927
+          ],
+          "min": 31927,
+          "median": 32118,
+          "mean": 32467
+        }
+      }
+    }
+  }
+}

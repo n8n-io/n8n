@@ -41,6 +41,18 @@ describe('WorkflowPublisher', () => {
 			expect(projectService.getProjectWithScope).not.toHaveBeenCalled();
 		});
 
+		it('does nothing for a pending-create project even under publish-all', async () => {
+			// The project does not exist yet; its creator will be admin, so there is nothing to check.
+			await publisher.assertCanPublish(
+				user,
+				'new-project',
+				WorkflowPublishingPolicy.PublishAll,
+				true,
+			);
+
+			expect(projectService.getProjectWithScope).not.toHaveBeenCalled();
+		});
+
 		it('passes when the user can publish in the target project', async () => {
 			projectService.getProjectWithScope.mockResolvedValue(mock<Project>({ id: 'project-1' }));
 

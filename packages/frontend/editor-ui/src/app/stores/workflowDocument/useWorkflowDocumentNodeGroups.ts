@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import uniq from 'lodash/uniq';
-import type { IWorkflowGroup } from 'n8n-workflow';
+import { normalizeGroupDescription, type IWorkflowGroup } from 'n8n-workflow';
 import { CHANGE_ACTION } from './types';
 
 export type NodeGroupPayload = {
@@ -34,6 +34,8 @@ type NodeGroupMutationOptions = {
 type NodeGroupCreateOptions = NodeGroupMutationOptions & {
 	/** Start the group collapsed in the canvas view (e.g. imported/pasted groups). */
 	startCollapsed?: boolean;
+	/** Optional description to seed the group with (e.g. imported/pasted groups). */
+	description?: string;
 };
 
 export function useWorkflowDocumentNodeGroups() {
@@ -97,10 +99,12 @@ export function useWorkflowDocumentNodeGroups() {
 		name: string,
 		options: NodeGroupCreateOptions = {},
 	): IWorkflowGroup {
+		const description = normalizeGroupDescription(options.description);
 		const group: IWorkflowGroup = {
 			id: window.crypto.randomUUID(),
 			nodeIds: [...nodeIds],
 			name,
+			...(description ? { description } : {}),
 		};
 		applyUpsertGroup(group, CHANGE_ACTION.ADD, options);
 		return group;
@@ -133,6 +137,14 @@ export function useWorkflowDocumentNodeGroups() {
 			newName = getNextDefaultName(name);
 		}
 		applyUpsertGroup({ ...group, name: newName }, CHANGE_ACTION.UPDATE);
+	}
+
+	function updateDescription(id: string, description: string) {
+		const group = groups.value.get(id);
+		if (!group) return;
+		const next = normalizeGroupDescription(description);
+		if (group.description === next) return;
+		applyUpsertGroup({ ...group, description: next }, CHANGE_ACTION.UPDATE);
 	}
 
 	function deleteGroup(id: string) {
@@ -206,6 +218,7 @@ export function useWorkflowDocumentNodeGroups() {
 		createGroup,
 		getNextDefaultName,
 		updateName,
+		updateDescription,
 		deleteGroup,
 		restoreGroup,
 		addNodesToGroup,

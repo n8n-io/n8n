@@ -26,6 +26,10 @@ import {
 	mapGroupsToVueFlowNodes,
 } from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
+import {
+	NodeGroupDescriptionVisibilityKey,
+	useCanvasNodeGroupDescriptionVisibility,
+} from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
 import { ContextMenuGroupViewKey } from '@/features/shared/contextMenu/composables/contextMenuGroupView';
 import Canvas from './Canvas.vue';
@@ -104,12 +108,17 @@ const nodeGroupView = useCanvasNodeGroupView({
 	getGroupExpansionMode: () => props.groupExpansionMode,
 });
 
+const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility();
+
 // Keep the group view in sync with the currently displayed document
 watch(
 	() => workflowDocumentStore.value.documentId,
 	() => {
 		nodeGroupView.reinitialize();
 		applyGroupExpansion();
+		nodeGroupDescriptionVisibility.restore(
+			new Set(workflowDocumentStore.value.allGroups.map((group) => group.id)),
+		);
 	},
 );
 
@@ -192,6 +201,7 @@ const mappedNodes = computed(() => [
 ]);
 
 provide(NodeGroupViewKey, nodeGroupView);
+provide(NodeGroupDescriptionVisibilityKey, nodeGroupDescriptionVisibility);
 // Collapse state for the context menu's expand/collapse item enablement —
 // the menu lives in the shared layer and can't reach this canvas' view state.
 provide(ContextMenuGroupViewKey, {
