@@ -170,15 +170,21 @@ export class AgentChatHitlResumeHandler {
 		this.activeResumedRuns.add(runId);
 		try {
 			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
-			const stream = this.options.agentService.resumeForChat({
-				agentId: this.options.agentId,
-				projectId: this.options.projectId,
-				runId,
-				toolCallId,
-				resumeData,
-				integrationType: this.options.integration.type,
-			});
-			await this.options.streamConsumer.consume(stream, thread, resumeExecutionContext);
+			try {
+				const stream = this.options.agentService.resumeForChat({
+					agentId: this.options.agentId,
+					projectId: this.options.projectId,
+					runId,
+					toolCallId,
+					resumeData,
+					integrationType: this.options.integration.type,
+				});
+				await this.options.streamConsumer.consume(stream, thread, resumeExecutionContext);
+			} finally {
+				// The stream consumer clears the status right before the first response;
+				// this idempotent clear covers failures before/outside consumption.
+				await resumeExecutionContext.statusHandle?.clearBeforeResponse();
+			}
 		} finally {
 			this.activeResumedRuns.delete(runId);
 		}

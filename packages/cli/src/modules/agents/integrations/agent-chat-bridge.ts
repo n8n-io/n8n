@@ -262,34 +262,39 @@ export class AgentChatBridge {
 			this.resolveBridgeExecutionContext(thread, message, platformAgentContext, statusRetry),
 			this.messageContextBridge.resolveSubject(message),
 		]);
-		await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
-			messageId: message.id,
-			interactingUserId: message.author.userId,
-			...bridgeExecutionContext.platformAgentContext,
-			subject,
-		});
-		// threadId.id is agent-prefixed for observation storage; resourceId keeps
-		// the platform user identity so episodic recall works across threads for
-		// the same user while staying isolated between users.
-		// Always run the published snapshot — integrations are production traffic.
-		const stream = this.agentService.executeForChatPublished({
-			agentId: this.agentId,
-			projectId: this.n8nProjectId,
-			message: text,
-			memory: {
-				threadId,
-				resourceId: integrationMemoryResourceId(this.integration.type, message.author.userId),
-			},
-			integrationType: this.integration.type,
-		});
-
 		try {
+			await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
+				messageId: message.id,
+				interactingUserId: message.author.userId,
+				...bridgeExecutionContext.platformAgentContext,
+				subject,
+			});
+			// threadId.id is agent-prefixed for observation storage; resourceId keeps
+			// the platform user identity so episodic recall works across threads for
+			// the same user while staying isolated between users.
+			// Always run the published snapshot — integrations are production traffic.
+			const stream = this.agentService.executeForChatPublished({
+				agentId: this.agentId,
+				projectId: this.n8nProjectId,
+				message: text,
+				memory: {
+					threadId,
+					resourceId: integrationMemoryResourceId(this.integration.type, message.author.userId),
+				},
+				integrationType: this.integration.type,
+			});
+
 			await this.streamConsumer.consume(stream, thread, {
 				forceBuffered: bridgeExecutionContext.forceBuffered,
 				statusHandle: bridgeExecutionContext.statusHandle,
 			});
 		} finally {
 			statusRetry.abort();
+			// The stream consumer clears the status right before the first response;
+			// this idempotent clear covers failures before/outside consumption, which
+			// would otherwise leave a status indicator (e.g. Telegram's typing
+			// keepalive) running after the error reply.
+			await bridgeExecutionContext.statusHandle?.clearBeforeResponse();
 		}
 	}
 
