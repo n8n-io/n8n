@@ -660,6 +660,26 @@ export class N8nClient {
 		return RestoreThreadEnvelope.parse(result).data;
 	}
 
+	/**
+	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert),
+	 * for the per-scenario row seeding of a case that pre-created its tables
+	 * before the build turn (TRUST-311). Unlike `restoreThread` (which CREATES
+	 * tables), this targets a table that already exists by id, so a scenario can
+	 * declare its own row state without disturbing the table the built workflow
+	 * bound. `threadId` scopes the table to the run's project server-side.
+	 * POST /rest/instance-ai/eval/seed-data-table-rows
+	 */
+	async seedDataTableRows(
+		threadId: string,
+		tableId: string,
+		rows: Array<Record<string, string | number | boolean | null>>,
+	): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/seed-data-table-rows', {
+			method: 'POST',
+			body: { threadId, tableId, rows },
+		});
+	}
+
 	// -- Data tables ---------------------------------------------------------
 
 	/**

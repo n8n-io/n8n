@@ -1639,3 +1639,21 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	 *  freshly-built workflow's by-name references resolve. */
 	uniquifyNames: z.boolean().optional(),
 }) {}
+
+/**
+ * Reset an existing data table's rows to exactly `rows` (clear-then-insert).
+ * Unlike restore-thread (which CREATES tables), this targets a table that
+ * already exists by id — used for the per-scenario row seeding of a case whose
+ * tables were created empty before the build turn (TRUST-311 follow-up). The
+ * table is scoped to the thread's project server-side.
+ */
+export class InstanceAiEvalSeedDataTableRowsRequest extends Z.class({
+	threadId: z.string().uuid(),
+	/** Id of the (already existing) data table whose rows are reset. */
+	tableId: z.string().min(8).max(64),
+	/** The exact row set the table should hold after seeding (may be empty to
+	 *  clear it). Cell values are validated against each column's type on insert. */
+	rows: z
+		.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])))
+		.max(1000),
+}) {}
