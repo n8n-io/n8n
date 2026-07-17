@@ -298,6 +298,13 @@ describe('AgentBuilderHeader', () => {
 		expect(previewButton.attributes('href')).toBe('/projects/p1/agents/a1/preview');
 	});
 
+	it('does not expose a preview href in artifact mode', () => {
+		const wrapper = mountHeader({ artifactMode: true });
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('href')).toBeUndefined();
+	});
+
 	it('disables preview with a tooltip when the agent is not runnable', async () => {
 		const wrapper = mountHeader({
 			agent: { ...baseAgent, isRunnable: false } as AgentResource,
