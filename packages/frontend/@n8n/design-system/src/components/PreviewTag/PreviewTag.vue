@@ -28,7 +28,7 @@ const { t } = useI18n();
 
 .small {
 	font-size: var(--font-size--3xs);
-	padding: var(--spacing--5xs) var(--spacing--2xs);
+	padding: var(--spacing--5xs) var(--spacing--4xs);
 }
 
 .medium {
