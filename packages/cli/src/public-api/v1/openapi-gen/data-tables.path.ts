@@ -38,8 +38,8 @@ const filterParam = PublicApiListDataTableQueryDto.schema.shape.filter.openapi({
 
 /**
  * `sortBy` introspects perfectly, no override needed — and generating it surfaces something the
- * hand-written `data-tables.yml` doesn't: the real `enum` of valid sort values. Today's spec just
- * says `type: string` with a free-text description; the DTO knows the exhaustive list.
+ * hand-written spec this supersedes didn't: the real `enum` of valid sort values. That spec just
+ * said `type: string` with a free-text description; the DTO knows the exhaustive list.
  */
 const sortByParam = PublicApiListDataTableQueryDto.schema.shape.sortBy.openapi({
 	param: { name: 'sortBy', in: 'query' },
