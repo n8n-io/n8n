@@ -100,7 +100,6 @@ describe('DataTableExporter', () => {
 				{
 					id: 'dt1',
 					name: 'Customers',
-					sourceProjectId: 'proj-1',
 					usedByWorkflows: ['wf-1'],
 				},
 			]);
@@ -141,7 +140,6 @@ describe('DataTableExporter', () => {
 				{
 					id: 'dt1',
 					name: 'Customers',
-					sourceProjectId: 'proj-1',
 					usedByWorkflows: ['wf-a', 'wf-b'],
 				},
 			]);
