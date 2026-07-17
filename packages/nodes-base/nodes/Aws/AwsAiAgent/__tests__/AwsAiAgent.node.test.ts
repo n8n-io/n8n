@@ -1,5 +1,5 @@
 import { mockDeep } from 'jest-mock-extended';
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { AwsAiAgent } from '../AwsAiAgent.node';
 
 describe('AWS AI Agent node — description', () => {
@@ -85,5 +85,38 @@ describe('AWS AI Agent node — searchHarnesses', () => {
 		const result = await node.methods.listSearch.searchHarnesses.call(ctx, 'sales');
 		expect(result.results.length).toBe(1);
 		expect(result.results[0].name.toLowerCase()).toContain('sales');
+	});
+});
+
+describe('AWS AI Agent node — execute (stubbed)', () => {
+	const node = new AwsAiAgent();
+
+	const setup = (params: Record<string, unknown>) => {
+		const ctx = mockDeep<IExecuteFunctions>();
+		ctx.getInputData.mockReturnValue([{ json: {} }]);
+		ctx.continueOnFail.mockReturnValue(false);
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, _i?: number, fallback?: unknown) => (params[name] ?? fallback) as never,
+		);
+		ctx.helpers.returnJsonArray.mockImplementation(
+			(data) => (Array.isArray(data) ? data : [data]).map((json) => ({ json })) as never,
+		);
+		return ctx;
+	};
+
+	it('returns a correctly shaped fake response', async () => {
+		const ctx = setup({ input: 'hello agent', sessionId: 'sess-123' });
+		const result = await node.execute.call(ctx);
+		const json = result[0][0].json as {
+			response: string;
+			sessionId: string;
+			usage: { inputTokens: number; outputTokens: number };
+			traceRefs: string[];
+		};
+		expect(json.response).toContain('hello agent');
+		expect(json.sessionId).toBe('sess-123');
+		expect(typeof json.usage.inputTokens).toBe('number');
+		expect(typeof json.usage.outputTokens).toBe('number');
+		expect(Array.isArray(json.traceRefs)).toBe(true);
 	});
 });

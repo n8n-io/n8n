@@ -255,10 +255,26 @@ export class AwsAiAgent implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-			const input = this.getNodeParameter('input', i, '') as string;
-			returnData.push({
-				response: `Simulated agent response to: ${input}`,
-			});
+			try {
+				const input = this.getNodeParameter('input', i, '') as string;
+				const sessionId = (this.getNodeParameter('sessionId', i, '') as string) || 'sess-simulated';
+
+				returnData.push({
+					response: `Simulated agent response to: ${input}`,
+					sessionId,
+					usage: {
+						inputTokens: input.length,
+						outputTokens: 128,
+					},
+					traceRefs: ['trace://simulated/0001'],
+				});
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: (error as Error).message });
+					continue;
+				}
+				throw error;
+			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
