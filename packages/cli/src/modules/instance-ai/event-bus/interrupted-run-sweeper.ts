@@ -133,6 +133,14 @@ export class InterruptedRunSweeper {
 	 * the terminal payload differs (the user asked, so `cancelled`, not
 	 * `interrupted`). Runs the sweep's multi-main activity grace, which also
 	 * covers a live sibling run the broadcast cancel is about to abort.
+	 *
+	 * Accepted race (same class as the sweep's boot-time double-mark): a
+	 * sibling run that is live but SILENT past the grace window (e.g. stuck in
+	 * a slow tool, appending no facts and no checkpoint upserts) can be
+	 * terminalized here while the broadcast abort makes it publish its own
+	 * run-finish moments later. Both facts carry `cancelled`, the fold is
+	 * idempotent on repeats, and the terminal-fact recheck below narrows the
+	 * window — a per-run claim would need the lease table this design avoids.
 	 */
 	async cancelUnfinishedRuns(threadId: string): Promise<number> {
 		if (!this.durableLogEnabled) return 0;
