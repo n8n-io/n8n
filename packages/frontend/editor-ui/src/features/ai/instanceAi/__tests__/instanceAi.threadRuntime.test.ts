@@ -6,7 +6,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
-import { ensureThread, postMessage, postConfirmation } from '../instanceAi.api';
+import { ensureThread, postMessage, postCancel, postConfirmation } from '../instanceAi.api';
 import { createThreadRuntime, type ThreadRuntime } from '../instanceAi.threadRuntime';
 
 // ---------------------------------------------------------------------------
@@ -218,6 +218,7 @@ const mockFetchThreadMessages = vi.mocked(fetchThreadMessages);
 const mockFetchThreadStatus = vi.mocked(fetchThreadStatus);
 const mockEnsureThread = vi.mocked(ensureThread);
 const mockPostMessage = vi.mocked(postMessage);
+const mockPostCancel = vi.mocked(postCancel);
 const mockPostConfirmation = vi.mocked(postConfirmation);
 
 beforeAll(() => {
@@ -1305,6 +1306,176 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 		await runtime.confirmAction('req-deny', { kind: 'approval', approved: false });
 
 		expect(runtime.activeRunId).toBeNull();
+	});
+
+	test('cancelRun posts thread cancellation without an activeRunId', async () => {
+		const runtime = activeRuntime(registry);
+		expect(runtime.activeRunId).toBeNull();
+		mockPostCancel.mockResolvedValueOnce(undefined);
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: false,
+			backgroundTasks: [],
+		});
+
+		await runtime.cancelRun();
+
+		expect(mockPostCancel).toHaveBeenCalledWith(
+			expect.objectContaining({ baseUrl: 'http://localhost:5678/api' }),
+			activeThreadId,
+		);
+		expect(mockFetchThreadStatus).toHaveBeenCalledOnce();
+	});
+
+	test('loadThreadStatus settles stale hydrated agent trees when the backend is idle', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-stale',
+				content: '',
+				reasoning: '',
+				isStreaming: true,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					children: [
+						{
+							agentId: 'agent-child',
+							role: 'agent-builder',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							toolCalls: [
+								{ toolCallId: 'tc-child', toolName: 'build-workflow', args: {}, isLoading: true },
+							],
+							children: [],
+							timeline: [],
+						},
+					],
+					timeline: [],
+				},
+			},
+		];
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: false,
+			backgroundTasks: [],
+		});
+
+		await runtime.loadThreadStatus();
+
+		expect(runtime.activeRunId).toBeNull();
+		const [message] = runtime.messages;
+		expect(message.isStreaming).toBe(false);
+		expect(message.agentTree?.status).toBe('cancelled');
+		expect(message.agentTree?.toolCalls[0].isLoading).toBe(false);
+		const [child] = message.agentTree?.children ?? [];
+		expect(child.status).toBe('cancelled');
+		expect(child.toolCalls[0].isLoading).toBe(false);
+	});
+
+	test('loadThreadStatus preserves active trees and restores activeRunId for a live run', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-live',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					children: [],
+					timeline: [],
+				},
+			},
+		];
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: true,
+			isSuspended: false,
+			runId: 'run-live',
+			backgroundTasks: [],
+		});
+
+		await runtime.loadThreadStatus();
+
+		expect(runtime.activeRunId).toBe('run-live');
+		const [message] = runtime.messages;
+		expect(message.isStreaming).toBe(true);
+		expect(message.agentTree?.status).toBe('active');
+		expect(message.agentTree?.toolCalls[0].isLoading).toBe(true);
+	});
+
+	test('loadThreadStatus ignores an idle response after a newer run starts', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-old',
+				content: '',
+				reasoning: '',
+				isStreaming: true,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					children: [],
+					timeline: [],
+				},
+			},
+		];
+		let resolveStatus: ((value: Awaited<ReturnType<typeof fetchThreadStatus>>) => void) | undefined;
+		mockFetchThreadStatus.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveStatus = resolve;
+			}),
+		);
+
+		const statusPromise = runtime.loadThreadStatus();
+
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-new' });
+		await runtime.sendMessage('new request');
+		expect(runtime.activeRunId).toBe('run-new');
+
+		resolveStatus?.({ hasActiveRun: false, isSuspended: false, backgroundTasks: [] });
+		await statusPromise;
+
+		expect(runtime.activeRunId).toBe('run-new');
+		const [message] = runtime.messages;
+		expect(message.agentTree?.status).toBe('active');
+		expect(message.agentTree?.toolCalls[0].isLoading).toBe(true);
+	});
+
+	test('cancelRun shows an actionable error when cancellation fails', async () => {
+		const runtime = activeRuntime(registry);
+		mockPostCancel.mockRejectedValueOnce(new Error('network'));
+
+		await runtime.cancelRun();
+
+		expect(mockShowError).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Failed to cancel. Try again.' }),
+			'Cancel failed',
+		);
+		expect(mockFetchThreadStatus).not.toHaveBeenCalled();
 	});
 });
 
