@@ -629,4 +629,101 @@ describe('replyToEmail', () => {
 			}),
 		);
 	});
+
+	test('should split multiple comma-separated Reply-To addresses', async () => {
+		const messageWithMultipleReplyTo = {
+			...mockMessageMetadata,
+			payload: {
+				...mockMessageMetadata.payload,
+				headers: [
+					{ name: 'Subject', value: 'Original Subject' },
+					{ name: 'Message-ID', value: '<original@example.com>' },
+					{ name: 'From', value: 'John Doe <john@example.com>' },
+					{ name: 'To', value: 'recipient1@example.com' },
+					{ name: 'Reply-To', value: 'jacob@example.com, charles@example.com' },
+				],
+			},
+		};
+
+		mockedGoogleApiRequest
+			.mockResolvedValueOnce(messageWithMultipleReplyTo)
+			.mockResolvedValueOnce(mockUserProfile)
+			.mockResolvedValueOnce(mockSentMessage);
+
+		const options: IDataObject = {};
+
+		await replyToEmail.call(mockExecuteFunctions, 'message123', options, 0, 2.2);
+
+		expect(mockedEncodeEmail).toHaveBeenCalledWith(
+			expect.objectContaining({
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				to: expect.stringContaining('<jacob@example.com>'),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				cc: expect.any(String),
+			}),
+		);
+
+		expect(mockedEncodeEmail).toHaveBeenCalledWith(
+			expect.objectContaining({
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				to: expect.stringContaining('<charles@example.com>'),
+			}),
+		);
+
+		expect(mockedEncodeEmail).toHaveBeenCalledWith(
+			expect.objectContaining({
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				to: expect.stringContaining('<recipient1@example.com>'),
+			}),
+		);
+	});
+
+	test('should split multiple Reply-To addresses with angle brackets', async () => {
+		const messageWithBracketedReplyTo = {
+			...mockMessageMetadata,
+			payload: {
+				...mockMessageMetadata.payload,
+				headers: [
+					{ name: 'Subject', value: 'Original Subject' },
+					{ name: 'Message-ID', value: '<original@example.com>' },
+					{ name: 'From', value: 'John Doe <john@example.com>' },
+					{ name: 'To', value: 'recipient1@example.com' },
+					{
+						name: 'Reply-To',
+						value: 'Jacob Smith <jacob@example.com>, Charles Brown <charles@example.com>',
+					},
+				],
+			},
+		};
+
+		mockedGoogleApiRequest
+			.mockResolvedValueOnce(messageWithBracketedReplyTo)
+			.mockResolvedValueOnce(mockUserProfile)
+			.mockResolvedValueOnce(mockSentMessage);
+
+		const options: IDataObject = {};
+
+		await replyToEmail.call(mockExecuteFunctions, 'message123', options, 0, 2.2);
+
+		expect(mockedEncodeEmail).toHaveBeenCalledWith(
+			expect.objectContaining({
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				to: expect.stringContaining('Jacob Smith <jacob@example.com>'),
+			}),
+		);
+
+		expect(mockedEncodeEmail).toHaveBeenCalledWith(
+			expect.objectContaining({
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				to: expect.stringContaining('Charles Brown <charles@example.com>'),
+			}),
+		);
+
+		expect(mockedEncodeEmail).toHaveBeenCalledWith(
+			expect.objectContaining({
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				to: expect.stringContaining('<recipient1@example.com>'),
+			}),
+		);
+	});
 });

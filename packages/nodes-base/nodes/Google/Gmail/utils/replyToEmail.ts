@@ -106,12 +106,15 @@ export async function replyToEmail(
 	for (const header of payload.headers) {
 		const headerName = (header.name || '').toLowerCase();
 		if (headerName === replyToHeaderName && !replyToRecipientsOnly) {
-			const replyToEmail = header.value;
-			if (replyToEmail.includes('<') && replyToEmail.includes('>')) {
-				to.push(replyToEmail);
-			} else {
-				to.push(`<${replyToEmail}>`);
-			}
+			const replyToEmails = header.value;
+			replyToEmails.split(',').forEach((email: string) => {
+				const trimmedEmail = email.trim();
+				if (trimmedEmail.includes('<') && trimmedEmail.includes('>')) {
+					to.push(trimmedEmail);
+				} else {
+					to.push(`<${trimmedEmail}>`);
+				}
+			});
 		}
 
 		if (headerName === 'to' && !replyToSenderOnly) {
