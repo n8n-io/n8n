@@ -26,7 +26,7 @@ n8n-cli package export -w abc --include-variable-values=false -o export.n8np
 | `-p, --project-id` | Project ID to include. Repeat the flag to export several. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
 | `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files (and in the package requirements), just without their values. |
-| `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail`, `reference-only`, or `include-in-package`. Currently only `fail` is supported. |
+| `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail` aborts when any dependency is missing, `include-in-package` automatically adds missing static sub-workflows, and `reference-only` is reserved for a future export mode. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
 the API key to hold `workflow:export` when exporting workflows or folders, or
