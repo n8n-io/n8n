@@ -169,7 +169,7 @@ onMounted(async () => {
 					>
 						<N8nButton
 							v-if="isSupported && !loadingApiKey && !keyRotating"
-							variant="subtle"
+							variant="ghost"
 							iconOnly
 							:icon="copied ? 'check' : 'copy'"
 							:class="$style['copy-json-button']"
