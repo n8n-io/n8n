@@ -1,4 +1,4 @@
-import { ALLOWED_HTML_TAGS } from '@/app/constants';
+import { ALLOWED_HTML_TAGS } from './constants/sanitization';
 import { openSafeUrl, sanitizeHtml } from './htmlUtils';
 
 describe('sanitizeHtml', () => {

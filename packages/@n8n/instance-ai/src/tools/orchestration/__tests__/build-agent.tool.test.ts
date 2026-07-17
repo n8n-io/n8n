@@ -123,6 +123,15 @@ const expectedUsageItem = {
 	output: 20,
 };
 
+/** A manually-resolvable promise, for proving the tool awaits `claimSubAgentUsage`. */
+function deferredClaim(): { promise: Promise<void>; resolve: () => void } {
+	let resolve!: () => void;
+	const promise = new Promise<void>((r) => {
+		resolve = r;
+	});
+	return { promise, resolve };
+}
+
 function askQuestionsSuspendPayload() {
 	return {
 		requestId: 'builder-req-1',
@@ -261,6 +270,8 @@ describe('build-agent tool', () => {
 		expect(delegate.createAgent).toHaveBeenCalledWith('Support Agent');
 		expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Build me a support agent', {
 			threadId: 'ia-builder:thread-1:agent-1',
+			hostThreadId: 'thread-1',
+			runId: 'run-1',
 			modelConfig: context.modelId,
 		});
 	});
@@ -436,6 +447,8 @@ describe('build-agent tool', () => {
 		expect(delegate.createAgent).not.toHaveBeenCalled();
 		expect(delegate.streamBuild).toHaveBeenCalledWith('agent-existing', 'Add a tool', {
 			threadId: 'ia-builder:thread-1:agent-existing',
+			hostThreadId: 'thread-1',
+			runId: 'run-1',
 			modelConfig: context.modelId,
 		});
 	});
@@ -649,6 +662,8 @@ describe('build-agent tool', () => {
 			});
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-2', 'Build me another agent', {
 				threadId: 'ia-builder:thread-1:agent-2',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 		});
@@ -696,6 +711,8 @@ describe('build-agent tool', () => {
 			expect(delegate.createAgent).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Go back to the tracker agent', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, sessionAgent);
@@ -758,6 +775,8 @@ describe('build-agent tool', () => {
 			expect(delegate.createAgent).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Add a tool', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 		});
@@ -788,6 +807,8 @@ describe('build-agent tool', () => {
 			expect(delegate.createAgent).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-2', 'Now edit this one', {
 				threadId: 'ia-builder:thread-1:agent-2',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, {
@@ -820,6 +841,8 @@ describe('build-agent tool', () => {
 			expect(saveAgentBuilderTarget).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Add a tool', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 		});
@@ -970,12 +993,19 @@ describe('build-agent tool', () => {
 			// binding decides which agent this resumes against.
 			expect(delegate.findOpenSuspensions).toHaveBeenCalledWith('agent-1', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData },
-				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+				{
+					threadId: 'ia-builder:thread-1:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: context.modelId,
+				},
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -1013,12 +1043,19 @@ describe('build-agent tool', () => {
 
 			expect(delegate.findOpenSuspensions).toHaveBeenCalledWith('agent-1', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData: { approved: true } },
-				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+				{
+					threadId: 'ia-builder:thread-1:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: context.modelId,
+				},
 			);
 		});
 
@@ -1046,7 +1083,12 @@ describe('build-agent tool', () => {
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData: { approved: true } },
-				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+				{
+					threadId: 'ia-builder:thread-1:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: context.modelId,
+				},
 			);
 		});
 
@@ -1295,7 +1337,7 @@ describe('build-agent tool', () => {
 	describe('credit metering', () => {
 		it('claims usage once for a completed leg', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1316,9 +1358,40 @@ describe('build-agent tool', () => {
 			);
 		});
 
+		it('waits for the usage claim before returning a completed leg', async () => {
+			const { context, delegate } = makeContext();
+			const claim = deferredClaim();
+			context.claimSubAgentUsage = vi.fn().mockReturnValue(claim.promise);
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([finishChunk()], 'ok'));
+
+			const resultPromise = runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{ toolCallId: 'orch-call-1' },
+			);
+
+			// The tool call must not settle while its usage claim is still pending.
+			const timeoutSentinel = Symbol('timeout');
+			const raceBeforeResolve = await Promise.race([
+				resultPromise,
+				new Promise((resolve) => setTimeout(() => resolve(timeoutSentinel), 20)),
+			]);
+			expect(raceBeforeResolve).toBe(timeoutSentinel);
+
+			claim.resolve();
+			const result = await resultPromise;
+
+			expect(result.ok).toBe(true);
+			expect(context.claimSubAgentUsage).toHaveBeenCalledTimes(1);
+		});
+
 		it('claims usage with status errored for an errored leg', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1342,7 +1415,8 @@ describe('build-agent tool', () => {
 
 		it('claims usage with a suspension-suffixed dedupe id before cascading the suspension', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			const claim = deferredClaim();
+			context.claimSubAgentUsage = vi.fn().mockReturnValue(claim.promise);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1364,11 +1438,18 @@ describe('build-agent tool', () => {
 			);
 			const suspend: Mock = vi.fn().mockResolvedValue(undefined);
 
-			await runToolWithCtx(
+			const resultPromise = runToolWithCtx(
 				context,
 				{ message: 'Build it', name: 'New Agent' },
 				{ toolCallId: 'orch-call-1', suspend },
 			);
+
+			// The suspension must not be cascaded while its usage claim is still pending.
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			expect(suspend).not.toHaveBeenCalled();
+
+			claim.resolve();
+			await resultPromise;
 
 			expect(context.claimSubAgentUsage).toHaveBeenCalledTimes(1);
 			expect(context.claimSubAgentUsage).toHaveBeenCalledWith(
@@ -1376,6 +1457,7 @@ describe('build-agent tool', () => {
 				[expectedUsageItem],
 				'suspended',
 			);
+			expect(suspend).toHaveBeenCalledTimes(1);
 			const claimOrder = (context.claimSubAgentUsage as Mock).mock.invocationCallOrder[0];
 			const suspendOrder = suspend.mock.invocationCallOrder[0];
 			expect(claimOrder).toBeLessThan(suspendOrder);
@@ -1383,7 +1465,7 @@ describe('build-agent tool', () => {
 
 		it('claims usage with the ref-suffixed dedupe base on the resume leg', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
 			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
@@ -1430,7 +1512,7 @@ describe('build-agent tool', () => {
 
 		it('still calls the hook with an empty array when the stream carried no usage', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1482,6 +1564,40 @@ describe('build-agent tool', () => {
 
 			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
 			expect(sessionArg).not.toHaveProperty('telemetry');
+		});
+
+		it('forwards the parent trace memory-task lease hook in the builder session', async () => {
+			const { context, delegate } = makeContext();
+			const { tracing } = makeTracingStub();
+			const onMemoryTaskEvent = vi.fn();
+			tracing.onMemoryTaskEvent = onMemoryTaskEvent;
+			context.tracing = tracing;
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'ok'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
+			expect(sessionArg).toEqual(
+				expect.objectContaining({ memoryTaskObserver: onMemoryTaskEvent }),
+			);
+		});
+
+		it('omits the memory-task lease hook from the builder session when tracing is unset', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'ok'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
+			expect(sessionArg).not.toHaveProperty('memoryTaskObserver');
 		});
 
 		it('starts a labeled agent-builder child run and finishes it with outputs on completion', async () => {
