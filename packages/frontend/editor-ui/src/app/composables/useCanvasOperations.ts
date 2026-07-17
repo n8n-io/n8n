@@ -3150,6 +3150,7 @@ export function useCanvasOperations() {
 			const createdGroup = workflowDocumentStore.value.createGroup(group.nodeIds, name, {
 				markDirty: setStateDirty,
 				startCollapsed: true,
+				description: group.description,
 			});
 			if (trackHistory) {
 				historyStore.pushCommandToUndo(new AddNodeGroupCommand(createdGroup, Date.now()));

@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 
+import { toImportBlockedError } from './import-blocked.error';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
@@ -13,13 +14,17 @@ import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
 } from '../entities/data-table/data-table.types';
+import type {
+	FolderImportContext,
+	FolderImportPlan,
+	PreparedFolder,
+} from '../entities/folder/folder-import.types';
 import { FolderImporter } from '../entities/folder/folder-importer';
-import type { FolderImportPlan, PreparedFolder } from '../entities/folder/folder-import.types';
 import { VariableImporter } from '../entities/variable/variable-importer';
 import type {
 	VariableImportPlan,
 	VariableImportRequest,
-} from '../entities/variable/variable-import.types';
+} from '../entities/variable/variable.types';
 import type {
 	PreparedWorkflow,
 	WorkflowImportOutcome,
@@ -36,7 +41,6 @@ import type {
 	ImportWorkflowProperties,
 	PackageImportBindings,
 } from '../n8n-packages.types';
-import { toImportBlockedError } from './import-blocked.error';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -46,6 +50,8 @@ export interface ImportOrchestrationInput {
 	dataTableRequest: DataTableImportRequest;
 	variableRequest: VariableImportRequest;
 	options: ImportWorkflowProperties & ImportFolderProperties;
+	/** The target project does not exist yet and will be created by this import (project packages). */
+	projectPendingCreation?: boolean;
 }
 
 export interface ImportOrchestrationResult {
@@ -55,6 +61,17 @@ export interface ImportOrchestrationResult {
 	credentialResult: CredentialApplyResult;
 	dataTablePlan: DataTableImportPlan;
 	variablePlan: VariableImportPlan;
+}
+
+export interface ImportPlan {
+	input: ImportOrchestrationInput;
+	folderContext: FolderImportContext;
+	credentialPlan: CredentialResolution;
+	workflowPlan: WorkflowImportPlan;
+	folderPlan: FolderImportPlan;
+	dataTablePlan: DataTableImportPlan;
+	variablePlan: VariableImportPlan;
+	blockingIssues: BlockingIssue[];
 }
 
 /**
@@ -73,6 +90,14 @@ export class ImportOrchestrator {
 	) {}
 
 	async import(input: ImportOrchestrationInput): Promise<ImportOrchestrationResult> {
+		const plan = await this.plan(input);
+		if (plan.blockingIssues.length > 0) {
+			throw toImportBlockedError(plan.blockingIssues);
+		}
+		return await this.apply(plan);
+	}
+
+	async plan(input: ImportOrchestrationInput): Promise<ImportPlan> {
 		const {
 			context,
 			folders,
@@ -83,11 +108,11 @@ export class ImportOrchestrator {
 			options,
 		} = input;
 
-		// PublishAll requires publish scope up front; other policies are checked per workflow.
 		await this.workflowPublisher.assertCanPublish(
 			context.user,
 			context.projectId,
 			options.workflowPublishingPolicy,
+			input.projectPendingCreation,
 		);
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
@@ -105,9 +130,29 @@ export class ImportOrchestrator {
 			dataTablePlan,
 		});
 
-		if (blockingIssues.length > 0) {
-			throw toImportBlockedError(blockingIssues);
-		}
+		return {
+			input,
+			folderContext,
+			credentialPlan,
+			workflowPlan,
+			folderPlan,
+			dataTablePlan,
+			variablePlan,
+			blockingIssues,
+		};
+	}
+
+	async apply(plan: ImportPlan): Promise<ImportOrchestrationResult> {
+		const {
+			input,
+			folderContext,
+			credentialPlan,
+			workflowPlan,
+			folderPlan,
+			dataTablePlan,
+			variablePlan,
+		} = plan;
+		const { context, credentialRequest, options } = input;
 
 		const folderSummaries = await this.folderImporter.apply(folderContext, folderPlan);
 

@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/test-impact",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:30:38.250Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1077,
+            948,
+            912
+          ],
+          "min": 912,
+          "median": 948,
+          "mean": 979
+        },
+        "build": {
+          "runsMs": [
+            926,
+            920,
+            887
+          ],
+          "min": 887,
+          "median": 920,
+          "mean": 911
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:31:03.641Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            504,
+            570,
+            497
+          ],
+          "min": 497,
+          "median": 504,
+          "mean": 524
+        },
+        "build": {
+          "runsMs": [
+            499,
+            611,
+            500
+          ],
+          "min": 499,
+          "median": 500,
+          "mean": 537
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "package": "n8n-playwright",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:28:02.755Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            4097,
+            3332,
+            3298
+          ],
+          "min": 3298,
+          "median": 3332,
+          "mean": 3576
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:28:40.308Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1459,
+            1238,
+            1113
+          ],
+          "min": 1113,
+          "median": 1238,
+          "mean": 1270
+        }
+      }
+    }
+  }
+}

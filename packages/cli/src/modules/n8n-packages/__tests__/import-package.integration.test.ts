@@ -1201,6 +1201,11 @@ describe('Package import event emission', () => {
 					created: 0,
 					requirements: 0,
 				},
+				variables: {
+					matched: 0,
+					missing: 0,
+					requirements: 0,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();
@@ -1280,6 +1285,11 @@ describe('Package import event emission', () => {
 					created: 0,
 					requirements: 0,
 				},
+				variables: {
+					matched: 0,
+					missing: 0,
+					requirements: 0,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();
@@ -1326,6 +1336,11 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					requirements: 0,
+				},
+				variables: {
+					matched: 0,
+					missing: 0,
 					requirements: 0,
 				},
 			});
@@ -1376,6 +1391,11 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					requirements: 0,
+				},
+				variables: {
+					matched: 0,
+					missing: 0,
 					requirements: 0,
 				},
 			});

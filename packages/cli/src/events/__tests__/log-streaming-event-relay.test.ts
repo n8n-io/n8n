@@ -63,7 +63,7 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: 'global:admin' },
 				},
-				projectId: 'proj-brie',
+				projectIds: ['proj-brie', 'proj-stilton'],
 				folderId: 'folder-cheese',
 				workflowIds: ['wf-cheddar', 'wf-brie'],
 				options: {
@@ -119,7 +119,7 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Import',
 					_lastName: 'User',
 					globalRole: 'global:admin',
-					projectId: 'proj-brie',
+					projectIds: ['proj-brie', 'proj-stilton'],
 					folderId: 'folder-cheese',
 					workflowIds: ['wf-cheddar', 'wf-brie'],
 					options: {

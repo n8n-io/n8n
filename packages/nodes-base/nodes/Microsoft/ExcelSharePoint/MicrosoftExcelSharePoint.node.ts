@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import * as append from './actions/worksheet/append.operation';
 import * as clear from './actions/worksheet/clear.operation';
 import * as deleteWorksheet from './actions/worksheet/deleteWorksheet.operation';
 import * as readRows from './actions/worksheet/readRows.operation';
@@ -97,6 +98,12 @@ export class MicrosoftExcelSharePoint implements INodeType {
 				},
 				options: [
 					{
+						name: 'Append',
+						value: 'append',
+						description: 'Append rows to the end of a sheet',
+						action: 'Append rows to sheet',
+					},
+					{
 						name: 'Clear',
 						value: 'clear',
 						description: 'Clear sheet',
@@ -118,6 +125,7 @@ export class MicrosoftExcelSharePoint implements INodeType {
 				default: 'readRows',
 			},
 
+			...append.description,
 			...clear.description,
 			...deleteWorksheet.description,
 			...readRows.description,
@@ -132,6 +140,10 @@ export class MicrosoftExcelSharePoint implements INodeType {
 		const items = this.getInputData();
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+
+		if (resource === 'worksheet' && operation === 'append') {
+			return [await append.execute.call(this, items)];
+		}
 
 		if (resource === 'worksheet' && operation === 'readRows') {
 			return [await readRows.execute.call(this, items)];

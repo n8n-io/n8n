@@ -288,6 +288,14 @@ export function createBindings(seed: Partial<PackageImportBindings> = {}): Packa
 	};
 }
 
+/** Combines per-scope binding maps into one — used when a project package imports several scopes. */
+export function mergeBindings(...bindings: PackageImportBindings[]): PackageImportBindings {
+	return {
+		workflows: new Map(bindings.flatMap(({ workflows }) => [...workflows])),
+		credentials: new Map(bindings.flatMap(({ credentials }) => [...credentials])),
+	};
+}
+
 /** Plain-object form of {@link PackageImportBindings}, suitable for JSON responses. */
 export type SerializedBindings = Record<keyof PackageImportBindings, Record<string, string>>;
 
