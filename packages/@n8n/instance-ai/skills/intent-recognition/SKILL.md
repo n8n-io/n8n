@@ -29,9 +29,10 @@ show up inside that flow.
 If the user asked to build, route on the result: workflow-builder for
 workflow-anchored (a bounded LLM step is an AI node in the graph; an embedded
 agent is an AI Agent step inside it), an agent-oriented design for
-agent-anchored (a tool-use loop; build reusable actions as workflows the
-agent invokes), `ask-user` for needs-clarification, or answer directly for
-out-of-scope.
+agent-anchored (a tool-use loop; use direct agent tools by default, and build a
+workflow tool only when one agent tool call must run an ordered multi-node
+procedure or the action must also run outside the agent), `ask-user` for
+needs-clarification, or answer directly for out-of-scope.
 
 ## Inputs
 
@@ -77,9 +78,11 @@ Two orthogonal decisions per request, or per part for compound requests:
 
 - workflow-anchored + `true`: an agent embedded as a workflow step (e.g. a
   scheduled pipeline whose middle step is open-ended investigation).
-- agent-anchored + `true`: workflows invoked as tools of the agent —
-  especially when the user wants reusable or manually-triggerable actions, or
-  an action is itself a deterministic multi-step procedure.
+- agent-anchored + `true`: workflows invoked as tools of the agent — only when
+  one agent tool call must run an ordered multi-node procedure, or when the
+  user explicitly needs that workflow reusable, manually callable, or usable
+  outside the agent. One node-backed capability or multiple independent node
+  tools remain direct agent tools and do not set `embeds_other: true`.
 - `n/a` for needs-clarification and out-of-scope.
 
 **Migration from the old taxonomy**: old **hybrid** → workflow-anchored,
@@ -195,9 +198,14 @@ that agent, never a spawned workflow.
   that drafts a tailored renewal pitch for each account from its usage
   history embeds an agent; a nightly job that condenses each ticket into a
   two-sentence summary does not.
-- Agent with workflow tools: the user asks for actions that should also be
-  reusable, callable manually, or run outside the agent; or an action the
-  agent invokes is itself a deterministic multi-step procedure.
+- Agent with workflow tools: one agent tool call must run an ordered
+  multi-node procedure, or the user explicitly asks for the workflow to be
+  reusable, callable manually, or run outside the agent.
+- **Direct agent tools are the default.** A single node-backed capability,
+  multiple independent node tools, MCP or provider tools, and custom tools
+  stay on the agent build path with `embeds_other: false`. Count the nodes
+  required inside one tool invocation, not the total number of tools on the
+  agent.
 
 **Context continuity** (step 0): inside a workflow build, a request to insert
 a scoring step stays a bounded LLM step, not a new agent. Inside an agent
@@ -247,6 +255,10 @@ instead.
   and ticket-filing should also be triggerable manually elsewhere." ->
   **agent-anchored**, `embeds_other: true`: explicitly reusable actions are
   workflows the agent calls as tools.
+- "Add tools to my support agent so it can look up and insert Data Table
+  rows." -> **agent-anchored**, `embeds_other: false`: lookup and insert are
+  multiple independent node tools delegated to the agent builder, not one
+  multi-node workflow tool.
 - "Have an agent keep an eye on our AWS spend throughout the day and flag me
   before we blow through budget, without me asking it to check." ->
   **agent-anchored**, `embeds_other: false`: proactive, heartbeat-driven,
@@ -314,6 +326,10 @@ instead.
 - Never default `embeds_other` to `false` without checking both directions:
   an agent step hiding inside a workflow, and a workflow acting as an
   agent's tool.
+- Do not turn every agent capability into a workflow tool. Delegate direct
+  node, MCP, provider, and custom tool requests to the agent builder; use a
+  workflow only for one ordered multi-node invocation or explicit reuse
+  outside the agent.
 - Never split a compound request on tool or step enumeration alone — split
   only on separate lifecycles.
 - Unnecessary agency adds latency, cost, and compounding error risk — do not
@@ -352,7 +368,7 @@ Return a concise classification and reason:
 Anchor: workflow-anchored | agent-anchored | needs-clarification | out-of-scope
 Embeds other: true | false | n/a
 Reason: <one or two sentences citing the deciding signals>
-Next step: <build workflow / build workflow with embedded agent step / build n8n Agent artifact (agent build path; workflows as tools where actions should be reusable; recurring duties as scheduled tasks on the agent) / ask clarification / answer directly>
+Next step: <build workflow / build workflow with embedded agent step / build n8n Agent artifact (agent build path; direct tools by default; workflow tools only for ordered multi-node calls or explicit reuse outside the agent; recurring duties as scheduled tasks on the agent) / ask clarification / answer directly>
 ```
 
 For build requests, do not expose this format unless the user asks for
