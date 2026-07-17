@@ -1,12 +1,12 @@
-import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../v2/actions/versionDescription';
 import { MicrosoftSharePointV2 } from '../../v2/MicrosoftSharePointV2.node';
-import { getSites, siteRLC } from '../../v2/site';
+import { getSites, resolveSiteId, siteRLC } from '../../v2/site';
 import * as transport from '../../v2/transport';
 import type * as _importType0 from '../../v2/transport';
 
@@ -95,6 +95,8 @@ describe('Microsoft SharePoint v2 — site selection', () => {
 
 		// The link is a complete address — passed through verbatim, never rebuilt
 		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+		// The second page's rows must surface, not just its token bookkeeping
+		expect(secondPage.results).toEqual([{ name: 'Two', value: 's2', url: undefined }]);
 		expect(secondPage.paginationToken).toBeUndefined();
 	});
 
@@ -104,7 +106,18 @@ describe('Microsoft SharePoint v2 — site selection', () => {
 			new NodeApiError(mock<INode>(), { message: 'refused' }, { httpCode: '403' }),
 		);
 
-		await expect(getSites.call(ctx)).rejects.toThrow('This app sign-in cannot search sites');
+		let thrown: NodeOperationError | undefined;
+		try {
+			await getSites.call(ctx);
+		} catch (error) {
+			thrown = error as NodeOperationError;
+		}
+
+		expect(thrown).toBeInstanceOf(NodeOperationError);
+		expect(thrown?.message).toBe('This app registration cannot search sites');
+		// The steering hint only surfaces in the editor — pin both halves of it
+		expect(thrown?.description).toContain('pasting its URL instead');
+		expect(thrown?.description).toContain('Sites.Read.All application permission');
 	});
 
 	it('keeps the permission-naming message for delegated refusals', async () => {
@@ -129,6 +142,7 @@ describe('Microsoft SharePoint v2 — site selection', () => {
 	it('offers search first, with URL and ID modes alongside', () => {
 		expect(siteRLC.modes?.map((mode) => mode.name)).toEqual(['list', 'url', 'id']);
 		expect(siteRLC.modes?.[0].typeOptions?.searchListMethod).toBe('getSites');
+		expect(siteRLC.modes?.[0].typeOptions?.searchable).toBe(true);
 		expect(siteRLC.default).toEqual({ mode: 'list', value: '' });
 	});
 
@@ -136,5 +150,103 @@ describe('Microsoft SharePoint v2 — site selection', () => {
 		const node = new MicrosoftSharePointV2(versionDescription);
 
 		expect(node.methods?.listSearch?.getSites).toBe(getSites);
+	});
+});
+
+describe('Microsoft SharePoint v2 — resolveSiteId', () => {
+	let ctx: DeepMockProxy<IExecuteFunctions>;
+	const apiRequest = transport.microsoftApiRequest as Mock;
+
+	const setSite = (site: Record<string, unknown>) => {
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, _itemIndex?: number, fallback?: unknown) =>
+				(name === 'site' ? site : fallback) as never,
+		);
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		ctx = mockDeep<IExecuteFunctions>();
+		ctx.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
+		apiRequest.mockResolvedValue({ id: 'contoso.sharepoint.com,g1,g2' });
+	});
+
+	// Graph documents both shapes: a bare hostname addresses that host's root
+	// site (works for non-default hostnames where /sites/root would not), and
+	// {hostname}:{path} addresses a site by server-relative path.
+	// https://learn.microsoft.com/en-us/graph/api/site-get
+	it.each([
+		['a root URL', 'https://contoso.sharepoint.com', '/v1.0/sites/contoso.sharepoint.com'],
+		[
+			'a root URL with a trailing slash',
+			'https://contoso.sharepoint.com/',
+			'/v1.0/sites/contoso.sharepoint.com',
+		],
+		[
+			'a site URL with a trailing slash',
+			'https://contoso.sharepoint.com/sites/a/',
+			'/v1.0/sites/contoso.sharepoint.com:/sites/a',
+		],
+		[
+			'a subsite URL',
+			'https://contoso.sharepoint.com/sites/a/subsite',
+			'/v1.0/sites/contoso.sharepoint.com:/sites/a/subsite',
+		],
+		[
+			'a URL with a query string',
+			'https://contoso.sharepoint.com/sites/a?web=1',
+			'/v1.0/sites/contoso.sharepoint.com:/sites/a',
+		],
+	])('resolves %s via the documented Graph addressing', async (_name, url, endpoint) => {
+		setSite({ mode: 'url', value: url });
+
+		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe('contoso.sharepoint.com,g1,g2');
+
+		expect(apiRequest).toHaveBeenCalledWith('GET', endpoint, {}, { $select: 'id' });
+	});
+
+	it("re-encodes path segments so a raw ':' can't escape the {host}:{path} shape", async () => {
+		setSite({ mode: 'url', value: 'https://contoso.sharepoint.com/sites/a:b' });
+
+		await resolveSiteId.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/v1.0/sites/contoso.sharepoint.com:/sites/a%3Ab',
+			{},
+			{ $select: 'id' },
+		);
+	});
+
+	it('does not double-encode an already-encoded path segment', async () => {
+		setSite({ mode: 'url', value: 'https://contoso.sharepoint.com/sites/My%20Site' });
+
+		await resolveSiteId.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/v1.0/sites/contoso.sharepoint.com:/sites/My%20Site',
+			{},
+			{ $select: 'id' },
+		);
+	});
+
+	it('returns an ID as given, without a request', async () => {
+		setSite({ mode: 'id', value: 'contoso.sharepoint.com,g1,g2' });
+
+		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe('contoso.sharepoint.com,g1,g2');
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	// The empty-site guard lives here so every action inherits it
+	it.each([
+		['ID', { mode: 'id', value: '' }],
+		['list', { mode: 'list', value: '' }],
+		['URL', { mode: 'url', value: '  ' }],
+	])('rejects an empty site in %s mode before any request', async (_name, site) => {
+		setSite(site);
+
+		await expect(resolveSiteId.call(ctx, 0)).rejects.toThrow("The 'Site' parameter is empty");
+		expect(apiRequest).not.toHaveBeenCalled();
 	});
 });

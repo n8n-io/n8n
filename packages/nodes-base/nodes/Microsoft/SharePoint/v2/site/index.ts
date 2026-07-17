@@ -43,7 +43,7 @@ export const siteRLC: INodeProperties = {
 				{
 					type: 'regex',
 					properties: {
-						regex: 'https://.+',
+						regex: '^https://.+',
 						errorMessage: 'The URL must start with https://',
 					},
 				},
@@ -103,9 +103,9 @@ export async function getSites(
 			error.httpCode === '403' &&
 			getSharePointCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH
 		) {
-			throw new NodeOperationError(this.getNode(), 'This app sign-in cannot search sites', {
+			throw new NodeOperationError(this.getNode(), 'This app registration cannot search sites', {
 				description:
-					"An app with only per-site permissions can't list sites. Choose the site by pasting its URL instead — that still works.",
+					"An app registration with only per-site permissions can't list sites. Choose the site by pasting its URL instead — that still works — or grant the app the Sites.Read.All application permission to enable search.",
 			});
 		}
 		throw error;
@@ -132,6 +132,14 @@ const siteIdCache = new WeakMap<IExecuteFunctions, Map<string, string>>();
 export async function resolveSiteId(this: IExecuteFunctions, itemIndex: number): Promise<string> {
 	const site = this.getNodeParameter('site', itemIndex) as INodeParameterResourceLocator;
 	const value = String(site.value ?? '').trim();
+
+	// Site-field validation lives here so every action (and the future trigger)
+	// inherits it — an empty segment would change the request shape (/sites//…).
+	if (value === '') {
+		throw new NodeOperationError(this.getNode(), "The 'Site' parameter is empty", {
+			description: 'Set the site ID or URL and try again.',
+		});
+	}
 	if (site.mode !== 'url') {
 		return value;
 	}
@@ -144,7 +152,20 @@ export async function resolveSiteId(this: IExecuteFunctions, itemIndex: number):
 			description: 'Paste the full site address, e.g. https://contoso.sharepoint.com/sites/mysite',
 		});
 	}
-	const path = parsed.pathname.replace(/\/+$/, '');
+	// Re-encode each segment so a raw ':' can't escape the `{host}:{path}` shape;
+	// decoding first keeps already-encoded segments from being encoded twice.
+	const path = parsed.pathname
+		.replace(/\/+$/, '')
+		.split('/')
+		.map((segment) => {
+			try {
+				segment = decodeURIComponent(segment);
+			} catch {
+				// Malformed escape sequence — encode the raw segment as-is
+			}
+			return encodeURIComponent(segment);
+		})
+		.join('/');
 	const endpoint =
 		path === '' ? `/v1.0/sites/${parsed.hostname}` : `/v1.0/sites/${parsed.hostname}:${path}`;
 

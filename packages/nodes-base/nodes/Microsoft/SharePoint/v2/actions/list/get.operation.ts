@@ -48,12 +48,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 
 	// An empty segment would change the request shape (e.g. /lists/ returns the
-	// whole collection) — fail loudly instead.
-	if (siteId === '') {
-		throw new NodeOperationError(this.getNode(), "The 'Site' parameter is empty", {
-			description: 'Set the site ID or URL and try again.',
-		});
-	}
+	// whole collection) — fail loudly instead. The site field validates itself
+	// inside resolveSiteId.
 	if (listIdOrTitle === '') {
 		throw new NodeOperationError(this.getNode(), "The 'List' parameter is empty", {
 			description: 'Set the list ID or title and try again.',
