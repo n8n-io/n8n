@@ -1,3 +1,4 @@
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -109,9 +110,9 @@ describe('BuilderModelLiveLookupService', () => {
 		expect(listModelsForProvider).not.toHaveBeenCalled();
 	});
 
-	describe('listManaged', () => {
-		it('lists gateway-allowed models via the synthetic credential', async () => {
-			const { service, aiGatewayService } = makeService();
+	describe('list with the n8n Connect managed tag', () => {
+		it('resolves the synthetic gateway credential and lists its allowlisted models', async () => {
+			const { service, aiGatewayService, credentialsService } = makeService();
 			aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('openAiApi');
 			aiGatewayService.getSyntheticCredential.mockResolvedValue({
 				apiKey: 'gateway-jwt',
@@ -119,7 +120,13 @@ describe('BuilderModelLiveLookupService', () => {
 			});
 			listModelsForProvider.mockResolvedValue([{ id: 'gpt-5-mini', name: 'GPT-5 mini' }]);
 
-			const result = await service.listManaged(projectId, 'openai', user);
+			const result = await service.list(
+				user,
+				projectId,
+				AI_GATEWAY_MANAGED_TAG,
+				'openAiApi',
+				'openai',
+			);
 
 			expect(result).toEqual([{ name: 'GPT-5 mini', value: 'gpt-5-mini' }]);
 			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
@@ -127,6 +134,8 @@ describe('BuilderModelLiveLookupService', () => {
 				userId: 'user-1',
 				projectId,
 			});
+			// No stored-credential lookup for the managed tag.
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
 			// Discovery hits the gateway baseURL → the gateway returns only allowlisted models.
 			expect(listModelsForProvider).toHaveBeenCalledWith(
 				'openai',
@@ -141,7 +150,9 @@ describe('BuilderModelLiveLookupService', () => {
 			const { service, aiGatewayService } = makeService();
 			aiGatewayService.getCredentialTypeForProvider.mockResolvedValue(undefined);
 
-			await expect(service.listManaged(projectId, 'xai', user)).rejects.toThrow('does not support');
+			await expect(
+				service.list(user, projectId, AI_GATEWAY_MANAGED_TAG, 'xAiApi', 'xai'),
+			).rejects.toThrow('does not support');
 			expect(aiGatewayService.getSyntheticCredential).not.toHaveBeenCalled();
 			expect(listModelsForProvider).not.toHaveBeenCalled();
 		});

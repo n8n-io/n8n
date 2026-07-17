@@ -1,5 +1,6 @@
 import { LOCAL_STORAGE_AGENT_MODEL_CREDENTIALS } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import {
@@ -76,11 +77,15 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 			const providerCredentials = getCredentialsForProvider(provider);
 			const selectedCredentialId = selectedCredentials.value[provider] ?? null;
 
+			// The n8n Connect managed tag is a valid selection with no matching stored
+			// credential — preserve it instead of falling back to a real credential.
 			credentials[provider] =
-				selectedCredentialId &&
-				providerCredentials.some((credential) => credential.id === selectedCredentialId)
-					? selectedCredentialId
-					: (providerCredentials[0]?.id ?? null);
+				selectedCredentialId === AI_GATEWAY_MANAGED_TAG
+					? AI_GATEWAY_MANAGED_TAG
+					: selectedCredentialId &&
+							providerCredentials.some((credential) => credential.id === selectedCredentialId)
+						? selectedCredentialId
+						: (providerCredentials[0]?.id ?? null);
 		}
 
 		return credentials;

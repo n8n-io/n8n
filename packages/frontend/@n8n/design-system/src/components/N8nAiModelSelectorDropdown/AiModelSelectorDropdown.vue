@@ -12,7 +12,7 @@ import type {
 	AiModelSelectorMenuItemData,
 } from './AiModelSelectorDropdown.types';
 import { useI18n } from '../../composables/useI18n';
-import type { BadgeTheme } from '../../types';
+import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nBadge from '../N8nBadge';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
@@ -27,7 +27,6 @@ const {
 	selectedCredentialName,
 	credentialsMissing = false,
 	credentialsMissingLabel,
-	credentialBadgeTheme,
 	noMatchLabel,
 	showBorder = true,
 	disabled = false,
@@ -44,8 +43,6 @@ const {
 	credentialsMissing?: boolean;
 	/** Text shown when credentials are required but missing. */
 	credentialsMissingLabel?: string;
-	/** When set, render the selected credential name as a badge with this theme (e.g. a managed n8n Connect credential). */
-	credentialBadgeTheme?: BadgeTheme;
 	/** Empty-state text shown when search returns no matching items. */
 	noMatchLabel: string;
 	/** Whether the trigger button should render with a border. */
@@ -133,15 +130,6 @@ defineExpose({
 						>
 							{{ resolvedCredentialsMissingLabel }}
 						</N8nBadge>
-						<N8nBadge
-							v-else-if="selectedCredentialName && credentialBadgeTheme"
-							:theme="credentialBadgeTheme"
-							size="small"
-							:class="$style.credsBadge"
-							:data-test-id="credentialDataTestId"
-						>
-							{{ truncateBeforeLast(selectedCredentialName, MAX_SELECTED_NAME_CHARS) }}
-						</N8nBadge>
 						<N8nText
 							v-else-if="selectedCredentialName"
 							bold
@@ -187,7 +175,9 @@ defineExpose({
 				</div>
 			</template>
 			<div v-else :class="[$style.labelWithBadge, ui.class]">
-				<N8nText size="medium" color="text-dark">{{ item.label }}</N8nText>
+				<N8nText size="medium" :color="item.disabled ? 'text-xlight' : 'text-dark'">{{
+					item.label
+				}}</N8nText>
 				<N8nBadge
 					v-if="item.data?.badgeLabel"
 					:class="$style.badge"
@@ -197,6 +187,12 @@ defineExpose({
 				>
 					{{ item.data.badgeLabel }}
 				</N8nBadge>
+				<N8nActionPill
+					v-if="item.data?.actionPill"
+					size="small"
+					:type="item.data.actionPill.type ?? 'default'"
+					:text="item.data.actionPill.text"
+				/>
 			</div>
 		</template>
 

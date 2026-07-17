@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
@@ -14,6 +13,8 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
 			})[key] ?? key,
 	}),
+	// The i18n singleton is used at module load by some transitively-imported utils.
+	i18n: { baseText: (key: string) => key },
 }));
 
 vi.mock('vue-router', async (importOriginal) => {

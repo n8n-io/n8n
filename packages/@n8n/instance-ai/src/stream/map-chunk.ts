@@ -158,6 +158,14 @@ function readErrorCode(error: unknown): string | undefined {
 	return undefined;
 }
 
+/** Find an ai-sdk `responseBody` on the error or its `cause` chain (the API error can arrive wrapped). */
+function readResponseBody(error: unknown): string | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
+	if ('responseBody' in error && typeof error.responseBody === 'string') return error.responseBody;
+	if ('cause' in error && error.cause !== error) return readResponseBody(error.cause);
+	return undefined;
+}
+
 /** Parse an ai-sdk JSON `responseBody` into its message and machine-readable code, if present. */
 function parseResponseBody(responseBody: string): { message?: string; code?: string } {
 	try {
@@ -190,6 +198,16 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 			info.technicalDetails = error.responseBody;
 			const { message } = parseResponseBody(error.responseBody);
 			if (message) info.content = message;
+		} else {
+			// The ai-sdk APICallError can arrive wrapped (thrown inside the model
+			// fetch), so its responseBody — e.g. the n8n Connect gateway's actionable
+			// message — lives on the cause chain. Mirrors `readErrorCode`'s unwrap.
+			const wrappedBody = readResponseBody(error.cause);
+			if (wrappedBody) {
+				info.technicalDetails = wrappedBody;
+				const { message } = parseResponseBody(wrappedBody);
+				if (message) info.content = message;
+			}
 		}
 
 		// Extract provider from error name or URL if available

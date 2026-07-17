@@ -11,7 +11,6 @@ import {
 import {
 	agentSkillSchema,
 	agentTaskSchema,
-	AI_GATEWAY_MANAGED_TAG,
 	formatZodErrors,
 	PROVIDER_CAPABILITIES,
 	resolvePromptCaching,
@@ -490,19 +489,16 @@ export class AgentsBuilderToolsService {
 			.build();
 
 		const modelLookup: ModelLookup = {
-			list: async (credentialId, credentialType, provider) => {
-				// n8n Connect managed slot: list the gateway's allowlisted models.
-				if (credentialId === AI_GATEWAY_MANAGED_TAG) {
-					return await this.builderModelLiveLookupService.listManaged(projectId, provider, user);
-				}
-				return await this.builderModelLiveLookupService.list(
+			// `list` resolves the n8n Connect managed tag to the synthetic gateway
+			// credential internally, so no managed branch is needed here.
+			list: async (credentialId, credentialType, provider) =>
+				await this.builderModelLiveLookupService.list(
 					user,
 					projectId,
 					credentialId,
 					credentialType,
 					provider,
-				);
-			},
+				),
 		};
 
 		const tools: BuiltTool[] = [

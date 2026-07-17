@@ -1,6 +1,8 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+
 import type { AgentModelsByProvider } from '../model-providers';
 
 type Credential = { id: string; name: string; type: string };
@@ -8,8 +10,16 @@ type TestMenuItem = {
 	id: string;
 	label: string;
 	checked?: boolean;
+	disabled?: boolean;
 	children?: TestMenuItem[];
-	data?: { badgeLabel?: string; description?: string; descriptionTooltipTeleported?: boolean };
+	data?: {
+		badgeLabel?: string;
+		actionPill?: { text: string; type?: string };
+		description?: string;
+		descriptionTooltipTeleported?: boolean;
+		isN8nCredits?: boolean;
+		provider?: string;
+	};
 };
 
 const credentialsByType = vi.hoisted(() => ({
@@ -27,6 +37,13 @@ const freeAiCreditsState = vi.hoisted(() => ({
 const canCreateCredentials = vi.hoisted(() => ({ value: true }));
 const openNewCredential = vi.hoisted(() => vi.fn());
 const openModalWithData = vi.hoisted(() => vi.fn());
+const aiGatewayState = vi.hoisted(() => ({
+	isEnabled: { value: false },
+	supportedTypes: new Set<string>(),
+	balance: { value: undefined as number | undefined },
+	fetchWallet: vi.fn(),
+	fetchConfig: vi.fn(),
+}));
 const baseText = vi.hoisted(() =>
 	vi.fn((key: string, options?: { interpolate?: Record<string, string | number> }) => {
 		const template =
@@ -40,6 +57,8 @@ const baseText = vi.hoisted(() =>
 				'agents.modelSelector.freeCredits.label': 'Use free OpenAI credits',
 				'agents.modelSelector.freeCredits.badge': 'free credits',
 				'aiGateway.credentialMode.n8nConnect.title': 'n8n Connect',
+				'aiGateway.wallet.balanceRemaining': '{balance} remaining',
+				'aiGateway.wallet.noCredits': 'No credits',
 				'agents.modelSelector.freeCredits.description':
 					'Get {credits} free OpenAI API credits. Try it with gpt-5-mini.',
 				'generic.loadingEllipsis': 'Loading...',
@@ -73,7 +92,6 @@ vi.mock('@n8n/design-system', async () => {
 				'selectedLabel',
 				'selectedCredentialName',
 				'credentialsMissing',
-				'credentialBadgeTheme',
 				'noMatchLabel',
 				'disabled',
 				'dataTestId',
@@ -107,6 +125,16 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('@/app/composables/useFreeAiCredits', () => ({
 	useFreeAiCredits: () => freeAiCreditsState,
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: aiGatewayState.isEnabled,
+		isCredentialTypeSupported: (type: string) => aiGatewayState.supportedTypes.has(type),
+		balance: aiGatewayState.balance,
+		fetchWallet: aiGatewayState.fetchWallet,
+		fetchConfig: aiGatewayState.fetchConfig,
+	}),
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
@@ -191,6 +219,132 @@ describe('AgentModelSelector', () => {
 		freeAiCreditsState.claimingCredits.value = false;
 		freeAiCreditsState.claimCreditsAndGetCredential.mockReset();
 		canCreateCredentials.value = true;
+		aiGatewayState.isEnabled.value = false;
+		aiGatewayState.supportedTypes = new Set<string>();
+		aiGatewayState.balance.value = undefined;
+		aiGatewayState.fetchWallet.mockReset();
+		aiGatewayState.fetchConfig.mockReset();
+	});
+
+	it('fetches the gateway config on mount so the managed option can be gated', async () => {
+		await mountSelector({ anthropic: null });
+
+		expect(aiGatewayState.fetchConfig).toHaveBeenCalled();
+	});
+
+	function getN8nCreditsItem(wrapper: VueWrapper, provider: string) {
+		return getProviderItem(wrapper, provider)?.children?.find((item) =>
+			item.id.includes('::n8nConnect::'),
+		);
+	}
+
+	it('offers the n8n credits option for a supported provider when the gateway is enabled', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getN8nCreditsItem(wrapper, 'anthropic')).toBeDefined();
+	});
+
+	it('does not offer n8n credits when the gateway is disabled', async () => {
+		aiGatewayState.isEnabled.value = false;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getN8nCreditsItem(wrapper, 'anthropic')).toBeUndefined();
+	});
+
+	it('does not offer n8n credits for a provider the gateway does not support', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set<string>(); // anthropicApi not supported
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getN8nCreditsItem(wrapper, 'anthropic')).toBeUndefined();
+	});
+
+	it('emits selectCredential with the managed tag when n8n credits is chosen', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::n8nConnect::anthropicApi');
+
+		expect(wrapper.emitted('selectCredential')).toEqual([['anthropic', AI_GATEWAY_MANAGED_TAG]]);
+	});
+
+	it('marks the n8n credits option as a toggle with no info tooltip', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+		const item = getN8nCreditsItem(wrapper, 'anthropic');
+
+		expect(item?.data?.isN8nCredits).toBe(true);
+		expect(item?.data?.description).toBeUndefined();
+	});
+
+	it('untoggles n8n credits (clears the selection) when it is already selected', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::n8nConnect::anthropicApi');
+
+		expect(wrapper.emitted('selectCredential')).toEqual([['anthropic', null]]);
+	});
+
+	it('lists models when the managed tag is the selected credential', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
+		const anthropicItem = getProviderItem(wrapper, 'anthropic');
+
+		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 4.5');
+	});
+
+	it('greys out Configure credentials when the managed tag is selected', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
+		const configure = getProviderItem(wrapper, 'anthropic')?.children?.find((item) =>
+			item.id.includes('::configure::'),
+		);
+
+		expect(configure?.disabled).toBe(true);
+	});
+
+	it('shows the remaining balance on the n8n credits option', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+		aiGatewayState.balance.value = 4.99;
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		const item = getN8nCreditsItem(wrapper, 'anthropic');
+		// Green "remaining" action pill (N8nActionPill), matching the workflow node.
+		expect(item?.data?.actionPill).toEqual({ text: '$4.99 remaining', type: 'default' });
+	});
+
+	it('fetches the wallet balance on mount when the gateway is enabled', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		await mountSelector({ anthropic: null });
+
+		expect(aiGatewayState.fetchWallet).toHaveBeenCalled();
+	});
+
+	it('does not fetch the wallet when the gateway is disabled', async () => {
+		aiGatewayState.isEnabled.value = false;
+
+		await mountSelector({ anthropic: null });
+
+		expect(aiGatewayState.fetchWallet).not.toHaveBeenCalled();
 	});
 
 	it('shows n8n Connect (not "credentials missing") for a managed credential', async () => {
@@ -199,9 +353,8 @@ describe('AgentModelSelector', () => {
 		const dropdown = getDropdown(wrapper);
 
 		expect(dropdown.props('credentialsMissing')).toBe(false);
+		// Shown as plain text (like an own credential name), not a custom badge.
 		expect(dropdown.props('selectedCredentialName')).toBe('n8n Connect');
-		// Rendered as a neutral pill, not the danger "credentials missing" badge.
-		expect(dropdown.props('credentialBadgeTheme')).toBe('default');
 	});
 
 	it('surfaces a stale selected credential as missing', async () => {

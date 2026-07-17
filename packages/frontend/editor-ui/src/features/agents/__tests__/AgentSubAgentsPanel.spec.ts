@@ -1,9 +1,9 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
@@ -116,6 +116,7 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 			'projectId',
 			'warnMissingCredentials',
 			'disabled',
+			'isManagedCredential',
 		],
 		emits: ['change', 'selectCredential'],
 		template: '<div data-testid="agent-model-selector-stub" :data-disabled="disabled" />',
@@ -227,6 +228,56 @@ describe('AgentSubAgentsPanel', () => {
 
 		expect(wrapper.text()).not.toContain('Sub-agents');
 		expect(wrapper.text()).not.toContain('Sub-agents description');
+	});
+
+	it('marks a difficulty selector as managed when its credential is the n8n Connect tag', async () => {
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'anthropic/claude-sonnet-4-5', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			},
+		} as AgentJsonConfig);
+		await flushPromises();
+
+		const lowSelector = wrapper
+			.find('[data-testid="agent-sub-agents-difficulty-row-low"]')
+			.findComponent({ name: 'AgentModelSelector' });
+
+		expect(lowSelector.props('isManagedCredential')).toBe(true);
+	});
+
+	it('stores the managed-tag selection for a difficulty', async () => {
+		const wrapper = await mountPanel();
+		await enableCustomModelRouting(wrapper);
+
+		emitDifficultyCredentialChange(
+			'agent-sub-agents-difficulty-low-model',
+			'anthropic',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(selectCredentialMock).toHaveBeenCalledWith('anthropic', AI_GATEWAY_MANAGED_TAG);
+	});
+
+	it('persists the managed tag when a difficulty model is chosen against it', async () => {
+		credentialsByProviderRef.value = { anthropic: AI_GATEWAY_MANAGED_TAG };
+		const wrapper = await mountPanel();
+		await enableCustomModelRouting(wrapper);
+
+		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
+			provider: 'anthropic',
+			model: 'claude-sonnet-4-5',
+		});
+
+		const updates = wrapper.emitted('update:config') as
+			| Array<[{ subAgents?: unknown }]>
+			| undefined;
+		const last = updates?.at(-1)?.[0] as {
+			subAgents?: { modelsByDifficulty?: Record<string, { credential?: string }> };
+		};
+		expect(last?.subAgents?.modelsByDifficulty?.low?.credential).toBe(AI_GATEWAY_MANAGED_TAG);
 	});
 
 	it('shows inline difficulty model selectors when custom routing is enabled', async () => {
