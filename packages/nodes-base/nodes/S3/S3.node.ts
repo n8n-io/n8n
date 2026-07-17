@@ -490,13 +490,22 @@ export class S3 implements INodeType {
 
 						const endpoint = new URL(credentials.endpoint as string);
 
+						// Handle path prefix from endpoint
+						const basepath = endpoint.pathname === '/' ? '' : endpoint.pathname;
+
 						let path: string;
 
+						// Percent-encode key segments
+						const encodedFileKey = fileKey
+							.split('/')
+							.map((segment) => encodeURIComponent(segment))
+							.join('/');
+
 						if (credentials.forcePathStyle) {
-							path = `/${bucketName}/${fileKey}`;
+							path = `${basepath}/${bucketName}/${encodedFileKey}`;
 						} else {
 							endpoint.host = `${bucketName}.${endpoint.host}`;
-							path = `/${fileKey}`;
+							path = `${basepath}/${encodedFileKey}`;
 						}
 
 						const { sign } = require('aws4');
