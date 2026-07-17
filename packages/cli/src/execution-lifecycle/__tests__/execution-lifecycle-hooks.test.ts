@@ -1,3 +1,4 @@
+import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
@@ -545,9 +546,38 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
 
 				expect(push.send).toHaveBeenCalledWith(
-					{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data: taskStartedData } },
+					{
+						type: 'nodeExecuteBefore',
+						data: { executionId, nodeName, sequenceNumber: 0, data: taskStartedData },
+					},
 					pushRef,
 				);
+			});
+		});
+
+		describe('node event sequencing', () => {
+			it('assigns a strictly increasing sequence number across the whole execution', async () => {
+				const secondNode = 'Second Node';
+
+				// Two nodes run start-to-finish on a single execution's hooks.
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+				await lifecycleHooks.runHook('nodeExecuteBefore', [secondNode, taskStartedData]);
+				await lifecycleHooks.runHook('nodeExecuteAfter', [secondNode, taskData, runExecutionData]);
+
+				const isNodeEvent = (
+					message: PushMessage,
+				): message is Extract<PushMessage, { type: 'nodeExecuteBefore' | 'nodeExecuteAfter' }> =>
+					message.type === 'nodeExecuteBefore' || message.type === 'nodeExecuteAfter';
+
+				const sequenceNumbers = push.send.mock.calls
+					.map(([message]) => message)
+					.filter(isNodeEvent)
+					.map((message) => message.data.sequenceNumber);
+
+				// One counter for the whole execution, spanning both node boundaries
+				// and both event kinds: before(A) < after(A) < before(B) < after(B).
+				expect(sequenceNumbers).toEqual([0, 1, 2, 3]);
 			});
 		});
 
@@ -591,6 +621,7 @@ describe('Execution Lifecycle Hooks', () => {
 						data: {
 							executionId,
 							nodeName,
+							sequenceNumber: 0,
 							itemCountByConnectionType: {
 								main: [1],
 							},

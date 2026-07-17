@@ -61,7 +61,6 @@
     "express": "catalog:",
     "testcontainers": "catalog:",
     "typescript": "catalog:",
-    "typescript6": "npm:@typescript/typescript6@6.0.2",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
