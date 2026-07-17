@@ -2978,7 +2978,7 @@ importers:
         version: 1.0.1(@langchain/core@1.2.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(367da3d1fcc3b9a76fa6cbbfe424fc7b)
+        version: 1.1.27(0c43ff6f8caf6e2bd50669b85aecdf68)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -25703,7 +25703,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.1.27(367da3d1fcc3b9a76fa6cbbfe424fc7b)':
+  '@langchain/community@1.1.27(0c43ff6f8caf6e2bd50669b85aecdf68)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.60.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -25725,17 +25725,17 @@ snapshots:
       '@azure/search-documents': 12.1.0
       '@azure/storage-blob': 12.32.0
       '@browserbasehq/sdk': 2.12.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.6(e7de29858088151be105fbca8119e89c)
+      '@getzep/zep-cloud': 1.0.6(29b5b6327138d44043b531586301258e)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
       '@huggingface/inference': 4.0.5
       '@libsql/client': 0.17.2(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
       '@mozilla/readability': 0.6.0
       '@pinecone-database/pinecone': 5.1.2
-      '@qdrant/js-client-rest': 1.16.2(typescript@6.0.2)
+      '@qdrant/js-client-rest': 1.16.2(@typescript/typescript6@6.0.2)
       '@smithy/protocol-http': 5.3.12
       '@smithy/util-utf8': 4.2.2
       '@supabase/supabase-js': 2.50.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-      '@xata.io/client': 0.28.4(typescript@6.0.2)
+      '@xata.io/client': 0.28.4(@typescript/typescript6@6.0.2)
       '@zilliz/milvus2-sdk-node': 2.5.7
       cheerio: 1.1.0
       chromadb: 3.2.0
@@ -25757,7 +25757,7 @@ snapshots:
       pdf-parse: 2.4.5
       pg: 8.21.0(pg-native@3.8.0)
       playwright: 1.60.0
-      puppeteer: 24.41.0(bufferutil@4.0.9)(typescript@6.0.2)(utf-8-validate@5.0.10)
+      puppeteer: 24.41.0(@typescript/typescript6@6.0.2)(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       redis: 4.6.14
       weaviate-client: 3.9.0(encoding@0.1.13)
       ws: 8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
