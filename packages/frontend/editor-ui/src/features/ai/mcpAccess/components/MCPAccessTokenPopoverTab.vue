@@ -162,7 +162,7 @@ onMounted(async () => {
 				<N8nMarkdown id="mcp-json" :content="connectionCode"></N8nMarkdown>
 				<div :class="$style['copy-json-wrapper']">
 					<N8nTooltip
-						placement="bottom"
+						placement="bottom-end"
 						:disabled="!isSupported"
 						:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
 						:show-after="MCP_TOOLTIP_DELAY"
