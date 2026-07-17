@@ -23,11 +23,12 @@ const disabledTooltip = computed(() =>
 		: i18n.baseText('settings.mcp.toggle.disabled.tooltip'),
 );
 
+// The leading icon is rendered by the #item-leading slot below, so the item
+// itself carries no icon.
 const menuItems = computed(() => [
 	{
 		id: 'disable',
 		label: i18n.baseText('settings.mcp.status.disable'),
-		icon: { type: 'icon' as const, value: 'power' as const },
 	},
 ]);
 
