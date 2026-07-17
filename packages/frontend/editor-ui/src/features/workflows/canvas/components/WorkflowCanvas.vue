@@ -102,13 +102,17 @@ const nodes = computed(() => {
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
 const nodeGroupView = useCanvasNodeGroupView({
-	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
+	workflowId: () => workflowDocumentStore.value.workflowId,
 	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	getGroupExpansionMode: () => props.groupExpansionMode,
 });
 
-const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility();
+const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility({
+	workflowId: () => workflowDocumentStore.value.workflowId,
+	getCurrentGroups: () => workflowDocumentStore.value.allGroups,
+	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
+});
 
 // Keep the group view in sync with the currently displayed document
 watch(
@@ -116,9 +120,7 @@ watch(
 	() => {
 		nodeGroupView.reinitialize();
 		applyGroupExpansion();
-		nodeGroupDescriptionVisibility.restore(
-			new Set(workflowDocumentStore.value.allGroups.map((group) => group.id)),
-		);
+		nodeGroupDescriptionVisibility.reinitialize();
 	},
 );
 
@@ -206,6 +208,7 @@ provide(NodeGroupDescriptionVisibilityKey, nodeGroupDescriptionVisibility);
 // the menu lives in the shared layer and can't reach this canvas' view state.
 provide(ContextMenuGroupViewKey, {
 	isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+	isDescriptionVisible: (id) => nodeGroupDescriptionVisibility.isVisible(id),
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
