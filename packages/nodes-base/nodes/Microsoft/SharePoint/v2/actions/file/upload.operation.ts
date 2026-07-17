@@ -1,10 +1,10 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { untilSiteSelected } from '../../descriptions';
 import { folderRLC } from '../../folder';
-import { MAX_SIMPLE_UPLOAD_BYTES, validateSharePointFileName } from '../../helpers/utils';
+import { getUploadBufferWithinCap, validateSharePointFileName } from '../../helpers/utils';
 import { resolveSiteId, siteRLC } from '../../site';
 import { microsoftApiRequest } from '../../transport';
 
@@ -73,36 +73,10 @@ export async function execute(
 		});
 	}
 
-	const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-
-	// Out-of-process binary data exposes its size as metadata — oversized files
-	// are rejected without ever being read.
-	let body: Buffer | undefined;
-	let fileSize: number;
-	if (binaryData.id) {
-		({ fileSize } = await this.helpers.getBinaryMetadata(binaryData.id));
-	} else {
-		body = Buffer.from(binaryData.data, BINARY_ENCODING);
-		fileSize = body.byteLength;
-	}
-	if (fileSize > MAX_SIMPLE_UPLOAD_BYTES) {
-		// Ceil so a just-over-the-cap file never reads as "250 MB is larger than 250 MB"
-		const sizeMb = Math.ceil(fileSize / (1024 * 1024));
-		throw new NodeOperationError(
-			this.getNode(),
-			`The file is ${sizeMb} MB, which is larger than the 250 MB limit for SharePoint uploads`,
-			{
-				itemIndex: i,
-				description:
-					'Files over 250 MB need to be uploaded in pieces, which this operation does not support yet.',
-			},
-		);
-	}
+	const { body, contentType } = await getUploadBufferWithinCap(this, i, binaryPropertyName);
 
 	// resolveSiteId validates the site field itself, including the empty case
 	const siteId = await resolveSiteId.call(this, i, siteIdCache);
-
-	body ??= await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 	// Encode segments: site IDs contain commas and file names spaces; encoding
 	// also keeps user input from escaping its path segment under either credential.
@@ -113,6 +87,6 @@ export async function execute(
 		body,
 		{},
 		undefined,
-		{ 'Content-Type': binaryData.mimeType ?? 'application/octet-stream' },
+		{ 'Content-Type': contentType },
 	);
 }

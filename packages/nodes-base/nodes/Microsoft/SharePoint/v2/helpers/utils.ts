@@ -1,5 +1,5 @@
-import type { INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 /** v1's Simplify $select list — the exact trimmed fields v2 keeps returning; Get Many reuses it. */
 export const LIST_SIMPLIFY_SELECT =
@@ -50,4 +50,43 @@ export function validateSharePointFileName(
 			},
 		);
 	}
+}
+
+/**
+ * Asserts the input binary exists, enforces the simple-upload size cap, and
+ * returns the payload with its content type. Out-of-process binary data is
+ * size-checked from its metadata — oversized files are rejected without ever
+ * being read.
+ */
+export async function getUploadBufferWithinCap(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	binaryPropertyName: string,
+): Promise<{ body: Buffer; contentType: string }> {
+	const binaryData = ctx.helpers.assertBinaryData(itemIndex, binaryPropertyName);
+
+	let body: Buffer | undefined;
+	let fileSize: number;
+	if (binaryData.id) {
+		({ fileSize } = await ctx.helpers.getBinaryMetadata(binaryData.id));
+	} else {
+		body = Buffer.from(binaryData.data, BINARY_ENCODING);
+		fileSize = body.byteLength;
+	}
+	if (fileSize > MAX_SIMPLE_UPLOAD_BYTES) {
+		// Ceil so a just-over-the-cap file never reads as "250 MB is larger than 250 MB"
+		const sizeMb = Math.ceil(fileSize / (1024 * 1024));
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`The file is ${sizeMb} MB, which is larger than the 250 MB limit for SharePoint uploads`,
+			{
+				itemIndex,
+				description:
+					'Files over 250 MB need to be uploaded in pieces, which this operation does not support yet.',
+			},
+		);
+	}
+
+	body ??= await ctx.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+	return { body, contentType: binaryData.mimeType ?? 'application/octet-stream' };
 }

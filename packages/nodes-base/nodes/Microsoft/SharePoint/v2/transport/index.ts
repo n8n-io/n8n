@@ -24,6 +24,14 @@ export const DEFAULT_GRAPH_BASE_URL = 'https://graph.microsoft.com';
 export const REQUIRED_PERMISSIONS: Readonly<
 	Record<string, { delegated: string; application: string }>
 > = Object.freeze({
+	'file:download': {
+		delegated: 'Sites.Read.All',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'file:update': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',
+	},
 	'file:upload': {
 		delegated: 'Sites.ReadWrite.All',
 		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',

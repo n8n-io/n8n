@@ -3,6 +3,9 @@ import type { INodeProperties } from 'n8n-workflow';
 /** Hide gate copied from v1: the list field stays hidden until a site is chosen. */
 export const untilSiteSelected = { site: [''] };
 
+/** Hide gate: file fields stay hidden until a folder is chosen. */
+export const untilFolderSelected = { folder: [''] };
+
 export const listRLC: INodeProperties = {
 	displayName: 'List',
 	name: 'list',

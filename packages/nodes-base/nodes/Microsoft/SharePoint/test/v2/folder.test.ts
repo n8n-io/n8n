@@ -5,6 +5,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../v2/actions/versionDescription';
 import { folderRLC, getFolders } from '../../v2/folder';
+import { FILTERED_SEARCH_PAGE_LIMIT } from '../../v2/helpers/driveItemSearch';
 import { MicrosoftSharePointV2 } from '../../v2/MicrosoftSharePointV2.node';
 import * as transport from '../../v2/transport';
 import type * as _importType0 from '../../v2/transport';
@@ -118,7 +119,7 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 		const result = await getFolders.call(ctx, 'archive');
 
 		// Bounded so one keystroke cannot crawl an arbitrarily large drive
-		expect(apiRequest).toHaveBeenCalledTimes(10);
+		expect(apiRequest).toHaveBeenCalledTimes(FILTERED_SEARCH_PAGE_LIMIT);
 		expect(result.results).toEqual([]);
 		expect(result.paginationToken).toBe('https://graph.microsoft.com/next');
 	});
