@@ -32,24 +32,22 @@ describe('McpConnectClientDialog', () => {
 		mcpStore.connectPopoverOpen = true;
 	});
 
-	it('should default to Claude Code and show the CLI setup steps', async () => {
+	it('should default to Claude.ai and show the web setup steps', async () => {
 		renderComponent({ pinia });
 
 		// The dialog root is renderless; wait for its content instead.
 		await waitFor(() => {
 			expect(body().getByTestId('mcp-connect-client-picker-trigger')).toBeInTheDocument();
 		});
-		expect(body().getByTestId('mcp-connect-client-picker-trigger')).toHaveTextContent(
-			'Claude Code',
+		expect(body().getByTestId('mcp-connect-client-picker-trigger')).toHaveTextContent('Claude.ai');
+		// Web client: one-click connector + mandatory server URL, no CLI/auth steps.
+		expect(body().getByTestId('mcp-connect-one-click')).toHaveAttribute(
+			'href',
+			'https://claude.ai/directory/connectors/n8n',
 		);
-		expect(body().getByText('Add n8n to Claude Code')).toBeInTheDocument();
-		expect(body().getByText('Or configure manually')).toBeInTheDocument();
-		expect(body().getByText('Authenticate')).toBeInTheDocument();
-		expect(
-			body().getByDisplayValue(
-				'claude mcp add --transport http n8n https://acme.app.n8n.cloud/mcp-server/http',
-			),
-		).toBeInTheDocument();
+		expect(body().getByText('Server URL')).toBeInTheDocument();
+		expect(body().queryByText('Or configure manually')).not.toBeInTheDocument();
+		expect(body().queryByText('Authenticate')).not.toBeInTheDocument();
 	});
 
 	it('should switch to IDE setup steps when picking Cursor', async () => {

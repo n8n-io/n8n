@@ -44,7 +44,7 @@ const methodTabs = computed<Array<TabOptions<ConnectMethod>>>(() => [
 	{ label: i18n.baseText('settings.mcp.connectDialog.method.apiKey'), value: 'apiKey' },
 ]);
 
-const activeClientId = ref('claude-code');
+const activeClientId = ref('claude-ai');
 
 const activeClient = computed(() => clientsById.value.get(activeClientId.value));
 
