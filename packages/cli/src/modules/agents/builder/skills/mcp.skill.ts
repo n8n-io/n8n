@@ -63,10 +63,8 @@ Follow these steps in order when adding an MCP server:
    to \`mcpServers[]\` using the patch pattern below.
 
 If \`search_mcp_servers\` returns no matches, continue with manual server
-setup. Ask for any missing URL or transport/authentication decision through
-\`${ASK_QUESTIONS_TOOL_NAME}\`. If the user skips the URL, still add a draft
-server entry with \`url: ""\`, preserve any known authentication choice, and
-skip verification. Do not abort the server addition.
+setup: ask for the URL and transport/authentication decision through
+\`${ASK_QUESTIONS_TOOL_NAME}\`.
 
 Full schema reference:
 
@@ -82,9 +80,6 @@ ${mcpServerSchemaText}
   \`credentialType: "httpMultipleHeadersAuth"\`.
 - For \`mcpOAuth2Api\`, call \`ask_credential\` with
   \`credentialType: "mcpOAuth2Api"\`.
-- Never invent credential IDs. If the user declines credential setup, still
-  add the server via \`patch_config\` — omit only the \`credential\` field.
-  Do not abort the server addition.
 
 ### Testing the connection
 
@@ -98,12 +93,21 @@ Before writing to config, call \`verify_mcp_server\` with server \`name\`,
 - Failure returns \`{ ok: false, error: "..." }\`.
 - If verification fails, explain the error and ask the user to check the URL
   or credentials before proceeding.
-- If \`ask_credential\` returned \`{ skipped: true }\` and \`authentication\`
-  is not \`"none"\`, skip \`verify_mcp_server\` — an unauthenticated attempt
-  would fail regardless. Go straight to \`read_config\` / \`patch_config\`
-  with \`credential\` omitted.
-- If the URL is empty, skip \`verify_mcp_server\` and persist the draft entry
-  with \`url: ""\`.
+
+### Incomplete setup
+
+The user can skip the credential prompt, the URL question, or both. Never
+invent a credential ID or a placeholder URL to fill the gap, and never abort
+the server addition — always persist what is known and let the user finish
+setup later:
+
+- Credential skipped (\`ask_credential\` returned \`{ skipped: true }\`): omit
+  only the \`credential\` field.
+- URL skipped: persist \`url: ""\`.
+- Either case: skip \`verify_mcp_server\` (there is nothing to authenticate or
+  connect to), then \`read_config\` and \`patch_config\` the entry, preserving
+  every other known field — \`name\`, \`transport\`, \`authentication\`, an
+  already-selected credential, and registry \`metadata\`.
 
 ### Selecting credentials
 
@@ -130,9 +134,6 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 ## Gotchas
 
 - Server \`name\` must be unique across \`mcpServers\` within an agent.
-- A skipped URL is stored as \`url: ""\`; never invent a placeholder URL.
-- Never invent credential IDs. If the user declines, still add the server
-  and omit only the \`credential\` field.
 - Never fabricate \`metadata.nodeTypeName\`.
 - When \`search_mcp_servers\` returns \`metadata.nodeTypeName\`, include
   \`metadata: { nodeTypeName: <result.nodeTypeName> }\` in the entry so the UI
