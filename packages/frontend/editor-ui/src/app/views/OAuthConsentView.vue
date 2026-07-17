@@ -132,13 +132,26 @@ onMounted(async () => {
 				<div :class="[$style.logo, $style.n8n]">
 					<N8nLogo size="small" :collapsed="true" release-channel="stable" />
 				</div>
-				<!-- Pending-connection connector: marching dashes from the n8n tile toward the
-				     client tile, with a spinner mid-way. Purely decorative. -->
-				<div :class="$style.connector" aria-hidden="true">
-					<span :class="$style.dashes" />
-					<span :class="$style.spinner" />
-					<span :class="$style.dashes" />
-				</div>
+				<!-- Pending-connection connector (ported from the prototype's authorize view): a dashed
+				     SVG line marching toward the n8n tile with a slow muted spinner badge. Decorative. -->
+				<span :class="$style.connector" aria-hidden="true">
+					<svg viewBox="0 0 64 8" preserveAspectRatio="none">
+						<line
+							:class="$style['connector-line']"
+							x1="0"
+							y1="4"
+							x2="64"
+							y2="4"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-dasharray="2 5"
+						/>
+					</svg>
+					<span :class="$style.badge">
+						<N8nIcon :class="$style['badge-spinner']" icon="loader-circle" size="large" />
+					</span>
+				</span>
 				<div :class="$style.logo">
 					<N8nIcon icon="mcp" size="xlarge" color="text-dark" />
 				</div>
@@ -329,6 +342,7 @@ onMounted(async () => {
 .header {
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	gap: var(--spacing--xs);
 }
 
@@ -348,46 +362,54 @@ onMounted(async () => {
 }
 
 .connector {
-	display: flex;
-	flex: 1 1 auto;
+	position: relative;
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: var(--spacing--3xs);
-}
+	width: var(--spacing--3xl);
+	height: var(--spacing--2xs);
+	color: var(--color--primary);
 
-.dashes {
-	flex: 1 1 auto;
-	max-width: var(--spacing--xl);
-	height: 2px;
-	/* Two dash cells (dash + gap) so a single-cell shift loops seamlessly. */
-	background-image: repeating-linear-gradient(
-		to right,
-		var(--color--primary) 0 6px,
-		transparent 6px 12px
-	);
-	background-size: 12px 100%;
-	animation: mcp-connector-march 600ms linear infinite;
-}
-
-.spinner {
-	flex: 0 0 auto;
-	width: var(--spacing--sm);
-	height: var(--spacing--sm);
-	border: 2px solid var(--color--text);
-	border-top-color: transparent;
-	border-radius: var(--radius--full);
-	animation: mcp-connector-spin 800ms linear infinite;
-}
-
-/* Dashes march toward the client tile (rightward). */
-@keyframes mcp-connector-march {
-	from {
-		background-position: 0 0;
+	svg {
+		display: block;
+		width: 100%;
+		height: 100%;
+		overflow: visible;
 	}
+}
 
+/* Dashes march toward the n8n tile; a whole dash period (2 + 5) keeps the loop seamless. */
+.connector-line {
+	animation: mcp-connector-dash 0.8s linear infinite;
+}
+
+@keyframes mcp-connector-dash {
 	to {
-		background-position: 12px 0;
+		stroke-dashoffset: 14;
 	}
+}
+
+/* Muted spinner disc centered over the connector; the surface fill lets it overlap the line. */
+.badge {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transform: translate(-50%, -50%);
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	border-radius: var(--radius--full);
+	background: var(--background--surface);
+	color: var(--color--text--tint-1);
+	line-height: 0;
+}
+
+/* Slow, calm rotation since the spinner can sit on screen while the user decides. */
+.badge-spinner {
+	transform-origin: center;
+	animation: mcp-connector-spin 2s linear infinite;
 }
 
 @keyframes mcp-connector-spin {
@@ -397,8 +419,8 @@ onMounted(async () => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.dashes,
-	.spinner {
+	.connector-line,
+	.badge-spinner {
 		animation: none;
 	}
 }
